@@ -1,0 +1,3132 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="echarts.min.js"></script>
+    <!-- <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script> -->
+    <script type="text/javascript" src="jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <h1 id="page-caption" style="margin: 2em 0 2em 0; text-align: center;">PerfAI</h1>
+    <h2 id="chip-arch" style="margin: 1em 0 1em 0; text-align: center;"></h2>
+    <div class="tabs" id="tabs"></div>
+    <div id="tab-container"></div>
+    <div id="content-container"></div>
+
+    <!-- 总表 -->
+    <table id="configsTable" border="1"></table>
+    <div id="summary-table"></div>
+    <div id="msg-checkbox" style="display: none;">
+        <input type="checkbox" id="show_msg_chart" style="margin-top: 20px;" />
+        <label for="show_msg_chart" style="margin-top: 20px;">Show Message Chart</label>
+        <p id="msg-info" style="display: none;">If there are massive data points, partial graph will be presented to reduce rendering. Please slide the datazoom handler to see more data. Due to the limited window size, some cmds might seem overlapped and hard to observe, please zoom in or use
+            the select-filter to check the details. </p>
+    </div>
+    <div id="msg-container-placeholder"></div>
+    <div id="bw-chart"></div>
+
+    <!-- 分表 -->
+    <div id="custom-tooltip" style="display: none; position: absolute; background: #fff; border: 1px solid #000; padding: 10px;"></div>
+
+    <div id="config-container">
+        <div class="config-item"><input type="checkbox" id="show_data_table" value="Show data" />Show data</div>
+        <div class="config-item config-localmem">
+            <input type="checkbox" id="show_localmem" value="Show localmem" />Show localmem
+            <button id="show_original_data" style="display:none;">show original data</button>
+            <label for="filter">筛选: </label>
+            <select id="filter">
+                <option value="all">全部</option>
+                <option value="read">只看读</option>
+                <option value="write">只看写</option>
+                <option value="cumulative">只看当前使用内存总量</option>
+            </select>
+        </div>
+        <div class="config-item"><input type="checkbox" id="tiu_uarch_rate" value="TIU uArch Rate" />TIU uArch Rate</div>
+    </div>
+    <div id="data-list"></div>
+    <hr>
+    <div id="lmem-container" class="mem-container" style="display: none;"></div>
+    <!-- <div id="lmem-container-overview" class="mem-container" style="display: none;"></div> -->
+    <hr>
+    <div id="rate-line-container"></div>
+    <hr>
+    <div id="pie-chart-container">
+        <div id="chart1" class="chart"></div>
+        <div id="chart2" class="chart"></div>
+        <div id="chart3" class="chart"></div>
+        <div id="chart4" class="chart"></div>
+    </div>
+
+    <style>
+        .tabs {
+            margin: 10 auto;
+        }
+
+        .tabs .tab {
+            height: 32px;
+            padding: 10px 20px;
+            margin: 0 10px 20px;
+            display: inline-block;
+            text-align: center;
+            line-height: 32px;
+            text-align: center;
+            color: #fff;
+            background-color: #223668;
+            border-color: #d87c04;
+            border-radius: 5px;
+            white-space: nowrap;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            min-width: auto;
+        }
+
+        .bg-r {
+            background-color: red!important;
+            color: #fff!important;
+        }
+
+        .tabs div:hover {
+            background-color: red;
+            color: #fff;
+        }
+
+        #comparison-content {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+
+        #comparison-content label {
+            margin-right: 10px;
+        }
+
+        .chart-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        #configsTable {
+            margin: auto;
+            margin-bottom: 50px;
+            border-collapse: collapse;
+            width: 80%;
+            background-color: #f2f2f2;
+        }
+
+        #configsTable td,
+        #configsTable th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        #msg-container {
+            width: 95%;
+            height: 800px;
+            margin: 80px auto;
+            border: 1px solid #ccc;
+            padding: 1em 1em;
+        }
+
+        #bw-chart {
+            width: 85vw;
+            height: 70vh;
+            margin: 10vw auto;
+            border: 1px solid #ccc;
+            padding: 1em 1em;
+        }
+
+        #time-container1,
+        #time-container2,
+        #time-container3,
+        #time-container4,
+        #time-container5,
+        #time-container6,
+        #time-container7,
+        #time-container0 {
+            display: none;
+        }
+
+        #config-container {
+            margin-left: 0;
+            margin-top: 1em;
+        }
+
+        .config-item {
+            display: inline-block;
+            padding-left: 2em;
+        }
+
+        body {
+            text-align: center;
+        }
+
+        .mem-container {
+            width: 80vw;
+            /* 使用视口宽度的百分比 */
+            height: 70vh;
+            padding-left: 5vw;
+        }
+
+        #data-list {
+            display: none;
+            height: 600px;
+            overflow-y: auto;
+            /* Enables vertical scrolling */
+            width: 90%;
+            margin-left: 5%;
+        }
+
+        td,
+        th {
+            padding: 0;
+        }
+
+        .data-table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            empty-cells: show;
+            border: 1px solid #cbcbcb;
+            width: 90vw;
+            margin-left: 2.5%;
+        }
+
+        .data-table caption {
+            color: #000;
+            font: bold, arial, sans-serif;
+            font-size: larger;
+            padding: 0.5em 0;
+            text-align: center;
+        }
+
+        .data-table thead td.asc:after {
+            content: "↑"
+        }
+
+        .data-table thead td.desc::after {
+            content: "↓"
+        }
+
+        .filter-label::after {
+            content: ": "
+        }
+
+        .filter-block {
+            display: inline;
+            margin-right: 1em;
+        }
+
+        .data-table thead td:hover {
+            cursor: pointer;
+        }
+
+        .data-table td,
+        .data-table th {
+            border-left: 1px solid #cbcbcb;
+            border-top: 1px solid #cbcbcb;
+            font-size: inherit;
+            margin: 0;
+            overflow: visible;
+            padding: .5em 1em;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: aliceblue;
+        }
+
+        .data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: #e0e0e0;
+            color: #000;
+            text-align: left;
+            vertical-align: bottom;
+        }
+
+        .table-wrapper {
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .data-table-odd td {
+            background-color: #f2f2f2;
+        }
+
+        .explanation {
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        hr {
+            margin: 2em 0 2em 0;
+            color: gray;
+        }
+
+        #pie-chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            width: 95%;
+            height: 800px;
+            margin: 0 auto;
+        }
+
+        .chart {
+            flex: 0 1 calc(50% - 10px);
+            height: 80%;
+            margin-bottom: 20px;
+        }
+
+        #rate-line-container {
+            width: 80vw;
+            height: 30vh;
+            padding-left: 4vw
+        }
+    </style>
+
+    <script type="text/javascript" src="profile_data.js"></script>
+
+    <script>
+        //echarts.debugMode = true;
+        var all_charts = []
+        var filtered_data = []
+
+        function set_chart_time_range(begin_usec, end_usec, source) {
+            for (let c of all_charts) {
+                if (c === source) continue
+                if (c && c.set_time_range) c.set_time_range(begin_usec, end_usec)
+            }
+        }
+    </script>
+    <script>
+        function configsTable(configs) {
+            console.log("im calling")
+            console.log("configs:", configs)
+            const table = document.getElementById('configsTable');
+            table.innerHTML = ''; // 清空表格
+            const keys = Object.keys(configs);
+            let row;
+            keys.forEach((key, index) => {
+                if (index % 2 === 0) {
+                    row = table.insertRow(-1);
+                }
+                const cell1 = row.insertCell(-1);
+                const cell2 = row.insertCell(-1);
+                cell1.innerHTML = key;
+                cell2.innerHTML = configs[key];
+            });
+            console.log("table:", table)
+        }
+
+        function sortData(data, is_asc) {
+            now = Date.now()
+            index = []
+            for (let i = 0; i < data.length; i++) {
+                index.push(i)
+            }
+            index.sort((a, b) => {
+                if ((data[a] > data[b] && is_asc) || (data[a] < data[b] && !is_asc)) {
+                    return 1;
+                }
+                return -1;
+            });
+            console.log("SortData计算时间为:", Date.now() - now) //原冒泡
+            return index
+        }
+
+        function sortDataByColumn(data, col, is_asc) {
+            function parseValue(value) {
+                if (typeof value === 'string') {
+                    if (value.includes('%')) {
+                        return parseFloat(value.replace('%', '')) / 100;
+                    }
+                    // 如果字符串不包含数字，则返回null以忽略
+                    if (isNaN(Number(value))) {
+                        return null;
+                    }
+                }
+                return value;
+            }
+            let key_data = []
+            for (let i = 0; i < data.length; i++) {
+                //key_data.push(data[i][col])
+                key_data.push(parseValue(data[i][col]));
+            }
+            let index = sortData(key_data, is_asc);
+            let new_data = []
+            for (let i = 0; i < index.length; i++) {
+                new_data.push(data[index[i]])
+            }
+            return new_data
+        }
+
+        function sortTableByColumn(e, data, usec_cols) {
+            now = Date.now()
+            let col_head = e.target;
+            let index = parseInt(col_head.className.split("-")[1])
+            let is_asc = !(col_head.classList.contains("asc") || col_head.classList.length == 1)
+            let all_heads = col_head.parentNode.children
+            for (let h of all_heads) {
+                h.classList.remove("asc")
+                h.classList.remove("desc")
+            }
+            col_head.classList.add(is_asc ? "asc" : "desc")
+            let row_elems = col_head.parentNode.parentNode.parentNode.lastChild.children
+
+
+            if (typeof(data) === "undefined") {
+                data = []
+                for (let r = 0; r < row_elems.length; r++) {
+                    let row_data = []
+                    let col_elems = row_elems[r].children
+                    for (let c = 0; c < col_elems.length; c++) {
+                        let value = col_elems[c].innerText
+                        if (all_heads[c].getAttribute("type") == "number") {
+                            value = Number(value)
+                        }
+                        row_data.push(value)
+                    }
+                    data.push(row_data)
+                }
+            }
+            sorted_data = sortDataByColumn(data, index, is_asc)
+            if (typeof(usec_cols) == "undefined") {
+                usec_cols = []
+            }
+            for (let r = 0; r < row_elems.length; r++) {
+                let row_data = sorted_data[r]
+                if (usec_cols.length > 0) {
+                    row_elems[r].onclick = (e) => {
+                        set_chart_time_range(row_data[usec_cols[0]], row_data[usec_cols[1]])
+                    }
+                }
+                let col_elems = row_elems[r].children
+                for (let c = 0; c < col_elems.length; c++) {
+                    if (usec_cols.indexOf(c) >= 0) {
+                        col_elems[c].innerHTML = usec_str(row_data[c])
+                    } else {
+                        col_elems[c].innerHTML = row_data[c]
+                    }
+                }
+            }
+            console.log("sorting table计算时间:", Date.now() - now);
+            setTimeout(() => {
+                console.log('sorting Table运行时间：', Date.now() - now);
+            }, 0)
+        }
+
+        function showDataTable(id, header, data, caption, ddrbw, l2bw) {
+            let node = document.getElementById(id);
+            node.style.overflowX = "auto";
+            if (!node) return;
+            let table = document.createElement('table');
+            table.id = `table-${id}`;
+            table.className = 'data-table';
+            if (caption) {
+                let capNode = table.createCaption();
+                capNode.innerText = caption;
+            }
+            let head = table.createTHead();
+            let row = document.createElement('tr');
+            head.appendChild(row);
+            for (let i = 0; i < header.length; i++) {
+                let col = document.createElement('td');
+                col.innerText = header[i];
+                col.className = `header-${i}`;
+                if (data.length > 0) {
+                    col.setAttribute('type', typeof(data[0][i]));
+                }
+                col.setAttribute('data-sort', 'none');
+                col.onclick = sortTableByColumn;
+                row.appendChild(col);
+            }
+            let body = table.createTBody();
+            for (let r = 0; r < data.length; r++) {
+                let row_data = data[r];
+                let row_body = document.createElement('tr');
+                body.appendChild(row_body);
+                for (let c = 0; c < row_data.length; c++) {
+                    let col_body = document.createElement('td');
+                    col_body.innerText = row_data[c];
+                    row_body.appendChild(col_body);
+
+                    // Highlighting logic
+                    if (header[c] === 'TiuWorkingRatio') {
+                        if (parseFloat(row_data[c]) < 15) {
+                            col_body.style.backgroundColor = 'red';
+                        } else if (parseFloat(row_data[c]) < 30) {
+                            col_body.style.backgroundColor = 'yellow';
+                        }
+                    }
+                    if (header[c] === 'uArch Rate') {
+                        if (parseFloat(row_data[c]) < 50) {
+                            col_body.style.backgroundColor = 'red';
+                        } else if (parseFloat(row_data[c]) < 75) {
+                            col_body.style.backgroundColor = 'yellow';
+                        }
+                    }
+                    if (header[c] === 'GdmaDdrAvgBandwidth(GB/s)' || header[c] === 'SdmaDdrAvgBandwidth(GB/s)') {
+                        if (parseFloat(row_data[c]) < ddrbw * 0.5 && parseFloat(row_data[c]) !== 0) {
+                            col_body.style.backgroundColor = 'red';
+                        } else if (parseFloat(row_data[c]) < ddrbw * 0.75 && parseFloat(row_data[c]) !== 0) {
+                            col_body.style.backgroundColor = 'yellow';
+                        }
+                    }
+                    if (header[c] === 'GdmaL2AvgBandwidth(GB/s)') {
+                        if (parseFloat(row_data[c]) < l2bw * 0.5 && parseFloat(row_data[c]) !== 0) {
+                            col_body.style.backgroundColor = 'red';
+                        } else if (parseFloat(row_data[c]) < l2bw * 0.75 && parseFloat(row_data[c]) !== 0) {
+                            col_body.style.backgroundColor = 'yellow';
+                        }
+                    }
+                    if (header[c] === 'GdmaAvgDdrBurstLength' || header[c] === 'SdmaAvgDdrBurstLength') {
+                        if (parseFloat(row_data[c]) < 1.5 && parseFloat(row_data[c]) !== 0) {
+                            col_body.style.backgroundColor = 'red';
+                        }
+                    }
+                }
+            }
+
+            node.appendChild(table);
+
+            // Add explanation if specific columns are present
+            let explanationText = '';
+            if (header.includes('TiuWorkingRatio')) {
+                explanationText += '<strong>TiuWorkingRatio</strong>: (= Sim Tiu/Sim Total) This indicates TIU execution time. < 30% (Yellow), < 15% (Red)';
+                explanationText += '<br><strong>uArch Rate</strong>: (= Alg Ops/uArch Ops) This reflects impact of tensor shape alignment.';
+                explanationText += '<br><strong>Alg Ops</strong>: Theoretical OPs for TIU;';
+                explanationText += '<br><strong>uuArch Ops</strong>: Actual OPs considering microarchitecture;';
+            }
+            if (header.includes('GdmaDdrAvgBandwidth(GB/s)') || header.includes('SdmaDdrAvgBandwidth(GB/s)')) {
+                explanationText += `<br><strong>DdrAvgBandwidth</strong>: < ${ddrbw}*75% (Yellow), < ${ddrbw}*50% (Red)`;
+            }
+            if (header.includes('GdmaL2AvgBandwidth(GB/s)')) {
+                explanationText += `<br><strong>GDMA l2AvgBandwidth</strong>: < ${l2bw}*75% (Yellow), < ${l2bw}*50% (Red)`;
+            }
+            if (header.includes('GdmaAvgDdrBurstLength') || header.includes('SdmaAvgDdrBurstLength')) {
+                explanationText += '<br><strong>AvgDdrBurstLength</strong>: < 1.5 (Red)';
+            }
+            if (explanationText) {
+                let explanationDiv = document.createElement('div');
+                explanationDiv.id = 'explanationDiv';
+                explanationDiv.className = 'explanation';
+                explanationDiv.innerHTML = explanationText;
+                node.appendChild(explanationDiv);
+            }
+        }
+
+        function createMsgChart(dataGroups, categories) {
+            let data = [];
+            let yAxisLabels = [];
+            let header = ["Msg", 'beginTime', 'endTime', 'duration', 'height', 'cmd', 'msgId', 'sdWtCount', 'Engine'];
+            console.log("dataGroups:", dataGroups)
+                // Iterate through dataset and filter out send/wait msgs
+            for (let idx in dataGroups) {
+                ['WAIT', 'SEND'].forEach(type => {
+                    let category = `Core${idx} ${type}`;
+                    yAxisLabels.push(category);
+                });
+                dataGroups[idx].forEach(row => {
+                    let msgId = row[row.length - 2];
+                    if (msgId) {
+                        let engine = categories[row[0]]
+                        let beginTime = row[1];
+                        let endTime = row[2];
+                        let duration = row[3];
+                        let cmd = row[6];
+                        let funcName = row[7];
+                        let sdWtCount = row[row.length - 1];
+                        const msgType = funcName.includes('SEND') ? 'SEND' : funcName.includes('WAIT') ? 'WAIT' : '';
+                        if (msgType !== '') {
+                            msgTypeIndex = yAxisLabels.indexOf(`Core${idx} ${msgType}`);
+                            data.push([msgTypeIndex, beginTime, endTime, duration, cmd, -1, msgId, sdWtCount, engine]);
+                        }
+                    }
+                });
+            }
+            console.log("data:", data)
+
+            const uniqueMsgIds = [...new Set(data.map(item => item[6]))].sort((a, b) => a - b); //find all msgIds 
+            const filterSelect = document.getElementById('msgIdFilter');
+            uniqueMsgIds.forEach(msgId => {
+                const option = document.createElement('option');
+                option.text = msgId;
+                option.value = msgId;
+                filterSelect.appendChild(option);
+            });
+
+            let chart = echarts.init(document.getElementById('msg-container'));
+            let color_col = 6; //msg id
+            let msg_data = []
+            let category_time = []
+            let category_count = []
+            for (let i = 0; i < yAxisLabels.length; i++) {
+                category_time.push(0)
+                category_count.push(0)
+            }
+            let startTime = data.length > 0 ? data[0][1] : 0;
+            for (let i = 0; i < data.length; i++) {
+                if (startTime > data[i][1]) startTime = data[i][1];
+                category_time[data[i][0]] += data[i][2] - data[i][1];
+                category_count[data[i][0]] += 1;
+                let colorPalette = colors[calcColorIndex(data[i][color_col], colors.length)];
+                msg_data.push({
+                    name: `${data[i][3]}`,
+                    value: data[i],
+                    itemStyle: {
+                        normal: {
+                            opacity: 0.8,
+                            color: colorPalette,
+                            // borderColor: "#FFFFFF",
+                        }
+                    }
+                })
+            }
+            console.log("msg_data:", msg_data)
+            let new_categories = [];
+            for (let i = 0; i < yAxisLabels.length; i++) {
+                new_categories.push(yAxisLabels[i] +
+                    "\ncount=" + category_count[i]
+                )
+            }
+            let dataLength = msg_data.length;
+            let startValue = 0;
+            let endValue = 100;
+
+            if (dataLength > 5000) { //adjust the portion as needed
+                endValue = (3000 / dataLength) * 100;
+            }
+
+            let option = {
+                animation: false,
+                title: {
+                    text: 'Msg Time Chart',
+                    fontSize: 20,
+                    left: 'center',
+                },
+                tooltip: {
+                    alwaysShowContent: true,
+                    position: function(pos, params, el, elRect, size) {
+                        var obj = {
+                            top: pos[1] - 30
+                        };
+                        if (pos[0] + size.contentSize[0] > size.viewSize[0]) {
+                            obj['left'] = size.viewSize[0] - size.contentSize[0];
+                        } else {
+                            obj['left'] = pos[0];
+                        }
+                        return obj;
+                    },
+                    formatter: function(params) {
+                        let tip = `Msg_Id: ${params.value[6]}<br>Engine: ${params.value[8]}<br>Sd/Wt Count: ${params.value[7]}<br>begin: ${usec_str(params.value[1])}<br>end: ${usec_str(params.value[2])}<br>duration: ${usec_str(params.value[3])}`
+                        return tip;
+                    },
+                    axisPointer: {
+                        show: true,
+                        type: 'cross',
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 1
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(param) {
+                                if (param.axisDimension == 'x') {
+                                    return usec_str(param.value)
+                                }
+                                return param.value
+                            }
+                        }
+                    }
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    filterMode: 'weakFilter',
+                    showDataShadow: false,
+                    height: 10,
+                    borderColor: 'transparent',
+                    backgroundColor: '#e2e2e2',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7v-1.2h6.6z M13.3,22H6.7v-1.2h6.6z M13.3,19.6H6.7v-1.2h6.6z', // jshint ignore:line
+                    handleSize: 20,
+                    handleStyle: {
+                        shadowBlur: 6,
+                        shadowOffsetX: 1,
+                        shadowOffsetY: 2,
+                        shadowColor: '#aaa'
+                    },
+                    bottom: 40,
+                    realtime: true,
+                    labelFormatter: '',
+                    start: startValue,
+                    end: endValue,
+                    zoomLock: false
+                }, {
+                    type: 'inside',
+                    realtime: true,
+                    filterMode: 'filter',
+                }],
+                grid: {
+                    height: 600,
+                    bottom: 40,
+                    top: 80
+                },
+                xAxis: {
+                    min: startTime,
+                    scale: true,
+                    axisLabel: {
+                        formatter: function(val) {
+                            return (val);
+                        }
+                    },
+                },
+                yAxis: {
+                    data: new_categories
+
+                },
+                toolbox: {
+                    right: '10%',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        restore: {},
+                        saveAsImage: {},
+                    }
+                },
+                series: [{
+                    type: 'custom',
+                    large: true,
+                    largeThreshold: 2000,
+                    progressive: 1000,
+                    progressiveThreshold: 2000,
+                    renderItem: renderItem,
+                    encode: {
+                        x: [1, 2],
+                        y: 0
+                    },
+                    data: msg_data,
+                }]
+            };
+            if (option && typeof option === "object") {
+                chart.setOption(option, true);
+            }
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+            let originalSeriesData = JSON.parse(JSON.stringify(msg_data));
+            // 添加一个变量来跟踪当前是否有一个活动的 msgId 筛选
+            let activeFilterMsgId = null;
+
+            // 在 input 事件监听器中设置 activeFilterMsgId
+            document.getElementById('msgIdFilter').addEventListener('input', function() {
+                const filterValue = this.value;
+                if (filterValue === 'default') {
+                    activeFilterMsgId = null;
+                    chart.setOption({
+                        series: [{
+                            data: originalSeriesData
+                        }]
+                    });
+                    return;
+                }
+                activeFilterMsgId = filterValue; // 设置活动筛选
+                const filteredData = originalSeriesData.filter(item => String(item.value[6]) === filterValue);
+                chart.setOption({
+                    series: [{
+                        data: filteredData
+                    }]
+                });
+            });
+
+            chart.on('mouseover', function(params) {
+                if (activeFilterMsgId !== null) return;
+                if (params.data) {
+                    let msgId = params.data.value[6];
+                    let newSeriesData = JSON.parse(JSON.stringify(originalSeriesData));
+                    //let option = JSON.parse(JSON.stringify(originalOption)); //make the deepcopy
+                    newSeriesData.forEach((item, index) => {
+                        if (item.value[6] === msgId) {
+                            item.itemStyle = {
+                                normal: {
+                                    color: originalSeriesData[index].itemStyle.normal.color,
+                                    opacity: 1
+                                }
+                            };
+                        } else {
+                            item.itemStyle = {
+                                normal: {
+                                    color: originalSeriesData[index].itemStyle.normal.color,
+                                    opacity: 0.1
+                                }
+                            };
+                        }
+                    });
+                    chart.setOption({
+                        series: [{
+                            data: newSeriesData
+                        }]
+                    });
+                }
+            });
+
+            chart.on('mouseout', function() {
+                if (activeFilterMsgId !== null) return;
+                chart.setOption({
+                    series: [{
+                        data: originalSeriesData
+                    }]
+                });
+            });
+        }
+
+        function createBwChart(ddr_ratios, l2m_ratios) {
+            let chart = echarts.init(document.getElementById('bw-chart'));
+            let startValue = 0;
+            let endValue = 100;
+
+            if (ddr_ratios.length > 1000 || l2m_ratios.length > 1000) { //adjust the portion as needed
+                startValue = 50 - (1000 / Math.max(ddr_ratios.length, l2m_ratios.length)) * 100 / 2;
+                endValue = 50 + (1000 / Math.max(ddr_ratios.length, l2m_ratios.length)) * 100 / 2;
+            }
+            // Generate line chart
+            let option = {
+                title: [{
+                    text: 'Bandwidth Utilization',
+                    fontSize: 20,
+                    left: 'center',
+                }, {
+                    text: 'DDR(total 546GB/s)',
+                    left: '10%',
+                    top: '2%'
+                }, {
+                    text: 'L2M(total 1024GB/s)',
+                    left: '10%',
+                    top: '50%'
+                }],
+                grid: [{ // ddr_bw
+                    top: '7%',
+                    height: '30%',
+                    left: '5%',
+                    right: '5%'
+                }, { //l2m_bw
+                    top: '55%',
+                    height: '30%',
+                    left: '5%',
+                    right: '5%'
+                }],
+                xAxis: [{
+                    gridIndex: 0,
+                    type: 'value'
+                }, {
+                    gridIndex: 1,
+                    type: 'value'
+                }],
+                yAxis: [{
+                    gridIndex: 0,
+                    type: 'value',
+                    axisLabel: {
+                        formatter: function(value) {
+                            return (value * 100).toFixed(2) + ' %';
+                        }
+                    }
+                }, {
+                    gridIndex: 1,
+                    type: 'value',
+                    axisLabel: {
+                        formatter: function(value) {
+                            return (value * 100).toFixed(2) + ' %';
+                        }
+                    }
+                }],
+                toolbox: {
+                    right: '10%',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        restore: {},
+                        saveAsImage: {},
+                    }
+                },
+                dataZoom: [{
+                    type: 'inside',
+                    xAxisIndex: [0, 1],
+                    minSpan: 5,
+                    start: startValue,
+                    end: endValue
+                }, {
+                    type: 'slider',
+                    xAxisIndex: [0, 1],
+                    minSpan: 5,
+                    bottom: 0
+                }],
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let param = params[0];
+                        let time = param.data[0];
+                        let ratio = (param.data[1] * 100).toFixed(2) + '%';
+                        let bandwidth = param.seriesName === 'DDR Ratio' ? (param.data[1] * 546).toFixed(2) : (param.data[1] * 1024).toFixed(2);
+                        return `time: ${time}, ratio: ${ratio}, bandwidth: ${bandwidth}`;
+                    }
+                },
+                visualMap: [{
+                    show: false,
+                    seriesIndex: 0,
+                    dimension: 1,
+                    pieces: [{
+                        gte: 0,
+                        lte: 0.5,
+                        color: 'red'
+                    }, {
+                        gt: 0.5,
+                        lte: 0.75,
+                        color: 'yellow'
+                    }, {
+                        gt: 0.75,
+                        lte: 1,
+                        color: 'green'
+                    }]
+                }, {
+                    show: false,
+                    seriesIndex: 1,
+                    dimension: 1,
+                    pieces: [{
+                        gte: 0,
+                        lte: 0.5,
+                        color: 'red'
+                    }, {
+                        gt: 0.5,
+                        lte: 0.75,
+                        color: 'yellow'
+                    }, {
+                        gt: 0.75,
+                        lte: 1,
+                        color: 'green'
+                    }]
+                }],
+                series: [{
+                    name: 'DDR Ratio',
+                    type: 'line',
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    data: ddr_ratios
+                }, {
+                    name: 'L2M Ratio',
+                    type: 'line',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    data: l2m_ratios
+                }]
+            };
+            //let now = Date.now();
+            chart.setOption(option);
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+            //setTimeout(() => {
+            //    console.log('总运行时间：', Date.now() - now);
+            //}, 0)
+        }
+    </script>
+    <script type="text/javascript">
+        function usec_str(u) { //删去了后缀cycle单位
+            if (u < 1000) { //u.toFixed()
+                return `${u.toFixed(0)}`
+            } else if (u < 1000000) {
+                return `${u.toFixed(0)}`
+            } else { //if(u<10000000000000000) {
+                return `${(u.toFixed(0))}`
+            }
+        }
+
+        function renderItem(params, api) {
+            if (!api.value || !api.value.length) return false
+            let categoryIndex = api.value(0);
+            let start = api.coord([api.value(1), categoryIndex]);
+            let end = api.coord([api.value(2), categoryIndex]);
+            let height_value = api.value(5) //height_idx
+            if (height_value < 0) {
+                height_value = 1
+            }
+            let ratio = 0.6
+            let bottom_height = api.size([0, 1])[1] * ratio;
+            let r = 2
+            let min_width = 5
+            let min_height = 5
+            let h = min_height + (bottom_height - min_height) * height_value
+            let w = Math.max(end[0] - start[0], min_width)
+            let x = start[0]
+            let y = start[1] + bottom_height / 2 - h
+            let points = [
+                [x + r, y],
+                [x + w - r, y],
+                [x + w, y + r],
+                [x + w, y + h - r],
+                [x + w - r, y + h],
+                [x + r, y + h],
+                [x, y + h - r],
+                [x, y + r]
+            ];
+            params.context.rendered = true;
+
+            let tip = api.value(7) + '\n' + usec_str(api.value(2) - api.value(1)) //1:func_name
+            var tipRect = echarts.format.getTextRect(tip);
+            if (tipRect.width > w) {
+                tip = ""
+            }
+            let textY = y + 1
+            let textColor = "white"
+            if (tipRect.height > h) {
+                textY = y - tipRect.height - 2
+                textColor = "black"
+            }
+            let textRect = echarts.graphic.clipRectByRect({
+                x: x,
+                y: textY,
+                width: w,
+                height: tipRect.height,
+            }, params.coordSys);
+            let item = {
+                type: 'group',
+                children: [{
+                    type: 'polygon',
+                    shape: {
+                        points: echarts.graphic.clipPointsByRect(points, {
+                            x: params.coordSys.x,
+                            y: params.coordSys.y,
+                            width: params.coordSys.width,
+                            height: params.coordSys.height
+                        })
+                    },
+                    style: api.style({})
+                }, {
+                    type: "rect",
+                    shape: textRect,
+                    style: api.style({
+                        fill: "transparent",
+                        stroke: "transparent",
+                        text: tip,
+                        textFill: textColor
+                    })
+                }]
+            }
+            return item
+        }
+
+        function calcColorIndex(data, max_len) {
+            let index = data
+            if (typeof(data) === "string") {
+                index = 0
+                for (let i = 0; i < data.length; i++) {
+                    index += data.codePointAt(i)
+                }
+            }
+            return index % max_len
+        }
+        let colors = []
+        for (let r = 0; r < 250; r += 50) {
+            for (let g = 0; g < 250; g += 50) {
+                for (let b = 0; b < 250; b += 50) {
+                    colors.push(`rgb(${r},${g},${b})`)
+                }
+            }
+        }
+
+        // ["category", "begin_time", "end_time", "func_type", "height", "cmd", "func_name","uarch rate" "info"]
+
+        function createSelector(labelText, options, onChanged) {
+            let node = document.createElement("div")
+            node.className = "filter-block"
+            let label = document.createElement("label")
+            label.innerText = labelText
+            label.className = "filter-label"
+            node.appendChild(label)
+            let select = document.createElement("select")
+            select.className = "filter-select"
+            for (let o of options) {
+                option = document.createElement("option")
+                option.value = o
+                option.innerText = "" + o
+                select.appendChild(option)
+            }
+            select.onchange = (e) => {
+                let node = e.target
+                let filter_blocks = node.parentNode.parentNode.children
+                let value_map = {}
+                for (let i = 0; i < filter_blocks.length; i++) {
+                    if (filter_blocks[i].className != "filter-block") continue
+                    let labelNode = filter_blocks[i].children[0]
+                    let valueNode = filter_blocks[i].children[1]
+                    if (valueNode.value == "--") continue
+                    value_map[labelNode.innerText] = valueNode.value
+                }
+                if (onChanged)
+                    onChanged(value_map)
+            }
+            node.appendChild(select)
+            return node
+        }
+
+        function uniqueColumnData(data, colIndex) {
+            let col_data = []
+            for (let i = 0; i < data.length; i++) {
+                if (col_data.includes(data[i][colIndex])) continue;
+                col_data.push(data[i][colIndex])
+            }
+            return col_data
+        }
+        //raw_data: 'category', 'begin_time', 'end_time', "duration", 'func_type', 'height', 'cmd', 'func_name', 'info'
+        let storedZoomRange = null;
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function showTimeChart(chart, header, raw_data, categories, color_col, title, baseCategoryNum) {
+            let data = []
+            let category_time = new Array(categories.length).fill(0);
+            let category_count = new Array(categories.length).fill(0);
+            let startTime = raw_data.length > 0 ? raw_data[0][1] : 0;
+            for (let i = 0; i < raw_data.length; i++) {
+                if (startTime > raw_data[i][1]) startTime = raw_data[i][1];
+                category_time[raw_data[i][0]] += raw_data[i][3]; //duration
+                category_count[raw_data[i][0]] += 1;
+                data.push({
+                    name: `${raw_data[i][4]}`, //func_type
+                    value: raw_data[i],
+                    itemStyle: {
+                        normal: {
+                            color: colors[calcColorIndex(raw_data[i][color_col], colors.length)],
+                            // borderColor: "#FFFFFF",
+                        }
+                    }
+                })
+            }
+            console.log("data:", data)
+            let new_categories = [];
+            let totalcycles = 0;
+            for (let i = 0; i < category_time.length; i++) {
+                totalcycles += category_time[i]
+            }
+            for (let i = 0; i < categories.length; i++) {
+                new_categories.push(categories[i] +
+                    "\ncount=" + category_count[i] +
+                    "\ntotal=" + usec_str(category_time[i]) +
+                    "\nProportion=" + (category_time[i] / totalcycles * 100).toFixed(2) + "%"
+                )
+            }
+
+
+            // 为每个核心类别分配颜色
+            let coreColorMapping = {};
+            new_categories.forEach(category => {
+                let coreMatch = category.match(/CORE\d+/); // 匹配核心编号
+                if (coreMatch) {
+                    let coreName = coreMatch[0];
+                    if (!coreColorMapping[coreName]) {
+                        coreColorMapping[coreName] = getRandomColor();
+                    }
+                }
+            });
+            console.log("coreColorMapping:", coreColorMapping)
+            const datazoom_start = data.length > 5000 ? 50 - 2000 / data.length * 100 : 0
+            const datazoom_end = data.length > 5000 ? 50 + 2000 / data.length * 100 : 100
+            const baseHeightPerCategory = 80; // 每个类别的基础高度
+            let gridHeight = Math.max(categories.length * baseHeightPerCategory, 350); // 确保至少有一个最小高度
+            console.log("gridHeight", gridHeight)
+            now = Date.now()
+            let option = {
+                tooltip: {
+                    alwaysShowContent: true,
+                    triggerOn: 'mousemove',
+                    position: function(pos, params, el, elRect, size) {
+                        var obj = {
+                            top: pos[1] - 30
+                        };
+                        if (pos[0] + size.contentSize[0] > size.viewSize[0]) {
+                            obj['left'] = size.viewSize[0] - size.contentSize[0];
+                        } else {
+                            obj['left'] = pos[0];
+                        }
+                        return obj;
+                    },
+                    formatter: function(params) {
+                        if (!params.value || !params.value.length || params.value.length != header.length) return ""
+                        let tip = params.marker + "Func_type: " + params.name
+                            //tip += `<br>begin: ${usec_str(params.value[1])}`
+                            //tip += `<br>end: ${usec_str(params.value[2])}`
+                            //tip += `<br>func_type: ${params.value[4]}`
+                        for (let i = 1; i < header.length - 2; i++) {
+                            if (i === 5) continue //height
+                            if (params.value[i] === "") continue
+                            tip += `<br>${header[i]}: ${params.value[i]}`
+                        }
+                        return tip;
+                    },
+                    axisPointer: {
+                        show: true,
+                        type: 'cross',
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 1
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(param) {
+                                if (param.axisDimension == 'x') {
+                                    return usec_str(param.value)
+                                }
+                                return param.value
+                            }
+                        }
+                    }
+                },
+                title: {
+                    text: title ? title : "Cycle Chart",
+                    left: 'center'
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    filterMode: 'weakFilter',
+                    showDataShadow: false,
+                    height: 10,
+                    borderColor: 'transparent',
+                    backgroundColor: '#e2e2e2',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7v-1.2h6.6z M13.3,22H6.7v-1.2h6.6z M13.3,19.6H6.7v-1.2h6.6z', // jshint ignore:line
+                    handleSize: 20,
+                    handleStyle: {
+                        shadowBlur: 6,
+                        shadowOffsetX: 1,
+                        shadowOffsetY: 2,
+                        shadowColor: '#aaa'
+                    },
+                    start: datazoom_start,
+                    end: datazoom_end,
+                    bottom: 40,
+                    realtime: false, //拖拽结束后再更新/实时更新
+                    labelFormatter: ''
+                }, {
+                    type: 'inside',
+                    realtime: false,
+                    filterMode: 'weakFilter'
+                }],
+                grid: {
+                    height: gridHeight,
+                    //height: 500,
+                },
+                xAxis: {
+                    min: startTime,
+                    scale: true,
+                    axisLabel: {
+                        formatter: function(val) {
+                            return (val);
+                        }
+                    },
+                },
+                yAxis: {
+                    data: new_categories,
+                    axisLabel: {
+                        formatter: function(value) {
+                            let coreMatch = value.match(/CORE\d+/); // 匹配核心编号
+                            let coreName = coreMatch ? coreMatch[0] : '';
+                            return coreColorMapping[coreName] ? `{${coreName}|${value}}` : value;
+                        },
+                        rich: Object.keys(coreColorMapping).reduce((acc, coreName) => {
+                            acc[coreName] = {
+                                color: coreColorMapping[coreName]
+                            };
+                            return acc;
+                        }, {})
+                    }
+                },
+                toolbox: {
+                    right: '10%',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none',
+                        },
+                        restore: {
+                            onclick: function() {
+                                chart.dispatchAction({
+                                    type: 'dataZoom',
+                                    start: datazoom_start,
+                                    end: datazoom_end
+                                });
+                            }
+                        },
+                        saveAsImage: {},
+                        myStoreTool: {
+                            show: true,
+                            title: "留存当前缩放区域",
+                            icon: 'path://M797.6 383.3h-62.7v-74.1c0-56.7-22.4-109.9-63.1-150-40.6-39.9-94.5-61.9-151.8-61.9h-16c-57.3,0-111.2, 22-151.8,61.9-40.7, 40-63.1, 93.3-63.1, 150v74.1h-62.7c-71.3, 0-129.3, 58-129.3, 129.3v284.7c0, 71.3, 58, 129.3, 129.3, 129.3h571.3c71.3, 0, 129.3-58, 129.3-129.3V512.6c-0.1-71.3-58.1-129.3-129.4-129.3z, m-448.5-74.1c0-83.7, 69.5-151.8, 154.9-151.8h16c85.4,0 ,154.9, 68.1, 154.9, 151.8v74.1H349.1v-74.1z, m517.8, 488.1c0, 38.2-31.1, 69.3-69.3, 69.3H226.4c-38.2, 0-69.3-31.1-69.3-69.3V512.6c0-38.2, 31.1-69.3, 69.3-69.3h571.3c38.2, 0, 69.3, 31.1, 69.3, 69.3v284.7z, M512 485.8c-49.4 0-89.7 40.2-89.7 89.7 0 38.9 24.9 72.1 59.7 84.5v116.5c0 16.6 13.4 30 30 30s30-13.4 30-30V660c34.7-12.4 59.7-45.6 59.7-84.5 0-49.4-40.3-89.7-89.7-89.7z m0 60c16.4 0 29.7 13.3 29.7 29.7s-13.3 29.7-29.7 29.7-29.7-13.3-29.7-29.7 13.3-29.7 29.7-29.7z',
+                            onclick: function() {
+                                let option = chart.getOption();
+                                let {
+                                    startValue,
+                                    endValue
+                                } = option.dataZoom[1];
+                                storedZoomRange = {
+                                    startValue: startValue,
+                                    endValue: endValue
+                                };
+                            }
+                        },
+                        myRevertTool: { //custom button
+                            show: true,
+                            title: "还原到上一缩放区域",
+                            icon: 'path://M771.7,526.2c-59.6-59.6-138.8-92.4-223-92.4h-284L402.6, 296c11.7-11.7, 11.7-30.7, 0-42.4s-30.7-11.7-42.4 0L168.7, 445c-11.7, 11.7-11.7, 30.6-0.1, 42.3l191.5, 193.1c5.9, 5.9, 13.6, 8.9, 21.3, 8.9, 7.6, 0, 15.3-2.9, 21.1-8.7, 11.8-11.7, 11.8-30.7, 0.2-42.4L259.6, 493.9h289.2c68.2, 0, 132.3, 26.6, 180.6, 74.8, 48.2, 48.2, 74.8, 112.4, 74.8, 180.6, 0, 16.6, 13.4, 30, 30, 30s30-13.4, 30-30c-0.1-84.3-32.9-163.5-92.5-223.1z', // Icon path
+                            onclick: function() {
+                                if (storedZoomRange) {
+                                    chart.dispatchAction({
+                                        type: 'dataZoom',
+                                        dataZoomIndex: 1,
+                                        startValue: storedZoomRange.startValue,
+                                        endValue: storedZoomRange.endValue,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                },
+                series: [{
+                    type: 'custom',
+                    large: true, //initate large mode (for big data case)
+                    largeThreshold: 2000,
+                    progressive: 1000,
+                    progressiveThreshold: 2000,
+                    renderItem: renderItem,
+                    itemStyle: {
+                        opacity: 0.6
+                    },
+                    encode: {
+                        x: [1, 2],
+                        y: 0
+                    },
+                    data: data
+                }]
+            };
+
+            if (option && typeof option === "object") {
+                // Batch update to avoid multiple re-renders
+                chart.setOption(option, {
+                    notMerge: true,
+                    lazyUpdate: true
+                });
+            }
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+            console.log('timechart数据运行时间：', Date.now() - now);
+            setTimeout(() => {
+                    console.log('showTimeChart总时间', Date.now() - now);
+                }, 0)
+                //chart.resize()
+            return chart
+        }
+
+        let clickedRowIndex = null;
+
+        function updateDataTable(begin, end, original_data) {
+            let matchedIndex = null;
+            let matchedCategory = null;
+
+            //console.log("filtered_data:", filtered_data)
+            for (let i = 0; i < original_data.length; i++) {
+                let rowBegin = original_data[i][1];
+                let rowEnd = original_data[i][2];
+                if (rowBegin === begin && rowEnd === end) {
+                    matchedIndex = i;
+                    matchedCategory = original_data[i][0];
+                    rangeStart = 0; // Math.max(0, i - 10);
+                    rangeEnd = original_data.length; // Math.min(filtered_data.length, i + 11);
+                    break;
+                }
+            }
+
+            if (matchedIndex !== null) {
+                let highlightedRow = matchedIndex - rangeStart;
+                clickedRowIndex = matchedIndex;
+
+                // If a matching row is found in the data, update the table to display it
+                showFilterDataTable("data-list", time_header, original_data, "Cycle Information ", categories, matchedCategory, matchedIndex);
+                let categorySelector = document.getElementById("table_filter");
+                if (categorySelector) {
+                    categorySelector.value = matchedCategory;
+                }
+            } else {
+                console.log("Matching row not found for begin:", begin, "end:", end);
+            }
+        }
+
+        //let chartHandle = null
+        //let original_data = [];
+
+        function showDataInChart(elem_id, header, data, categories, filter_cols, color_col) {
+            //original_data = [...data];
+            //console.log("original_data", original_data)
+            //filtered_data = data
+            var dom = document.getElementById(elem_id);
+            if (dom.childNodes.length == 0) {
+                chartNode = document.createElement("div")
+                chartNode.style = "height:600px;width:90%";
+                dom.appendChild(chartNode)
+                filterBlock = document.createElement("div")
+                filterBlock.style = "text-align: center";
+                dom.appendChild(filterBlock)
+                chartHandle = echarts.init(chartNode);
+                chartHandle.on("datazoom", (params) => {
+                    let option = chartHandle.getOption();
+                    let {
+                        startValue,
+                        endValue
+                    } = option.dataZoom[1];
+                });
+                for (let col of filter_cols) {
+                    let col_data = uniqueColumnData(data, col)
+                    col_data.sort()
+                    col_data.unshift("--")
+                    filterBlock.appendChild(createSelector(header[col], col_data, (value_map) => {
+                        if (data.length == 0) return
+                        let colIndex_value = {}
+                        for (let key in value_map) {
+                            let index = header.indexOf(key)
+                            let value = value_map[key]
+                            if (typeof(data[0][index]) === "number") {
+                                value = Number(value)
+                            }
+                            colIndex_value[index] = value_map[key]
+                        }
+                        if (Object.keys(value_map).length > 0) {
+                            filtered_data = []
+                            for (let i = 0; i < data.length; i++) {
+                                let need = true
+                                for (let colIndex in colIndex_value) {
+                                    if (data[i][colIndex] != colIndex_value[colIndex]) {
+                                        need = false
+                                        break
+                                    }
+                                }
+                                if (!need) continue;
+                                filtered_data.push(data[i])
+                            }
+                        } else {
+                            filtered_data = data
+                        }
+                        console.log("filtered_Data:", filtered_data)
+                        showTimeChart(chartHandle, header, filtered_data, categories, color_col);
+                    }));
+                }
+                showTimeChart(chartHandle, header, data, categories, color_col)
+            }
+            if (chartHandle) {
+                chartHandle.set_time_range = function(begin_usec, end_usec) {
+                        chartHandle.dispatchAction({
+                            type: 'dataZoom',
+                            dataZoomIndex: 1,
+                            start: null,
+                            end: null,
+                            startValue: begin_usec,
+                            endValue: end_usec,
+                        })
+                    }
+                    // the following code will slow the chart
+                    // chartHandle.on("datazoom", (params) => {
+                    //     let option = chartHandle.getOption()
+                    //     let {startValue, endValue} = option.dataZoom[1]
+                    //     set_chart_time_range(startValue, endValue, chartHandle)
+                    // })
+
+                chartHandle.on("click", (params) => {
+                    let val = params.value
+                    if (params.seriesIndex == 0) {
+                        let range = val[2] - val[1]
+                        let begin_usec = val[1]
+                        let end_usec = val[2]
+                        console.log("begin_usec,end_usec:", begin_usec, end_usec)
+                        set_chart_time_range(begin_usec - range * 1.2, end_usec + range * 2)
+                    }
+                    let updatedData = data.map((item, index) => {
+                        // Copy the itemStyle object if it exists, otherwise create a new one
+                        let itemStyle = item.itemStyle ? {...item.itemStyle
+                        } : {
+                            normal: {
+                                color: colors[calcColorIndex(item[color_col], colors.length)]
+                            }
+                        };
+                        // If this is the clicked item, set the color to red
+                        if (index === params.dataIndex) {
+                            itemStyle.normal.color = 'red';
+                            itemStyle.normal.opacity = 0.8;
+                        }
+                        return {
+                            name: `${item[4]}`,
+                            value: item,
+                            itemStyle: itemStyle
+                        };
+                    });
+
+                    // Update the chart with the new data
+                    chartHandle.setOption({
+                        series: [{
+                            data: updatedData
+                        }],
+                        tooltip: {
+                            alwaysShowContent: true,
+                            triggerOn: 'mousemove'
+                        }
+                    });
+
+                    //let selectedData = params.value;
+                    //let begin = selectedData[1];
+                    //let end = selectedData[2];
+                    //updateDataTable(begin, end, original_data);
+                })
+            }
+            return chartHandle
+        }
+
+        function showFilterDataTable(id, header, data, caption, categories, current_category) {
+            let max_show = data.length < 2000 ? data.length : 2000
+            let category_idx = 0
+            let node = document.getElementById(id)
+            if (!node) return;
+            if (typeof(current_category) == "undefined") {
+                current_category = 0
+                let filter = document.querySelector("#table_filter")
+                if (filter) current_category = filter.selectedIndex
+            }
+            node.innerHTML = ""
+            node.style = "display:block"
+            let table = document.createElement("table")
+            table.id = `table-${id}`
+            table.className = "data-table"
+
+            let capNode = table.createCaption()
+            capNode.innerText = caption
+            if (categories.length > 0) {
+                let select_node = document.createElement("div")
+                select_node.className = "filter-block"
+                let label = document.createElement("label")
+                label.innerText = max_show < 2000 ? `(total${max_show}) :` : `(top${max_show}) :`
+                label.className = "filter-label"
+                select_node.appendChild(label)
+                let select = document.createElement("select")
+                select.className = "filter-select"
+                select.id = "table_filter"
+                for (let i = 0; i < categories.length; i++) {
+                    option = document.createElement("option")
+                    option.value = i
+                    option.innerText = "" + categories[i]
+                    select.appendChild(option)
+                }
+                select.selectedIndex = current_category
+                select_node.append(select)
+                select.onchange = (e) => {
+                    let value = e.target.value
+                    showFilterDataTable(id, header, data, caption, categories, value)
+                }
+                capNode.appendChild(select_node)
+            }
+
+            let usec_cols = [1, 2, 3, 5, 6]
+            let new_data = []
+            for (let d of data) {
+                if (d[category_idx] == current_category) {
+                    new_data.push([...d])
+                }
+            }
+
+            let head = table.createTHead()
+            let row = document.createElement("tr")
+            head.appendChild(row)
+            for (let i = 0; i < header.length; i++) {
+                let col = document.createElement("td")
+                col.innerText = header[i]
+                col.className = `header-${i}`
+                if (data.length > 0) {
+                    col.setAttribute("type", typeof(data[0][i]))
+                }
+                col.onclick = (e) => {
+                    let states = e.target.className.split("-")
+                    let col_idx = parseInt(states[1])
+                    let is_asc = states[0] === "asc"
+                    sortTableByColumn(e, new_data, usec_cols)
+                }
+                row.appendChild(col)
+            }
+            let body = table.createTBody()
+            let show_len = max_show > new_data.length ? new_data.length : max_show;
+            let highlightedRowElement = null;
+            let previouslyHighlight = null;
+            for (let r = 0; r < show_len; r++) {
+                let row_data = new_data[r]
+                let row_body = document.createElement("tr")
+                    //row_body.onclick = (e) => {
+                    //    let range = row_data[2] - row_data[1]
+                    //    set_chart_time_range(row_data[1] - range * 0.25, row_data[2] + range * 0.25)
+                    //}
+                row_body.onclick = (e) => {
+                    if (previouslyHighlight) {
+                        previouslyHighlight.style.background = ""; // Reset to original background
+                    }
+                    row_body.style.background = "red";
+                    previouslyHighlight = row_body;
+                    let range = row_data[2] - row_data[1];
+                    updateChartColor(chartHandle, data, row_data[1], row_data[2]);
+                    set_chart_time_range(row_data[1] - range * 0.5, row_data[2] + range * 0.5);
+                }
+                body.appendChild(row_body)
+
+                for (let c = 0; c < row_data.length; c++) {
+                    let col_body = document.createElement("td")
+                    col_body.innerHTML = row_data[c];
+                    row_body.appendChild(col_body)
+                }
+            }
+            node.appendChild(table)
+        }
+
+
+        function updateChartColor(chartHandle, begin, end) {
+            if (!chartHandle) return;
+
+            // Find the index of the data item that matches the begin and end times
+            let matchedIndex = data.findIndex(item => item[1] === begin && item[2] === end);
+            console.log("matchedIndex for table to chart:", matchedIndex)
+                // Create a copy of the data array with the color updated for the matched item
+            let updatedData = data.map((item, index) => {
+                let itemStyle = {
+                    normal: {
+                        color: colors[calcColorIndex(item[color_col], colors.length)]
+                    }
+                };
+                if (index === matchedIndex) {
+                    itemStyle.normal.color = 'red';
+                    itemStyle.normal.opacity = 0.8;
+                }
+                return {
+                    name: `${item[3]}`,
+                    value: item,
+                    itemStyle: itemStyle
+                };
+            });
+            // 只更新series数据
+            chartHandle.setOption({
+                series: [{
+                    data: updatedData
+                }]
+            });
+
+        }
+    </script>
+    <script type="text/javascript">
+        let YLABEL_LEFT = 10
+        let YLABEL_WIDTH = 250
+
+        function clipRectByRect(params, rect) {
+            let srcRect = {
+                x: rect[0],
+                y: rect[1],
+                width: rect[2],
+                height: rect[3],
+            }
+            return echarts.graphic.clipRectByRect(srcRect, params.coordSys);
+        }
+
+        function getMemColor(mem_addr) {
+            let r = ((mem_addr & 0xFF) * 211) % 255
+            let g = ((mem_addr & 0xFF00) * 211) % 255
+            let b = ((mem_addr & 0xFF0000) * 211) % 255
+            return `rgb(${r}, ${g}, ${b})`
+        }
+
+        function addrToText(addr) {
+            addr = Math.round(addr)
+            return `0x${addr.toString(16).toUpperCase()}`
+        }
+
+        function processAddr(op_record, suffixnum) {
+            if (!op_record || op_record.length === 0) {
+                return [];
+            }
+
+            const hexToDec = (hex) => parseInt(hex, 16);
+            const minHexAddr = Math.min(...op_record.map(op => hexToDec(op[3])));
+            console.log("minHexAddr", minHexAddr)
+            return op_record.map(op => {
+                const sublist = [...op];
+                const decAddr = hexToDec(op[3]);
+                sublist[3] = decAddr - minHexAddr;
+                return sublist;
+            });
+        }
+
+        function sizeToText(size) {
+            abs_size = Math.abs(size)
+            if (abs_size < 1024) {
+                return `${size}B`;
+            } else if (abs_size < 1024 * 1024) {
+                return `${(size / 1024).toFixed(2)}KB`
+            } else if (abs_size < 1024 * 1024 * 1024) {
+                return `${(size / 1024 / 1024).toFixed(2)}MB`
+            } else {
+                return `${(size / 1024 / 1024 / 1024).toFixed(2)}GB`
+            }
+            return `${size}B`;
+        }
+
+        function memPartitionRender(params, api) {
+            let axisLabel = {
+                type: 'group',
+                // position: [YLABEL_LEFT, y],
+                children: []
+            };
+            var x = YLABEL_LEFT
+            var w = YLABEL_WIDTH * 2
+            var y = api.coord([0, api.value(0)])[1]
+            var h = api.coord([0, api.value(1)])[1] - y
+            clipRect = clipRectByRect(params, [x, y, w, h])
+            clipRect && (clipRect.x = YLABEL_LEFT);
+            if (clipRect) {
+                axisLabel.children.push({
+                    type: 'rect',
+                    shape: clipRect,
+                    style: api.style()
+                })
+                clipRect.height = Math.max(20, clipRect.height)
+                if (clipRect.height > 18) {
+                    let size = api.value(3)
+                    axisLabel.children.push({
+                        type: 'text',
+                        style: {
+                            x: clipRect.x,
+                            y: clipRect.y + 20,
+                            text: ` ${api.value(4)}: ${sizeToText(size)}`,
+                            textVerticalAlign: 'bottom',
+                            textAlign: 'left',
+                            textFill: '#fff',
+                            fontSize: 15,
+                        }
+                    })
+                }
+                if (clipRect.height > 36) {
+                    let start_addr = api.value(2)
+                    let size = api.value(3)
+                    let end_addr = start_addr + size
+                    let addr_text = ` ${addrToText(start_addr)}~${addrToText(end_addr)}`
+                    axisLabel.children.push({
+                        type: 'text',
+                        style: {
+                            x: clipRect.x,
+                            y: clipRect.y + 36,
+                            text: addr_text,
+                            textVerticalAlign: 'bottom',
+                            textAlign: 'left',
+                            textFill: '#fff',
+                            fontSize: 11,
+                        }
+                    })
+                }
+            }
+            return axisLabel
+        }
+
+        function memRecordRender(params, api) {
+            var left_top = api.coord([api.value(0), api.value(2)])
+            var right_botom = api.coord([api.value(1), api.value(3)])
+            let axisLabel = {
+                type: 'group',
+                // position: left_top,
+                children: []
+            };
+            let x = left_top[0]
+            let y = left_top[1]
+            let w = Math.max(5, right_botom[0] - left_top[0])
+            let h = Math.max(5, right_botom[1] - left_top[1])
+            let clipRect = clipRectByRect(params, [x, y, w, h])
+            axisLabel.children.push({
+                type: 'rect',
+                shape: clipRect,
+                style: api.style()
+            })
+
+            let text_y = clipRect ? clipRect.y + 5 : 5;
+
+            function push_text(container, text, text_y, clipRect) {
+                let textRect = echarts.format.getTextRect(text);
+                let text_x = clipRect ? clipRect.x : 0;
+                if (clipRect && clipRect.height + clipRect.y >= text_y + textRect.height && clipRect.width >= textRect.width) {
+                    text_y = text_y + textRect.height;
+                } else {
+                    text = ""
+                }
+                container.push({
+                    type: 'text',
+                    style: {
+                        x: text_x,
+                        y: text_y,
+                        text: text,
+                        textVerticalAlign: 'bottom',
+                        textAlign: 'left',
+                        textFill: '#fff',
+                    }
+                })
+                return text_y
+            }
+
+            let text = ""
+            text = " " + api.value(7).split(",")[0] + ": " + (api.value(4) ? "WRITE" : "READ")
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            let start_addr = api.value(5)
+            let size = api.value(6)
+            let end_addr = start_addr + size
+            text = ` ${addrToText(start_addr)}~${addrToText(end_addr)} (${sizeToText(size)})`
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            let full_desc = api.value(7)
+            text = full_desc.slice(full_desc.indexOf(",") + 1)
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            return axisLabel
+        }
+
+        function statDataDensity(data, range_begin_idx, range_end_idx, value_begin_idx, value_end_idx) {
+            let all_edges = []
+            let all_values = []
+            for (let d of data) {
+                if (all_edges.indexOf(d[range_begin_idx]) == -1) {
+                    all_edges.push(d[range_begin_idx])
+                    all_values.push(0)
+                }
+                if (all_edges.indexOf(d[range_end_idx]) == -1) {
+                    all_edges.push(d[range_end_idx])
+                    all_values.push(0)
+                }
+            }
+            all_edges = all_edges.sort((a, b) => a - b)
+            for (let d of data) {
+                let begin = d[range_begin_idx]
+                let end = d[range_end_idx]
+                let value = d[value_end_idx] - d[value_begin_idx]
+                for (let i = 0; i < all_edges.length; i++) {
+                    let edge = all_edges[i]
+                    if (edge >= begin && edge < end) {
+                        all_values[i] += value;
+                    }
+                }
+            }
+            edge_value = []
+            for (let i = 0; i < all_edges.length; i++) {
+                edge_value.push([all_edges[i], all_values[i]])
+            }
+            return edge_value
+        }
+
+        function recordInPartition(record, partition) {
+            if (!partition) return false;
+            for (let p of partition) {
+                if (record[4] == 0) return true;
+                if (record[3] >= p[0] && record[3] <= p[0] + p[1]) {
+                    return true;
+                }
+            }
+            return false
+        }
+
+        function showMemChart(id, partition, op_record, title, begin_usec, end_usec) {
+            let dom = document.getElementById(id);
+            if (!partition) {
+                partition = []
+            }
+            if (op_record && op_record.length > 0) {
+                for (let op of op_record) {
+                    if (!recordInPartition(op, partition)) {
+                        partition.push([op[3], op[4], op[op.length - 1]]) //addr, size, desc
+                    }
+                }
+            }
+            if (!partition || !op_record || partition.length == 0 || op_record.length == 0) {
+                dom.style = "display: none";
+                return null;
+            }
+            dom.style = "display: block";
+            let myChart = echarts.init(dom);
+            let mem_end = 0
+            let mem_start = 0
+            if (partition.length > 0) {
+                mem_end = partition[0][0] + partition[0][1]; //addr+size
+                mem_start = partition[0][0]
+                for (let p of partition) {
+                    if (p[0] < mem_start) mem_start = p[0]; //Find the minimum standard address
+                    if (p[1] + p[0] > mem_end) mem_end = p[1] + p[0]; //Find the maximum standard address
+                }
+            } else {
+                mem_end = op_record[0][3] + op_record[0][4]
+                mem_start = op_record[0][3]
+                for (let p of op_record) {
+                    if (p[3] < mem_start) mem_start = p[3];
+                    if (p[3] + p[4] > mem_end) mem_end = p[3] + p[4];
+                }
+            }
+            let partition_data = []
+            let partition_cumulativeSize = {};
+            for (let p of partition) {
+                partition_cumulativeSize[p[2]] = 0; //bank index
+                partition_data.push({
+                    name: p[2], //description
+                    value: [mem_end - p[0], mem_end - (p[0] + p[1]), p[0], p[1], p[2]],
+                    itemStyle: {
+                        normal: {
+                            color: getMemColor(p[0]),
+                            borderColor: "#FFFFFF",
+                        }
+                    }
+                })
+            }
+
+            let record_data = [];
+            let cumrecord_data = [];
+            //op：begin end type(0:R, 1:W) addr size desc
+            let write_data = []
+            let read_data = []
+            let all_data = []
+            for (let op of op_record) {
+                let item_data = [op[0], op[1], mem_end - op[3], mem_end - (op[3] + op[4]), op[2], op[3], op[4], op[5]]
+                record_data.push({
+                    name: op[op.length - 1], //desc
+                    value: item_data,
+                    itemStyle: {
+                        normal: {
+                            opacity: 0.6,
+                            color: op[2] ? "red" : "green",
+                            borderColor: "#FFFFFF",
+                            borderWidth: 1,
+                        }
+                    }
+                })
+                all_data.push(item_data);
+                if (item_data[4] == 0) {
+                    read_data.push(item_data)
+                } else {
+                    write_data.push(item_data)
+                }
+            }
+            console.log("write_data:", write_data)
+            console.log("read_data:", read_data)
+            console.log("mem_end:", mem_end)
+            for (let op of op_record) {
+                let current_partition = partition.find(p => op[3] >= p[0] && op[3] < p[0] + p[1]);
+                if (current_partition) {
+                    let bank = current_partition[2]; //bank index
+                    partition_cumulativeSize[bank] += (op[2] === 0) ? op[4] : -op[4];
+                    let new_item = [op[0], op[1], mem_end - op[3], mem_end - (op[3] + partition_cumulativeSize[bank]), op[2], op[3], partition_cumulativeSize[bank], op[5]]
+                    cumrecord_data.push({
+                        name: op[op.length - 1], //desc
+                        value: new_item,
+                        itemStyle: {
+                            normal: {
+                                opacity: 0.6,
+                                color: "orange",
+                                borderColor: "#FFFFFF",
+                                borderWidth: 1,
+                            }
+                        }
+                    })
+                }
+            }
+            let mem_used_stat = statDataDensity(all_data, 3, 2, 0, 1)
+            let used_stat = []
+            if (mem_used_stat.length > 0) {
+                used_stat.push([0, mem_used_stat[0][0]])
+                for (let i = 0; i < mem_used_stat.length - 1; i++) {
+                    used_stat.push([-mem_used_stat[i][1], mem_used_stat[i][0]])
+                    used_stat.push([-mem_used_stat[i][1], mem_used_stat[i + 1][0]])
+                }
+                if (mem_used_stat.length > 0) {
+                    used_stat.push([0, mem_used_stat[mem_used_stat.length - 1][0]])
+                }
+            }
+            let write_stat = statDataDensity(write_data, 0, 1, 3, 2); // 500 is the threshold
+            let read_stat = statDataDensity(read_data, 0, 1, 3, 2);
+            let all_stat = statDataDensity(all_data, 0, 1, 3, 2);
+
+            let total_stat = [];
+            let write_stat_marked = write_stat.map(subArray => [...subArray, 0]);
+            let read_stat_marked = read_stat.map(subArray => [...subArray, 1]);
+            let all_stat_marked = write_stat_marked.concat(read_stat_marked).sort((a, b) => a[0] - b[0]);
+            let total_used = 0;
+            //let total = 256 //kb/lane
+            for (let stat of all_stat_marked) {
+                total_used += (stat[2] === 1) ? stat[1] : -stat[1]; //read: add lmem usage; write: substract
+                total_stat.push([stat[0], total_used])
+            }
+
+            console.log("write_stat:", write_stat)
+            console.log("read_stat:", read_stat)
+            console.log("used_stat:", used_stat)
+            console.log("total_stat:", total_stat)
+            console.log("record_data:", record_data)
+            console.log("cumrecord_data:", cumrecord_data)
+
+            let option = {
+                tooltip: {
+                    alwaysShowContent: true,
+                    formatter: (params) => {
+                        let tip = params.marker + params.name
+                        let val = params.value
+                        if (val.length == 5) {
+                            let start_addr = val[2]
+                            let size = val[3]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += ": " + size_text + "<br>" + addr_text
+                        } else if (val.length == 8) {
+                            let all_params = params.name.split(", ")
+                            tip = params.marker + all_params[0]
+                            let start_addr = val[5]
+                            let size = val[6]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += "<br>size=" + size_text + "<br>" + addr_text
+                            for (i = 1; i < all_params.length; i++) {
+                                tip += "<br>" + all_params[i];
+                            }
+                        } else {
+                            let start_addr = val[0]
+                            let size = val[1]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += "<br>size=" + size_text + "<br>" + addr_text
+                        }
+                        return tip;
+                    },
+                    axisPointer: {
+                        show: true,
+                        type: 'cross',
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 1
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(param) {
+                                if (param.axisDimension == 'x') {
+                                    return (param.value).toFixed(2)
+                                }
+                                return addrToText(Math.round(mem_end - param.value))
+                            }
+                        }
+                    }
+                },
+                toolbox: {
+                    left: 'right',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 0,
+                        },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                title: {
+                    text: title,
+                    left: "center",
+                },
+                dataZoom: [{
+                    type: "slider",
+                    xAxisIndex: [0, 1],
+                    filterMode: 'weakFilter',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                    handleSize: '80%',
+                    height: "3%",
+                    top: "15%",
+                }, {
+                    type: "inside",
+                    id: "insideX",
+                    filterMode: "weakFilter",
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                }, {
+                    type: "slider",
+                    yAxisIndex: [0, 2],
+                    zoomLock: false,
+                    filterMode: 'weakFilter',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                    handleSize: '80%',
+                    labelFormatter: (val) => {
+                        return addrToText(Math.round(mem_end - val));
+                    },
+                }, {
+                    filterMode: 'weakFilter',
+                    type: "inside",
+                    id: "insideY",
+                    yAxisIndex: [0, 2],
+                    zoomOnMouseWheel: false,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: false,
+                }],
+                grid: [{
+                    show: true,
+                    height: "80%",
+                    top: "18%",
+                    left: YLABEL_LEFT + YLABEL_WIDTH,
+                    right: 40,
+                    backgroundColor: "#FFF",
+                    borderWidth: 0,
+                }, {
+                    show: true,
+                    height: "10%",
+                    top: "5%",
+                    left: YLABEL_LEFT + YLABEL_WIDTH,
+                    right: 40,
+                }, {
+                    show: true,
+                    height: "80%",
+                    top: "18%",
+                    left: YLABEL_LEFT,
+                    width: YLABEL_WIDTH,
+                }],
+                xAxis: [{
+                    scale: true,
+                    axisLabel: {
+                        formatter: function(val) {
+                            return val + ' cycle';
+                        }
+                    },
+                    position: "top",
+                    gridIndex: 0,
+                }, {
+                    show: false,
+                    scale: true,
+                    gridIndex: 1,
+                }, {
+                    show: false,
+                    gridIndex: 2,
+                    position: "bottom",
+                    scale: true,
+                }],
+                yAxis: [{
+                    axisTick: {
+                        show: false
+                    },
+                    splitLine: {
+                        show: false
+                    },
+                    axisLine: {
+                        show: true
+                    },
+                    axisLabel: {
+                        formatter: (val) => {
+                            return addrToText(mem_end - val)
+                        },
+                        show: true
+                    },
+                    min: 0,
+                    max: mem_end - mem_start,
+                    width: YLABEL_WIDTH,
+                    gridIndex: 0,
+                }, {
+                    name: "大小",
+                    type: "value",
+                    axisLabel: {
+                        formatter: function(val) {
+                            return sizeToText(val)
+                        }
+                    },
+                    gridIndex: 1,
+                }, {
+                    show: false,
+                    min: 0,
+                    max: mem_end - mem_start,
+                    width: YLABEL_WIDTH,
+                    gridIndex: 2,
+                }],
+                series: [{
+                    id: "bank_block",
+                    type: "custom",
+                    renderItem: memPartitionRender,
+                    encode: {
+                        x: -1,
+                        y: [0, 1],
+                    },
+                    data: partition_data,
+                    itemStyle: {
+                        opacity: 0.5
+                    },
+                    gridIndex: 0,
+                }, {
+                    id: "memory_block",
+                    type: "custom",
+                    renderItem: memRecordRender,
+                    encode: {
+                        x: [0, 1],
+                        y: [2, 3],
+                    },
+                    data: record_data,
+                    itemStyle: {
+                        opacity: 0.8
+                    },
+                    gridIndex: 0,
+                }, {
+                    id: "write_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: write_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "red",
+                    }
+                }, {
+                    id: "read_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: read_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "green",
+                    }
+                }, {
+                    id: "total_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: all_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "#222222",
+                    }
+                }, {
+                    id: "mem_used_time",
+                    type: "line",
+                    data: used_stat,
+                    xAxisIndex: 2,
+                    symbolSize: 0,
+                    yAxisIndex: 2,
+                    itemStyle: {
+                        color: "orange",
+                        opacity: 0.8,
+                    },
+                    lineStyle: {
+                        width: 2,
+                    },
+                    zlevel: -1,
+                    z: -1,
+                }],
+            }
+            if (typeof(begin_usec) != "undefined") {
+                option.dataZoom[0].startValue = begin_usec
+                option.dataZoom[1].startValue = begin_usec
+            }
+            if (typeof(end_usec) != "undefined") {
+                option.dataZoom[0].endValue = end_usec
+                option.dataZoom[1].endValue = end_usec
+            }
+            myChart.setOption(option)
+            myChart.set_time_range = function(begin_usec, end_usec) {
+                myChart.dispatchAction({
+                    type: 'dataZoom',
+                    dataZoomIndex: 1,
+                    start: null,
+                    end: null,
+                    startValue: begin_usec,
+                    endValue: end_usec,
+                })
+            }
+
+            myChart.on("click", (params) => {
+                let val = params.value
+                if (params.seriesIndex == 0) {
+                    let range = val[0] - val[1];
+                    let scale_range = 1.2 * range;
+                    let pad = (scale_range - range) / 2;
+                    myChart.dispatchAction({
+                        type: 'dataZoom',
+                        dataZoomIndex: 3,
+                        start: null,
+                        end: null,
+                        startValue: val[1] - pad,
+                        endValue: val[0] + pad,
+                    })
+                } else if (params.seriesIndex == 1) {
+                    let vrange = val[2] - val[3];
+                    myChart.dispatchAction({
+                        type: 'dataZoom',
+                        dataZoomIndex: 3,
+                        start: null,
+                        end: null,
+                        startValue: val[2] - 8 * vrange,
+                        endValue: val[3] + 2 * vrange,
+                    })
+                    let hrange = val[1] - val[0];
+                    let begin_usec = val[0] - hrange
+                    let end_usec = val[1] + hrange
+                    set_chart_time_range(begin_usec, end_usec)
+                }
+            })
+
+            document.getElementById("filter").addEventListener("change", function() {
+                let selectedValue = this.value;
+
+                // 找到对应的 series
+                let writeSeries = option.series.find(s => s.id === "write_stat");
+                let readSeries = option.series.find(s => s.id === "read_stat");
+                let allSeries = option.series.find(s => s.id === "total_stat");
+                let cumulativeSeries = option.series.find(s => s.id === "memory_block");
+
+                // 根据选择更新 series 的 data
+                if (selectedValue === "all") {
+                    writeSeries.data = write_stat;
+                    readSeries.data = read_stat;
+                    allSeries.data = all_stat;
+                    allSeries.itemStyle.color = '#222222'
+                    cumulativeSeries.data = record_data;
+                } else if (selectedValue === "read") {
+                    writeSeries.data = [];
+                    readSeries.data = read_stat;
+                    allSeries.data = [];
+                } else if (selectedValue === "write") {
+                    writeSeries.data = write_stat;
+                    readSeries.data = [];
+                    allSeries.data = [];
+                } else if (selectedValue === "cumulative") {
+                    writeSeries.data = [];
+                    readSeries.data = [];
+                    allSeries.data = total_stat;
+                    allSeries.itemStyle.color = 'purple'
+                    cumulativeSeries.data = cumrecord_data;
+                }
+
+                myChart.setOption({
+                    series: option.series
+                });
+            });
+
+            return myChart
+        }
+
+        function lttbDownsample(data, threshold) {
+            if (threshold >= data.length || threshold === 0) {
+                return data; // Nothing to do
+            }
+
+            let sampled = [];
+            let bucketSize = Math.floor(data.length / threshold);
+
+            let a = 0; // Initially a is the first point in the triangle
+            sampled.push(data[a]); // Always add the first point
+
+            for (let i = 1; i < threshold - 1; i++) {
+                let avgX = 0,
+                    avgY = 0,
+                    avgRangeStart = Math.floor((i - 1) * bucketSize),
+                    avgRangeEnd = Math.floor(i * bucketSize);
+                avgRangeEnd = avgRangeEnd < data.length ? avgRangeEnd : data.length;
+
+                let avgRangeLength = avgRangeEnd - avgRangeStart;
+
+                let minY = Infinity,
+                    maxY = -Infinity,
+                    minPoint, maxPoint;
+
+                // Average x and y coordinates in the bucket
+                for (; avgRangeStart < avgRangeEnd; avgRangeStart++) {
+                    avgX += data[avgRangeStart][0];
+                    avgY += data[avgRangeStart][1];
+
+                    if (data[avgRangeStart][1] < minY) {
+                        minY = data[avgRangeStart][1];
+                        minPoint = data[avgRangeStart];
+                    }
+                    if (data[avgRangeStart][1] > maxY) {
+                        maxY = data[avgRangeStart][1];
+                        maxPoint = data[avgRangeStart];
+                    }
+                }
+                avgX /= avgRangeLength;
+                avgY /= avgRangeLength;
+
+                // Include min and max points to sampled data
+                if (minPoint) sampled.push(minPoint);
+                if (maxPoint) sampled.push(maxPoint);
+
+                let pointAX = data[a][0],
+                    pointAY = data[a][1];
+
+                let maxArea = -1;
+                let nextA = a; // Next a is this a or the maxArea point
+
+                for (let rangeEnd = Math.floor(i * bucketSize); rangeEnd < data.length && rangeEnd < (i + 1) * bucketSize; rangeEnd++) {
+                    let area = Math.abs((pointAX - avgX) * (data[rangeEnd][1] - pointAY) -
+                        (pointAX - data[rangeEnd][0]) * (avgY - pointAY)) * 0.5;
+                    if (area > maxArea) {
+                        maxArea = area;
+                        nextA = rangeEnd; // This point is a candidate for next a
+                    }
+                }
+
+                a = nextA; // Next a is now our new a
+                sampled.push(data[a]);
+            }
+
+            sampled.push(data[data.length - 1]); // Always add the last point
+
+            return sampled;
+        }
+
+        function segmentDownsample(data, segmentCount, thresholdPerSegment) {
+            const segmentSize = Math.floor(data.length / segmentCount)
+            let downSampled = [];
+
+            for (let i = 0; i < segmentCount; i++) {
+                const start = i * segmentSize;
+                const end = (i + 1) * segmentSize;
+                const segment = data.slice(start, end)
+                const downSegment = lttbDownsample(segment, thresholdPerSegment);
+                downSampled = downSampled.concat(downSegment);
+            }
+
+            const remainder = data.length % segmentSize;
+            if (remainder > 0) {
+                const lastSegment = data.slice(-remainder);
+                const downLastSegment = lttbDownsample(lastSegment, Math.floor(thresholdPerSegment * (remainder / segmentSize)));
+                downSampled = downSampled.concat(downLastSegment)
+            }
+            return downSampled
+        }
+
+        function createShowFunc(container_id, partition, op_record, title, isDownsampled = true) {
+            return function() {
+                let now = Date.now()
+                let container = document.getElementById(container_id);
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = container_id;
+                    document.body.appendChild(container);
+                }
+                container.style.display = 'block';
+                let zoomOption = all_charts.length > 0 ? all_charts[0].getOption().dataZoom[1] : null;
+                let dataToUse = op_record.length <= 1000 ? op_record : isDownsampled ? segmentDownsample(op_record, 10, 100) : op_record;
+                //let dataToUse = isDownsampled ? lttbDownsample(op_record, 1000) : op_record;
+                console.log('数据运行时间：', Date.now() - now);
+                let memchart = showMemChart(container_id, partition, dataToUse, title, zoomOption ? zoomOption.startValue : null, zoomOption ? zoomOption.endValue : null);
+
+                if (memchart) {
+                    all_charts.push(memchart);
+                }
+
+                setTimeout(() => {
+                    console.log('总运行时间：', Date.now() - now);
+                }, 0)
+            };
+        }
+
+        function mapToRow(cmdId, original_data) {
+            let matchedIndex = null;
+            let matchedCategory = null;
+            let tiu_data = original_data.filter(item => item[0] === 0); //filter tiu data
+            console.log("cmdId:", cmdId)
+            console.log("tiu_data:", tiu_data[cmdId - 1])
+            matchedItem = tiu_data[cmdId - 1];
+            let rangeStart = matchedItem[2];
+            let rangeEnd = matchedItem[1]
+            console.log("rangeStart, rangeEnd:", rangeStart, rangeEnd)
+            let range = rangeStart - rangeEnd;
+            set_chart_time_range(rangeStart, rangeEnd);
+            //set_chart_time_range(rangeStart - range * 1, rangeEnd + range * 1);
+        }
+
+        //生成uArch rate点图
+        function createRateLine(containerId, data, title, original_data) {
+            let xData = data.map(item => item[6]); // 提取cmd_id作为横轴
+            let yData = data.map(item => item[5]); // 提取uarch_rate(height)
+
+            //console.log("xData:", xData)
+            //console.log("yData:", yData)
+
+            let totalPoints = data.length;
+            let lessThanOnePoints = data.filter(item => item[5] < 1).length;
+
+            let chart = echarts.init(document.getElementById(containerId));
+            let option = {
+                title: {
+                    text: `${title}\nTotal counts: ${totalPoints}, rate<100%: ${lessThanOnePoints}`,
+                    left: 'center',
+                    top: 'top',
+                    textStyle: {
+                        fontSize: 16
+                    }
+                },
+                xAxis: {
+                    type: 'value',
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: (value) => `${(value).toFixed(2)}%`
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        let [cmdId, rate] = params.value;
+                        let matchingData = data.find(d => d[6] === cmdId);
+                        let duration = matchingData[2] - matchingData[1];
+                        return `Cmd ID: ${cmdId}<br/>Rate: ${rate.toFixed(2)}%<br/>Duration: ${duration}cycles`
+                    }
+                },
+                series: [{
+                    data: data.map(item => [item[6], item[5] * 100]),
+                    type: 'scatter',
+                    symbolSize: (value) => {
+                        let duration = data.find(d => d[6] === value[0])[2] - data.find(d => d[6] === value[0])[1];
+                        let baseSize = 5; // Adjust this as needed
+                        let scaleFactor = 0.0005; // Adjust this as needed
+                        let adjustedSize = baseSize + (100 - value[1]) * duration / 100 * scaleFactor;
+                        return (value[1] < 100 && duration > 0) ? adjustedSize : baseSize;
+                    },
+                    itemStyle: {
+                        color: (param) => param.value[1] < 100 ? 'red' : 'blue'
+                    }
+                }],
+                dataZoom: [{
+                    type: 'slider',
+                    xAxisIndex: 0,
+                    filterMode: 'weakFilter'
+                }, {
+                    type: 'inside',
+                    xAxisIndex: 0,
+                    filterMode: 'weakFilter'
+                }]
+            };
+            chart.setOption(option, true);
+            chart.on('click', function(params) {
+                let cmdId = params.data[0];
+                mapToRow(cmdId, original_data);
+            });
+            return chart;
+        }
+
+        let charts = []
+
+        // 生成饼图
+        function generatePieChart(elementId, rawData, header, pieTitle) {
+            let nameData = [];
+            let typeData = [];
+            let functionNames = {};
+            let functionTypes = {};
+            let totalDuration = 0;
+            funcTypeIndex = header.indexOf("func_type");
+            funcNameIndex = header.indexOf("func_name")
+            for (let i = 0; i < rawData.length; i++) { //["category", "begin_time", "end_time", "func_type", "height", "cmd", "func_name", "info"]
+                let startCycle = rawData[i][1];
+                let endCycle = rawData[i][2];
+                let duration = endCycle - startCycle;
+                let functionType = rawData[i][funcTypeIndex];
+                let functionName = rawData[i][funcNameIndex];
+
+                totalDuration += duration;
+
+                if (!functionNames.hasOwnProperty(functionName)) {
+                    functionNames[functionName] = {
+                        type: functionType,
+                        duration: duration
+                    };
+                } else {
+                    functionNames[functionName].duration += duration;
+                }
+
+                if (!functionTypes.hasOwnProperty(functionType)) {
+                    functionTypes[functionType] = duration;
+                } else {
+                    functionTypes[functionType] += duration;
+                }
+            }
+
+            for (let name in functionNames) {
+                nameData.push({
+                    name: name,
+                    value: functionNames[name].duration * 100 / totalDuration
+                });
+            }
+            console.log("nameData:", nameData)
+            for (let type in functionTypes) {
+                typeData.push({
+                    name: type,
+                    value: functionTypes[type] * 100 / totalDuration
+                });
+            }
+
+            let pieOption = {
+                title: {
+                    text: pieTitle,
+                    subtext: 'FuncName/FuncType (%)',
+                    left: 'center',
+                    top: 'top',
+                    textStyle: {
+                        fontSize: 18
+                    },
+                    subtextStyle: {
+                        align: 'center',
+                        fontSize: 14
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        let percentage = params.percent.toFixed(2);
+                        let name = params.name;
+                        let value = params.value;
+                        let total = (value * totalDuration / 100).toFixed(0);
+                        return `${name}: ${percentage}% (${total} cycles)`;
+                    }
+                },
+                toolbox: {
+                    show: true,
+                    feature: {
+                        mark: {
+                            show: true
+                        },
+                        dataView: {
+                            show: true,
+                            readOnly: false,
+                            optionToContent: function(opt) {
+                                let series = opt.series;
+                                let table = '<table style="width:100%;text-align:center"><tbody><tr><th>Category</th><th>Name</th><th>Proportion (%)</th><th>Total Cycles</th></tr>';
+                                for (let i = 0; i < series.length; i++) {
+                                    let type = series[i].name; // "Function Types" 或 "Function Names"
+                                    let data = series[i].data;
+                                    for (let j = 0; j < data.length; j++) {
+                                        let name = data[j].name;
+                                        let proportion = data[j].value.toFixed(2);
+                                        let totalCycles = (data[j].value * totalDuration / 100).toFixed(0);
+                                        table += `<tr><td>${type}</td><td>${name}</td><td>${proportion}</td><td>${totalCycles}</td></tr>`;
+                                    }
+                                }
+                                table += '</tbody></table>';
+                                return table;
+                            }
+                        },
+                        saveAsImage: {
+                            show: true
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Function Types',
+                    type: 'pie',
+                    radius: ['0%', '30%'],
+                    label: {
+                        position: 'outer',
+                        fontSize: 14,
+                        fontWeight: 'bold'
+                    },
+                    labelLine: {
+                        length: 10
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+                    data: typeData,
+                }, {
+                    name: 'Function Names',
+                    type: 'pie',
+                    radius: ['45%', '60%'],
+                    data: nameData,
+                    fontSize: 14,
+                    labelLine: {
+                        length: 30
+                    },
+                    label: {
+                        formatter: function(params) {
+                            return `${params.name}: ${params.percent.toFixed(2)}%`;
+                        },
+                        position: 'outer',
+                        formatter: '{b|{b}:} {per|{d}%}\n{hr|}',
+                        backgroundColor: '#eee',
+                        borderColor: '#aaa',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        top: 0,
+                        bottom: 0,
+                        rich: {
+                            //a: {
+                            //    color: '#999',
+                            //    lineHeight: 22,
+                            //    align: 'center'
+                            //},
+                            hr: {
+                                borderColor: '#aaa',
+                                width: '100%',
+                                borderWidth: 0.5,
+                                height: 0
+                            },
+                            b: {
+                                fontSize: 12,
+                                fontWeight: 'bold',
+                                lineHeight: 30
+                            },
+                            per: {
+                                color: '#eee',
+                                backgroundColor: '#334455',
+                                padding: [2, 4],
+                                borderRadius: 2
+                            }
+                        }
+                    },
+                }]
+            };
+
+            let pieChart = echarts.init(document.getElementById(elementId));
+            window.addEventListener('resize', function() {
+                pieChart.resize();
+            });
+            pieChart.setOption(pieOption);
+            charts.push(pieChart)
+        }
+
+        function manageMsgContainer(shouldShow, cycleData, categories) {
+            // 在manageMsgContainer函数中
+            const msgInfo = document.getElementById('msg-info');
+            let msgContainer = document.getElementById('msg-container');
+            const placeholder = document.getElementById('msg-container-placeholder');
+
+            if (shouldShow) {
+                if (!msgContainer) {
+                    msgInfo.style.display = 'block';
+                    // 创建并添加筛选下拉列表
+                    const filterSelect = document.createElement('select');
+                    filterSelect.id = 'msgIdFilter';
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = 'default';
+                    defaultOption.value = 'default';
+                    filterSelect.appendChild(defaultOption);
+                    placeholder.appendChild(filterSelect); // 先添加filterSelect
+
+                    // 然后添加msgContainer
+                    msgContainer = document.createElement('div');
+                    msgContainer.id = 'msg-container';
+                    placeholder.appendChild(msgContainer);
+                }
+                createMsgChart(cycleData, categories);
+            } else {
+                msgInfo.style.display = 'none';
+                if (msgContainer) {
+                    placeholder.removeChild(msgContainer);
+                }
+                const existingSelect = document.getElementById('msgIdFilter');
+                if (existingSelect) {
+                    existingSelect.remove();
+                }
+            }
+        }
+
+        function createAndShowChart(extendedCategories, mergedCycleData) {
+            let containerId = 'chart-container-comparison';
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'chart-container';
+                document.getElementById('comparison-content').appendChild(container);
+            }
+
+            adjustChartContainerHeight(extendedCategories);
+            console.log("extendedCategories", extendedCategories)
+            console.log("mergedCycleData", mergedCycleData)
+            let chartHandle = echarts.init(container);
+            showTimeChart(chartHandle, time_header, mergedCycleData, extendedCategories, color_col, "Combined Chart", categories.length);
+            // 确保图表大小与容器匹配
+            setTimeout(() => {
+                chartHandle.resize();
+            }, 0);
+        }
+
+        function mergeSelectedCycleData(groupData, coreselected, categories) {
+            let extendedCategories = [];
+            let mergedData = [];
+            let category_num = categories.length;
+            coreselected.forEach((core_id, index) => {
+                categories.forEach(category => {
+                    extendedCategories.push(category + '_CORE' + core_id);
+                });
+                let offset = index * category_num;
+                groupData[core_id].forEach(dataItem => {
+                    let adjustedIdx = dataItem.slice();
+                    adjustedIdx[0] += offset;
+                    mergedData.push(adjustedIdx);
+                });
+            })
+
+            return {
+                extendedCategories: extendedCategories,
+                mergedCycleData: mergedData
+            };
+        }
+
+        function handleConfirmSelection(cycleData) {
+            let selectedCores = [];
+            let count = Object.keys(cycleData).length;
+
+            for (let i = 0; i < count; i++) {
+                let checkbox = document.getElementById('core-checkbox-' + i);
+                if (checkbox && checkbox.checked) {
+                    selectedCores.push(i);
+                }
+            }
+            console.log("selectedCores:", selectedCores)
+            if (selectedCores.length > 0) {
+                let {
+                    extendedCategories,
+                    mergedCycleData
+                } = mergeSelectedCycleData(cycleData, selectedCores, categories);
+                createAndShowChart(extendedCategories, mergedCycleData);
+            }
+        }
+
+        function adjustChartContainerHeight(extendedCategories) {
+            const baseHeightPerCategory = 80; // 每个类别的基础高度，可根据实际情况调整
+            const additionalHeight = 200; // 额外高度，用于补偿图表的标题等元素
+
+            let calculatedHeight = extendedCategories.length * baseHeightPerCategory + additionalHeight;
+            let container = document.getElementById('chart-container-comparison');
+            if (container) {
+                container.style.height = calculatedHeight + 'px';
+            }
+            console.log("container:", container)
+        }
+    </script>
+
+    <!-- 生成Tab，并调用相关函数的主script -->
+    <script type="text/javascript">
+        // Prepare the data
+        var cycleData = {};
+        var lmemData = {};
+        var laneData = {};
+        var base;
+        var dataCount = Object.keys(window).filter(key => key.startsWith('time_data')).length;
+        console.log("dataCount", dataCount)
+        for (let i = 0; i < dataCount; i++) {
+            cycleData[i] = window['time_data' + i];
+            lmemData[i] = window['lmem_op_record' + i];
+            laneData[i] = window['lane_op_record' + i];
+        }
+        console.log("cycleData", cycleData)
+
+        if (typeof(page_caption) !== "undefined") {
+            document.querySelector("#page-caption").innerText = page_caption
+            document.querySelector("#chip-arch").innerText = platform //chip_caption
+        }
+        const tabs = document.getElementsByClassName('tabs');
+
+        function initializeTabs() {
+            createTab('Overall View');
+
+            for (let i = 0; i < dataCount; i++) {
+                createTab('Core ' + i, i);
+                let timeContainerId = `time-container${i}`;
+                if (!document.getElementById(timeContainerId)) {
+                    let timeContainer = document.createElement('div');
+                    timeContainer.id = timeContainerId;
+                    timeContainer.style.display = 'none'; // 初始时隐藏
+                    document.querySelector('#content-container').appendChild(timeContainer);
+                    // 创建图表
+                    processAndShowData(timeContainerId, cycleData[i], ['chart1', 'chart2', 'chart3', 'chart4'], lmemData[i], i);
+                }
+            }
+            if (dataCount > 1) {
+                createTab('Time Chart Combined');
+                createCombinedChart();
+            }
+            // 触发第一个标签页的点击事件
+            $('.tab').first().click();
+            $('.tab').first().addClass('bg-r');
+        }
+
+        function createTab(name, index) {
+            let tab = document.createElement('div');
+            tab.className = 'tab';
+            tab.innerText = name;
+            tabs[0].appendChild(tab);
+
+            if (typeof index !== 'undefined') {
+                var tabId = 'tab' + index;
+                var tabContentId = 'tab-content' + index;
+                var newTab = $('<div class="tab">Core' + index + '</div>');
+                var newTabContent = $('<div id="' + tabContentId + '"></div>').appendTo('#tab-content');;
+                var timeContainerId = 'time-container' + index;
+                var newTimeContainer = $('<div id="' + timeContainerId + '"></div>').appendTo('#content-container');
+            }
+        }
+
+        function createCombinedChart() {
+            let comparisonContent = document.createElement('div');
+            comparisonContent.id = 'comparison-content';
+            document.body.appendChild(comparisonContent);
+
+            for (let i = 0; i < dataCount; i++) {
+                let label = document.createElement('label');
+                label.innerHTML = 'Core ' + i;
+
+                let checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'core-checkbox-' + i;
+                label.appendChild(checkbox);
+                comparisonContent.appendChild(label);
+            }
+
+            let confirmButton = document.createElement('button');
+            confirmButton.innerText = 'Confirm Selection';
+            confirmButton.onclick = function() {
+                handleConfirmSelection(cycleData);
+            };
+            comparisonContent.appendChild(confirmButton);
+        }
+
+        // 添加事件监听
+        tabs[0].addEventListener("click", (e) => handleTabClick(e, cycleData));
+        initializeTabs();
+
+
+        function handleTabClick(e, cycleData) {
+            const tabName = e.target.outerText;
+            const isOverview = tabName === "Overall View";
+            const isCombinedTab = tabName === "Time Chart Combined";
+
+            // 重置和显示/隐藏元素
+            resetAndToggleElements(isOverview, isCombinedTab);
+
+            if (isOverview) {
+                console.log("我在overall page");
+                // 处理总览标签页逻辑
+                handleOverviewTab(cycleData);
+            } else {
+                // 处理核心标签页逻辑
+                console.log("我在core page")
+                handleCoreTab(tabName, cycleData);
+            }
+        }
+
+        function resetAndToggleElements(isOverview, isCombinedTab) {
+            document.querySelectorAll('hr').forEach(hr => {
+                hr.style.display = isCombinedTab ? 'none' : 'block';
+            });
+
+            const checkBoxContainers = [
+                document.querySelector(".config-item"),
+                document.querySelector(".config-localmem"),
+                document.querySelector(".config-item:nth-child(3)")
+            ];
+            const checkBoxes = ["show_data_table", "show_localmem", "tiu_uarch_rate"];
+            if (!isOverview && !isCombinedTab) {
+                toggleElements(checkBoxContainers, 'inline-block');
+            } else {
+                toggleElements(checkBoxContainers, 'none');
+            }
+            document.getElementById('configsTable').style.display = isOverview ? 'table' : 'none';
+            document.getElementById('summary-table').style.display = isOverview ? 'block' : 'none';
+            document.getElementById('msg-checkbox').style.display = isOverview ? 'block' : 'none';
+            document.getElementById('pie-chart-container').style.display = !isCombinedTab && !isOverview ? 'block' : 'none';
+            document.getElementById('comparison-content').style.display = isCombinedTab ? 'block' : 'none';
+            document.getElementById('bw-chart').style.display = 'none';
+            document.getElementById("rate-line-container").style.display = "none";
+            if (document.getElementById("tiu_uarch_rate").checked) {
+                setTimeout(function() {
+                    document.getElementById("rate-line-container").style.display = "block"
+                }, 200)
+            };
+            toggleElements(document.querySelectorAll('[id^="time-container"]'), 'none')
+        }
+
+        function handleOverviewTab(cycleData) {
+            // Dispose all the charts
+            charts.forEach(chart => chart.dispose());
+            charts = []; // Clear the charts array
+            configsTable(configs);
+            document.getElementById('summary-table').innerHTML = '';
+            if (typeof(summary_header) !== "undefined") {
+                showDataTable("summary-table", summary_header, summary_data, summary_caption, ddr_bandwidth, l2_bandwidth)
+            }
+            manageMsgContainer(document.getElementById("show_msg_chart").checked, cycleData, categories);
+            document.getElementById('show_msg_chart').addEventListener('change', function(e) {
+                manageMsgContainer(e.target.checked, cycleData, categories);
+            });
+
+            if (platform.includes("sg2260")) {
+                document.getElementById('bw-chart').style.display = 'block';
+                createBwChart(ddr_ratios, l2m_ratios);
+            } else {
+                document.getElementById('bw-chart').style.display = 'none';
+            }
+        }
+
+        //Fix me：不要每次重置，保留上次界面，但可以切换filters
+        function handleCoreTab(tabName, cycleData) {
+            const coreIndex = tabName.split(' ')[1]
+            console.log("coreIndex:", coreIndex)
+            if (cycleData[coreIndex] !== undefined) {
+                //document.getElementById(`time-container${id}`).style.display = 'block';
+                let timeContainer = document.getElementById(`time-container${coreIndex}`);
+                timeContainer.style.display = 'block'
+                all_charts.forEach(chart => {
+                    if (chart && chart._dom.parentElement === timeContainer) {
+                        chart.resize();
+                    }
+                });
+                if (timeContainer) {
+                    timeContainer.innerHTML = '';
+                } else {
+                    // 如果不存在，则创建新的容器
+                    timeContainer = document.createElement('div');
+                    timeContainer.id = timeContainerId;
+                    timeContainer.style.display = 'block';
+                    document.querySelector('#content-container').appendChild(timeContainer);
+                }
+                processAndShowData(`time-container${coreIndex}`, cycleData[coreIndex], ['chart1', 'chart2', 'chart3', 'chart4'], lmemData[coreIndex], coreIndex);
+            }
+
+        }
+
+        function toggleElements(elements, displayStyle) {
+            elements.forEach(el => el.style.display = displayStyle);
+        }
+
+
+        function resetCheckBoxes(checkBoxIds) {
+            checkBoxIds.forEach((id) => {
+                const checkBox = document.getElementById(id);
+                if (checkBox) {
+                    checkBox.checked = false;
+                    checkBox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        const color_col = time_header.indexOf(time_header.includes("func_name") ? "func_name" : "func_type"); //index of the data to display the color in chart
+        console.log("color_col:", color_col)
+
+        const processAndShowData = (containerId, cycleData, chartIds, lmemRecord, num) => {
+            window.addEventListener('resize', () => {
+                all_charts.forEach(chart => {
+                    if (chart) {
+                        chart.resize();
+                    }
+                });
+            });
+            setTimeout(() => {
+                let timechart = showDataInChart(containerId, time_header, cycleData, categories, filter_cols, color_col);
+                if (timechart) { // Only push when chart is not null
+                    all_charts.push(timechart);
+                }
+                if (lmemRecord.length == 0) {
+                    document.querySelector(".config-localmem").style.display = "none";
+                }
+                console.log("lmemRecord:", lmemRecord)
+
+                let newRecord
+                newRecord = processAddr(lmemRecord, num);
+                console.log("newRecord:", newRecord)
+
+                const showLocalMemCheckbox = document.querySelector("#show_localmem");
+                const showOriginalDataButton = document.querySelector("#show_original_data");
+
+                showLocalMemCheckbox.onchange = function() {
+                    const container = document.getElementById('lmem-container');
+                    if (this.checked) {
+                        createShowFunc("lmem-container", lmem_partition, lmemRecord, "LOCAL MEM USAGE(ONE LANE)", true)();
+                        showOriginalDataButton.style.display = 'block';
+                        showOriginalDataButton.onclick = function() {
+                            createShowFunc("lmem-container", lmem_partition, lmemRecord, "LOCAL MEM USAGE(ONE LANE)", false)();
+                        };
+                    } else {
+                        // Clear the chart and remove container
+                        all_charts = all_charts.filter(chart => {
+                            if (chart._dom.id === 'lmem-container') {
+                                chart.dispose();
+                                return false;
+                            }
+                            return true;
+                        });
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                        showOriginalDataButton.style.display = 'none';
+                    }
+                };
+
+                //document.querySelector("#show_localmem").onchange = createShowFunc("lmem-container", lmem_partition, newRecord, "LOCAL MEM(Occupied)");
+                document.querySelector("#show_data_table").onchange = function(e) {
+                    let container_id = "data-list"
+                    if (e.target.checked) {
+                        showFilterDataTable(container_id, time_header, filtered_data, "Cycle Information", categories, 0)
+                    } else {
+                        document.getElementById(container_id).style = "display:none"
+                    }
+                }
+                if (document.getElementById("show_data_table").checked) {
+                    showFilterDataTable("data-list", time_header, cycleData, "Cycle Information", categories);
+                }
+
+                document.getElementById("tiu_uarch_rate").onclick = function() {
+                    let rateLineContainer = document.getElementById("rate-line-container");
+                    let isVisible = rateLineContainer.style.display === "block";
+
+                    rateLineContainer.style.display = isVisible ? "none" : "block";
+                }
+                if (time_header.includes("func_name") && time_header.includes("func_type")) {
+                    const types = ['TIU', 'GDMA', 'SDMA', 'CDMA'];
+                    let chartid = 0;
+                    for (let i = 0; i < types.length; i++) {
+                        let filteredData = cycleData.filter(item => item[0] === i);
+
+                        if (filteredData.length > 0) {
+                            generatePieChart(chartIds[chartid], filteredData, time_header, types[i]);
+                            chartid += 1;
+                            if (types[i] === 'TIU' && time_header.includes('uArchRate/BW')) {
+                                createRateLine('rate-line-container', filteredData, 'TIU uArch Rate', cycleData);
+                            }
+                            console.log(i, chartid)
+                        }
+                    }
+                }
+
+            }, 20);
+        };
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                let previousTab = document.querySelector('.bg-r');
+                if (previousTab) previousTab.classList.remove('bg-r');
+                tab.classList.add('bg-r');
+            });
+        });
+    </script>
+</body>
+
+</html>

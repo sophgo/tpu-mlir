@@ -11,6 +11,8 @@
 from bmprofile_parser import BMProfileParser
 from bmprofile_generator import BMProfileGenerator
 from bmprofile_perfAI import BMProfileParserPerfAI
+import subprocess
+import os
 def bmprofile_analyze(input_dir:str, output_dir:str, out_format:str = "html", options = {}):
     parser  = BMProfileParser()
     parsed_data = parser.parse(input_dir)
@@ -35,4 +37,5 @@ def bmprofile_parse_perfAI(input_dir:str, output_dir:str, mark_str, arch="A2"):
     bmProfile = BMProfileParserPerfAI()
     bmProfile.parse(input_dir)
     bmProfile.to_txt(output_dir)
-
+    subprocess.run([f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} 2"],  shell=True)
+    subprocess.run([f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/perfAI_html.py {os.path.abspath(output_dir)} "],  shell=True)
