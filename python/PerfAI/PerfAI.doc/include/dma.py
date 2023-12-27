@@ -6,7 +6,6 @@
 import os
 
 import pandas as pd
-from decimal import Decimal
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
@@ -18,7 +17,7 @@ from utils.utils import *
 class DmaNode:
     def __init__(self, reg):
         self.datasize = int(reg['DMA data size(B)'])
-        self.cycle = int(reg['Simulator Cycle'])
+        self.cycle = int(reg['Asic Cycle'])
         self.direction = reg['Direction']
 
 
@@ -31,7 +30,7 @@ class Dma(object):
         """
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Simulator Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
                         'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
@@ -46,7 +45,7 @@ class Dma(object):
         self.core_id = str(core_id)
         self.height = None
         self.width = len(self.columns)
-        self.sim_cycle = 0
+        self.dma_cycle = 0
         self.working_cycle = 0
         self.ddr_total_datasize = 0
         self.ddr_total_cycle = 0
@@ -66,6 +65,9 @@ class Dma(object):
         self.sheet_name = None
         self.sheet_color = None
         self.writer = writer
+        self.start_time = sys.maxsize
+        self.end_time = 0
+        self.dma_time = 0
 
     def load(self, reg_info_file, dma_layer_map):
         """
@@ -128,43 +130,38 @@ class Dma(object):
             name_key = (int(reg_dict['cmd_type']))
             if reg_dict['cmd_type'] == '6':
                 reg_dict['Data Type'] = 'None'
-            if reg_dict['Simulator Cycle'].isnumeric():
-                self.sim_cycle += int(reg_dict['Simulator Cycle'])
+            if reg_dict['Asic Cycle'].isnumeric():
+                self.dma_cycle += int(reg_dict['Asic Cycle'])
             if int(reg_dict['cmd_type']) == 6:
                 # dma_sys do not transfer data
                 reg_dict['Direction'] = '-'
             if 'DDR' in reg_dict['Direction'] and reg_dict['DMA data size(B)'].isnumeric():
                 self.ddr_total_datasize += int(reg_dict['DMA data size(B)'])
-                self.ddr_total_cycle += float(reg_dict['Simulator Cycle'])
+                self.ddr_total_cycle += float(reg_dict['Asic Cycle'])
                 self.ddr_burst_length_sum += int(reg_dict['gmem_bl_sum'])
                 self.ddr_xact_cnt += int(reg_dict['gmem_xact_cnt'])
             elif 'L2' in reg_dict['Direction'] and reg_dict['DMA data size(B)'].isnumeric():
                 self.l2_total_datasize += int(reg_dict['DMA data size(B)'])
-                self.l2_total_cycle += float(reg_dict['Simulator Cycle'])
+                self.l2_total_cycle += float(reg_dict['Asic Cycle'])
             if int(reg_dict['cmd_type']) == 6 and int(reg_dict['cmd_special_function']) == 4:
-                self.wait_msg_total_time += int(reg_dict['Simulator Cycle'])
+                self.wait_msg_total_time += int(reg_dict['Asic Cycle'])
             if int(reg_dict['gmem_xact_cnt']) > 0:
-                reg_dict['AvgBurstLength'] = Decimal(
-                    int(reg_dict['gmem_bl_sum']) / int(reg_dict['gmem_xact_cnt'])).quantize(Decimal("0.00"))
-                reg_dict['Non32ByteRatio'] = Decimal(
-                    int(reg_dict['gmem_n32Ba_sa_cnt']) / int(reg_dict['gmem_xact_cnt'])).quantize(Decimal("0.00"))
-                reg_dict['MaskWriteRatio'] = Decimal(
-                    int(reg_dict['gmem_msk_wr_cnt']) / int(reg_dict['gmem_xact_cnt'])).quantize(Decimal("0.00"))
+                reg_dict['AvgBurstLength'] = get_ratio_float_2f(reg_dict['gmem_bl_sum'], reg_dict['gmem_xact_cnt'])
+                reg_dict['Non32ByteRatio'] = get_ratio_float_2f(reg_dict['gmem_n32Ba_sa_cnt'], reg_dict['gmem_xact_cnt'])
+                reg_dict['MaskWriteRatio'] = get_ratio_float_2f(reg_dict['gmem_msk_wr_cnt'], reg_dict['gmem_xact_cnt'])
             else:
                 reg_dict['AvgBurstLength'] = 0
                 reg_dict['Non32ByteRatio'] = 0
                 reg_dict['MaskWriteRatio'] = 0
-        self.working_cycle = self.sim_cycle - self.wait_msg_total_time
-        self.ddr_avg_bandwidth = str(
-            Decimal((self.ddr_total_datasize / self.ddr_total_cycle)).quantize(
-                Decimal("0.00"))) if self.ddr_total_cycle > 0 else 0
-        self.l2_avg_bandwidth = str(
-            Decimal((self.l2_total_datasize / self.l2_total_cycle)).quantize(
-                Decimal("0.00"))) if self.l2_total_cycle > 0 else 0
-        self.ddr_avg_burst_length = 0 if self.ddr_xact_cnt == 0 else \
-            Decimal((self.ddr_burst_length_sum / self.ddr_xact_cnt)).quantize(Decimal("0.00"))
+            self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
+            self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
+        self.dma_time = get_time_by_cycle(self.dma_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])
+        self.working_cycle = self.dma_cycle - self.wait_msg_total_time
+        self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize, self.ddr_total_cycle)
+        self.l2_avg_bandwidth = get_ratio_float_2f(self.l2_total_datasize, self.l2_total_cycle)
+        self.ddr_avg_burst_length = get_ratio_float_2f(self.ddr_burst_length_sum, self.ddr_xact_cnt)
         self.perf_dict = {
-            'simulatorCycle': [self.sim_cycle],
+            'AsicCycle': [self.dma_cycle],
             'workingCycle': [self.working_cycle],
             'totalDdrDataSize': [self.ddr_total_datasize],
             'totalL2DataSize': [self.l2_total_datasize],
@@ -249,7 +246,7 @@ class Dma(object):
                 ws.cell(h, w).font = DetailsStyle.title_font
         bandwidth_pos = 12
         tsk_typ_pos = 40
-        sim_cycle_pos = 11
+        dma_cycle_pos = 11
         avg_burst_length_pos = 14
         direction_pos = 13
         data_type_pos = 15
@@ -264,21 +261,21 @@ class Dma(object):
                 if 'DDR' in ws.cell(h + 2, direction_pos).value:
                     if float(ws.cell(h + 2, bandwidth_pos).value) < (ddr_max_bd * 0.5):
                         ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.red_light
-                        if int(ws.cell(h + 2, sim_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, sim_cycle_pos).fill = DetailsStyle.red_light
+                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
                     elif float(ws.cell(h + 2, bandwidth_pos).value) < (ddr_max_bd * 0.75):
                         ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.yellow_light
-                        if int(ws.cell(h + 2, sim_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, sim_cycle_pos).fill = DetailsStyle.red_light
+                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
                 elif 'L2' in ws.cell(h + 2, direction_pos).value:
                     if float(ws.cell(h + 2, bandwidth_pos).value) < (l2_max_bd * 0.5):
                         ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.red_light
-                        if int(ws.cell(h + 2, sim_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, sim_cycle_pos).fill = DetailsStyle.red_light
+                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
                     elif float(ws.cell(h + 2, bandwidth_pos).value) < (l2_max_bd * 0.75):
                         ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.yellow_light
-                        if int(ws.cell(h + 2, sim_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, sim_cycle_pos).fill = DetailsStyle.red_light
+                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
             # avg burst length
             if 'DDR' in ws.cell(h + 2, direction_pos).value:
                 if float(ws.cell(h + 2, avg_burst_length_pos).value) < ddr_max_bl:
@@ -299,7 +296,7 @@ class Dma(object):
         ws.cell(h, w).fill = DetailsStyle.red_light
         ws.cell(h, w).font = DetailsStyle.title_font
         ws.cell(h, w).alignment = DetailsStyle.center_align
-        h, w = 5, sim_cycle_pos
+        h, w = 5, dma_cycle_pos
         ws.cell(h, w).value = '搬运量太少'
         ws.cell(h, w).fill = DetailsStyle.red_light
         ws.cell(h, w).font = DetailsStyle.title_font

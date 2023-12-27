@@ -3,6 +3,17 @@
 # @Time    : 2023/8/7 11:23
 # @Author  : chongqing.zeng@sophgo.com
 # @Project: PerfAI
+
+"""
+Note: The functionality to generate summary and layer information
+    is temporarily not maintained due to the incomplete state of the
+    global.profile file. Once the global.profile file is updated or
+    completed, this feature can be revisited and implemented accordingly.
+    Please refer to the global.profile file for more details on its
+    current status and any updates that may be needed for the
+    generation of summary and layer information.
+"""
+
 from enum import Enum
 
 import pandas as pd
@@ -11,7 +22,7 @@ from openpyxl.utils import get_column_letter
 
 from definition.bm1684x_defs import Arch, DataType
 from definition.style import SummaryStyle
-from utils.utils import load_arch_lib, get_ratio_str, cycle_to_us, ops_to_tops, cycle_to_fps
+from utils.utils import load_arch_lib, get_ratio_str_3f, cycle_to_us, ops_to_tops, cycle_to_fps
 
 
 class GlobalInfo:
@@ -109,8 +120,8 @@ class Summary:
         self.layer_summary_map = dict()
         self.layer_summary_header = ["Function", "Algorithm Tops", "Algorithm Tops Ratio", "Weight Size(MB)",
                                      "uArch Tops",
-                                     "uArch URate", "uArch Tops Ratio", "Simulator Cycles", "Simulator Time(us)",
-                                     "Time Ratio", "Simulator FPS"]
+                                     "uArch URate", "uArch Tops Ratio", "ASIC Cycles", "ASIC Time(us)",
+                                     "Time Ratio", "ASIC FPS"]
         self.layer_summary_row_map = {
             "conv": "Conv",
             "conv2d": "Conv",
@@ -158,11 +169,11 @@ class Summary:
             layer_alg_ops = layer.alg_ops
             layer_arch_ops = layer.uarch_ops
             weight_size = layer.weight_size
-            layer_cycles = layer.sim_cycle
+            layer_cycles = layer.asic_cycle
             total_weight_size += weight_size
             total_alg_ops += layer_alg_ops
             total_arch_ops += layer_arch_ops
-            total_sim_cycles += layer_cycles
+            total_asic_cycles += layer_cycles
             item = [row_name, layer_alg_ops, 0, weight_size, layer_arch_ops, 0, 0, layer_cycles,
                     0, 0, layer_cycles]
             for i in range(1, len(item)):
@@ -170,19 +181,19 @@ class Summary:
         for row in self.layer_summary_rows:
             self.data_rows.append(self.layer_summary_map.get(row))
         for summary in self.data_rows:
-            summary[2] = get_ratio_str(summary[1], total_alg_ops)
-            summary[6] = get_ratio_str(summary[4], total_arch_ops)
-            summary[5] = get_ratio_str(summary[1], summary[4])
-            summary[8] = cycle_to_us(summary[7])
-            summary[9] = get_ratio_str(summary[7], total_sim_cycles)
+            summary[2] = get_ratio_str_3f(summary[1], total_alg_ops)
+            summary[6] = get_ratio_str_3f(summary[4], total_arch_ops)
+            summary[5] = get_ratio_str_3f(summary[1], summary[4])
+            summary[8] = cycle_to_us(summary[7], 1000)
+            summary[9] = get_ratio_str_3f(summary[7], total_asic_cycles)
             summary[1] = ops_to_tops(summary[1])
             summary[4] = ops_to_tops(summary[4])
             summary[10] = '-'
-        total_arch_urate = get_ratio_str(total_alg_ops, total_arch_ops)
+        total_arch_urate = get_ratio_str_3f(total_alg_ops, total_arch_ops)
         self.data_rows.append(
             ["Overall", ops_to_tops(total_alg_ops), "100%", total_weight_size, ops_to_tops(total_arch_ops),
              total_arch_urate, "100%",
-             total_sim_cycles, cycle_to_us(total_sim_cycles), "100%", cycle_to_fps(total_sim_cycles)])
+             total_asic_cycles, cycle_to_us(total_asic_cycles, 1000), "100%", cycle_to_fps(total_asic_cycles)])
 
     def write(self, chip_arch):
         network = chip_arch['network']

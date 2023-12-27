@@ -17,7 +17,7 @@ class TiuNode:
         self.alg_ops = int(reg['Alg Ops'])
         self.uarch_ops = int(reg['uArch Ops'])
         self.alg_cycle = int(reg['Alg Cycle'])
-        self.cycle = int(reg['Simulator Cycle'])
+        self.cycle = int(reg['Asic Cycle'])
         self.des_tsk_typ = int(reg['des_tsk_typ'])
         self.des_opd1_h = reg['des_opd1_h'] if 'des_opd1_h' in reg.keys() else None
         self.des_opd1_w = reg['des_opd1_w'] if 'des_opd1_w' in reg.keys() else None
@@ -35,7 +35,7 @@ class Tiu(object):
         """
         self.writer = writer
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
-                        'Alg Cycle', 'Simulator Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
+                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
                         'Initial Cycle Ratio', 'Data Type', 'des_cmd_id_dep',
                         'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
@@ -69,13 +69,16 @@ class Tiu(object):
         self.sheet_color = '008000'
         # The architecture parameters of the SG2260 are set to the initial values
         # It will be changed as the chip architecture parameters change
-        self.detail_spec = {'CHIP ARCH': ['sg2260'],
+        self.detail_spec = {
+                            'Platform': ['simulator'],
+                            'CHIP ARCH': ['sg2260'],
                             'Core Num': ['64'],
                             'NPU Num': ['64'],
                             'Cube IC Align(8bits)': ['32'],
                             'Cube OHOW Align': ['8'],
                             'Vector OHOW Align(8bits)': ['128'],
-                            'Frequency': ['1000'],
+                            'Tiu Frequency': ['1000'],
+                            'DMA Frequency': ['1000'],
                             'Dram Bandwidth': ['8533'],
                             'TPU Lmem Size': ['16777216']}
         self.kpi_desc = pd.DataFrame({'Field': [
@@ -94,19 +97,21 @@ class Tiu(object):
                 "other operations will be performed before execution. It's better to closer to 0%.",
                 'Data type transform, usually represents opd0->res0.']}, index=None)
         self.summary = dict()
-        self.sim_total_cycle = 0
-        self.sim_cycle = 0
+        self.tiu_cycle = 0
+        self.start_time = sys.maxsize
+        self.end_time = 0
+        self.tiu_time = 0
         self.alg_total_cycle = 0
         self.alg_total_ops = 0
         self.uArch_total_ops = 0
         self.wait_msg_time = 0
+        self.chip_arch_dict = None
 
-    def load(self, reg_info_file, sim_total_cycle_file, tiu_layer_map):
+    def load(self, reg_info_file, tiu_layer_map):
         """
         Load data from external file.
         :param tiu_layer_map:
         :param reg_info_file: file records register information, usually obtained by TPUPerf
-        :param sim_total_cycle_file: file records total simulator cycle including TIU and DMA obtained by TPUPerf
         :return: None
         """
         chip_arch_dict = None
@@ -154,18 +159,23 @@ class Tiu(object):
                         val = fields[1][:-1]
                         reg_dict[attr] = val
                         idx += 1
+                if 'Platform' not in chip_arch_dict.keys():
+                    chip_arch_dict['Platform'] = 'pmu'
                 self.reg_list.append(reg_dict)
-                self.detail_spec = {'CHIP ARCH': [chip_arch_dict['Chip Arch']],
+                self.detail_spec = {
+                    'Platform': [chip_arch_dict['Platform']],
+                    'CHIP ARCH': [chip_arch_dict['Chip Arch']],
                     'Core Num': [chip_arch_dict['Core Num']],
                     'NPU Num': [chip_arch_dict['NPU Num']],
                     'Cube IC Align(8bits)': [chip_arch_dict['Cube IC Align(8bits)']],
                     'Cube OHOW Align': [chip_arch_dict['Cube OHOW Align']],
                     'Vector OHOW Align(8bits)': [chip_arch_dict['Vector OHOW Align(8bits)']],
-                    'Frequency(MHz)': [chip_arch_dict['Frequency(MHz)']],
+                    'TIU Frequency(MHz)': [chip_arch_dict['TIU Frequency(MHz)']],
+                    'DMA Frequency(MHz)': [chip_arch_dict['DMA Frequency(MHz)']],
                     'DDR Frequency(MHz)': [chip_arch_dict['DDR Frequency']],
                     'TPU Lmem Size': [chip_arch_dict['Tpu Lmem Size']]}
         self.height = len(self.reg_list)
-        self.sim_total_cycle = get_simulator_total_cycle(sim_total_cycle_file)
+        self.chip_arch_dict = chip_arch_dict
         return chip_arch_dict
 
     def add_kpi_field(self):
@@ -175,9 +185,9 @@ class Tiu(object):
         """
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
-            if reg_dict['Simulator Cycle'].isnumeric() and not (reg_dict['des_tsk_typ'] == '15' and reg_dict['des_tsk_eu_typ'] == '9'):
+            if reg_dict['Asic Cycle'].isnumeric() and not (reg_dict['des_tsk_typ'] == '15' and reg_dict['des_tsk_eu_typ'] == '9'):
                 # wait msg time do not add to tiu cycles
-                self.sim_cycle += int(reg_dict['Simulator Cycle'])
+                self.tiu_cycle += int(reg_dict['Asic Cycle'])
             if reg_dict['Alg Cycle'].isnumeric():
                 self.alg_total_cycle += int(reg_dict['Alg Cycle'])
             if reg_dict['Alg Ops'].isnumeric():
@@ -191,7 +201,9 @@ class Tiu(object):
                 reg_dict['Data Type'] = data_type_dict[reg_dict['des_opt_res0_prec']] + \
                                         ' -> ' + data_type_dict[reg_dict['des_opt_res0_prec']]
             if int(reg_dict['des_tsk_typ']) == 15 and int(reg_dict['des_tsk_eu_typ']) == 9:
-                self.wait_msg_time += int(reg_dict['Simulator Cycle'])
+                self.wait_msg_time += int(reg_dict['Asic Cycle'])
+            self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
+            self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
             if reg_dict['Function Type'] not in self.perf_dict.keys():
                 func_dict = {
                     'Function Name': reg_dict['Function Type'],
@@ -203,8 +215,8 @@ class Tiu(object):
                     'uArch Ops': int(reg_dict['uArch Ops']),
                     'uArch URate': 0,
                     'uArch Ops Ratio': 0,
-                    'Simulator Cycle': int(reg_dict['Simulator Cycle']),
-                    'Simulator Cycle Ratio': 0
+                    'Asic Cycle': int(reg_dict['Asic Cycle']),
+                    'Asic Cycle Ratio': 0
                 }
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             else:
@@ -213,9 +225,10 @@ class Tiu(object):
                 func_dict['Alg Ops'] += int(reg_dict['Alg Ops'])
                 func_dict['uArch Ops'] += int(reg_dict['uArch Ops'])
                 func_dict['Alg Cycle'] += int(reg_dict['Alg Cycle'])
-                func_dict['Simulator Cycle'] += int(reg_dict['Simulator Cycle'])
+                func_dict['Asic Cycle'] += int(reg_dict['Asic Cycle'])
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             self.total_instr += 1
+        self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)'])
 
     def pop_data(self):
         tiu_instance_map = dict()
@@ -239,30 +252,21 @@ class Tiu(object):
             if 'addr' in col or 'mask' in col:
                 df[col] = int2Hex(df[col].values)
         self.summary = {
-            'simTotalCycle': [self.sim_total_cycle],
-            'simTiuCycle': [self.sim_cycle],
+            'tiuCycle': [self.tiu_cycle],
             'totalAlgCycle': [self.alg_total_cycle],
             'algTotalOps': [self.alg_total_ops],
             'totalUArchOps': [self.uArch_total_ops],
-            'uArchURate': '0.00%' if self.uArch_total_ops == 0 else [
-                str((Decimal((self.alg_total_ops / self.uArch_total_ops) * 100)).quantize(Decimal("0.00"))) + '%'],
+            'uArchURate': [get_ratio_str_2f_zero(self.alg_total_ops, self.uArch_total_ops)],
             'waitMsgTotalTime': [self.wait_msg_time]
         }
         for func in self.perf_dict.keys():
             tmp_func_dict = self.perf_dict[func]
             tmp_func_dict['Function Name'] = func
-            tmp_func_dict['Alg Ops Ratio'] = str(
-                (Decimal((tmp_func_dict['Alg Ops'] / self.alg_total_ops) * 100)).quantize(Decimal("0.00"))) + '%'
-            tmp_func_dict['Alg Cycle Ratio'] = str(
-                (Decimal((tmp_func_dict['Alg Cycle'] / self.alg_total_cycle) * 100)).quantize(Decimal("0.00"))) + '%'
-            tmp_func_dict['uArch URate'] = str(
-                (Decimal((tmp_func_dict['Alg Ops'] / tmp_func_dict['uArch Ops']) * 100)).quantize(
-                    Decimal("0.00"))) + '%'
-            tmp_func_dict['uArch Ops Ratio'] = str(
-                (Decimal((tmp_func_dict['uArch Ops'] / self.uArch_total_ops) * 100)).quantize(Decimal("0.00"))) + '%'
-            tmp_func_dict['Simulator Cycle Ratio'] = str(
-                (Decimal((tmp_func_dict['Simulator Cycle'] / self.sim_cycle) * 100)).quantize(
-                    Decimal("0.00"))) + '%'
+            tmp_func_dict['Alg Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'], self.alg_total_ops)
+            tmp_func_dict['Alg Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Cycle'], self.alg_total_cycle)
+            tmp_func_dict['uArch URate'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'], tmp_func_dict['uArch Ops'])
+            tmp_func_dict['uArch Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['uArch Ops'], self.uArch_total_ops)
+            tmp_func_dict['Asic Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Asic Cycle'], self.tiu_cycle)
             self.perf_dict[func] = tmp_func_dict
             self.stati_list.append(tmp_func_dict)
         self.perf_dict['Overall'] = {
@@ -273,11 +277,10 @@ class Tiu(object):
             'Alg Cycle': self.alg_total_cycle,
             'Alg Cycle Ratio': '100.00%',
             'uArch Ops': self.uArch_total_ops,
-            'uArch URate': '0.00%' if self.uArch_total_ops == 0 else str((Decimal((self.alg_total_ops / \
-                                    self.uArch_total_ops)* 100)).quantize(Decimal("0.00"))) + '%',
+            'uArch URate': get_ratio_str_2f_zero(self.alg_total_ops, self.uArch_total_ops),
             'uArch Ops Ratio': '100.00%',
-            'Simulator Cycle': self.sim_cycle,
-            'Simulator Cycle Ratio': '100.00%'
+            'Asic Cycle': self.tiu_cycle,
+            'Asic Cycle Ratio': '100.00%'
         }
         self.stati_list.append(self.perf_dict['Overall'])
         if len(df) > 0:

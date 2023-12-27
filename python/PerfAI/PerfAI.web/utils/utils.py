@@ -34,12 +34,5 @@ def intToHex(dataList):
     return newDataList
 
 
-def get_simulator_total_cycle(simulatorFile):
-    simulatorTotalCycle = 0
-    if os.path.exists(simulatorFile):
-        with open(simulatorFile) as f:
-            rows = f.readlines()
-            for row in rows:
-                if ':' in row:
-                    simulatorTotalCycle = int(row.split(': ')[1])
-    return simulatorTotalCycle
+def get_realtime_from_cycle(cycle, frequency):
+    return cycle / frequency * 1000 #ns

@@ -9,9 +9,9 @@ from tqdm import tqdm
 
 from include.dma import Gdma, Sdma, Cdma
 from include.instr_world import InstrWorld
-from include.simulator_summary import SimulatorSummary
+from include.asic_summary import AsicSummary
 from include.tiu import Tiu
-from utils.utils import get_instr_cols, get_instr_reg_list
+from utils.utils import get_instr_cols, get_instr_reg_list, get_active_cores
 from include.summary import GlobalInfo
 
 
@@ -22,7 +22,7 @@ def palace_holder(writer, splited, g_info):
         df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
         sheet_name = 'Layer by Layer Info'
         df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
-    sheet_name = 'Simulator Summary'
+    sheet_name = 'Asic Summary'
     df = pd.DataFrame()
     df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
     if not splited:
@@ -55,31 +55,13 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
     tiu_reg_file = 'tiuRegInfo'
     dma_reg_file = 'tdmaRegInfo'
     cdma_reg_file = 'cdmaRegInfo'
-    sim_cycle_file = 'simulatorTotalCycle.txt'
     tiu_reg_file = input_fold + tiu_reg_file
     dma_reg_file = input_fold + dma_reg_file
     cdma_reg_file = input_fold + cdma_reg_file
-    sim_cycle_file = input_fold + sim_cycle_file
     act_core_num = 0
-    cur_core_num = 0
-    for core_id in range(int(core_num)):
-        cur_tiu_reg_file = tiu_reg_file + '_' + str(core_id) + '.txt'
-        if os.path.exists(cur_tiu_reg_file) and os.path.getsize(cur_tiu_reg_file):
-            cur_core_num += 1
-    act_core_num = max(act_core_num, cur_core_num)
-    cur_core_num = 0
-    for core_id in range(int(core_num)):
-        cur_dma_reg_file = dma_reg_file + '_' + str(core_id) + '.txt'
-        if os.path.exists(cur_dma_reg_file) and os.path.getsize(cur_dma_reg_file):
-            cur_core_num += 1
-    act_core_num = max(act_core_num, cur_core_num)
-    cur_core_num = 0
-    for core_id in range(int(core_num)):
-        cur_cdma_reg_file = cdma_reg_file + '_' + str(core_id) + '.txt'
-        if os.path.exists(cur_cdma_reg_file) and os.path.getsize(cur_cdma_reg_file):
-            cur_core_num += 1
-    act_core_num = max(act_core_num, cur_core_num)
-    cur_core_num = 0
+    act_core_num = max(act_core_num, get_active_cores(tiu_reg_file, core_num))
+    act_core_num = max(act_core_num, get_active_cores(dma_reg_file, core_num))
+    act_core_num = max(act_core_num, get_active_cores(cdma_reg_file, core_num))
     if not act_core_num:
         print('Error, No engine reg info file input! Please check your input.')
         exit(-1)
@@ -93,11 +75,8 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
     for core_id in tqdm(range(act_core_num)):
         # tiu
         cur_tiu_reg_file = tiu_reg_file + '_' + str(core_id) + '.txt'
-        if not os.path.exists(cur_tiu_reg_file):
-            print('input Error! ' + cur_tiu_reg_file + 'do not exist, please check your input')
-            exit(-1)
         tiu_instance = Tiu(core_id, writer)
-        chip_arch = tiu_instance.load(cur_tiu_reg_file, sim_cycle_file, tiu_layer_map)
+        chip_arch = tiu_instance.load(cur_tiu_reg_file, tiu_layer_map)
         chip_arch_act = chip_arch_act if chip_arch_act else chip_arch
         tiu_instance.add_kpi_field()
         tiu_instance.write()
@@ -105,9 +84,6 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
             tiu_instance_map = tiu_instance.pop_data()
         # gdma
         cur_dma_reg_file = dma_reg_file + '_' + str(core_id) + '.txt'
-        if not os.path.exists(cur_dma_reg_file):
-            print('input Error! ' + cur_dma_reg_file + ' not exist, please check your input')
-            exit(-1)
         gdma_instance = Gdma(core_id, writer, 'GDMA')
         tmp_chip_arch = gdma_instance.load(cur_dma_reg_file, gdma_layer_map)
         chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
@@ -130,8 +106,6 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
                 chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
                 cdma_instance.add_kpi_field()
                 cdma_instance.write()
-            else:
-                print(cur_cdma_reg_file + ' not exist or without data, please confirm if CDMA is available')
             reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list + cdma_instance.reg_list
         else:
             reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list
@@ -147,7 +121,7 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         instr_instance = InstrWorld(instr_reg_list, instr_cols, writer, split_instr_world)
         instr_instance.write(out_file)
         # summary
-        summary_instance = SimulatorSummary(writer, tiu_instances, gdma_instances, sdma_instances, cdma_instances, act_core_num)
+        summary_instance = AsicSummary(writer, tiu_instances, gdma_instances, sdma_instances, cdma_instances, act_core_num)
         summary_instance.load(chip_arch_act)
         summary_instance.write()
     return tiu_instance_map, gdma_instance_map, chip_arch_act

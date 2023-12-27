@@ -2,6 +2,7 @@
 import pandas as pd
 from decimal import Decimal
 import os
+import sys
 
 from utils.utils import *
 
@@ -13,8 +14,8 @@ class DMA(): #GDMA/SDMA/CDMA
         self.linecount = 0
         self.actual_corenum = 0
         self.regList = []
-        self.sim_total_cycle_list = []
-        self.sim_dma_cycle_list = []
+        self.total_time_dict = {"start":[], "end":[]}
+        self.dma_cycle_list = []
         self.dma_ddr_total_datasize_list = []
         self.dma_l2_total_datasize_list = []
         self.dma_ddr_avg_bw_list = []
@@ -27,7 +28,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.frequency = 0
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Simulator Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'src_shape','dst_shape', 'index_shape', #(size, datatype, stride)
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
@@ -65,7 +66,7 @@ class DMA(): #GDMA/SDMA/CDMA
                         self.chipArgs[attr] = val
                     if f'__{self.dmaType}_REG_INFO__' in line:
                         break
-            self.frequency = int(self.chipArgs['Frequency(MHz)'])
+            self.frequency = int(self.chipArgs['DMA Frequency(MHz)'])
             coreNum = int(self.chipArgs['Core Num'])
             for coreId in range(int(coreNum)):
                 curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
@@ -76,13 +77,10 @@ class DMA(): #GDMA/SDMA/CDMA
                 dmaDf_list.append(self.process_data(coreId,engineId))
             return dmaDf_list
         else:
-            self.sim_dma_cycle_list.append(0)
+            self.dma_cycle_list.append(0)
             return []
 
     def process_data(self,coreId,engineId):
-        simulatorFile = os.path.join(self.dirpath, 'simulatorTotalCycle.txt')
-        simulatorTotalCycle = get_simulator_total_cycle(simulatorFile)
-        self.sim_total_cycle_list.append(simulatorTotalCycle)
         curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
         new_reglist = []
         with open(curDmaRegFile) as f:
@@ -113,31 +111,32 @@ class DMA(): #GDMA/SDMA/CDMA
             if reg_dict['Engine Id'] == engineId:
                 temp.append(reg_dict)
         new_reglist = temp
-        self.regList.append(new_reglist)
-        frequency = int(self.chipArgs['Frequency(MHz)'])
-        simulatorDmaCycle = 0
+        startTime = sys.maxsize
+        endTime = 0
+        DmaCycle = 0
         dmaDdrTotalDataSize = 0
         dmaL2TotalDataSize = 0
         dmaDdrCycle = 0
         dmaL2Cycle = 0
         dmaDdrBurstLength = 0
         dmaDdrXactCnt = 0
+        totalInstRegList = []
         for i in range(len(new_reglist)):
             regDict = new_reglist[i]
             if regDict['cmd_type'] == '6':
                 regDict['Data Type'] = 'None'
             if int(regDict['cmd_type']) == 6: # dma_sys do not transfer data
                 regDict['Direction'] = '-'
-            if regDict['Simulator Cycle'].isnumeric():
-                simulatorDmaCycle += int(regDict['Simulator Cycle'])
+            if regDict['Asic Cycle'].isnumeric():
+                DmaCycle += int(regDict['Asic Cycle'])
             if 'DDR' in regDict['Direction'] and regDict['DMA data size(B)'].isnumeric():
                 dmaDdrTotalDataSize += int(regDict['DMA data size(B)'])
-                dmaDdrCycle += float(regDict['Simulator Cycle'])
+                dmaDdrCycle += float(regDict['Asic Cycle'])
                 dmaDdrBurstLength += int(regDict['gmem_bl_sum'])
                 dmaDdrXactCnt += int(regDict['gmem_xact_cnt'])
             elif 'L2' in regDict['Direction'] and regDict['DMA data size(B)'].isnumeric():
                 dmaL2TotalDataSize += int(regDict['DMA data size(B)'])
-                dmaL2Cycle += float(regDict['Simulator Cycle'])
+                dmaL2Cycle += float(regDict['Asic Cycle'])
             if int(regDict['gmem_xact_cnt']) > 0:
                 regDict['AvgBurstLength'] = Decimal(
                     int(regDict['gmem_bl_sum']) / int(regDict['gmem_xact_cnt'])).quantize(Decimal("0.00"))
@@ -149,16 +148,24 @@ class DMA(): #GDMA/SDMA/CDMA
                 regDict['AvgBurstLength'] = 0
                 regDict['Non32ByteRatio'] = 0
                 regDict['MaskWriteRatio'] = 0
+            regDict['Start Cycle'] = get_realtime_from_cycle(int(regDict['Start Cycle']),self.frequency)
+            regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency)
+            startTime = min(startTime, int(regDict['Start Cycle']))
+            endTime = max(endTime, int(regDict['End Cycle']))
+            totalInstRegList.append(regDict)
 
-        self.sim_dma_cycle_list.append(simulatorDmaCycle)
+        self.regList.append(totalInstRegList)
+        self.total_time_dict["start"].append(startTime)
+        self.total_time_dict["end"].append(endTime)
+        self.dma_cycle_list.append(DmaCycle)
         self.dma_ddr_total_datasize_list.append(dmaDdrTotalDataSize)
         self.dma_l2_total_datasize_list.append(dmaL2TotalDataSize)
         if dmaDdrCycle > 0:
-            dmaDdrTotalBandWidth = str(Decimal((dmaDdrTotalDataSize / dmaDdrCycle * frequency / 1000)).quantize(Decimal("0.00")))
+            dmaDdrTotalBandWidth = str(Decimal((dmaDdrTotalDataSize / dmaDdrCycle * self.frequency / 1000)).quantize(Decimal("0.00")))
         else:
             dmaDdrTotalBandWidth = 0
         if dmaL2Cycle > 0:
-            dmaL2TotalBandWidth = str(Decimal((dmaL2TotalDataSize / dmaL2Cycle * frequency / 1000)).quantize(Decimal("0.00")))
+            dmaL2TotalBandWidth = str(Decimal((dmaL2TotalDataSize / dmaL2Cycle * self.frequency / 1000)).quantize(Decimal("0.00")))
         else:
             dmaL2TotalBandWidth = 0
         self.ddr_total_cycle += dmaDdrCycle
@@ -170,7 +177,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.total_burst_length += dmaDdrBurstLength
         self.total_xact_cnt += dmaDdrXactCnt
 
-        dmaDf = pd.DataFrame(new_reglist)
+        dmaDf = pd.DataFrame(totalInstRegList)
         new_df = pd.DataFrame()
         if len(dmaDf) > 0:
             for column in self.columns:

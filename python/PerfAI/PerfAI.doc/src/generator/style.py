@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from include.summary import Summary
 from include.dma import Gdma, Sdma, Cdma
-from include.simulator_summary import SimulatorSummary
+from include.asic_summary import AsicSummary
 from include.tiu import Tiu
 from include.layer import TotalLayerInfo
 
@@ -20,7 +20,7 @@ def set_details_style(out_file, core_num, chip_arch):
         Cdma.set_style(out_file, core_id, chip_arch=chip_arch)
 
 def set_sim_summary_style(out_file, core_num, chip_arch):
-    SimulatorSummary.set_style(out_file, chip_arch=chip_arch)
+    AsicSummary.set_style(out_file, chip_arch=chip_arch)
 
 def set_layer_style(out_file):
     TotalLayerInfo.set_style(out_file)

@@ -297,7 +297,6 @@
     <script>
         //echarts.debugMode = true;
         var all_charts = []
-        var filtered_data = []
 
         function set_chart_time_range(begin_usec, end_usec, source) {
             for (let c of all_charts) {
@@ -305,7 +304,20 @@
                 if (c && c.set_time_range) c.set_time_range(begin_usec, end_usec)
             }
         }
+
+        function usec_str(u) {
+            if (u < 1000) {
+                return `${u.toFixed(3)}ns`
+            } else if (u < 1000000) {
+                return `${(u / 1000).toFixed(3)}us`
+            } else if (u < 1000000000) {
+                return `${(u / 1000000).toFixed(3)}ms`
+            } else { //if(u<1000000000) {
+                return `${(u / 1000000000).toFixed(3)}ms`
+            }
+        }
     </script>
+
     <script>
         function configsTable(configs) {
             console.log("im calling")
@@ -938,16 +950,6 @@
         }
     </script>
     <script type="text/javascript">
-        function usec_str(u) { //删去了后缀cycle单位
-            if (u < 1000) { //u.toFixed()
-                return `${u.toFixed(0)}`
-            } else if (u < 1000000) {
-                return `${u.toFixed(0)}`
-            } else { //if(u<10000000000000000) {
-                return `${(u.toFixed(0))}`
-            }
-        }
-
         function renderItem(params, api) {
             if (!api.value || !api.value.length) return false
             let categoryIndex = api.value(0);
@@ -1167,10 +1169,10 @@
                     formatter: function(params) {
                         if (!params.value || !params.value.length || params.value.length != header.length) return ""
                         let tip = params.marker + "Func_type: " + params.name
-                            //tip += `<br>begin: ${usec_str(params.value[1])}`
-                            //tip += `<br>end: ${usec_str(params.value[2])}`
-                            //tip += `<br>func_type: ${params.value[4]}`
-                        for (let i = 1; i < header.length - 2; i++) {
+                        tip += `<br>begin: ${usec_str(params.value[1])}`
+                        tip += `<br>end: ${usec_str(params.value[2])}`
+                        tip += `<br>Duratuion: ${usec_str(params.value[3])}`
+                        for (let i = 4; i < header.length - 2; i++) {
                             if (i === 5) continue //height
                             if (params.value[i] === "") continue
                             tip += `<br>${header[i]}: ${params.value[i]}`
@@ -1233,7 +1235,7 @@
                     scale: true,
                     axisLabel: {
                         formatter: function(val) {
-                            return (val);
+                            return usec_str(val);
                         }
                     },
                 },
@@ -1593,7 +1595,12 @@
 
                 for (let c = 0; c < row_data.length; c++) {
                     let col_body = document.createElement("td")
-                    col_body.innerHTML = row_data[c];
+                    //col_body.innerHTML = row_data[c];
+                    if (usec_cols.indexOf(c) >= 0 && (c === 1 || c === 2 || c === 3)) {
+                        col_body.innerHTML = usec_str(row_data[c])
+                    } else {
+                        col_body.innerHTML = row_data[c]
+                    }
                     row_body.appendChild(col_body)
                 }
             }
@@ -1601,9 +1608,8 @@
         }
 
 
-        function updateChartColor(chartHandle, begin, end) {
+        function updateChartColor(chartHandle, data, begin, end) {
             if (!chartHandle) return;
-
             // Find the index of the data item that matches the begin and end times
             let matchedIndex = data.findIndex(item => item[1] === begin && item[2] === end);
             console.log("matchedIndex for table to chart:", matchedIndex)
@@ -2830,7 +2836,7 @@
         var lmemData = {};
         var laneData = {};
         var base;
-        var dataCount = Object.keys(window).filter(key => key.startsWith('time_data')).length;
+        const dataCount = Object.keys(window).filter(key => key.startsWith('time_data')).length;
         console.log("dataCount", dataCount)
         for (let i = 0; i < dataCount; i++) {
             cycleData[i] = window['time_data' + i];
@@ -2917,15 +2923,19 @@
         function handleTabClick(e, cycleData) {
             const tabName = e.target.outerText;
             const isOverview = tabName === "Overall View";
-            const isCombinedTab = tabName === "Time Chart Combined";
+            const isCombinedTab = tabName === "Time Chart Combined" && dataCount > 1;
 
             // 重置和显示/隐藏元素
             resetAndToggleElements(isOverview, isCombinedTab);
 
             if (isOverview) {
-                console.log("我在overall page");
                 // 处理总览标签页逻辑
+                console.log("我在overall page");
                 handleOverviewTab(cycleData);
+            } else if (isCombinedTab) {
+                // 处理时间图组合标签页逻辑
+                console.log("我在Time Chart Combined page")
+                handleCombinedTab(cycleData);
             } else {
                 // 处理核心标签页逻辑
                 console.log("我在core page")
@@ -2953,7 +2963,9 @@
             document.getElementById('summary-table').style.display = isOverview ? 'block' : 'none';
             document.getElementById('msg-checkbox').style.display = isOverview ? 'block' : 'none';
             document.getElementById('pie-chart-container').style.display = !isCombinedTab && !isOverview ? 'block' : 'none';
-            document.getElementById('comparison-content').style.display = isCombinedTab ? 'block' : 'none';
+            if (dataCount > 1) {
+                document.getElementById('comparison-content').style.display = isCombinedTab ? 'block' : 'none';
+            }
             document.getElementById('bw-chart').style.display = 'none';
             document.getElementById("rate-line-container").style.display = "none";
             if (document.getElementById("tiu_uarch_rate").checked) {
@@ -3084,7 +3096,7 @@
                 document.querySelector("#show_data_table").onchange = function(e) {
                     let container_id = "data-list"
                     if (e.target.checked) {
-                        showFilterDataTable(container_id, time_header, filtered_data, "Cycle Information", categories, 0)
+                        showFilterDataTable(container_id, time_header, cycleData, "Cycle Information", categories, 0)
                     } else {
                         document.getElementById(container_id).style = "display:none"
                     }
