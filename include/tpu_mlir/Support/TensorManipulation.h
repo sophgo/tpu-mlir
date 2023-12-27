@@ -19,37 +19,10 @@ namespace tpu_mlir {
 using namespace llvm;
 
 template <typename DType>
-class Tensor {
+struct TensorT {
   SmallVector<int64_t> strides;
   SmallVector<int64_t> shape;
   std::vector<DType> data;
-
-public:
-  Tensor() = default;
-
-  template <typename T>
-  Tensor(const std::vector<DType> &source, std::initializer_list<T> _shape) {
-    for (auto rank : _shape) {
-      shape.push_back(rank);
-    }
-    setStrides();
-    data = source;
-  }
-
-  template <typename T>
-  Tensor(const std::vector<DType> &source, ArrayRef<T> _shape) {
-    for (auto rank : _shape) {
-      shape.push_back(rank);
-    }
-    setStrides();
-    data = source;
-  }
-
-  std::vector<DType> &getData() { return data; }
-  SmallVector<int64_t> &getShape() { return shape; }
-  SmallVector<int64_t> &getStrides() { return strides; }
-
-  DType &operator[](size_t n) { return data[n]; }
 
   void setStrides() {
     auto dims = shape.size();
@@ -73,29 +46,8 @@ public:
       shape.push_back(rank);
       size *= rank;
     }
-    setStrides();
     data.resize(size);
-  }
-
-  template <typename T>
-  Tensor(const std::vector<DType> &source, std::initializer_list<T> _shape,
-         std::initializer_list<T> _strides) {
-    assert(_shape.size() == _strides.size());
-    auto dims = _shape.size();
-    shape = std::vector(_shape);
-    strides = std::vector(_strides);
-  }
-
-  Tensor(Tensor &&other) {
-    data = std::move(other.data);
-    strides = std::move(other.strides);
-    shape = std::move(other.shape);
-  }
-
-  void swap(Tensor &other) {
-    data.swap(other.data);
-    strides.swap(other.strides);
-    shape.swap(other.shape);
+    setStrides();
   }
 
   template <typename T>
@@ -110,6 +62,15 @@ public:
     strides.clear();
     shape.clear();
   }
+
+  void swap(TensorT &other) {
+    data.swap(other.data);
+    strides.swap(other.strides);
+    shape.swap(other.shape);
+  }
+
+  DType &operator[](size_t n) { return data[n]; }
+
   void dump() {
     llvm::errs() << "shape: ";
     for (auto i : shape) {
@@ -159,51 +120,94 @@ public:
 };
 
 template <typename DType>
-class TensorManipulation {
-
+class Tensor {
   using Dim2Type = std::array<int64_t, 2>;
   using DimType = std::variant<int64_t, Dim2Type>;
 
-  Tensor<DType> target;
-  Tensor<DType> source;
+  TensorT<DType> exchange;
+  TensorT<DType> storage;
   SmallVector<int64_t> copySize;
   SmallVector<DimType> compDims;
 
 public:
-  template <typename T>
-  TensorManipulation(const std::vector<DType> &source,
-                     std::initializer_list<T> shape)
-      : source(source, shape){};
-
-  template <typename T>
-  TensorManipulation(const std::vector<DType> &source, ArrayRef<T> shape)
-      : source(source, shape){};
-
-  std::vector<DType> getData() { return std::move(source.getData()); }
-  Tensor<DType> getTensor() { return std::move(source); }
-
   template <typename... Args>
-  TensorManipulation &reshape(Args... args) {
+  Tensor &reshape(Args... args) {
     (dimRecord(args), ...);
     return reshape();
   }
 
   template <typename... Args>
-  TensorManipulation &resize(Args... args) {
+  Tensor &resize(Args... args) {
     (dimRecord(args), ...);
     return resize();
   }
 
   template <typename... Args>
-  TensorManipulation &slice(Args... args) {
+  Tensor &slice(Args... args) {
     (dimRecord(args), ...);
     return slice();
   }
 
   template <typename... Args>
-  TensorManipulation &transpose(Args... args) {
+  Tensor &transpose(Args... args) {
     (dimRecord(args), ...);
     return transpose();
+  }
+
+public:
+  Tensor() = default;
+
+  template <typename T>
+  Tensor(const std::vector<DType> &source) {
+    storage.data = source;
+  }
+
+  Tensor(const TensorT<DType> &&source) { storage = std::move(source); }
+
+  template <typename T>
+  Tensor(const std::vector<DType> &source, std::initializer_list<T> shape) {
+    for (auto rank : shape) {
+      storage.shape.push_back(rank);
+    }
+    storage.setStrides();
+    storage.data = source;
+  }
+
+  template <typename T>
+  Tensor(const std::vector<DType> &source, ArrayRef<T> shape) {
+    for (auto rank : shape) {
+      storage.shape.push_back(rank);
+    }
+    storage.setStrides();
+    storage.data = source;
+  }
+
+  Tensor(const Tensor &&other) { storage = std::move(other.storage); }
+
+  std::vector<DType> &getData() { return storage.data; }
+  SmallVector<int64_t> &getShape() { return storage.shape; }
+  SmallVector<int64_t> &getStrides() { return storage.strides; }
+
+  DType &operator[](size_t n) { return storage.data[n]; }
+
+  size_t size() { return storage.size(); }
+  void dump() { return storage.dump(); }
+
+  template <typename NewDType>
+  Tensor<NewDType> asDType() {
+    assert(sizeof(DType) * storage.shape.back() >= sizeof(NewDType));
+    assert((sizeof(DType) * storage.shape.back() % sizeof(NewDType)) == 0);
+
+    auto new_shape = storage.shape;
+
+    float scale = (float)sizeof(DType) / sizeof(NewDType);
+    new_shape.back() *= scale;
+    TensorT<NewDType> outData;
+    outData.reshape(new_shape);
+    std::memcpy(outData.data.data(), storage.data.data(),
+                size() * sizeof(DType));
+    Tensor<NewDType> out(std::move(outData));
+    return std::move(out);
   }
 
 private:
@@ -217,15 +221,14 @@ private:
     compDims.push_back(rank);
   }
 
-  TensorManipulation &reset() {
+  Tensor &reset() {
     copySize.clear();
     compDims.clear();
     return *this;
   }
 
-  TensorManipulation &resize() {
-    assert(compDims.size() == source.getShape().size());
-
+  Tensor &resize() {
+    assert(compDims.size() == storage.shape.size());
     SmallVector<int64_t> flattenShape;
     SmallVector<int64_t> shape;
     for (int i = 0, n = compDims.size(); i < n; i++) {
@@ -238,31 +241,31 @@ private:
         shape.push_back(pack[0]);
         shape.push_back(pack[1]);
       }
-      copySize.push_back(std::min(flattenShape.back(), source.getShape()[i]));
+      copySize.push_back(std::min(flattenShape.back(), storage.shape[i]));
     }
-    target.reshape(flattenShape);
-    target.resetData(0);
+    exchange.reshape(flattenShape);
+    exchange.resetData(0);
     doCopy();
-    target.reshape(shape);
-    source.swap(target);
+    exchange.reshape(shape);
+    storage.swap(exchange);
     return reset();
   }
 
-  TensorManipulation &reshape() {
+  Tensor &reshape() {
     SmallVector<int64_t> shape;
     size_t size = 1;
     for (auto &rank : compDims) {
       auto value = std::get<int64_t>(rank);
-      shape.push_back(value);
       size *= value;
+      shape.push_back(value);
     }
-    assert(size == source.size() && "the element size does not match.");
-    source.reshape(shape);
+    assert(size == storage.size() && "the element size does not match.");
+    storage.reshape(shape);
     return reset();
   }
 
-  TensorManipulation &slice() {
-    assert(compDims.size() == source.getShape().size() &&
+  Tensor &slice() {
+    assert(compDims.size() == storage.shape.size() &&
            "dimension does not match.");
     int64_t offset = 0;
     SmallVector<int64_t> shape;
@@ -271,27 +274,27 @@ private:
         shape.push_back(*value);
       } else {
         auto pack = std::get<Dim2Type>(rank);
-        offset += source.getStrides()[index] * pack[0];
+        offset += storage.strides[index] * pack[0];
         shape.push_back(pack[1]);
       }
     }
-    target.reshape(shape);
-    target.resetData(0);
+    exchange.reshape(shape);
+    exchange.resetData(0);
     copySize = shape;
     doCopy(0, 0, offset);
-    source.swap(target);
+    storage.swap(exchange);
     return reset();
   }
 
-  TensorManipulation &transpose() {
-    assert(compDims.size() == source.getShape().size() &&
+  Tensor &transpose() {
+    assert(compDims.size() == storage.shape.size() &&
            "dimension does not match.");
     SmallVector<int64_t> shape;
     SmallVector<int64_t> strides;
     for (auto &_dim : compDims) {
       auto dim = std::get<int64_t>(_dim);
-      strides.push_back(source.getStrides()[dim]);
-      shape.push_back(source.getShape()[dim]);
+      strides.push_back(storage.strides[dim]);
+      shape.push_back(storage.shape[dim]);
     }
 
     copySize.push_back(1);
@@ -305,28 +308,76 @@ private:
     }
     copySize = SmallVector<int64_t>(llvm::reverse(copySize));
 
-    target.reshape(shape);
-    target.resetData(0);
+    exchange.reshape(shape);
+    exchange.resetData(0);
 
-    source.reshape(shape);
-    source.setStrides(strides);
+    storage.reshape(shape);
+    storage.setStrides(strides);
     doCopy();
-    source.swap(target);
+    storage.swap(exchange);
     return reset();
   }
 
-private:
   void doCopy(int dim = 0, size_t dest_offset = 0, size_t source_offset = 0) {
     if (dim == copySize.size() - 1) {
-      std::memcpy(&target[dest_offset], &source[source_offset],
+      std::memcpy(&exchange[dest_offset], &storage[source_offset],
                   copySize[dim] * sizeof(DType));
       return;
     }
 
     for (int i = 0, n = copySize[dim]; i < n; i++) {
-      doCopy(dim + 1, dest_offset + i * target.getStrides()[dim],
-             source_offset + i * source.getStrides()[dim]);
+      doCopy(dim + 1, dest_offset + i * exchange.strides[dim],
+             source_offset + i * storage.strides[dim]);
     }
+  }
+
+  template <typename T>
+  Tensor &constBinary(T other, std::function<DType(DType, T)> &&func) {
+    static_assert(std::is_integral<DType>::value);
+    static_assert(std::is_integral<T>::value);
+    for (size_t i = 0, n = size(); i < n; i++) {
+      getData()[i] = func(getData()[i], other);
+    }
+    return *this;
+  }
+
+public:
+  template <typename T>
+  Tensor &operator<<=(T leftShift) {
+    return constBinary<T>(leftShift, [](DType a, T b) { return a << b; });
+  }
+
+  template <typename T>
+  Tensor &operator>>=(T rightShift) {
+    return constBinary<T>(rightShift, [](DType a, T b) { return a >> b; });
+  }
+
+  template <typename T>
+  Tensor &operator|=(T other) {
+    return constBinary<T>(other, [](DType a, T b) { return a | b; });
+  }
+
+  template <typename T>
+  Tensor &operator&=(T other) {
+    return constBinary<T>(other, [](DType a, T b) { return a & b; });
+  }
+
+  Tensor &operator&=(Tensor &other) {
+    assert(other.size() == size());
+    auto otherData = other.getData();
+    for (size_t i = 0, n = size(); i < n; i++) {
+      storage.data[i] &= otherData[i];
+    }
+    return *this;
+  }
+
+  Tensor &operator|=(Tensor &other) {
+    assert(other.size() == size());
+    auto otherData = other.getData();
+    for (size_t i = 0, n = size(); i < n; i++) {
+      storage.data[i] |= otherData[i];
+    }
+    return *this;
   }
 };
 
