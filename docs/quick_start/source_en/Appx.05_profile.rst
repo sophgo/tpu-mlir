@@ -1,6 +1,6 @@
 .. _profile:
 
-Appendix.06：TPU Profile Tool Usage
+Appendix.05：TPU Profile Tool Usage
 ========================================
 
 This chapter mainly introduces how to use Profile data and Tensor Computing Processor Profile tools to visualize the complete running process of the model to facilitate model performance analysis.

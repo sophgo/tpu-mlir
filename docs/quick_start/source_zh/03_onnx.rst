@@ -59,7 +59,8 @@
 source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
 
 .. code ::
-tpu_mlir
+
+  tpu_mlir
     ├── bin
     ├── customlayer
     ├── docs
@@ -71,6 +72,7 @@ tpu_mlir
     ├── entryconfig.py
     ├── __init__.py
     └── __version__
+
 
 
 ONNX转MLIR

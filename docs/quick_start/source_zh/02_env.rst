@@ -1,7 +1,9 @@
 开发环境配置
 ============
-首先检查当前系统环境是否满足ubuntu 22.04和python 3.10。如不满足，请进行下一节*基础环境配置*；如满足，直接跳至*tpu_mlir安装*。
+首先检查当前系统环境是否满足ubuntu 22.04和python 3.10。如不满足，请进行下一节
+:ref:`基础环境配置 <env setup>` ；如满足，直接跳至 :ref:`tpu_mlir 安装 <install tpu_mlir>` 。
 
+.. _env setup:
 
 基础环境配置
 ------------------
@@ -41,9 +43,14 @@
 后文假定用户已经处于docker里面的/workspace目录。
 
 
+.. _install tpu_mlir:
+
 tpu_mlir安装
 ------------------
-目前暂不支持直接从pypi上下载并安装，请从Github的Assets处下载tpu_mlir-*-py3-none-any.whl，然后使用pip安装:
+
+
+目前暂不支持直接从pypi上下载并安装，请从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_
+处下载最新tpu_mlir-\*-py3-none-any.whl，然后使用pip安装:
 
 
 .. code-block:: shell
@@ -62,7 +69,7 @@ tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或to
 
    $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
-目前支持5中配置:
+目前支持5种配置:
 *onnx*, *torch*, *tensorflow*, *caffe*, *paddle*。
 或者可使用下面命令安装全部依赖环境:
 
@@ -72,7 +79,7 @@ tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或to
 
 
 .. .. [#whl安装] 当本地有tpu_mlir-{version}.whl文件时，也可以使用以下命令进行安装。
-   
+
 ..    .. code :: console
 
 ..       $ pip install path/to/tpu_mlir-{version}.whl[all]

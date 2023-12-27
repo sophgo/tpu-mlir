@@ -49,7 +49,8 @@ source_dir/source_file are the relative path to the package path of tpu_mlir,
 and the dir structure of tpu_mlir are as follows:
 
 .. code ::
-tpu_mlir
+
+  tpu_mlir
     ├── bin
     ├── customlayer
     ├── docs
