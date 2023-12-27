@@ -28,6 +28,19 @@ void ReshapeTryLowering::Lowering(PatternRewriter &rewriter,
                                                   op.getOperands(), attrs);
 }
 
+static bool check_unlowering(mlir::Operation *op) {
+  if (!module::isBM1688())
+    return false;
+
+  for (auto &use: cast<top::ReshapeOp>(op).getOutput().getUses()) {
+    if (isa<top::MatMulOp, tpu::MatMulOp>(use.getOwner())
+        && use.getOperandNumber() == 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
   lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
@@ -43,12 +56,20 @@ void ReshapeLowering::LoweringINT4(PatternRewriter &rewriter, top::ReshapeOp op,
 }
 void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ReshapeOp op) const {
-  lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
+  if (check_unlowering(op.getOperation()))
+    //trick for A2
+    lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
+  else
+    lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
-  lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
+  if (check_unlowering(op.getOperation()))
+    //trick for A2
+    lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
+  else
+    lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringF8(PatternRewriter &rewriter,
