@@ -1146,7 +1146,18 @@ void ConvertTopToTpu::cast_process() {
       } else if (is_tpu || isa<ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
-          if (module::isWeight(opd) || module::isNone(opd)) {
+          auto defByWeight = [&](auto &&m, Operation *op) {
+            if (!op)
+              return false;
+            if (isa<top::WeightOp>(op))
+              return true;
+            else if (!isa<top::ReshapeOp, tpu::ReshapeOp>(op))
+              return false;
+            else
+              return m(m, op->getOperand(0).getDefiningOp());};
+          if (module::isWeight(opd)
+              || module::isNone(opd)
+              || defByWeight(defByWeight, opd.getDefiningOp())) {
             continue;
           }
           auto inner_requant = op->getAttr("quant_inner_requant");
