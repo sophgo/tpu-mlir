@@ -99,59 +99,28 @@ class BDCommandParser():
     return self.ctx.decoder.decode_tiu_cmds(tmp)
 
 DMA_ARCH = {
-  "Chip Arch": "A2",
+	"Chip Arch": "A2",
+	"Platform": "ASIC",
 	"Core Num": 2,
 	"NPU Num": 32,
 	"Tpu Lmem Size": 4194304,
 	"Tpu Lmem Addr Width(bits)": 17,
 	"Tpu Bank Addr Width(bits)": 13,
 	"Execution Unit Number(int8)": 16,
-	"Bus Max Burst": 8,
+	"Bus Max Burst": 16,
 	"L2 Max Burst": 0,
 	"Bus Bandwidth": 64,
-	"DDR Frequency": 2222,
-	"DDR Max BW(GB/s)": 15.9984,
+	"DDR Frequency": 4266,
+	"DDR Max BW(GB/s)": 30.7152,
 	"L2 Max BW(GB/s)": 0,
 	"Cube IC Align(8bits)": 32,
 	"Cube OHOW Align": 4,
-	"Vector OHOW Align(8bits)": 32,
-	"Frequency(MHz)": 750}
+	"Vector OHOW Align(8bits)": 16,
+	"TIU Frequency(MHz)": 900,
+	"DMA Frequency(MHz)": 750}
 
-TIU_ARCH = {
-  "Chip Arch": "A2",
-	"Core Num": 2,
-	"NPU Num": 32,
-	"Tpu Lmem Size": 4194304,
-	"Tpu Lmem Addr Width(bits)": 17,
-	"Tpu Bank Addr Width(bits)": 13,
-	"Execution Unit Number(int8)": 16,
-	"Bus Max Burst": 8,
-	"L2 Max Burst": 0,
-	"Bus Bandwidth": 64,
-	"DDR Frequency": 2222,
-	"DDR Max BW(GB/s)": 15.9984,
-	"L2 Max BW(GB/s)": 0,
-	"Cube IC Align(8bits)": 32,
-	"Cube OHOW Align": 4,
-	"Vector OHOW Align(8bits)": 32,
-	"Frequency(MHz)": 900}
+TIU_ARCH = DMA_ARCH
 
-TIU_REG = """__TIU_REG_INFO__
-	Engine Id: 1
-	Core Id: {}
-	Alg Cycle: {}
-	Alg Ops: 100
-	uArch Ops: 100
-	uArch Rate: 100%
-	Function Name: {}
-	Function Type: {}
-	Start Cycle: {}
-	End Cycle: {}
-	Cmd Id: {}
-	Simulator Cycle: {}
-	Initial Cycle Ratio: 0%
-	Bank Conflict Ratio: 0%
-"""
 def get_dma_info(monitor_info, reg_info):
   _reg_info = reg_info
   reg_info = reg_info.reg
@@ -185,15 +154,15 @@ def get_dma_info(monitor_info, reg_info):
   dma_info["End Cycle"] = monitor_info.inst_end_time
   dma_info["Cmd Id"] = monitor_info.inst_id + 1
   dma_info["Data Type"] = data_type.name
-  dma_info["Simulator Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
+  dma_info["Asic Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
 
   dma_info["gmem_xfer_bytes(B)"] = monitor_info.d0_aw_bytes + monitor_info.d1_aw_bytes + monitor_info.d0_ar_bytes + monitor_info.d1_ar_bytes
-  dma_info["gmem_bandwidth"] = dma_info["gmem_xfer_bytes(B)"] / dma_info["Simulator Cycle"]
+  dma_info["gmem_bandwidth"] = dma_info["gmem_xfer_bytes(B)"] / dma_info["Asic Cycle"]
   dma_info["gmem_dma_data_size(B)"] = max(reg_info.src_nsize * reg_info.src_csize * reg_info.src_hsize * reg_info.src_wsize,
                                         reg_info.dst_nsize * reg_info.dst_csize * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
   dma_info["gmem_xact_cnt"] = (monitor_info.d0_ar_bytes + monitor_info.d0_aw_bytes + monitor_info.d1_ar_bytes + monitor_info.d1_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
   dma_info["lmem_xfer_bytes"] = monitor_info.fmem_aw_bytes + monitor_info.fmem_ar_bytes
-  dma_info["lmem_bandwidth"] = dma_info["lmem_xfer_bytes"] / dma_info["Simulator Cycle"]
+  dma_info["lmem_bandwidth"] = dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"]
   dma_info["lmem_dma_data_size(B)"] = max(reg_info.src_nsize * reg_info.src_csize * reg_info.src_hsize * reg_info.src_wsize,
                                         reg_info.dst_nsize * reg_info.dst_csize * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
   dma_info["lmem_xact_cnt"] = (monitor_info.fmem_ar_bytes + monitor_info.fmem_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
@@ -241,7 +210,7 @@ def get_tiu_info(monitor_info, reg_info):
   tiu_info0["Start Cycle"] = monitor_info.inst_start_time
   tiu_info0["End Cycle"] = monitor_info.inst_end_time
   tiu_info0["Cmd Id"] = monitor_info.inst_id + 1
-  tiu_info0["Simulator Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
+  tiu_info0["Asic Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
   tiu_info0["Engine Id"] = 1
 
   # not implemented

@@ -60,25 +60,20 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.__read_command_data(cmd_info, core_num)
 
   def to_txt(self, out_dir):
-    assert self.bd_monitor != [] and self.gdma_monitor != [], "lack pmu information"
+    assert self.bd_monitor != [] and self.gdma_monitor != [], ""
     self.__cycle2time()
     self.__align_core_time()
     self.__shift_time()
-    # self.__time2cycle()
+    self.__time2cycle()
     self.out_dir = out_dir
 
     #1. make file
     Path(self.out_dir).mkdir(parents=True, exist_ok=True)
     dma_file = os.path.join(self.out_dir, "tdmaRegInfo_{}.txt")
     tiu_file = os.path.join(self.out_dir, "tiuRegInfo_{}.txt")
-    total_cycle_file = os.path.join(self.out_dir, "simulatorTotalCycle.txt")
-    start_cycle = self.gdma_monitor[0][0].inst_start_time
-    end_cycle = self.bd_monitor[0][-1].inst_end_time
 
     #2. write file
     for idx, (bd, gdma, bd_cmd, gdma_cmd) in enumerate(zip(self.bd_monitor, self.gdma_monitor, self.bd_cmd, self.gdma_cmd)):
-      start_cycle = min(bd[0].inst_start_time, start_cycle, gdma[0].inst_start_time)
-      end_cycle = max(bd[-1].inst_end_time, end_cycle, gdma[-1].inst_end_time)
       # wirte gdma
       with open(dma_file.format(idx), 'w') as f:
         f.write("__CHIP_ARCH_ARGS__\n")
@@ -105,8 +100,13 @@ class BMProfileParserPerfAI(BMProfileParser):
           # f.write("\tMsg Id: \n\tSd\Wt Count: \n")
 
     # deprecated
-    with open(total_cycle_file, 'w') as f:
-      f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
+    # start_cycle = self.gdma_monitor[0][0].inst_start_time
+    # start_cycle = min(bd[0].inst_start_time, start_cycle, gdma[0].inst_start_time)
+    # end_cycle = max(bd[-1].inst_end_time, end_cycle, gdma[-1].inst_end_time)
+    # end_cycle = self.bd_monitor[0][-1].inst_end_time
+    # total_cycle_file = os.path.join(self.out_dir, "simulatorTotalCycle.txt")
+    # with open(total_cycle_file, 'w') as f:
+    #   f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
 
   def __cycle2time(self):
     for i in self.gdma_monitor:
@@ -170,6 +170,7 @@ class BMProfileParserPerfAI(BMProfileParser):
     tmp = parse_monitor_bd(raw_data, self.archlib)
     self.bd_monitor.append(tmp)
     monitor_tiu.append(tmp)
+
   def __parse_monitor_gdma(self, monitor_gdma:List, raw_data):
     tmp = parse_monitor_gdma(raw_data, self.archlib)
     zero_position = []
@@ -190,8 +191,10 @@ class BMProfileParserPerfAI(BMProfileParser):
       right= zero_position[-1]
     self.gdma_monitor.append(tmp[left:right])
     monitor_gdma.append(tmp)
+
   def __parse_command_info(self, command_info:List, raw_data):
     command_info.append(self._BMProfileParser__parse_command_info(raw_data))
+
   def __parse_global_file(self, filename):
     assert os.path.isfile(filename)
     re_arch = re_key_value("", "arch")
@@ -223,7 +226,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                         core_num, bd_parser)
     self.gdma_cmd.append(gdma_cmd)
     self.bd_cmd.append(bd_cmd)
-    # return [gdma_cmd, bd_command]
+
 
   def __base_read_command_data(self, base, offset, engine_type, core_num, command_parser):
     basename = "cmd_%x_%d_%d.dat"
@@ -236,19 +239,6 @@ class BMProfileParserPerfAI(BMProfileParser):
       command_list = command_parser.parse(raw_data)
     return command_list
 
-  def __getMemType(self, regInfo):
-    if hasattr(regInfo, "src_start_addr_h8"):
-      tmp1 = "src_start_addr_h8"
-      tmp2 = "dst_start_addr_h8"
-    elif hasattr(regInfo, "src_start_addr_l8"):
-      tmp1 = "src_start_addr_l8"
-      tmp2 = "dst_start_addr_l8"
-    else:
-      return "DEFALUT", "DEFALUT"
-    src_type = self.archlib.MEMTYPE(getattr(regInfo,tmp1) >> 7).name
-    dst_type = self.archlib.MEMTYPE(getattr(regInfo,tmp2) >> 7).name
-    return src_type, dst_type
-
   def __get_gdma_info(self, monitor_info, reg_info):
     return get_dma_info(monitor_info, reg_info)
 
@@ -258,5 +248,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
   bmProfile = BMProfileParserPerfAI()
-  bmProfile.parse("/workspace/easytools/a2profile_yjz/hpc_test/bmprofile_data-1/")
+  bmProfile.parse("/workspace/tpu-mlir/regression/tmp/a2/bmprofile_data-1")
   bmProfile.to_txt('tmp')

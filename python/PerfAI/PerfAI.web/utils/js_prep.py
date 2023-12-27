@@ -91,7 +91,7 @@ def generate_jsfile(dirpath, name, out_path):
         js.write(f'let ddr_ratios = {ddr_ratios}\n')
         js.write(f'let l2m_ratios = {l2m_ratios}\n')
         js.write(f'let categories = {categories}\n')
-        time_header = ["category", "begin_time(cycle)", "end_time(cycle)", "Duration(cycles)", "func_type", "height", "cmd", "func_name", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+        time_header = ["category", "begin_time", "end_time", "Duration", "func_type", "height", "cmd", "func_name", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
         filter_cols = [time_header.index(c) for c in ["category", "func_type"]]
         js.write(f'let filter_cols = {filter_cols}\n')
         js.write(f'let lmem_partition = {lmem_partition}\n')

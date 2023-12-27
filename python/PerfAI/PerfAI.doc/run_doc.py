@@ -66,13 +66,11 @@ if __name__ == "__main__":
                                                             core_num=args.cores, split_instr_world=args.speedup)
         chip_arch['network'] = network
         if global_info is not None:
-            # with layer info
             layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
             generate_summary(layer_info_map, writer, chip_arch)
     if args.style:
         print('Start set style for ' + out_file)
         set_details_style(out_file, args.cores, chip_arch)
-    # The summary and layer sheet must be styled cause it won't take much time.
         set_sim_summary_style(out_file, args.cores, chip_arch)
         if global_info is not None:
             set_summary_style(out_file)

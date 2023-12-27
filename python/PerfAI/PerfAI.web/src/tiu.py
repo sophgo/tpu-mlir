@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from decimal import Decimal
+import sys
 
 from utils.utils import data_type_dict, data_size_dict
 from utils.utils import *
@@ -14,14 +15,14 @@ class TIU:
         self.actual_corenum = 0
         self.regList=[]
         self.tiu_working_ratio_list = []
-        self.sim_total_cycle_list = []
-        self.sim_tiu_cycle_list = []
+        self.total_time_dict = {"start":[], "end":[]}
+        self.tiu_cycle_list = []
         self.total_alg_cycle_list = []
         self.total_alg_ops_list = []
         self.uArach_rate_list = []
         self.total_uarch_ops_list = []
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
-                        'Alg Cycle', 'Simulator Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
+                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
                         'Initial Cycle Ratio', 'Data Type', 'des_cmd_id_dep',
                         'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
@@ -59,7 +60,7 @@ class TIU:
                         self.chipArgs[attr] = val
                     if '__TIU_REG_INFO__' in line:
                         break
-            self.frequency = int(self.chipArgs['Frequency(MHz)'])
+            self.frequency = int(self.chipArgs['TIU Frequency(MHz)'])
             coreNum = int(self.chipArgs['Core Num'])
             for coreId in range(int(coreNum)):
                 curTiuRegFile = f"{self.dirpath}/tiuRegInfo" + '_' + str(coreId) + '.txt'
@@ -71,20 +72,19 @@ class TIU:
                 tiuDf_list.append(self.process_data(coreId))
             return tiuDf_list
         else:
-            self.sim_tiu_cycle_list.append(0)
+            self.tiu_cycle_list.append(0)
             return []
 
     def process_data(self, coreId):
-        simulatorTiuCycle = 0
+        TiuCycle = 0
         algTotalCycle = 0
         algTotalOps = 0
         uArchTotalOps = 0
         lane_num = int(self.chipArgs['NPU Num'])
         new_regList=[]
         totalInstRegList = []
-        simulatorFile = os.path.join(self.dirpath, 'simulatorTotalCycle.txt')
-        simulatorTotalCycle = get_simulator_total_cycle(simulatorFile)
-        self.sim_total_cycle_list.append(simulatorTotalCycle)
+        startTime = sys.maxsize
+        endTime = 0
 
         curTiuRegFile = f"{self.dirpath}/tiuRegInfo" + '_' + str(coreId) + '.txt'
         with open(curTiuRegFile) as f:
@@ -115,8 +115,8 @@ class TIU:
 
         for i in range(len(new_regList)):
             regDict = new_regList[i]
-            if regDict['Simulator Cycle'].isnumeric() and not (regDict['des_tsk_typ'] == '15' and regDict['des_tsk_eu_typ'] == '9'):
-                simulatorTiuCycle += int(regDict['Simulator Cycle'])
+            if regDict['Asic Cycle'].isnumeric() and not (regDict['des_tsk_typ'] == '15' and regDict['des_tsk_eu_typ'] == '9'):
+                TiuCycle += int(regDict['Asic Cycle'])
             if regDict['Alg Cycle'].isnumeric():
                 algTotalCycle += int(regDict['Alg Cycle'])
             if regDict['Alg Ops'].isnumeric():
@@ -129,20 +129,25 @@ class TIU:
             else:
                 regDict['Data Type'] = data_type_dict[regDict['des_opt_res0_prec']] + \
                                         ' -> ' + data_type_dict[regDict['des_opt_res0_prec']]
+            regDict['Start Cycle'] = get_realtime_from_cycle(int(regDict['Start Cycle']),self.frequency) #ns
+            regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency) #ns
+            startTime = min(startTime, int(regDict['Start Cycle']))
+            endTime = max(endTime, int(regDict['End Cycle']))
             totalInstRegList.append(regDict)
-
-        self.sim_tiu_cycle_list.append(simulatorTiuCycle)
-        self.tiu_working_ratio_list.append('0.00%' if simulatorTotalCycle == 0 else
-                                       str(Decimal((simulatorTiuCycle * 100 / simulatorTotalCycle)).quantize(
-                                           Decimal("0.00"))) + '%')
+        self.total_time_dict["start"].append(startTime)
+        self.total_time_dict["end"].append(endTime)
+        self.tiu_cycle_list.append(TiuCycle)
+        # self.tiu_working_ratio_list.append('0.00%' if simTotalCycle == 0 else
+        #                                str(Decimal((TiuCycle / simTotalCycle * 100)).quantize(
+        #                                    Decimal("0.00"))) + '%')
         self.total_alg_cycle_list.append(algTotalCycle)
         self.total_alg_ops_list.append(algTotalOps)
         self.total_uarch_ops_list.append(uArchTotalOps)
         self.uArach_rate_list.append('0.00%' if uArchTotalOps == 0 else str(
-                        Decimal((algTotalOps * 100 / uArchTotalOps)).quantize(Decimal("0.00"))) + '%')
-        self.regList.append(new_regList)
+                        Decimal((algTotalOps / uArchTotalOps * 100)).quantize(Decimal("0.00"))) + '%')
+        self.regList.append(totalInstRegList)
 
-        tiuDf = pd.DataFrame(new_regList)
+        tiuDf = pd.DataFrame(totalInstRegList)
         tiuCols = self.columns
         newTiuCols = []
         for tiuCol in tiuCols:

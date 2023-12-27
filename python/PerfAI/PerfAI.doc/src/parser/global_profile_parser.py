@@ -45,7 +45,7 @@ class GlobalProfileParser:
     def parse(self, filename):
         filename = filename + 'global.profile'
         if not os.path.exists(filename):
-            logging.fatal("'{}' does not exist".format(filename))
+            # logging.fatal("'{}' does not exist".format(filename))
             return None
         self.global_filename = filename
         assert os.path.isfile(filename)
