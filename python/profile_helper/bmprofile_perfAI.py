@@ -60,10 +60,11 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.__read_command_data(cmd_info, core_num)
 
   def to_txt(self, out_dir):
+    assert self.bd_monitor != [] and self.gdma_monitor != [], "lack pmu information"
     self.__cycle2time()
     self.__align_core_time()
     self.__shift_time()
-    self.__time2cycle()
+    # self.__time2cycle()
     self.out_dir = out_dir
 
     #1. make file
@@ -103,9 +104,9 @@ class BMProfileParserPerfAI(BMProfileParser):
           # f.write("".join(f"\tdes_{key}: {value}\n" for key, value in dict(reg_info).items()))
           # f.write("\tMsg Id: \n\tSd\Wt Count: \n")
 
-    # deprecated 
-    # with open(total_cycle_file, 'w') as f:
-    #   f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
+    # deprecated
+    with open(total_cycle_file, 'w') as f:
+      f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
 
   def __cycle2time(self):
     for i in self.gdma_monitor:
@@ -257,5 +258,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
   bmProfile = BMProfileParserPerfAI()
-  bmProfile.parse("/workspace/easytools/resnet50_int8")
+  bmProfile.parse("/workspace/easytools/a2profile_yjz/hpc_test/bmprofile_data-1/")
   bmProfile.to_txt('tmp')
