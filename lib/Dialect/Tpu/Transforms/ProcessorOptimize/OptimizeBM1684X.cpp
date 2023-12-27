@@ -1474,6 +1474,230 @@ public:
 };
 #endif
 
+class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    if (op->hasOneUse())
+      return failure();
+    std::vector<mlir::Operation *> permute_users;
+    for (auto user : op.getOutput().getUsers()) {
+      permute_users.emplace_back(user);
+    }
+    auto slice_l_op = dyn_cast_or_null<tpu::SliceOp>(permute_users[1]);
+    auto slice_r_op = dyn_cast_or_null<tpu::SliceOp>(permute_users[0]);
+    if (!(slice_l_op && slice_r_op))
+        return failure();
+    if (!slice_l_op->hasOneUse() || slice_r_op->hasOneUse())
+      return failure();
+    // auto concat_op = dyn_cast_or_null<tpu::ConcatOp>(
+    //     *slice_l_op.getOutput().getUsers().begin());
+    // if (!concat_op || !concat_op->hasOneUse())
+    //   return failure();
+    std::vector<mlir::Operation *> slice_users;
+    for (auto user : slice_r_op.getOutput().getUsers()) {
+      slice_users.emplace_back(user);
+    }
+    auto mul_0_op = dyn_cast_or_null<tpu::MulOp>(slice_users[2]);
+    auto slice_1_op = dyn_cast_or_null<tpu::SliceOp>(slice_users[1]);
+    auto slice_2_op = dyn_cast_or_null<tpu::SliceOp>(slice_users[0]);
+
+    if (!(mul_0_op && slice_1_op && slice_2_op))
+      return failure();
+    auto mulconst_op = dyn_cast_or_null<tpu::MulConstOp>(
+        *slice_1_op.getOutput().getUsers().begin());
+    if (!mulconst_op || !mulconst_op->hasOneUse())
+      return failure();
+    auto unsqueeze_0_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
+        *mulconst_op.getOutput().getUsers().begin());
+    if (!unsqueeze_0_op || !unsqueeze_0_op->hasOneUse())
+      return failure();
+    auto unsqueeze_1_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
+        *slice_2_op.getOutput().getUsers().begin());
+    if (!unsqueeze_1_op || !unsqueeze_1_op->hasOneUse())
+      return failure();
+    auto concat_0_op = dyn_cast_or_null<tpu::ConcatOp>(
+        *unsqueeze_0_op.getOutput().getUsers().begin());
+    if (!concat_0_op || !concat_0_op->hasOneUse())
+      return failure();
+    if (concat_0_op.getOperand(1) != unsqueeze_1_op.getOutput())
+      return failure();
+    auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(
+        *concat_0_op.getOutput().getUsers().begin());
+    if (!reshape_op || !reshape_op->hasOneUse())
+      return failure();
+    auto mul_1_op = dyn_cast_or_null<tpu::MulOp>(
+        *reshape_op.getOutput().getUsers().begin());
+    if (!mul_1_op || !mul_1_op->hasOneUse())
+      return failure();
+    auto add_op = dyn_cast_or_null<tpu::AddOp>(
+        *mul_0_op.getOutput().getUsers().begin());
+    if (!add_op || !add_op->hasOneUse())
+      return failure();
+    if (add_op.getOperand(1) != mul_1_op.getOutput())
+      return failure();
+    auto concat_1_op = dyn_cast_or_null<tpu::ConcatOp>(
+        *slice_l_op.getOutput().getUsers().begin());
+    if (!concat_1_op || !concat_1_op->hasOneUse())
+      return failure();
+    if (concat_1_op.getOperand(1) != add_op.getOutput())
+      return failure();
+    // check params
+    auto order = *module::getI64Array(op.getOrder());
+    std::vector<int64_t> order_0213{0, 2, 1, 3};
+    if (order != order_0213)
+      return failure();
+    if (*module::getI64Array(slice_l_op.getSteps()) !=
+        std::vector<int64_t>{1,1,1,1})
+      return failure();
+    if (*module::getI64Array(slice_r_op.getSteps()) !=
+        std::vector<int64_t>{1,1,1,1})
+      return failure();
+    if (*module::getI64Array(slice_r_op.getOffset()) !=
+        std::vector<int64_t>{0,0,1,0})
+      return failure();
+    if (*module::getI64Array(slice_1_op.getSteps()) !=
+        std::vector<int64_t>{1,1,1,2})
+      return failure();
+    if (*module::getI64Array(slice_1_op.getOffset()) !=
+        std::vector<int64_t>{0,0,0,1})
+      return failure();
+    if (*module::getI64Array(slice_2_op.getSteps()) !=
+        std::vector<int64_t>{1,1,1,2})
+      return failure();
+    auto slice_r_outshape = module::getShape(slice_r_op.getOutput());
+    int64_t h = slice_r_outshape[2];
+    auto mulconst_output = mulconst_op.getOutput();
+    auto mulconst_shape = module::getShape(mulconst_output);
+    if (h != mulconst_shape[2])
+      return failure();
+    if (*module::getI64Array(unsqueeze_0_op.getAxes()) !=
+        std::vector<int64_t>{-1})
+      return failure();
+    if (*module::getI64Array(unsqueeze_1_op.getAxes()) !=
+        std::vector<int64_t>{-1})
+      return failure();
+    if ((concat_0_op.getAxis()) != 4)
+      return failure();
+    auto reshape_outshape = module::getShape(reshape_op.getOutput());
+    if (reshape_outshape.size() != 4 || reshape_outshape[2] != h)
+      return failure();
+    auto mul_0_outshape = module::getShape(mul_0_op.getOutput());
+    if (h != mul_0_outshape[2])
+      return failure();
+    auto mul_1_outshape = module::getShape(mul_1_op.getOutput());
+    if (h != mul_1_outshape[2])
+      return failure();
+    auto add_outshape = module::getShape(add_op.getOutput());
+    if (h != add_outshape[2])
+      return failure();
+    if ((concat_1_op.getAxis()) != 2)
+      return failure();
+    // rewrite
+    // get rid of this permute op
+    auto output = op.getInput();
+    op.getOutput().replaceAllUsesWith(output);
+    auto permute_outshape = module::getShape(op.getOutput());
+    rewriter.eraseOp(op);
+    int64_t batch, head_n, hw, head_sz;
+    batch = permute_outshape[0];
+    head_n = permute_outshape[1];
+    hw = permute_outshape[2];
+    head_sz = permute_outshape[3];
+
+    std::vector<int64_t> slice_l_shape{batch, 1, head_n, head_sz};
+    module::setShape(slice_l_op.getOutput(), slice_l_shape);
+    slice_l_op->setAttr("ends", rewriter.getI64ArrayAttr(slice_l_shape));
+    std::vector<int64_t> common_shape{batch, hw-1, head_n, head_sz};
+    module::setShape(slice_r_op.getOutput(), common_shape);
+    std::vector<int64_t> new_ends{batch, hw, head_n, head_sz};
+    slice_r_op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));
+    std::vector<int64_t> new_offsets{0, 1, 0, 0};
+    slice_r_op->setAttr("offset", rewriter.getI64ArrayAttr(new_offsets));
+    module::setShape(mul_0_op.getOutput(), common_shape);
+    auto mul_0_weight = mul_0_op.getInputs()[1];
+    if (module::isWeight(mul_0_weight)) {
+      auto weight_0_shape = module::getShape(mul_0_weight);
+      std::vector<int64_t> new_0_shape{weight_0_shape[0], weight_0_shape[2], weight_0_shape[1], weight_0_shape[3]};
+      module::setShape(mul_0_weight, new_0_shape);
+    }
+    std::vector<int64_t> slice_1_shape{batch, hw-1, head_n, head_sz/2};
+    module::setShape(slice_1_op.getOutput(), slice_1_shape);
+    slice_1_op->setAttr("ends", rewriter.getI64ArrayAttr(common_shape));
+    module::setShape(slice_2_op.getOutput(), slice_1_shape);
+    slice_2_op->setAttr("ends", rewriter.getI64ArrayAttr(common_shape));
+    module::setShape(mulconst_op.getOutput(), slice_1_shape);
+    std::vector<int64_t> unsqueeze_0_shape{batch, hw-1, head_n, head_sz/2, 1};
+    module::setShape(unsqueeze_0_op.getOutput(), unsqueeze_0_shape);
+
+    // reshape_after_unsqueeze_0: 1*576*6*32*1->1*576*(6*32)*1
+    std::vector<int64_t> reshape_after_unsqueeze_shape{batch, hw-1, head_n*head_sz/2, 1};
+    auto reshape_after_unsqueeze_0_type = RankedTensorType::get(
+        reshape_after_unsqueeze_shape,
+        module::getElementType(unsqueeze_0_op.getOutput()));
+    auto reshape_after_unsqueeze_0_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(unsqueeze_0_op.getOutput()).str() + "_reshape__after_unsqueeze_0"));
+    rewriter.setInsertionPointAfter(unsqueeze_0_op);
+    auto reshape_after_unsqueeze_0_op =
+        rewriter.create<tpu::ReshapeOp>(reshape_after_unsqueeze_0_loc, reshape_after_unsqueeze_0_type,
+                                   ValueRange{unsqueeze_0_op.getOutput()});
+     unsqueeze_0_op.getOutput().replaceAllUsesExcept(reshape_after_unsqueeze_0_op.getOutput(), reshape_after_unsqueeze_0_op);
+    module::setShape(unsqueeze_1_op.getOutput(), unsqueeze_0_shape);
+    auto reshape_after_unsqueeze_1_type = RankedTensorType::get(
+        reshape_after_unsqueeze_shape,
+        module::getElementType(unsqueeze_1_op.getOutput()));
+    auto reshape_after_unsqueeze_1_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(unsqueeze_1_op.getOutput()).str() + "_reshape__after_unsqueeze_1"));
+    rewriter.setInsertionPointAfter(unsqueeze_1_op);
+    auto reshape_after_unsqueeze_1_op =
+        rewriter.create<tpu::ReshapeOp>(reshape_after_unsqueeze_1_loc, reshape_after_unsqueeze_1_type,
+                                   ValueRange{unsqueeze_1_op.getOutput()});
+    unsqueeze_1_op.getOutput().replaceAllUsesExcept(reshape_after_unsqueeze_1_op.getOutput(), reshape_after_unsqueeze_1_op);
+    std::vector<int64_t> concat_0_shape{batch, hw-1, head_n*head_sz/2, 2};
+    module::setShape(concat_0_op.getOutput(), concat_0_shape);
+    concat_0_op->setAttr("axis", rewriter.getSI32IntegerAttr(3));
+    std::vector<int64_t> reshape_after_concat_0_shape{batch, hw-1, head_n, head_sz/2, 2};
+    auto reshape_after_concat_0_type = RankedTensorType::get(
+        reshape_after_concat_0_shape,
+        module::getElementType(concat_0_op.getOutput()));
+    auto reshape_after_concat_0_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(concat_0_op.getOutput()).str() + "_reshape__after_concat_0"));
+    rewriter.setInsertionPointAfter(concat_0_op);
+    auto reshape_after_concat_0_op =
+        rewriter.create<tpu::ReshapeOp>(reshape_after_concat_0_loc, reshape_after_concat_0_type,
+                                   ValueRange{concat_0_op.getOutput()});
+    concat_0_op.getOutput().replaceAllUsesExcept(reshape_after_concat_0_op.getOutput(), reshape_after_concat_0_op);
+    module::setShape(reshape_op.getOutput(), common_shape);
+    module::setShape(mul_1_op.getOutput(), common_shape);
+    auto mul_1_weight = mul_1_op.getInputs()[1];
+    if (module::isWeight(mul_1_weight)) {
+      auto weight_1_shape = module::getShape(mul_1_weight);
+      std::vector<int64_t> new_1_shape{weight_1_shape[0], weight_1_shape[2], weight_1_shape[1], weight_1_shape[3]};
+      module::setShape(mul_1_weight, new_1_shape);
+    }
+    module::setShape(add_op.getOutput(), common_shape);
+    std::vector<int64_t> concat_1_shape{batch, hw, head_n, head_sz};
+    module::setShape(concat_1_op.getOutput(), concat_1_shape);
+    concat_1_op->setAttr("axis", rewriter.getSI32IntegerAttr(1));
+    // create permute: 1x577x6x64 -> 1x6x577x64
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order_0213)));
+    auto permute_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(concat_1_op.getOutput()).str() + "_permute"));
+    auto permute_type = RankedTensorType::get(
+        concat_1_shape, module::getElementType(concat_1_op.getOutput()));
+    rewriter.setInsertionPointAfter(concat_1_op);
+    auto permute_op = rewriter.create<tpu::PermuteOp>(
+        permute_loc, permute_type, ValueRange{concat_1_op.getOutput(), module::getNoneOp(concat_1_op)}, attrs);
+    std::vector<int64_t> permute_shape{batch, head_n, hw, head_sz};
+    module::setShape(permute_op.getOutput(), permute_shape);
+    concat_1_op.getOutput().replaceAllUsesExcept(permute_op.getOutput(), permute_op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -1486,8 +1710,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             PermuteAddWeightReorderPattern, MaskedFillPermuteMove, PermuteFuse,
             PermuteFuseAddSoftmax, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
             PermuteReshapeFuse, GatherElementsPattern, ScatterElementsPattern,
-            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(
-          ctx, 8);
+            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern,
+            RotaryPosEmbPattern>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
   patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
 }
