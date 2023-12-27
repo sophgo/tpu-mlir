@@ -1,4 +1,4 @@
-Appendix.05: Supported Operations
+Appendix.06: Supported Operations
 =================================
 
 List of operators currently supported by TPU-MLIR

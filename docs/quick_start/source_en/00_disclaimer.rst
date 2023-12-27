@@ -25,7 +25,7 @@
 :Tel: +86-10-57590723
        +86-10-57590724
 
-  **Release Record**
+| **Release Record**
 
 .. list-table::
    :widths: 20 25 55
