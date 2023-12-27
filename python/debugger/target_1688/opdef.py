@@ -8,9 +8,10 @@
 # ==============================================================================
 
 from typing import Dict, Tuple
-from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex, ALIGN
+from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex, ALIGN, DType, DIV_UP
 from .regdef import SYS_TR_ACC_reg
-from .memmap import NPU_NUM, EU_NUM
+from .memmap import NPU_NUM, EU_NUM, LANE_NUMBER, CUBE_NUM, CubeOutputHeightWidthAlignNum, ExecutionUnitNumber
+from abc import abstractmethod
 # global data and type
 # ------------------------------------------------------------
 
@@ -47,7 +48,20 @@ class TiuCmd(BaseTpuCmd, Tiu):
         self.cmd_id_dep = getattr(reg, "cmd_id_dep", None)
         self.eu_name = tiu_cls[reg.OP_NAME]["tsk_eu_typ"][reg.tsk_eu_typ]
 
-    def ops(self, *_):
+    @abstractmethod
+    def ops(self, is_arch: bool) -> int:
+        return 0
+
+    @abstractmethod
+    def initial_cycle(self) -> int:
+        return 0
+
+    @abstractmethod
+    def bank_conflict_cycle(self) -> int:
+        return 0
+
+    @abstractmethod
+    def alg_cycle(self, alg_ops: int) -> int:
         return 0
 
     @property
@@ -188,10 +202,6 @@ class DmaCmd(BaseTpuCmd, Dma):
 
         return op_name
 
-    def ops(self, is_arch):
-        return 0
-
-
 class conv_op(TiuCmd):
     name = "CONV"
     opcode = 0
@@ -199,25 +209,44 @@ class conv_op(TiuCmd):
     description = "convolution"
 
     def ops(self, is_arch=False):
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
         n, ic, ih, iw = self.operands[0].shape
         n, oc, oh, ow = self.results[0].shape
-        # remains_hw = 0
 
         has_bias = len(self.operands) > 2
+        dtype = self.operands[0].dtype
+        channelNumPerCyc = CUBE_NUM(dtype)
         if is_arch:
-            dtype = self.operands[0].dtype
-            ic = ALIGN(ic, NPU_NUM)
-            ow = ALIGN(oh * ow, EU_NUM(dtype))
+            if dtype == DType.f32:
+                activatedEuNumber = EU_NUM(dtype)
+            else:
+                ic = ALIGN(ic, channelNumPerCyc)
+                activatedEuNumber = CubeOutputHeightWidthAlignNum
+            ow = ALIGN(oh * ow, activatedEuNumber)
             oh = 1
-            oc = ALIGN(oc, NPU_NUM)
-            # iw = ALIGN(ih * iw, EU_NUM(dtype))
-            # ih = 1
-            # kw = ALIGN(kw, 64)
-            # remain_hw = ALIGN(ih*iw, EU_NUM) - ih*iw
+            oc = ALIGN(oc, LANE_NUMBER)
         out_size = n * oc * oh * ow
         kh, kw = self.attribute["kernel"]
         return out_size * (2 * ic * kh * kw - 1 + has_bias)
 
+    def initial_cycle(self):
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        return 23
+
+    def bank_conflict_cycle(self):
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        return 0
+
+    def alg_cycle(self, alg_ops):
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        dtype = self.operands[0].dtype
+        channelNumPerCyc = CUBE_NUM(dtype)
+        if dtype == DType.f32:
+            channelNumPerCyc = 1
+            activatedEuNumber = EU_NUM(DType)
+        else:
+            activatedEuNumber = CubeOutputHeightWidthAlignNum # CubeOutputHeightWidthAlignNum
+        return DIV_UP(alg_ops, NPU_NUM * channelNumPerCyc * activatedEuNumber * 2)
 
 class sconv_op(conv_op):
     name = "sCONV"
@@ -242,9 +271,21 @@ class mm_op(TiuCmd):
         if is_arch:
             dtype = self.operands[0].dtype
             # align the column of B
-            n = ALIGN(self.reg.res0_c, NPU_NUM) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
+            n = ALIGN(self.reg.res0_c, LANE_NUMBER) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
         return m * n * (2 * k - 1 + has_bias)
 
+    def initial_cycle(self) -> int:
+        return 32
+
+    def bank_conflict_cycle(self) -> int:
+        return 0
+
+    def alg_cycle(self, alg_ops: int) -> int:
+        perLaneEuNumber = ExecutionUnitNumber
+        dtype = self.operands[0].dtype
+        activatedEuNumber = perLaneEuNumber // 2 if dtype == DType.bf16 else perLaneEuNumber
+        channelNumPerCy = CUBE_NUM(dtype)
+        return DIV_UP(alg_ops, activatedEuNumber * channelNumPerCy * 2)
 
 class smm_op(mm_op):
     name = "sMM"
@@ -270,14 +311,25 @@ class mm2_op(TiuCmd):
         assert lk == rk
         k = lk
         has_bias = len(self.operands) > 2
-
+        dtype = self.operands[0].dtype
+        channelNumPerCyc = CUBE_NUM(dtype)
+        activatedEuNumber = CubeOutputHeightWidthAlignNum
         if is_arch:
             dtype = self.operands[0].dtype
-            k = ALIGN(k, EU_NUM(dtype))
-            m = ALIGN(m, NPU_NUM)
+            k = ALIGN(k, activatedEuNumber)
+            m = ALIGN(m, LANE_NUMBER)
+            n = ALIGN(n, channelNumPerCyc)
 
-        return m * n * (2 * k - 1 + has_bias)
+        return m * n * k * 2
 
+    def initial_cycle(self) -> int:
+        return 0
+
+    def alg_cycle(self, alg_ops: int) -> int:
+        dtype = self.operands[0].dtype
+        channelNumPerCyc = CUBE_NUM(dtype)
+        activatedEuNumber = CubeOutputHeightWidthAlignNum
+        return DIV_UP(alg_ops, channelNumPerCyc * activatedEuNumber * 2)
 
 class smm2_op(mm2_op):
     name = "sMM2"
@@ -451,9 +503,25 @@ class ar_op(TiuCmd):
             factor = 5  # TODO: fix the factor
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
+            c = ALIGN(c, LANE_NUMBER)
             hw = ALIGN(w * h, EU_NUM(dtype))
         return n * c * hw * factor
+
+    def initial_cycle(self) -> int:
+        if self.reg['tsk_eu_typ'] in [14, 19, 11, 15, 4, 5, 26]:
+            misc = -1
+        elif self.reg['tsk_eu_typ'] == 12:
+            misc = -4
+        else:
+            misc = 0
+        return 10 + misc
+
+    def alg_cycle(self, alg_ops: int) -> int:
+        factor = 1
+        if self.reg['tsk_eu_typ'] == 12:
+            factor = 5
+        dtype = self.operands[0].dtype
+        return DIV_UP(alg_ops, EU_NUM(dtype) * factor * NPU_NUM)
 
 
 class sar_op(ar_op):
@@ -482,7 +550,7 @@ class pord_op(TiuCmd):
         kh, kw = self.reg.opd1_h, self.reg.opd1_w
         factor = 1
         if self.eu_name == "pord.avgpooling" or self.eu_name == "pord.maxpooling":
-            factor = len(self.results)  # TODO: fix the factor
+            factor = 2  # TODO: fix the factor
         elif self.eu_name == "pord.depthwise":
             factor = 2
         elif self.eu_name == "pord.depthwiserelu":
@@ -494,11 +562,29 @@ class pord_op(TiuCmd):
             factor = 2 * 4 - 1  # bilinar, ignore coords generate
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
+            c = ALIGN(c, LANE_NUMBER)
             w = ALIGN(h * w, EU_NUM(dtype))
             h = 1
         return n * c * h * w * (factor * kh * kw - 1)
 
+    def initial_cycle(self) -> int:
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        return 10
+
+    def bank_conflict_cycle(self) -> int:
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        return 0
+
+    def alg_cycle(self, alg_ops: int) -> int:
+        # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
+        switcher = {
+            0: 2,
+            1: 1,
+            2: 3,
+            4: 1
+            }
+        factor = switcher.get(self.reg["tsk_eu_typ"], 7)
+        return DIV_UP(alg_ops, factor * EU_NUM(self.operands[0].dtype) * NPU_NUM)
 
 class spord_op(pord_op):
     name = "sPorD"

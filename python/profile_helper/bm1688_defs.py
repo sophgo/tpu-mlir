@@ -216,8 +216,8 @@ def get_tiu_info(monitor_info, reg_info):
   # not implemented
   tiu_info0["Alg Ops"] = _reg_info.ops(False)
   tiu_info0["uArch Ops"] = _reg_info.ops(True)
+  tiu_info0["Alg Cycle"] = _reg_info.alg_cycle(tiu_info0["Alg Ops"])
   tiu_info0["uArch Rate"] = "{:.1%}".format(tiu_info0["Alg Ops"]/tiu_info0["uArch Ops"])
-  tiu_info0["Alg Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
   tiu_info0["Initial Cycle Ratio"] = 0.
   tiu_info0["Bank Conflict Ratio"] = 0.
   return tiu_info0, tiu_info1

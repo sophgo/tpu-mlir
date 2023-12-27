@@ -281,3 +281,30 @@ class MemRef(MemRefBase):
             return get_eu_align_stride(shape)
 
         return self.stride
+
+
+
+
+# used for computing alg ops, arch ops and alg cycle.
+LANE_NUMBER = 32
+CubeOutputHeightWidthAlignNum = 4
+ExecutionUnitNumber = 32 * 256 // 2 // 8
+BASE_CUBE = 1
+TYPED_CUBE_NUM = {
+    DType.f32: BASE_CUBE,
+    DType.i32: BASE_CUBE,
+    DType.si32: BASE_CUBE,
+    DType.ui32: BASE_CUBE,
+    DType.f16: BASE_CUBE * 8,
+    DType.bf16: BASE_CUBE * 8,
+    DType.i16: BASE_CUBE * 8,
+    DType.ui16: BASE_CUBE * 8,
+    DType.si16: BASE_CUBE * 8,
+    DType.i8: BASE_CUBE * 32,
+    DType.ui8: BASE_CUBE * 32,
+    DType.si8: BASE_CUBE * 32
+}
+
+
+def CUBE_NUM(dtype):
+    return TYPED_CUBE_NUM.get(dtype, 0)
