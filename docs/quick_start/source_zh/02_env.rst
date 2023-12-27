@@ -10,7 +10,7 @@
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.1
+   $ docker pull sophgo/tpuc_dev:v3.2
 
 
 如果是首次使用Docker, 可执行下述命令进行安装和配置(仅首次执行):
@@ -35,7 +35,7 @@
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
 
 后文假定用户已经处于docker里面的/workspace目录。
@@ -43,12 +43,12 @@
 
 tpu_mlir安装
 ------------------
-使用pip安装tpu_mlir [#whl安装]_:
+目前暂不支持直接从pypi上下载并安装，请从Github的Assets处下载tpu_mlir-*-py3-none-any.whl，然后使用pip安装:
 
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir
+   $ pip install tpu_mlir-*-py3-none-any.whl
 
 
 tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或torch生成的模型文件，使用下面命令安装额外的依赖环境:
@@ -56,11 +56,11 @@ tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或to
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[onnx]
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[torch]
+   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
 目前支持5中配置:
 *onnx*, *torch*, *tensorflow*, *caffe*, *paddle*。
@@ -68,11 +68,11 @@ tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或to
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
-.. [#whl安装] 当本地有tpu_mlir-{version}.whl文件时，也可以使用以下命令进行安装。
+.. .. [#whl安装] 当本地有tpu_mlir-{version}.whl文件时，也可以使用以下命令进行安装。
    
-   .. code :: console
+..    .. code :: console
 
-      $ pip install path/to/tpu_mlir-{version}.whl[all]
+..       $ pip install path/to/tpu_mlir-{version}.whl[all]

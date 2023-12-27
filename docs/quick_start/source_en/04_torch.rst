@@ -12,7 +12,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[torch]
+   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
 
 Prepare working directory

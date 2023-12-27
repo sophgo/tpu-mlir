@@ -12,7 +12,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[onnx]
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 准备工作目录

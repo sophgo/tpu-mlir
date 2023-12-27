@@ -11,7 +11,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[caffe]
+   $ pip install tpu_mlir-*-py3-none-any.whl[caffe]
 
 
 Prepare working directory
