@@ -30,7 +30,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[onnx]
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 Prepare working directory

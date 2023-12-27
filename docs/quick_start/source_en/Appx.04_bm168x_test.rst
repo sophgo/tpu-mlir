@@ -85,7 +85,7 @@ Install tpu_mlir python package in the docker environment:
 
 .. code :: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
 Set environment variables and install ``tpu-perf``

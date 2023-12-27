@@ -23,7 +23,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 准备工作目录
 ------------------
@@ -347,7 +347,7 @@ tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 准备工作目录
 ------------------

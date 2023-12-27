@@ -10,7 +10,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[torch]
+   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
 
 准备工作目录

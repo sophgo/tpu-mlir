@@ -13,7 +13,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 Prepare working directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

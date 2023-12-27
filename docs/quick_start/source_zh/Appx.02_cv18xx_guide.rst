@@ -14,7 +14,7 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 准备工作目录
 ~~~~~~~~~~~~~~~~~~~~

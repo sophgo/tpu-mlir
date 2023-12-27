@@ -11,7 +11,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[tensorflow]
+   $ pip install tpu_mlir-*-py3-none-any.whl[tensorflow]
 
 
 准备工作目录
