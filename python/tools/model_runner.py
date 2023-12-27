@@ -107,11 +107,12 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
 
     next(pack_bmodel_context)  # save input_data
 
-    print("Warning: {} is too large and will cost a long time. ".format(model_file))
-    print(
-        'Add the "--skip_validation" argument when using "model_deploy.py"'
-        " to bypass running the cmodel if checking the correctness of the BModel is not required."
-    )
+    if size > 0x10000000:
+        print("Warning: {} is too large and will cost a long time. ".format(model_file))
+        print(
+            'Add the "--skip_validation" argument when using "model_deploy.py"'
+            " to bypass running the cmodel if checking the correctness of the BModel is not required."
+        )
 
     if is_cv18xx:
         net.forward()
