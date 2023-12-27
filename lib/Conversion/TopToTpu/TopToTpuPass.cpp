@@ -200,7 +200,7 @@ struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
     }
     auto out_qtype = module::getCalibratedType(out);
     bool out_signed = out_qtype.getMin() < 0.0;
-    bool in_signed[2] = {true};
+    bool in_signed[2] = {true, true};
 
     int idx = 0;
     for (auto i:op.getInputs()) {
