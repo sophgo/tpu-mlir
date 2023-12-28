@@ -190,8 +190,8 @@ void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step,
-                                               h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;
@@ -312,3 +312,10 @@ void tpu::Pool2DOp::assign_fw_param(void *param) {
       0; // only suport 0:RoundMode_FLOOR, TODO(1:RoundMode_CEIL
          // 2:RoundMode_CFDFT 3:RoundMode_TF_SAME_PAD)
 }
+
+ArrayAttr tpu::Pool2DOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  AffineMap map = AffineMap::getMultiDimIdentityMap(2, ctx);
+  SmallVector<AffineMap> indexingMaps{map, map};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+};

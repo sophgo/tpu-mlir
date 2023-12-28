@@ -10,7 +10,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 
-
 pool_attr_t tpu::Pool1DOp::parseParam() {
   pool_attr_t p = {0};
   p.id = 1;
@@ -234,3 +233,10 @@ int64_t tpu::Pool1DOp::DynForwardHeight(int64_t in_height) {
 void tpu::Pool1DOp::assign_fw_param(void *param) {
   llvm_unreachable("not implement");
 }
+
+ArrayAttr tpu::Pool1DOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  AffineMap map = AffineMap::getMultiDimIdentityMap(2, ctx);
+  SmallVector<AffineMap> indexingMaps{map, map};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+};

@@ -437,7 +437,8 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
 class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   !listconcat(traits, [SupportFuseRelu,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
-   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>])> {
+   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>])> {
   let summary = "pool operator";
 
   let description = [{
@@ -994,7 +995,8 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 def Tpu_LutOp: Tpu_Op<"Lut", [
     InOutSameShape, SupportElementwise,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
-    DeclareOpInterfaceMethods<DynLocalGenInterface>]>{
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>]>{
   let summary = "Lut operator";
 
   let description = [{
@@ -3287,7 +3289,7 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
 }
 
 def Tpu_TriluOp:Tpu_Op<"Trilu", [
-  DeclareOpInterfaceMethods<LocalGenInterface>, 
+  DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "Trilu operation";
