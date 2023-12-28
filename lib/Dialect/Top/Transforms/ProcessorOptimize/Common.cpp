@@ -170,19 +170,21 @@ LogicalResult ConvertScaleToMAOp::matchAndRewrite(top::ScaleOp op,
       RankedTensorType::get(new_shape, rewriter.getF32Type());
   auto new_scale =
       top::WeightOp::create(op, "to_weight", new_scale_v, filter_type);
-  auto new_m = rewriter.replaceOpWithNewOp<top::MulOp>(
-      op, op.getResult().getType(),
-      ValueRange{op.getInput(), new_scale}, attrs);
+
+  std::string new_name = module::getName(op.getOperation()).str() + "_bias";
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  auto new_m = rewriter.create<top::MulOp>(name_loc, op.getOutput().getType(), ValueRange{op.getInput(), new_scale}, attrs);
+
   new_m.getOperation()->setAttr("do_relu", rewriter.getBoolAttr(false));
   new_m.getOperation()->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
 
   auto bias_type = RankedTensorType::get(new_shape, rewriter.getF32Type());
   auto new_bias = top::WeightOp::create(new_m, "to_bias", new_bias_v, bias_type);
-  std::string new_name = module::getName(new_m.getOperation()).str() + "_bias";
-  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
 
   rewriter.setInsertionPointAfterValue(new_m);
-  auto new_b = rewriter.create<top::AddOp>(name_loc, new_m.getOutput().getType(), ValueRange{new_m.getOutput(), new_bias}, attrs);
+  auto new_b = rewriter.replaceOpWithNewOp<top::AddOp>(
+      op, new_m.getResult().getType(),
+      ValueRange{new_m.getOutput(), new_bias}, attrs);
   new_m.getOutput().replaceAllUsesExcept(new_b.getOutput(), new_b.getOperation());
   return success();
 }
