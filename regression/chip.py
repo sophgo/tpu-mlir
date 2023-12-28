@@ -74,7 +74,7 @@ full_model_list = {
     "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
     "resnet18_v2":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "resnet50_v1":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "resnet50_v2":                (Y,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
+    "resnet50_v2":                (Y,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "res2net50":                  (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "retinaface":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "se-resnet50":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
@@ -164,3 +164,4 @@ full_multi_core_model_list = {
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
 }
+

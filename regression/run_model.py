@@ -78,6 +78,8 @@ class MODEL_RUN(object):
             "int4_sym": config.get(self.arch, "int4_sym_tolerance", fallback="0.8,0.5"),
             "f8e4m3": config.get(self.arch, "f8e4m3_tolerance", fallback="0.8,0.5"),
             "f8e5m2": config.get(self.arch, "f8e5m2_tolerance", fallback="0.7,0.4"),
+            "f8e4m3_2": config.get(self.arch, "f8e4m3_tolerance_2", fallback="0.99,0.85"),
+            "f8e5m2_2": config.get(self.arch, "f8e5m2_tolerance_2", fallback="0.99,0.85"),
         }
         # set quant_modes according to argument and config files
         # Note: the order of quant modes should be consistent with chip_support in chip.py
@@ -114,6 +116,8 @@ class MODEL_RUN(object):
                 assert (chip_support[self.chip][idx]
                         and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
+            if chip =='sg2260' and f"test_{quant_mode}" in self.ini_content:
+                self.quant_modes[quant_mode] = int(self.ini_content[f"test_{quant_mode}"])
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
             self.ini_content["do_dynamic"])) and chip_support[self.chip][-2]
@@ -190,7 +194,7 @@ class MODEL_RUN(object):
                         f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
                     self.cali_table = self.cali_table + "_" + mode
             if os.path.exists(self.cali_table):
-                return
+                continue
             if "dataset" not in self.ini_content:
                 raise RuntimeError("[!Error]: dataset not set for calibration")
             cmd = ["run_calibration.py"]
@@ -215,6 +219,27 @@ class MODEL_RUN(object):
                     cmd.extend(["--debug_cmd fp8"])
 
             _os_system(cmd, self.save_log)
+
+    def f8_tmp_test(self, quant_mode):
+        '''tmp test script for f8 mode, sg2260, in order to control bmodel tolerance'''
+
+        output_npz = f"{self.model_name}_sg2260_{quant_mode}_tpu_outputs.npz"
+        bmodel_file =  f"{self.model_name}_sg2260_{quant_mode}.bmodel"
+        # inference bmodel
+        model_npz = bmodel_file.replace(".bmodel", "_model_outputs.npz")
+        cmd = [
+            "model_runner.py", "--input {}_in_f32_for_{}.npz".format(self.model_name, quant_mode),
+            f"--model {bmodel_file}", f"--output {model_npz}"
+        ]
+        _os_system(cmd, self.save_log)
+        # compare bmodel vs tpu.mlir
+        cmd = ["npz_tool.py", "compare", model_npz, output_npz]
+        if f"test_{quant_mode}" in self.ini_content:
+            cmd += ["--tolerance {}".format(self.tolerance[f"{quant_mode}_2"])]
+        if "excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(self.ini_content["excepts"])]
+        cmd += ["-vv"]
+        _os_system(cmd, self.save_log)
 
     def int4_tmp_test(self):
         '''tmp test script for int4 sym mode, no bmodel generated for now'''
@@ -341,10 +366,17 @@ class MODEL_RUN(object):
                 "--test_input {}".format(new_test_input),
                 "--test_reference {}".format(self.ini_content["test_reference"])
             ])
+        if quant_mode.startswith("f8"):
+            # Skip checking the correctness of sg2260 f8 bmodel. Do the tolerance check at the last step.
+            cmd.extend(["--skip_validation"])
+            cmd += ["--debug"]
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
 
         _os_system(cmd, self.save_log)
+
+        if quant_mode.startswith("f8"):
+            self.f8_tmp_test(quant_mode)
 
         if to_test:
             os.system(f"rm {new_test_input}")
