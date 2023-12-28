@@ -88,6 +88,9 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       if (!inputOp) {
         return failure();
       }
+      if (!inputOp.getOutput().hasOneUse()) {
+        return failure();
+      }
       auto new_ele_type = module::getElementType(op.getResult());
       auto input_new_type = RankedTensorType::get(
           inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
@@ -109,8 +112,10 @@ private:
 
 struct StripInputQuantCpuCastPattern
     : public OpRewritePattern<tpu::GenericCpuOp> {
-  StripInputQuantCpuCastPattern(MLIRContext *context)
-      : OpRewritePattern<tpu::GenericCpuOp>(context) {}
+  StripInputQuantCpuCastPattern(MLIRContext *context,
+                                std::vector<int64_t> quant_input_idx)
+      : OpRewritePattern<tpu::GenericCpuOp>(context),
+        quant_input_idx(quant_input_idx) {}
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getCpuOpName() != "quant") {
@@ -119,33 +124,21 @@ struct StripInputQuantCpuCastPattern
     if (auto inputOp = op.getInputs()[0].getDefiningOp<top::InputOp>()) {
       if (!inputOp.getResult().hasOneUse())
         return failure();
+      int idx = module::getIdx(inputOp.getOperand());
+      for (int i = 0; i < quant_input_idx.size(); i++) {
+        if (quant_input_idx[i] == idx + 1)
+          break;
+        if (i == quant_input_idx.size() - 1)
+          return failure();
+      }
       inputOp->getResult(0).setType(op.getResults()[0].getType());
       rewriter.replaceOp(op, inputOp.getResult());
       return success();
     }
-    // for case input -> reshape -> cast -> any op
-    if (auto reshapeOp = op.getInputs()[0].getDefiningOp<tpu::ReshapeOp>()) {
-      if (!reshapeOp.getResult().hasOneUse()) {
-        return failure();
-      }
-      auto inputOp = reshapeOp.getInput().getDefiningOp<top::InputOp>();
-      if (!inputOp) {
-        return failure();
-      }
-      auto new_ele_type = module::getElementType(op.getResults()[0]);
-      auto input_new_type = RankedTensorType::get(
-          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      inputOp.getResult().setType(input_new_type);
-      auto reshape_new_type = RankedTensorType::get(
-          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      reshapeOp.getResult().setType(reshape_new_type);
-      rewriter.replaceOp(op, reshapeOp.getResult());
-      return success();
-    }
     return failure();
   };
+private:
+  std::vector<int64_t> quant_input_idx;
 };
 
 struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
@@ -208,7 +201,7 @@ public:
     if (quant_input) {
       std::vector<int64_t> quant_input_idx = string2vec(quant_input_list);
       patterns.add<StripInputQuantTpuCastPattern>(ctx, quant_input_idx);
-      patterns.add<StripInputQuantCpuCastPattern>(ctx);
+      patterns.add<StripInputQuantCpuCastPattern>(ctx, quant_input_idx);
     }
     if (quant_output) {
       std::vector<int64_t> quant_output_idx = string2vec(quant_output_list);

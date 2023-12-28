@@ -365,6 +365,14 @@ struct ForwardTypePattern : public OpRewritePattern<TyOp> {
 
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
+    if (module::isCV18xx()) {
+      // for case input -> reshape -> anyOp
+      //               |___anyOp
+      // here should do quant manner otherwise will insert cast after shapeOp
+      auto pre_op = op->getOperand(0).getDefiningOp();
+      if (isa<top::InputOp>(pre_op))
+        return failure();
+    }
     Value in = op.getInput();
     Value out = op.getOutput();
     auto in_type = in.getType().cast<RankedTensorType>();
