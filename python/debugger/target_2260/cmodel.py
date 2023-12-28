@@ -80,7 +80,7 @@ class SG2260Runner(CModelRunner):
         lib.set_cur_nodechip_idx.restype = ctypes.c_void_p
 
         self.lib = lib
-        self.init_memory(memory_size)
+        self.init_memory(memory_size, L2M_size=0x8000000)
 
     def __del__(self):
         base_idx = (ctypes.c_int32 * 3)(1, 2, 31)
@@ -90,7 +90,7 @@ class SG2260Runner(CModelRunner):
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
             self.lib.cmodel_deinit(i)
 
-    def init_memory(self, memory_size: int):
+    def init_memory(self, GM_size: int, L2M_size: int):
         self.memory_list = []
         base_idx = (ctypes.c_int32 * 3)(
             self.TAG_WEIGHT, self.TAG_ACTIVATION, self.TAG_LMEM
@@ -106,14 +106,15 @@ class SG2260Runner(CModelRunner):
             ]
             print("using base_addr:", base_addr)
             base_addr = (ctypes.c_uint64 * 3)(*base_addr)
-            self.lib.cmodel_init(i, memory_size)
+            self.lib.cmodel_init(i, GM_size)
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
                 
             LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (64, 16, 1024 * 16)))
             SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
-        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
-        self.memory = Memory(LMEM, DDR, SMEM)
+        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), GM_size)
+        L2M = c_array_to_ndarray(self.lib.get_l2_sram(0), L2M_size)
+        self.memory = Memory(LMEM, SMEM, DDR, L2M)
 
     def _compute(self, command: BaseTpuCmd, engine_type):
         atomic = np.frombuffer(command.buf, dtype=np.uint8)
@@ -309,8 +310,15 @@ class Memory(CModelMemory):
     This class should handle all the tenors type in all kinds of storage.
     """
 
-    def __init__(self, LMEM: List[ndarray], DDR: ndarray, SMEM: List[ndarray]) -> None:
+    def __init__(
+        self,
+        LMEM: List[ndarray],
+        SMEM: List[ndarray],
+        DDR: ndarray,
+        L2M: ndarray,
+    ) -> None:
         self.DDR = DDR.ravel()
+        self.L2M = L2M.ravel()
         self.LMEM = []
         self.SMEM = []
         for lmem in LMEM:
@@ -505,6 +513,46 @@ class Memory(CModelMemory):
             return fp8e4m3_to_fp16(data)
         return data
 
+    def _l2m_to_numpy(self, memref: MemRef):
+        def _l2m_to_numpy_int4(shape, stride):
+            result = np.zeros(shape, dtype=np.uint8)
+            n_offset = np.arange(shape[0]) * stride[0]
+            c_offset = np.arange(shape[1]) * stride[1]
+            h_offset = np.arange(shape[2]) * stride[2]
+            w_offset = np.arange(shape[3]) * stride[3]
+            dst_offset = np.add.outer(
+                n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))
+            ).ravel()
+            index = memref.r_addr + (dst_offset >> 1)
+            values = self.L2M[index].view(np.uint8)
+            result = np.where(dst_offset & 1 == 0, values & 0xF, values >> 4).reshape(
+                shape
+            )
+            if memref.dtype == DType.si4:
+                return np.where(result > 7, result - 16, result).astype(np.int8)
+            return result
+
+        assert memref.shape is not None
+        assert memref.stride is not None
+        assert all(memref.shape)
+        assert any(memref.stride)
+        offset = memref.r_addr
+        if memref.dtype in (DType.i4, DType.si4, DType.ui4):
+            return _l2m_to_numpy_int4(memref.shape, memref.stride)
+        data = np.lib.stride_tricks.as_strided(
+            self.L2M[offset : offset + 4].view(memref.np_dtype),
+            shape=np.ctypeslib.as_array(memref.shape),
+            strides=np.ctypeslib.as_array(memref.stride) * memref.itemsize,
+            writeable=False,
+        )
+        if memref.dtype == DType.bf16:
+            return bf16_to_fp32(data)
+        elif memref.dtype == DType.f8e5m2:
+            return fp8e5m2_to_fp16(data)
+        elif memref.dtype == DType.f8e4m3:
+            return fp8e4m3_to_fp16(data)
+        return data
+
     def _ddr_to_numpy(self, memref: MemRef):
         def _ddr_to_numpy_int4(shape, stride):
             result = np.zeros(shape, dtype=np.uint8)
@@ -591,6 +639,8 @@ class Memory(CModelMemory):
         assert isinstance(value, MemRef)
         if value.mtype == MType.G:
             return self._ddr_to_numpy(value)
+        if value.mtype == MType.L:
+            return self._l2m_to_numpy(value)
         if value.mtype == MType.R:
             return self._local_mem_to_numpy(value, core_id)
         raise ValueError(f"unsupported memory view: {value}")

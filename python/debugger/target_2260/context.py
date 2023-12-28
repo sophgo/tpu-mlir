@@ -57,6 +57,8 @@ class SG2260Context(BModelContext):
             return MType.G
         elif tag == 0:
             return MType.R
+        elif tag == 30:
+            return MType.L
         elif tag == 31:
             if np.binary_repr(reg_address)[-27] == "1":
                 return MType.S
@@ -72,6 +74,8 @@ class SG2260Context(BModelContext):
         tag = (reg_address >> 40) & 0x1F
         if tag == 31:  # when tag==31, return the 26bits of reg_address as local offset
             return reg_address & 0x3FFFFFF
+        elif tag == 30:
+            return reg_address & 0xFFFFFFFFFF
         fixed_addr = self.base_addr[self.valid_tag[tag]] + (reg_address & 0xFFFFFFFFFF)
         return fixed_addr
 
