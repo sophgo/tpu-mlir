@@ -55,7 +55,7 @@ void NmsLowering::LoweringF32(PatternRewriter &rewriter, top::NmsOp op) const {
 
 void NmsLowering::LoweringINT8(PatternRewriter &rewriter, top::NmsOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Nms do not support Lowering to Int8");
+  LoweringF32(rewriter, op);
 }
 
 } // namespace bm1684
