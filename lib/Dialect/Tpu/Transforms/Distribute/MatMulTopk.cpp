@@ -49,32 +49,50 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
     return;
   }
   auto next_op = *op->user_begin();
-  // auto mm = cast<tpu::MatMulOp>(next_op);
   auto filterOp = mm.getOperand(1).template getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(filterOp.getOutput());
   auto outputShape = module::getShape(mm.getOutput());
   auto mm_attrs = mm->getAttrs();
   auto has_bias = !module::isNone(mm.getBias());
   auto num_dims = filterShape.size();
-  auto N = filterShape[num_dims - 1];
-  auto slice_n = ceiling_func(N, num_devices);
+
   auto a16_mm = dyn_cast<tpu::A16MatMulOp>(mm.getOperation());
   auto weight_bits = a16_mm ? a16_mm.getWeightBits() : 16;
+  auto a16_mm_w_trans = a16_mm ? a16_mm.getWTranspose() : 0;
+
+  auto N = filterShape[num_dims - 1 - a16_mm_w_trans];
+  auto slice_n = ceiling_func(N, num_devices);
+
   Operation *end_op = nullptr;
   std::vector<Value> t_operands;
   for (int i = 0; i < num_devices; i++) {
     auto offset = i * slice_n;
     auto length = std::min(slice_n, N - offset);
     auto suffix = std::to_string(i);
-    auto newFilter =
-        module::opSliceAxis(mm.getOperand(1), num_dims - 1, offset, length);
+
+    auto newFilter = module::opSliceAxis(
+        mm.getOperand(1), num_dims - 1 - a16_mm_w_trans, offset, length);
+
     std::vector<Value> operands;
     operands.push_back(mm.getInput());
     operands.push_back(newFilter);
     if (a16_mm) {
       auto scale_op = mm.getOperand(2).template getDefiningOp<top::WeightOp>();
-      operands.push_back(scale_op.clone(suffix));
+      auto sliced_scale =
+          module::opSliceAxis(scale_op, !a16_mm_w_trans, offset, length);
+      operands.push_back(sliced_scale);
+      auto zp_op = mm.getOperand(3);
+      if (zp_op.getType().template dyn_cast<NoneType>()) {
+        operands.push_back(rewriter.create<top::NoneOp>(
+            module::getLoc(), rewriter.getNoneType()));
+      } else {
+        auto zp_weight = zp_op.template getDefiningOp<top::WeightOp>();
+        auto sliced_zp =
+            module::opSliceAxis(zp_weight, !a16_mm_w_trans, offset, length);
+        operands.push_back(sliced_zp);
+      }
     }
+
     if (has_bias) {
       auto new_bias =
           module::opSliceAxis(mm.getBias(), num_dims - 1, offset, length);
@@ -87,8 +105,10 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
     new_shape[new_shape.size() - 1] = (weight_bits == 4 ? 2 : 1) * length;
     auto new_type = module::getTypeLike(mm.getOutput(), new_shape);
     rewriter.setInsertionPointAfter(mm);
+
     auto new_mm =
         rewriter.create<MatMulTy>(new_loc, new_type, operands, mm_attrs);
+
     Value cur_output = new_mm.getOutput();
     next_op = *mm->user_begin();
     while (!isa<tpu::TopKOp>(next_op)) {
