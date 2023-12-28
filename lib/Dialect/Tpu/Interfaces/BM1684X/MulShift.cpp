@@ -96,7 +96,7 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step, int6
       param.output_addr = (uint32_t)gi.out_addr;
       param.buffer_local_addr = (uint32_t)gi.buffer_addr;
       param.n = sec_info.out_n_slice * in_gi.d_slice;
-      param.c = c;
+      param.c = sec_info.c_slice;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
       param.mul_value = getMultiplier();
@@ -116,7 +116,7 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step, int6
   param.output_addr = gi.out_addr;
   param.buffer_addr = gi.buffer_addr;
   param.input_n = sec_info.n_slice * in_gi.d_slice;
-  param.input_c = c;
+  param.input_c = sec_info.c_slice;
   param.input_h = sec_info.h_slice;
   param.input_w = sec_info.w_slice;
   param.scale_val = getMultiplier();

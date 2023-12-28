@@ -90,12 +90,12 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                       .csecs = max_csecs};
 }
 
-static void update_multi_core_secs(const shape_secs_t max_shape_secs, shape_secs_t &shape_secs) {
+static void update_multi_core_secs(const shape_secs_t max_shape_secs,
+                                   shape_secs_t &shape_secs) {
   auto core_num = module::getCoreNum();
-  int64_t secs = shape_secs.nsecs * shape_secs.csecs *
-                 shape_secs.hsecs;
-  int64_t max_secs = max_shape_secs.nsecs * max_shape_secs.csecs *
-                     max_shape_secs.hsecs;
+  int64_t secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.hsecs;
+  int64_t max_secs =
+      max_shape_secs.nsecs * max_shape_secs.csecs * max_shape_secs.hsecs;
   if (max_secs < core_num || secs >= core_num)
     return;
 
@@ -103,15 +103,15 @@ static void update_multi_core_secs(const shape_secs_t max_shape_secs, shape_secs
   secs = core_num / shape_secs.nsecs;
   if (shape_secs.csecs < secs && max_shape_secs.csecs >= secs) {
     shape_secs.csecs = secs;
-  } else if (shape_secs.csecs < secs && max_shape_secs.csecs >= secs/2) {
-      shape_secs.csecs = secs/2;
+  } else if (shape_secs.csecs < secs && max_shape_secs.csecs >= secs / 2) {
+    shape_secs.csecs = secs / 2;
   }
 
   secs /= shape_secs.csecs;
   if (shape_secs.hsecs < secs && max_shape_secs.hsecs >= secs) {
     shape_secs.hsecs = secs;
-  } else if (shape_secs.hsecs < secs && max_shape_secs.hsecs >= secs/2) {
-    shape_secs.hsecs = secs/2;
+  } else if (shape_secs.hsecs < secs && max_shape_secs.hsecs >= secs / 2) {
+    shape_secs.hsecs = secs / 2;
   }
 }
 
@@ -482,23 +482,24 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
   return true;
 }
 
-bool is_broadcast_binary(Operation *op, Value in) {
+int is_broadcast_binary(Operation *op, Value in) {
   if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
            tpu::MinOp>(op)) {
-    return false;
+    return 0;
   }
   auto other = in == op->getOperand(0) ? op->getOperand(1) : op->getOperand(0);
   auto in_shape = in.getType().cast<RankedTensorType>().getShape();
   auto other_shape = other.getType().cast<RankedTensorType>().getShape();
   if (in_shape.size() != other_shape.size()) {
-    return false;
+    return 0;
   }
+  int bcast = 0;
   for (int i = 0; i < in_shape.size(); ++i) {
     if (in_shape[i] != other_shape[i] && in_shape[i] == 1) {
-      return true;
+      bcast |= (1 << i);
     }
   }
-  return false;
+  return bcast;
 }
 
 // if no transpose, split left matrix rows,
@@ -599,17 +600,23 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
-  bool is_broadcast_tensor = is_broadcast_binary(op, in);
+  int bcast = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
+  bool is_weight = module::isWeight(in);
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
     in_si.n.emplace_back(slice_pair_t(0, n));
+  } else if (is_weight && (bcast & 0x1) &&
+             (shape_secs.csecs * shape_secs.dsecs * shape_secs.hsecs *
+                  shape_secs.wsecs ==
+              1)) {
+    in_si.n.emplace_back(slice_pair_t(0, n));
   } else {
     for (auto &s : out_si.n) {
       auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && n == 1) {
+      if (bcast != 0 && n == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -626,7 +633,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   } else {
     for (auto &s : out_si.c) {
       auto ret = lg_op.BackwardC(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && c == 1) {
+      if (bcast != 0 && c == 1) {
         idx = 0;
         slice = 1;
       } else if (is_right_matrix) {
@@ -661,7 +668,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.d.size(); i++) {
       auto &s = out_si.d[i];
       auto ret = lg_op.BackwardD(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && d == 1) {
+      if (bcast != 0 && d == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -683,7 +690,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-      if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
+      if ((is_right_matrix || bcast != 0) && h == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -705,7 +712,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.w.size(); i++) {
       auto &s = out_si.w[i];
       auto ret = lg_op.BackwardW(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && w == 1) {
+      if (bcast != 0 && w == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -818,8 +825,8 @@ static bool backward_update_slice(
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  isa<tpu::Conv2DOp>(user) && module::isUniformQuantized(in))||
-                   lg_info.group_outs.size() != 1 ) {
+                  isa<tpu::Conv2DOp>(user) && module::isUniformQuantized(in)) ||
+                lg_info.group_outs.size() != 1) {
               return false;
             }
           }
@@ -1120,13 +1127,12 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
   op->setAttr(LocalGenInterface::kLayerGroupAttrName, lg_attr);
 }
 
-
 // MatMul weight split case
 // case1 : [4, 5, 6] * [4, 6, 7] = [4, 5, 7]  => batch = 4, M = 5, k = 6, N = 7
 // case2 : [3, 4, 5, 6] * [3, 4, 6, 7] => batch = 12, M = 5, K = 6, N = 7
 // other cases TODO
 bool check_split_matmul(Operation *op) {
-  if (!isa<tpu::MatMulOp>(op)){
+  if (!isa<tpu::MatMulOp>(op)) {
     return false;
   }
   auto matmulOp = dyn_cast<tpu::MatMulOp>(op);
@@ -1135,20 +1141,21 @@ bool check_split_matmul(Operation *op) {
   auto b_s = SmallVector<int64_t>(module::getShape(matmulOp.getRight()));
   auto o_s = SmallVector<int64_t>(module::getShape(matmulOp.getOutput()));
 
-  if(a_s.size() != b_s.size()){
+  if (a_s.size() != b_s.size()) {
     return false;
   }
 
   // case 1
-  if(a_s.size() == 3 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[2] == b_s[1]){
-  // if(a_s.size() == 3 && /*a_s[0] == b_s[0] && a_s[0] != 1 && */ a_s[2] == b_s[1]){
-      return true;
+  if (a_s.size() == 3 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[2] == b_s[1]) {
+    // if(a_s.size() == 3 && /*a_s[0] == b_s[0] && a_s[0] != 1 && */ a_s[2] ==
+    // b_s[1]){
+    return true;
   }
 
   // case 2
-  if(a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1]
-      && b_s[1] != 1 && a_s[3] == b_s[2]){
-      return true;
+  if (a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1] &&
+      b_s[1] != 1 && a_s[3] == b_s[2]) {
+    return true;
   }
 
   // other cases
@@ -1165,7 +1172,7 @@ void set_weight_allow_split_attr(Operation *op) {
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
 
-    if (isa<tpu::MatMulOp>(op) && !check_split_matmul(op)){
+    if (isa<tpu::MatMulOp>(op) && !check_split_matmul(op)) {
       return;
     }
     top::WeightOp weight_op;

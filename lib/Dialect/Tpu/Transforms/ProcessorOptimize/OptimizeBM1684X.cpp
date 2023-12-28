@@ -132,7 +132,8 @@ public:
         if (!(l_in_shape.size() >= 2 && r_in_shape.size() >= 2))
           return failure();
         int l_K_dim = l_in_shape.size() - 1 - l_trans - l_trans * hdim_is_batch;
-        int r_K_dim = r_in_shape.size() - 2 + r_trans + r_trans * hdim_is_batch - hdim_is_batch;
+        int r_K_dim = r_in_shape.size() - 2 + r_trans +
+                      r_trans * hdim_is_batch - hdim_is_batch;
         if (l_in_shape[l_K_dim] != r_in_shape[r_K_dim]) {
           if (l_out_shape.size() == 4 && l_out_shape[2] == 1) {
             std::vector<int64_t> new_l_shape = l_out_shape;
@@ -1418,8 +1419,10 @@ public:
 
     auto left0 = op.getInput();
     auto right0 = op.getRight();
+    auto stype = module::getStorageType(left0);
     auto mm0_left_shape = module::getShape(left0);
-    if (!isa<top::WeightOp>(right0.getDefiningOp()) || mm0_left_shape[0] > 8) {
+    if (!isa<Float16Type, BFloat16Type>(stype) ||
+        !isa<top::WeightOp>(right0.getDefiningOp()) || mm0_left_shape[0] > 1) {
       return failure();
     }
 
@@ -1463,8 +1466,8 @@ public:
     rewriter.setInsertionPointAfterValue(operands[0]);
     std::string suffix = std::string("add_");
     auto loc = module::getLocLike(operands[1], suffix);
-    auto add = rewriter.create<tpu::AddOp>(loc, operands[0].getType(),
-        mlir::ValueRange{operands[0], operands[1]});
+    auto add = rewriter.create<tpu::AddOp>(
+        loc, operands[0].getType(), mlir::ValueRange{operands[0], operands[1]});
     op.getOutput().replaceAllUsesWith(add.getOutput());
     return success();
   }
@@ -1483,7 +1486,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             PermuteAddWeightReorderPattern, MaskedFillPermuteMove, PermuteFuse,
             PermuteFuseAddSoftmax, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
             PermuteReshapeFuse, GatherElementsPattern, ScatterElementsPattern,
-            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(ctx, 8);
+            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(
+          ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
