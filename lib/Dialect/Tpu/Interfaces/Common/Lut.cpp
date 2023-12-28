@@ -31,9 +31,7 @@ LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::LutOp::LocalGenSupport() {
-  return success();
-}
+LogicalResult tpu::LutOp::LocalGenSupport() { return success(); }
 
 void tpu::LutOp::assign_fw_param(void *param) {
   fw_lut_layer_param_t layer_param = {0};
@@ -55,3 +53,7 @@ void tpu::LutOp::assign_fw_param(void *param) {
          sizeof(int) * layer_param.index_dim);
   memcpy(param, &layer_param, sizeof(fw_lut_layer_param_t));
 }
+
+ArrayAttr tpu::LutOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 permute_attr_t tpu::PermuteOp::parseParam() {
@@ -99,10 +98,11 @@ LogicalResult tpu::PermuteOp::canonicalize(tpu::PermuteOp op,
 };
 
 ArrayAttr tpu::PermuteOp::getIndexingMaps() {
+
   auto order = module::getI64Array(getOrder());
   int no_exchange_dim = 0;
   for (int i = 0, n = order->size(); i < n; i++) {
-    if (i == order->at(0))
+    if (i == order->at(i))
       no_exchange_dim++;
     else
       break;

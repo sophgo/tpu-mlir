@@ -112,7 +112,7 @@ LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
-    }else if (out_type.isFloat8E5M2()) {
+    } else if (out_type.isFloat8E5M2()) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1., true);
     } else if (out_type.isFloat8E4M3FN()) {
       auto scale = getFp8OutScale()->convertToDouble();
@@ -130,7 +130,8 @@ LogicalResult tpu::Pool3DOp::LocalGenSupport() {
   }
   if (module::isBM1684XFamily() || module::isSG2260Family()) {
     return success();
-  } else if (module::isBM1684Family() && !module::isUniformQuantized(getInput())) {
+  } else if (module::isBM1684Family() &&
+             !module::isUniformQuantized(getInput())) {
     return success();
   }
   // do not support 3D local layer now
@@ -236,3 +237,10 @@ int64_t tpu::Pool3DOp::DynForwardHeight(int64_t in_height) {
 void tpu::Pool3DOp::assign_fw_param(void *param) {
   llvm_unreachable("not implement");
 }
+
+ArrayAttr tpu::Pool3DOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  AffineMap map = AffineMap::getMultiDimIdentityMap(2, ctx);
+  SmallVector<AffineMap> indexingMaps{map, map};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+};
