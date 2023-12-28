@@ -97,7 +97,8 @@ void top::ConcatOp::shape_inference() {
                  module::getShape(input)[0] == 0) {
         continue;
       } else {
-        llvm_unreachable("unexpected input");
+        auto input_shape_v = module::getShape(input); 
+        input_shapes_v.push_back(input_shape_v);
       }
     }
     assert(out_shape.size() == 1 || out_shape.size() == 0);
