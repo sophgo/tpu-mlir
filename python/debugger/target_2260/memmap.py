@@ -172,7 +172,7 @@ class MemRef(MemRefBase):
     @property
     @functools.lru_cache()
     def r_addr(self):
-        if self.mtype in [MType.UNKNOWN, MType.G]:
+        if self.mtype in [MType.UNKNOWN, MType.G, MType.L]:
             return self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
 
         r_addr = self.address & 0x3FFFFFF  # remain 26 bit as local offset
