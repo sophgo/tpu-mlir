@@ -69,7 +69,7 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   p.is_local_layer = 1;
   p.shape_dim = 4;
   p.shape[0] = sec_info.out_n_slice;
-  p.shape[1] = c;
+  p.shape[1] = sec_info.c_slice;
   p.shape[2] = sec_info.out_h_slice;
   p.shape[3] = sec_info.out_w_slice;
   BM168x::call_local_func("backend_api_lut", &p, sizeof(p));
