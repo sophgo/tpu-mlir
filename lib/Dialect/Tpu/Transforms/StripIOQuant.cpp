@@ -174,19 +174,33 @@ private:
 
 struct StripOutputQuantCpuCastPattern
     : public OpRewritePattern<tpu::GenericCpuOp> {
-  StripOutputQuantCpuCastPattern(MLIRContext *context)
-      : OpRewritePattern<tpu::GenericCpuOp>(context) {}
+  StripOutputQuantCpuCastPattern(MLIRContext *context,
+                                 std::vector<int64_t> quant_output_idx)
+      : OpRewritePattern<tpu::GenericCpuOp>(context),
+      quant_output_idx(quant_output_idx) {}
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
     if (module::isCV18xx()) {
+      if (op.getCpuOpName() != "quant") {
+        return failure();
+      }
       if (op.getOutputs()[0].hasOneUse() &&
           isa<ReturnOp>(op.getOutputs()[0].use_begin().getUser())) {
+        auto ReturnOp = op.getOutputs()[0].use_begin().getUser();
+        for (int i = 0; i < quant_output_idx.size(); i++) {
+          if (ReturnOp->getOperand(quant_output_idx[i] - 1) == op.getOutputs()[0])
+            break;
+          if (i == quant_output_idx.size() - 1)
+            return failure();
+        }
         rewriter.replaceOp(op, op.getInputs()[0]);
         return success();
       }
     }
     return failure();
   };
+private:
+  std::vector<int64_t> quant_output_idx;
 };
 
 class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
@@ -206,7 +220,7 @@ public:
     if (quant_output) {
       std::vector<int64_t> quant_output_idx = string2vec(quant_output_list);
       patterns.add<StripOutputQuantTpuCastPattern>(ctx, quant_output_idx);
-      patterns.add<StripOutputQuantCpuCastPattern>(ctx);
+      patterns.add<StripOutputQuantCpuCastPattern>(ctx, quant_output_idx);
     }
     applyPatternsAndFoldGreedily(func, std::move(patterns));
     module::updateModuleTypes();
