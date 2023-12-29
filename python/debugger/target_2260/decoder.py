@@ -26,6 +26,7 @@ from ..target_common import (
 )
 from .opdef import tiu_index, tiu_cls, dma_index, dma_cls, TiuCmd, DmaCmd
 
+
 if TYPE_CHECKING:
     from .context import SG2260Context
 
@@ -120,7 +121,7 @@ class Decoder(DecoderBase):
 
     def decode_tiu_cmd(
         self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
-        assert cmd_id is not None, "1688 must assign cmd_id manully"
+        assert cmd_id is not None, "2260 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
             op_info = tiu_index.get(head, None)
@@ -230,3 +231,38 @@ class Decoder(DecoderBase):
         if is_sys and is_less_1024 and not np.any(np.frombuffer(reg_buf, np.uint8)):
             return True
         return False
+
+    def decode_cmds(
+        self,
+        cmd_arry: bytes,
+        core_id: int,
+        cmd_id: int,
+        t: int
+    ) -> list:
+        from ..pmu_support import EngineType
+        res = []
+        if t == EngineType.TPU :
+            cmd = self.decode_tiu_cmd(
+                cmd_arry,
+                offset=0,
+                core_id=core_id,
+                subnet_id=0,
+                cmd_id=cmd_id
+            )
+        elif t == EngineType.GDMA :
+            cmd = self.decode_dma_cmd(
+                cmd_arry,
+                offset=0,
+                core_id=core_id,
+                subnet_id=0,
+                cmd_id=cmd_id
+            )
+        elif t == EngineType.SDMA :
+            cmd = self.decode_dma_cmd(
+                cmd_arry,
+                offset=0,
+                core_id=core_id,
+                subnet_id=0,
+                cmd_id=cmd_id
+            )
+        return cmd.get_op_info()
