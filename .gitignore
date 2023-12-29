@@ -26,3 +26,4 @@ third_party/llvm/bin/clang++
 third_party/llvm/bin/clang-17
 *.xlsx
 bmodel_fbs.py
+.ipynb_checkpoints/
