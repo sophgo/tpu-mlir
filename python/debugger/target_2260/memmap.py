@@ -192,15 +192,19 @@ class MemRef(MemRefBase):
             # R0.123.L0
             mem_str = f"%{k.name}{self.bank_index}"
             if self.bank_offset:
-                mem_str += f".{self.bank_offset}"
+                mem_str += f".0x{self.bank_offset:x}"
             if self.npu_offset:
-                mem_str += f".L{self.npu_offset}"
+                mem_str += f".L0x{self.npu_offset:x}"
             return mem_str
         if k == MType.G:
             tag = (self.address >> 40) & 0x1F
             offset = (self.address & 0xFFFFFFFFFF)
-            return f"%{k.name}{tag}.{offset}"
-        return f"%{k.name}{self.r_addr}"
+            return f"%{k.name}{tag}.0x{offset:x}"
+        elif k == MType.L:
+            tag = (self.address >> 40) & 0x1E
+            offset = (self.address & 0xFFFFFFFFFF)
+            return f"%{k.name}{tag}.0x{offset:x}"
+        return f"%{k.name}0x{self.r_addr:x}"
 
     @property
     @functools.lru_cache()

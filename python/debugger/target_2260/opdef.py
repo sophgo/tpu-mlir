@@ -26,9 +26,7 @@ dma_index = RegIndex()
 def fix_cmd_id_dep(value):
     if value is None:
         return None
-
-    value = value & 0x0FFFFF
-    return value
+    return (value & 0x0FFFFF) if value & 0x100000 else None
 
 
 class TiuCmd(BaseTpuCmd, Tiu):
@@ -128,6 +126,23 @@ class TiuCmd(BaseTpuCmd, Tiu):
             + f": ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
 
+    def get_op_info(self) -> list:
+        op_info_list = []
+        op_info_list.append(self.op_name)
+
+        id_info = f"%B{self.cmd_id}C{self.core_id}"
+        if self.cmd_id_dep is not None :
+            id_info += f"->%D{self.cmd_id_dep}C{self.core_id}"
+
+        op_info_list.append(id_info)
+        if len(self.results) > 0 :
+            op_info_list.append(self.results[0])
+        else :
+            op_info_list.append("")
+        if len(self.operands) > 0 :
+            for i in range(len(self.operands)) :
+                op_info_list.append(self.operands[i])
+        return op_info_list
 
 class DmaCmd(BaseTpuCmd, Dma):
     opparam_converter = None  # assigned by SG2260Context instance
@@ -215,11 +230,27 @@ class DmaCmd(BaseTpuCmd, Dma):
     def ops(self, is_arch):
         return 0
 
+    def get_op_info(self) -> list:
+        op_info_list = []
+        op_info_list.append(self.op_name)
+        id_info = f"%D{self.cmd_id}C{self.core_id}"
+        if self.cmd_id_dep is not None :
+            id_info += f"->%B{self.cmd_id_dep}C{self.core_id}"
+        op_info_list.append(id_info)
+        if len(self.results) > 0 :
+            op_info_list.append(self.results[0])
+        else :
+            op_info_list.append("")
+        if len(self.operands) > 0 :
+            for i in range(len(self.operands)) :
+                op_info_list.append(self.operands[i])
+        return op_info_list
+
 
 class conv_op(TiuCmd):
     name = "CONV"
     opcode = 0
-    eu_type = {0: "conv.normal"}
+    eu_type = {0: "conv.normal", 2: "conv.tf32"}
     description = "convolution"
 
     def ops(self, is_arch=False):
@@ -235,7 +266,7 @@ class sconv_op(conv_op):
 class conv_bw_op(TiuCmd):
     name = "CONV_BW"
     opcode = 0
-    eu_type = {1: "conv.bw"}
+    eu_type = {1: "conv.bw", 4: "conv.bw.tf32"}
     description = "convolution"
 
     def ops(self, is_arch=False):
@@ -267,7 +298,7 @@ class smm_op(mm_op):
 class mm2_op(TiuCmd):
     name = "MM2"
     opcode = 2
-    eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt"}
+    eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt", 7: "mm2.tf32"}
     description = "matrix multiply2"
 
     def ops(self, is_arch=False):

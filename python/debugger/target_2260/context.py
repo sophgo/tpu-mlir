@@ -62,6 +62,8 @@ class SG2260Context(BModelContext):
                 return MType.S
             else:
                 return MType.R
+        elif tag == 30:
+            return MType.L
         return MType.UNKNOWN
 
     def fix_addr(self, reg_address: int) -> int:

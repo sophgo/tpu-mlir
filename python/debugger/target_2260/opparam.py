@@ -110,6 +110,8 @@ def sCONV_converter(context: "SG2260Context", reg: sCONV_reg):
     BF16 = 5
     INT4 = 6
     FP8 = 7
+    CONV_TF32 = 2
+
     opd0 = dict(
         address=reg.opd0_addr,
         shape=(reg.res0_n, reg.opd0_c, reg.opd0_h, reg.opd0_w),
@@ -162,16 +164,15 @@ def sCONV_converter(context: "SG2260Context", reg: sCONV_reg):
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
-    if reg.opt_opd0_prec == INT4 and reg.opt_opd1_prec == INT4:
+    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8 :
         opd1["layout"] = Layout._64IC
-        opd3["shape"] = [1, reg.res0_c, 1, 1]
-        opd3["dtype"] = (DType.i8, 1)
+    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8 :
+        opd1["layout"] = Layout._64IC
     elif reg.opt_opd0_prec == FP16 or reg.opt_opd0_prec == BF16:
-        opd1["layout"] = Layout._16IC
-    elif reg.opt_opd0_prec == FP32:
-        opd1["layout"] = Layout._1IC
-    else:
         opd1["layout"] = Layout._32IC
+    elif reg.opt_opd0_prec == FP32 and reg.tsk_eu_typ == CONV_TF32:
+        opd1["layout"] = Layout._16IC
+
     results = [get_value(context, **res0)]
 
     attr = dict(
@@ -963,7 +964,11 @@ def SYS_converter(context: "SG2260Context", reg):
 
 
 def dma_addr(H, L):
-    return H * 2**32 + L
+    addr = H * 2**32 + L
+    tag = (addr >> 40) & 0x1f
+    if tag == 0x0 :     # for workround
+        addr =  addr | (0x1 << 40)
+    return addr
 
 
 def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
@@ -1115,7 +1120,7 @@ def DMA_masked_select_converter(context: "SG2260Context", reg: DMA_masked_select
 
 @opparam_converter_regitstry("DMA_general")
 def DMA_general_converter(context: "SG2260Context", reg: DMA_general_reg):
-    copy_len = reg.src_cstride
+    copy_len = reg.src_cstride_move_length_
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
