@@ -754,7 +754,8 @@ static bool backward_update_slice(
     return true;
   }
   auto op = out.getDefiningOp();
-  if (isa<tpu::Conv2DOp>(op) && module::isBM1684Family()) {
+  if (isa<tpu::Conv2DOp>(op) &&
+      (module::isBM1684Family() || module::isBM1688())) {
     auto conv_attr = dyn_cast<tpu::Conv2DOp>(op).parseParam();
     if (conv_attr.use_3ic_optimize) {
       return false;

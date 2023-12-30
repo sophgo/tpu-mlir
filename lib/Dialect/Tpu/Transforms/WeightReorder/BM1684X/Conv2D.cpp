@@ -152,7 +152,9 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   }
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
-  } else if (module::isBM1688() /*&& isINT4Conv*/ || (module::isSG2260Family() && (filter_stype.isFloat8E5M2() || filter_stype.isFloat8E4M3FN()))) {
+  } else if (isINT4Conv ||
+             (module::isSG2260Family() &&
+              (filter_stype.isFloat8E5M2() || filter_stype.isFloat8E4M3FN()))) {
     use_3ic_optimize = 0;
   }
 
