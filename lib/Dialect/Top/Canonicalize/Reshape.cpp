@@ -319,3 +319,19 @@ void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                  TopFuseReshape3, ReshapeInstanceNormPattern, MergeGeluPattern,
                  ReshapeMovePattern, InValidReshapeMergePattern>(context);
 }
+
+OpFoldResult ReshapeOp::fold(FoldAdaptor adaptor) {
+  Operation *op = *this;
+  auto weightOp = op->getOperand(0).getDefiningOp<top::WeightOp>();
+  if (weightOp) {
+    if (!weightOp.getOperation()->hasOneUse()) {
+      return {};
+    }
+    auto data = weightOp.read_as_float();
+    auto type = llvm::cast<RankedTensorType>(this->getOutput().getType());
+    auto new_op = WeightOp::create(weightOp.getOperation(), "folder", *data, type);
+    return new_op;
+  } else {
+    return {};
+  }
+}

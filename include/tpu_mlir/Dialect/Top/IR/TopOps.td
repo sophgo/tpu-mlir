@@ -890,6 +890,7 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+  let hasFolder = 1;
 }
 
 def Top_ViewOp:Top_Op<"View"> {
