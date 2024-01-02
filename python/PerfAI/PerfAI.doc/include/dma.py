@@ -30,8 +30,8 @@ class Dma(object):
         """
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
-                        'MaskWriteRatio', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
+                        'Asic Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
                         'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
                         'src_nstride', 'src_cstride', 'src_wstride', 'src_hstride',
@@ -40,7 +40,7 @@ class Dma(object):
                         'index_csize', 'index_hsize', 'index_cstride', 'index_hstride',
                         'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format', 'localmem_mask_h32',
                         'localmem_mask_l32',
-                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'cmd_id_dep', 'intr_en', 'Msg Id', 'Sd\Wt Count']
+                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count']
         self.reg_list = []
         self.core_id = str(core_id)
         self.height = None
@@ -155,18 +155,22 @@ class Dma(object):
                 reg_dict['MaskWriteRatio'] = 0
             self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
             self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
-        self.dma_time = get_time_by_cycle(self.dma_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])
+        self.dma_time = get_time_by_cycle(self.dma_cycle, self.chip_arch_dict['DMA Frequency(MHz)']) if self.chip_arch_dict else 0
         self.working_cycle = self.dma_cycle - self.wait_msg_total_time
-        self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize, self.ddr_total_cycle)
-        self.l2_avg_bandwidth = get_ratio_float_2f(self.l2_total_datasize, self.l2_total_cycle)
+        self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize,
+                                                    get_time_by_cycle(self.ddr_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
+                                                    if self.chip_arch_dict else 0
+        self.l2_avg_bandwidth = get_ratio_float_2f(self.l2_total_datasize,
+                                                    get_time_by_cycle(self.l2_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
+                                                    if self.chip_arch_dict else 0
         self.ddr_avg_burst_length = get_ratio_float_2f(self.ddr_burst_length_sum, self.ddr_xact_cnt)
         self.perf_dict = {
-            'AsicCycle': [self.dma_cycle],
+            'totalDmaCycle': [self.dma_cycle],
             'workingCycle': [self.working_cycle],
-            'totalDdrDataSize': [self.ddr_total_datasize],
-            'totalL2DataSize': [self.l2_total_datasize],
-            'ddrAvgBandwidth': [self.ddr_avg_bandwidth],
-            'l2AvgBandwidth': [self.l2_avg_bandwidth],
+            'totalDdrDataSize(B)': [self.ddr_total_datasize],
+            'totalL2DataSize(B)': [self.l2_total_datasize],
+            'ddrAvgBandwidth(GB/s)': [self.ddr_avg_bandwidth],
+            'l2AvgBandwidth(GB/s)': [self.l2_avg_bandwidth],
             'avgDdrBurstLength': [self.ddr_avg_burst_length],
             'waitMsgTotalTime': [self.wait_msg_total_time]
         }
@@ -195,10 +199,12 @@ class Dma(object):
             for col in self.columns:
                 if ('addr' in col or 'mask' in col) and col in pre_clos:
                     df[col] = int2Hex(df[col].values)
+            if self.chip_arch_dict['Platform'].lower() == 'simulator':
+                df.rename(columns={'Asic Cycle': 'Simulator Cycle'}, inplace=True)
             pd.DataFrame(self.perf_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
                                                   startcol=2,
-                                                  engine='xlsxwriter')
-            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5, engine='xlsxwriter')
+                                                  engine='xlsxwriter', float_format='%g')
+            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5, engine='xlsxwriter', float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, core_id, engine_type, sheet_color, chip_arch, frozen=True):
@@ -327,7 +333,9 @@ class Dma(object):
                 for h in range(1, len(df) + 6):
                     if h > 20:
                         break
-                    if ws.cell(h, index + 1).value is not None:
+                    if index == 12:
+                        collen = len(str(ws.cell(h, index + 1).value)) * 1.4
+                    elif ws.cell(h, index + 1).value is not None:
                         collen = max(collen, len(str(ws.cell(h, index + 1).value)))
             ws.column_dimensions[letter].width = collen * 1.05
         if frozen:

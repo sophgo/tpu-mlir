@@ -413,14 +413,14 @@ class TotalLayerInfo:
         }
 
         pd.DataFrame(condition_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter',
-                                              startrow=0, startcol=1)
+                                              startrow=0, startcol=1, float_format='%g')
         pd.DataFrame(detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter',
-                                           startrow=3, startcol=1)
+                                           startrow=3, startcol=1, float_format='%g')
 
         if len(self.custom_layer_info) > 0:
             pd.DataFrame(self.custom_layer_info).to_excel(self.writer, index=False, sheet_name=self.sheet_name,
                                                           startrow=8, startcol=0,
-                                                          engine='xlsxwriter')
+                                                          engine='xlsxwriter', float_format='%g')
 
     @classmethod
     def set_style(cls, file_path):

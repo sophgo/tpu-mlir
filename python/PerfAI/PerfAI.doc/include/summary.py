@@ -234,13 +234,13 @@ class Summary:
             'Pool OPs/s': [pooling_ops]
         }
 
-        pd.DataFrame(condition_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=0, startcol=1)
-        pd.DataFrame(detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=3, startcol=1)
+        pd.DataFrame(condition_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=0, startcol=1, float_format='%g')
+        pd.DataFrame(detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=3, startcol=1, float_format='%g')
 
         if len(self.data_rows) > 0:
             df = pd.DataFrame(self.data_rows)
             df.columns = self.layer_summary_header
-            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=8, startcol=1)
+            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=8, startcol=1, float_format='%g')
 
     @classmethod
     def set_style(cls, file_path):

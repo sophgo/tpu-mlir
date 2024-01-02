@@ -154,16 +154,16 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
     write_directions = ['LMEM->DDR'] + [f'LMEM{i}->DDR' for i in range(8)] + [f'LMEM{i}->L2M' for i in range(8)] + [f'LMEM{i}->L2M{i}' for i in range(8)]
     # lmem_direction = [f'LMEM{i}->LMEM{i}' for i in range(8)]
     lmem_temp = []
-    if 'Bandwidth' in data:
-        data['Bandwidth'] = data['Bandwidth'].apply(lambda x: str(x) if isinstance(x, Decimal) else x)
+    if 'Bandwidth(GB/s)' in data:
+        data['Bandwidth(GB/s)'] = data['Bandwidth(GB/s)'].apply(lambda x: str(x) if isinstance(x, Decimal) else x)
     for i in range(len(data)):
         uarch_rate = pd.to_numeric(data['uArch Rate'][i][:-1]) if 'uArch Rate' in data.columns else None
         cmd = int(data['Cmd Id'][i])
-        if 'Bandwidth' in data:
+        if 'Bandwidth(GB/s)' in data:
             if 'L2M' in data['Direction'][i]:
-                height = round(pd.to_numeric(data['Bandwidth'][i]) / bwlist[1], 2)
+                height = round(pd.to_numeric(data['Bandwidth(GB/s)'][i]) / bwlist[1], 2)
             else:
-                height = round(pd.to_numeric(data['Bandwidth'][i]) / bwlist[0], 2)
+                height = round(pd.to_numeric(data['Bandwidth(GB/s)'][i]) / bwlist[0], 2)
         else:
             height = round(uarch_rate/100, 2)
         tmp = [
@@ -175,7 +175,7 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
             height,
             cmd,
             data['Function Name'][i],
-            data['Bandwidth'][i] if 'Bandwidth' in data else data['uArch Rate'][i],
+            data['Bandwidth(GB/s)'][i] if 'Bandwidth(GB/s)' in data else data['uArch Rate'][i],
             data['Data Type'][i],
             f"Direction:{data['Direction'][i]}" if 'Direction' in data else f"Bank Conflict Ratio:{data['Bank Conflict Ratio'][i]}",
             data['Msg Id'][i],

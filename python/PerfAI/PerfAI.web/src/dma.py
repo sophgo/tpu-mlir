@@ -28,9 +28,9 @@ class DMA(): #GDMA/SDMA/CDMA
         self.frequency = 0
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Bandwidth', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
-                        'MaskWriteRatio', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
-                        'src_shape','dst_shape', 'index_shape', #(size, datatype, stride)
+                        'Asic Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
+                        'index_shape', 'src_shape', 'dst_shape',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
                         'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
                         'src_nstride', 'src_cstride', 'src_wstride', 'src_hstride',
@@ -39,8 +39,7 @@ class DMA(): #GDMA/SDMA/CDMA
                         'index_csize', 'index_hsize', 'index_cstride', 'index_hstride',
                         'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format', 'localmem_mask_h32',
                         'localmem_mask_l32',
-                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'cmd_id_dep', 'intr_en', 'Msg Id', 'Sd\Wt Count']
-
+                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count']
     def dma_engine_type(self):
         if self.dmaType == 'CDMA':
             return '4'

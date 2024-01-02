@@ -12,7 +12,7 @@ from definition.style import DetailsStyle
 
 
 class AsicSummary(object):
-    sheet_name = 'Asic Summary'
+    sheet_name = 'Engine Summary'
 
     def __init__(self, writer, tius, gdmas, sdmas, cdmas, act_core_num):
         """
@@ -24,7 +24,7 @@ class AsicSummary(object):
         :param sdmas: sdma instance list, it may be empty
         :param act_core_num: represents the actual number of cores to run since the input file may be empty
         """
-        self.columns = ['CoreId', 'TiuWorkingRatio', 'Parallelism(%)', 'Concurrency(%)',
+        self.columns = ['CoreId', 'TiuWorkingRatio', 'Parallelism', 'Concurrency',
                         'totalTime(us)', 'totalTiuCycle', 'totalAlgCycle', 'totalAlgOps', 'totalUArchOps', 'uArchURate',
                         'totalGdmaCycle', 'totalDdrDataSize', 'totalL2DataSize', 'ddrAvgBandwidth', 'l2AvgBandwidth', 'avgDdrBurstLength',
                         'totalSdmaCycle', 'totalDdrDataSize', 'ddrAvgBandwidth', 'avgDdrBurstLength',
@@ -121,7 +121,7 @@ class AsicSummary(object):
                                                      get_time_by_cycle(max(gdma_cycles), dma_frequency), total_time))
         tiu_max_time = get_time_by_cycle(max(tiu_cycles), tiu_frequency)
         gdma_max_time = get_time_by_cycle(max(gdma_cycles), dma_frequency)
-        concurrencys.append(get_ratio_str_2f_zero(tiu_max_time + gdma_max_time - total_time, max(tiu_max_time, gdma_max_time)))
+        concurrencys.append(get_ratio_str_2f_zero(tiu_max_time + gdma_max_time - total_time, min(tiu_max_time, gdma_max_time)))
         uArch_rates.append(get_ratio_str_2f_zero(sum(alg_opss), sum(uArch_opss)))
         total_times.append(max(total_times))
         tiu_cycles.append(max(tiu_cycles))
@@ -172,7 +172,7 @@ class AsicSummary(object):
         :return: None
         """
         df = pd.DataFrame(self.data, columns=self.columns, index=None)
-        df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=4, engine='xlsxwriter')
+        df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=4, engine='xlsxwriter', float_format='%g')
         para_desc = '(totalTiuCycle + totalGdmaCycle + totalSdmaCycle) / totalTime, presents the parallelism among all engines.'\
         if self.act_core_num > 1 else '(totalTiuCycle + totalGdmaCycle) / totalTime, presents the parallelism among all engines.'
         kpi_desc = pd.DataFrame(
@@ -200,7 +200,7 @@ class AsicSummary(object):
                 index=None
             )
         kpi_desc.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=9+self.act_core_num, startcol=0,
-                                        engine='xlsxwriter')
+                                        engine='xlsxwriter', float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, chip_arch):
@@ -226,11 +226,11 @@ class AsicSummary(object):
         for h, w in zip([4, 4, 4, 4], [8, 14, 19, 24]):
             ws.cell(h, w).fill = DetailsStyle.title_pattern
             ws.cell(h, w).font = DetailsStyle.title_font
-        for w in range(6, 11):
+        for w in range(6, 12):
             ws.cell(4, w).fill = DetailsStyle.tiu_pattern
-        for w in range(11, 17):
+        for w in range(11, 18):
             ws.cell(4, w).fill = DetailsStyle.gdma_pattern
-        for w in range(17, 21):
+        for w in range(17, 22):
             ws.cell(4, w).fill = DetailsStyle.sdma_pattern
         for w in range(21, 27):
             ws.cell(4, w).fill = DetailsStyle.cdma_pattern
@@ -247,6 +247,7 @@ class AsicSummary(object):
         # set highlight style
         ratio_pos = 2
         parallelismPos = 3
+        concurrencyPos = 4
         uRate_pos = 10
         total_uArch_ops = 9
         gdma_ddr_bd_pos = 14
@@ -257,7 +258,7 @@ class AsicSummary(object):
         cdma_ddr_bd_pos = 24
         cdma_l2_bd_pos = 25
         cdma_ddr_avg_bl_pos = 26
-        chart_len = len(df) - 8
+        chart_len = len(df) - 9
         for h in range(content_start_rows, chart_len):
             if int(ws.cell(h, total_uArch_ops).value) > 0:
                 # ratio_pos
