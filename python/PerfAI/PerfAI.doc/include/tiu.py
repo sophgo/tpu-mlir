@@ -228,7 +228,7 @@ class Tiu(object):
                 func_dict['Asic Cycle'] += int(reg_dict['Asic Cycle'])
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             self.total_instr += 1
-        self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)'])
+        self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)']) if self.chip_arch_dict else 0
 
     def pop_data(self):
         tiu_instance_map = dict()
@@ -252,7 +252,7 @@ class Tiu(object):
             if 'addr' in col or 'mask' in col:
                 df[col] = int2Hex(df[col].values)
         self.summary = {
-            'tiuCycle': [self.tiu_cycle],
+            'totalTiuCycle': [self.tiu_cycle],
             'totalAlgCycle': [self.alg_total_cycle],
             'algTotalOps': [self.alg_total_ops],
             'totalUArchOps': [self.uArch_total_ops],
@@ -283,23 +283,28 @@ class Tiu(object):
             'Asic Cycle Ratio': '100.00%'
         }
         self.stati_list.append(self.perf_dict['Overall'])
+        if self.chip_arch_dict['Platform'].lower() == 'simulator':
+            for d in self.stati_list:
+                d['Simulator Cycle'] = d.pop('Asic Cycle')
+                d['Simulator Cycle Ratio'] = d.pop('Asic Cycle Ratio')
+            df.rename(columns={'Asic Cycle': 'Simulator Cycle'}, inplace=True)
         if len(df) > 0:
             content_start_rows = len(self.stati_list) + 8
             pd.DataFrame(self.summary).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
                                                 startcol=1,
-                                                engine='xlsxwriter')
+                                                engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
                                                     startcol=13,
-                                                    engine='xlsxwriter')
+                                                    engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.kpi_desc).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=3,
                                                  startcol=13,
-                                                 engine='xlsxwriter')
+                                                 engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.stati_list).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5,
                                                    startcol=1,
-                                                   engine='xlsxwriter')
+                                                   engine='xlsxwriter', float_format='%g')
             pd.DataFrame(df).to_excel(self.writer, index=False, sheet_name=self.sheet_name,
                                       startrow=content_start_rows, startcol=0,
-                                      engine='xlsxwriter')
+                                      engine='xlsxwriter', float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, core_id, frozen=False):
@@ -326,7 +331,7 @@ class Tiu(object):
             ws.cell(h, w).fill = detail_style.title_pattern
             ws.cell(h, w).font = detail_style.title_font
         summary_start_cols = 2
-        summary_end_cols = summary_start_cols + 7
+        summary_end_cols = summary_start_cols + 6
         for w in range(summary_start_cols, summary_end_cols):
             # summary title style
             ws.cell(1, w).fill = detail_style.title_header_pattern
@@ -334,8 +339,8 @@ class Tiu(object):
             # summary content style
             ws.cell(2, w).fill = detail_style.title_content_pattern
             ws.cell(2, w).font = detail_style.title_font
-        detail_start_cols = summary_end_cols + 5
-        detail_end_cols = detail_start_cols + 9
+        detail_start_cols = summary_end_cols + 6
+        detail_end_cols = detail_start_cols + 11
         for w in range(detail_start_cols, detail_end_cols):
             # detail title style
             ws.cell(1, w).fill = detail_style.title_header_pattern
@@ -346,7 +351,7 @@ class Tiu(object):
         perf_start_cols = summary_start_cols
         perf_end_cols = perf_start_cols + 11
         perf_start_rows = 6
-        perf_df_len = df.query('simTotalCycle == "Core Id"').index[0] - perf_start_rows - 1
+        perf_df_len = df.query('totalTiuCycle == "Core Id"').index[0] - perf_start_rows - 1
         for w in range(perf_start_cols, perf_end_cols):
             # perf title style
             ws.cell(perf_start_rows, w).fill = detail_style.title_header_pattern
@@ -419,7 +424,7 @@ class Tiu(object):
             ws.cell(h, w).alignment = detail_style.center_align
         for start_rows, end_rows, start_cols, end_cols in zip([1, 1, 6, 4],
                                                               [3, 3, 7 + perf_df_len, 9],
-                                                              [2, 14, 2, 14], [9, 23, 13, 16]):
+                                                              [2, 14, 2, 14], [8, 25, 13, 16]):
             for h in range(start_rows, end_rows):
                 for w in range(start_cols, end_cols):
                     # set all header border style

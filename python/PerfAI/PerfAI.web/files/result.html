@@ -313,7 +313,7 @@
             } else if (u < 1000000000) {
                 return `${(u / 1000000).toFixed(3)}ms`
             } else { //if(u<1000000000) {
-                return `${(u / 1000000000).toFixed(3)}ms`
+                return `${(u / 1000000000).toFixed(3)}s`
             }
         }
     </script>
@@ -1198,7 +1198,7 @@
                     }
                 },
                 title: {
-                    text: title ? title : "Cycle Chart",
+                    text: title ? title : "Time Chart",
                     left: 'center'
                 },
                 dataZoom: [{
@@ -1430,6 +1430,9 @@
                         }
                         console.log("filtered_Data:", filtered_data)
                         showTimeChart(chartHandle, header, filtered_data, categories, color_col);
+                        if (document.getElementById("show_data_table").checked) {
+                            showFilterDataTable("data-list", time_header, filtered_data, "Detail Data ", categories)
+                        }
                     }));
                 }
                 showTimeChart(chartHandle, header, data, categories, color_col)

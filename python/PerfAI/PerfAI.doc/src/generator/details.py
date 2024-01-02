@@ -19,15 +19,15 @@ def palace_holder(writer, splited, g_info):
     if g_info is not None:
         sheet_name = 'Summary'
         df = pd.DataFrame()
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
+        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
         sheet_name = 'Layer by Layer Info'
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
+        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
     sheet_name = 'Asic Summary'
     df = pd.DataFrame()
-    df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
     if not splited:
         sheet_name = 'Instr World'
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter')
+        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
 
 
 def get_engine_layer(g_info):
