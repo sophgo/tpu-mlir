@@ -12,6 +12,7 @@ from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex, 
 from .regdef import SYS_TR_ACC_reg
 from .memmap import NPU_NUM, EU_NUM, LANE_NUMBER, CUBE_NUM, CubeOutputHeightWidthAlignNum, ExecutionUnitNumber
 from abc import abstractmethod
+import math
 # global data and type
 # ------------------------------------------------------------
 
@@ -213,10 +214,11 @@ class conv_op(TiuCmd):
         n, ic, ih, iw = self.operands[0].shape
         n, oc, oh, ow = self.results[0].shape
 
-        has_bias = len(self.operands) > 2
+        # has_bias = len(self.operands) > 2
+        biasLat = 1 if self.reg.opt_opd2_const else 0
         dtype = self.operands[0].dtype
-        channelNumPerCyc = CUBE_NUM(dtype)
         if is_arch:
+            channelNumPerCyc = CUBE_NUM(dtype)
             if dtype == DType.f32:
                 activatedEuNumber = EU_NUM(dtype)
             else:
@@ -226,8 +228,8 @@ class conv_op(TiuCmd):
             oh = 1
             oc = ALIGN(oc, LANE_NUMBER)
         out_size = n * oc * oh * ow
-        kh, kw = self.attribute["kernel"]
-        return out_size * (2 * ic * kh * kw - 1 + has_bias)
+        kh, kw = self.reg.opd1_h, self.reg.opd1_w
+        return out_size * (2 * ic * kh * kw - 1 + biasLat)
 
     def initial_cycle(self):
         # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
@@ -243,7 +245,7 @@ class conv_op(TiuCmd):
         channelNumPerCyc = CUBE_NUM(dtype)
         if dtype == DType.f32:
             channelNumPerCyc = 1
-            activatedEuNumber = EU_NUM(DType)
+            activatedEuNumber = EU_NUM(dtype)
         else:
             activatedEuNumber = CubeOutputHeightWidthAlignNum # CubeOutputHeightWidthAlignNum
         return DIV_UP(alg_ops, NPU_NUM * channelNumPerCyc * activatedEuNumber * 2)
@@ -359,8 +361,8 @@ class cmp_op(TiuCmd):
 
     def alg_cycle(self, alg_ops: int) -> int:
         perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
-        activatedEuNumber = perLaneEuNumber // int(
-            self.results[0].dtype.itemsize() * 8)
+        activatedEuNumber = perLaneEuNumber // math.ceil(
+            self.results[0].dtype.itemsize)
         return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * 2)
 
     def initial_cycle(self) -> int:
@@ -437,8 +439,8 @@ class lin_op(TiuCmd):
     def alg_cycle(self, alg_ops: int) -> int:
         factor = 2
         perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
-        activatedEuNumber = perLaneEuNumber // int(
-            self.results[0].dtype.itemsize() * 8)
+        activatedEuNumber = perLaneEuNumber // math.ceil(
+            self.results[0].dtype.itemsize)
         return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * factor)
 
     def initial_cycle(self) -> int:
@@ -480,9 +482,9 @@ class vc_op(TiuCmd):
         if is_arch:
             dtype = self.operands[0].dtype
             perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
-            opd0Byte = int(self.operands[0].dtype.itemsize() * 8)
-            opd1Byte = int(self.operands[1].dtype.itemsize() * 8)
-            res0Byte = int(self.results[1].dtype.itemsize() * 8)
+            opd0Byte = math.ceil(self.operands[0].dtype.itemsize)
+            opd1Byte = math.ceil(self.operands[1].dtype.itemsize)
+            res0Byte = math.ceil(self.results[1].dtype.itemsize)
             maxByte = max(opd0Byte, opd1Byte, res0Byte)
             activatedEuNumber = perLaneEuNumber // maxByte
             c = ALIGN(c, NPU_NUM)
@@ -491,9 +493,9 @@ class vc_op(TiuCmd):
 
     def alg_cycle(self, alg_ops: int) -> int:
         perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
-        opd0Byte = int(self.operands[0].dtype.itemsize() * 8)
-        opd1Byte = int(self.operands[1].dtype.itemsize() * 8)
-        res0Byte = int(self.results[1].dtype.itemsize() * 8)
+        opd0Byte = math.ceil(self.operands[0].dtype.itemsize)
+        opd1Byte = math.ceil(self.operands[1].dtype.itemsize)
+        res0Byte = math.ceil(self.results[1].dtype.itemsize)
         maxByte = max(opd0Byte, opd1Byte, res0Byte)
         activatedEuNumber = perLaneEuNumber // maxByte
         return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER)
@@ -664,6 +666,21 @@ class rqdq_op(TiuCmd):
             hw = ALIGN(h * w, EU_NUM(dtype))
         return n * c * hw * factor
 
+    def alg_cycle(self, alg_ops: int) -> int:
+        factor = 3
+        dtype = self.operands[0].dtype
+        activatedEuNumber = EU_NUM(dtype)
+        return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * factor)
+
+    def initial_cycle(self) -> int:
+        return 11
+
+    def bank_conflict_cycle(self) -> int:
+        if (self.reg.res0_addr * 2) == self.reg.opd0_addr:
+            bankConflictRatio = 2
+        else:
+            bankConflictRatio = 1
+        return bankConflictRatio
 
 class srqdq_op(rqdq_op):
     name = "sRQ&sDQ"
@@ -700,6 +717,14 @@ class sg_op(TiuCmd):
             w = ALIGN(w, EU_NUM(dtype))
         return n * c * h * w * factor
 
+    def alg_cycle(self, alg_ops: int) -> int:
+        return DIV_UP(alg_ops, LANE_NUMBER)
+
+    def initial_cycle(self) -> int:
+        return 11
+
+    def bank_conflict_cycle(self) -> int:
+        return 0
 
 class ssg_op(sg_op):
     name = "sSG"
@@ -722,6 +747,14 @@ class sgl_op(TiuCmd):
             w = ALIGN(w, EU_NUM(dtype))
         return n * c * h * w * factor
 
+    def alg_cycle(self, alg_ops: int) -> int:
+        return DIV_UP(alg_ops, LANE_NUMBER * LANE_NUMBER)
+
+    def initial_cycle(self) -> int:
+        return 24
+
+    def bank_conflict_cycle(self) -> int:
+        return 0
 
 class ssgl_op(sgl_op):
     name = "sSGL"
@@ -760,12 +793,22 @@ class transbc_op(TiuCmd):
                 hw = h * ALIGN(w, EU_NUM(dtype))
         return n * c * hw * factor
 
+    def alg_cycle(self, alg_ops: int) -> int:
+        perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
+        channelNumPerCyc = LANE_NUMBER
+        resByte = math.ceil(self.results[0].dtype.itemsize)
+        activatedEuNumber = perLaneEuNumber // resByte
+        if self.eu_name in ("tsbc.cw_ts", "tsbc.wc_ts", "tsbc.l_copy", "tsbc.s_distribute"):
+            throughPut = activatedEuNumber
+        else:
+            throughPut = activatedEuNumber * channelNumPerCyc
+        return DIV_UP(alg_ops, throughPut)
+
 
 class stransbc_op(transbc_op):
     name = "sCW&sBC"
     short_cmd = True
     description = "short TRANS && BC"
-
 
 class tiu_sys_tr_acc(TiuCmd):
     name = "SYS_TR_ACC"

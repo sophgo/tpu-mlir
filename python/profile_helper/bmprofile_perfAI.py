@@ -265,5 +265,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
     bmProfile = BMProfileParserPerfAI()
-    bmProfile.parse("/workspace/tpu-mlir/regression/tmp/a2/bmprofile_data-1")
+    bmProfile.parse("/workspace/easytools/a2profile_yjz/yolov5s/bmprofile_data-1")
     bmProfile.to_txt('tmp')
