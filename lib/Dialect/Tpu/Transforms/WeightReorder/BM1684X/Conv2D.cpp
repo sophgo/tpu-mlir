@@ -248,7 +248,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isBM1688()) {
+    if (module::isBM1688() || module::isSG2260Family()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
