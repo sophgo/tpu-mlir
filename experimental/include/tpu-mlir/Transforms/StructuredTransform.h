@@ -192,7 +192,7 @@ struct Transforms
     children.push_back(new Transforms(std::make_unique<T>(ts), this));
   }
 
-  Transform &getTransfom() { return *transform.get(); };
+  Transform &getTransfom() { return *transform; };
   // remove this node from the tree.
   void erase() {
     if (parent) {

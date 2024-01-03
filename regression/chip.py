@@ -23,7 +23,7 @@ chip_support = {
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
-    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        N,      N,      N,       "bmodel"),
+    "sg2260":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
 }
 
 multi_core_info = {
@@ -52,10 +52,10 @@ basic_model_list = {
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N),
     "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N),
     "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N),
-    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
-    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
-    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
-    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
+    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
+    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
+    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
+    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      N),
 }
 
 full_model_list = {
@@ -164,4 +164,3 @@ full_multi_core_model_list = {
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
 }
-

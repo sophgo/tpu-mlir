@@ -117,7 +117,7 @@ class MODEL_RUN(object):
                         and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
             if chip =='sg2260' and f"test_{quant_mode}" in self.ini_content:
-                self.quant_modes[quant_mode] = int(self.ini_content[f"test_{quant_mode}"])
+                self.quant_modes[quant_mode] &= int(self.ini_content[f"test_{quant_mode}"])
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
             self.ini_content["do_dynamic"])) and chip_support[self.chip][-2]
