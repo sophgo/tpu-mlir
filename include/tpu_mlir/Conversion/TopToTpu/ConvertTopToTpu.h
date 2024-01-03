@@ -26,14 +26,14 @@ protected:
   void host2device_convert_process();
   void relu_process();
   void cast_process();
-  int userCnt(Operation *op);
   bool isSISO(Operation *op);
   void match_bert_ffn(std::set<Operation *> &ffn);
   void match_bert_mha(std::set<Operation *> &mha);
   void match_attention(std::set<Operation *> &attention);
   bool bert_mix_precision();
-  void match_vit_ffn(std::set<Operation *> &ffn);
-  void match_vit_mha(std::set<Operation *> &mha);
+  void match_vit_mlp(std::vector<Operation *> &mlp);
+  void match_vit_mha(std::vector<Operation *> &mha);
+  void match_vit_mha1(std::vector<Operation *> &mha);
   bool vit_mix_precision();
   void set_add_before_softmax_fp32();
   bool swin_t_mix_precision();

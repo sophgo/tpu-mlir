@@ -1193,21 +1193,6 @@ void ConvertTopToTpu::cast_process() {
     });
   }
 
-int ConvertTopToTpu::userCnt(Operation *op) {
-    auto out = op->getResult(0);
-    if (out.getUsers().empty())
-      return 0;
-    else {
-      int cnt = 0;
-      auto x = out.user_begin();
-      while (x != out.user_end()) {
-        cnt++;
-        x = std::next(x);
-      }
-      return cnt;
-    }
-  }
-
   // SISO is single input single output, not counting weight and none and
   // input/output
 bool ConvertTopToTpu::isSISO(Operation *op) {
@@ -1226,7 +1211,7 @@ bool ConvertTopToTpu::isSISO(Operation *op) {
     }
     if (cnt == 0)
       return false;
-    return (userCnt(op) == 1);
+    return (std::distance(op->getResult(0).user_begin(), op->getResult(0).user_end()) == 1);
   }
 
   // return a set of end layernorms after ffn , the count would be the number of
@@ -1495,7 +1480,7 @@ bool convergence(Operation* from, Operation *to) {
   return res;
 }
 
-void ConvertTopToTpu::match_vit_ffn(std::set<Operation *> &ffn) {
+void ConvertTopToTpu::match_vit_mlp(std::vector<Operation *> &mlp) {
     mainFunc_.walk([&](Operation *op) {
       if (auto addop = dyn_cast<top::AddOp>(op)) {
           top::AddOp aop = NULL;
@@ -1529,7 +1514,7 @@ void ConvertTopToTpu::match_vit_ffn(std::set<Operation *> &ffn) {
                   !geluop.getOutput().hasOneUse() ||
                   !mmop1.getOutput().hasOneUse())
                 return;
-              ffn.insert(addop);
+              mlp.push_back(addop);
               return;
             }
           }
@@ -1537,7 +1522,7 @@ void ConvertTopToTpu::match_vit_ffn(std::set<Operation *> &ffn) {
       });
     }
 
-void ConvertTopToTpu::match_vit_mha(std::set<Operation *> &mha) {
+void ConvertTopToTpu::match_vit_mha(std::vector<Operation *> &mha) {
     mainFunc_.walk([&](Operation *op) {
       if (auto addop = dyn_cast<top::AddOp>(op)) {
         top::LayerNormOp lnop = NULL;
@@ -1550,6 +1535,8 @@ void ConvertTopToTpu::match_vit_mha(std::set<Operation *> &mha) {
           }
         }
         if (lnop == NULL || aop == NULL)
+          return;
+        if (!isSISO(lnop.getOperation()))
           return;
         if (!convergence(lnop, aop))
           return;
@@ -1624,7 +1611,7 @@ void ConvertTopToTpu::match_vit_mha(std::set<Operation *> &mha) {
                 return;
               if (*(mop.getResult().getUsers().begin()) != aop)
                 return;
-              mha.insert(addop);
+              mha.push_back(addop);
             }
             } else {
               return;
@@ -1639,14 +1626,117 @@ void ConvertTopToTpu::match_vit_mha(std::set<Operation *> &mha) {
     });
   }
 
+void ConvertTopToTpu::match_vit_mha1(std::vector<Operation *> &mha) {
+    mainFunc_.walk([&](Operation *op) {
+      if (auto addop = dyn_cast<top::AddOp>(op)) {
+        top::LayerNormOp lnop = NULL;
+        top::AddOp aop = NULL;
+        for (auto user: addop.getOutput().getUsers()) {
+          if (isa<top::LayerNormOp>(user)) {
+            lnop = dyn_cast<top::LayerNormOp>(user);
+          } else if (isa<top::AddOp>(user)) {
+            aop = dyn_cast<top::AddOp>(user);
+          }
+        }
+        if (lnop == NULL || aop == NULL)
+          return;
+        if (!convergence(lnop, aop))
+          return;
+        if ((std::distance(lnop.getOutput().user_begin(), lnop.getOutput().user_end()) != 3) &&
+           (std::distance(lnop.getOutput().user_begin(), lnop.getOutput().user_end()) != 4)) // chip opt may split matmul to 3, but left the original matmul not removed
+          return;
+        top::MatMulOp mmop_[3] = {NULL};
+        top::ReshapeOp rsop_[3] = {NULL};
+        top::PermuteOp pmop_[3] = {NULL};
+        top::MulConstOp mcop_ = NULL;
+        top::MatMulOp mmop1 = NULL;
+        top::MatMulOp mmop2 = NULL;
+        int idx = 0;
+        // seems the order or qkv is not fixed in the patterns, try to find them out, 0 mulconst after permute, 1 matmul 1, 2 is matmul after softmax
+        for (auto u:lnop.getResult().getUsers()) {
+          if (auto mmop = dyn_cast<top::MatMulOp>(u)) {
+            if (!isSISO(mmop.getOperation()))
+              return;
+            if (auto rsop = dyn_cast<top::ReshapeOp>(*(mmop.getResult().user_begin()))) {
+              if (rsop.getResult().getUsers().empty()) // the original matmul
+                continue;
+              if (!isSISO(rsop))
+                return;
+              if (auto pmop = dyn_cast<top::PermuteOp>(*(rsop.getResult().user_begin()))) {
+                if (!isSISO(pmop))
+                  return;
+                if (isa<top::MulConstOp>(*(pmop.getResult().user_begin()))) {
+                  mcop_ = dyn_cast<top::MulConstOp>(*(pmop.getResult().user_begin()));
+                  if (!isSISO(mcop_))
+                    return;
+                  idx = 0;
+                } else if (isa<top::MatMulOp>(*(pmop.getResult().user_begin()))) {
+                  auto mmop_tmp = dyn_cast<top::MatMulOp>(*(pmop.getResult().user_begin()));
+                  if (isa<top::SoftmaxOp>(*(mmop_tmp.getResult().user_begin()))) {
+                    idx = 1;
+                  } else if (isa<top::PermuteOp>(*(mmop_tmp.getResult().user_begin()))) {
+                    idx = 2;
+                  } else {
+                    (*(mmop_tmp.getResult().user_begin()))->dump();
+                    return;
+                  }
+                } else {
+                  return;
+                }
+                mmop_[idx] = mmop;
+                rsop_[idx] = rsop;
+                pmop_[idx] = pmop;
+              } else {
+                return;
+              }
+            }
+            else {
+              return;
+            }
+          } else {
+            return;
+          }
+        }
+        if (pmop_[0] == NULL || pmop_[1] == NULL || pmop_[2] == NULL)
+          return;
+
+        if (!isa<top::MatMulOp>(*(mcop_.getResult().user_begin())) ||
+            !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
+            (*mcop_.getResult().user_begin() != *pmop_[1].getResult().user_begin()))
+          return;
+        mmop1 = dyn_cast<top::MatMulOp>(*(mcop_.getResult().user_begin()));
+        if (auto smop = dyn_cast<top::SoftmaxOp>(*(mmop1.getOutput().getUsers().begin()))) {
+          if (*(smop.getOutput().getUsers().begin()) != *(pmop_[2].getResult().user_begin()))
+            return;
+          mmop2 = dyn_cast_or_null<top::MatMulOp>(*(smop.getResult().user_begin()));
+          if (mmop2 == NULL)
+            return;
+          if (auto pmop1 = dyn_cast<top::PermuteOp>(*(mmop2.getResult().user_begin()))) {
+            if (auto rsop1 = dyn_cast<top::ReshapeOp>(*(pmop1.getResult().user_begin()))) {
+              if (auto mmop3 = dyn_cast<top::MatMulOp>(*(rsop1.getResult().user_begin()))) {
+                if (*(mmop3.getResult().user_begin()) != aop)
+                  return;
+                else
+                  mha.push_back(addop);
+              }
+            }
+          }
+        } else
+          return;
+      }
+    });
+  }
+
 bool ConvertTopToTpu::vit_mix_precision() {
-    std::set<Operation *> ffn;
-    std::set<Operation *> mha;
+    std::vector<Operation *> mlp;
+    std::vector<Operation *> mha;
 
-    match_vit_ffn(ffn); //ending add in ffn
-    match_vit_mha(mha); // beginging add in mha, infact mostly same with those in ffn
+    match_vit_mlp(mlp); //ending add in mlp
+    match_vit_mha(mha); // beginging add in mha, infact mostly same with those in mlp
+    if (mha.size() == 0)
+      match_vit_mha1(mha);
 
-    if (ffn.size() > 0 && mha.size() > 0 && (ffn.size() == mha.size())) {
+    if (mlp.size() > 0 && mha.size() > 0 && (mlp.size() == mha.size())) {
       for (auto op : mha) {
         auto addop = dyn_cast_or_null<top::AddOp>(op);
         if (addop == NULL)
@@ -1667,7 +1757,7 @@ bool ConvertTopToTpu::vit_mix_precision() {
           }
         }
       }
-      for (auto op : ffn) {
+      for (auto op : mlp) {
         auto addop = dyn_cast_or_null<top::AddOp>(op);
         if (addop == NULL)
           return false;
