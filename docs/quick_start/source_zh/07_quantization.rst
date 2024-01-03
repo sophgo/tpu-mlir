@@ -23,7 +23,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[all]
 
 准备工作目录
 ------------------
@@ -38,31 +38,10 @@
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
    $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-这里的 tpu_mlir_get_resource 命令用于从tpu_mlir的包安装根目录向外复制文件。
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 注意如果 ``tiny-yolov3-11.onnx`` 用wget下载失败, 请用其他方式下载后放到 ``yolov3_tiny`` 目录。
 
@@ -227,7 +206,14 @@ source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位�
      - 否
      - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为full_loss_table.txt
 
-本例中采用默认10张图片校准, 执行命令如下（对于CV18xx系列的处理器，将processor设置为对应的名称即可）:
+本例中采用默认10张图片校准, 需要首先安装 Graphviz 工具：
+
+.. code-block:: shell
+
+   $ sudo apt-get install graphviz
+
+
+然后执行如下命令（对于CV18xx系列的处理器，将processor设置为对应的名称即可）:
 
 .. code-block:: shell
 
@@ -272,17 +258,17 @@ source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位�
 
     # platform: bm1684x  mix_mode: F16
     ###
-    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                Cos: 0.994063
-    No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                Cos: 0.997447
-    No.2   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                Cos: 0.997450
-    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                Cos: 0.997982
-    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool         Cos: 0.998163
-    No.5   : Layer: convolution_output11_Conv                                  Cos: 0.998300
-    No.6   : Layer: convolution_output9_Conv                                   Cos: 0.999302
-    No.7   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                Cos: 0.999371
-    No.8   : Layer: convolution_output8_Conv                                   Cos: 0.999424
-    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool         Cos: 0.999574
-    No.10  : Layer: convolution_output12_Conv                                  Cos: 0.999784
+    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu             Cos: 0.994022
+    No.1   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu             Cos: 0.997445
+    No.2   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu             Cos: 0.997487
+    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu             Cos: 0.997978
+    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool      Cos: 0.998159
+    No.5   : Layer: convolution_output11_Conv                               Cos: 0.998307
+    No.6   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu             Cos: 0.999249
+    No.7   : Layer: convolution_output9_Conv                                Cos: 0.999292
+    No.8   : Layer: convolution_output8_Conv                                Cos: 0.999427
+    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool      Cos: 0.999580
+    No.10  : Layer: convolution_output12_Conv                               Cos: 1.000004
 
 
 该表按cos从小到大顺利排列, 表示该层的前驱Layer根据各自的cos已换成相应的浮点模式后, 该层计算得到的cos, 若该cos仍小于前面min_layer_cos参数，则会将该层及直接后继层设置为浮点计算。
@@ -348,7 +334,7 @@ source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位�
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[all]
 
 准备工作目录
 ------------------
@@ -361,31 +347,11 @@ source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位�
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ mkdir workspace && cd workspace
 
-这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code::
-tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 测试Float和INT8对称量化模型分类效果
 ---------------------------------
@@ -596,9 +562,9 @@ INT8对称量化模型：
     the layer input110.1 is 10 sensitive layer, loss is 0.000662179506136229, type is top.Conv
     ......
     run result:
-    int8 outputs_cos:0.978847 old
-    mix model outputs_cos:0.989741
-    Output mix quantization table to mobilenet_qtable
+    int8 outputs_cos:0.978803 old
+    mix model outputs_cos:0.989258
+    Output mix quantization table to mobilenet_v2_qtable
     total time:402.15848112106323
     success sensitive layer search
 

@@ -27,12 +27,12 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
        --output_names 350,498,646 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
-       --mlir yolov5s_bs1.mlir
+       --mlir yolov5s.mlir
 
 .. code-block:: shell
 
    # 将top mlir转换成fp16精度的bmodel
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --processor bm1684x \
@@ -51,7 +51,7 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 .. code-block:: shell
 
     export BMRUNTIME_ENABLE_PROFILE=1
-    bmrt_test --bmodel yolov5s_bm1684x_f16.bmodel
+    bmrt_test --bmodel yolov5s_1684x_f16.bmodel
 
 下面是开启Profile后运行输出的日志:
 

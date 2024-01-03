@@ -17,8 +17,8 @@ rm -rf ${release_archive}
 mkdir -p ${release_archive}
 cp -rf ${INSTALL_PATH}/* ${release_archive}
 rm ${release_archive}/python/mlir/_mlir_libs/libTPUMLIRPythonCAPI.so
-cp -rf ${PROJECT_ROOT}/regression ${release_archive}
-rm -rf ${release_archive}/regression/model
+# cp -rf ${PROJECT_ROOT}/regression ${release_archive}
+# rm -rf ${release_archive}/regression/model
 cp -rf ${PROJECT_ROOT}/third_party/customlayer ${release_archive}
 
 mkdir -p ${release_archive}/python/
@@ -64,10 +64,7 @@ do
 done
 
 # collect_oneDNN_dependence
-for file in {libdnnl.so,libdnnl.so.3,libdnnl.so.3.1}
-do
-    cp -d /usr/local/lib/${file} ${release_archive}/lib/third_party/
-done
+cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
 
 # collect_capi_dependence
 cp -rf ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/third_party/

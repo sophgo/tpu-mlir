@@ -11,7 +11,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[tensorflow]
+   $ pip install tpu_mlir[tensorflow]
 
 
 Prepare working directory
@@ -27,32 +27,10 @@ The operation is as follows:
 
    $ mkdir mobilebert_tf && cd mobilebert_tf
    $ wget -O lite-model_mobilebert_int8_1.tflite https://storage.googleapis.com/tfhub-lite-models/iree/lite-model/mobilebert/int8/1.tflite
-   $ tpu_mlir_get_resource regression/npz_input/squad_data.npz .
+   $ cp -rf tpu_mlir_resource/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
-The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file are the relative path to the package path of tpu_mlir,
-and the dir structure of tpu_mlir are as follows:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 TFLite to MLIR
 ------------------

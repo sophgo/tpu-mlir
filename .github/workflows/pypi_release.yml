@@ -27,12 +27,22 @@ jobs:
     - name: Build package
       run: |
         . release_pip.sh
+        tar -czvf tpu-mlir-resource.tar regression/
+        cp -rf install/docs/TPU-MLIR_* ./
+        cp install/docs/TPU-MLIR快速入门指南.pdf ./TPU-MLIR_Quick_Start_ZH.pdf
+        cp install/docs/TPU-MLIR开发参考手册.pdf ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
     - name: Upload to Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: my-artifact
-        path: ./dist/
+        path: |
+          ./dist/
+          ./tpu-mlir-resource.tar
+          ./TPU-MLIR_Quick_Start.pdf
+          ./TPU-MLIR_Quick_Start_ZH.pdf
+          ./TPU-MLIR_Technical_Reference_Manual.pdf
+          ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
   pypi-publish:
       needs: build
@@ -45,29 +55,22 @@ jobs:
         contents: write
         id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
       steps:
-      - name: Make dist dir
-        run: |
-          mkdir dist && cd dist
-          ls
-
       - uses: actions/download-artifact@v3
         with:
           name: my-artifact
-          path: ./dist/
+          path: ./
     
-      - name: Cd dist dir
-        run: |
-          pwd
-          ls
-          cd dist
-          ls
-
       - name: Release asset
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ./dist/*.whl
+            ./tpu-mlir-resource.tar
+            ./TPU-MLIR_Quick_Start.pdf
+            ./TPU-MLIR_Quick_Start_ZH.pdf
+            ./TPU-MLIR_Technical_Reference_Manual.pdf
+            ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

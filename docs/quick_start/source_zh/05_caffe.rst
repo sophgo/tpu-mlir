@@ -11,7 +11,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[caffe]
+   $ pip install tpu_mlir[caffe]
 
 
 准备工作目录
@@ -29,33 +29,12 @@
    $ mkdir mobilenet_v2 && cd mobilenet_v2
    $ wget https://raw.githubusercontent.com/shicai/MobileNet-Caffe/master/mobilenet_v2_deploy.prototxt
    $ wget https://github.com/shicai/MobileNet-Caffe/raw/master/mobilenet_v2.caffemodel
-   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
-   $ tpu_mlir_get_resource regression/image .
+   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
+   $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 Caffe转MLIR
 ------------------

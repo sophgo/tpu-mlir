@@ -12,7 +12,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
+   $ pip install tpu_mlir[onnx]
 
 
 准备工作目录
@@ -29,33 +29,12 @@
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
-   $ tpu_mlir_get_resource regression/image .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 ONNX转MLIR
 --------------------
@@ -131,11 +110,11 @@ MLIR转换成BModel
     :linenos:
 
     bmodel version: B.2.2
-    processor: BM1684X
-    create time: Fri May 26 16:30:20 2023
+    chip: BM1684X
+    create time: Wed Jan  3 07:29:14 2024
 
     kernel_module name: libbm1684x_kernel_module.so
-    kernel_module size: 2037536
+    kernel_module size: 2677600
     ==========================================
     net 0: [yolov5s]  static
     ------------
@@ -144,7 +123,7 @@ MLIR转换成BModel
     input: images_raw, [1, 3, 640, 640], uint8, scale: 1, zero_point: 0
     output: yolo_post, [1, 1, 200, 7], float32, scale: 1, zero_point: 0
 
-    device mem size: 24970588 (coeff: 14757888, instruct: 1372, runtime: 10211328)
+    device mem size: 31238060 (coeff: 14757888, instruct: 124844, runtime: 16355328)
     host mem size: 0 (coeff: 0, runtime: 0)
 
 这里的 ``[1, 1, 200, 7]`` 是最大shape, 实际输出根据检测的框数有所不同。

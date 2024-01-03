@@ -28,12 +28,12 @@ If this option is not turned on at compile time, some data will be missing when 
        --output_names 350,498,646 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
-       --mlir yolov5s_bs1.mlir
+       --mlir yolov5s.mlir
 
 .. code-block:: shell
 
    # convert top mlir to fp16 precision bmodel
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --processor bm1684x \
@@ -52,7 +52,7 @@ Copy the generated yolov5s_bm1684x_f16.bmodel to the running environment. In the
 .. code-block:: shell
 
     export BMRUNTIME_ENABLE_PROFILE=1
-    bmrt_test --bmodel yolov5s_bm1684x_f16.bmodel
+    bmrt_test --bmodel yolov5s_1684x_f16.bmodel
 
 The following is the log output after opening Profile:
 

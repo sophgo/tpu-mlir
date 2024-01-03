@@ -10,7 +10,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
+   $ pip install tpu_mlir[onnx]
 
 
 Prepare working directory
@@ -27,34 +27,12 @@ The operation is as follows:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
-   $ tpu_mlir_get_resource regression/image .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
 
-The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file are the relative path to the package path of tpu_mlir,
-and the dir structure of tpu_mlir are as follows:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 ONNX to MLIR
 --------------------
@@ -123,11 +101,11 @@ In this way, the converted model is a model that includes post-processing. The m
     :linenos:
 
     bmodel version: B.2.2
-    platform: BM1684X
-    create time: Fri May 26 16:30:20 2023
+    chip: BM1684X
+    create time: Wed Jan  3 07:29:14 2024
 
     kernel_module name: libbm1684x_kernel_module.so
-    kernel_module size: 2037536
+    kernel_module size: 2677600
     ==========================================
     net 0: [yolov5s]  static
     ------------
@@ -136,7 +114,7 @@ In this way, the converted model is a model that includes post-processing. The m
     input: images_raw, [1, 3, 640, 640], uint8, scale: 1, zero_point: 0
     output: yolo_post, [1, 1, 200, 7], float32, scale: 1, zero_point: 0
 
-    device mem size: 24970588 (coeff: 14757888, instruct: 1372, runtime: 10211328)
+    device mem size: 31238060 (coeff: 14757888, instruct: 124844, runtime: 16355328)
     host mem size: 0 (coeff: 0, runtime: 0)
 
 Here, [1, 1, 200, 7] is the maximum shape, and the actual output varies depending on the number of detected boxes.
