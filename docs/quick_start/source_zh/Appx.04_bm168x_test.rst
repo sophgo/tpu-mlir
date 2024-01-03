@@ -202,7 +202,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 .. code :: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[all]
 
 模型性能和精度测试流程
 ~~~~~~~~~~~~~~~~~~~~~~

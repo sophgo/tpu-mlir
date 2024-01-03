@@ -12,7 +12,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
+   $ pip install tpu_mlir[torch]
 
 
 Prepare working directory
@@ -29,33 +29,11 @@ The operation is as follows:
 
    $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
    $ wget -O yolov5s.pt "https://github.com/sophgo/tpu-mlir/raw/master/regression/model/yolov5s.pt"
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
-   $ tpu_mlir_get_resource regression/image .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file are the relative path to the package path of tpu_mlir,
-and the dir structure of tpu_mlir are as follows:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 TORCH to MLIR
 ------------------

@@ -28,7 +28,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
+   $ pip install tpu_mlir[onnx]
 
 
 准备工作目录
@@ -45,33 +45,12 @@
 
    $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
-   $ tpu_mlir_get_resource regression/image .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。具体使用方法如下:
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 
 

@@ -22,7 +22,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[all]
 
 Prepare working directory
 ---------------------------
@@ -36,32 +36,10 @@ The operation is as follows:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
    $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
-   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file are the relative path to the package path of tpu_mlir,
-and the dir structure of tpu_mlir are as follows:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 Sample for onnx
 -------------------
@@ -222,7 +200,14 @@ Use ``run_qtable`` to gen qtable, parameters as below:
      - N
      - output all loss of layers if each layer is quantized to f16
 
-The operation is as follows:
+Install Graphviz first:
+
+.. code-block:: shell
+
+   $ sudo apt-get install graphviz
+
+
+Then use following command:
 
 .. code-block:: shell
 
@@ -268,17 +253,17 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 
     # platform: bm1684x  mix_mode: F16
     ###
-    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                Cos: 0.994063
-    No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                Cos: 0.997447
-    No.2   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                Cos: 0.997450
-    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                Cos: 0.997982
-    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool         Cos: 0.998163
-    No.5   : Layer: convolution_output11_Conv                                  Cos: 0.998300
-    No.6   : Layer: convolution_output9_Conv                                   Cos: 0.999302
-    No.7   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                Cos: 0.999371
-    No.8   : Layer: convolution_output8_Conv                                   Cos: 0.999424
-    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool         Cos: 0.999574
-    No.10  : Layer: convolution_output12_Conv                                  Cos: 0.999784
+    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu             Cos: 0.994022
+    No.1   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu             Cos: 0.997445
+    No.2   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu             Cos: 0.997487
+    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu             Cos: 0.997978
+    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool      Cos: 0.998159
+    No.5   : Layer: convolution_output11_Conv                               Cos: 0.998307
+    No.6   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu             Cos: 0.999249
+    No.7   : Layer: convolution_output9_Conv                                Cos: 0.999292
+    No.8   : Layer: convolution_output8_Conv                                Cos: 0.999427
+    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool      Cos: 0.999580
+    No.10  : Layer: convolution_output12_Conv                               Cos: 1.000004
 
 
 This table is arranged smoothly according to the cos from small to large, indicating the cos calculated
@@ -346,7 +331,7 @@ Install tpu_mlir
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[all]
 
 Prepare working directory
 ---------------------------
@@ -359,11 +344,11 @@ The operation is as follows:
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ mkdir workspace && cd workspace
 
-The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
+.. include:: get_resource.rst
 
 Accuracy test of float anf int8 models
 ---------------------------------------

@@ -49,13 +49,20 @@ tpu_mlir安装
 ------------------
 
 
-目前暂不支持直接从pypi上下载并安装，请从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_
-处下载最新tpu_mlir-\*-py3-none-any.whl，然后使用pip安装:
+目前支持2种安装方法：
+
+（1）直接从pypi下载并安装：
+
+.. code-block:: shell
+
+   $ pip install tpu_mlir
+
+（2）从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ 处下载最新 `tpu_mlir-\*-py3-none-any.whl`，然后使用pip安装:
 
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl
+   $ pip install tpu_mlir-\*-py3-none-any.whl
 
 
 tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或torch生成的模型文件，使用下面命令安装额外的依赖环境:
@@ -63,23 +70,22 @@ tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或to
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
+   $ pip install tpu_mlir[onnx]
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
+   $ pip install tpu_mlir[torch]
 
 目前支持5种配置:
 *onnx*, *torch*, *tensorflow*, *caffe*, *paddle*。
-或者可使用下面命令安装全部依赖环境:
+可使用一条命令安装多个配置，也可直接安装全部依赖环境:
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+   $ pip install tpu_mlir[onnx,torch,caffe]
 
 
-.. .. [#whl安装] 当本地有tpu_mlir-{version}.whl文件时，也可以使用以下命令进行安装。
+.. code-block:: shell
 
-..    .. code :: console
+   $ pip install tpu_mlir[all]
 
-..       $ pip install path/to/tpu_mlir-{version}.whl[all]

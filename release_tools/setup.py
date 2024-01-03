@@ -4,12 +4,12 @@ import os
 setup(
     name="tpu_mlir",
     version=os.getenv("mlir_version").split("-")[0],
-    author="sophgo",
-    author_email="dev@sophgo.com",
+    author="SOPHGO",
+    author_email="sales@sophgo.com",
     description=f"Machine learning compiler based on MLIR for Sophgo TPU {os.getenv('mlir_version')}.",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    license="Apache",
+    license="2-Clause BSD",
     platforms="unbuntu22.04",
     python_requires=">=3.10,<3.11",
     url="https://github.com/sophgo/tpu-mlir",
@@ -78,7 +78,7 @@ setup(
     scripts=["release_tools/envsetup.sh"],
     entry_points={
         "console_scripts": [  # command entries corresponding to the functions in entry.py.
-            "tpu_mlir_get_resource=tpu_mlir:cp_from_package_root",
+            # "tpu_mlir_get_resource=tpu_mlir:cp_from_package_root",
             ### Command Entries Will Be Set From Here. Do Not Delete This Line! ###
         ]
     },

@@ -1,0 +1,1 @@
+Please download `tpu-mlir-resource.tar` from `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ and unzip it, the path of unzipped folder is `tpu_mlir_resource`.

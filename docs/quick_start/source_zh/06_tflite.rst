@@ -11,7 +11,7 @@
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-*-py3-none-any.whl[tensorflow]
+   $ pip install tpu_mlir[tensorflow]
 
 
 准备工作目录
@@ -28,32 +28,11 @@
 
    $ mkdir mobilebert_tf && cd mobilebert_tf
    $ wget -O lite-model_mobilebert_int8_1.tflite https://storage.googleapis.com/tfhub-lite-models/iree/lite-model/mobilebert/int8/1.tflite
-   $ tpu_mlir_get_resource regression/npz_input/squad_data.npz .
+   $ cp -rf tpu_mlir_resource/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
-
-.. code-block:: shell
-
-  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
-
-source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
-
-.. code ::
-
-  tpu_mlir
-    ├── bin
-    ├── customlayer
-    ├── docs
-    ├── lib
-    ├── python
-    ├── regression
-    ├── src
-    ├── entry.py
-    ├── entryconfig.py
-    ├── __init__.py
-    └── __version__
+.. include:: get_resource.rst
 
 TFLite转MLIR
 ------------------
