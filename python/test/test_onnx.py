@@ -310,12 +310,15 @@ class ONNX_IR_TESTER(object):
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
         elif self.chip == "sg2260":
-            # current supported fp8 ops are limited, so use test_fp8 instead
             self.support_quant_modes.append("f8e4m3")
             self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
+            # current supported fp8 ops are limited, so use test_fp8 instead
+            for quant_mode in self.quant_modes:
+                if "f8" in quant_mode:
+                    self.quant_modes.remove(quant_mode)
         elif self.mode == "f8":
             assert self.chip == "sg2260" and "only sg2260 support fp8"
             self.quant_modes = ["f8e4m3", "f8e5m2"]
