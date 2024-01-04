@@ -482,24 +482,23 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
   return true;
 }
 
-int is_broadcast_binary(Operation *op, Value in) {
+bool is_broadcast_binary(Operation *op, Value in) {
   if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
            tpu::MinOp>(op)) {
-    return 0;
+    return false;
   }
   auto other = in == op->getOperand(0) ? op->getOperand(1) : op->getOperand(0);
   auto in_shape = in.getType().cast<RankedTensorType>().getShape();
   auto other_shape = other.getType().cast<RankedTensorType>().getShape();
   if (in_shape.size() != other_shape.size()) {
-    return 0;
+    return false;
   }
-  int bcast = 0;
   for (int i = 0; i < in_shape.size(); ++i) {
     if (in_shape[i] != other_shape[i] && in_shape[i] == 1) {
-      bcast |= (1 << i);
+      return true;
     }
   }
-  return bcast;
+  return false;
 }
 
 // if no transpose, split left matrix rows,
@@ -600,23 +599,17 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
-  int bcast = is_broadcast_binary(op, in);
+  bool is_broadcast_tensor = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
-  bool is_weight = module::isWeight(in);
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
     in_si.n.emplace_back(slice_pair_t(0, n));
-  } else if (is_weight && (bcast & 0x1) &&
-             (shape_secs.csecs * shape_secs.dsecs * shape_secs.hsecs *
-                  shape_secs.wsecs ==
-              1)) {
-    in_si.n.emplace_back(slice_pair_t(0, n));
   } else {
     for (auto &s : out_si.n) {
       auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-      if (bcast != 0 && n == 1) {
+      if (is_broadcast_tensor && n == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -633,7 +626,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   } else {
     for (auto &s : out_si.c) {
       auto ret = lg_op.BackwardC(idx, slice, s.first, s.second);
-      if (bcast != 0 && c == 1) {
+      if (is_broadcast_tensor && c == 1) {
         idx = 0;
         slice = 1;
       } else if (is_right_matrix) {
@@ -668,7 +661,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.d.size(); i++) {
       auto &s = out_si.d[i];
       auto ret = lg_op.BackwardD(idx, slice, s.first, s.second);
-      if (bcast != 0 && d == 1) {
+      if (is_broadcast_tensor && d == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -690,7 +683,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-      if ((is_right_matrix || bcast != 0) && h == 1) {
+      if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -712,7 +705,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.w.size(); i++) {
       auto &s = out_si.w[i];
       auto ret = lg_op.BackwardW(idx, slice, s.first, s.second);
-      if (bcast != 0 && w == 1) {
+      if (is_broadcast_tensor && w == 1) {
         idx = 0;
         slice = 1;
       } else {
