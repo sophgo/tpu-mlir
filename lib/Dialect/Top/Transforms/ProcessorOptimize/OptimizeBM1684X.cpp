@@ -997,9 +997,10 @@ public:
       {
         //trick or temp workaround: op order influence layer group
         auto new_reshape_shape = module::getShape((*(value->user_begin()))->getResult(0));
+        auto elementType = module::getElementType((*(value->user_begin()))->getResult(0));
         auto reshapeOp = rewriter.create<top::ReshapeOp>
                           (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id++))),
-                          RankedTensorType::get(new_reshape_shape, outputType.getElementType()),
+                          RankedTensorType::get(new_reshape_shape, elementType),
                           ValueRange{matmulOp});
         rewriter.replaceOp(*(value->user_begin()), reshapeOp);
         rewriter.eraseOp(value);
