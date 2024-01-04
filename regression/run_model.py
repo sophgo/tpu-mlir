@@ -236,8 +236,12 @@ class MODEL_RUN(object):
         cmd = ["npz_tool.py", "compare", model_npz, output_npz]
         if f"test_{quant_mode}" in self.ini_content:
             cmd += ["--tolerance {}".format(self.tolerance[f"{quant_mode}_2"])]
-        if "excepts" in self.ini_content:
+        if "excepts" in self.ini_content and "fp8_excepts" not in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
+        elif "excepts" not in self.ini_content and "fp8_excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(self.ini_content["fp8_excepts"])]
+        elif "excepts" in self.ini_content and "fp8_excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["fp8_excepts"]))]
         cmd += ["-vv"]
         _os_system(cmd, self.save_log)
 
@@ -276,8 +280,12 @@ class MODEL_RUN(object):
         cmd = ["npz_tool.py", "compare", output_npz, self.ini_content["test_reference"], "-v"]
         if "int4_sym_tolerance" in self.ini_content:
             cmd += "--tolerance {}".format(self.ini_content["int4_sym_tolerance"]),
-        if "excepts" in self.ini_content:
+        if "excepts" in self.ini_content and "int4_excepts" not in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
+        elif "excepts" not in self.ini_content and "int4_excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(self.ini_content["int4_excepts"])]
+        elif "excepts" in self.ini_content and "int4_excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["int4_excepts"]))]
 
         _os_system(cmd, self.save_log)
 
@@ -370,8 +378,15 @@ class MODEL_RUN(object):
             # Skip checking the correctness of sg2260 f8 bmodel. Do the tolerance check at the last step.
             cmd.extend(["--skip_validation"])
             cmd += ["--debug"]
-        if "excepts" in self.ini_content:
+            if "excepts" in self.ini_content and "fp8_excepts" not in self.ini_content:
+                cmd += ["--excepts {}".format(self.ini_content["excepts"])]
+            elif "excepts" not in self.ini_content and "fp8_excepts" in self.ini_content:
+                cmd += ["--excepts {}".format(self.ini_content["fp8_excepts"])]
+            elif "excepts" in self.ini_content and "fp8_excepts" in self.ini_content:
+                cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["fp8_excepts"]))]
+        elif "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
+        # add int4 someday
 
         _os_system(cmd, self.save_log)
 
