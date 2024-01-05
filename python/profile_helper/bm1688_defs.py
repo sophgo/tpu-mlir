@@ -181,16 +181,16 @@ def get_dma_info(monitor_info, reg_info):
         monitor_info.d1_aw_bytes + monitor_info.d0_ar_bytes + monitor_info.d1_ar_bytes
     dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
                                        dma_info["Asic Cycle"] * 0.75, 4)
-    dma_info["gmem_dma_data_size(B)"] = max(getattr(reg_info, "src_nsize", 1) * getattr(reg_info, "src_csize", 1) * reg_info.src_hsize * reg_info.src_wsize,
-                                            getattr(reg_info, "dst_nsize", 1) * getattr(reg_info, "dst_csize", 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
+    dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * reg_info.src_hsize * reg_info.src_wsize,
+                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
     dma_info["gmem_xact_cnt"] = (monitor_info.d0_ar_bytes + monitor_info.d0_aw_bytes +
                                  monitor_info.d1_ar_bytes + monitor_info.d1_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
     dma_info["lmem_xfer_bytes"] = monitor_info.fmem_aw_bytes + \
         monitor_info.fmem_ar_bytes
     dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] /
                                        dma_info["Asic Cycle"] * 0.75, 4)
-    dma_info["lmem_dma_data_size(B)"] = max(getattr(reg_info, "src_nsize", 1) * getattr(reg_info, "src_nsize", 1) * reg_info.src_hsize * reg_info.src_wsize,
-                                            getattr(reg_info, "dst_nsize", 1) * getattr(reg_info, "dst_csize", 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
+    dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * reg_info.src_hsize * reg_info.src_wsize,
+                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
     dma_info["lmem_xact_cnt"] = (
         monitor_info.fmem_ar_bytes + monitor_info.fmem_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
     dma_info["DMA data size(B)"] = max(
