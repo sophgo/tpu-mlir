@@ -1674,8 +1674,16 @@
             }
 
             const hexToDec = (hex) => parseInt(hex, 16);
-            const minHexAddr = Math.min(...op_record.map(op => hexToDec(op[3])));
+            let minHexAddr = Infinity;
+            op_record.forEach(op => {
+                const decAddr = hexToDec(op[3]);
+                if (decAddr < minHexAddr) {
+                    minHexAddr = decAddr;
+                }
+            });
+
             console.log("minHexAddr", minHexAddr)
+
             return op_record.map(op => {
                 const sublist = [...op];
                 const decAddr = hexToDec(op[3]);

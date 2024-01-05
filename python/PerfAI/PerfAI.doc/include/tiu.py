@@ -157,6 +157,7 @@ class Tiu(object):
                         fields = row.split(': ')
                         attr = fields[0][1:]
                         val = fields[1][:-1]
+                        val = int(val) if val.isnumeric() else val
                         reg_dict[attr] = val
                         idx += 1
                 if 'Platform' not in chip_arch_dict.keys():
@@ -185,16 +186,13 @@ class Tiu(object):
         """
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
-            if reg_dict['Asic Cycle'].isnumeric() and not (reg_dict['des_tsk_typ'] == '15' and reg_dict['des_tsk_eu_typ'] == '9'):
+            if not (reg_dict['des_tsk_typ'] == 15 and reg_dict['des_tsk_eu_typ'] == 9):
                 # wait msg time do not add to tiu cycles
                 self.tiu_cycle += int(reg_dict['Asic Cycle'])
-            if reg_dict['Alg Cycle'].isnumeric():
-                self.alg_total_cycle += int(reg_dict['Alg Cycle'])
-            if reg_dict['Alg Ops'].isnumeric():
-                self.alg_total_ops += int(reg_dict['Alg Ops'])
-            if reg_dict['uArch Ops'].isnumeric():
-                self.uArch_total_ops += int(reg_dict['uArch Ops'])
-            if reg_dict['des_opt_opd0_prec'].isnumeric():
+            self.alg_total_cycle += int(reg_dict['Alg Cycle'])
+            self.alg_total_ops += int(reg_dict['Alg Ops'])
+            self.uArch_total_ops += int(reg_dict['uArch Ops'])
+            if isinstance(reg_dict['des_opt_opd0_prec'], int):
                 reg_dict['Data Type'] = data_type_dict[reg_dict['des_opt_opd0_prec']] + \
                                         ' -> ' + data_type_dict[reg_dict['des_opt_res0_prec']]
             else:

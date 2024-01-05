@@ -807,13 +807,13 @@ dma_func_name_dict = {
 }
 
 data_type_dict = {
-    '0': 'INT8',
-    '1': 'FP16',
-    '2': 'FP32',
-    '3': 'INT16',
-    '4': 'INT32',
-    '5': 'BFP16',
-    '6': 'INT64',
+    0: 'INT8',
+    1: 'FP16',
+    2: 'FP32',
+    3: 'INT16',
+    4: 'INT32',
+    5: 'BFP16',
+    6: 'INT64',
     '': 'None',
     '-': 'None'
 }

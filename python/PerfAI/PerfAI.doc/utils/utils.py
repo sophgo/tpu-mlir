@@ -56,10 +56,10 @@ def get_active_cores(file_prefix, core_num):
 def int2Hex(data_list):
     new_data_list = []
     for data in data_list:
-        if not data.isnumeric():
+        if not str(data).isnumeric():
             new_data_list.append('')
         else:
-            new_data_list.append(str(hex(int(data))))
+            new_data_list.append(str(hex(data)))
     return new_data_list
 
 
@@ -291,7 +291,7 @@ def get_ratio_str_2f_zero(x, y):
 def get_ratio_float_2f(x, y):
     x = int(x)
     y = int(y)
-    return '%.2f' % (x / y) if y != 0 else 0
+    return round(x / y, 2) if y != 0 else 0
 
 
 def get_ratio_str_3f(x, y):

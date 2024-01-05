@@ -115,6 +115,10 @@ class Dma(object):
                         fields = row.split(': ')
                         attr = fields[0][1:]
                         val = fields[1][:-1]
+                        if val.isnumeric() and 'burst' not in attr.lower() and 'width' not in attr.lower():
+                            val = int(val)
+                        elif 'bandwidth' in attr.lower():
+                            val = float(val)
                         reg_dict[attr] = val
                         idx += 1
                 self.reg_list.append(reg_dict)
@@ -128,24 +132,22 @@ class Dma(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             name_key = (int(reg_dict['cmd_type']))
-            if reg_dict['cmd_type'] == '6':
+            if reg_dict['cmd_type'] == 6:
                 reg_dict['Data Type'] = 'None'
-            if reg_dict['Asic Cycle'].isnumeric():
-                self.dma_cycle += int(reg_dict['Asic Cycle'])
-            if int(reg_dict['cmd_type']) == 6:
                 # dma_sys do not transfer data
                 reg_dict['Direction'] = '-'
-            if 'DDR' in reg_dict['Direction'] and reg_dict['DMA data size(B)'].isnumeric():
-                self.ddr_total_datasize += int(reg_dict['DMA data size(B)'])
-                self.ddr_total_cycle += float(reg_dict['Asic Cycle'])
-                self.ddr_burst_length_sum += int(reg_dict['gmem_bl_sum'])
-                self.ddr_xact_cnt += int(reg_dict['gmem_xact_cnt'])
-            elif 'L2' in reg_dict['Direction'] and reg_dict['DMA data size(B)'].isnumeric():
-                self.l2_total_datasize += int(reg_dict['DMA data size(B)'])
-                self.l2_total_cycle += float(reg_dict['Asic Cycle'])
-            if int(reg_dict['cmd_type']) == 6 and int(reg_dict['cmd_special_function']) == 4:
-                self.wait_msg_total_time += int(reg_dict['Asic Cycle'])
-            if int(reg_dict['gmem_xact_cnt']) > 0:
+            self.dma_cycle += int(reg_dict['Asic Cycle'])
+            if 'DDR' in reg_dict['Direction'] and isinstance(reg_dict['DMA data size(B)'], int):
+                self.ddr_total_datasize += reg_dict['DMA data size(B)']
+                self.ddr_total_cycle += reg_dict['Asic Cycle']
+                self.ddr_burst_length_sum += reg_dict['gmem_bl_sum']
+                self.ddr_xact_cnt += reg_dict['gmem_xact_cnt']
+            elif 'L2' in reg_dict['Direction'] and isinstance(reg_dict['DMA data size(B)'], int):
+                self.l2_total_datasize += reg_dict['DMA data size(B)']
+                self.l2_total_cycle += reg_dict['Asic Cycle']
+            if reg_dict['cmd_type'] == 6 and reg_dict['cmd_special_function'] == 4:
+                self.wait_msg_total_time += reg_dict['Asic Cycle']
+            if reg_dict['gmem_xact_cnt'] > 0:
                 reg_dict['AvgBurstLength'] = get_ratio_float_2f(reg_dict['gmem_bl_sum'], reg_dict['gmem_xact_cnt'])
                 reg_dict['Non32ByteRatio'] = get_ratio_float_2f(reg_dict['gmem_n32Ba_sa_cnt'], reg_dict['gmem_xact_cnt'])
                 reg_dict['MaskWriteRatio'] = get_ratio_float_2f(reg_dict['gmem_msk_wr_cnt'], reg_dict['gmem_xact_cnt'])
@@ -160,6 +162,7 @@ class Dma(object):
         self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize,
                                                     get_time_by_cycle(self.ddr_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
                                                     if self.chip_arch_dict else 0
+        
         self.l2_avg_bandwidth = get_ratio_float_2f(self.l2_total_datasize,
                                                     get_time_by_cycle(self.l2_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
                                                     if self.chip_arch_dict else 0
@@ -366,7 +369,7 @@ class Gdma(Dma):
         super().load(reg_info_file, gdma_layer_map)
         new_reg_list = []
         for reg_dict in self.reg_list:
-            if reg_dict['Engine Id'] == '1':
+            if reg_dict['Engine Id'] == 1:
                 new_reg_list.append(reg_dict)
         self.reg_list = new_reg_list
         return self.chip_arch_dict
@@ -406,7 +409,7 @@ class Sdma(Dma):
         super().load(reg_info_file, sdma_layer_map)
         new_reg_list = []
         for reg_dict in self.reg_list:
-            if reg_dict['Engine Id'] == '3':
+            if reg_dict['Engine Id'] == 3:
                 new_reg_list.append(reg_dict)
         self.reg_list = new_reg_list
         return self.chip_arch_dict
@@ -479,6 +482,8 @@ class Cdma(Dma):
                         fields = row.split(': ')
                         attr = fields[0][1:]
                         val = fields[1][:-1]
+                        if val.isnumeric() and 'burst' not in attr.lower() and 'width' not in attr.lower():
+                            val = int(val)
                         reg_dict[attr] = val
                         idx += 1
                 self.reg_list.append(reg_dict)
