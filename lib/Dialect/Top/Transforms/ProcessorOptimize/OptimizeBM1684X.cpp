@@ -768,14 +768,21 @@ class ConvertConv2DToImg2Col final
                                                 (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
                                                  RankedTensorType::get(colTensorShape, inputType.getElementType()),
                                                 ValueRange{input});
-    std::vector<int64_t> order = {0, 2, 4, 1, 3, 5};
+    std::vector<int64_t> order = {0, 2, 3, 1, 4, 5};
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
 
+    auto perMuteOp_0 = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                     RankedTensorType::get({n, oh, kh, ic, ow, kw}, inputType.getElementType()),
+                                                     ValueRange{reshapeOp}, attrs);
+    order = {0,1,4,3,2,5};
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     auto perMuteOp = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
                                                      RankedTensorType::get({n, oh, ow, ic, kh, kw}, inputType.getElementType()),
-                                                     ValueRange{reshapeOp}, attrs);
+                                                     ValueRange{perMuteOp_0}, attrs);
 
     auto reshapeOp_2 = rewriter.create<top::ReshapeOp>
                                                 (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
