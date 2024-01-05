@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -210,7 +210,7 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
   bool skip = false;
   for (auto [idx, opd] : llvm::enumerate(operands)) {
     auto op_ = opd.getDefiningOp();
-    if (auto begin = dyn_cast_or_null<tpu::DistributionBeginOp>(op_)) {
+    if (auto begin = dyn_cast_or_null<tpu::DevBeginOp>(op_)) {
       std::vector<Value> results(op_->result_begin(), op_->result_end());
       int i = std::find(results.begin(), results.end(), opd) - results.begin();
       auto begin_methods = module::getI64Array(begin.getBeginMethods());
@@ -222,7 +222,7 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
       }
       skip = (isa<tpu::SliceOp>(op) &&
               begin_methods->at(i) ==
-                  (int)DistributionBeginMethod::BeginFromSplit);
+                  (int)DevBeginMethod::BeginFromSplit);
       continue;
     } else if (!isa<top::WeightOp, top::NoneOp, top::InputOp>(op_)) {
       collect_ops_backward(subf, op_, cur_device);
@@ -242,7 +242,7 @@ static void collect_ops_forward(std::shared_ptr<SubFunction> &subf,
                                 Operation *op) {
   for (auto it : llvm::enumerate(op->getOperands())) {
     auto op_ = it.value().getDefiningOp();
-    if (isa_and_nonnull<tpu::DistributionBeginOp>(op_)) {
+    if (isa_and_nonnull<tpu::DevBeginOp>(op_)) {
       std::vector<Value> results(op_->result_begin(), op_->result_end());
       int idx = std::find(results.begin(), results.end(), it.value()) -
                 results.begin();
@@ -251,15 +251,15 @@ static void collect_ops_forward(std::shared_ptr<SubFunction> &subf,
   }
   insert_subop(subf, op);
   for (auto u : op->getUsers()) {
-    if (isa<tpu::DistributionEndOp>(u)) {
+    if (isa<tpu::DevEndOp>(u)) {
       continue;
     }
     collect_ops_forward(subf, u);
   }
 }
 
-static void buildDistibution(tpu::DistributionBeginOp begin,
-                             tpu::DistributionEndOp end, ModuleOp m,
+static void buildDistibution(tpu::DevBeginOp begin,
+                             tpu::DevEndOp end, ModuleOp m,
                              int64_t num_devices, int64_t step) {
   std::vector<Operation *> begins(begin->user_begin(), begin->user_end());
   std::vector<Value> ends(end->operand_begin(), end->operand_end());
@@ -280,7 +280,7 @@ static void buildDistibution(tpu::DistributionBeginOp begin,
   }
 }
 
-static int64_t buildEndToSum(tpu::DistributionEndOp end, ModuleOp m,
+static int64_t buildEndToSum(tpu::DevEndOp end, ModuleOp m,
                              std::vector<Value> &origin_operands,
                              int64_t num_devices, int64_t step,
                              int cur_out_idx) {
@@ -338,7 +338,7 @@ static int64_t buildEndToSum(tpu::DistributionEndOp end, ModuleOp m,
   return step;
 }
 
-static int64_t buildEndToTopK(tpu::DistributionEndOp end, ModuleOp m,
+static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
                               std::vector<Value> operands, int64_t num_devices,
                               int64_t step, int cur_out_idx) {
   OpBuilder builder(end.getContext());
@@ -412,7 +412,7 @@ static int64_t buildEndToTopK(tpu::DistributionEndOp end, ModuleOp m,
   return step;
 }
 
-static int64_t buildEndToConcat(tpu::DistributionEndOp end, ModuleOp m,
+static int64_t buildEndToConcat(tpu::DevEndOp end, ModuleOp m,
                                 std::vector<Value> operands,
                                 int64_t num_devices, int64_t step,
                                 int cur_out_idx) {
@@ -420,7 +420,7 @@ static int64_t buildEndToConcat(tpu::DistributionEndOp end, ModuleOp m,
   return step;
 }
 
-static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
+static std::shared_ptr<SubFunction> buildEndOp(tpu::DevEndOp end,
                                                ModuleOp m, int64_t num_devices,
                                                int64_t &step) {
   std::vector<Value> operands(end.operand_begin(), end.operand_end());
@@ -433,11 +433,11 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
   int max_step = step;
   auto end_methods = getEndMethodArray(end);
   for (size_t i = 0; i < num_outputs; ++i) {
-    auto mode = static_cast<DistributionEndMethod>(end_methods->at(i));
+    auto mode = static_cast<DevEndMethod>(end_methods->at(i));
 
     new_operands.clear();
     switch (mode) {
-    case DistributionEndMethod::EndToSum: {
+    case DevEndMethod::EndToSum: {
       for (size_t j = 0; j < num_devices; ++j) {
         new_operands.push_back(operands[j * num_outputs + i]);
       }
@@ -445,7 +445,7 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
       max_step = std::max(cur_step, max_step);
       break;
     }
-    case DistributionEndMethod::EndToTopK: {
+    case DevEndMethod::EndToTopK: {
       for (size_t j = 0; j < num_devices; ++j) {
         new_operands.push_back(operands[j * num_outputs + i]);
         new_operands.push_back(operands[j * num_outputs + i + 1]);
@@ -455,7 +455,7 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
       i++;
       break;
     }
-    case DistributionEndMethod::EndToConcat: {
+    case DevEndMethod::EndToConcat: {
       cur_step = buildEndToConcat(end, m, new_operands, num_devices, step, i);
       max_step = std::max(cur_step, max_step);
       break;
@@ -555,7 +555,7 @@ static void updateFuncIONames(ModuleOp m) {
         std::vector<Operation *> users(results[i].user_begin(),
                                        results[i].user_end());
         for (auto user : users) {
-          if (auto end = dyn_cast<tpu::DistributionEndOp>(user)) {
+          if (auto end = dyn_cast<tpu::DevEndOp>(user)) {
             auto end_methods = module::getI64Array(end.getEndMethods());
             std::vector<Value> operands(user->operand_begin(),
                                         user->operand_end());
@@ -564,7 +564,7 @@ static void updateFuncIONames(ModuleOp m) {
             int num_result = end->getNumResults();
             idx = idx - device_id * num_result;
             if (end_methods->at(idx) ==
-                (int)DistributionEndMethod::EndToConcat) {
+                (int)DevEndMethod::EndToConcat) {
               auto next_result = user->getResult(idx);
               auto loc = module::getLocLike(next_result, suffix);
               outputs[i].setLoc(loc);
@@ -621,20 +621,20 @@ void distributeModules(ModuleOp m, int64_t num_device) {
   std::shared_ptr<SubFunction> subf = nullptr;
   bool in_distribution = false;
   int64_t step = 0;
-  tpu::DistributionBeginOp begin;
+  tpu::DevBeginOp begin;
   // split to different functions
   main.walk([&](Operation *op) {
     if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
             func::CallOp>(op)) {
       // do nothing
     } else {
-      if (isa<tpu::DistributionBeginOp>(op)) {
+      if (isa<tpu::DevBeginOp>(op)) {
         // for some patterns maybe do slice here
         buildSubFunction(subf, m);
         in_distribution = true;
-        begin = cast<tpu::DistributionBeginOp>(op);
-      } else if (isa<tpu::DistributionEndOp>(op)) {
-        auto end = cast<tpu::DistributionEndOp>(op);
+        begin = cast<tpu::DevBeginOp>(op);
+      } else if (isa<tpu::DevEndOp>(op)) {
+        auto end = cast<tpu::DevEndOp>(op);
         buildDistibution(begin, end, m, num_device, step++);
         in_distribution = false;
         subf = buildEndOp(end, m, num_device, step);

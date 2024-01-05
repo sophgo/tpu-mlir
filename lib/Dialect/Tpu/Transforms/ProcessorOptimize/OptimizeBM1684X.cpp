@@ -9,7 +9,7 @@
 
 #include "Common.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;

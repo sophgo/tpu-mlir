@@ -1,6 +1,6 @@
-// RUN: tpuc-opt --parallel='num_core=2' -split-input-file %s | FileCheck %s
+// RUN: tpuc-opt --core-parallel -split-input-file %s | FileCheck %s
 
-// CHECK-LABEL:     "tpu.Parallel"(%1, %0) ({
+// CHECK-LABEL:     "tpu.CoreParallel"(%1, %0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%1) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
 // CHECK:           %[[PERMUTE0:.*]] = "tpu.Permute"(%[[SPLIT]]#0, %0) {order = [0, 3, 2, 1]} : (tensor<2x8x32x32xf32>, none) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[PERMUTE1:.*]] = "tpu.Permute"(%[[SPLIT]]#1, %0) {order = [0, 3, 2, 1]} : (tensor<2x8x32x32xf32>, none) -> tensor<2x32x32x8xf32> loc({{.*}})
@@ -8,7 +8,7 @@
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
 // CHECK:               }) : (tensor<4x8x32x32xf32>, none) -> tensor<4x32x32x8xf32> loc({{.*}})
 #loc = loc(unknown)
-module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
+module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
   func.func @main(%arg0: tensor<4x8x32x32xf32> loc(unknown), %arg1: tensor<4x1x32x32xf32> loc(unknown)) -> tensor<4x32x32x8xf32> {
     %0 = "top.None"() : () -> none loc(#loc)
     %1 = "top.Input"(%arg0) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc(#loc1)
@@ -28,7 +28,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 // -----
 
 #loc = loc(unknown)
-module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
+module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
   func.func @main(%arg0: tensor<4x8x32x32xf32> loc(unknown), %arg1: tensor<1x1x32x32xf32> loc(unknown)) -> tensor<4x32x32x8xf32> {
     %0 = "top.None"() : () -> none loc(#loc)
     %1 = "top.Input"(%arg0) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc(#loc1)
@@ -45,7 +45,7 @@ module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymm
 #loc4 = loc("/Transpose_1_output_0_Transpose")
 #loc5 = loc("4_Add")
 
-// CHECK-LABEL:     "tpu.Parallel"(%3, %4) ({
+// CHECK-LABEL:     "tpu.CoreParallel"(%3, %4) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
 // CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %4) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %4) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
@@ -56,7 +56,7 @@ module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymm
 // -----
 
 #loc = loc(unknown)
-module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
+module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
   func.func @main(%arg0: tensor<4x8x32x32xf32> loc(unknown), %arg1: tensor<1x32x8xf32> loc(unknown)) -> tensor<4x32x32x8xf32> {
     %0 = "top.None"() : () -> none loc(#loc)
     %1 = "top.Input"(%arg0) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc(#loc1)
@@ -72,7 +72,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 #loc4 = loc("/Transpose_1_output_0_Transpose")
 #loc5 = loc("4_Add")
 
-// CHECK-LABEL:     "tpu.Parallel"(%3, %2) ({
+// CHECK-LABEL:     "tpu.CoreParallel"(%3, %2) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
 // CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
@@ -83,7 +83,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 // -----
 
 #loc = loc(unknown)
-module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
+module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
   func.func @main(%arg0: tensor<4x8x32x32xf32> loc(unknown), %arg1: tensor<32x32x8xf32> loc(unknown)) -> tensor<4x32x32x8xf32> {
     %0 = "top.None"() : () -> none loc(#loc)
     %1 = "top.Input"(%arg0) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc(#loc1)
@@ -99,7 +99,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 #loc4 = loc("/Transpose_1_output_0_Transpose")
 #loc5 = loc("4_Add")
 
-// CHECK-LABEL:     "tpu.Parallel"(%3, %2) ({
+// CHECK-LABEL:     "tpu.CoreParallel"(%3, %2) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
 // CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
@@ -115,7 +115,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%arg0) : (tensor<5x6xf32>) -> (tensor<3x6xf32>, tensor<2x6xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT]]#0, %arg1, %0) {{{.*}}} : (tensor<3x6xf32>, tensor<6x7xf32>, none) -> tensor<3x7xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT]]#1, %arg1, %0) {{{.*}}} : (tensor<2x6xf32>, tensor<6x7xf32>, none) -> tensor<2x7xf32> loc({{.*}})
-module @MatMul1 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul1 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<5x6xf32> loc("a"), %arg1: tensor<6x7xf32> loc("b")) -> tensor<5x7xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<5x6xf32>, tensor<6x7xf32>, none) -> tensor<5x7xf32> loc("c")
@@ -129,7 +129,7 @@ module @MatMul1 attributes {module.chip = "bm1686", module.mode = "F32", module.
 // case 2.1: [1, 512, 7, 7] * [25088, 4096] = [1, 4096] => batch = 1, M = 1, K = 25088, N = 4096
 // CHECK-LABEL:     module @MatMul2.1 {{.*}}
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%arg0, %arg1, %0) {{{.*}}} : (tensor<1x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<1x4096xf32> loc({{.*}})
-module @MatMul2.1 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul2.1 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<1x512x7x7xf32> loc("a"), %arg1: tensor<25088x4096xf32> loc("b")) -> tensor<1x4096xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<1x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<1x4096xf32> loc("c")
@@ -145,7 +145,7 @@ module @MatMul2.1 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%arg0) : (tensor<3x512x7x7xf32>) -> (tensor<2x512x7x7xf32>, tensor<1x512x7x7xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT]]#0, %arg1, %0) {{{.*}}} : (tensor<2x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<2x4096xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT]]#1, %arg1, %0) {{{.*}}} : (tensor<1x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<1x4096xf32> loc({{.*}})
-module @MatMul2.2 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul2.2 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<3x512x7x7xf32> loc("a"), %arg1: tensor<25088x4096xf32> loc("b")) -> tensor<3x4096xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<3x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<3x4096xf32> loc("c")
@@ -158,7 +158,7 @@ module @MatMul2.2 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // case 2.3: [3, 512, 7, 7] * [25088, 4096] = [3, 4096] => batch = 1, M = 1, K = 25088, N = 4096
 // CHECK-LABEL:     module @MatMul2.3 {{.*}}
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%arg0, %arg1, %0) {{{.*}}} : (tensor<3x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<3x4096xf32> loc({{.*}})
-module @MatMul2.3 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul2.3 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<3x512x7x7xf32> loc("a"), %arg1: tensor<25088x4096xf32> loc("b")) -> tensor<3x4096xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) {left_transpose=true}: (tensor<3x512x7x7xf32>, tensor<25088x4096xf32>, none) -> tensor<3x4096xf32> loc("c")
@@ -176,7 +176,7 @@ module @MatMul2.3 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // CHECK:           %[[SPLIT2:.*]]:2 = "tpu.Split"(%arg1) : (tensor<1x4x6x7xf32>) -> (tensor<1x2x6x7xf32>, tensor<1x2x6x7xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %[[SPLIT2]]#0, %0) {{{.*}}} : (tensor<1x2x5x6xf32>, tensor<1x2x6x7xf32>, none) -> tensor<1x2x6x7xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %[[SPLIT2]]#1, %0) {{{.*}}} : (tensor<1x2x5x6xf32>, tensor<1x2x6x7xf32>, none) -> tensor<1x2x6x7xf32> loc({{.*}})
-module @MatMul3.1 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul3.1 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<1x4x5x6xf32> loc("a"), %arg1: tensor<1x4x6x7xf32> loc("b")) -> tensor<1x4x6x7xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<1x4x5x6xf32>, tensor<1x4x6x7xf32>, none) -> tensor<1x4x6x7xf32> loc("c")
@@ -192,7 +192,7 @@ module @MatMul3.1 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // CHECK:           %[[SPLIT2:.*]]:2 = "tpu.Split"(%arg1) : (tensor<3x6x4x7xf32>) -> (tensor<2x6x4x7xf32>, tensor<1x6x4x7xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %[[SPLIT2]]#0, %0) {{{.*}}} : (tensor<2x5x4x6xf32>, tensor<2x6x4x7xf32>, none) -> tensor<2x6x4x7xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %[[SPLIT2]]#1, %0) {{{.*}}} : (tensor<1x5x4x6xf32>, tensor<1x6x4x7xf32>, none) -> tensor<1x6x4x7xf32> loc({{.*}})
-module @MatMul3.2 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul3.2 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<3x5x4x6xf32> loc("a"), %arg1: tensor<3x6x4x7xf32> loc("b")) -> tensor<3x6x4x7xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) {hdim_is_batch=true} : (tensor<3x5x4x6xf32>, tensor<3x6x4x7xf32>, none) -> tensor<3x6x4x7xf32> loc("c")
@@ -209,7 +209,7 @@ module @MatMul3.2 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // CHECK:           %[[SPLIT2:.*]]:2 = "tpu.Split"(%arg1) : (tensor<3x6x4x7xf32>) -> (tensor<2x6x4x7xf32>, tensor<1x6x4x7xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %[[SPLIT2]]#0, %0) {{{.*}}} : (tensor<2x5x4x6xf32>, tensor<2x6x4x7xf32>, none) -> tensor<2x6x4x7xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %[[SPLIT2]]#1, %0) {{{.*}}} : (tensor<1x5x4x6xf32>, tensor<1x6x4x7xf32>, none) -> tensor<1x6x4x7xf32> loc({{.*}})
-module @MatMul3.2 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul3.2 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<3x5x4x6xf32> loc("a"), %arg1: tensor<3x6x4x7xf32> loc("b")) -> tensor<3x6x4x7xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) {hdim_is_batch=true} : (tensor<3x5x4x6xf32>, tensor<3x6x4x7xf32>, none) -> tensor<3x6x4x7xf32> loc("c")
@@ -225,7 +225,7 @@ module @MatMul3.2 attributes {module.chip = "bm1686", module.mode = "F32", modul
 // CHECK:           %[[SPLIT1:.*]]:2 = "tpu.Split"(%arg0) : (tensor<4x5x6xf32>) -> (tensor<2x5x6xf32>, tensor<2x5x6xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %arg1, %0) {{{.*}}} : (tensor<2x5x6xf32>, tensor<6x7xf32>, none) -> tensor<2x6x7xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %arg1, %0) {{{.*}}} : (tensor<2x5x6xf32>, tensor<6x7xf32>, none) -> tensor<2x6x7xf32> loc({{.*}})
-module @MatMul4 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul4 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<4x5x6xf32> loc("a"), %arg1: tensor<6x7xf32> loc("b")) -> tensor<4x6x7xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<4x5x6xf32>, tensor<6x7xf32>, none) -> tensor<4x6x7xf32> loc("c")
@@ -240,7 +240,7 @@ module @MatMul4 attributes {module.chip = "bm1686", module.mode = "F32", module.
 // CHECK:           %[[SPLIT1:.*]]:2 = "tpu.Split"(%arg0) : (tensor<4x5x6xf32>) -> (tensor<2x5x6xf32>, tensor<2x5x6xf32>) loc({{.*}})
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %arg1, %0) {{{.*}}} : (tensor<2x5x6xf32>, tensor<6xf32>, none) -> tensor<2x6xf32> loc({{.*}})
 // CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %arg1, %0) {{{.*}}} : (tensor<2x5x6xf32>, tensor<6xf32>, none) -> tensor<2x6xf32> loc({{.*}})
-module @MatMul5 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul5 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<4x5x6xf32> loc("a"), %arg1: tensor<6xf32> loc("b")) -> tensor<4x6xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<4x5x6xf32>, tensor<6xf32>, none) -> tensor<4x6xf32> loc("c")
@@ -253,7 +253,7 @@ module @MatMul5 attributes {module.chip = "bm1686", module.mode = "F32", module.
 // case 6: [4096] * [4096, 12884] = [1,12884] => batch =1, M = 1, K = 4096, N = 12884
 // CHECK-LABEL:     module @MatMul6 {{.*}}
 // CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%arg0, %arg1, %0) {{{.*}}} : (tensor<4096xf32>, tensor<4096x12884xf32>, none) -> tensor<1x12884xf32> loc({{.*}})
-module @MatMul6 attributes {module.chip = "bm1686", module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
+module @MatMul6 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
   func.func @main(%arg0: tensor<4096xf32> loc("a"), %arg1: tensor<4096x12884xf32> loc("b")) -> tensor<1x12884xf32> {
     %0 = "top.None"() : () -> none loc(unknown)
     %1 = "tpu.MatMul"(%arg0, %arg1, %0) : (tensor<4096xf32>, tensor<4096x12884xf32>, none) -> tensor<1x12884xf32> loc("c")

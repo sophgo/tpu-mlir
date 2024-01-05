@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 // ======================================
 // pattern MatMulSliceMerge
 // e.g. ChatGlm2
@@ -41,7 +41,7 @@ template <typename MatMulTy>
 LogicalResult
 MatMulSliceMerge<MatMulTy>::matchAndRewrite(MatMulTy op,
                                             PatternRewriter &rewriter) const {
-  if (!isLargeMatMul(op) || module::isOpInDistribution(op)) {
+  if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
   }
   if (!module::isNone(op.getBias()) && !module::isWeight(op.getBias())) {
@@ -88,7 +88,7 @@ MatMulSliceMerge<MatMulTy>::matchAndRewrite(MatMulTy op,
     }
   }
   // Bingo !!
-  distribute(rewriter, op, next, tpu::DistributionPattern::MatMulSliceMerge);
+  distribute(rewriter, op, next, tpu::DevPattern::MatMulSliceMerge);
   return success();
 }
 
@@ -100,7 +100,7 @@ template LogicalResult MatMulSliceMerge<tpu::A16MatMulOp>::matchAndRewrite(
 
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
-                     tpu::DistributionBeginOp op, int64_t num_devices) {
+                     tpu::DevBeginOp op, int64_t num_devices) {
   if (!mm0) {
     return;
   }
@@ -230,10 +230,10 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
       assert(end_op == *next_op->user_begin());
     }
   }
-  assert(isa<tpu::DistributionEndOp>(end_op));
+  assert(isa<tpu::DevEndOp>(end_op));
   end_op->setOperands(end_operands);
   if (biasAdd) {
-    auto dis_op = cast<tpu::DistributionEndOp>(end_op);
+    auto dis_op = cast<tpu::DevEndOp>(end_op);
     auto dis_out = dis_op.getOutputs()[0];
     rewriter.setInsertionPointAfter(end_op);
     auto new_loc = module::getLocLike(dis_out, "add");
@@ -245,10 +245,10 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
 }
 
 template void sliceMergeSplit(tpu::MatMulOp mm0, PatternRewriter &rewriter,
-                              tpu::DistributionBeginOp op, int64_t num_devices);
+                              tpu::DevBeginOp op, int64_t num_devices);
 
 template void sliceMergeSplit(tpu::A16MatMulOp mm0, PatternRewriter &rewriter,
-                              tpu::DistributionBeginOp op, int64_t num_devices);
+                              tpu::DevBeginOp op, int64_t num_devices);
 
 } // namespace tpu
 } // namespace tpu_mlir

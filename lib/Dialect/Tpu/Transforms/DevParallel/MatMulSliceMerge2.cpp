@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 
 // ======================================
 // pattern MatMulSliceMerge2
@@ -41,7 +41,7 @@ template <typename MatMulTy>
 LogicalResult
 MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
                                              PatternRewriter &rewriter) const {
-  if (!isLargeMatMul(op) || module::isOpInDistribution(op)) {
+  if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
   }
   if (op->hasOneUse() == false) {
@@ -95,7 +95,7 @@ MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
   std::vector<Operation *> end_ops{end_op};
   std::vector<int64_t> end_methods{1};
   distribute(rewriter, begin_ops, end_ops,
-             tpu::DistributionPattern::MatMulSliceMerge2, begin_methods,
+             tpu::DevPattern::MatMulSliceMerge2, begin_methods,
              end_methods);
   return success();
 }
@@ -106,7 +106,7 @@ template LogicalResult MatMulSliceMerge2<tpu::MatMulOp>::matchAndRewrite(
 template LogicalResult MatMulSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
-void sliceMerge2Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                       int64_t num_devices) {
   // 1. Define params
   // MatMul params
@@ -127,7 +127,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
     // clone residual branch
     next_op = residual_op;
     cur_out = next_op->getOperand(0);
-    if (!isa<tpu::DistributionBeginOp>(cur_out.getDefiningOp())) {
+    if (!isa<tpu::DevBeginOp>(cur_out.getDefiningOp())) {
       if (isa<tpu::AddOp>(next_op)) {
         cur_out = next_op->getOperand(1);
       } else if (isa<tpu::MatMulOp>(next_op)) {
@@ -196,7 +196,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
   }
 
   // 6. Erase
-  assert(isa<tpu::DistributionEndOp>(end_op));
+  assert(isa<tpu::DevEndOp>(end_op));
   end_op->setOperands(end_operands);
 
   for (size_t i = 0; i < users.size(); ++i) {
@@ -219,7 +219,7 @@ Value getTheOtherOperand(Operation *op, Value curr) {
 template <typename MatMulTy>
 LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
     MatMulTy op, PatternRewriter &rewriter) const {
-  if (module::isOpInDistribution(op)) {
+  if (module::isOpInDevParallel(op)) {
     return failure();
   }
   auto add_op = dyn_cast<tpu::AddOp>(*op->user_begin());
@@ -282,7 +282,7 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
 
   // Bingo !!
   distribute(rewriter, begin_ops, end_ops,
-             tpu::DistributionPattern::AttentionSliceMerge2, begin_methods,
+             tpu::DevPattern::AttentionSliceMerge2, begin_methods,
              end_methods);
 
   return success();
@@ -295,7 +295,7 @@ template LogicalResult AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 void sliceAttentionMerge2Split(PatternRewriter &rewriter,
-                               tpu::DistributionBeginOp op,
+                               tpu::DevBeginOp op,
                                int64_t num_devices) {
   // Without StripIOQuant:
   // users: residual(norm), pos0, pos1, attn_mask, [past_k, past_v]
@@ -479,7 +479,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     }
   }
 
-  assert(isa<tpu::DistributionEndOp>(end_op));
+  assert(isa<tpu::DevEndOp>(end_op));
   std::vector<Value> unused(end_op->operand_begin(), end_op->operand_end());
   end_op->setOperands(end_operands);
 

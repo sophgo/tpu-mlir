@@ -24,13 +24,13 @@ void dump(Operation *op);
 
 void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
                 std::vector<Operation *> ops_end,
-                tpu::DistributionPattern pattern,
+                tpu::DevPattern pattern,
                 std::vector<int64_t> &begin_methods,
                 std::vector<int64_t> &end_methods);
 void distribute(PatternRewriter &rewriter, Operation *op_begin,
-                Operation *op_end, tpu::DistributionPattern pattern);
+                Operation *op_end, tpu::DevPattern pattern);
 void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
-                     Operation *op_end, tpu::DistributionPattern pattern);
+                     Operation *op_end, tpu::DevPattern pattern);
 bool isLargeMatMul(Operation *op);
 bool isBinaryOp(Operation *op);
 Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
@@ -91,41 +91,41 @@ public:
 
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
-                     tpu::DistributionBeginOp op, int64_t num_devices);
+                     tpu::DevBeginOp op, int64_t num_devices);
 
-void sliceMerge2Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                       int64_t num_devices);
 
 void sliceAttentionMerge2Split(PatternRewriter &rewriter,
-                               tpu::DistributionBeginOp op,
+                               tpu::DevBeginOp op,
                                int64_t num_devices);
 
 template <typename MatMulTy>
 void sliceAttentionMerge2Split(PatternRewriter &rewriter,
-                               tpu::DistributionBeginOp op,
+                               tpu::DevBeginOp op,
                                int64_t num_devices);
 
-void sliceMerge3Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                       int64_t num_devices);
 
 template <typename MatMulTy>
 void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
-               tpu::DistributionBeginOp op, int64_t num_devices);
+               tpu::DevBeginOp op, int64_t num_devices);
 
-enum class DistributionEndMode {
+enum class DevEndMode {
   EndToUnknown = 0,
   EndToSum = 1,
   EndToTopK = 2,
   EndToConcat = 3
 };
 
-enum class DistributionBeginMethod {
+enum class DevBeginMethod {
   BeginFromUnknown = 0,
   BeginFromCopy = 1,
   BeginFromSplit = 2,
 };
 
-enum class DistributionEndMethod {
+enum class DevEndMethod {
   EndToUnknown = 0,
   EndToSum = 1,
   EndToTopK = 2,
@@ -135,7 +135,7 @@ enum class DistributionEndMethod {
 typedef std::shared_ptr<std::vector<int64_t>> begin_method_array_t;
 typedef std::shared_ptr<std::vector<int64_t>> end_method_array_t;
 
-static begin_method_array_t getBeginMethodArray(tpu::DistributionBeginOp op) {
+static begin_method_array_t getBeginMethodArray(tpu::DevBeginOp op) {
   auto begin_methods = op.getBeginMethods();
   auto data = std::make_shared<std::vector<int64_t>>();
   for (auto it : llvm::enumerate(begin_methods)) {
@@ -143,13 +143,13 @@ static begin_method_array_t getBeginMethodArray(tpu::DistributionBeginOp op) {
     if (attr) {
       data->push_back(attr.getInt());
     } else {
-      llvm_unreachable("not DistributionBeginMethod type");
+      llvm_unreachable("not DevBeginMethod type");
     }
   }
   return std::move(data);
 }
 
-static end_method_array_t getEndMethodArray(tpu::DistributionEndOp op) {
+static end_method_array_t getEndMethodArray(tpu::DevEndOp op) {
   auto end_methods = op.getEndMethods();
   auto data = std::make_shared<std::vector<int64_t>>();
   for (auto it : llvm::enumerate(end_methods)) {
@@ -157,24 +157,24 @@ static end_method_array_t getEndMethodArray(tpu::DistributionEndOp op) {
     if (attr) {
       data->push_back(attr.getInt());
     } else {
-      llvm_unreachable("not DistributionEndMethod type");
+      llvm_unreachable("not DevEndMethod type");
     }
   }
   return std::move(data);
 }
 
-static DistributionEndMode getEndMode(tpu::DistributionEndOp op) {
+static DevEndMode getEndMode(tpu::DevEndOp op) {
   switch (op.getPattern()) {
-  case tpu::DistributionPattern::MatMulSliceMerge:
-  case tpu::DistributionPattern::MatMulSliceMerge2:
-  case tpu::DistributionPattern::MatMulSliceMerge3:
-    return DistributionEndMode::EndToSum;
-  case tpu::DistributionPattern::MatMulTopK:
-    return DistributionEndMode::EndToTopK;
+  case tpu::DevPattern::MatMulSliceMerge:
+  case tpu::DevPattern::MatMulSliceMerge2:
+  case tpu::DevPattern::MatMulSliceMerge3:
+    return DevEndMode::EndToSum;
+  case tpu::DevPattern::MatMulTopK:
+    return DevEndMode::EndToTopK;
   default:
     llvm_unreachable("Not Implemented");
   }
-  return DistributionEndMode::EndToUnknown;
+  return DevEndMode::EndToUnknown;
 }
 
 // ===================================

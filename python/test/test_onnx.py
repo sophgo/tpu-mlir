@@ -425,6 +425,7 @@ class ONNX_IR_TESTER(object):
                       tpu_mlir + ".mlir",
                       mode=quant_mode,
                       chip=self.chip,
+                      num_core=self.num_core,
                       cali_table=table,
                       asymmetric=isAsym)
 
@@ -443,8 +444,7 @@ class ONNX_IR_TESTER(object):
                       tpu_final,
                       self.dynamic,
                       quant_input,
-                      quant_output,
-                      num_core=self.num_core)
+                      quant_output)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,

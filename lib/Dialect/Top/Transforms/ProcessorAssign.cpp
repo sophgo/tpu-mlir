@@ -23,7 +23,18 @@ public:
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());
     module::setChip(chip.value());
-
+    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
+      // only one device
+      num_device = 1;
+    }
+    if (!(module::isBM1688() || module::isSG2260Family())) {
+      // only one core
+      num_core = 1;
+    }
+    assert(num_device > 0);
+    module::setDeviceNum(num_device);
+    assert(num_core > 0);
+    module::setCoreNum(num_core);
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {
       input_type_process(mOp);
