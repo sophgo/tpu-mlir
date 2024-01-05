@@ -595,3 +595,94 @@ visual.py
      - 启动后是否自动进行网络推理比较, 默认False, 会自动推理比较
 
 注意：需要在model_deploy.py阶段打开 ``--debug`` 选项保留中间文件供visual.py使用，工具的详细使用说明见(:ref:`visual-usage`)。
+
+gen_rand_input.py
+~~~~~~~~~~~~~~~~~~~~
+
+在模型转换时，如果不想额外准备测试数据(test_input)，可以使用此工具生成随机的输入数据，方便模型验证工作。
+
+基本操作过程是用 ``model_transform.py`` 将模型转成mlir文件, 此步骤不进行模型验证；接下来，用 ``gen_rand_input.py`` 读取上一步生成的mlir文件，生成用于模型验证的随机测试数据；
+最后，再次使用 ``model_transform.py`` 进行完整的模型转换和验证工作。
+
+执行的命令可参考如下：
+
+.. code-block:: shell
+
+    # 模型初步转换为mlir文件
+    $ model_transform.py \
+        --model_name yolov5s  \
+        --model_def ../regression/model/yolov5s.onnx \
+        --input_shapes [[1,3,640,640]] \
+        --mean 0.0,0.0,0.0 \
+        --scale 0.0039216,0.0039216,0.0039216 \
+        --keep_aspect_ratio     --pixel_format rgb \
+        --output_names 350,498,646 \
+        --mlir yolov5s.mlir
+
+    # 生成随机测试数据，这里生成的是伪测试图片
+    $ python gen_rand_input.py
+        --mlir yolov5s.mlir \
+        --img --output yolov5s_fake_img.png
+
+    # 完整的模型转换和验证
+    $ model_transform.py \
+        --model_name yolov5s  \
+        --model_def ../regression/model/yolov5s.onnx \
+        --input_shapes [[1,3,640,640]] \
+        --mean 0.0,0.0,0.0 \
+        --scale 0.0039216,0.0039216,0.0039216 \
+        --test_input yolov5s_fake_img.png    \
+        --test_result yolov5s_top_outputs.npz \
+        --keep_aspect_ratio     --pixel_format rgb \
+        --output_names 350,498,646 \
+        --mlir yolov5s.mlir
+
+更详细的使用方法可参考如下：
+
+.. code-block:: shell
+
+    # 可为多个输入分别指定取值范围
+    $ python gen_rand_input.py \
+      --mlir ernie.mlir \
+      --ranges [[0,300],[0,0]] \
+      --output ern.npz
+
+    # 可为输入指定type类型，如不指定，默认从mlir文件中读取
+    $ python gen_rand_input.py \
+      --mlir resnet.mlir \
+      --ranges [[0,300]] \
+      --input_types si32 \
+      --output resnet.npz
+
+    # 指定生成随机图片，不指定取值范围和数据类型
+    $ python gen_rand_input.py
+        --mlir yolov5s.mlir \
+        --img --output yolov5s_fake_img.png
+
+支持的功能如下:
+
+.. list-table:: gen_rand_input 功能
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - 参数名
+     - 必选？
+     - 说明
+   * - mlir
+     - 是
+     - 指定输入的mlir文件名称和路径
+   * - img
+     - 否
+     - 用于CV任务生成随机图片，否则生成npz文件。默认图片的取值范围为[0,255]，数据类型为'uint8'，不通过'ranges'或'input_types'更改。
+   * - ranges
+     - 否
+     - 指定模型输入的取值范围，以列表形式表现，如[[0,300],[0,0]]。如果指定生成图片，则不需要指定取值范围，默认[0,255]。其他情况下，需要指定取值范围。
+   * - input_types
+     - 否
+     - 指定模型输入的数据类型，如si32,f32。目前仅支持 'si32' 和 'f32' 类型。如果不填，默认从mlir中读取。如果指定生成图片，则不需要指定数据类型，默认'uint8'。
+   * - output
+     - 是
+     - 指定输出的名称
+
+注意：CV相关模型通常会对输入图片进行一系列预处理，为保证模型正确性验证通过，需要用'--img'生成随机图片作为输入，不能使用随机npz文件作为输入。
+值得关注的是，随机输入可能会引起模型正确性验证对比不通过，特别是NLP相关模型，因此建议优先使用真实的测试数据。

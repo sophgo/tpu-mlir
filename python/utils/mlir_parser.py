@@ -219,6 +219,20 @@ class MlirParser:
     def get_input_num(self):
         return len(self.inputs)
 
+    def get_input_shapes(self):
+        mlir_shape = []
+        for op in self.inputs:
+            shape_type = mlir.ir.ShapedType(op.op.input.type)
+            mlir_shape.append(shape_type.shape)
+        return mlir_shape
+
+    def get_input_types(self):
+        mlir_type = []
+        for op in self.inputs:
+            shape_type = mlir.ir.ShapedType(op.op.input.type)
+            mlir_type.append(str(shape_type.element_type))
+        return mlir_type
+
     def get_input_op_by_idx(self, idx):
         return self.inputs[idx].op
 

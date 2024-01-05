@@ -122,13 +122,13 @@ Used to convert various neural network models into MLIR files, the supported par
      - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/ssd
    * - test_input
      - N
-     - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
+     - The input file for verification, which can be an image, npy or npz. No verification will be carried out if it is not specified
    * - test_result
      - N
-     - Output file to save validation result
+     - Output file to save verification result
    * - excepts
      - N
-     - Names of network layers that need to be excluded from validation. Separated by comma
+     - Names of network layers that need to be excluded from verification. Separated by comma
    * - onnx_sim
      - N
      - option for onnx-sim, currently only support 'skip_fuse_bn' args
@@ -356,13 +356,13 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
    * - test_input
      - N
-     - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
+     - The input file for verification, which can be an image, npy or npz. No verification will be carried out if it is not specified
    * - test_reference
      - N
-     - Reference data for validating mlir tolerance (in npz format). It is the result of each operator
+     - Reference data for verifying mlir tolerance (in npz format). It is the result of each operator
    * - excepts
      - N
-     - Names of network layers that need to be excluded from validation. Separated by comma
+     - Names of network layers that need to be excluded from verification. Separated by comma
    * - op_divide
      - N
      - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
@@ -396,7 +396,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - num_core
      - N
      - The number of Tensor Computing Processor cores used for parallel computation
-   * - skip_validation
+   * - skip_verification
      - N
      - Skip checking the correctness of bmodel
    * - merge_weight
@@ -494,7 +494,7 @@ Example:
 
 Supported functions:
 
-.. list-table:: visual 功能
+.. list-table:: visual functions
    :widths: 18 60
    :header-rows: 1
 
@@ -514,3 +514,97 @@ Supported functions:
      - if net will be automaticall inferenced when UI is opened, default is false for auto inference
 
 Notice: ``--debug`` flag should be opened during model_deploy.py to save intermediate files for visual.py. More details refer to (:ref:`visual-usage`)
+
+gen_rand_input.py
+~~~~~~~~~~~~~~~~~~~~
+
+During model transform, if you do not want to prepare additional test data (test_input), you can use this tool to generate random input data to facilitate model verification.
+
+The basic procedure is transforming the model into a mlir file with ``model_transform.py``. This step does not perform model verification. And then use ``gen_rand_input.py``
+to read the mlir file generated in the previous step and generate random test data for model verification. Finally, use ``model_transform.py`` again to do the complete model transformation and verification.
+
+Example:
+
+.. code-block:: shell
+
+    # To MLIR
+    $ model_transform.py \
+        --model_name yolov5s  \
+        --model_def ../regression/model/yolov5s.onnx \
+        --input_shapes [[1,3,640,640]] \
+        --mean 0.0,0.0,0.0 \
+        --scale 0.0039216,0.0039216,0.0039216 \
+        --keep_aspect_ratio     --pixel_format rgb \
+        --output_names 350,498,646 \
+        --mlir yolov5s.mlir
+
+    # Generate dummy input. Here is a pseudo test picture.
+    $ python gen_rand_input.py
+        --mlir yolov5s.mlir \
+        --img --output yolov5s_fake_img.png
+
+    # Verification
+    $ model_transform.py \
+        --model_name yolov5s  \
+        --model_def ../regression/model/yolov5s.onnx \
+        --input_shapes [[1,3,640,640]] \
+        --mean 0.0,0.0,0.0 \
+        --scale 0.0039216,0.0039216,0.0039216 \
+        --test_input yolov5s_fake_img.png    \
+        --test_result yolov5s_top_outputs.npz \
+        --keep_aspect_ratio     --pixel_format rgb \
+        --output_names 350,498,646 \
+        --mlir yolov5s.mlir
+
+For more detailed usage, please refer to the following:
+
+.. code-block:: shell
+
+    # Value ranges can be specified for multiple inputs.
+    $ python gen_rand_input.py \
+      --mlir ernie.mlir \
+      --ranges [[0,300],[0,0]] \
+      --output ern.npz
+
+    # Type can be specified for the input.
+    $ python gen_rand_input.py \
+      --mlir resnet.mlir \
+      --ranges [[0,300]] \
+      --input_types si32 \
+      --output resnet.npz
+
+    # Generate random image
+    $ python gen_rand_input.py
+        --mlir yolov5s.mlir \
+        --img --output yolov5s_fake_img.png
+
+Supported functions:
+
+.. list-table:: gen_rand_input functions
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - Name
+     - Required?
+     - Explanation
+   * - mlir
+     - Y
+     - The input mlir file name (including path)
+   * - img
+     - N
+     - Used for CV tasks to generate random images, otherwise generate npz files. The default image value range is [0,255], the data type is 'uint8', and cannot be changed.
+   * - ranges
+     - N
+     - Set the value ranges of the model inputs, expressed in list form, such as [[0,300],[0,0]]. If you want to generate a picture, you do not need to specify the value range, the default is [0,255].
+     In other cases, value ranges need to be specified.
+   * - input_types
+     - N
+     - Set the model input types, such as 'si32,f32'. 'si32' and 'f32' types are supported. False by default, and it will be read from mlir. If you generate an image
+     , you do not need to specify the data type, the default is 'uint8'.
+   * - output
+     - Y
+     - The names of the output.
+
+Notice: CV-related models usually perform a series of preprocessing on the input image. To ensure that the model is verificated correctly, you need to use '--img' to generate a random image as input.
+Random npz files cannot be used as input.
+It is worth noting that random input may cause model correctness verification to fail, especially NLP-related models, so it is recommended to give priority to using real test data.

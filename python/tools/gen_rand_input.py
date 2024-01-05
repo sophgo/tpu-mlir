@@ -11,28 +11,63 @@ import abc
 import numpy as np
 import argparse
 from utils.misc import *
+from utils.mlir_parser import *
+from PIL import Image
 
-def create_and_save_tensors_to_npz(tensor_names, shapes, data_types):
+TypeMap = {
+    'f32': np.float32,
+    'si32': np.int32,
+}
+
+def create_and_save_tensors_to_npz(tensor_names, shapes, data_types, ranges, output_file):
     tensors = []
-    for shape, data_type in zip(shapes, data_types):
-        if data_type.startswith('int'):
-            low, high = 1, 100
-            tensor = np.random.randint(low, high + 1, size=shape, dtype=data_type)
+    for shape, data_type, range_ids in zip(shapes, data_types, ranges):
+        low, high = range_ids
+        if data_type == 'si32':
+            tensor = np.random.randint(
+                low, high + 1, size=shape, dtype=TypeMap[data_type])
         else:
-            tensor = np.random.rand(*shape).astype(data_type)
+            # tensor = np.random.rand(*shape).astype(TypeMap[data_type])
+            tensor = np.random.uniform(low, high + 1, shape).astype(TypeMap[data_type])
         tensors.append(tensor)
 
-    tensors_dict = {name: tensor for name, tensor in zip(tensor_names, tensors)}
-    np.savez('input.npz', **tensors_dict)
-    print("Tensors saved to 'input.npz'.")
+    tensors_dict = {name: tensor for name,
+                    tensor in zip(tensor_names, tensors)}
+    np.savez(output_file, **tensors_dict)
+    print(f"Tensors saved to {output_file}.")
+
+def generate_random_img(shapes, output_file):
+    n, c, h, w = shapes[0]
+    fake_image = np.random.randint(0, 256, (h, w, c), dtype=np.uint8)
+    random_image = Image.fromarray(fake_image)
+    random_image.save(output_file)
+    print(f"Image saved to {output_file}.")
+
+def run_from_mlir(args):
+    module_parsered = MlirParser(args.mlir)
+    mlir_shapes = module_parsered.get_input_shapes()
+    mlir_types = args.input_types if args.input_types else module_parsered.get_input_types()
+    input_num = module_parsered.get_input_num()
+    tensor_names = []
+    for i in range(input_num):
+        tensor_names.append(module_parsered.ops[i].name)
+    if args.img:
+        generate_random_img(mlir_shapes, args.output)
+        return
+    create_and_save_tensors_to_npz(
+        tensor_names, mlir_shapes, mlir_types, args.ranges, args.output)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_names", type=str2list, default=list(),
-                        help="if set, will find names in model and set as real outputs")
-    parser.add_argument("--input_shapes", type=str2shape, default=list(),
-                        help="list of input shapes, like:[[1,3,224,224],[10],[16]]")
+    parser.add_argument("--mlir", type=str, required=True,
+                        help="output mlir model file")
+    parser.add_argument("--ranges", type=str2shape, default=list(),
+                        help="list of input ranges, like:[[0,1],[-10,10]]")
     parser.add_argument("--input_types", type=str2list, default=list(),
-                        help="list of input types, like:float32,int32. if not set, float32 as default")
+                        help="list of input types, like:f32,si32. if not set, it will be read from mlir")
+    parser.add_argument("--img", action='store_true', help="generate fake image for CV tasks")
+    parser.add_argument("--output", type=str, default='input.npz',
+                        help="output npz/img file")
     arg = parser.parse_args()
-    create_and_save_tensors_to_npz(arg.input_names, arg.input_shapes, arg.input_types)
+    run_from_mlir(arg)
