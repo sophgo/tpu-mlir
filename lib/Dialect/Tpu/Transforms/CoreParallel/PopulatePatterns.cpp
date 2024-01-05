@@ -62,9 +62,9 @@ NdSlice getNdSlice(LayerGroupAttr inAttr) {
 
 template <>
 LogicalResult
-Parallel<tpu::GroupOp>::matchAndRewrite(tpu::GroupOp gOp,
-                                        PatternRewriter &rewriter) const {
-  if (isa_and_nonnull<tpu::ParallelOp>(gOp->getParentOp()))
+CoreParallel<tpu::GroupOp>::matchAndRewrite(tpu::GroupOp gOp,
+                                            PatternRewriter &rewriter) const {
+  if (isa_and_nonnull<tpu::CoreParallelOp>(gOp->getParentOp()))
     return failure();
 
   auto upOverlapOpAttrName =
@@ -93,7 +93,7 @@ Parallel<tpu::GroupOp>::matchAndRewrite(tpu::GroupOp gOp,
 void populateParalleBM1684XPatterns(RewritePatternSet *patterns, int coreNum) {
   // Add an Op-specific pattern if the generic IndexingMap fails to capture
   // the parallel semantics in this operation.
-  patterns->add<Parallel<tpu::GroupOp>>(patterns->getContext(), coreNum);
+  patterns->add<CoreParallel<tpu::GroupOp>>(patterns->getContext(), coreNum);
 };
 
 } // namespace tpu

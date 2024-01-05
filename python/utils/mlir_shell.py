@@ -64,6 +64,8 @@ def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
                   mode: str,
                   chip: str,
+                  num_device: int = 1,
+                  num_core: int = 1,
                   cali_table: str = None,
                   asymmetric: bool = False,
                   quantize_table: str = None,
@@ -73,7 +75,7 @@ def mlir_lowering(top_mlir: str,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0):
-    cmd = ["tpuc-opt", top_mlir, "--processor-assign=\"chip={}\"".format(chip.lower())]
+    cmd = ["tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(chip.lower(), num_device, num_core)]
     mode = mode.upper()
     asymmetric = False # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
@@ -115,8 +117,6 @@ def mlir_to_model(tpu_mlir: str,
                   opt: int = 2,
                   merge_weight: bool = False,
                   op_divide: bool = False,
-                  num_device: int = 1,
-                  num_core: int = 1,
                   embed_debug_info: bool = False,
                   model_version: str = ""):
     # generate final mlir
@@ -124,14 +124,14 @@ def mlir_to_model(tpu_mlir: str,
         quant_input, quant_output, quant_input_list, quant_output_list)
     lg_param = ''
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} num_core={}"'.format(opt, num_core)
+        lg_param = '--layer-group="opt={}"'.format(opt)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     #address_assign_param = '--address-assign="reuse_addr=false"'
     if merge_weight:
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
-    distribute_param = f"--distribute='num_device={num_device}'"
-    parallel_param = f"--parallel='num_core={num_core}'"
+    distribute_param = f"--dev-parallel"
+    parallel_param = f"--core-parallel"
 
     op_divide_param = ""
     if op_divide:

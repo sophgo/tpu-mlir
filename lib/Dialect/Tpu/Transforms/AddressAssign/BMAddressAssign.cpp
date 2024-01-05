@@ -103,7 +103,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
         return;
       }
       // The buffer Op will insert to parallel Op when needed.
-      if (module::isOpInParallel(op) && !isa<tpu::BufferOp>(op)) {
+      if (module::isOpInCoreParallel(op) && !isa<tpu::BufferOp>(op)) {
         return;
       };
       all_ops.emplace_back(op);
@@ -212,7 +212,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
 
   // 3. set parallel Op address
   for (auto func : m.getOps<FuncOp>()) {
-    func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp parallelOp) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
       for (auto &op : parallelOp.getRegion().getOps()) {
         llvm::TypeSwitch<Operation &>(op)
             .Case([](tpu::SplitOp splitOp) {
@@ -260,7 +260,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
 
   // 4. set parallel Op address
   for (auto func : m.getOps<FuncOp>()) {
-    func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp op) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp op) {
       auto splitOp = &op.getBody().front().front();
       int64_t address = module::getAddress(splitOp->getOperand(0));
       for (auto v : splitOp->getResults()) {
@@ -478,7 +478,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       updateOperandsLiveRange(op, maxPosition);
       inplace_ops.emplace_back(v);
     }
-  } else if (module::isOpInParallel(op)) {
+  } else if (module::isOpInCoreParallel(op)) {
     updateAsyncLiveRange(op, v);
     common_ops.emplace_back(v);
   } else if (op->getDialect()->getNamespace() == "tpu") {

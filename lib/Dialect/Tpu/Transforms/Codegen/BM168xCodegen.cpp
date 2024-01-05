@@ -783,7 +783,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
 }
 
 void BMCodegen::codegen(Operation *op) {
-  if (module::isOpInGroup(op) || module::isOpInParallel(op))
+  if (module::isOpInGroup(op) || module::isOpInCoreParallel(op))
     return;
   if (auto castOp = dyn_cast<GroupOp>(op)) {
     Operation *prev_op = op->getPrevNode();
@@ -797,7 +797,7 @@ void BMCodegen::codegen(Operation *op) {
     codegen_for_group(castOp, prev_op, next_op);
     return;
   }
-  if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
+  if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
     if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
       // For the sync-all method, we can use two message IDs to represent all
       // the dependencies in a single run. We can try the following sequence:

@@ -688,24 +688,24 @@ bool isOpInGroup(Operation *Op, int64_t *group_type) {
   return false;
 }
 
-bool isOpInParallel(Operation *Op) {
+bool isOpInCoreParallel(Operation *Op) {
   if (Op == nullptr) {
     return false;
   }
   auto parent = Op->getParentOp();
-  if (isa_and_nonnull<tpu::ParallelOp>(parent)) {
+  if (isa_and_nonnull<tpu::CoreParallelOp>(parent)) {
     return true;
   }
   return false;
 }
 
-bool isOpInDistribution(Operation *op) {
+bool isOpInDevParallel(Operation *op) {
   while (!op->use_empty()) {
     op = *op->user_begin();
-    if (isa<func::ReturnOp, tpu::DistributionBeginOp>(op)) {
+    if (isa<func::ReturnOp, tpu::DevBeginOp>(op)) {
       return false;
     }
-    if (isa<tpu::DistributionEndOp>(op)) {
+    if (isa<tpu::DevEndOp>(op)) {
       return true;
     }
   }
@@ -1536,7 +1536,7 @@ void saveWeight() {
     for (auto func : s.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
-            !module::isOpInParallel(op) &&
+            !module::isOpInCoreParallel(op) &&
             !isa<func::ReturnOp, func::CallOp, func::FuncOp, tpu::YieldOp,
                  tpu::IfOp, top::InputOp>(op)) {
           auto name = module::getName(op);

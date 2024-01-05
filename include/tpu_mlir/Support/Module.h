@@ -158,8 +158,8 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
-bool isOpInParallel(Operation *Op);
-bool isOpInDistribution(Operation *Op);
+bool isOpInCoreParallel(Operation *Op);
+bool isOpInDevParallel(Operation *Op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getName(Operation *op, int index = 0);

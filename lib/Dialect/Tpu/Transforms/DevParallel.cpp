@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 
 using namespace llvm;
 namespace tpu_mlir {
@@ -16,19 +16,19 @@ static const int64_t WEIGHT_LIMIT = 0x400000;
 
 void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
                 std::vector<Operation *> ops_end,
-                tpu::DistributionPattern pattern,
+                tpu::DevPattern pattern,
                 std::vector<int64_t> &begin_methods,
                 std::vector<int64_t> &end_methods) {
   // 1. Create pattern params
   auto ctx = rewriter.getContext();
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "begin_methods",
       rewriter.getI64ArrayAttr(llvm::ArrayRef(begin_methods))));
 
-  // 2. Insert DistributionBeginOp
+  // 2. Insert DevBeginOp
   std::vector<Value> inputs;
   std::vector<Type> types;
   std::vector<Location> locs;
@@ -51,7 +51,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   }
   auto begin_loc = FusedLoc::get(ctx, locs);
   rewriter.setInsertionPointAfterValue(opd);
-  auto begin = rewriter.create<tpu::DistributionBeginOp>(begin_loc, types,
+  auto begin = rewriter.create<tpu::DevBeginOp>(begin_loc, types,
                                                          inputs, attrs);
   for (auto op : ops_begin) {
     if (op != ops_begin[0]) {
@@ -75,14 +75,14 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
     ops_begin[i]->setOperand(index, begin.getOutputs()[i]);
   }
 
-  // 3. Insert DistributionEndOp
+  // 3. Insert DevEndOp
   attrs.clear();
   inputs.clear();
   types.clear();
   locs.clear();
 
   attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
 
@@ -98,7 +98,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   auto end_loc = FusedLoc::get(ctx, locs);
   rewriter.setInsertionPointAfter(ops_end[0]);
   auto end =
-      rewriter.create<tpu::DistributionEndOp>(end_loc, types, inputs, attrs);
+      rewriter.create<tpu::DevEndOp>(end_loc, types, inputs, attrs);
 
   for (size_t i = 0; i < ops_end.size(); ++i) {
     // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
@@ -108,22 +108,22 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   }
 }
 
-// insert DistributionBeginOp before op_begin
-// insert DistributionEndOp after op_end
+// insert DevBeginOp before op_begin
+// insert DevEndOp after op_end
 void distribute(PatternRewriter &rewriter, Operation *op_begin,
-                Operation *op_end, tpu::DistributionPattern pattern) {
+                Operation *op_end, tpu::DevPattern pattern) {
   auto ctx = rewriter.getContext();
   auto input = op_begin->getOperand(0);
   std::vector<Type> types = {input.getType()};
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   std::vector<int64_t> begin_methods{1};
   attrs.push_back(rewriter.getNamedAttr(
       "begin_methods",
       rewriter.getI64ArrayAttr(llvm::ArrayRef(begin_methods))));
   rewriter.setInsertionPoint(op_begin);
-  auto begin = rewriter.create<tpu::DistributionBeginOp>(
+  auto begin = rewriter.create<tpu::DevBeginOp>(
       module::getLocLike(op_begin, "distribute_begin"), types,
       ValueRange{input}, attrs);
   op_begin->setOperand(0, begin.getOutputs()[0]);
@@ -139,36 +139,36 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   attrs.clear();
   std::vector<int64_t> end_methods{2};
   attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
   rewriter.setInsertionPointAfter(op_end);
-  auto end = rewriter.create<tpu::DistributionEndOp>(
+  auto end = rewriter.create<tpu::DevEndOp>(
       module::getLocLike(output, "distribute_end"), output.getType(),
       ValueRange{output}, attrs);
   output.replaceAllUsesExcept(end.getOutputs()[0], end);
 }
 
-// insert DistributionBeginOp after op_begin
-// insert DistributionEndOp after op_end
+// insert DevBeginOp after op_begin
+// insert DevEndOp after op_end
 void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
-                     Operation *op_end, tpu::DistributionPattern pattern) {
+                     Operation *op_end, tpu::DevPattern pattern) {
   // 1. Create pattern params
   auto ctx = rewriter.getContext();
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
 
-  // 2. Insert DistributionBeginOp
+  // 2. Insert DevBeginOp
   auto input = op_begin->getResult(0);
   std::vector<Type> types = {input.getType()};
   rewriter.setInsertionPointAfter(op_begin);
-  auto begin = rewriter.create<tpu::DistributionBeginOp>(
+  auto begin = rewriter.create<tpu::DevBeginOp>(
       module::getLocLike(input, "distribute_begin"), types, ValueRange{input},
       attrs);
   input.replaceAllUsesExcept(begin.getOutputs()[0], begin);
 
-  // 3. Insert DistributionEndOp
+  // 3. Insert DevEndOp
   Value output;
   for (auto o : op_end->getResults()) {
     if (o.hasOneUse()) {
@@ -177,7 +177,7 @@ void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
     }
   }
   rewriter.setInsertionPointAfter(op_end);
-  auto end = rewriter.create<tpu::DistributionEndOp>(
+  auto end = rewriter.create<tpu::DevEndOp>(
       module::getLocLike(output, "distribute_end"), output.getType(),
       ValueRange{output}, attrs);
   output.replaceAllUsesExcept(end.getOutputs()[0], end);
@@ -227,14 +227,14 @@ void eraseForward(PatternRewriter &rewriter, Operation *op) {
 // ===================================
 // distribute all ops to multi device
 // ===================================
-class DoDistributePattern : public OpRewritePattern<tpu::DistributionBeginOp> {
+class DoDistributePattern : public OpRewritePattern<tpu::DevBeginOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
   DoDistributePattern(MLIRContext *context)
-      : OpRewritePattern<tpu::DistributionBeginOp>(context) {
+      : OpRewritePattern<tpu::DevBeginOp>(context) {
     num_devices = module::getDeviceNum();
   }
-  LogicalResult matchAndRewrite(tpu::DistributionBeginOp op,
+  LogicalResult matchAndRewrite(tpu::DevBeginOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getDone()) {
       return failure();
@@ -243,20 +243,20 @@ public:
     auto mode = module::getMode();
     if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
       switch (op.getPattern()) {
-      case tpu::DistributionPattern::MatMulSliceMerge:
+      case tpu::DevPattern::MatMulSliceMerge:
         sliceMergeSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op,
                         num_devices);
         break;
-      case tpu::DistributionPattern::MatMulSliceMerge2:
+      case tpu::DevPattern::MatMulSliceMerge2:
         sliceMerge2Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::AttentionSliceMerge2:
+      case tpu::DevPattern::AttentionSliceMerge2:
         sliceAttentionMerge2Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::MatMulSliceMerge3:
+      case tpu::DevPattern::MatMulSliceMerge3:
         sliceMerge3Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::MatMulTopK:
+      case tpu::DevPattern::MatMulTopK:
         topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
         break;
       default:
@@ -265,20 +265,20 @@ public:
     } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
       switch (op.getPattern()) {
-      case tpu::DistributionPattern::MatMulSliceMerge:
+      case tpu::DevPattern::MatMulSliceMerge:
         sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
                         num_devices);
         break;
-      case tpu::DistributionPattern::MatMulSliceMerge2:
+      case tpu::DevPattern::MatMulSliceMerge2:
         sliceMerge2Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::AttentionSliceMerge2:
+      case tpu::DevPattern::AttentionSliceMerge2:
         sliceAttentionMerge2Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::MatMulSliceMerge3:
+      case tpu::DevPattern::MatMulSliceMerge3:
         sliceMerge3Split(rewriter, op, num_devices);
         break;
-      case tpu::DistributionPattern::MatMulTopK:
+      case tpu::DevPattern::MatMulTopK:
         topKSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
                   num_devices);
         break;
@@ -296,17 +296,14 @@ private:
   int64_t num_devices;
 };
 
-class DistributePass : public DistributeBase<DistributePass> {
+class DevParallelPass : public DevParallelBase<DevParallelPass> {
 public:
-  DistributePass() {}
+  DevParallelPass() {}
   void runOnOperation() override {
     if (module::getNumSubModule() > 0) {
       return;
     }
-    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
-      num_device = 1;
-    }
-    module::setDeviceNum(num_device);
+    auto num_device = module::getDeviceNum();
     auto mOp = getOperation();
     auto mainFunc = module::getMainFuncOp(mOp);
     auto mode = module::getMode();
@@ -326,10 +323,9 @@ public:
       } else {
         llvm_unreachable("Not supported quantization mode");
       }
-      if (mainFunc.getOps<tpu::DistributionBeginOp>().empty()) {
+      if (mainFunc.getOps<tpu::DevBeginOp>().empty()) {
         // no pattern find, copy the whole modules num_device times
         num_device = 1;
-        // module::setDeviceNum(num_device);
       } else {
         applyPatternOnce<DoDistributePattern>(mOp);
       }
@@ -361,8 +357,8 @@ void dump(Operation *op) {
   }
 }
 
-std::unique_ptr<OperationPass<ModuleOp>> createDistributePass() {
-  return std::make_unique<DistributePass>();
+std::unique_ptr<OperationPass<ModuleOp>> createDevParallelPass() {
+  return std::make_unique<DevParallelPass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir

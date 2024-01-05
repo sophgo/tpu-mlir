@@ -47,29 +47,19 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let options = [
     Option<"opt", "opt", "int64_t", /*default=*/"2",
            "opt=1: group layers as many as possible. opt=2: dynamic programming layer group">,
-    Option<"num_core", "num_core", "int64_t", /*default=*/"1",
-           "core_num=1: Set how many cores will be used to run model in parallel.">,
   ];
 }
 
-def Distribute : Pass<"distribute", "ModuleOp"> {
+def DevParallel : Pass<"dev-parallel", "ModuleOp"> {
   let summary = "distribute module to multi modules to run in multi devices";
-  let constructor = "createDistributePass()";
+  let constructor = "createDevParallelPass()";
   let dependentDialects = ["TpuDialect"];
-  let options = [
-      Option<"num_device", "num_device", "int64_t", /*default=*/"1",
-             "num of devices to distributed.">
-  ];
 }
 
-def Parallel : Pass<"parallel", "ModuleOp"> {
+def CoreParallel : Pass<"core-parallel", "ModuleOp"> {
   let summary = "split the operation to fine-grained and run it in parallel on TPU";
-  let constructor = "createParallelPass()";
+  let constructor = "createCoreParallelPass()";
   let dependentDialects = ["TpuDialect"];
-  let options = [
-    Option<"num_core", "num_core", "int64_t", /*default=*/"1",
-           "core_num=1: Set how many cores will be used to run model in parallel.">,
-  ];
 }
 
 def AddressAssign : Pass<"address-assign", "ModuleOp"> {

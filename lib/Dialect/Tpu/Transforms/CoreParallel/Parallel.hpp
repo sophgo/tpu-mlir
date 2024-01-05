@@ -14,9 +14,9 @@ namespace tpu {
 namespace bm1684x {
 
 template <typename Op>
-class Parallel : public OpRewritePattern<Op> {
+class CoreParallel : public OpRewritePattern<Op> {
 public:
-  Parallel(MLIRContext *context, int coreNum = 1)
+  CoreParallel(MLIRContext *context, int coreNum = 1)
       : coreNum(coreNum), OpRewritePattern<Op>(context){};
 
   LogicalResult matchAndRewrite(Op op,

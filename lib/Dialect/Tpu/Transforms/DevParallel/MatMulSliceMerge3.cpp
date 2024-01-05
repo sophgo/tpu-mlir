@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 
 // ======================================
 // pattern MatMulSliceMerge3:
@@ -70,7 +70,7 @@ static Operation *isFFNPattern(Operation *op) {
 LogicalResult
 MatMulSliceMerge3::matchAndRewrite(tpu::AddOp op,
                                    PatternRewriter &rewriter) const {
-  if (!op->hasOneUse() || module::isOpInDistribution(op)) {
+  if (!op->hasOneUse() || module::isOpInDevParallel(op)) {
     return failure();
   }
 
@@ -140,13 +140,13 @@ MatMulSliceMerge3::matchAndRewrite(tpu::AddOp op,
   end_methods.push_back(3);
   end_methods.push_back(3);
   distribute(rewriter, begin_ops, end_ops,
-             tpu::DistributionPattern::MatMulSliceMerge3, begin_methods,
+             tpu::DevPattern::MatMulSliceMerge3, begin_methods,
              end_methods);
 
   return success();
 }
 
-void sliceMerge3Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                       int64_t num_devices) {
   // users: hidden_state, pos_ids_gather0, pos_ids_gather1, attn_mask,
   // past_k, past_v
@@ -321,7 +321,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
     }
   }
 
-  assert(isa<tpu::DistributionEndOp>(end_op));
+  assert(isa<tpu::DevEndOp>(end_op));
   end_op->setOperands(end_operands);
 
   for (size_t i = 0; i < users.size(); ++i) {

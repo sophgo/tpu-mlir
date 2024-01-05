@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -16,7 +16,7 @@ template <typename MatMulTy>
 LogicalResult
 MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
                                       PatternRewriter &rewriter) const {
-  if (!isLargeMatMul(op) || module::isOpInDistribution(op) ||
+  if (!isLargeMatMul(op) || module::isOpInDevParallel(op) ||
       !op->hasOneUse()) {
     return failure();
   }
@@ -30,7 +30,7 @@ MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
     return failure();
   }
   // Bingo !!
-  distribute(rewriter, op, next_op, tpu::DistributionPattern::MatMulTopK);
+  distribute(rewriter, op, next_op, tpu::DevPattern::MatMulTopK);
   return success();
 }
 
@@ -44,7 +44,7 @@ MatMulTopK<tpu::A16MatMulOp>::matchAndRewrite(tpu::A16MatMulOp op,
 
 template <typename MatMulTy>
 void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
-               tpu::DistributionBeginOp op, int64_t num_devices) {
+               tpu::DevBeginOp op, int64_t num_devices) {
   if (!mm) {
     return;
   }
@@ -151,10 +151,10 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
 }
 
 template void topKSplit(tpu::MatMulOp mm, PatternRewriter &rewriter,
-                        tpu::DistributionBeginOp op, int64_t num_devices);
+                        tpu::DevBeginOp op, int64_t num_devices);
 
 template void topKSplit(tpu::A16MatMulOp mm, PatternRewriter &rewriter,
-                        tpu::DistributionBeginOp op, int64_t num_devices);
+                        tpu::DevBeginOp op, int64_t num_devices);
 
 } // namespace tpu
 } // namespace tpu_mlir

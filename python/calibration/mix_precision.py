@@ -90,7 +90,7 @@ class MixQuantModel:
                     exit(1)
 
         self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir, 'mix' if mix_table else self.mode)
-        mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip,
+        mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
                       self.calib_table, False, self.mix_table)
         self.module = pymlir.module()
         self.module.load(self.quanted_mlir_file)

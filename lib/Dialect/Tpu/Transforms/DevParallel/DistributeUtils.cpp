@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 #include "tpu_mlir/Backend/Arch.h"
 
 #define DEBUG_TYPE "distribute_ops"
@@ -1344,7 +1344,7 @@ cloneAttentionKey(PatternRewriter &rewriter, Operation *next_op, Value &cur_out,
   auto key_out = cur_out;
   if (isa<tpu::CastOp>(next_ops[1])) {
     auto key_out_op = cloneCommonOp(rewriter, next_ops[1], key_out, suffix);
-    assert(isa<tpu::DistributionEndOp>(key_out_op));
+    assert(isa<tpu::DevEndOp>(key_out_op));
   }
 
   std::vector<Value> operands;
@@ -1426,7 +1426,7 @@ std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
   Value value_out = cur_out;
   if (isa<tpu::CastOp>(next_ops[1])) {
     auto value_out_op = cloneCommonOp(rewriter, next_ops[1], value_out, suffix);
-    assert(isa<tpu::DistributionEndOp>(value_out_op));
+    assert(isa<tpu::DevEndOp>(value_out_op));
   }
 
   std::vector<Value> operands;

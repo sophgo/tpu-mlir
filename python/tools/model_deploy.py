@@ -124,7 +124,7 @@ class DeployTool:
             self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
             self.final_mlir = "{}_final.mlir".format(self.prefix)
-            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
+            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device, self. num_core, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
                           self.do_winograd, self.q_group_size)
@@ -232,7 +232,7 @@ class DeployTool:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
-                          self.merge_weight, self.op_divide, self.num_device, self.num_core,
+                          self.merge_weight, self.op_divide,
                           self.embed_debug_info, self.model_version)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(self.model, self.model_npz):
                 tool.validate_model()

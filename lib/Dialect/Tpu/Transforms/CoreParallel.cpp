@@ -172,7 +172,7 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
 
   auto rewriter = IRRewriter(op.getContext());
   rewriter.setInsertionPoint(op);
-  auto parallelOp = rewriter.create<tpu::ParallelOp>(
+  auto parallelOp = rewriter.create<tpu::CoreParallelOp>(
       op.getLoc(), op->getResultTypes(), op->getOperands());
   auto body = new Block();
   parallelOp.getBody().push_back(body);
@@ -256,11 +256,11 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
   return true;
 };
 
-class ParallelPass : public ParallelBase<ParallelPass> {
+class CoreParallelPass : public CoreParallelBase<CoreParallelPass> {
 public:
-  ParallelPass() = default;
+  CoreParallelPass() = default;
   void runOnOperation() override {
-    module::setCoreNum(num_core);
+    auto num_core = module::getCoreNum();
     if (num_core < 2) {
       return;
     }
@@ -275,7 +275,7 @@ public:
       config.maxIterations = 1; // apply each pattern only once.
       applyPatternsAndFoldGreedily(m, std::move(patterns), config);
       m->walk([&](IndexingMapsInterface op) {
-        if (module::isOpInGroup(op) || module::isOpInParallel(op))
+        if (module::isOpInGroup(op) || module::isOpInCoreParallel(op))
           return;
         forAll(op, num_core);
       });
@@ -283,8 +283,8 @@ public:
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createParallelPass() {
-  return std::make_unique<ParallelPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createCoreParallelPass() {
+  return std::make_unique<CoreParallelPass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir
