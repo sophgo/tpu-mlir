@@ -44,7 +44,6 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
 
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  _try_insert_device2host(op);
   auto input = op.getOperand(0);
   auto stype = module::getStorageType(input);
 
@@ -68,18 +67,15 @@ void SliceLowering::LoweringF32(PatternRewriter &rewriter,
 }
 void SliceLowering::LoweringINT4(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
-  _try_insert_device2host(op);
   LoweringINT8(rewriter, op, asymmetric);
 }
 void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
-  _try_insert_device2host(op);
   lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric, 5);
 }
 
 void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::SliceOp op) const {
-  _try_insert_device2host(op);
   for (int idx = 1; idx < 4; ++idx) {
     if (!module::isNone(op->getOperand(idx))) {
       Type new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOperand(idx));
@@ -91,7 +87,6 @@ void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void SliceLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  _try_insert_device2host(op);
   for (int idx = 1; idx < 4; ++idx) {
     if (!module::isNone(op->getOperand(idx))) {
       Type new_type = getQuantFloatType<mlir::Float16Type>(op.getOperand(idx));
@@ -103,14 +98,12 @@ void SliceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SliceLowering::LoweringF8(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  _try_insert_device2host(op);
   bool isE4 = module::getMode() == module::Mode::F8E4M3;
   lowering_common_f8<tpu::SliceOp>(rewriter, op, isE4, 5);
 }
 
 void SliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::SliceOp op) const {
-  _try_insert_device2host(op);
   lowering_common<tpu::SliceOp>(rewriter, op, op.getOutput().getType(), 5);
 }
 
