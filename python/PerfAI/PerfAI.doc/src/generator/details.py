@@ -22,7 +22,7 @@ def palace_holder(writer, splited, g_info):
         df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
         sheet_name = 'Layer by Layer Info'
         df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
-    sheet_name = 'Asic Summary'
+    sheet_name = 'Engine Summary'
     df = pd.DataFrame()
     df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
     if not splited:

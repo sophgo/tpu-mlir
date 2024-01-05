@@ -174,6 +174,8 @@ def get_dma_info(monitor_info, reg_info):
     dma_info["Data Type"] = data_type.name
     dma_info["Asic Cycle"] = monitor_info.inst_end_time - \
         monitor_info.inst_start_time + 1
+    dma_info["Stall Cycle"] = monitor_info.gif_fmem_wr_stall_bytes + \
+        monitor_info.gif_fmem_rd_stall_bytes
 
     dma_info["gmem_xfer_bytes(B)"] = monitor_info.d0_aw_bytes + \
         monitor_info.d1_aw_bytes + monitor_info.d0_ar_bytes + monitor_info.d1_ar_bytes
