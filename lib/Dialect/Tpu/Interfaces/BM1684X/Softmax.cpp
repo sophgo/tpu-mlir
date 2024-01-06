@@ -66,7 +66,19 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
 
   int64_t buffer_size = 0;
   int c_per_npu = ceiling_func(in_cslice, BM168x::NPU_NUM);
-  auto eu_num = BM168x::eu_num(sizeof(float));
+  auto in_type = BM168x::getDataType(getInput());
+  auto in_type_len = BM168x::getFmtBytes(in_type);
+  auto eu_num = BM168x::eu_num(in_type_len);
+  auto stype = module::getStorageType(getInput().getType());
+  int32_t padding_flag = 0;
+  //aligned with backend
+  if ((stype.isF16() || stype.isBF16())
+      && !getLog()
+      && in_wslice > eu_num
+      && in_wslice % eu_num > 0) {
+    in_wslice = align_up(in_wslice, eu_num);
+    padding_flag = 1;
+  }
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * sizeof(float);
@@ -83,6 +95,10 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
         c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float);
   }
 
+  if (padding_flag) {
+    buffer_size += c_per_npu *
+        align_up(in_hslice * in_wslice, eu_num) * sizeof(int16_t);
+  }
   return buffer_size;
 }
 
