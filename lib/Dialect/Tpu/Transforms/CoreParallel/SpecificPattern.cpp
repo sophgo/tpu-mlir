@@ -7,11 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Parallel.hpp"
+#include "CoreParallel.hpp"
 
 namespace tpu_mlir {
 namespace tpu {
-using namespace bm1684x;
 
 struct SliceParameters {
   SmallVector<int64_t> offsets;
@@ -60,40 +59,43 @@ NdSlice getNdSlice(LayerGroupAttr inAttr) {
   return ndSlice;
 }
 
-template <>
-LogicalResult
-CoreParallel<tpu::GroupOp>::matchAndRewrite(tpu::GroupOp gOp,
-                                            PatternRewriter &rewriter) const {
-  if (isa_and_nonnull<tpu::CoreParallelOp>(gOp->getParentOp()))
+template <typename Op> class CoreParallel : public OpRewritePattern<Op> {
+public:
+  CoreParallel(MLIRContext *context) : OpRewritePattern<Op>(context){};
+
+  LogicalResult matchAndRewrite(Op gOp,
+                                PatternRewriter &rewriter) const override {
+    if (isa_and_nonnull<tpu::CoreParallelOp>(gOp->getParentOp()))
+      return failure();
+
+    auto upOverlapOpAttrName =
+        GroupOp::getOtherUpOverlapOpAttrName(gOp->getName());
+    auto downOverlapOpAttrName =
+        GroupOp::getOtherDownOverlapOpAttrName(gOp->getName());
+    auto selfUpOverlapOpAttrName =
+        GroupOp::getSelfUpOverlapOpAttrName(gOp->getName());
+    auto selfDownOverlapOpAttrName =
+        GroupOp::getSelfDownOverlapOpAttrName(gOp->getName());
+
+    if (gOp->hasAttr(upOverlapOpAttrName) ||
+        gOp->hasAttr(downOverlapOpAttrName) ||
+        gOp->hasAttr(selfUpOverlapOpAttrName) ||
+        gOp->hasAttr(selfDownOverlapOpAttrName)) {
+      gOp->removeAttr(upOverlapOpAttrName);
+      gOp->removeAttr(downOverlapOpAttrName);
+      gOp->removeAttr(selfUpOverlapOpAttrName);
+      gOp->removeAttr(selfDownOverlapOpAttrName);
+      return success();
+    }
+
     return failure();
-
-  auto upOverlapOpAttrName =
-      GroupOp::getOtherUpOverlapOpAttrName(gOp->getName());
-  auto downOverlapOpAttrName =
-      GroupOp::getOtherDownOverlapOpAttrName(gOp->getName());
-  auto selfUpOverlapOpAttrName =
-      GroupOp::getSelfUpOverlapOpAttrName(gOp->getName());
-  auto selfDownOverlapOpAttrName =
-      GroupOp::getSelfDownOverlapOpAttrName(gOp->getName());
-
-  if (gOp->hasAttr(upOverlapOpAttrName) ||
-      gOp->hasAttr(downOverlapOpAttrName) ||
-      gOp->hasAttr(selfUpOverlapOpAttrName) ||
-      gOp->hasAttr(selfDownOverlapOpAttrName)) {
-    gOp->removeAttr(upOverlapOpAttrName);
-    gOp->removeAttr(downOverlapOpAttrName);
-    gOp->removeAttr(selfUpOverlapOpAttrName);
-    gOp->removeAttr(selfDownOverlapOpAttrName);
-    return success();
   }
-
-  return failure();
 };
 
-void populateParalleBM1684XPatterns(RewritePatternSet *patterns, int coreNum) {
+void doSpecificPattern(ModuleOp m) {
   // Add an Op-specific pattern if the generic IndexingMap fails to capture
   // the parallel semantics in this operation.
-  patterns->add<CoreParallel<tpu::GroupOp>>(patterns->getContext(), coreNum);
+  module::applyPatternOnce<CoreParallel<tpu::GroupOp>>(m);
 };
 
 } // namespace tpu

@@ -309,17 +309,17 @@ public:
     auto mode = module::getMode();
     if (num_device > 1) {
       if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
-        applyPatternOnce<MatMulSliceMerge3>(mOp);
-        applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
-        applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
-        applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
-        applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulSliceMerge3>(mOp);
+        module::applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
       } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                  mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
-        applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
-        applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
-        applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
-        applyPatternOnce<AttentionSliceMerge2<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<AttentionSliceMerge2<tpu::A16MatMulOp>>(mOp);
       } else {
         llvm_unreachable("Not supported quantization mode");
       }
@@ -327,7 +327,7 @@ public:
         // no pattern find, copy the whole modules num_device times
         num_device = 1;
       } else {
-        applyPatternOnce<DoDistributePattern>(mOp);
+        module::applyPatternOnce<DoDistributePattern>(mOp);
       }
     }
     distributeModules(mOp, num_device);

@@ -38,15 +38,6 @@ Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
 // erase op and its uers
 void eraseForward(PatternRewriter &rewriter, Operation *op);
 
-template <typename T> static void applyPatternOnce(ModuleOp m) {
-  auto ctx = m.getContext();
-  RewritePatternSet patterns(ctx);
-  auto config = GreedyRewriteConfig();
-  config.maxIterations = 1; // apply each pattern only once.
-  patterns.add<T>(ctx);
-  applyPatternsAndFoldGreedily(m, std::move(patterns), config);
-}
-
 // ===================================
 // patterns for distribution
 // ===================================

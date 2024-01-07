@@ -657,7 +657,7 @@ void distributeModules(ModuleOp m, int64_t num_device) {
   updateFuncIONames(m);
 
   // each function create one module
-  applyPatternOnce<Function2Module>(m);
+  module::applyPatternOnce<Function2Module>(m);
   // remove main, and functions
   auto ops = m.getOps<FuncOp>();
   std::vector<FuncOp> funcs(ops.begin(), ops.end());

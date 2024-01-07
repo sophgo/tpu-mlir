@@ -11,6 +11,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/OpDefinition.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Support/ModuleEnum.h.inc"
@@ -158,6 +159,7 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
+bool isOpInCoreMatch(Operation *Op);
 bool isOpInCoreParallel(Operation *Op);
 bool isOpInDevParallel(Operation *Op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
@@ -214,6 +216,18 @@ mlir::TensorFile &weightFile();
 void setWeightFileName(const std::string &name);
 void saveWeight();
 void detachWeightFile();
+
+//-----------------------------------------------------------------
+// Helper Functions for apply pattern only once
+//-----------------------------------------------------------------
+template <typename T> void applyPatternOnce(ModuleOp m) {
+  auto ctx = m.getContext();
+  RewritePatternSet patterns(ctx);
+  auto config = GreedyRewriteConfig();
+  config.maxIterations = 1; // apply each pattern only once.
+  patterns.add<T>(ctx);
+  applyPatternsAndFoldGreedily(m, std::move(patterns), config);
+}
 
 //-----------------------------------------------------------------
 // Helper Functions for quantization
