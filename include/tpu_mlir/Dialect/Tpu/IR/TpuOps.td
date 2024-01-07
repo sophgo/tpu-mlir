@@ -187,6 +187,16 @@ def Tpu_DevPattern: I32EnumAttr<"DevPattern",
 }
 def Tpu_DevPatternAttr : EnumAttr<Tpu_Dialect, Tpu_DevPattern, "dev_pattern">;
 
+def Tpu_CorePattern: I32EnumAttr<"CorePattern",
+    "Patterns of distribution in multi cores",
+    [
+      I32EnumAttrCase<"Common", 0>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_CorePatternAttr : EnumAttr<Tpu_Dialect, Tpu_CorePattern, "core_pattern">;
+
 // def Tpu_DevBeginMethod: I32EnumAttr<"DevBeginMethod",
 //     "Begin method of distribution",
 //     [
@@ -1432,6 +1442,32 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
+}
+
+def Tpu_CoreBeginOp:Tpu_BaseOp<"CoreBegin"> {
+  let summary = "Begin op parallel to multi cores";
+  let description = [{
+    Begin of pattern to multi cores
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    Tpu_CorePatternAttr:$pattern
+  );
+  let results = (outs
+   Variadic<AnyRankedTensor>:$outputs);
+}
+
+def Tpu_CoreEndOp:Tpu_BaseOp<"CoreEnd"> {
+  let summary = "End op parallel to multi cores";
+  let description = [{
+    End of pattern to multi cores
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    Tpu_CorePatternAttr:$pattern
+  );
+  let results = (outs
+   Variadic<AnyRankedTensor>:$outputs);
 }
 
 def Tpu_CoreParallelOp:Tpu_BaseOp<"CoreParallel"> {

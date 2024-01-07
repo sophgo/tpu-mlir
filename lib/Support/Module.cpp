@@ -699,6 +699,20 @@ bool isOpInCoreParallel(Operation *Op) {
   return false;
 }
 
+// op in [CoreBegin, CoreEnd]
+bool isOpInCoreMatch(Operation *op) {
+  while (!op->use_empty()) {
+    op = *op->user_begin();
+    if (isa<func::ReturnOp, tpu::CoreBeginOp>(op)) {
+      return false;
+    }
+    if (isa<tpu::CoreEndOp>(op)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool isOpInDevParallel(Operation *op) {
   while (!op->use_empty()) {
     op = *op->user_begin();

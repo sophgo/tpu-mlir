@@ -11,21 +11,10 @@
 
 namespace tpu_mlir {
 namespace tpu {
-namespace bm1684x {
 
-template <typename Op>
-class CoreParallel : public OpRewritePattern<Op> {
-public:
-  CoreParallel(MLIRContext *context, int coreNum = 1)
-      : coreNum(coreNum), OpRewritePattern<Op>(context){};
+void doCoreParallelPattern(ModuleOp module);
 
-  LogicalResult matchAndRewrite(Op op,
-                                PatternRewriter &rewriter) const override;
+void doSpecificPattern(ModuleOp module);
 
-private:
-  int coreNum;
-};
-
-} // namespace bm1684x
 } // namespace tpu
 } // namespace tpu_mlir

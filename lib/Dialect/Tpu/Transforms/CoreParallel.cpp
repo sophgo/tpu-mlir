@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
-
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "CoreParallel/CoreParallel.hpp"
 
 using namespace llvm;
 
 namespace tpu_mlir {
 namespace tpu {
-extern void populateParalleBM1684XPatterns(RewritePatternSet *patterns,
-                                           int coreNum);
 
 // Generate index vector for a given shape, it treats this shape as a nested
 // loop.
@@ -266,14 +264,11 @@ public:
     }
     auto modules = module::getAllModules();
     for (auto m : *modules) {
-      // run each submodule
-      RewritePatternSet patterns(&getContext());
-      if (module::isBM1684XFamily() || module::isSG2260Family()) {
-        populateParalleBM1684XPatterns(&patterns, num_core);
-      }
-      auto config = GreedyRewriteConfig();
-      config.maxIterations = 1; // apply each pattern only once.
-      applyPatternsAndFoldGreedily(m, std::move(patterns), config);
+      // do core match first
+      doCoreParallelPattern(m);
+      // do specific
+      doSpecificPattern(m);
+      // normal situations to multi cores
       m->walk([&](IndexingMapsInterface op) {
         if (module::isOpInGroup(op) || module::isOpInCoreParallel(op))
           return;
