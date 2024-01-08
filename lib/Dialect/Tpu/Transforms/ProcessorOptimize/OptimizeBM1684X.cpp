@@ -1489,7 +1489,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(
           ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern>(ctx);
+  patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
 }
 } // namespace tpu
 
