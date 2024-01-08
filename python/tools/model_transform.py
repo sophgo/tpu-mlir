@@ -90,11 +90,13 @@ class ModelTransformer(object):
         ref_npz = self.model_name + '_ref_outputs.npz'
         show_fake_cmd(in_f32_npz, self.model_def, ref_npz)
         ref_outputs = self.origin_inference(inputs)
+        print(f'trans_ref_output:{len(ref_outputs)}')
         if not self.do_mlir_infer:
             print("Saving {}".format(test_result))
             np.savez(test_result, **ref_outputs)
             return
         print("Saving {}".format(ref_npz))
+        # print(f'len_ref_output:{len(ref_outputs)}\n')
         np.savez(ref_npz, **ref_outputs)
         del self.converter  #save memory
         del ref_outputs
@@ -251,10 +253,9 @@ def get_model_transform(args):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.pdmodel'):
-        args.model_def = args.model_def[:-len('.pdmodel')]
         tool = PaddleTransformer(args.model_name,args.model_def,args.input_shapes,args.output_names,preprocessor.to_dict())
     else:
-        # TODO: support more deep learning model types
+        # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
     return tool
 
@@ -281,7 +282,7 @@ if __name__ == '__main__':
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--add_postprocess", default="", type=str.lower,
-                        choices=['','yolov3','yolov5','yolov8','ssd','bnr'], help="add postprocess for model")
+                        choices=['','yolov3','yolov5','yolov8','ssd'], help="add postprocess for model")
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
