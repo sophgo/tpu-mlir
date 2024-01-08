@@ -146,7 +146,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         next(pack_bmodel_context) # save output
     except StopIteration:
         pass
-
+    # print(f"out-> {outputs}\n")
     return outputs
 
 
@@ -165,10 +165,12 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
     parser = MlirParser(mlir_file)
     only_one = len(inputs) == 1
     if only_one:
+
         assert (len(g_mlir_module.input_names) == 1)
     for name in g_mlir_module.input_names:
         if not only_one:
             assert (name in inputs)
+
             input = inputs[name]
         else:
             input = list(inputs.values())[0]
@@ -265,6 +267,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs)))
 
+
 def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -> dict:
     import paddle
     paddle.enable_static()
@@ -277,20 +280,26 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
 
     if(dump_all):
         out_name = list()
-        for o in fetch_targets:
-            out_name.append(o.name)
+        # for o in fetch_targets:
+        #     out_name.append(o.name)
         for op in inference_program.block(0).ops:
             if 'Out' in op.output_names:
                         output_vars = op.output('Out')
             elif 'Output' in op.output_names:
                 output_vars = op.output('Output')
             all_valid_nodes[output_vars[0]] = op.type
+        drop_output = [x.name for x in fetch_targets]
         for name in all_valid_nodes:
-            if name not in feed_target_names and name != 'fetch':
+            if name not in feed_target_names and name != 'fetch' and name not in drop_output:
                 out_name.append(name)
         feed_dict = dict()
-        for i in inputs:
-            feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
+        if (len(feed_target_names)==2):
+            for i in inputs:
+                feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
+                feed_dict[feed_target_names[1]] = np.array([1,1]).astype(np.float32)
+        else:
+            for i in inputs:
+                feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
         out_data = exe.run(
             inference_program,
             feed = feed_dict,
@@ -303,11 +312,24 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
         return outputs
     else:
         out_name = []
+        block_program = inference_program.block(0)
+        output_names_trans = [264,303,342]
+        for var in block_program.vars:
+            var_obj = block_program.var(var)
+            if var_obj is not None and var_obj.op is not None:
+
+                if block_program.var(var).op.idx in output_names_trans:
+                    if(len(block_program.var(var).shape) == 6):
+                        continue
+                    out_name.append(var)
         feed_dict = dict()
-        for i in inputs:
-            feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
-        for o in fetch_targets:
-            out_name.append(o.name)
+        if len(feed_target_names)==2:
+            for i in inputs:
+                feed_dict[feed_target_names[0]] = inputs[i].reshape((1,3,640,640)).astype(np.float32)
+                feed_dict[feed_target_names[1]] = np.array([1,1]).astype(np.float32)
+        else:
+            for i in inputs:
+                feed_dict[feed_target_names[0]] = inputs[i].reshape((1,3,640,640)).astype(np.float32)
         out_data = exe.run(
             inference_program,
             feed = feed_dict,
@@ -461,6 +483,7 @@ if __name__ == '__main__':
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
                         help="configure the debugging information.")
+
 
     # yapf: enable
     args = parser.parse_args()
