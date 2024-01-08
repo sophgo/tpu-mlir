@@ -1483,6 +1483,10 @@ mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
       auto data = op.read<float>();
       auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
       return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
+    } else if (stype.isInteger(32)) {
+      auto data = op.read<int32_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type);
     }
     op.dump();
     llvm_unreachable("Not Implemented");

@@ -898,7 +898,7 @@ Operation *cloneCommonOp(PatternRewriter &rewriter, Operation *next_op,
                          Value &cur_out, std::string &suffix) {
   rewriter.setInsertionPointAfter(next_op);
   std::vector<int64_t> new_shape = module::getShape(cur_out);
-  while (isa<tpu::CastOp, tpu::ActiveOp, tpu::MulConstOp, tpu::SoftmaxOp>(
+  while (isa<tpu::CastOp, tpu::ActiveOp, tpu::MulConstOp, tpu::SoftmaxOp, tpu::LutOp>(
       next_op)) {
     if (isa<tpu::ReshapeOp, tpu::UnsqueezeOp, tpu::SliceOp, tpu::TileOp>(
             next_op)) {

@@ -34,5 +34,6 @@ struct PermutePadSwap : public OpRewritePattern<tpu::PermuteOp> {
                                 PatternRewriter &rewriter) const override;
 };
 
+Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0);
 } // namespace tpu
 } // namespace tpu_mlir

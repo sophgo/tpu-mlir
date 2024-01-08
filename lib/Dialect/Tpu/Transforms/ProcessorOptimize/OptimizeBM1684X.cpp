@@ -10,7 +10,7 @@
 #include "Common.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/RewritePattern.inc"
 using namespace llvm;
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -1489,6 +1489,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(
           ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
+  patterns->add<SplitQuantizedMLPPattern>(ctx);
 }
 } // namespace tpu
 

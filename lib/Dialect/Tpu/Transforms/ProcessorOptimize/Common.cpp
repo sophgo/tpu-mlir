@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 namespace tpu_mlir {
 namespace tpu {
 
@@ -325,5 +325,26 @@ LogicalResult PermutePadSwap::matchAndRewrite(tpu::PermuteOp op,
   return success();
 }
 
+Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0) {
+  auto left1 = arg0;
+  // split the pattern
+  std::vector<Value> operands;
+  for (int i = 0; i < 2; ++i) {
+    auto cur_out = left1;
+    Operation *next_op = op;
+    auto suffix = std::to_string(i);
+    next_op = tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i);
+    next_op = tpu::cloneCommonOp(rewriter, next_op, cur_out, suffix);
+    next_op = tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i);
+    operands.push_back(cur_out);
+  }
+
+  rewriter.setInsertionPointAfterValue(operands[0]);
+  std::string suffix = std::string("add_");
+  auto loc = module::getLocLike(operands[1], suffix);
+  auto add = rewriter.create<tpu::AddOp>(
+      loc, operands[0].getType(), mlir::ValueRange{operands[0], operands[1]});
+  return add.getOutput();
+}
 } // namespace tpu
 } // namespace tpu_mlir
