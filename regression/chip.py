@@ -61,7 +61,7 @@ basic_model_list = {
 full_model_list = {
     # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     ######## onnx ###############
-    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
+    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 int8_sym problem
     "blazeface":                  (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N),
     "densenet121-12":             (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
     "densenet201":                (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
