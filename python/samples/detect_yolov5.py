@@ -5,10 +5,6 @@
 # third-party components.
 #
 # ==============================================================================
-try:
-    from tpu_mlir.python import *
-except ImportError:
-    pass
 
 import numpy as np
 import os
@@ -153,6 +149,7 @@ def nms(boxes, scores, iou_thres):
 
     areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     order = scores.argsort()[::-1]
+    # print(f"order -> {order}\n")
 
     keep = []
     while order.size > 0:
@@ -170,7 +167,6 @@ def nms(boxes, scores, iou_thres):
 
         inds = np.where(ovr <= iou_thres)[0]
         order = order[inds + 1]
-
     return keep
 
 
@@ -200,7 +196,6 @@ def multiclass_nms_class_agnostic(boxes, scores, iou_thres, score_thres):
     """Multiclass NMS implemented in Numpy. Class-agnostic version."""
     cls_inds = scores.argmax(1)
     cls_scores = scores[np.arange(len(cls_inds)), cls_inds]
-
     valid_score_mask = cls_scores > score_thres
     if valid_score_mask.sum() == 0:
         return None
@@ -208,9 +203,11 @@ def multiclass_nms_class_agnostic(boxes, scores, iou_thres, score_thres):
     valid_boxes = boxes[valid_score_mask]
     valid_cls_inds = cls_inds[valid_score_mask]
     keep = nms(valid_boxes, valid_scores, iou_thres)
+
     if keep:
         dets = np.concatenate(
             [valid_boxes[keep], valid_scores[keep, None], valid_cls_inds[keep, None]], 1)
+
     return dets
 
 
@@ -266,6 +263,8 @@ def _sigmoid(x):
 
 def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     z = []
+    # for out in outputs.values():
+    #     print(type(out))
     for out in outputs.values():
         if out.ndim != 5 or (out.shape[0], out.shape[1], out.shape[4]) != (1, 3, 85):
             if out.ndim == 4 and (out.shape[0], out.shape[1]) == (1, 255):
@@ -291,7 +290,10 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
         y[..., 1:2] = y[..., 1:2] - top  # y
         y[..., 2:4] = (y[..., 2:4] * 2)**2 * anchor_grid  # wh
         z.append(y.reshape(-1, 85))
+
     pred = np.concatenate(z, axis=0)
+
+
     boxes = pred[:, :4]
     scores = pred[:, 4:5] * pred[:, 5:]
 
@@ -300,6 +302,7 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     boxes_xyxy[:, 1] = boxes[:, 1] - boxes[:, 3] / 2.
     boxes_xyxy[:, 2] = boxes[:, 0] + boxes[:, 2] / 2.
     boxes_xyxy[:, 3] = boxes[:, 1] + boxes[:, 3] / 2.
+
     return scores, boxes_xyxy
 
 
@@ -316,6 +319,7 @@ def parse_args():
     parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
     parser.add_argument("--fuse_preprocess", action='store_true', help="if the model fused preprocess")
     parser.add_argument("--fuse_postprocess", action='store_true', help="if the model fused postprocess")
+    parser.add_argument("--model_bf", type=str, default = "onnx",help="the model_type before convert")
     # yapf: enable
     args = parser.parse_args()
     return args
@@ -330,7 +334,8 @@ def main():
     img, ratio, top, left = preproc(origin_img, input_shape, pixel_format, channel_format,
                                     args.fuse_preprocess)
     img = np.expand_dims(img, axis=0)
-    if (not args.fuse_preprocess):
+    img1 = img
+    if (not args.fuse_preprocess) and (args.model_bf != "paddle"):
         img /= 255.  # 0 - 255 to 0.0 - 1.0
     data = {"data": img}  # input name from model
     output = dict()

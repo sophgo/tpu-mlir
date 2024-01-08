@@ -38,7 +38,7 @@ class PaddleNode(BaseNode):
 
     def __init__(self, node):
         info = dict()
-        unuse_attr = ['op_device','op_role','op_role_var','op_namescope']
+        unuse_attr = ['op_device','op_role','op_role_var','op_namescope','op_callstack']
         info["name"] = node["output"][0]
         info["op_type"] = node["op_type"]
         info["attrs"] = [(attr, node["attrs"][attr])
@@ -67,26 +67,23 @@ class PaddleConverter(BaseConverter):
         self.node_name_mapping = {}
         self.load_paddle_model(paddle_file,input_shapes,output_names)
         self.init_MLIRImporter()
+        self.unranked_type = self.mlir.get_tensor_type([])
         self.preprocess_args = {}
         if 'preprocess_list' in preprocess_args:
-            del preprocess_args['preprocess_list']
-        if 'white_level' in preprocess_args:
-            del preprocess_args['white_level']
-        if 'black_level' in preprocess_args:
-            del preprocess_args['black_level']
-        # if 'preprocess_list' in preprocess_args:
-        #     if preprocess_args['preprocess_list'] is not None:
-        #         for input_index in preprocess_args['preprocess_list']:
-        #             assert( 0 < input_index <= len(self.input_names)
-        #                 and "Please check --preprocess_list is right input")
-        #     else:
-        #         preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(self.input_names)) ]
+            if preprocess_args['preprocess_list'] is not None:
+                for input_index in preprocess_args['preprocess_list']:
+                    assert( 0 < input_index <= len(self.input_names)
+                        and "Please check --preprocess_list is right input")
+            else:
+                preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(self.input_names)) ]
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args
+
         self.converted_nodes = list()
         self.paddleop_factory = {
             #add_ops alpha
+            "batch_norm" : lambda node:self.convert_batchnorm_op(node),
             "cast" : lambda node:self.convert_cast_op(node),
             "concat" : lambda node: self.convert_concat_op(node),
             "conv2d" : lambda node: self.convert_conv_op(node),
@@ -112,13 +109,26 @@ class PaddleConverter(BaseConverter):
 
         }
     def get_outputs(self,output_names):
-        return [x for x in self.fetch_targets if x.op.idx in output_names]
+        get_output_names = []
+        for var_out in self.block_op.vars:
+            var_obj = self.block_op.var(var_out)
+            if var_obj is not None and var_obj.op is not None:
+                for x in output_names:
+                    if var_obj.op.idx in int(x):
+                        get_output_names.append(var_out)
+        # return [x for x in self.block_op.vars if self.block_op.var(x).op.idx in output_names]
+        return get_output_names
 
     def get_inputs(self,all_valid_inputs):
         return [x for x in all_valid_inputs]
+
+    def get_input_shapes(self):
+        inputs = self.feed_target_names
+        return [self.shapes[i] for i in inputs]
+
     def get_input_types(self):
         input_types = []
-        for input in self.get_inputs(self.all_valid_inputs):
+        for input in self.get_inputs(self.feed_target_names):
           if self.block_op.var(input).dtype in [
               paddle.int32,paddle.int64
           ]:
@@ -157,10 +167,10 @@ class PaddleConverter(BaseConverter):
                 self.all_inputs.pop(name)
             if name in self.all_nodes:
                 cur_node = self.all_nodes.pop(name)
-                for o in cur_node["output"]:
+                for o in cur_node['output']:
                     if o in self.all_nodes:
                         self.all_nodes.pop(o)
-                self.select_unuse(cur_node["input"])
+                self.select_unuse(cur_node['input'])
 
     def select_output(self,output_names:list):
         self.all_outputs = []
@@ -170,30 +180,38 @@ class PaddleConverter(BaseConverter):
         for x in self.feed_target_names:
             self.all_inputs[x] = self.block_op.var(x)
 
-        for x in self.fetch_targets:
-            #paddle_yolov5s_output_names:311、457、587
-            if str(x.op.idx) in output_names:
-
-                self.all_outputs.append(x.op.output_arg_names[0])
-                output_names.remove(str(x.op.idx))
-                if len(output_names) == 0:
-                    break
-
+        for var_out in self.block_op.vars:
+            var_obj = self.block_op.var(var_out)
+            if var_obj is not None and var_obj.op is not None:
+                for x in output_names:
+                    if self.block_op.var(var_out).op.idx == int(x):
+                        self.all_outputs.append(var_out)
+                        output_names.remove(x)
+                        if len(output_names) == 0:
+                            break
         self.all_values = {}
         for var_name in self.block_op.vars:
             self.all_values[var_name] = self.block_op.var(var_name)
 
         self.all_nodes = {}
         for op in self.block_op.ops:
-          if 'Out' in op.output_names:
-              output_vars = op.output('Out')
-          elif 'Output' in op.output_names:
-              output_vars = op.output('Output')
-          self.all_nodes[output_vars[0]] = {"input" : op.input_arg_names,
-                                      "output":output_vars,
-                                      "op_name":output_vars,
-                                      "op_type":op.type,
-                                      "attr":op.all_attrs()}
+            if 'Out' in op.output_names:
+                output_vars = op.output('Out')
+            elif 'Output' in op.output_names:
+                output_vars = op.output('Output')
+            elif op.type == 'batch_norm':
+                output_vars = op.output('Y')
+            unuse_attr = ['op_device','op_role','op_role_var','op_namescope','op_callstack']
+            attr_drop = dict()
+            attr_keep = op.all_attrs()
+            for item in unuse_attr:
+                attr_keep.pop(item,None)
+            attr_drop = attr_keep
+            self.all_nodes[output_vars[0]] = {'input' : op.input_arg_names,
+                                        'output':output_vars,
+                                        'op_name':output_vars,
+                                        'op_type':op.type,
+                                        'attr':attr_drop}
         if len(output_names) != 0:
             raise RuntimeError("Error, can't find {} in model".format(output_names))
 
@@ -201,10 +219,8 @@ class PaddleConverter(BaseConverter):
         self.all_weights = {}
         for w in range(0,len(self.model.parameters())):
             self.all_weights[self.model.parameters()[w].name ] = self.model.parameters()[w].value()
-
         # remove unused node
         self.select_unuse(self.all_outputs)
-
         #valid_info
         self.all_valid_values = {}
         self.all_valid_nodes = {}
@@ -213,7 +229,6 @@ class PaddleConverter(BaseConverter):
         for x in self.feed_target_names:
             if x not in self.all_inputs:
                 self.all_valid_inputs[x] = self.block_op.var(x)
-
         for var_name in self.block_op.vars:
             if var_name not in self.all_values:
                 self.all_valid_values[var_name] = self.block_op.var(var_name)
@@ -227,16 +242,23 @@ class PaddleConverter(BaseConverter):
                 output_vars = op.output('Out')
             elif 'Output' in op.output_names:
                 output_vars = op.output('Output')
+            elif op.type == 'batch_norm':
+                output_vars = op.output('Y')
+            unuse_attr = ['op_device','op_role','op_role_var','op_namescope','op_callstack']
+            attr_drop = dict()
+            attr_keep = op.all_attrs()
+            for item in unuse_attr:
+                attr_keep.pop(item,None)
             if output_vars[0] not in self.all_nodes:
                 all_attrs = op.all_attrs()
+                attr_drop = attr_keep
                 if op.type == 'conv2d':
                     all_attrs.update({"kernel_shape":self.all_valid_weights[op.input_arg_names[0]].shape[2:]})
-                self.all_valid_nodes[output_vars[0]] = {"input" : op.input_arg_names,
-                                            "output":output_vars,
-                                            "op_name":output_vars,
-                                            "op_type":op.type,
-                                            "attrs":all_attrs}
-
+                self.all_valid_nodes[output_vars[0]] = {'input' : op.input_arg_names,
+                                        'output':output_vars,
+                                        'op_name':output_vars,
+                                        'op_type':op.type,
+                                        'attrs':all_attrs}
 
     def load_paddle_model(self,paddle_file,input_shapes,output_names):
 
@@ -264,13 +286,12 @@ class PaddleConverter(BaseConverter):
             self.select_output(output_names)
         self.input_names = self.feed_target_names
         self.num_input = len(self.input_names)
-        self.input_shapes = [list(self.block_op.var(self.feed_target_names[0]).shape)]
+        self.input_shape_assign(input_shapes,output_names)
+        self.input_shapes = self.get_input_shapes()
         self.input_types = self.get_input_types()
-
-
         self.output_types = self.get_output_types(output_names)
+        self.shape_trans = ["conv2d_57.b_0","conv2d_58.b_0","conv2d_59.b_0"]
         for tensor in self.model.parameters():
-
         #drop unused tensor_data
             if tensor.name == 'x2paddle_0':
                 name = 'x2paddle_773'
@@ -288,9 +309,16 @@ class PaddleConverter(BaseConverter):
                 name = 'x2paddle_793'
             elif tensor.name == 'x2paddle_7':
                 name = 'x2paddle_806'
+            elif tensor.name == 'auto_295__0':
+                name = 'auto_295_'
+            elif tensor.name == 'auto_297__0':
+                name = 'auto_297_'
             else:
                 name = tensor.name
-            data = tensor.value().numpy().astype(np.float32)
+            if(tensor.name in self.shape_trans):
+                data = tensor.value().numpy().reshape(1,255,1,1).astype(np.float32)
+            else:
+                data = tensor.value().numpy().astype(np.float32)
             self.addWeight(name,data)
         self.add_shape_info(input_shapes)
     def add_shape_info(self,input_shapes,flag = True):
@@ -304,12 +332,19 @@ class PaddleConverter(BaseConverter):
             if val == 'feed':
                 continue
             shape = self.all_valid_values[val].shape
-            if np.any(np.array(shape) <= 0):
-                unk_op.append(val)
-            elif list(np.array(shape)) == [] and val not in constants:
-                unk_op.append(val)
+            expand_shape = ["conv2d_57.b_0","conv2d_58.b_0","conv2d_59.b_0"]
+            if val in expand_shape:
+                shape = np.ndarray(shape)
+                shape = np.expand_dims(shape,axis = 0)
+                shape = np.expand_dims(shape,axis = 1)
+                shape = np.expand_dims(shape,axis = 1).shape
             else:
-                self.addShape(val,shape)
+                if np.any(np.array(shape) <= 0):
+                    unk_op.append(val)
+                elif list(np.array(shape)) == [] and val not in constants:
+                    unk_op.append(val)
+                else:
+                    self.addShape(val,shape)
             nodes_with_shape.append(val)
         for output in self.all_outputs:
             if not self.isWeight(output):
@@ -343,19 +378,28 @@ class PaddleConverter(BaseConverter):
     def get_unk_shape(self,unk_op,input_shape):
         paddle.enable_static()
         exe = paddle.static.Executor(paddle.CPUPlace())
-        for i in self.all_valid_inputs:
-            inputs = i
-        out = exe.run(self.inference_program,
-                     feed = {i:np.random.random(input_shape[0]).astype('float32')},
-                     fetch_list = unk_op)
-        outs_shape = [o.shape for o in out]
+        inputs = list()
+        for i in self.feed_target_names:
+            inputs.append(i)
+        if(len(self.feed_target_names) == 2):
+            out = exe.run(self.inference_program,
+                        feed = {inputs[0]:np.random.random(input_shape[0]).astype('float32'),
+                                inputs[1]:np.array(input_shape[1]).astype('float32')},
+                        fetch_list = unk_op)
+        else:
+            out = exe.run(self.inference_program,
+                        feed = {inputs[0]:np.random.random(input_shape[0]).astype('float32')},
+                        fetch_list = unk_op)
+        outs_shape = []
+        for o in out:
+            if o is not None:
+                outs_shape.append(o.shape)
         assert (len(outs_shape) == len(unk_op))
         return zip(unk_op,outs_shape)
 
 
-
-    def input_shape_assign(self,input_shapes):
-        inputs = self.get_inputs(self.all_valid_inputs)
+    def input_shape_assign(self,input_shapes,output_names):
+        inputs = self.feed_target_names
         outputs = self.get_outputs(output_names)
         shape_changed = False
         no_shape = True
@@ -404,9 +448,7 @@ class PaddleConverter(BaseConverter):
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         #add input op
-        print("self_input:",self.input_names)
         for idx, _name in enumerate(self.input_names):
-
             input_ = self.mlir.create_input_op(self.get_loc(_name),idx,self.preprocess_args)
             self.addOperand(_name,input_)
 
@@ -451,60 +493,38 @@ class PaddleConverter(BaseConverter):
         rhs = paddle_node.inputs[1]
         if self.isWeight(lhs) and not self.isWeight(rhs):
             paddle_node.inputs[0],paddle_node.inputs[1] = paddle_node.inputs[1],paddle_node.inputs[0]
+
             self.convert_add_op(paddle_node)
             return
         name = "{}_{}".format(paddle_node.name,paddle_node.op_type)
-        if not self.isWeight(lhs) and self.isWeight(rhs):
-            is_scale = False
-            if len(output_shape) > 1:
-                opd1_num_elem = np.prod(self.getShape(rhs))
-                channel = output_shape[1]
-                if opd1_num_elem == channel:
-                    rhs_shape = self.getShape(rhs)
-                    axis = len(output_shape) - len(rhs_shape)
-                    if axis > 1:
-                        # the second dim (channel) need broadcast
-                        is_scale = False
-                    elif rhs_shape[1 - axis] == channel:
-                        # all dim except channel is 1 need broadcast, use scaleop
-                        is_scale = True
-                    else:
-                        # channel need broadcast, use addop
-                        is_scale = False
-            lhs_op = self.getOp(lhs)
-            if self.isScalar(rhs):
-                new_op = top.AddConstOp(self.mlir.get_tensor_type(output_shape),
-                                        lhs_op,
-                                        self.getScalar(rhs),
-                                        do_relu = False,
-                                        loc = self.get_loc(name),
-                                        ip = self.mlir.insert_point).output
-            elif is_scale:
-                bias = self.getWeight(rhs)
-                weight_data = np.ones_like(bias)
-                self.addWeight(name + "_scale",weight_data)
-                weight_op = self.getWeightOp(name + '_scale')
-                bias_op = self.getWeightOp(rhs)
-                new_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
-                                     lhs_op,
-                                     weight_op,
-                                     bias_op,
-                                     loc = self.get_loc(name),
-                                     ip = self.mlir.insert_point).output
-            else:
-                rhs_op = self.getOp(rhs)
-                new_op = top.AddOp(self.mlir.get_tensor_type(output_shape),
-                                   [lhs_op,rhs_op],
-                                   loc = self.get_loc(name),
-                                   ip = self.mlir.insert_point).outout
-        else:
-            lhs_op = self.getOp(lhs)
-            rhs_op = self.getOp(rhs)
-            new_op = top.AddOp(self.mlir.get_tensor_type(output_shape),
-                               [lhs_op,rhs_op],
-                               loc = self.get_loc(name),
-                               ip = self.mlir.insert_point).output
-        self.addOperand(paddle_node.name,new_op)
+        lhs_op = self.getOp(lhs)
+        rhs_op = self.getOp(rhs)
+        output_shape = self.getShape(paddle_node.name)
+        new_op = top.AddOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
+                            loc=self.get_loc(name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(paddle_node.name, new_op)
+
+    def convert_batchnorm_op(self,paddle_node):
+        assert (paddle_node.op_type == "batch_norm")
+        op = self.getOperand(paddle_node.inputs[4])
+        gamma = self.getWeightOp(paddle_node.inputs[2])
+        beta = self.getWeightOp(paddle_node.inputs[0])
+        mean = self.getWeightOp(paddle_node.inputs[1])
+        variance = self.getWeightOp(paddle_node.inputs[3])
+        epsilon = paddle_node.attrs.get("epsilon")
+        output_shape = self.getShape(paddle_node.name)
+        new_op = top.BatchNormOp(self.mlir.get_tensor_type(output_shape),
+                                 op,
+                                 mean,
+                                 variance,
+                                 gamma,
+                                 beta,
+                                 epsilon=epsilon,
+                                 loc=self.get_loc("{}_{}".format(paddle_node.name,
+                                                                 paddle_node.op_type)),
+                                 ip=self.mlir.insert_point).output
+        self.addOperand(paddle_node.name, new_op)
 
     def convert_cast_op(self,paddle_node):
         assert (paddle_node.op_type == "cast")
@@ -731,7 +751,6 @@ class PaddleConverter(BaseConverter):
 
         trans_x = paddle_node.attrs.get('trans_x',0)
         trans_y = paddle_node.attrs.get('trans_y',0)
-
         assert (trans_x == False)
         operands = list()
         x = paddle_node.inputs[0]
@@ -785,49 +804,13 @@ class PaddleConverter(BaseConverter):
             self.convert_mul_op(paddle_node)
             return
         name = "{}_{}".format(paddle_node.name, paddle_node.op_type)
-        if (not self.isWeight(lhs)) and self.isWeight(rhs):
-            op0 = self.getOperand(lhs)
-            rhs = rhs
-            output_shape = self.getShape(paddle_node.name)
-            if self.isScalar(rhs):
-                mul_const_op = top.MulConstOp(self.mlir.get_tensor_type(output_shape),
-                                              op0,
-                                              const_val=self.getScalar(rhs),
-                                              loc=self.get_loc(name),
-                                              ip=self.mlir.insert_point).output
-                self.addOperand(paddle_node.name, mul_const_op)
-                return
-            weight_num_elem = np.prod(self.getShape(rhs))
-            channel = output_shape[1]
-            if weight_num_elem == channel:
-                weight = self.getWeight(rhs)
-                offset_data = np.zeros_like(weight)
-                self.addWeight(name + '_bias', offset_data)
-                weight_op = self.getWeightOp(rhs)
-                offset_op = self.getWeightOp(name + '_bias')
-                scale_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
-                                       op0,
-                                       weight_op,
-                                       offset_op,
-                                       loc=self.get_loc(name),
-                                       ip=self.mlir.insert_point).output
-                self.addOperand(paddle_node.name, scale_op)
-                return
-            const_op = self.getWeightOp(rhs)
-            scale_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [op0, const_op],
-                                 loc=self.get_loc(name),
-                                 ip=self.mlir.insert_point).output
-            self.addOperand(paddle_node.name, scale_op)
-            return
-        else:
-            op0 = self.getOperand(lhs)
-            op1 = self.getOperand(rhs)
-            output_shape = self.getShape(paddle_node.name)
-            mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [op0, op1],
-                               loc=self.get_loc(name),
-                               ip=self.mlir.insert_point).output
-            self.addOperand(paddle_node.name, mul_op)
-            return
+        op0 = self.getOp(lhs)
+        op1 = self.getOp(rhs)
+        output_shape = self.getShape(paddle_node.name)
+        mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [op0, op1],
+                            loc=self.get_loc(name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(paddle_node.name, mul_op)
 
     def convert_maxpool_op(self,paddle_node):
         assert (paddle_node.op_type == "pool2d")
