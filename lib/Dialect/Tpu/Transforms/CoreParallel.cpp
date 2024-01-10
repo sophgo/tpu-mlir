@@ -185,7 +185,7 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
        llvm::enumerate(operandsMap, op->getOperands())) {
     if (auto outTypes = getSplitTypes(valueMap, value, ArrayRef(shapeParallel),
                                       splitDim, splitMax)) {
-      auto name = module::getName(value) + "_" + Twine(index);
+      auto name = module::getName(value) + "_" + Twine(index).str();
       auto nameLoc = NameLoc::get(rewriter.getStringAttr(name));
 
       splitOps.push_back(rewriter.create<tpu::SplitOp>(
