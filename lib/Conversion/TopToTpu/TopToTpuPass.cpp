@@ -1823,7 +1823,10 @@ bool ConvertTopToTpu::vit_mix_precision() {
           }
         }
       }
+      int total_blk = mlp.size();
+      int idx = 0;
       for (auto op : mlp) {
+        idx ++;
         auto addop = dyn_cast_or_null<top::AddOp>(op);
         if (addop == NULL)
           return false;
@@ -1835,12 +1838,14 @@ bool ConvertTopToTpu::vit_mix_precision() {
         }
         for (auto in : addop.getOperands()) {
           if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(mmop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(mmop.getOperation()).str(),
-                   module::Mode::F16});
+            if ((idx >= total_blk -3) && (total_blk > 18)) { // base 224 has 12 block and large 384 has 24 block
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(mmop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end()) {
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(mmop.getOperation()).str(),
+                    module::Mode::F16});
+              }
             }
           }
         }
