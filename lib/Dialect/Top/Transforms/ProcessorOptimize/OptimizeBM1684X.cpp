@@ -373,12 +373,12 @@ public:
     if (module::isBM1688()) {
       // TODO: do not suppose attention when size greater than [batch, 2048,
       // 320]
-      if (len/n > 2048 * 320 ||
+      if (len / n > 2048 * 320 ||
           (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3) {
         return failure();
       }
     } else if (module::isBM1684X()) {
-      if (len/n > 2048 * 320 * 4 ||
+      if (len / n > 2048 * 320 * 4 ||
           (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3 * 4) {
         return failure();
       }
@@ -642,7 +642,7 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     weight_tile[i] = tile;
     count++;
   }
-  if(count == 0){
+  if (count == 0) {
     return tensor_last_op;
   }
 
@@ -716,8 +716,7 @@ public:
   }
 };
 
-class ConvertConv2DToImg2Col final
-  : public OpRewritePattern<top::ConvOp> {
+class ConvertConv2DToImg2Col final : public OpRewritePattern<top::ConvOp> {
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::ConvOp convOp,
                                 PatternRewriter &rewriter) const override {
@@ -730,19 +729,19 @@ class ConvertConv2DToImg2Col final
     auto outputType = llvm::cast<ShapedType>(output.getType());
     bool with_bias = !module::isNone(bias);
     auto strides = module::getI64Array(convOp.getStrides());
-    //note: current support Conv2D
-    if (!filterType.hasStaticShape()
-         || !inputType.hasStaticShape()
-           || module::getShape(output).size() != 4) {
+    // note: current support Conv2D
+    if (!filterType.hasStaticShape() || !inputType.hasStaticShape() ||
+        module::getShape(output).size() != 4) {
       return failure();
     }
 
-    auto hasAllOneValues = [&](mlir::ArrayAttr attr) -> bool{
+    auto hasAllOneValues = [&](mlir::ArrayAttr attr) -> bool {
       return llvm::all_of(
-            attr.getAsRange<IntegerAttr>(),
-              [](IntegerAttr element) { return element.getInt() == 1; }); };
-    if (convOp.getDilations().has_value()
-        && !hasAllOneValues(convOp.getDilations().value()))
+          attr.getAsRange<IntegerAttr>(),
+          [](IntegerAttr element) { return element.getInt() == 1; });
+    };
+    if (convOp.getDilations().has_value() &&
+        !hasAllOneValues(convOp.getDilations().value()))
       return failure();
 
     auto filterShape = filterType.getShape();
@@ -755,53 +754,65 @@ class ConvertConv2DToImg2Col final
     const int ic = filterShape[1];
     const int kh = filterShape[2];
     const int kw = filterShape[3];
-    if (!(ic <= 3 && kh >= 16 && kw >= 16
-        && strides->at(0) == kh
-        && strides->at(1) == kw)) {
+    if (!(ic <= 3 && kh >= 16 && kw >= 16 && strides->at(0) == kh &&
+          strides->at(1) == kw)) {
       return failure();
     }
     int id = 0;
     auto loc_name = module::getName(convOp.getOperation()).str();
-    //1. Input->Reshape+permute+Reshape(reorder the input)
+    // 1. Input->Reshape+permute+Reshape(reorder the input)
     SmallVector<int64_t> colTensorShape = {n, ic, oh, kh, ow, kw};
-    auto reshapeOp = rewriter.create<top::ReshapeOp>
-                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                 RankedTensorType::get(colTensorShape, inputType.getElementType()),
-                                                ValueRange{input});
+    auto reshapeOp = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get(colTensorShape, inputType.getElementType()),
+        ValueRange{input});
     std::vector<int64_t> order = {0, 2, 3, 1, 4, 5};
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
 
-    auto perMuteOp_0 = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                     RankedTensorType::get({n, oh, kh, ic, ow, kw}, inputType.getElementType()),
-                                                     ValueRange{reshapeOp}, attrs);
-    order = {0,1,4,3,2,5};
+    auto perMuteOp_0 = rewriter.create<top::PermuteOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oh, kh, ic, ow, kw},
+                              inputType.getElementType()),
+        ValueRange{reshapeOp}, attrs);
+    order = {0, 1, 4, 3, 2, 5};
     attrs.clear();
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
-    auto perMuteOp = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                     RankedTensorType::get({n, oh, ow, ic, kh, kw}, inputType.getElementType()),
-                                                     ValueRange{perMuteOp_0}, attrs);
+    auto perMuteOp = rewriter.create<top::PermuteOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oh, ow, ic, kh, kw},
+                              inputType.getElementType()),
+        ValueRange{perMuteOp_0}, attrs);
 
-    auto reshapeOp_2 = rewriter.create<top::ReshapeOp>
-                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                 RankedTensorType::get({n, oh * ow, ic * kh * kw}, inputType.getElementType()),
-                                                ValueRange{perMuteOp});
-    //2. filter->reshape
-    auto reshapeOp_3 = rewriter.create<top::ReshapeOp>
-                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                 RankedTensorType::get({oc, ic * kh * kw}, filterType.getElementType()),
-                                                ValueRange{filter});
+    auto reshapeOp_2 = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oh * ow, ic * kh * kw},
+                              inputType.getElementType()),
+        ValueRange{perMuteOp});
+    // 2. filter->reshape
+    auto reshapeOp_3 = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({oc, ic * kh * kw}, filterType.getElementType()),
+        ValueRange{filter});
     std::vector<Value> operands;
     operands.emplace_back(reshapeOp_2);
     operands.emplace_back(reshapeOp_3);
-    //3. bias->reshape
+    // 3. bias->reshape
     if (with_bias) {
-      auto reshapeOp_4 = rewriter.create<top::ReshapeOp>
-                                                  (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                  RankedTensorType::get({1, 1, oc}, llvm::cast<ShapedType>(bias.getType()).getElementType()),
-                                                  ValueRange{bias});
+      auto reshapeOp_4 = rewriter.create<top::ReshapeOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+          RankedTensorType::get(
+              {1, 1, oc},
+              llvm::cast<ShapedType>(bias.getType()).getElementType()),
+          ValueRange{bias});
       operands.emplace_back(reshapeOp_4);
     } else {
       operands.emplace_back(bias);
@@ -812,23 +823,27 @@ class ConvertConv2DToImg2Col final
         rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
     attrs.emplace_back(
         rewriter.getNamedAttr("output_transpose", rewriter.getBoolAttr(false)));
-    //4. matmul
+    // 4. matmul
     auto matmulOp = rewriter.create<top::MatMulOp>(
-            NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-            RankedTensorType::get({n, oh * ow, oc}, outputType.getElementType()),
-            operands, attrs);
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oh * ow, oc}, outputType.getElementType()),
+        operands, attrs);
     attrs.clear();
     attrs.emplace_back(
-        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,2,1})));
-    //5. permute
-    auto perMuteOp_2 = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                                     RankedTensorType::get({n, oc, oh * ow}, outputType.getElementType()),
-                                                     ValueRange{matmulOp}, attrs);
-    //6. reshape the output
-    auto reshapeOp_5 = rewriter.create<top::ReshapeOp>
-                                      (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-                                        RankedTensorType::get({n, oc, oh, ow}, outputType.getElementType()),
-                                       ValueRange{perMuteOp_2});
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+    // 5. permute
+    auto perMuteOp_2 = rewriter.create<top::PermuteOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oc, oh * ow}, outputType.getElementType()),
+        ValueRange{matmulOp}, attrs);
+    // 6. reshape the output
+    auto reshapeOp_5 = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(
+            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+        RankedTensorType::get({n, oc, oh, ow}, outputType.getElementType()),
+        ValueRange{perMuteOp_2});
     rewriter.replaceOp(convOp, ArrayRef<Value>{reshapeOp_5});
     return success();
   }
@@ -855,22 +870,23 @@ public:
     bool with_bias = !module::isNone(bias);
     int32_t id = 0;
     auto loc_name = module::getName(op.getOperation()).str();
-    if (!(isa<top::WeightOp>(right.getDefiningOp())
-          && ((with_bias && isa<top::WeightOp>(bias.getDefiningOp())) || !with_bias))) {
+    if (!(isa<top::WeightOp>(right.getDefiningOp()) &&
+          ((with_bias && isa<top::WeightOp>(bias.getDefiningOp())) ||
+           !with_bias))) {
       return failure();
     }
 
     const auto canSplit = [&](Operation *op) {
-      using TYPE = std::function<std::pair<bool,  std::vector<Operation *>>(Operation *op)>;
+      using TYPE = std::function<std::pair<bool, std::vector<Operation *>>(
+          Operation * op)>;
       TYPE f;
-      f = [&] (Operation *op) -> decltype(std::declval<TYPE>()(op)) {
-        if (std::distance(op->user_begin(), op->user_end()) == 1
-          && isa<top::ReshapeOp>(*(op->user_begin()))) {
+      f = [&](Operation *op) -> decltype(std::declval<TYPE>()(op)) {
+        if (std::distance(op->user_begin(), op->user_end()) == 1 &&
+            isa<top::ReshapeOp>(*(op->user_begin()))) {
           return f(*(op->user_begin()));
         } else if (std::distance(op->user_begin(), op->user_end()) > 1) {
           std::vector<Operation *> ops;
-          for (Operation *user: op->getUsers())
-          {
+          for (Operation *user : op->getUsers()) {
             if (!isa<top::SliceOp>(user))
               return std::make_pair(false, std::vector<Operation *>());
             else {
@@ -882,57 +898,60 @@ public:
           return std::make_pair(false, std::vector<Operation *>());
         }
       };
-      return f(op);};
+      return f(op);
+    };
 
     auto split = canSplit(op.getOperation());
     if (!split.first)
       return failure();
-    //current just support weight's col
+    // current just support weight's col
     auto matmul_shape = module::getShape(output);
     auto right_shape = module::getShape(right);
     llvm::ArrayRef<int64_t> bias_shape;
     int32_t total_slice_width = 0;
     std::vector<int32_t> slice_width;
 
-    //sort the slices ops by offset
-    std::packaged_task<std::vector<Operation*>(std::vector<Operation *> &)>
-       sortOps([&](std::vector<Operation *> &ops) {
-      int32_t index;
-      std::vector<Operation *> sorted;
-      auto first_offset = module::getI64Array
-                         (cast<top::SliceOp>(ops[0]).getOffset());
-      auto last_offset = module::getI64Array
-                         (cast<top::SliceOp>(ops[ops.size()-1]).getOffset());
-      for (int32_t i = 0; i < first_offset->size(); i++) {
-        if (first_offset->at(i) != last_offset->at(i)) {
-          index = i;
-          break;
-        }
-      }
+    // sort the slices ops by offset
+    std::packaged_task<std::vector<Operation *>(std::vector<Operation *> &)>
+        sortOps([&](std::vector<Operation *> &ops) {
+          int32_t index;
+          std::vector<Operation *> sorted;
+          auto first_offset =
+              module::getI64Array(cast<top::SliceOp>(ops[0]).getOffset());
+          auto last_offset = module::getI64Array(
+              cast<top::SliceOp>(ops[ops.size() - 1]).getOffset());
+          for (int32_t i = 0; i < first_offset->size(); i++) {
+            if (first_offset->at(i) != last_offset->at(i)) {
+              index = i;
+              break;
+            }
+          }
 
-      std::vector<int32_t> offsets;
-      for (int32_t i = 0; i < ops.size(); i++) {
-        auto offset = module::getI64Array
-                         (cast<top::SliceOp>(ops[i]).getOffset());
-        offsets.push_back(offset->at(index));
-      }
+          std::vector<int32_t> offsets;
+          for (int32_t i = 0; i < ops.size(); i++) {
+            auto offset =
+                module::getI64Array(cast<top::SliceOp>(ops[i]).getOffset());
+            offsets.push_back(offset->at(index));
+          }
 
-      std::vector<int32_t> indexs(ops.size());
-      std::iota(indexs.begin(), indexs.end(), 0);
-      std::sort(indexs.begin(), indexs.end(),
-                [&](const int32_t &a, const int32_t &b) {
-                  return offsets[a] < offsets[b];});
-      for (int32_t i = 0; i < ops.size(); i ++) {
-        sorted.push_back(ops[indexs[i]]);
-      }
-      return std::move(sorted);
-    });
+          std::vector<int32_t> indexs(ops.size());
+          std::iota(indexs.begin(), indexs.end(), 0);
+          std::sort(indexs.begin(), indexs.end(),
+                    [&](const int32_t &a, const int32_t &b) {
+                      return offsets[a] < offsets[b];
+                    });
+          for (int32_t i = 0; i < ops.size(); i++) {
+            sorted.push_back(ops[indexs[i]]);
+          }
+          return std::move(sorted);
+        });
 
     std::future<std::vector<Operation *>> orderedOps = sortOps.get_future();
     sortOps(split.second);
     std::vector<Operation *> sortedOps = std::move(orderedOps.get());
-    for (Operation *user: sortedOps) {
-      auto slice_out_shape = module::getShape(cast<top::SliceOp>(user).getOutput());
+    for (Operation *user : sortedOps) {
+      auto slice_out_shape =
+          module::getShape(cast<top::SliceOp>(user).getOutput());
       int32_t w = 1;
       for (int32_t i = matmul_shape.size() - 1; i < slice_out_shape.size(); i++)
         w *= slice_out_shape[i];
@@ -960,67 +979,81 @@ public:
       auto biasOp = cast<top::WeightOp>(bias.getDefiningOp());
       bias_f32 = biasOp.read_as_float();
     }
-    for (auto [idx, value]: llvm::enumerate(sortedOps)) {
+    for (auto [idx, value] : llvm::enumerate(sortedOps)) {
       std::vector<Value> operands;
       operands.emplace_back(input);
 
-      auto new_filter_f32 =
-        std::make_shared<std::vector<float>>(right_first_ndim_size * slice_width[idx]);
-      int32_t offset = std::accumulate(slice_width.begin(), slice_width.begin() + idx, 0, std::plus<int32_t>());
+      auto new_filter_f32 = std::make_shared<std::vector<float>>(
+          right_first_ndim_size * slice_width[idx]);
+      int32_t offset =
+          std::accumulate(slice_width.begin(), slice_width.begin() + idx, 0,
+                          std::plus<int32_t>());
       for (int32_t i = 0; i < right_first_ndim_size; i++) {
         for (int32_t k = 0; k < slice_width[idx]; k++)
-          new_filter_f32->at(i * slice_width[idx] + k) = filter_f32->at(i * right_shape[right_shape.size() - 1] + k + offset);
+          new_filter_f32->at(i * slice_width[idx] + k) = filter_f32->at(
+              i * right_shape[right_shape.size() - 1] + k + offset);
       }
       SmallVector<int64_t> new_right_shape(right_shape);
       new_right_shape[new_right_shape.size() - 1] = slice_width[idx];
-      auto new_right_type = RankedTensorType::get(new_right_shape, rightType.getElementType());
-      auto new_filter =
-        top::WeightOp::create(op, "_filter_" + std::to_string(id), *new_filter_f32, new_right_type);
+      auto new_right_type =
+          RankedTensorType::get(new_right_shape, rightType.getElementType());
+      auto new_filter = top::WeightOp::create(
+          op, "_filter_" + std::to_string(id), *new_filter_f32, new_right_type);
       operands.emplace_back(new_filter);
 
       if (with_bias) {
-        auto new_bias_f32 = std::make_shared<std::vector<float>>(bias_first_ndim_size * slice_width[idx]);
+        auto new_bias_f32 = std::make_shared<std::vector<float>>(
+            bias_first_ndim_size * slice_width[idx]);
         for (int32_t i = 0; i < bias_first_ndim_size; i++) {
           for (int32_t k = 0; k < slice_width[idx]; k++)
-            new_bias_f32->at(i * slice_width[idx] + k) = bias_f32->at(i * bias_shape[bias_shape.size() - 1] + k + offset);
+            new_bias_f32->at(i * slice_width[idx] + k) = bias_f32->at(
+                i * bias_shape[bias_shape.size() - 1] + k + offset);
         }
         SmallVector<int64_t> new_bias_shape(bias_shape);
         new_bias_shape[new_bias_shape.size() - 1] = slice_width[idx];
-        auto new_bias_type = RankedTensorType::get(new_bias_shape, llvm::cast<ShapedType>(bias.getType()).getElementType());
-        auto new_bias =
-            top::WeightOp::create(op, "_bias_" + std::to_string(id), *new_bias_f32, new_bias_type);
+        auto new_bias_type = RankedTensorType::get(
+            new_bias_shape,
+            llvm::cast<ShapedType>(bias.getType()).getElementType());
+        auto new_bias = top::WeightOp::create(op, "_bias_" + std::to_string(id),
+                                              *new_bias_f32, new_bias_type);
         operands.emplace_back(new_bias);
       } else {
-       operands.emplace_back(bias);
+        operands.emplace_back(bias);
       }
 
       SmallVector<int64_t> new_matmul_shape(matmul_shape);
       new_matmul_shape[new_matmul_shape.size() - 1] = slice_width[idx];
-      //rewriter.setInsertionPoint(value);
+      // rewriter.setInsertionPoint(value);
       auto matmulOp = rewriter.create<top::MatMulOp>(
-            NameLoc::get(rewriter.getStringAttr(loc_name + "_matmul_" + std::to_string(++id))),
-            RankedTensorType::get(new_matmul_shape, outputType.getElementType()),
-            operands, op->getAttrs());
+          NameLoc::get(rewriter.getStringAttr(loc_name + "_matmul_" +
+                                              std::to_string(++id))),
+          RankedTensorType::get(new_matmul_shape, outputType.getElementType()),
+          operands, op->getAttrs());
 
-      if (std::distance(value->user_begin(), value->user_end()) == 1
-           && isa<top::ReshapeOp, top::SqueezeOp>(*(value->user_begin())))
-      {
-        //trick or temp workaround: op order influence layer group
-        auto new_reshape_shape = module::getShape((*(value->user_begin()))->getResult(0));
-        auto elementType = module::getElementType((*(value->user_begin()))->getResult(0));
-        auto reshapeOp = rewriter.create<top::ReshapeOp>
-                          (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id++))),
-                          RankedTensorType::get(new_reshape_shape, elementType),
-                          ValueRange{matmulOp});
+      if (std::distance(value->user_begin(), value->user_end()) == 1 &&
+          isa<top::ReshapeOp, top::SqueezeOp>(*(value->user_begin()))) {
+        // trick or temp workaround: op order influence layer group
+        auto new_reshape_shape =
+            module::getShape((*(value->user_begin()))->getResult(0));
+        auto elementType =
+            module::getElementType((*(value->user_begin()))->getResult(0));
+        auto reshapeOp = rewriter.create<top::ReshapeOp>(
+            NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" +
+                                                std::to_string(id++))),
+            RankedTensorType::get(new_reshape_shape, elementType),
+            ValueRange{matmulOp});
         rewriter.replaceOp(*(value->user_begin()), reshapeOp);
         rewriter.eraseOp(value);
       } else {
-        auto new_reshape_shape = module::getShape(cast<top::SliceOp>(value).getOutput());
+        auto new_reshape_shape =
+            module::getShape(cast<top::SliceOp>(value).getOutput());
         if (new_reshape_shape.size() != new_matmul_shape.size()) {
-          auto reshapeOp = rewriter.create<top::ReshapeOp>
-                            (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id))),
-                            RankedTensorType::get(new_reshape_shape, outputType.getElementType()),
-                            ValueRange{matmulOp});
+          auto reshapeOp = rewriter.create<top::ReshapeOp>(
+              NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" +
+                                                  std::to_string(id))),
+              RankedTensorType::get(new_reshape_shape,
+                                    outputType.getElementType()),
+              ValueRange{matmulOp});
           rewriter.replaceOp(value, reshapeOp);
         } else {
           rewriter.replaceOp(value, matmulOp);
@@ -1037,11 +1070,12 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
-                ConvertMatMul2Attention, ReshapeReorderPattern,
-                ConvertMultiInputAdd, WhereBroadcastToTile,
-                ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp>(
-      patterns->getContext(), 8);
+  patterns
+      ->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
+            ConvertMatMul2Attention, ReshapeReorderPattern,
+            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
+            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
+          patterns->getContext(), 8);
   // Remove this when fp8 is OK;
   // if (module::getChip() == module::Chip::SG2260) {
   //   patterns->add<ConvertScaleToMAOp>(patterns->getContext(),

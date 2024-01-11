@@ -21,6 +21,11 @@ void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
 void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::GatherOp op) const {
   std::vector<Value> operands;
+  auto ishape = module::getShape(op.getInput());
+  auto axis = op.getAxis();
+  if (ishape.size()!=2 || axis != 0) {
+    llvm_unreachable("Not support now.\n");
+  }
   //auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
   operands.emplace_back(op.getIndices());
   //operands.emplace_back(inputOp.clone_bf16(op));

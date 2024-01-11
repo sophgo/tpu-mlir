@@ -44,6 +44,14 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
     if (!reshape_before) {
       return failure();
     }
+    auto reshape_before_shape =
+        module::getShape(reshape_before.getOutput());
+    auto dims = std::accumulate(reshape_before_shape.begin() + 1,
+                                   reshape_before_shape.begin() + 4, 1,
+                                   std::multiplies<int64_t>());
+    if (dims != module::getShape(reshape_before.getInput())[1]) {
+      return failure();
+    }
     auto nextOp = *op.getOutput().user_begin();
     auto reshape_after = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after) {
@@ -151,8 +159,7 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
   }
 };
 
-template <typename T>
-static int remove_value(std::vector<T> &v, T value) {
+template <typename T> static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {

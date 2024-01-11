@@ -12,63 +12,6 @@
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-// A --slice--> A0 | A1 --concat--> A1 | A0
-// ==> SwapDimInner
-// test by `test_onnx.py --case SwapDimInner`
-struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
-    if (concat_op.getDoRelu()) {
-      return failure();
-    }
-
-    int num_inputs = concat_op.getInputs().size();
-    if (num_inputs != 2) {
-      return failure();
-    }
-
-    auto in0_op = concat_op.getInputs()[0].getDefiningOp();
-    auto in1_op = concat_op.getInputs()[1].getDefiningOp();
-    auto slice0_op = dyn_cast<SliceOp>(in0_op);
-    auto slice1_op = dyn_cast<SliceOp>(in1_op);
-    if (!slice0_op || !slice1_op) {
-      return failure();
-    }
-    auto from = slice0_op.getInput();
-    if (from != slice1_op.getInput()) {
-      return failure();
-    }
-    auto steps0 = module::getI64Array(slice0_op.getSteps());
-    auto steps1 = module::getI64Array(slice1_op.getSteps());
-    for (int i = 0; i < steps0->size(); ++i) {
-      if (steps0->at(i) != 1 || steps0->at(i) != steps1->at(i)) {
-        return failure();
-      }
-    }
-    auto offset0 = module::getI64Array(slice0_op.getOffset());
-    auto offset1 = module::getI64Array(slice1_op.getOffset());
-    // auto oshape0 = module::getShape(slice0_op.getOutput());
-    auto oshape1 = module::getShape(slice1_op.getOutput());
-
-    int axis = concat_op.getAxis();
-    if (offset0->at(axis) != oshape1[axis] || offset1->at(axis) != 0) {
-      return failure();
-    }
-
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(*offset0)));
-    // concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
-    // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
-    rewriter.replaceOpWithNewOp<SwapDimInnerOp>(
-        concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
-
-    return success();
-  }
-};
-
 static LogicalResult find_slice_order(ConcatOp concat_op, int ex_dims,
                                       bool is_NCHW, std::vector<int64_t> &order,
                                       Value &from, int64_t &bh, int64_t &bw) {
@@ -511,6 +454,6 @@ void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern, ConcatToSwapDimInner,
+                 MergeSliceConcatPattern,
                  RemoveInvaidShapeConcatInput>(context);
 }
