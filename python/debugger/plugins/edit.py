@@ -93,9 +93,9 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
         loc = index.get_loc_by_point()
         self.tdb.message(f"cut bmodel after {loc}")
 
-        cmd_indexs = self.tdb.index_df[self.tdb.index_df.loc_index == loc.loc_index]
+        indexs = self.tdb.index_df.loc[self.tdb.index_df.loc_index == loc.loc_index,"executed_id"].tolist()
 
-        index = max(cmd_indexs) + 1
+        index = max(indexs) + 1
 
         # find tiu / bdc command
         hit_dic = {}

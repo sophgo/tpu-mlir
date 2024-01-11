@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 
+import math
 import numpy as np
 from numpy.lib import format
 from typing import Tuple, Dict, List
@@ -522,9 +523,22 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def compare(self, tdb: TdbCmdBackend, is_operand):
         index_plugin = self.index
         point_index = tdb.cmd_point
-        values = index_plugin.point2loc.get(point_index, None)
+        values = None
+
+        if is_operand:
+            values = tdb.index_df.loc[
+                tdb.index_df["executed_id"] == point_index, "operands"
+            ].tolist()
+        else:
+            values = tdb.index_df.loc[
+                tdb.index_df["executed_id"] == point_index, "results"
+            ].tolist()
+        if values:
+            values = values[0]
 
         if values is None:
+            return CmpState.Middle
+        if isinstance(values, float) and math.isnan(values):
             return CmpState.Middle
 
         reports = self.reports
@@ -555,12 +569,14 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             raise StopIteration()
 
     def after_step(self, tdb: TdbCmdBackend):
+        tdb.cmd_point -= 1
         if self.ref_data is None or not self.enabled:
             return
 
         ret = self.compare(tdb, False)
         if not ret and self.break_when_fail:
             raise BreakpointStop()
+        tdb.cmd_point += 1
 
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
