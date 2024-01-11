@@ -63,7 +63,7 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
   auto dims = in_shape.size();
 
   if (op.getLog() || dims > 4 || op.getAxis() != 1)
-    return LoweringF32(rewriter, op);
+    return LoweringF16(rewriter, op);
 
   if (dims < 4) {
     for (int i = dims; i < 4; i++) {
@@ -183,12 +183,14 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
 
 void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SoftmaxOp op) const {
-  LoweringF32(rewriter, op);
+  //LoweringF32(rewriter, op);
+  lowering_common_bf16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
-  LoweringF32(rewriter, op);
+  //LoweringF32(rewriter, op);
+  lowering_common_f16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF8(PatternRewriter &rewriter,

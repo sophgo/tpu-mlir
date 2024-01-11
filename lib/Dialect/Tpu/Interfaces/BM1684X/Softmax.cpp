@@ -79,11 +79,12 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
+  #define SIZE (padding_flag == 1 ? sizeof(int16_t): sizeof(float))
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
-    buffer_size += c_per_npu * align_up(in_wslice, eu_num) * sizeof(float);
+    buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
   } else if (axis == 3) {
-    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * sizeof(float);
+    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * SIZE;
   }
   // 32 coeff and 192 table
   buffer_size += align_up((int64_t)32, eu_num) * sizeof(float);
@@ -92,12 +93,12 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
       c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float) * 2;
   if (getLog()) {
     buffer_size +=
-        c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float);
+        c_per_npu * align_up(in_hslice * in_wslice, eu_num) * SIZE;
   }
 
   if (padding_flag) {
     buffer_size += c_per_npu *
-        align_up(in_hslice * in_wslice, eu_num) * sizeof(int16_t);
+        align_up(in_hslice * in_wslice, eu_num) * SIZE;
   }
   return buffer_size;
 }
