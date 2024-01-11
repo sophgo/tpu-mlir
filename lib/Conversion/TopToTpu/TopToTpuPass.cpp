@@ -1479,7 +1479,7 @@ bool ConvertTopToTpu::bert_mix_precision() {
       }
       int cnt = 0;
       for (auto op : ffn) {
-	cnt ++;
+	      cnt ++;
         auto addop = dyn_cast_or_null<top::AddOp>(
             dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
         if (addop == NULL)
@@ -1492,14 +1492,14 @@ bool ConvertTopToTpu::bert_mix_precision() {
         }
         for (auto in : addop.getOperands()) {
           if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-	    if (cnt >= 5 && (partial_float_bert_ffn > 0))
-                continue;
+            if (cnt >= 5 && (partial_float_bert_ffn > 0))
+                    continue;
             if (LoweringConfig::quantize_map.find(
-                    module::getName(mmop.getOperation()).str()) ==
+                module::getName(mmop.getOperation()).str()) ==
                 LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(mmop.getOperation()).str(),
-                   module::Mode::F16});
+                  LoweringConfig::quantize_map.insert(
+                    {module::getName(mmop.getOperation()).str(),
+                    module::Mode::F16});
             }
           }
         }
@@ -1959,7 +1959,7 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
           if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
               LoweringConfig::quantize_map.end()) {
             LoweringConfig::quantize_map.insert(
-                {module::getName(op).str(), module::Mode::F32});
+                {module::getName(op).str(), module::Mode::F16});
           }
         }
       }

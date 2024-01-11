@@ -36,8 +36,8 @@ protected:
   void match_vit_mha1(std::vector<Operation *> &mha);
   void match_deit_mha(std::vector<Operation *> &mha);
   bool deit_mix_precision();
-  void match_swint_mlp(std::vector<Operation *> &mlp);
-  void match_swint_wmsa(std::vector<Operation *> &wmsa);
+  void match_swin_mlp(std::vector<Operation *> &mlp);
+  void match_swin_wmsa(std::vector<Operation *> &wmsa, std::vector<Operation *> &sm_ops);
   bool convergence(Operation* from, Operation *to);
   bool convergence_with_sm_matmul(Operation* from, Operation *to, int &sm_cnt, int &matmul_cnt, int &triple_matmul);
   bool set_block_fp16(Operation* from, Operation *to); // must be a block with single input and single output
@@ -46,9 +46,9 @@ protected:
   void match_eva2_mhsa(std::vector<Operation *> &mhsa);
   bool eva2_mix_precision();
   void set_add_before_softmax_fp32();
+  void spread_q_config();
   bool swin_t_mix_precision();
   void qtable_process();
-  void spread_q_config();
   Value do_cast(Value v, Type to, TypeCastMode mode,
                 Operation *user_op = nullptr);
   Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
