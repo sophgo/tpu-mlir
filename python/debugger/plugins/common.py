@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 from collections import OrderedDict
+import collections
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 
@@ -140,13 +141,11 @@ class FinalMlirIndexPlugin(TdbPlugin):
     def _build_index(self, tdb: TdbCmdBackend):
         # create subnet tiu, dma id offset
         self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
-        self.point2loc: Dict[int, List[ValueView]] = OrderedDict()
-        last_af_point = -1
-
-        indexs = tdb.index_df.index
+        last_af_point = 0
+        indexs = tdb.op_df.index
 
         def find_point(key):
-            ret = tdb.index_df["executed_id"][indexs == key]
+            ret = tdb.op_df["executed_id"][indexs == key]
 
             if len(ret) == 0:
                 raise KeyError(f"cannot find command of key {key}")
@@ -157,13 +156,25 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
             return ret[0]
 
-        loc_indexs = []
-        visited = set()
+        def assemble_tuple_key(subnet_id, core_id, cmd_id, cmd_type):
+            if cmd_type == CMDType.tiu:
+                return (subnet_id, cmd_id, None, core_id)
+            elif cmd_type == CMDType.dma:
+                return (subnet_id, None, cmd_id, core_id)
+            else:
+                raise RuntimeError("Not Supported CMDType!")
 
-        # when cmd_point reach point+1
-        # it means the cmd in cmditer[point] has been executed
+        # debug options
+        # pd.set_option("display.max_rows", None)
+        # pd.set_option("display.max_columns", None)
+        # pd.set_option("display.expand_frame_repr", False)
+
+        # when cmd_point reach point
+        # it means the cmd in cmditer[point-1] has been executed
         # data-checker need to compare loc operands before execute bf_point
         # and after execute af_point
+
+        loc_records = []
         for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
             if loc.tiu_dma_id_before == loc.tiu_dma_id_after:
                 # no cmd operation, like reshape
@@ -178,62 +189,79 @@ class FinalMlirIndexPlugin(TdbPlugin):
                 dma_before,
                 core_id,
             ) = loc.tuple_key_before
-            tiu_point = dma_point = None
-            if tiu_before > 0:
-                tiu_point = find_point((subnet_id, tiu_before, None, core_id))
-            if dma_before > 0:
-                dma_point = find_point((subnet_id, None, dma_before, core_id))
-
-            bf_point = max_with_none(tiu_point, dma_point, last_af_point + 1)
-
-            self.point2loc.setdefault(bf_point, []).extend(
-                Operand(opd, opd_index, loc_index, loc.loc_name, bf_point)
-                for opd_index, opd in enumerate(loc.operands)
-            )
-
-            # the tiu/dma cmd-id state after executing this loc
             (
                 subnet_id,
                 tiu_after,
                 dma_after,
                 core_id,
             ) = loc.tuple_key_after
-            tiu_point = dma_point = None
 
+            tiu_point = dma_point = None
+            if tiu_before > 0:
+                tiu_point = find_point((subnet_id, tiu_before, None, core_id))
+            if dma_before > 0:
+                dma_point = find_point((subnet_id, None, dma_before, core_id))
+            bf_point = max_with_none(tiu_point, dma_point, last_af_point) + 1
+            operands_tmp = collections.defaultdict(list)
+            operands_tmp[tdb.cmditer[bf_point - 1].tuple_key].extend(
+                Operand(opd, opd_index, loc_index, loc.loc_name, bf_point)
+                for opd_index, opd in enumerate(loc.operands)
+            )
+
+            tiu_point = dma_point = None
             if tiu_after > 0:
                 tiu_point = find_point((subnet_id, tiu_after, None, core_id))
             if dma_after > 0:
                 dma_point = find_point((subnet_id, None, dma_after, core_id))
-
             last_af_point = af_point = max_with_none(tiu_point, dma_point)
-            self.point2loc.setdefault(af_point, []).extend(
+            results_tmp = collections.defaultdict(list)
+            results_tmp[tdb.cmditer[af_point - 1].tuple_key].extend(
                 Result(opd, opd_index, loc_index, loc.loc_name, af_point)
                 for opd_index, opd in enumerate(loc.results)
             )
 
-            for index in range(bf_point, af_point + 1):  # +1 to indicate `after`
-                assert index not in visited, index
-                visited.add(index)
-                loc_indexs.append({"executed_id": index + 1, "loc_index": loc_index})
+            for i in range(tiu_before + 1, tiu_after + 1):
+                record = {
+                    "loc_index": loc.loc_index,
+                    "line-num": loc.file_line,
+                    "subnet_id": subnet_id,
+                    "core_id": core_id,
+                    "cmd_id": i,
+                    "cmd_type": CMDType.tiu,
+                    "operands": operands_tmp[
+                        assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)
+                    ],
+                    "results": results_tmp[
+                        assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)
+                    ],
+                }
+                loc_records.append(record)
 
-        mlir_index_df = pd.DataFrame.from_records(loc_indexs)
-        new_index_df = tdb.index_df.merge(mlir_index_df, on="executed_id", how="outer")
-        # drop last loc_index which have no meaning
-        new_index_df = new_index_df[new_index_df.cmd_index.isna() == False]
-        tdb.index_df = new_index_df.set_index("cmd_index", drop=False)
-        tdb.index_df["loc_index"] = tdb.index_df["loc_index"]
-        # make sure all cmd except sys have built mlir index
-        no_loc_mask = tdb.index_df.loc_index.isna()
-        no_static_mask = tdb.index_df.cmd_type.apply(
-            lambda x: False if x is None else x.is_static()
-        )
+            for j in range(dma_before + 1, dma_after + 1):
+                record = {
+                    "loc_index": loc.loc_index,
+                    "loc_name": loc.loc_name,
+                    "line-num": loc.file_line,
+                    "subnet_id": subnet_id,
+                    "core_id": core_id,
+                    "cmd_id": j,
+                    "cmd_type": CMDType.dma,
+                    "operands": operands_tmp[
+                        assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)
+                    ],
+                    "results": results_tmp[
+                        assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)
+                    ],
+                }
+                loc_records.append(record)
 
-        if tdb.context.device == tdb.context.device.BM1688:
-            # temporarily hack for BM1688, which use arith_copy cmd to workaround sync bug
-            no_arith_copy = tdb.index_df.op_name != 'sAR'
-            assert tdb.index_df[no_loc_mask & no_static_mask & no_arith_copy].is_sys.all()
-        else:
-            assert tdb.index_df[no_loc_mask & no_static_mask].is_sys.all()
+        loc_df = pd.DataFrame.from_records(loc_records)
+        tdb.index_df = pd.merge(tdb.op_df, loc_df, how="outer")
+        tdb.index_df = tdb.index_df.set_index("cmd_index", drop=True)
+        # replace all NaN values with zeros
+        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
+        # convert 'loc_index' column from float to integer
+        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].astype(int)
 
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
@@ -260,7 +288,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
         if point is None:
             point = self.tdb.cmd_point
 
-        loc_index = self.index_df.iloc[point]["loc_index"].item()
+        loc_index = self.tdb.index_df.loc[
+            self.tdb.index_df["executed_id"] == point, "loc_index"
+        ].item()
 
         if np.isnan(loc_index):
             return None

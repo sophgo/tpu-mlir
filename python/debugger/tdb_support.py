@@ -313,43 +313,30 @@ class TdbCmdBackend(cmd.Cmd):
         cmd-index == op.tuple_key
         TODO
         """
-        cmd_records = [
-            {
-                "executed_id": 0,
-                "subnet_id": None,
-                "core_id": None,
-                "cmd_id": None,
-                "cmd_id_dep": None,
-                "cmd_type": None,
-                "cmd_index": (None, None, None, None),
-                "op_name": None,
-                "is_sys": None,
-            }
-        ]
-
+        cmd_records = []
         for executed_id, op in enumerate(self.cmditer, start=1):
             record = {
+                "cmd_index": op.tuple_key,
                 "executed_id": executed_id,
                 "subnet_id": op.subnet_id,
                 "core_id": op.core_id,
                 "cmd_id": op.cmd_id,
-                "cmd_id_dep": None,
+                # "cmd_id_dep": None,
                 "cmd_type": op.cmd_type,
-                "cmd_index": op.tuple_key,
                 "op_name": op.name,
-                "is_sys": False,
+                # "is_sys": False,
             }
 
             # executed_id indicate the index after op execution, start is 1
             # executed_id = 0 means no cmd is executed
 
-            if isinstance(op, BaseTpuCmd):
-                record["cmd_id_dep"] = op.cmd_id_dep
-                record["is_sys"] = self.context.is_sys(op)
+            # if isinstance(op, BaseTpuCmd):
+            #     record["cmd_id_dep"] = op.cmd_id_dep
+            #     record["is_sys"] = self.context.is_sys(op)
             cmd_records.append(record)
-        index_df = pd.DataFrame.from_records(cmd_records)
-        index_df["executed_id"] = index_df["executed_id"].astype(int)
-        self.index_df = index_df.set_index("cmd_index", drop=False)
+        op_df = pd.DataFrame.from_records(cmd_records)
+        op_df["executed_id"] = op_df["executed_id"].astype(int)
+        self.op_df = op_df.set_index("cmd_index", drop=False)
 
     def add_plugin(self, plugin_name: str):
         plugin = self.plugins.add_plugin(plugin_name)
@@ -404,12 +391,12 @@ class TdbCmdBackend(cmd.Cmd):
 
         if self.cmd_point >= len(self.cmditer):
             raise StopIteration()
-        return self.cmditer[self.cmd_point]
+        return self.cmditer[self.cmd_point - 1]
 
     def get_precmd(self):
         if self.cmd_point == 0:
             raise StopIteration()
-        return self.cmditer[self.cmd_point - 1]
+        return self.cmditer[self.cmd_point - 2]
 
     def get_nextop(self):
         op = self.get_cmd()
@@ -721,7 +708,7 @@ def codelike_format(res: list, index=None):
     messages = []
     for i, c in enumerate(res):
         if i == index:
-            c = f" => {c}"
+            c = f" \33[1;31m=>\033[0m {c}"
         else:
             c = f"    {c}"
         messages.append(c)
