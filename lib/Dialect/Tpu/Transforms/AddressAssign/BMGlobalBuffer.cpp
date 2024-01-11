@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -40,7 +40,31 @@ public:
   }
 };
 
-class GatherElementsGlobalBuffer : public OpRewritePattern<tpu::GatherElementsOp> {
+class FAttentionGlobalBuffer : public OpRewritePattern<tpu::FAttentionOp> {
+public:
+  using OpRewritePattern<tpu::FAttentionOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::FAttentionOp FaOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(FaOp.getBuffer())) {
+      return failure();
+    }
+    auto type = module::getStorageType(FaOp.getOutput());
+    int64_t batch = FaOp.getBatch();
+    int64_t head = FaOp.getHead();
+    int64_t mq = FaOp.getMq();
+    int64_t mk = FaOp.getMk();
+    // add buffer
+    std::vector<int64_t> buffer_shape = {batch, mq, head, mk};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(FaOp, buffer_type);
+    FaOp.getBufferMutable().assign(buffer);
+    return success();
+  }
+};
+
+class GatherElementsGlobalBuffer
+    : public OpRewritePattern<tpu::GatherElementsOp> {
 public:
   using OpRewritePattern<tpu::GatherElementsOp>::OpRewritePattern;
 
@@ -60,7 +84,6 @@ public:
   }
 };
 
-
 class LSTMGlobalBuffer : public OpRewritePattern<tpu::LSTMOp> {
 public:
   using OpRewritePattern<tpu::LSTMOp>::OpRewritePattern;
@@ -77,7 +100,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(lstmOp, buffer_type);
     lstmOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == lstmOp.getBuffer() && operand.getOwner() == lstmOp;
+      return operand.get() == lstmOp.getBuffer() &&
+             operand.getOwner() == lstmOp;
     });
     return success();
   }
@@ -101,7 +125,7 @@ public:
       auto input_spec = BM168x::get_input_spec(reduceOp);
       auto output_spec = BM168x::get_output_spec(reduceOp);
       reduce_full_global_param_t param = {0};
-      //need to check if it is dynamic mode
+      // need to check if it is dynamic mode
       auto run_mode = tpu::getRunMode(reduceOp.getOperation());
       if (run_mode == tpu::RunMode::TPU_STATIC) {
         BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
@@ -111,7 +135,7 @@ public:
         param.spec.common.axis_num = 1;
         param.spec.common.axis[0] = 2;
       } else if (run_mode == tpu::RunMode::TPU_DYNAMIC) {
-        auto&& axes = reduceOp.getAxes();
+        auto &&axes = reduceOp.getAxes();
         param.spec.common.axis_num = axes.size();
         for (int i = 0; i < axes.size(); i++) {
           param.spec.common.axis[i] = (axes[i].cast<IntegerAttr>().getInt());
@@ -131,7 +155,8 @@ public:
         auto buffer_type = RankedTensorType::get(buffer_shape, type);
         auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
         reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-          return operand.get() == reduceOp.getBuffer() && operand.getOwner() == reduceOp;
+          return operand.get() == reduceOp.getBuffer() &&
+                 operand.getOwner() == reduceOp;
         });
       }
     } else if (module::isBM1684Family()) {
@@ -170,7 +195,8 @@ public:
         auto buffer_type = RankedTensorType::get(buffer_shape, type);
         auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
         reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-          return operand.get() == reduceOp.getBuffer() && operand.getOwner() == reduceOp;
+          return operand.get() == reduceOp.getBuffer() &&
+                 operand.getOwner() == reduceOp;
         });
       }
     }
@@ -220,7 +246,8 @@ public:
     delete[] begin_index;
     delete[] end_index;
     delete[] stride;
-    if (!buffer_size) return failure();
+    if (!buffer_size)
+      return failure();
     // create bufferOp
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
     auto type = module::getStorageType(sliceOp.getOutput());
@@ -240,7 +267,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::ReshapeOp reshapeOp,
                                 PatternRewriter &rewriter) const override {
-    //only used for 4N ndim reshape!
+    // only used for 4N ndim reshape!
     if (!module::isBM1684Family()) {
       return failure();
     }
@@ -260,7 +287,8 @@ public:
       return failure();
     }
 
-    uint64_t buffer_size = on * oc * oh * ow;;
+    uint64_t buffer_size = on * oc * oh * ow;
+    ;
 
     // create bufferOp
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
@@ -268,7 +296,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(reshapeOp, buffer_type);
     reshapeOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == reshapeOp.getBuffer() && operand.getOwner() == reshapeOp;
+      return operand.get() == reshapeOp.getBuffer() &&
+             operand.getOwner() == reshapeOp;
     });
     return success();
   }
@@ -295,7 +324,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(softmaxOp, buffer_type);
     softmaxOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == softmaxOp.getBuffer() && operand.getOwner() == softmaxOp;
+      return operand.get() == softmaxOp.getBuffer() &&
+             operand.getOwner() == softmaxOp;
     });
     return success();
   }
@@ -473,14 +503,17 @@ public:
     }
     deform_gather_attr_t p = Op.parseParam();
     uint64_t buffer_size = 0;
-    auto conved_H = ((p.ih - (p.dh * (p.kh - 1) + 1) + p.pht + p.phb) / p.sh + 1);
-    auto conved_W = ((p.iw - (p.dw * (p.kw - 1) + 1) + p.pwl + p.pwr) / p.sw + 1);
+    auto conved_H =
+        ((p.ih - (p.dh * (p.kh - 1) + 1) + p.pht + p.phb) / p.sh + 1);
+    auto conved_W =
+        ((p.iw - (p.dw * (p.kw - 1) + 1) + p.pwl + p.pwr) / p.sw + 1);
     auto full_size = p.kh * p.kw * conved_H * conved_W * sizeof(float);
     buffer_size = 2 * p.n * p.deform_groups * full_size;
     if (p.use_mask)
-      buffer_size = std::max(buffer_size, (uint64_t) p.n * p.ic * p.deform_groups * full_size);
+      buffer_size = std::max(buffer_size, (uint64_t)p.n * p.ic *
+                                              p.deform_groups * full_size);
     auto type = module::getStorageType(Op.getInput());
-    auto buffer_type = RankedTensorType::get({(int64_t) buffer_size}, type);
+    auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
     auto buffer = tpu::BufferOp::create(Op, buffer_type);
     Op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
       return operand.get() == Op.getBuffer() && operand.getOwner() == Op;
@@ -639,8 +672,8 @@ public:
     if (!module::isNone(TileOp.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684Family()
-        && (!module::isBM1684XFamily()) && (!module::isSG2260Family())) {
+    if (!module::isBM1684Family() && (!module::isBM1684XFamily()) &&
+        (!module::isSG2260Family())) {
       llvm_unreachable("Not Implemented");
       return failure();
     }
@@ -671,10 +704,10 @@ public:
         std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
         auto buffer_type = RankedTensorType::get(buffer_shape, type);
         auto buffer = tpu::BufferOp::create(TileOp, buffer_type);
-        TileOp.getBuffer().replaceUsesWithIf(
-            buffer, [&](OpOperand &operand) {
-              return operand.get() == TileOp.getBuffer() && operand.getOwner() == TileOp;
-            });
+        TileOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+          return operand.get() == TileOp.getBuffer() &&
+                 operand.getOwner() == TileOp;
+        });
         return success();
       }
     }
@@ -688,7 +721,8 @@ public:
 
   LogicalResult matchAndRewrite(tpu::IndexPutOp IndexPutOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isNone(IndexPutOp.getBuffer()) || !IndexPutOp.getAccumulate()) {
+    if (!module::isNone(IndexPutOp.getBuffer()) ||
+        !IndexPutOp.getAccumulate()) {
       return failure();
     }
     if (!module::isBM1684XFamily()) {
@@ -701,7 +735,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(IndexPutOp, buffer_type);
     IndexPutOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == IndexPutOp.getBuffer() && operand.getOwner() == IndexPutOp;
+      return operand.get() == IndexPutOp.getBuffer() &&
+             operand.getOwner() == IndexPutOp;
     });
     return success();
   }
@@ -733,7 +768,8 @@ public:
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(padOp, buffer_type);
       padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
+        return operand.get() == padOp.getBuffer() &&
+               operand.getOwner() == padOp;
       });
       return success();
     } else {
@@ -761,7 +797,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(GatherOp, buffer_type);
     GatherOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == GatherOp.getBuffer() && operand.getOwner() == GatherOp;
+      return operand.get() == GatherOp.getBuffer() &&
+             operand.getOwner() == GatherOp;
     });
     return success();
   }
@@ -787,13 +824,15 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(Pool3DOp, buffer_type);
     Pool3DOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == Pool3DOp.getBuffer() && operand.getOwner() == Pool3DOp;
+      return operand.get() == Pool3DOp.getBuffer() &&
+             operand.getOwner() == Pool3DOp;
     });
     return success();
   }
 };
 
-class ScatterElementsGlobalBuffer : public OpRewritePattern<tpu::ScatterElementsOp> {
+class ScatterElementsGlobalBuffer
+    : public OpRewritePattern<tpu::ScatterElementsOp> {
 public:
   using OpRewritePattern<tpu::ScatterElementsOp>::OpRewritePattern;
 
@@ -826,8 +865,9 @@ public:
       return failure();
     }
     auto buffer_type =
-    // ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
-    RankedTensorType::get(module::getShape(ScatterNDOp.getInputData()), rewriter.getI32Type());
+        // ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
+        RankedTensorType::get(module::getShape(ScatterNDOp.getInputData()),
+                              rewriter.getI32Type());
     auto buffer = tpu::BufferOp::create(ScatterNDOp, buffer_type);
     ScatterNDOp.setOperand(3, buffer);
     return success();
@@ -843,12 +883,12 @@ public:
     if (!module::isNone(NmsOp.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1688())) {
+    if (!module::isBM1684XFamily() ||
+        (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 
-    int64_t  buffer_size = BUFFER_SIZE;
+    int64_t buffer_size = BUFFER_SIZE;
     auto type = module::getStorageType(NmsOp.getInputs()[0]);
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
@@ -858,7 +898,8 @@ public:
   }
 };
 
-class YoloDetectionGlobalBuffer : public OpRewritePattern<tpu::YoloDetectionOp> {
+class YoloDetectionGlobalBuffer
+    : public OpRewritePattern<tpu::YoloDetectionOp> {
 public:
   using OpRewritePattern<tpu::YoloDetectionOp>::OpRewritePattern;
 
@@ -867,15 +908,15 @@ public:
     if (!module::isNone(yoloDetectionOp.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1688())) {
+    if (!module::isBM1684XFamily() ||
+        (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
     auto process = module::getPostprocess();
     if (process.starts_with("yolov5")) {
       return failure();
     }
-    int64_t  buffer_size = BUFFER_SIZE;
+    int64_t buffer_size = BUFFER_SIZE;
     auto type = module::getStorageType(yoloDetectionOp.getInputs()[0]);
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
@@ -885,7 +926,8 @@ public:
   }
 };
 
-class DetectionOutputGlobalBuffer : public OpRewritePattern<tpu::DetectionOutputOp> {
+class DetectionOutputGlobalBuffer
+    : public OpRewritePattern<tpu::DetectionOutputOp> {
 public:
   using OpRewritePattern<tpu::DetectionOutputOp>::OpRewritePattern;
 
@@ -895,17 +937,18 @@ public:
       return failure();
     }
 
-    if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1688())) {
+    if (!module::isBM1684XFamily() ||
+        (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 
-    int64_t  buffer_size = BUFFER_SIZE;
+    int64_t buffer_size = BUFFER_SIZE;
     auto type = module::getStorageType(detectionOutputOp.getInputs()[0]);
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(detectionOutputOp, buffer_type);
-    detectionOutputOp.setOperand(detectionOutputOp.getNumOperands() - 1, buffer);
+    detectionOutputOp.setOperand(detectionOutputOp.getNumOperands() - 1,
+                                 buffer);
     return success();
   }
 };
@@ -916,7 +959,8 @@ public:
 
   LogicalResult matchAndRewrite(tpu::TopKOp TopKOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isNone(TopKOp.getBufferVal()) || !module::isNone(TopKOp.getBufferIdx())) {
+    if (!module::isNone(TopKOp.getBufferVal()) ||
+        !module::isNone(TopKOp.getBufferIdx())) {
       return failure();
     }
 
@@ -950,6 +994,7 @@ using namespace bm168x;
 void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+      FAttentionGlobalBuffer,
       GatherGlobalBuffer,
       GatherElementsGlobalBuffer,
       GRUGlobalBuffer,
