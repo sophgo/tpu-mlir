@@ -1448,6 +1448,20 @@ typedef struct attention_local_spec {
   uint32_t buffer_addr;
 } attention_local_spec_t;
 
+typedef struct flash_attention_common_spec {
+  int batch;
+  int head;
+  int dim;
+  int mq;
+  int mk;
+  float scale;
+  int hasmask;
+} flash_attention_common_spec_t;
+
+typedef struct flash_attention_global_spec {
+  flash_attention_common_spec_t common;
+} flash_attention_global_spec_t;
+
 typedef struct {
   uint64_t input_addr;
   uint64_t output_addr;

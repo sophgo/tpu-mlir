@@ -1156,6 +1156,33 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Flash Attention operator";
+
+  let description = [{
+    Performs a two dimensional matrix multiplication. This allows both inputs to
+    be activations, rather than reserving weights as an attribute in the
+    FULLY_CONNECTED operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$head,
+    I64Attr:$dim,
+    I64Attr:$mq,
+    I64Attr:$mk
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_RangeOp: Tpu_Op<"Range", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Range operator";

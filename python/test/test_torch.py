@@ -80,6 +80,7 @@ class TORCH_IR_TESTER(object):
             "Dropout":          (self.test_Dropout,           N, Y, Y, Y),
             "Elu":              (self.test_Elu,               Y, Y, Y, Y),
             "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
+            "FAttention":       (self.test_FAttention,        N, Y, N, N),
             "Flatten":          (self.test_Flatten,           N, Y, Y, N),
             "Flip":             (self.test_Flip,              N, Y, Y, N),
             "Floor":            (self.test_Floor,             N, Y, Y, N),
@@ -2125,6 +2126,54 @@ class TORCH_IR_TESTER(object):
         # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
         _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2, False)
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
+
+    def test_FAttention(self):
+
+        def _test_flash_attention(batch, d, head, mq, mk, has_musk):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.musk = - \
+                        ((torch.randn((batch, 1, mq, mk)) > 0) * 10000)
+
+                def forward(self, q, k, v):
+                    q = q + 1
+                    k = k + 1
+                    v = v + 1
+                    q = q.transpose(1, 2)
+                    k = k.transpose(1, 2)
+                    k = k.transpose(3, 2)
+                    m0 = torch.matmul(q, k)
+                    m0 = m0 / np.sqrt(d)
+                    if has_musk:
+                        m0 = m0 + self.musk
+                    m0 = torch.softmax(m0, 3)
+                    v = v.transpose(1, 2)
+                    m1 = torch.matmul(m0, v)
+                    m1 = m1.transpose(1, 2)
+                    m1 = m1.reshape(batch, mq, head*d)
+                    return m1
+
+            shape0 = [batch, mq, head, d]
+            shape1 = [batch, mk, head, d]
+            shape2 = [batch, mk, head, d]
+            max = 10
+            min = -10
+            self.trace_and_test([shape0, shape1, shape2], Model(), [self.Desc(
+                'float32', min, max), self.Desc('float32', min, max), self.Desc('float32', min, max)])
+
+        # _test_flash_attention(1, 128, 32, 1, 8193, True)
+        # _test_flash_attention(1, 128, 10, 1024, 1024, True)
+        # _test_flash_attention(1, 128, 10, 1024, 1024, False)
+        # _test_flash_attention(1, 128, 10, 2048, 2048, True)
+        # _test_flash_attention(1, 128, 10, 2048, 2048, False)
+        # _test_flash_attention(2, 128, 10, 1024, 1024, True)
+        # _test_flash_attention(1, 128, 4, 128, 128, True)
+        # _test_flash_attention(1, 128, 4, 1, 128, True)
+        # _test_flash_attention(1, 128, 10, 1, 2048, True)
+        # _test_flash_attention(1, 128, 10, 1, 4096, True)
+        # _test_flash_attention(1, 128, 10, 1, 8192, True)
 
     #######################################################################
     # MatmulSlice
