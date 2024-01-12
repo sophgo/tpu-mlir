@@ -276,8 +276,8 @@ float real_multi_thread_kl_diversity(float *data, long long count, const long lo
   return threshold;
 }
 
-float real_multi_thread_kl_diversity_hist(int *data, float &width, const long long N) {
-  const long long BINS = 128;
+float real_multi_thread_kl_diversity_hist(int *data, float &width, const long long N, const long long BINS) {
+  ASSERT(BINS==128 || BINS == 8);
   const long long KL_NUM = N / BINS;
   long long *hist = new long long[N];
   float *kl = new float[KL_NUM];
@@ -335,7 +335,7 @@ float kl_diversity(float *data, long long count, long long num_bins) {
 #endif
 }
 
-float kl_diversity_hist(int *data, float width, long long num_bins) {
-  return real_multi_thread_kl_diversity_hist(data, width, num_bins);
+float kl_diversity_hist(int *data, float width, long long num_bins, long long dst_bins) {
+  return real_multi_thread_kl_diversity_hist(data, width, num_bins, dst_bins);
 }
 }

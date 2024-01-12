@@ -12,7 +12,7 @@ import re
 import argparse
 import pymlir
 
-from calibration.kld_calibrator import ActivationCalibrator2
+from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 
 
@@ -43,5 +43,5 @@ if __name__ == '__main__':
         if tune_ds is not None:
             tune_ds.dump("./selected_tune_image_list.txt")
     # calibration
-    calibrator = ActivationCalibrator2(args, selector, tune_ds)
+    calibrator = ActivationCalibrator(args, selector, tune_ds)
     calibrator.run()
