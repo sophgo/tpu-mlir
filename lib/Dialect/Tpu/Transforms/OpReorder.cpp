@@ -114,6 +114,50 @@ struct AttentionReorderPattern : public RewritePattern {
   }
 };
 
+static bool isLgSupport(Operation *op) {
+  bool res = false;
+  if (isa<top::WeightOp>(op)) {
+    res = true;
+  }
+  if (auto lg_op = dyn_cast<tpu_mlir::LocalGenInterface>(op)) {
+    res = mlir::succeeded(lg_op.LocalGenSupport());
+  }
+  return res;
+}
+
+// move the last global ops before ReturnOp
+struct GlobalOpReorderPattern : public RewritePattern {
+  GlobalOpReorderPattern(MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
+  LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override {
+    if (!isa<ReturnOp>(op)) {
+      return failure();
+    }
+    auto opds = op->getOperands();
+    for (auto opd : opds) {
+      auto prev_op = opd.getDefiningOp();
+      while (prev_op && !isLgSupport(prev_op)) {
+        auto prev_opds = prev_op->getOperands();
+        int num_act = 0;
+        for (auto prev_opd : prev_opds) {
+          auto pp_op = prev_opd.getDefiningOp();
+          if (pp_op && !isa<FuncOp, top::WeightOp, top::NoneOp>(pp_op)) {
+            num_act++;
+          }
+        }
+        if (!prev_op->hasOneUse() || num_act > 1) {
+          break;
+        }
+        prev_op->moveBefore(op);
+        op = prev_op;
+        prev_op = prev_op->getOperand(0).getDefiningOp();
+      }
+    }
+    return success();
+  }
+};
+
 class OpReorderPass : public OpReorderBase<OpReorderPass> {
 public:
   OpReorderPass() {}
@@ -124,14 +168,18 @@ public:
       for (auto func : s.getOps<FuncOp>()) {
         if (func.getName() == "main") {
           // only for subnet
-          return;
+          continue;
         }
         RewritePatternSet patterns(ctx);
         patterns.add<OpReorderPattern>(ctx);
-        applyPatternsAndFoldGreedily(func, std::move(patterns));
+        // applyPatternsAndFoldGreedily(func, std::move(patterns));
         // special for attention
         patterns.clear();
         patterns.add<AttentionReorderPattern>(ctx);
+        applyPatternsAndFoldGreedily(func, std::move(patterns));
+
+        patterns.clear();
+        patterns.add<GlobalOpReorderPattern>(ctx);
         applyPatternsAndFoldGreedily(func, std::move(patterns));
       }
     }

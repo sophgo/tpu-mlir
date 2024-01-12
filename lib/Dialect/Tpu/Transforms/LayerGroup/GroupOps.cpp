@@ -88,6 +88,16 @@ void GroupOps::buildMlir() {
       UpdateGroupOverlapInfo(groups_[idx++], i);
     }
   }
+  // update Conv use_3ic_optimze info
+  func_.walk([&](tpu::Conv2DOp op) {
+    int use_3ic = op.getUse_3icOptimize();
+    Operation *pre_op = op.getInput().getDefiningOp();
+    if (use_3ic > 0 && pre_op && !isa<tpu::LoadOp>(pre_op)) {
+      // broadcast input using BDC rather than GDMA
+      use_3ic |= 0x10;
+      op.setUse_3icOptimize(use_3ic);
+    }
+  });
 }
 
 void GroupOps::buildGroupOp(const LgInfo &lg_info,

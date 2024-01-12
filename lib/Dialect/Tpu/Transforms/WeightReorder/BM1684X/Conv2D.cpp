@@ -141,11 +141,11 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
   auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
 
-  auto pre_op = op.getInput().getDefiningOp();
-  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
-    // broadcast input using BDC rather than GDMA
-    use_3ic_optimize |= 0x10;
-  }
+//  auto pre_op = op.getInput().getDefiningOp();
+//  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
+//    // broadcast input using BDC rather than GDMA
+//    use_3ic_optimize |= 0x10;
+//  }
   if (use_3ic_optimize && !op.getInput().hasOneUse()) {
     // broadcast input using BDC to a buffer
     use_3ic_optimize |= 0x30;
