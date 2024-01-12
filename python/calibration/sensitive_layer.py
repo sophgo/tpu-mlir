@@ -11,7 +11,7 @@ import logging
 from utils.mlir_parser import *
 from calibration.mix_precision import MixQuantModel
 from calibration.mix_precision import MixPrecSearcher
-from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator2, SimpleTuner
+from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator, SimpleTuner
 from pathlib import Path
 from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger, setup_logger
@@ -39,7 +39,7 @@ class SensitiveLayer:
         layer_th_dicts = {} # method_name: {op_name: [op_fmax, op_th]}
         for i, method_name in enumerate(quantize_method_list):
             tmp_th_dict = {}
-            calibrator = ActivationCalibrator2(self.args, self.selector, self.tune_ds)
+            calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
             if method_name == "MAX":
                 calibrator.debug_cmd = 'use_max'
             elif method_name == "Percentile9999":
