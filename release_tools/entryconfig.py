@@ -60,6 +60,9 @@ def entryset(project_path):
             insert_code_list.append(
                 f'"{function_name}=tpu_mlir.entry:{function_name.replace("-","_")}",'
             )
+            insert_code_list.append(
+                f'"{function_name}.py=tpu_mlir.entry:{function_name.replace("-","_")}",'
+            )
 
         insert_code = "\n".join([marker_indent + line for line in insert_code_list])
         insert_code += "\n"
