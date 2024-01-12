@@ -74,7 +74,7 @@ private:
       CAST_FUNCTION(set_gdma_bw_l2l);
       if (frequency == A2_2::value) // cv186
       {
-        dl_set_gdma_bw_s2s(12.0f);
+        dl_set_gdma_bw_s2s(6.0f);
         dl_set_gdma_bw_s2l(12.0f);
         dl_set_gdma_bw_l2s(12.0f);
         dl_set_gdma_bw_l2l(10.0f);

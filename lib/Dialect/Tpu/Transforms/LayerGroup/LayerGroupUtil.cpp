@@ -42,6 +42,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
     for (auto v : get_output_values(op)) {
       module::getNCDHW(v, n, c, d, h, w, lg_info.type);
       auto stype = module::getStorageType(v);
+      int dtype_bytes = stype.getIntOrFloatBitWidth() / 8;
       if (Arch::ALIGN_4N) {
         auto stype = module::getStorageType(v);
         n_align = 32 / stype.getIntOrFloatBitWidth();
@@ -76,7 +77,12 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
           (!stype.isInteger(4)) && mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0),
                                         lg_info.type))) {
+        // make min_wslice >= 256 to avoid gdma performance drop
         max_wsecs = std::min(max_wsecs, w);
+        // avoid A2 chip ddr interleave
+        if (w * dtype_bytes == 512 && module::isBM1688()) {
+          max_wsecs = 1;
+        }
       } else {
         max_wsecs = 1;
       }
