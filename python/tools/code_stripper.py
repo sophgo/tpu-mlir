@@ -14,6 +14,7 @@ from debugger import disassembler
 def remove_weight(bmodel):
     bmodel.kernel_module.has = False
     bmodel.net[0].parameter[0].coeff_mem.has = False
+    bmodel.net[0].parameter[0].net_profile.has = False
     return
 
 
