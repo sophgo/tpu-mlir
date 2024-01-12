@@ -221,6 +221,8 @@ public:
         op->setOperand(0, new_l_trans_op->getResult(0));
         op->setOperand(1, r_trans_op.getInput());
         rewriter.eraseOp(r_trans_op);
+      } else {
+        return failure();
       }
     } else if (l_is_weight || r_is_weight) {
       // When Left or Right is weight
@@ -961,7 +963,7 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     if (result1_data != origin_data) {
       return failure();
     }
-    // bingoo !
+    // bingo !
     if (out1_shape == in0_shape) {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
       rewriter.eraseOp(op);
@@ -1327,6 +1329,95 @@ struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
 };
 } // namespace bm1684x
 
+//  reshape + permute + reshape + permute -> reshape + permute
+//            3D(0,2,1) 6D        6D case1:(0,2,4,3,5,1)
+//                                   case2:(0,2,4,1,3,5)
+struct PermuteReshapeFuse2 : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+
+    int pattern_case = -1;
+    // return failure();
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    auto reshape_op = dyn_cast<tpu::ReshapeOp>(*op->getResult(0).user_begin());
+    if (!reshape_op) {
+      return failure();
+    }
+
+    auto permute_op =
+        dyn_cast<tpu::PermuteOp>(*reshape_op->getResult(0).user_begin());
+    if (!permute_op) {
+      return failure();
+    }
+
+    if (!reshape_op->hasOneUse()) {
+      return failure();
+    }
+    auto op_shape = module::getShape(op);
+    if (false == (op_shape.size() == 3)) {
+      return failure();
+    }
+
+    auto shape = module::getShape(reshape_op);
+    if (false == (shape.size() == 6 &&
+                  (shape[2] * shape[3] * shape[4] * shape[5] == op_shape[2]))) {
+      return failure();
+    }
+
+    auto order = module::getI64Array(permute_op.getOrder());
+    if (order->size() == 6 && order->at(0) == 0 && order->at(1) == 2 &&
+        order->at(2) == 4 && order->at(3) == 3 && order->at(4) == 5 &&
+        order->at(5) == 1) {
+      pattern_case = 1;
+    }
+    if (order->size() == 6 && order->at(0) == 0 && order->at(1) == 2 &&
+        order->at(2) == 4 && order->at(3) == 1 && order->at(4) == 3 &&
+        order->at(5) == 5) {
+      pattern_case = 2;
+    }
+    if (pattern_case < 0) {
+      return failure();
+    }
+
+    std::vector<int64_t> new_shape = shape;
+    // ReshapeOp
+    new_shape[0] = shape[0];
+    new_shape[1] = shape[2];
+    new_shape[2] = shape[3];
+    new_shape[3] = shape[4];
+    new_shape[4] = shape[5];
+    new_shape[5] = shape[1];
+    auto loc = module::getLocLike(op.getOutput(), "Reshape");
+    rewriter.setInsertionPoint(op);
+    auto rs_op = rewriter.create<tpu::ReshapeOp>(
+        loc, reshape_op.getOutput().getType(), ValueRange{op.getInput()});
+    reshape_op.getOutput().replaceAllUsesWith(rs_op.getOutput());
+
+    module::setShape(rs_op, new_shape);
+    rewriter.eraseOp(reshape_op);
+    rewriter.eraseOp(op);
+    std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> new_order;
+    if (pattern_case == 1) {
+      new_order = {0, 1, 3, 2, 4, 5};
+    }
+    if (pattern_case == 2) {
+      new_order = {0, 1, 3, 5, 2, 4};
+    }
+    permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+    return success();
+  }
+};
+
+
 /**
  * A ---------------------------------\
  *                                     => MatMulHidmBatch => ...
@@ -1386,7 +1477,8 @@ public:
       tile_op.replaceAllUsesWith(tile_input);
       r_reshape2_op.replaceAllUsesWith(r_reshape2_input);
 
-      // op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+      // op->setAttr("hdim_is_batch",
+      // rewriter.getBoolAttr(!hdim_is_batch));
       return success();
     }
     return failure();
@@ -1803,17 +1895,27 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
-  patterns
-      ->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
-            MatMulLeftReusePattern, GroupConv2NormalConv, MovePermuteAfterAdd,
-            MoveReshapeAfterAdd, TpuReshapeReorderPattern,
-            PermuteAddWeightReorderPattern, MaskedFillPermuteMove, PermuteFuse,
-            PermuteFuseAddSoftmax, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
-            PermuteReshapeFuse, GatherElementsPattern, ScatterElementsPattern,
-            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern,
-            RotaryPosEmbPattern, ReshapeSliceSqueezePattern>(ctx, 8);
+  patterns->add<
+                MatMulHdimBatchPattern,
+                MatMulRemoveReshapePattern,
+                MatMulLeftReusePattern,
+                GroupConv2NormalConv,
+                MovePermuteAfterAdd,
+                MoveReshapeAfterAdd,
+                TpuReshapeReorderPattern,
+                PermuteAddWeightReorderPattern,
+                MaskedFillPermuteMove,
+                PermuteFuse,
+                PermuteFuseAddSoftmax,
+                patterns::FuseRepeatPattern<tpu::ReshapeOp>,
+                PermuteReshapeFuse,
+                PermuteReshapeFuse2,
+                GatherElementsPattern,
+                ScatterElementsPattern,
+                PermuteReorderPattern,
+                PermutePadSwap,
+                MatMulActiveMatMulPattern>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
 }
 } // namespace tpu
 
