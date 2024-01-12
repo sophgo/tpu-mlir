@@ -231,6 +231,11 @@ public:
     }
     std::vector<int64_t> shape = module::getShape(trans_op.getInput());
     auto order = module::getI64Array(trans_op.getOrder());
+    int order_size = order->size();
+    if (false == (order->at(order_size - 2) == order_size - 1 &&
+                  order->at(order_size - 1) == order_size - 2)) {
+      return failure();
+    }
     std::vector<int64_t> shape_fix;
     std::vector<int64_t> order_fix;
     auto ret = permute_reset(shape, *order, shape_fix, order_fix, to_dim);
@@ -1070,12 +1075,18 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns
-      ->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
-            ConvertMatMul2Attention, ReshapeReorderPattern,
-            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
-            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
-          patterns->getContext(), 8);
+  patterns->add<
+            ConvertGLMTilePermute,
+            ConvertMatMulWithRightTranspose,
+            ConvertMatMul2Attention,
+            ReshapeReorderPattern,
+            ConvertMultiInputAdd,
+            WhereBroadcastToTile,
+            ConvertConv2DToImg2Col,
+            SplitMatMulPattern,
+            ConvertScaleOp,
+            ConcatToSwapDimInner>(
+  patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
