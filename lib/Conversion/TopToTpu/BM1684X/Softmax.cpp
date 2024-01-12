@@ -183,14 +183,18 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
 
 void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SoftmaxOp op) const {
-  //LoweringF32(rewriter, op);
-  lowering_common_bf16<tpu::SoftmaxOp>(rewriter, op, 6);
+  if (module::isBM1688())
+    LoweringF32(rewriter, op);
+  else
+    lowering_common_bf16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
-  //LoweringF32(rewriter, op);
-  lowering_common_f16<tpu::SoftmaxOp>(rewriter, op, 6);
+  if (module::isBM1688())
+    LoweringF32(rewriter, op);
+  else
+    lowering_common_f16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF8(PatternRewriter &rewriter,
