@@ -69,6 +69,13 @@ class FBSArray:
 
     def serialize(self, builder, save_binary_fun):
         if self:
+            if issubclass(self.field_cls, Binary):
+                # Structs should be stored inline in their parent.
+                getattr(self.fbs, f"Start{self.field_name}Vector")(
+                    builder, len(self.items)
+                )
+                [t.serialize(builder, save_binary_fun) for t in self.items]
+                return builder.EndVector()
             array = [t.serialize(builder, save_binary_fun) for t in self.items]
             getattr(self.fbs, f"Start{self.field_name}Vector")(builder, len(self.items))
             for t in reversed(array):
