@@ -92,4 +92,99 @@ bool tpu_mlir::ConvertTopToTpu::swin_t_mix_precision() {
   }
   return false;
 }
+
+void ConvertTopToTpu::match_deit_mha(std::vector<Operation *> &mha) {
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::AddOp>(op)) {
+      auto aop = dyn_cast_or_null<top::AddOp>(op);
+      if (std::distance(aop.getOutput().getUsers().begin(),
+                        aop.getOutput().getUsers().end()) != 2)
+        return;
+      top::LayerNormOp lnop = NULL;
+      top::AddOp addop = NULL;
+      for (auto u : aop.getOutput().getUsers()) {
+        if (isa<top::LayerNormOp>(u)) {
+          lnop = dyn_cast_or_null<top::LayerNormOp>(u);
+        } else if (isa<top::AddOp>(u)) {
+          addop = dyn_cast_or_null<top::AddOp>(u);
+        } else
+          return;
+      }
+      if (lnop == NULL || addop == NULL)
+        return;
+      if (!convergence(lnop.getOperation(), addop.getOperation()))
+        return;
+      if (isa<top::AttentionOp>(*(lnop.getResult().user_begin()))) {
+        auto atnop =
+            dyn_cast<top::AttentionOp>(*(lnop.getResult().user_begin()));
+        if (*(atnop.getResult().user_begin()) == addop) {
+          mha.push_back(op);
+          return;
+        }
+      }
+    }
+  });
+}
+
+bool ConvertTopToTpu::deit_mix_precision() {
+  std::vector<Operation *> mlp;
+  std::vector<Operation *> mha;
+
+  match_vit_mlp(mlp); // ending add in mlp
+  match_deit_mha(
+      mha); // beginging add in mha, infact mostly same with those in mlp
+
+  if (mlp.size() > 0 && mha.size() > 0 && (mlp.size() == mha.size())) {
+    for (auto op : mha) {
+      auto addop = dyn_cast_or_null<top::AddOp>(op);
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      for (auto u : addop.getResult().getUsers()) {
+        if (auto aop = dyn_cast<top::AddOp>(u)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(aop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(aop.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
+    }
+    for (auto op : mlp) {
+      auto addop = dyn_cast_or_null<top::AddOp>(op);
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      for (auto in : addop.getOperands()) {
+        if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+          auto geop =
+              dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
+          if (geop == NULL)
+            return false;
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(mmop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(mmop.getOperation()).str(),
+                  module::Mode::F16});
+          }
+        }
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 } // namespace tpu_mlir

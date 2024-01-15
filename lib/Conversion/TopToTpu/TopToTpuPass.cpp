@@ -1507,7 +1507,7 @@ bool ConvertTopToTpu::bert_mix_precision() {
       return false;
   }
 
-bool convergence(Operation* from, Operation *to) {
+bool ConvertTopToTpu::convergence(Operation* from, Operation *to) {
   bool res = true;
   auto re = from->getResult(0);
   for (auto r :re.getUsers()) {
@@ -1904,6 +1904,7 @@ void ConvertTopToTpu::qtable_process() {
     bert_mix_precision();
     swin_t_mix_precision();
     vit_mix_precision();
+    deit_mix_precision();
     set_add_before_softmax_fp32();
   }
 
