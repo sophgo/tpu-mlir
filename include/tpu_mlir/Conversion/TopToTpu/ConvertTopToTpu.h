@@ -34,6 +34,11 @@ protected:
   void match_vit_mlp(std::vector<Operation *> &mlp);
   void match_vit_mha(std::vector<Operation *> &mha);
   void match_vit_mha1(std::vector<Operation *> &mha);
+  void match_deit_mha(std::vector<Operation *> &mha);
+  bool deit_mix_precision();
+  void match_swint_mlp(std::vector<Operation *> &mlp);
+  void match_swint_wmsa(std::vector<Operation *> &wmsa);
+  bool convergence(Operation* from, Operation *to);
   bool vit_mix_precision();
   void set_add_before_softmax_fp32();
   bool swin_t_mix_precision();
