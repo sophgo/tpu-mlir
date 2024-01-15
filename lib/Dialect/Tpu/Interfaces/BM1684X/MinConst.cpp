@@ -38,6 +38,8 @@ int64_t tpu::MinConstOp::getBufferSize_bm1684x(
   return 0;
 }
 
+
+
 void tpu::MinConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                             int64_t h_step, int64_t d_step,
                                             int64_t w_step,
@@ -61,8 +63,41 @@ void tpu::MinConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                           output_spec->data());
 }
 
-int64_t tpu::MinConstOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::MinConstOp::dyn_codegen_local_bm1684x(void *buffer) {
+  // return 0;
+  if (!buffer)
+    return sizeof(constbinary_local_param_t);
+  constbinary_local_param_t param;
+  memset(&param, 0, sizeof(param));
+  auto input_type = module::getStorageType(getInput());
+  param.spec.common.binary_type = BINARY_MIN;
+  param.spec.common.if_relu = getDoRelu();
+  param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.spec.common.inversed = 0;
+  param.spec.common.scale_A = 1;
+  param.spec.common.rshift_A = 0;
+  param.spec.common.B_const_val = getConstVal().convertToDouble();
+  param.spec.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
-int64_t tpu::MinConstOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+  }
+
+int64_t tpu::MinConstOp::dyn_codegen_global_bm1684x(void *buffer) {
+  // return 0;
+  if (!buffer)
+    return sizeof(constbinary_common_spec_t);
+  constbinary_common_spec_t param = {0};
+  auto input_type = module::getStorageType(getInput());
+  param.binary_type = BINARY_MIN;
+  param.if_relu = getDoRelu();
+  param.relu_upper_limit = getReluLimit().convertToDouble();
+  param.inversed = 0;
+  param.scale_A = 1;
+  param.rshift_A = 0;
+  param.B_const_val = getConstVal().convertToDouble();
+  param.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 int64_t tpu::MinConstOp::get_fw_type_bm1684x() { return FW_BMNET_CONST_BINARY; }
