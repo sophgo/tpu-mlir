@@ -260,7 +260,6 @@ class TorchConverter(BaseConverter):
     def check_op_types(self):
         op_types = self.get_all_op_types()
         known_ops = list(self.op_factory.keys())
-
         unknown_ops = []
         for op_type in op_types:
             print(op_type)
@@ -530,8 +529,8 @@ class TorchConverter(BaseConverter):
 
     def convert_max_op(self, torch_node: TorchNode):
         op = self.getOperand(torch_node.inputs[0])
-        dim = self.const_val[torch_node.inputs[1]]
-        keepdims = self.const_val[torch_node.inputs[2]]
+        dim = 0  if (len(torch_node.inputs)<=1) else self.const_val[torch_node.inputs[1]]
+        keepdims = False if  (len(torch_node.inputs)<=2) else self.const_val[torch_node.inputs[2]]
         select_last_index = True
         out_needs = [False, False]
         for idx, out in enumerate(torch_node.outputs):
@@ -591,7 +590,7 @@ class TorchConverter(BaseConverter):
                            loc=self.get_loc(torch_node.outputs),
                            ip=self.mlir.insert_point)
         out_ops = [new_op.values, new_op.indices]
-        print(out_needs)
+        # print(out_needs)
         for idx, need in enumerate(out_needs):
             if not need:
                 continue

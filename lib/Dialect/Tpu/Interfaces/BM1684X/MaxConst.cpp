@@ -35,7 +35,12 @@ int64_t tpu::MaxConstOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  return 0;
+  int64_t buffer_size = 0;
+  auto dtype_A = BM168x::getDataType(getInput());
+  if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
+    buffer_size = in_lmem_bytes * 2;
+  }
+  return buffer_size;
 }
 
 void tpu::MaxConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
@@ -61,8 +66,41 @@ void tpu::MaxConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                           output_spec->data());
 }
 
-int64_t tpu::MaxConstOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::MaxConstOp::dyn_codegen_local_bm1684x(void *buffer) {
+  // return 0;
+  if (!buffer)
+    return sizeof(constbinary_local_param_t);
+  constbinary_local_param_t param;
+  memset(&param, 0, sizeof(param));
+  auto input_type = module::getStorageType(getInput());
+  param.spec.common.binary_type = BINARY_MAX;
+  param.spec.common.if_relu = getDoRelu();
+  param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.spec.common.inversed = 0;
+  param.spec.common.scale_A = 1;
+  param.spec.common.rshift_A = 0;
+  param.spec.common.B_const_val = getConstVal().convertToDouble();
+  param.spec.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
-int64_t tpu::MaxConstOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+  }
+
+int64_t tpu::MaxConstOp::dyn_codegen_global_bm1684x(void *buffer) {
+  // return 0;
+  if (!buffer)
+    return sizeof(constbinary_common_spec_t);
+  constbinary_common_spec_t param = {0};
+  auto input_type = module::getStorageType(getInput());
+  param.binary_type = BINARY_MAX;
+  param.if_relu = 0;
+  param.relu_upper_limit = 0;
+  param.B_const_val = getConstVal().convertToDouble();
+  param.inversed = 0;
+  param.scale_A = 1;
+  param.rshift_A = 0;
+  param.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 int64_t tpu::MaxConstOp::get_fw_type_bm1684x() { return FW_BMNET_CONST_BINARY; }

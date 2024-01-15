@@ -30,7 +30,8 @@ int64_t tpu::RoiAlignOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.pooled_width = getOutputWidth();
   spec.sampling_ratio = getSamplingRatio();
   spec.spatial_scale = getSpatialScale().convertToDouble();
-  spec.align_corners = false;
+  // spec.align_corners = false;
+  spec.align_corners = getAlignCorners();
   spec.position_sensitive = false;
   spec.plat_sp = 0;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
