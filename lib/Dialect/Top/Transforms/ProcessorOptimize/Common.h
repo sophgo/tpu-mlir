@@ -27,13 +27,6 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-class ConvertScaleToMAOp : public OpRewritePattern<top::ScaleOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ScaleOp op,
-                                PatternRewriter &rewriter) const override;
-};
-
 class ConcatToSwapDimInner : public OpRewritePattern<top::ConcatOp> {
 public:
   using OpRewritePattern::OpRewritePattern;

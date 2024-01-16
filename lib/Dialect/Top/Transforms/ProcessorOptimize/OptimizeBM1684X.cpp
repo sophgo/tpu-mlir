@@ -1076,14 +1076,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
           patterns->getContext(), 8);
-  // Remove this when fp8 is OK;
-  // if (module::getChip() == module::Chip::SG2260) {
-  //   patterns->add<ConvertScaleToMAOp>(patterns->getContext(),
-  //   /*PatternBenefit*/ 8);
-  // } else {
-  //   patterns->add<ConvertScaleOp>(patterns->getContext(), /*PatternBenefit*/
-  //   8);
-  // }
 }
 } // namespace top
 } // namespace tpu_mlir
