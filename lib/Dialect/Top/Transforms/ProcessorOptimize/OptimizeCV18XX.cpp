@@ -1330,7 +1330,8 @@ public:
         reciprocal_name_ops[name] = reciprocal_op.getOperation();
         operands.emplace_back(reciprocal_op.getOutput());
       } else {
-        auto reciprocal_op = dyn_cast_or_null<top::ReciprocalOp>(reciprocal_name_ops[name]);
+        auto reciprocal_op =
+            dyn_cast_or_null<top::ReciprocalOp>(reciprocal_name_ops[name]);
         assert(reciprocal_op);
         operands.emplace_back(reciprocal_op.getOutput());
       }
@@ -1731,6 +1732,35 @@ public:
     return succ ? success() : failure();
   }
 };
+
+template <typename OpT>
+struct ConvertPoolOp : public OpRewritePattern<OpT> {
+public:
+  using OpRewritePattern<OpT>::OpRewritePattern;
+  LogicalResult matchAndRewrite(OpT op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.getDoRelu()) {
+      return failure();
+    }
+    rewriter.setInsertionPointAfter(op);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.)));
+    auto newOp = rewriter.create<top::ReluOp>(op->getLoc(), op.getType(),
+                                                op->getResults(), attrs);
+    auto op_name = module::getName(op.getResult()).str();
+    std::string lower = op_name;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    size_t pos = lower.find("relu");
+    if (pos != std::string::npos) {
+      op_name.erase(pos, op_name.length() - pos);
+    }
+    op->setAttr("do_relu", rewriter.getBoolAttr(false));
+    op->setLoc(NameLoc::get(rewriter.getStringAttr(op_name + "_pool")));
+    rewriter.replaceAllUsesExcept(op->getResult(0), newOp.getOutput(), newOp);
+
+    return success();
+  }
+};
 } // namespace cv18xx
 
 namespace top {
@@ -1744,6 +1774,7 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
       ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
       ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
       convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
+      ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
       patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
       patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
       ConvertClipOp>(patterns->getContext(), 8);
