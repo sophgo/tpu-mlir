@@ -71,6 +71,7 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   auto eu_num = BM168x::eu_num(in_type_len);
   auto stype = module::getStorageType(getInput().getType());
   int32_t padding_flag = 0;
+
   //aligned with backend
   if ((stype.isF16() || stype.isBF16())
       && !getLog()
@@ -79,7 +80,9 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
-  #define SIZE (padding_flag == 1 ? sizeof(int16_t): sizeof(float))
+  /* trick for A2: because of A2's memory volume or other reason,
+    buffer_size effect layergroup performance seriously */
+  #define SIZE (padding_flag == 1 && !module::isBM1688() ? sizeof(int16_t): sizeof(float))
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
@@ -100,6 +103,7 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
     buffer_size += c_per_npu *
         align_up(in_hslice * in_wslice, eu_num) * SIZE;
   }
+
   return buffer_size;
 }
 
