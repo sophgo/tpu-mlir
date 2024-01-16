@@ -277,7 +277,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
         for (int n_ = 0;n_<n;n_++) {
 #pragma omp parallel for schedule(static, omp_schedule(out_c_num))
           for (int j=0;j<out_c_num;j++) {
-            p.outputs[0][n_*num_elem/n+i*out_c_num+j] = F8E4M3(p.outputs[0][n_*num_elem/n+i*out_c_num+j], 1.0/quant_scale_v.get()->at(i), false);
+            p.outputs[0][n_*num_elem/n+i*out_c_num+j] = F8E4M3(p.outputs[0][n_*num_elem/n+i*out_c_num+j], 1.0/quant_scale_v.get()->at(i), true);
           }
         }
       }
