@@ -203,6 +203,11 @@ static void pooling_forward_slice(uint32_t layer_id, const pooling_t *all,
     pad_bot = s->pad_bot + s->extra_pad_b;
   }
 
+  if ((out_h > 1 &&  s->stride_h > 15) || (out_w > 1 && s->stride_w > 15)) {
+    // not support stride > 15
+    llvm_unreachable("Not support now.");
+  }
+
   if (is_max_pooling) {
     cvk_tiu_max_pooling_param_t param = {0};
     param.ofmap = ofmap;

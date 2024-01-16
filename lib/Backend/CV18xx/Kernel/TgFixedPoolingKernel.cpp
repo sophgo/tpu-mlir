@@ -271,6 +271,10 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
                  output.shape.h, output.shape.w, tile.pad[0], tile.pad[1],
                  tile.pad[2], tile.pad[3], kh, kw, stride_h, stride_w));
 
+  if ((tile.oh > 1 && stride_h > 15) || (tile.ow > 1 && stride_w > 15)) {
+    // not support stride > 15
+    llvm_unreachable("Not support now.");
+  }
   // max pooling
   if (!is_avg_pooling) {
     cvk_tiu_max_pooling_param_t param = {0};
