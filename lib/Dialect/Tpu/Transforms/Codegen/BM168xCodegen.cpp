@@ -83,6 +83,16 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   current_step = 0;
   current_device = 0;
   updateAllHidden();
+
+  auto core_num = module::getCoreNum();
+  if (core_num > 1) {
+    if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
+      multi_core->setupMultiCoreContext(0, core_num, 0);
+      multi_core->setCoreNum(module::getCoreNum());
+    } else {
+      llvm_unreachable("This chip lacks multi-core capabilities.");
+    }
+  }
 }
 
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
@@ -657,12 +667,6 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   int core_id = 0;
   auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
   useMuliCore &= (secs > 1) && multi_core;
-  if (useMuliCore && (multi_core->getCoreNum() != core_num)) {
-    assert(multi_core->getCoreNum() == 1 &&
-           "The core_num should be set only once, and can not be changed.");
-    multi_core->setupMultiCoreContext(0, core_num, 0);
-    multi_core->setCoreNum(module::getCoreNum());
-  }
   // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
@@ -787,77 +791,124 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
-void BMCodegen::codegen(Operation *op) {
-  if (module::isOpInGroup(op) || module::isOpInCoreParallel(op))
-    return;
-  if (auto castOp = dyn_cast<GroupOp>(op)) {
-    Operation *prev_op = op->getPrevNode();
-    while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
-      prev_op = prev_op->getPrevNode();
-    }
-    Operation *next_op = op->getNextNode();
-    while (next_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(next_op)) {
-      next_op = next_op->getNextNode();
-    }
-    codegen_for_group(castOp, prev_op, next_op);
-    return;
+void codegenCoreParallelOp(
+    CoreParallelOp parallelOp, BM168x *bm168x,
+    const std::function<void(GlobalGenInterfaceDecorator)>
+        &codegenGlobalLayer) {
+  auto multi_core = cast<MultiCoreInterface>(bm168x);
+  // For the sync-all method, we can use two message IDs to represent all
+  // the dependencies in a single run. We can try the following sequence:
+  // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
+  // it confirms that all the send0 operations have finished. Similarly,
+  // if any of the wait1 operations succeed, it confirms that all the
+  // send1 operations have finished, which also implies that all the wait0
+  // operations have been completed. After this, it is safe to reuse
+  // message0.
+  int id = parallelOp.getOffset();
+  for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
+    multi_core->useCore(id++);
+    multi_core->syncAll(); // begin compute sync-all
+    codegenGlobalLayer(globalOp);
+    multi_core->syncAll(); // end compute sync-all
   }
-  if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
-    if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
-      // For the sync-all method, we can use two message IDs to represent all
-      // the dependencies in a single run. We can try the following sequence:
-      // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
-      // it confirms that all the send0 operations have finished. Similarly,
-      // if any of the wait1 operations succeed, it confirms that all the
-      // send1 operations have finished, which also implies that all the wait0
-      // operations have been completed. After this, it is safe to reuse
-      // message0.
-      auto core_num = module::getCoreNum();
-      if (multi_core->getCoreNum() != core_num) {
-        assert(multi_core->getCoreNum() == 1 &&
-               "The core_num should be set only once, and can not be changed.");
-        multi_core->setupMultiCoreContext(0, core_num, 0);
-        multi_core->setCoreNum(module::getCoreNum());
+  for (int n = parallelOp.getSize() + parallelOp.getOffset(); id < n;
+       id++) { // consume all the MSG send/wait.
+    multi_core->useCore(id);
+    // core_0: 0 -> code    -> 1 -> 0 -> nothing -> 1
+    //         ^               ^    ^               ^
+    //         |               |    |               |
+    // core_1: 0 -> nothing -> 1 -> 0 -> code    -> 1
+    multi_core->syncAll();
+    // do nothing. just generate sync message.
+    multi_core->syncAll();
+  }
+  multi_core->useCore(0); // reset the command buffer to 0
+}
+
+void codegenGroupParallelOp(
+    tpu::GroupParallelOp groupParallelOp, BM168x *bm168x,
+    const std::function<void(GlobalGenInterfaceDecorator)>
+        &codegenGlobalLayer) {
+  // The begin of the parallel, and keep all the core in sync.
+  auto core_num = module::getCoreNum();
+  auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+  for (int i = 0; i < core_num; i++) {
+    multi_core->useCore(i);
+    multi_core->syncAll();
+    multi_core->syncAll();
+  }
+  // Region codegen 0 ~ N
+  int regionNum = groupParallelOp.getNumRegions();
+  int coresInOneRegion = core_num / regionNum;
+  int remaining = core_num % regionNum;
+  int start = 0;
+  for (auto [index, region] : llvm::enumerate(groupParallelOp.getParallel())) {
+    int jobs = coresInOneRegion + (index < remaining);
+    for (auto &op : region.getOps()) {
+      if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
+        codegenCoreParallelOp(parallelOp, bm168x, codegenGlobalLayer);
+      } else if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+        multi_core->useCore(start);
+        codegenGlobalLayer(globalOp);
       }
-      int id = 0;
-      for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
-        multi_core->useCore(id++);
-        multi_core->syncAll(); // begin compute sync-all
-        auto pid_node = (CMD_ID_NODE *)(*bm168x)->cmdid_node;
-        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
-                                                 gen_op_id(op).c_str());
-        globalOp.codegen_global_bm168x();
-        multi_core->syncAll(); // end compute sync-all
-      }
-      for (; id < core_num; id++) { // consume all the MSG send/wait.
-        multi_core->useCore(id);
-        // core_0: 0 -> code    -> 1 -> 0 -> nothing -> 1
-        //         ^               ^    ^               ^
-        //         |               |    |               |
-        // core_1: 0 -> nothing -> 1 -> 0 -> code    -> 1
-        multi_core->syncAll();
-        // do nothing. just generate sync message.
-        multi_core->syncAll();
-      }
-      multi_core->useCore(0); // reset the command buffer to 0
-    } else {
-      llvm_unreachable("The backend is missing configuration.");
     }
-    return;
+    start += jobs;
   }
-  if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
-    auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->cmdid_node;
-    BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
-    LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
-    profile_ctx.log_global_layer(op);
-    castOp.codegen_global_bm168x();
+  for (int i = 0; i < core_num; i++) {
+    multi_core->useCore(i);
+    multi_core->syncAll();
+    multi_core->syncAll();
   }
+  multi_core->useCore(0); // reset the command buffer to 0
+}
+
+void BMCodegen::codegen(FuncOp funcOp) {
+
+  auto codegenGlobalLayer = [&](GlobalGenInterfaceDecorator globalOp) {
+    auto pid_node = (CMD_ID_NODE *)(*bm168x)->cmdid_node;
+    BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                             gen_op_id(globalOp).c_str());
+    LLVM_DEBUG(llvm::dbgs()
+               << "codegen op: '" << module::getName(globalOp) << "'\n");
+    profile_ctx.log_global_layer(globalOp);
+    globalOp.codegen_global_bm168x();
+  };
+
+  funcOp.walk<WalkOrder::PreOrder>([&](Operation *op) {
+    if (auto castOp = dyn_cast<GroupOp>(op)) {
+      Operation *prev_op = op->getPrevNode();
+      while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
+        prev_op = prev_op->getPrevNode();
+      }
+      Operation *next_op = op->getNextNode();
+      while (next_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(next_op)) {
+        next_op = next_op->getNextNode();
+      }
+      codegen_for_group(castOp, prev_op, next_op);
+      return WalkResult::skip();
+    }
+
+    if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
+      codegenGroupParallelOp(groupParallelOp, bm168x, codegenGlobalLayer);
+      return WalkResult::skip();
+    }
+
+    if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
+      codegenCoreParallelOp(parallelOp, bm168x, codegenGlobalLayer);
+      return WalkResult::skip();
+    }
+
+    if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+      codegenGlobalLayer(globalOp);
+    }
+    return WalkResult::advance();
+  });
 }
 
 Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(s, call.getCallee());
-  func.walk([&](Operation *op) { codegen(op); });
+  codegen(func);
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
@@ -1392,7 +1443,6 @@ void BMCodegen::updateAllHidden() {
       special_in_names.push_back(name);
     }
   }
-
 }
 
 } // namespace tpu

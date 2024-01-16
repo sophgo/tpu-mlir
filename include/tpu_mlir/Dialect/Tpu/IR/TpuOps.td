@@ -1444,6 +1444,19 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let regions = (region SizedRegion<1>:$body);
 }
 
+def Tpu_GroupParallelOp : Tpu_BaseOp<"GroupParallel"> {
+  let summary = "Mutiple regions run in parallel.";
+  let description = [{
+    This operation is composed of numerous regions, with each region corresponding
+    to a subgraph. These subgraphs share identical computational patterns and are
+    distributed across various cores of a multi-core TPU for processing.
+  }];
+  let arguments = (ins Variadic<AnyRankedTensor>:$inputs);
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+
+  let regions = (region VariadicRegion<SizedRegion<1>>:$parallel);
+}
+
 def Tpu_CoreBeginOp:Tpu_BaseOp<"CoreBegin"> {
   let summary = "Begin op parallel to multi cores";
   let description = [{
@@ -1476,7 +1489,9 @@ def Tpu_CoreParallelOp:Tpu_BaseOp<"CoreParallel"> {
     The ops in one parallel should run in parallel.
   }];
   let arguments = (ins
-    Variadic<AnyTensorOrNone>:$inputs
+    Variadic<AnyTensorOrNone>:$inputs,
+    I64Attr:$offset,
+    I64Attr:$size
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
@@ -1536,7 +1551,8 @@ def Tpu_DevEndOp:Tpu_BaseOp<"DevEnd"> {
    Variadic<AnyRankedTensor>:$outputs);
 }
 
-def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, CoreParallelOp, IfOp, LoopOp">]> {
+def Tpu_YieldOp : Tpu_BaseOp<"Yield",
+  [Terminator, HasParent<"GroupOp, CoreParallelOp, IfOp, LoopOp, GroupParallelOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
   }];

@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "CoreParallel/CoreParallel.hpp"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "CoreParallel/CoreParallel.hpp"
 
 using namespace llvm;
 
@@ -118,7 +118,11 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
   return outputType;
 };
 
-bool forAll(IndexingMapsInterface op, int num_core = 1) {
+// forAll will split the computation to multiple cores which in the range of
+// [offset, offset+num_core)
+bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
+  if (num_core < 2)
+    return false;
   auto indexMap = op.getIndexingMaps();
   if (!indexMap || indexMap.empty())
     return false;
@@ -171,7 +175,7 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
   auto rewriter = IRRewriter(op.getContext());
   rewriter.setInsertionPoint(op);
   auto parallelOp = rewriter.create<tpu::CoreParallelOp>(
-      op.getLoc(), op->getResultTypes(), op->getOperands());
+      op.getLoc(), op->getResultTypes(), op->getOperands(), offset, num_core);
   auto body = new Block();
   parallelOp.getBody().push_back(body);
   rewriter.setInsertionPointToStart(body);
@@ -254,6 +258,70 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
   return true;
 };
 
+bool packOperation(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
+
+  auto rewriter = IRRewriter(op.getContext());
+  rewriter.setInsertionPoint(op);
+  auto parallelOp = rewriter.create<tpu::CoreParallelOp>(
+      op.getLoc(), op->getResultTypes(), op->getOperands(), offset, num_core);
+  auto body = new Block();
+  parallelOp.getBody().push_back(body);
+  rewriter.setInsertionPointToStart(body);
+  rewriter.replaceAllUsesWith(op->getResults(), parallelOp.getResults());
+
+  auto yieldOp = rewriter.create<tpu::YieldOp>(op->getLoc(), op->getResults());
+  op->moveBefore(yieldOp);
+  return true;
+};
+
+void groupParallelDistribute(tpu::GroupParallelOp op, int num_core) {
+  int regionNum = op.getNumRegions();
+
+  assert(
+      regionNum <= num_core &&
+      "The count of parallel subgraphs must not exceed the number of cores.");
+
+  // all the job can be distributed to different core.
+  if (regionNum == num_core)
+    return;
+  int coresInOneRegion = num_core / regionNum;
+  int remaining = num_core % regionNum;
+  int start = 0;
+
+  SmallVector<std::array<int, 2>> coresInRegion;
+  for (auto [index, region] : llvm::enumerate(op.getParallel())) {
+    int jobs = coresInOneRegion + (index < remaining);
+    for (auto coreParallelOp : region.getOps<IndexingMapsInterface>()) {
+      forAll(coreParallelOp, start, jobs);
+    }
+    coresInRegion.push_back({start, jobs});
+    start += jobs;
+  }
+
+  SmallVector<std::array<Region::OpIterator, 2>> oPit;
+  for (auto [index, region] : llvm::enumerate(op.getParallel())) {
+    oPit.push_back({region.getOps().begin(), region.getOps().end()});
+  }
+
+  // Ensure that coreParallelOps are uniformly symmetrical across all regions to
+  // simplify the code generation process.
+  while (oPit[0][0] != oPit[0][1]) {
+    if (any_of(oPit,
+               [](auto &it) { return isa<tpu::CoreParallelOp>(*it[0]); })) {
+      for (auto [index, coreRange] : llvm::enumerate(coresInRegion)) {
+        auto &it = oPit[index];
+        if (!isa<tpu::CoreParallelOp>(*it[0])) {
+          packOperation(cast<IndexingMapsInterface>(*it[0]), coreRange[0],
+                        coreRange[1]);
+        }
+        if (index > 0)
+          it[0]++;
+      }
+    }
+    oPit[0][0]++;
+  }
+}
+
 class CoreParallelPass : public CoreParallelBase<CoreParallelPass> {
 public:
   CoreParallelPass() = default;
@@ -269,10 +337,17 @@ public:
       // do specific
       doSpecificPattern(m);
       // normal situations to multi cores
-      m->walk([&](IndexingMapsInterface op) {
-        if (module::isOpInGroup(op) || module::isOpInCoreParallel(op))
-          return;
-        forAll(op, num_core);
+      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
+        if (isa<tpu::GroupOp>(op))
+          return WalkResult::skip();
+        if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
+          groupParallelDistribute(groupParallelOp, num_core);
+          return WalkResult::skip();
+        }
+        if (auto coreParallelOp = dyn_cast<IndexingMapsInterface>(op)) {
+          forAll(coreParallelOp, 0, num_core);
+        }
+        return WalkResult::advance();
       });
     }
   }
