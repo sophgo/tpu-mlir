@@ -30,7 +30,7 @@ class Dma(object):
         """
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Stall Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
                         'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
@@ -47,6 +47,8 @@ class Dma(object):
         self.width = len(self.columns)
         self.dma_cycle = 0
         self.working_cycle = 0
+        self.stall_cycle = 0
+        self.stall_cycle_ratio = 0
         self.ddr_total_datasize = 0
         self.ddr_total_cycle = 0
         self.l2_total_datasize = 0
@@ -137,6 +139,7 @@ class Dma(object):
                 # dma_sys do not transfer data
                 reg_dict['Direction'] = '-'
             self.dma_cycle += int(reg_dict['Asic Cycle'])
+            self.stall_cycle += int(reg_dict['Stall Cycle'])
             if 'DDR' in reg_dict['Direction'] and isinstance(reg_dict['DMA data size(B)'], int):
                 self.ddr_total_datasize += reg_dict['DMA data size(B)']
                 self.ddr_total_cycle += reg_dict['Asic Cycle']
@@ -162,7 +165,6 @@ class Dma(object):
         self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize,
                                                     get_time_by_cycle(self.ddr_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
                                                     if self.chip_arch_dict else 0
-        
         self.l2_avg_bandwidth = get_ratio_float_2f(self.l2_total_datasize,
                                                     get_time_by_cycle(self.l2_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
                                                     if self.chip_arch_dict else 0
@@ -170,6 +172,8 @@ class Dma(object):
         self.perf_dict = {
             'totalDmaCycle': [self.dma_cycle],
             'workingCycle': [self.working_cycle],
+            'totalStallCycle': [self.stall_cycle],
+            'stallCycleRatio': [get_ratio_str_2f_zero(self.stall_cycle, self.dma_cycle)],
             'totalDdrDataSize(B)': [self.ddr_total_datasize],
             'totalL2DataSize(B)': [self.l2_total_datasize],
             'ddrAvgBandwidth(GB/s)': [self.ddr_avg_bandwidth],
@@ -232,7 +236,7 @@ class Dma(object):
             ws.cell(h, w).fill = DetailsStyle.title_pattern
             ws.cell(h, w).font = DetailsStyle.title_font
         summary_start_cols = 3
-        summary_end_cols = summary_start_cols + 8
+        summary_end_cols = summary_start_cols + 10
         for w in range(summary_start_cols, summary_end_cols):
             # summary title style
             ws.cell(1, w).fill = DetailsStyle.title_header_pattern
@@ -245,7 +249,7 @@ class Dma(object):
             cell.fill = DetailsStyle.content_pattern
             cell.font = DetailsStyle.title_header_font
         # set content style
-        content_end_cols = 17
+        content_end_cols = 18
         for w in range(1, content_end_cols + 1):
             for h in range(7, len(df) + 2):
                 # set key content border style
@@ -253,12 +257,13 @@ class Dma(object):
                 ws.cell(h, w).border = DetailsStyle.border
                 ws.cell(h, w).alignment = DetailsStyle.right_align
                 ws.cell(h, w).font = DetailsStyle.title_font
-        bandwidth_pos = 12
-        tsk_typ_pos = 40
+        stall_cycle_pos = 12
+        bandwidth_pos = 13
+        tsk_typ_pos = 41
         dma_cycle_pos = 11
-        avg_burst_length_pos = 14
-        direction_pos = 13
-        data_type_pos = 15
+        avg_burst_length_pos = 15
+        direction_pos = 14
+        data_type_pos = 16
         for h in range(5, len(df)):
             ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s)']),\
             float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst']), int(chip_arch['L2 Max Burst'])
@@ -295,6 +300,9 @@ class Dma(object):
             # data type
             if ws.cell(h + 2, data_type_pos).value == 'FP32':
                 ws.cell(h + 2, data_type_pos).fill = DetailsStyle.red_light
+            # stall cycle
+            if int(ws.cell(h + 2, stall_cycle_pos).value) > 0:
+                ws.cell(h + 2, stall_cycle_pos).fill = DetailsStyle.red_light
         h, w = 4, bandwidth_pos
         ws.cell(h, w).value = 'BW<75%'
         ws.cell(h, w).fill = DetailsStyle.yellow_light
@@ -320,6 +328,11 @@ class Dma(object):
         ws.cell(h, w).fill = DetailsStyle.red_light
         ws.cell(h, w).font = DetailsStyle.title_font
         ws.cell(h, w).alignment = DetailsStyle.center_align
+        h, w = 5, stall_cycle_pos
+        ws.cell(h, w).value = 'Engine Conflict'
+        ws.cell(h, w).fill = DetailsStyle.red_light
+        ws.cell(h, w).font = DetailsStyle.title_font
+        ws.cell(h, w).alignment = DetailsStyle.center_align
 
         for w in range(summary_start_cols, summary_end_cols):
             # set header border style
@@ -336,11 +349,12 @@ class Dma(object):
                 for h in range(1, len(df) + 6):
                     if h > 20:
                         break
-                    if index == 12:
-                        collen = len(str(ws.cell(h, index + 1).value)) * 1.4
+                    if index == direction_pos - 1:
+                        collen = max(collen, len(str(ws.cell(h, index).value)))
                     elif ws.cell(h, index + 1).value is not None:
                         collen = max(collen, len(str(ws.cell(h, index + 1).value)))
             ws.column_dimensions[letter].width = collen * 1.05
+        ws.cell(5, 1).value = '*Stall Cycle indicates the waiting time when TIU and DMA attempting to access a bank simultaneously.'
         if frozen:
             _cell = ws.cell(7, 1)
             ws.freeze_panes = _cell

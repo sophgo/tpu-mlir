@@ -4,6 +4,7 @@
 # @Author  : chongqing.zeng@sophgo.com
 # @Project: PerfAI
 import os
+import shutil
 import pandas as pd
 import argparse
 from openpyxl import load_workbook
@@ -29,7 +30,7 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
             layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
             generate_summary(layer_info_map, writer, chip_arch)
     if style:
-        print('Start set style for ' + out_file)
+        print('Setting style for ' + out_file)
         set_details_style(out_file, cores, chip_arch)
         set_sim_summary_style(out_file, cores, chip_arch)
         if global_info is not None:
@@ -51,7 +52,18 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
                     columns[i] = ' '
             df.columns = columns
             df.to_csv(output_file, index=False)
-
+    perfai_doc_dir = os.path.join(input_fold, 'PerfDoc')
+    if not os.path.exists(perfai_doc_dir):
+        os.makedirs(perfai_doc_dir)
+    for file in os.listdir(input_fold):
+        if file.endswith('.xlsx') or file.endswith('.csv'):
+            shutil.move(os.path.join(input_fold, file), perfai_doc_dir)
+    # regInfo_dir = os.path.join(input_fold, 'RegInfo')
+    # if not os.path.exists(regInfo_dir):
+    #     os.makedirs(regInfo_dir)
+    # for file in os.listdir(input_fold):
+    #     if 'RegInfo' in file:
+    #         shutil.move(os.path.join(input_fold, file), regInfo_dir)
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="The main entry of the PerfAI project")

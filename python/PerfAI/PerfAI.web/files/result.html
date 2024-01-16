@@ -64,7 +64,7 @@
         .tabs {
             margin: 10 auto;
         }
-
+        
         .tabs .tab {
             height: 32px;
             padding: 10px 20px;
@@ -83,32 +83,32 @@
             font-size: 14px;
             min-width: auto;
         }
-
+        
         .bg-r {
             background-color: red!important;
             color: #fff!important;
         }
-
+        
         .tabs div:hover {
             background-color: red;
             color: #fff;
         }
-
+        
         #comparison-content {
             margin: 20px;
             padding: 20px;
             border: 1px solid #ddd;
         }
-
+        
         #comparison-content label {
             margin-right: 10px;
         }
-
+        
         .chart-container {
             width: 100%;
             margin-top: 20px;
         }
-
+        
         #configsTable {
             margin: auto;
             margin-bottom: 50px;
@@ -116,14 +116,14 @@
             width: 80%;
             background-color: #f2f2f2;
         }
-
+        
         #configsTable td,
         #configsTable th {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
         }
-
+        
         #msg-container {
             width: 95%;
             height: 800px;
@@ -131,7 +131,7 @@
             border: 1px solid #ccc;
             padding: 1em 1em;
         }
-
+        
         #bw-chart {
             width: 85vw;
             height: 70vh;
@@ -139,7 +139,7 @@
             border: 1px solid #ccc;
             padding: 1em 1em;
         }
-
+        
         #time-container1,
         #time-container2,
         #time-container3,
@@ -150,28 +150,28 @@
         #time-container0 {
             display: none;
         }
-
+        
         #config-container {
             margin-left: 0;
             margin-top: 1em;
         }
-
+        
         .config-item {
             display: inline-block;
             padding-left: 2em;
         }
-
+        
         body {
             text-align: center;
         }
-
+        
         .mem-container {
             width: 80vw;
             /* 使用视口宽度的百分比 */
             height: 70vh;
             padding-left: 5vw;
         }
-
+        
         #data-list {
             display: none;
             height: 600px;
@@ -180,12 +180,12 @@
             width: 90%;
             margin-left: 5%;
         }
-
+        
         td,
         th {
             padding: 0;
         }
-
+        
         .data-table {
             border-collapse: collapse;
             border-spacing: 0;
@@ -194,7 +194,7 @@
             width: 90vw;
             margin-left: 2.5%;
         }
-
+        
         .data-table caption {
             color: #000;
             font: bold, arial, sans-serif;
@@ -202,28 +202,28 @@
             padding: 0.5em 0;
             text-align: center;
         }
-
+        
         .data-table thead td.asc:after {
             content: "↑"
         }
-
+        
         .data-table thead td.desc::after {
             content: "↓"
         }
-
+        
         .filter-label::after {
             content: ": "
         }
-
+        
         .filter-block {
             display: inline;
             margin-right: 1em;
         }
-
+        
         .data-table thead td:hover {
             cursor: pointer;
         }
-
+        
         .data-table td,
         .data-table th {
             border-left: 1px solid #cbcbcb;
@@ -233,11 +233,11 @@
             overflow: visible;
             padding: .5em 1em;
         }
-
+        
         .data-table tbody tr:hover {
             background-color: aliceblue;
         }
-
+        
         .data-table thead {
             position: sticky;
             top: 0;
@@ -247,16 +247,16 @@
             text-align: left;
             vertical-align: bottom;
         }
-
+        
         .table-wrapper {
             overflow-y: auto;
             max-height: 400px;
         }
-
+        
         .data-table-odd td {
             background-color: #f2f2f2;
         }
-
+        
         .explanation {
             font-size: 14px;
             margin-top: 20px;
@@ -264,12 +264,12 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-
+        
         hr {
             margin: 2em 0 2em 0;
             color: gray;
         }
-
+        
         #pie-chart-container {
             display: flex;
             flex-wrap: wrap;
@@ -278,13 +278,13 @@
             height: 800px;
             margin: 0 auto;
         }
-
+        
         .chart {
             flex: 0 1 calc(50% - 10px);
             height: 80%;
             margin-bottom: 20px;
         }
-
+        
         #rate-line-container {
             width: 80vw;
             height: 30vh;
@@ -955,7 +955,7 @@
             let categoryIndex = api.value(0);
             let start = api.coord([api.value(1), categoryIndex]);
             let end = api.coord([api.value(2), categoryIndex]);
-            let height_value = api.value(5) //height_idx
+            let height_value = api.value(6) //height_idx
             if (height_value < 0) {
                 height_value = 1
             }
@@ -997,6 +997,7 @@
                 width: w,
                 height: tipRect.height,
             }, params.coordSys);
+
             let item = {
                 type: 'group',
                 children: [{
@@ -1021,6 +1022,79 @@
                     })
                 }]
             }
+
+            // 检查是否存在斜杠区间的值
+            let stall = api.value(4);
+            let isEmpty = stall === '';
+
+            if (!isEmpty) {
+                let slashStart = api.coord([api.value(1), categoryIndex]);
+                let slashEnd = api.coord([api.value(1) + stall, categoryIndex]);
+
+                // 计算斜杠的绘制区域
+                let slashWidth = Math.max(slashEnd[0] - slashStart[0], min_width);
+                let slashX = slashStart[0];
+                let slashY = start[1] + bottom_height / 2 - h;
+
+                // 动态计算斜杠数量和间隔
+                let numberOfSlashes = Math.ceil(slashWidth / 10);
+                let slashSpacing = slashWidth / numberOfSlashes;
+
+                // 创建渐变效果
+                let gradient = new echarts.graphic.LinearGradient(0, 0, 1, 0, [{
+                    offset: 0,
+                    color: 'transparent' // 渐变开始颜色
+                }, {
+                    offset: 1,
+                    color: 'rgba(255, 225,225, 0.6)' // 渐变结束颜色
+                }]);
+                // 添加降低透明度的矩形
+                item.children.push({
+                    type: 'rect',
+                    shape: {
+                        x: slashX,
+                        y: slashY,
+                        width: slashWidth,
+                        height: h
+                    },
+                    style: api.style({
+                        fill: gradient // 使用渐变填充
+                            //fill: 'rgba(225,225,225, 0.4)' // 降低透明度
+                    })
+                });
+
+                // 添加文字
+                item.children.push({
+                    type: 'text',
+                    style: {
+                        text: 'stall',
+                        x: slashX + slashWidth / 2,
+                        y: slashY + h / 2,
+                        fill: '#fff', // 文字颜色
+                        textAlign: 'center',
+                        textVerticalAlign: 'middle',
+                        font: '14px Arial' // 字体样式
+                    }
+                });
+                // 在矩形右侧添加虚线
+                let dashX = slashX + slashWidth;
+                item.children.push({
+                    type: 'line',
+                    shape: {
+                        x1: dashX,
+                        y1: slashY,
+                        x2: dashX,
+                        y2: slashY + h
+                    },
+                    style: api.style({
+                        stroke: 'black', // 虚线颜色
+                        lineWidth: 1, // 虚线宽度
+                        lineDash: [5, 5] // 虚线样式：交替的线段和间隙长度
+                    })
+                });
+            }
+
+
             return item
         }
 
@@ -1100,6 +1174,8 @@
 
         function showTimeChart(chart, header, raw_data, categories, color_col, title, baseCategoryNum) {
             let data = []
+            funcTypeIndex = header.indexOf("func_type");
+            heightIndex = header.indexOf("height");
             let category_time = new Array(categories.length).fill(0);
             let category_count = new Array(categories.length).fill(0);
             let startTime = raw_data.length > 0 ? raw_data[0][1] : 0;
@@ -1108,7 +1184,7 @@
                 category_time[raw_data[i][0]] += raw_data[i][3]; //duration
                 category_count[raw_data[i][0]] += 1;
                 data.push({
-                    name: `${raw_data[i][4]}`, //func_type
+                    name: `${raw_data[i][funcTypeIndex]}`, //func_type
                     value: raw_data[i],
                     itemStyle: {
                         normal: {
@@ -1169,11 +1245,13 @@
                     formatter: function(params) {
                         if (!params.value || !params.value.length || params.value.length != header.length) return ""
                         let tip = params.marker + "Func_type: " + params.name
-                        tip += `<br>begin: ${usec_str(params.value[1])}`
-                        tip += `<br>end: ${usec_str(params.value[2])}`
+                        tip += `<br>Start Time: ${usec_str(params.value[1])}`
+                        tip += `<br>End Time: ${usec_str(params.value[2])}`
                         tip += `<br>Duratuion: ${usec_str(params.value[3])}`
-                        for (let i = 4; i < header.length - 2; i++) {
-                            if (i === 5) continue //height
+                        tip += `<br>Stall Time: ${usec_str(params.value[4])}`
+                        tip += `<br>Execution Rat: 实际时间`
+                        for (let i = funcTypeIndex; i < header.length - 2; i++) {
+                            if (i === heightIndex) continue //height
                             if (params.value[i] === "") continue
                             tip += `<br>${header[i]}: ${params.value[i]}`
                         }
@@ -1547,7 +1625,7 @@
                 capNode.appendChild(select_node)
             }
 
-            let usec_cols = [1, 2, 3, 5, 6]
+            let usec_cols = [1, 2, 3]
             let new_data = []
             for (let d of data) {
                 if (d[category_idx] == current_category) {
@@ -1598,7 +1676,7 @@
 
                 for (let c = 0; c < row_data.length; c++) {
                     let col_body = document.createElement("td")
-                    //col_body.innerHTML = row_data[c];
+                        //col_body.innerHTML = row_data[c];
                     if (usec_cols.indexOf(c) >= 0 && (c === 1 || c === 2 || c === 3)) {
                         col_body.innerHTML = usec_str(row_data[c])
                     } else {
@@ -2046,7 +2124,7 @@
                             show: true,
                             formatter: function(param) {
                                 if (param.axisDimension == 'x') {
-                                    return (param.value).toFixed(2)
+                                    return usec_str(param.value); //(param.value / 1000000).toFixed(3) + "ms"
                                 }
                                 return addrToText(Math.round(mem_end - param.value))
                             }
@@ -2125,7 +2203,7 @@
                     scale: true,
                     axisLabel: {
                         formatter: function(val) {
-                            return val + ' cycle';
+                            return usec_str(val); // (val / 1000000) + ' ms';
                         }
                     },
                     position: "top",
@@ -2930,7 +3008,6 @@
         tabs[0].addEventListener("click", (e) => handleTabClick(e, cycleData));
         initializeTabs();
 
-
         function handleTabClick(e, cycleData) {
             const tabName = e.target.outerText;
             const isOverview = tabName === "Overall View";
@@ -2946,7 +3023,6 @@
             } else if (isCombinedTab) {
                 // 处理时间图组合标签页逻辑
                 console.log("我在Time Chart Combined page")
-                handleCombinedTab(cycleData);
             } else {
                 // 处理核心标签页逻辑
                 console.log("我在core page")
@@ -2968,6 +3044,7 @@
             if (!isOverview && !isCombinedTab) {
                 toggleElements(checkBoxContainers, 'inline-block');
             } else {
+                resetCheckBoxes(checkBoxes)
                 toggleElements(checkBoxContainers, 'none');
             }
             document.getElementById('configsTable').style.display = isOverview ? 'table' : 'none';
@@ -3126,15 +3203,15 @@
                     const types = ['TIU', 'GDMA', 'SDMA', 'CDMA'];
                     let chartid = 0;
                     for (let i = 0; i < types.length; i++) {
-                        let filteredData = cycleData.filter(item => item[0] === i);
-
+                        let filteredData = cycleData.filter(item => item[0] === i); // 过滤数据以确保仅显示当前 coreTab 的数据
+                        console.log("pie filteredData:", filteredData)
                         if (filteredData.length > 0) {
                             generatePieChart(chartIds[chartid], filteredData, time_header, types[i]);
                             chartid += 1;
                             if (types[i] === 'TIU' && time_header.includes('uArchRate/BW')) {
                                 createRateLine('rate-line-container', filteredData, 'TIU uArch Rate', cycleData);
                             }
-                            console.log(i, chartid)
+                            console.log("i,chart_id:", i, chartid)
                         }
                     }
                 }

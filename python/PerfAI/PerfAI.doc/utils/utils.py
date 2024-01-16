@@ -29,10 +29,11 @@ def get_simulator_total_cycle(simulator_cycle_file):
 
 def get_total_time(tius, gdmas, sdmas, cdmas):
     start, end = sys.maxsize, 0
-    start, end = (min(start, tius[0].start_time), max(end, tius[-1].end_time)) if len(tius) > 0 else (start, end)
-    start, end = (min(start, gdmas[0].start_time), max(end, gdmas[-1].end_time)) if len(gdmas) > 0 else (start, end)
-    start, end = (min(start, sdmas[0].start_time), max(end, sdmas[-1].end_time)) if len(sdmas) > 0 else (start, end)
-    start, end = (min(start, cdmas[0].start_time), max(end, cdmas[-1].end_time)) if len(cdmas) > 0 else (start, end)
+    for i in range(len(tius)):
+        start, end = (min(start, tius[i].start_time), max(end, tius[i].end_time)) if len(tius) > 0 else (start, end)
+        start, end = (min(start, gdmas[i].start_time), max(end, gdmas[i].end_time)) if len(gdmas) > 0 else (start, end)
+        start, end = (min(start, sdmas[i].start_time), max(end, sdmas[i].end_time)) if len(sdmas) > 0 else (start, end)
+        start, end = (min(start, cdmas[i].start_time), max(end, cdmas[i].end_time)) if len(cdmas) > 0 else (start, end)
     total_time = end - start
     return total_time if total_time > 0 else 0
 

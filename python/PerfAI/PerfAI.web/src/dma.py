@@ -28,7 +28,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.frequency = 0
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Stall Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'index_shape', 'src_shape', 'dst_shape',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
