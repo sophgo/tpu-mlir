@@ -8,10 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Support/CastUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/CastUtils.h"
 
 static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
                              bool is_tpu) {
@@ -51,18 +52,20 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     F16(p.inputs[0], p.outputs[0], num_elem);
   } else if (in_type.isF32() && out_type.isBF16()) {
     BF16(p.inputs[0], p.outputs[0], num_elem, false);
-  } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E4M3FN()) {
+  } else if ((in_type.isF32() || in_type.isF16()) &&
+             out_type.isFloat8E4M3FN()) {
     F8E4M3(p.inputs[0], p.outputs[0], num_elem, 1.0, true);
   } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E5M2()) {
     F8E5M2(p.inputs[0], p.outputs[0], num_elem, 1.0, true);
-  } else if (in_type.isFloat8E4M3FN() && (out_type.isF32() || out_type.isF16())) {
+  } else if (in_type.isFloat8E4M3FN() &&
+             (out_type.isF32() || out_type.isF16())) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int i=0;i<num_elem;i++) {
+    for (int i = 0; i < num_elem; i++) {
       p.outputs[0][i] = p.inputs[0][i];
     }
   } else if (in_type.isFloat8E5M2() && (out_type.isF32() || out_type.isF16())) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int i=0;i<num_elem;i++) {
+    for (int i = 0; i < num_elem; i++) {
       p.outputs[0][i] = p.inputs[0][i];
     }
   } else if (isOutQuant && false == isInQuant) {
@@ -116,13 +119,13 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     //         p.outputs[0][i] = saturate(v, out_type);
     //       }
     //     }
-  } else if (in_type.isF32() && out_type.isInteger(32)){
+  } else if (in_type.isF32() && out_type.isInteger(32)) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = round(p.inputs[0][i]);
     }
   } else {
-      std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
+    std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
   }
 
   return success();
@@ -143,7 +146,8 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
       rewriter.replaceOp(op, {in});
       return success();
     }
-    auto castInputOp = dyn_cast<tpu::CastOp>(module::getOriValue(in).getDefiningOp());
+    auto castInputOp =
+        dyn_cast<tpu::CastOp>(module::getOriValue(in).getDefiningOp());
     if (!castInputOp || castInputOp->hasOneUse() == false) {
       return failure();
     }
@@ -210,6 +214,11 @@ LogicalResult tpu::CastOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     auto in_type = module::getStorageType(getInput());
     auto out_type = module::getStorageType(getOutput());
+    int64_t n, c, h, w;
+    module::getNCHW(getOutput(), n, c, h, w);
+    if (c > MAX_TIU_CHL || w > MAX_TIU_CHL) {
+      return failure();
+    }
     // type.isSignedInteger()
     if ((in_type.getIntOrFloatBitWidth() == 8 && out_type.isBF16()) ||
         (in_type.isBF16() && out_type.isSignedInteger())) {
@@ -238,7 +247,8 @@ void tpu::CastOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::CastOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
