@@ -177,12 +177,12 @@ class TIU:
                     if col not in tiuDf.columns or row[col] in ['','0']:
                         continue
                     val = pd.to_numeric(row[col])
-                    if col == c_col:
-                        # print("col, c_col, val:", col, c_col, val)
-                        if val <= 64:
-                            val /= val
-                        else:
-                            val /= lane_num
+                    # if col == c_col:
+                    #     # print("col, c_col, val:", col, c_col, val)
+                    #     if val <= 64:
+                    #         val /= val
+                    #     else:
+                    #         val /= lane_num
                     factors.append(val)
                 if not factors:
                     continue

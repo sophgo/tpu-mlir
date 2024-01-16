@@ -65,7 +65,7 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
     if not act_core_num:
         print('Error, No engine reg info file input! Please check your input.')
         exit(-1)
-    print('Start generate data for ' + out_file)
+    print('Generating data for ' + out_file)
     palace_holder(writer, split_instr_world, g_info)
     instr_cols, instr_reg_list, reg_list = [], [], []
     tiu_instances, gdma_instances, sdma_instances, cdma_instances = [], [], [], []

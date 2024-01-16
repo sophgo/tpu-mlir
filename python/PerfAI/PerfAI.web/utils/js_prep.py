@@ -4,6 +4,7 @@ from numpy import transpose
 import os
 from functools import reduce
 from collections import defaultdict
+import math
 
 from src.tiu import TIU
 from src.dma import DMA
@@ -91,7 +92,7 @@ def generate_jsfile(dirpath, name, out_path):
         js.write(f'let ddr_ratios = {ddr_ratios}\n')
         js.write(f'let l2m_ratios = {l2m_ratios}\n')
         js.write(f'let categories = {categories}\n')
-        time_header = ["category", "begin_time", "end_time", "Duration", "func_type", "height", "cmd", "func_name", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
         filter_cols = [time_header.index(c) for c in ["category", "func_type"]]
         js.write(f'let filter_cols = {filter_cols}\n')
         js.write(f'let lmem_partition = {lmem_partition}\n')
@@ -135,16 +136,19 @@ def deduplicate_ordered_list(lst):
             deduped.append(item)
     return deduped
 
-def processAddr(lst,lane_size):
+def processAddr(lst, lane_size):
     dec_addr = [int(sublist[3], 16) for sublist in lst]
-    min_value = min(dec_addr)
     new_lst = []
+    min_value = min(dec_addr) # Aling the address for different cores
     for i, sublist in enumerate(lst):
-        new_dec_value = dec_addr[i] - min_value
-        # Check if the new decimal value is greater than lane_size
-        if new_dec_value <= lane_size:
-            sublist[3] = new_dec_value
-            new_lst.append(sublist)
+        # Calculate the converted address value
+        shifted_addr = dec_addr[i] - min_value
+        new_shifted_addr = shifted_addr % lane_size
+        lane_occupied = math.ceil(shifted_addr / lane_size)
+        sublist[3] = new_shifted_addr
+        sublist[-1] += f"<br>Occupied Lane Num:{lane_occupied}" # add the num of lane used
+        new_lst.append(sublist)
+        # new_lst.append(lane_occupied) #modify the javascript
     return new_lst
 
 def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lmem_op_dict, lane_size):
@@ -171,6 +175,7 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
             int(data['Start Cycle'][i]),
             int(data['End Cycle'][i]),
             int(data['End Cycle'][i]) - int(data['Start Cycle'][i]),
+            int(data['Stall Cycle'][i]) if 'Stall Cycle' in data and data['Stall Cycle'][i] is not None else '',
             data['Function Type'][i] if 'Function Type' in data else '',
             height,
             cmd,
@@ -196,13 +201,18 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
             elif direction in write_directions:
                 size = datasize / lane_num #c维除以lane num
                 lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, src, size, f'{direction},{data["src_shape"][i]}'])
-
+        # import pdb; pdb.set_trace()
+        if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) < lane_num:
+            worklane = int(data['des_res0_c'][i])
+        else:
+            worklane = lane_num
         if 'des_res0_size' in data and data['des_res0_size'][i] is not None:
             #the memory address reads the result tensor: op=0
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], data['des_res0_size'][i], f'tiu:cmdId={cmd}'])
+            size = data['des_res0_size'][i] / worklane
+            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], size, f'tiu:cmdId={cmd},{data["des_res0_addr"][i]}'])
         if 'des_opd0_size' in data and data['des_opd0_size'][i] is not None:
-            size = data['des_opd0_size'][i]+data['des_opd1_size'][i] if data['des_opd1_size'][i] is not None else data['des_opd0_size'][i]
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, f'tiu:cmdId={cmd}'])
+            size = (data['des_opd0_size'][i]+data['des_opd1_size'][i] if data['des_opd1_size'][i] is not None else data['des_opd0_size'][i]) / worklane
+            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, f'tiu:cmdId={cmd},{data["des_opd0_addr"][i]}'])
     process_lmem = processAddr(lmem_temp, lane_size) if len(lmem_temp) > 0 else lmem_temp
     lmem_op_dict[f'lmem_op_record{idx}'].extend(process_lmem)
     lmem_op_dict[f'lmem_op_record{idx}'] = deduplicate_ordered_list(lmem_op_dict[f'lmem_op_record{idx}'])
@@ -218,11 +228,11 @@ def calculate_ratios(cycle_data_dict):
         # 使用生成器表达式进行过滤
         filtered_data = (
             record for record in data
-            if record[0] in [1, 2] and "SYS" not in record[4]
+            if record[0] in [1, 2] and "SYS" not in record[5] #GDMA/SDMA
         )
 
         for record in filtered_data:
-            category, begin_time, end_time, _, _, _, _, _, uarch_bw, _, info, _, _ = record
+            category, begin_time, end_time, _, _, _, _, _, _, uarch_bw, _, info, _, _ = record
 
             for time in range(begin_time + 1, end_time + 1):
                 bw = float(uarch_bw)

@@ -7,7 +7,6 @@ from utils.js_prep import *
 from utils.utils import *
 
 def run_web(reginfo_dir, name='PerfWeb'):
-    start = time.time()
     out_path = os.path.join(reginfo_dir, name)
     os.makedirs(out_path, exist_ok=True)
     files_dir = os.path.abspath(__file__).replace("run_web.py","files")
@@ -16,12 +15,8 @@ def run_web(reginfo_dir, name='PerfWeb'):
     for f in htmlfiles:
         shutil.copy2(f, out_path)
 
-    print("Start generating data!")
+    print(f"Generating data for {out_path}/result.html")
     generate_jsfile(reginfo_dir, name, out_path)
-
-    end = time.time()
-    passed = end - start
-    print(f"Total spent time: {passed} seconds")
     print(f"The jsfile is generated successfully under {out_path}")
 
 if __name__ == '__main__':

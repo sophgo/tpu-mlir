@@ -35,7 +35,7 @@ class Tiu(object):
         """
         self.writer = writer
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
-                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
+                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Avg Cycle Last 200', 'Alg Ops',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
                         'Initial Cycle Ratio', 'Data Type', 'des_cmd_id_dep',
                         'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
@@ -85,7 +85,8 @@ class Tiu(object):
             'uArch Rate',
             'Bank Conflict Ratio',
             'Initial Cycle Ratio',
-            'Data Type'],
+            'Data Type',
+            'Avg Cycle Last 200'],
             'Description': [
                 'Alg Ops / uArch Ops, since the shape of tensor needs to be aligned in '
                 'micro-architecture, the actual ops will be greater than the algorithm value. '
@@ -95,7 +96,9 @@ class Tiu(object):
                 'initial cycle / total cycle, proportion of initial cycle in the total '
                 'cycles, the meaning of initial cycle is that some initialization and '
                 "other operations will be performed before execution. It's better to closer to 0%.",
-                'Data type transform, usually represents opd0->res0.']}, index=None)
+                'Data type transform, usually represents opd0->res0.',
+                'The average cycle taken to execute the last 200 tiu commands. Consecutive short '
+                'commands will increase the burden on PMU, leading to a decrease in performance']}, index=None)
         self.summary = dict()
         self.tiu_cycle = 0
         self.start_time = sys.maxsize
@@ -186,6 +189,12 @@ class Tiu(object):
         """
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
+            continous_gap = 200
+            if reg_dict['Cmd Id'] < continous_gap:
+                reg_dict['Avg Cycle Last 200'] = round(reg_dict['End Cycle'] / reg_dict['Cmd Id'])
+            else:
+                assert(i >= continous_gap - 1)
+                reg_dict['Avg Cycle Last 200'] = round((reg_dict['End Cycle'] - self.reg_list[i-199]['Start Cycle']) / continous_gap)
             if not (reg_dict['des_tsk_typ'] == 15 and reg_dict['des_tsk_eu_typ'] == 9):
                 # wait msg time do not add to tiu cycles
                 self.tiu_cycle += int(reg_dict['Asic Cycle'])
@@ -365,7 +374,7 @@ class Tiu(object):
             ws.cell(4, w).fill = detail_style.title_header_pattern
             ws.cell(4, w).font = detail_style.title_header_font
             # desc content style
-            for h in range(5, 9):
+            for h in range(5, 10):
                 ws.cell(h, w).fill = detail_style.title_content_pattern
                 ws.cell(h, w).font = detail_style.title_font
         rangeStr = str(perf_df_len + 9) + ':' + str(perf_df_len + 9)
@@ -374,12 +383,13 @@ class Tiu(object):
             cell.fill = detail_style.content_pattern
             cell.font = detail_style.title_header_font
         # set content style
-        content_end_cols = 17
+        content_end_cols = 18
         content_start_rows = 8 + perf_df_len
-        initial_cycle_pos = 16
-        uArch_ratio_pos = 14
-        bank_conflict_pos = 15
-        fp32_pos = 17
+        initial_cycle_pos = 17
+        uArch_ratio_pos = 15
+        bank_conflict_pos = 16
+        fp32_pos = 18
+        avg_cycle_last_200_pos = 12
         for h in range(content_start_rows + 2, len(df) + 2):
             for w in range(1, content_end_cols + 1):
                 # set key content border style
@@ -403,6 +413,9 @@ class Tiu(object):
             # FP32
             if 'fp32' in ws.cell(h + 2, fp32_pos).value.lower():
                 ws.cell(h + 2, fp32_pos).fill = detail_style.red_light
+            # Avg Cycle Last 200
+            if float(ws.cell(h + 2, avg_cycle_last_200_pos).value) < 200:
+                ws.cell(h + 2, avg_cycle_last_200_pos).fill = detail_style.red_light
 
         # set tiu description content and style
         ws.cell(content_start_rows, initial_cycle_pos).value = 'Ratio>1%'
@@ -410,18 +423,19 @@ class Tiu(object):
         ws.cell(content_start_rows, uArch_ratio_pos).value = 'Urate<50%'
         ws.cell(content_start_rows, bank_conflict_pos).value = 'Ratio>0'
         ws.cell(content_start_rows, fp32_pos).value = 'IsFP32'
+        ws.cell(content_start_rows, avg_cycle_last_200_pos).value = 'AvgCycle<200'
 
         for h, w in zip([content_start_rows, content_start_rows - 1, content_start_rows],
                         [bank_conflict_pos, uArch_ratio_pos, initial_cycle_pos]):
             ws.cell(h, w).fill = detail_style.yellow_light
             ws.cell(h, w).font = detail_style.title_font
             ws.cell(h, w).alignment = detail_style.center_align
-        for h, w in zip([content_start_rows, content_start_rows], [uArch_ratio_pos, fp32_pos]):
+        for h, w in zip([content_start_rows, content_start_rows, content_start_rows], [uArch_ratio_pos, fp32_pos, avg_cycle_last_200_pos]):
             ws.cell(h, w).fill = detail_style.red_light
             ws.cell(h, w).font = detail_style.title_font
             ws.cell(h, w).alignment = detail_style.center_align
         for start_rows, end_rows, start_cols, end_cols in zip([1, 1, 6, 4],
-                                                              [3, 3, 7 + perf_df_len, 9],
+                                                              [3, 3, 7 + perf_df_len, 10],
                                                               [2, 14, 2, 14], [8, 25, 13, 16]):
             for h in range(start_rows, end_rows):
                 for w in range(start_cols, end_cols):
