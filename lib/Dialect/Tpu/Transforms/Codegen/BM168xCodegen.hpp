@@ -50,7 +50,7 @@ private:
   CreateSwitchParamVector(vector<int> &output_from, vector<int> &output_branch);
   Offset<bmodel::MergeParam>
   CreateMergeParamVector(vector<vector<int>> &output_from);
-  void codegen(Operation *op);
+  void codegen(FuncOp funcOp);
   void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
   void codegen_for_overlap_ops(
       std::map<int64_t, std::vector<Operation *>> cur_other_downs,

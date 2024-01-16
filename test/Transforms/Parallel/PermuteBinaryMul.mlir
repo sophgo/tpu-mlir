@@ -6,7 +6,7 @@
 // CHECK:           %[[PERMUTE1:.*]] = "tpu.Permute"(%[[SPLIT]]#1, %0) {order = [0, 3, 2, 1]} : (tensor<2x8x32x32xf32>, none) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[PERMUTE0]], %[[PERMUTE1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
-// CHECK:               }) : (tensor<4x8x32x32xf32>, none) -> tensor<4x32x32x8xf32> loc({{.*}})
+// CHECK:               }) {{.*}} : (tensor<4x8x32x32xf32>, none) -> tensor<4x32x32x8xf32> loc({{.*}})
 #loc = loc(unknown)
 module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.w8a16_linear = false, module.weight_file = "permutebinaryadd_tpu_lowered_bm1686_f32_weight.npz"} {
   func.func @main(%arg0: tensor<4x8x32x32xf32> loc(unknown), %arg1: tensor<4x1x32x32xf32> loc(unknown)) -> tensor<4x32x32x8xf32> {
@@ -51,7 +51,7 @@ module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymm
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %4) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
-// CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
+// CHECK:               }) {{.*}} : (tensor<4x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 
 // -----
 
@@ -78,7 +78,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
-// CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
+// CHECK:               }) {{.*}} : (tensor<4x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 
 // -----
 
@@ -105,7 +105,7 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 // CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
-// CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
+// CHECK:               }) {{.*}} : (tensor<4x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 
 
 // -----
