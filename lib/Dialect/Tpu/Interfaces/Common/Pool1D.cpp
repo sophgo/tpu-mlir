@@ -237,6 +237,7 @@ void tpu::Pool1DOp::assign_fw_param(void *param) {
 ArrayAttr tpu::Pool1DOp::getIndexingMaps() {
   MLIRContext *ctx = getContext();
   AffineMap map = AffineMap::getMultiDimIdentityMap(2, ctx);
-  SmallVector<AffineMap> indexingMaps{map, map};
+  AffineMap empty = AffineMap::get(2, 0, ctx);
+  SmallVector<AffineMap> indexingMaps{map, empty, map};
   return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 };
