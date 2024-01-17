@@ -38,17 +38,6 @@ typedef enum {
     RM_HALF_UP             = 5,
     RM_HALF_DOWN           = 6
 } rounding_mode_t;
-
-typedef enum {
-  REDUCE_MEAN = 0,
-  REDUCE_SUM  = 1,
-  REDUCE_MAX  = 2,
-  REDUCE_MIN  = 3,
-  REDUCE_PROD = 4,
-  REDUCE_L2   = 5,
-  REDUCE_L1   = 6,
-} reduce_method_t;
-
 typedef struct {
     int n, c, d, h, w;
 } dim5;

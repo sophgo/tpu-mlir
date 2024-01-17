@@ -2,21 +2,7 @@
 
 #include <stdint.h>
 
-#ifndef MAX_SHAPE_DIMS
 #define MAX_SHAPE_DIMS 8
-#endif
-
-enum DynamicTensorType
-{
-    DYNAMIC_NEURON = 0,
-    DYNAMIC_COEFF = 1,
-    DYNAMIC_SHAPE = 2
-};
-
-static inline int dynamic_is_neuron(int type)
-{
-    return type == DYNAMIC_NEURON;
-}
 
 typedef struct local_tensor_spec {
     uint64_t addr;
@@ -52,10 +38,10 @@ typedef struct local_sec_info {
     int32_t out_w_slice;
 } local_sec_info_t;
 
-static unsigned long long global_tensor_length(global_tensor_spec_t* tensor){
-  unsigned long long length = 1;
-  for(int i=0; i<tensor->dims; i++){
-    length *= tensor->shape[i];
-  }
-  return length;
-}
+typedef union {
+    int int_t;
+    float float_t;
+    // max size of int and float array is set as 16
+    int int_arr_t[16];
+    float float_arr_t[16];
+} custom_param_t;

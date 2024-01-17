@@ -41,7 +41,7 @@ if __name__ == "__main__":
     inputs = {"input0": input0, "input1": input1}
     np.savez(f"{model_name}_in_f32", **inputs)
 
-    origin_output = f"{model_name}_target_data.npz"
+    origin_output = f"{model_name}_ref_data.npz"
     caffe_infer_cmd = f"model_runner.py --input {model_name}_in_f32.npz --model {prototxt} --weight {caffemodel} --output {origin_output}"
     os.system(caffe_infer_cmd)
 
@@ -56,14 +56,14 @@ if __name__ == "__main__":
     converter.model_convert()
 
     # 3. deploy to F32 bmodel
-    deploy_cmd = f"model_deploy.py --mlir {model_name}.mlir --quantize F32 --chip bm1684x --model {model_name}.bmodel"
+    deploy_cmd = f"model_deploy.py --mlir {model_name}.mlir --quantize F32 --chip bm1688 --model {model_name}.bmodel"
     os.system(deploy_cmd)
 
     # 4. do bmodel inference and compare with the origin output
-    bmodel_output = f"{model_name}_ref_data.npz"
+    bmodel_output = f"{model_name}_target_data.npz"
     bmodel_infer_cmd = f"model_runner.py --input {model_name}_in_f32.npz --model {model_name}.bmodel --output {bmodel_output}"
     os.system(bmodel_infer_cmd)
 
     # 5. compare results
-    cmp_cmd = f"npz_tool.py compare {origin_output} {bmodel_output}"
+    cmp_cmd = f"npz_tool.py compare {bmodel_output} {origin_output}"
     os.system(cmp_cmd)

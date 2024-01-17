@@ -18,8 +18,9 @@ The functionality of custom operators allows users to freely use the interfaces 
      it has the disadvantage of generating a considerable number of GDMA
      transfers, resulting in lower the Tensor Competing Processor utilization.
 
-
   b. The operator can optionally implement the local layer. The input and output data of the local layer are stored in local memory. It can be combined with other layers for layer group optimization, avoiding the need to transfer data to and from global memory during the calculation of this layer. The advantage is that it saves GDMA transfers and achieves higher computational efficiency. However, it is more complex to implement. The local memory needs to be allocated in advance during model deployment, limiting its usage and making it impractical for certain operators.
+
+  c. The operator should implement the function of shape inference, which can infer the data type and shape of outputs from those of inputs.
 
 The frontend can build models containing custom operators using tpulang or Caffe, and finally deploy the models through the model conversion interface of TPU-MLIR. This chapter primarily introduces the process of using custom operators in the TPU-MLIR release package.
 
@@ -36,19 +37,21 @@ Add TpuLang Custom Operator
 
 2. Develop backend operators based on TPU-Kernel
 
-  Assuming the current path is $TPUC_ROOT/customlayer, add the backend_{op_name}.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void backend_{op_name}_global and void backend_{op_name}_local, respectively). Then, add the backend_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
+  Assuming the current path is $TPUC_ROOT/customlayer, add the ./include/tpu_impl_custom_ops.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local, respectively). Then, add the tpu_impl_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
 
 3. Define the operator's parameter structure and write the operator's interface
 
-  a. Add the corresponding structure {op_name}_param_t in the ./include/backend_custom_param.h header file to receive parameters from the frontend of toolchain, based on the parameters required by the operator.
+  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {chip_arch} represents architecture of chip, whose possible values are `bm1684x` or `bm1686` recently.
 
-  b. Add the api_{op_name}.h header file in the ./include directory to declare the interfaces for the custom operator functions (void api_{op_name}_global and void api_{op_name}_local). Then, add the api_{op_name}.c file in the ./src directory and implement the corresponding interfaces.
+  a. Add the interface_{op_name}.c file in the ./src directory and implement the corresponding interfaces:
+    void api_{op_name}_global, void api_{op_name}_local (calling void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local respectively)
+    void shape_infer_{op_name} (infer shape and dtype of outputs from those of inputs).
 
-  c. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a custom_param_t array, where each custom_param_t structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in custom_param_t (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the custom_param_t is as follows:
+  b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a custom_param_t array, where each custom_param_t structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in custom_param_t (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the custom_param_t is as follows:
 
   .. code-block:: c
 
-    typedef struct {
+    typedef union {
       int int_t;
       float float_t;
       // max size of int and float array is set as 16
@@ -57,20 +60,22 @@ Add TpuLang Custom Operator
     } custom_param_t;
 
 
-4. Define the backend interface
+4. Register the operator
 
-  In ./src/backend_custom_api.cpp, build the backend interface using macro definitions. This interface will be called during Codegen in the frontend of toolchain. The format is as follows:
+  In file register_ops.cmake, add op name for registering your operator:
 
-  .. code-block:: C
+  .. code-block::
 
-    IMPL_CUSTOM_API_GLB({op_name}, {op_name}_param_t)
-
-    IMPL_CUSTOM_API_LOC({op_name}, {op_name}_param_t)
+    register_custom_op({op_name})
 
 
 5. Compile and install the dynamic library
 
-  By running the build.sh script in $TPUC_ROOT/customlayer, the compilation of the custom operator will be completed. It will generate the backend_custom_api.so dynamic library and install it in $TPUC_ROOT/lib.
+  Firstly, initialize your environment by running the command: source envsetup.sh in $TPUC_ROOT/customlayer.
+  Then the command: **rebuild_custom_backend**: tries to compile the backend apis supporting custom operator.
+  The command: **rebuild_custom_firmware_cmodel {chip_arch}**, tries to compile the firmware supporting custom operator in cmodel mode.
+  The command: **rebuild_custom_firmware_soc {chip_arch}**, tries to compile the firmware supporting custom operator in soc mode.
+  The command: **rebuild_custom_firmware_pcie {chip_arch}**, tries to compile the firmware supporting custom operator in pcie mode.
 
 6. Invoke TpuLang to build the model
 
@@ -142,39 +147,23 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
   ${TPUC_ROOT}/customlayer/include/backend_swapchannel.h:
 
-  .. code-block:: cpp
+  .. code-block:: c
 
-    #ifndef BACKEND_SWAPCHANNEL_H_
-    #define BACKEND_SWAPCHANNEL_H_
-
-    #include "tpu_kernel.h"
-
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-
-    void backend_swapchannel_global(
+    void tpu_impl_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
         const int *order,
         data_type_t dtype);
 
-    #ifdef __cplusplus
-    }
-    #endif
 
-    #endif
-
-
-  The code of ${TPUC_ROOT}/customlayer/src/backend_swapchannel.c:
+  The code of ${TPUC_ROOT}/customlayer/src/tpu_impl_swapchannel.c:
 
   .. code-block:: c
 
-    #include "backend_swapchannel.h"
-    #include "common.h"
+    #include "tpu_impl_custom_ops.h"
 
-    void backend_swapchannel_global(
+    void tpu_impl_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
@@ -208,44 +197,18 @@ This subsection provides a sample of swapchanel operator implementation and appl
       int order[3];
     } swapchannel_param_t;
 
-
-  The following is the declaration in the header file
-
-  ${TPUC_ROOT}/customlayer/include/api_swapchannel.h:
-
-  .. code-block:: cpp
-
-    #pragma once
-    #include "api_common.h"
-    #include "backend_custom_param.h"
-
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-
-    void api_swapchannel_global(
-        global_tensor_spec_t *input,
-        global_tensor_spec_t *output,
-        custom_param_t *param);
-
-    #ifdef __cplusplus
-    }
-    #endif
-
-
-  The code of ${TPUC_ROOT}/customlayer/src/api_swapchannel.c:
+  The code of ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c:
 
   .. code-block:: c
 
     #include "tpu_utils.h"
-    #include "api_swapchannel.h"
-    #include "backend_swapchannel.h"
+    #include "tpu_impl_custom_ops.h"
 
     // parse param function
-    swapchannel_param_t parsParam(custom_param_t* param) {
+    static swapchannel_param_t parseParam(const custom_param_t* param) {
         swapchannel_param_t sc_param = {0};
         for (int i = 0; i < 3; i++) {
-            sc_param.order[i] = param[0].int_arr_t[i];
+            sc_param.order[i] = ((custom_param_t *)param)[0].int_arr_t[i];
         }
         return sc_param;
     }
@@ -254,10 +217,9 @@ This subsection provides a sample of swapchanel operator implementation and appl
     void api_swapchannel_global(
         global_tensor_spec_t *input,
         global_tensor_spec_t *output,
-        custom_param_t *param)
+        const custom_param_t *param)
     {
-        swapchannel_param_t sc_param = parsParam(param);
-
+        swapchannel_param_t sc_param = parseParam(param);
         backend_swapchannel_global(
             input->addr,
             output->addr,
@@ -269,21 +231,13 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
 3. Backend Interface
 
-  The code of ${TPUC_ROOT}/customlayer/src/backend_custom_api.cpp:
+  Add the code in ${TPUC_ROOT}/customlayer/register_ops.cmake:
 
-  .. code-block:: cpp
+  .. code-block:: c
 
-    #include "backend_helper.h"
-    #include "common_def.h"
-    #include "api_common.h"
+    register_custom_op(swapchannel)
 
-    // 1. include head file of api function
-    #include "api_swapchannel.h"
-
-    // 2. global backend api functions
-    IMPL_CUSTOM_API_GLB(swapchannel, swapchannel_param_t)
-
-  After completing the implementation of the backend interface, you can run $TPUC_ROOT/customlayer/build.sh to compile and install the custom operator dynamic library.
+  After completing the implementation of the backend interface, you can run the command listed in step 5 in "Add TpuLang Custom Operator".
 
 4. TpuLang Interface Invocation
 
