@@ -149,7 +149,7 @@ full_model_list = {
     "pp_yolov3":                  (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "pp_ocr_det":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "pp_ocr_cls":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "pp_ocr_rec":                 (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
+    "pp_ocr_rec":                 (N,      Y,       N,      N,      N,      N,      N,      N,     N), # bf16 bm1688, cv186x has problem
     "pp_hgnet":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
 }
 
