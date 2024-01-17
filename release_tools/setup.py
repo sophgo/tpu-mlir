@@ -22,30 +22,29 @@ setup(
         "Topic :: Software Development",
     ],
     install_requires=[
-        "numpy==1.23.5",
-        "scipy>=1.11.2",
-        "tqdm>=4.66.1",
-        "Pillow>=10.0.1",
-        "plotly>=5.17.0",
+        "numpy==1.24.3",
+        "scipy==1.11.1",
+        "tqdm==4.65.0",
+        "Pillow==10.0.0",
+        "plotly==5.15.0",
         "opencv-python-headless==4.8.0.74",
         "protobuf==3.20.3",
         "graphviz==0.20.1",
         "pycocotools==2.0.6",
-        "scikit-learn",
+        "scikit-image==0.21.0",
         "transformers==4.31.0",
     ],
     extras_require={
         "all": [
             # torch
-            "torch>=2.0.1",
-            "torchvision>=0.15.2",
+            "torch==2.0.1+cpu",
+            "torchvision==0.15.2+cpu",
             # onnx
-            "onnx==1.14.1",
+            "onnx==1.14.0",
             "onnxruntime==1.15.1",
             "onnxsim==0.4.17",
             # caffe 
-            "scikit-image>=0.21.0",
-            "six>=1.16.0",
+            "six==1.16.0",
             # tensorflow
             "tensorflow-cpu==2.13.0",
             "tf2onnx==1.8.4",
@@ -54,17 +53,16 @@ setup(
             "paddle2onnx==1.0.8",
         ],
         "torch": [
-            "torch>=2.0.1",
-            "torchvision>=0.15.2"
+            "torch==2.0.1+cpu",
+            "torchvision==0.15.2+cpu"
         ],
         "onnx": [
-            "onnx==1.14.1",
+            "onnx==1.14.0",
             "onnxruntime==1.15.1",
             "onnxsim==0.4.17"
         ],
         "caffe": [
-            "scikit-image>=0.21.0",
-            "six>=1.16.0",
+            "six==1.16.0",
         ],
         "tensorflow": [
             "tensorflow-cpu==2.13.0",
