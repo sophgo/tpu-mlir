@@ -572,7 +572,8 @@ class CaffeConverter(BaseConverter):
             bias_op = self.blob_to_weight_op(layer, 1)
         output_shape = self.getShape(layer.top[0])
         # reshape
-        in_shape = np.cumprod(self.getShape(layer.bottom[0]))
+        ori_in_shape = self.getShape(layer.bottom[0])
+        in_shape = [ori_in_shape[0], np.prod(ori_in_shape[1:])]
         reshape_attrs = {'loc': self.get_loc(layer.bottom[0] + "_reshape")}
         output_shape = self.getShape(layer.top[0])
 
