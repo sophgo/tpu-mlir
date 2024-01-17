@@ -20,6 +20,8 @@ torch_test_bm1686/
 torch_test_bm1684x/
 torch_test_bm1684/
 torch_test_cv183x/
+tpulang_test_bm1688/
+tpulang_test_bm1684x/
 .cache
 third_party/llvm/bin/clang
 third_party/llvm/bin/clang++
@@ -27,3 +29,4 @@ third_party/llvm/bin/clang-17
 *.xlsx
 bmodel_fbs.py
 .ipynb_checkpoints/
+third_party/customlayer/cross_toolchains/*

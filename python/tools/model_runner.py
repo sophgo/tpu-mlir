@@ -63,8 +63,22 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_sg2260.so'
         elif chip == "MARS3":
             lib_so = 'libcmodel_mars3.so'
+        assert(os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
+        # used in custom layer
+        lib_so = 'libcmodel_custom_1684x.so'
+        if chip == 'BM1688':
+            lib_so = 'libcmodel_custom_1688.so'
+        # elif chip == 'BM1684':
+        #     lib_so = 'libcmodel_custom_1684.so'
+        # elif chip == "SG2260":
+        #     lib_so = 'libcmodel_custom_sg2260.so'
+        # elif chip == "MARS3":
+        #     lib_so = 'libcmodel_custom_mars3.so'
+        if os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)):
+            cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel_custom.so'.format(lib_so)
+            os.system(cmd)
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
         is_cv18xx = True

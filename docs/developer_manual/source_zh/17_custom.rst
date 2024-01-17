@@ -22,6 +22,8 @@ tpu-mlir当前已经包含了丰富的算子库，可以满足大部分神经网
   global mem 中。其优点是可以节省 gdma 搬运, 运算效率高；缺点是比较复杂，local
   mem 在模型部署时会提前分配好，不可任意使用，在部分算子中无法实现。
 
+  c. 用户还需要实现自定义算子的形状推断函数，以根据输入数据类型和形状完成对输出类型和形状的推断。
+
 完成后端算子的封装后，前端可以通过tpulang或caffe构建包含自定义算子的模型,并最终通过 tpu-mlir 的模型转换接口完成模型部署。本章主要介绍在tpu-mlir发布包中使用自定义算子的流程。
 
 
@@ -36,19 +38,21 @@ TpuLang自定义算子添加
 
 2. 基于tpu-kernel编写后端算子
 
-  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include目录下添加 backend_{op_name}.h 头文件，声明global layer与local layer的自定义算子函数 void backend_{op_name}_global 和 void backend_{op_name}_local ， 并在 ./src 下添加 backend_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
+  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/tpu_impl_custom_ops.h 头文件中，声明global layer与local layer的自定义算子函数 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local (可选) ， 并在 ./src 下添加 tpu_impl_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
 
 3. 定义算子参数结构体与编写算子调用接口
 
-  a. 根据算子所需的参数在 ./include/backend_custom_param.h 头文件中添加相应的结构体 {op_name}_param_t ，用于接收来自工具链前端的参数。
+  注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{chip_arch} 表示架构名称，当前可选 `bm1684x`` 和 `bm1686`` 。
 
-  b. 在 ./include 目录下添加 api_{op_name}.h 头文件，声明自定义算子函数的调用接口 void api_{op_name}_global 和 api_{op_name}_local（分别用于调用 void backend_{op_name}_global 和 void backend_{op_name}_local ），并在 ./src 目录下添加 api_{op_name}.c 文件实现相应的接口函数。
+  a. 在 ./src 目录下添加自定义算子函数的调用接口:
+    void api_{op_name}_global 和 api_{op_name}_local (可选)（分别用于调用 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local ）
+    void shape_infer_{op_name} (从输入的形状和数据类型推理出输出的形状和数据类型)
 
-  c. 同时，用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过custom_param_t数组的指针进行传递，每个custom_param_t结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的custom_param_t成员变量中。参数的顺序与用户在调用tpulang接口时提供的参数顺序相同。custom_param_t结构体的定义如下：
+  b. 同时，用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过custom_param_t数组的指针进行传递，每个custom_param_t结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的custom_param_t成员变量中。参数的顺序与用户在调用tpulang接口时提供的参数顺序相同。custom_param_t结构体的定义如下：
 
   .. code-block:: c
 
-    typedef struct {
+    typedef union {
       int int_t;
       float float_t;
       // max size of int and float array is set as 16
@@ -59,18 +63,20 @@ TpuLang自定义算子添加
 
 4. 定义后端调用接口
 
-  在 ./src/backend_custom_api.cpp 中通过宏定义建立后端接口，该接口将在工具链前端进行Codegen时被调用。格式如下：
+  在 register_ops.cmake 中添加算子的名字以注册自定义算子：
 
-  .. code-block:: C
+  .. code-block::
 
-    IMPL_CUSTOM_API_GLB({op_name}, {op_name}_param_t)
-
-    IMPL_CUSTOM_API_LOC({op_name}, {op_name}_param_t)
+    register_custom_op({op_name})
 
 
 5. 编译并安装动态库
 
-  通过运行 $TPUC_ROOT/customlayer/build.sh 脚本，便可以完成自定义算子的编译，生成 backend_custom_api.so 动态库并安装到 $TPUC_ROOT/lib 中。
+  先运行命令 source $TPUC_ROOT/customlayer/envsetup.sh 初始化环境，
+  通过运行命令 rebuild_custom_backend ，可以完成自定义算子后端接口的编译。
+  通过运行命令 rebuild_custom_firmware_cmodel {chip_arch} ，可以在cmodel模式下完成支持自定义算子的固件的编译。
+  通过运行命令 rebuild_custom_firmware_soc {chip_arch} ，可以在soc模式下完成支持自定义算子的固件的编译。
+  通过运行命令 rebuild_custom_firmware_pcie {chip_arch} ，可以在pcie模式下完成支持自定义算子的固件的编译。
 
 6. 调用TpuLang构建模型
 
@@ -81,11 +87,11 @@ TpuLang自定义算子添加
   .. code-block:: python
 
     TpuLang.custom(tensors_in: list,
-                    shape_func,
-                    op_name: str,
-                    out_dtypes: list,
-                    out_names: list = None,
-                    params: dict = None)
+                   shape_func,
+                   op_name: str,
+                   out_dtypes: list,
+                   out_names: list = None,
+                   params: dict = None)
     '''
         The custom op
         Arguments:
@@ -104,16 +110,16 @@ TpuLang自定义算子添加
 Caffe自定义算子添加
 ~~~~~~~~~~~~~~~~~~~~~
 
-1-5步TpuLang自定义算子添加中相同，此处不再赘述。
+1-5步与TpuLang自定义算子添加中相同，此处不再赘述。
 
 6. 定义Caffe的自定义算子
 
-  要定义 Caffe 的自定义算子，你需要在$TPUC_ROOT/customlayer/python/ my_layer.py 文件中定义一个类，该类继承自 caffe.Layer，并根据需要重写 setup, reshape, forward 和 backward 函数。
+  要定义 Caffe 的自定义算子，你需要在$TPUC_ROOT/customlayer/python/my_layer.py 文件中定义一个类，该类继承自 caffe.Layer，并根据需要重写 setup, reshape, forward 和 backward 函数。
 
 
 7. 实现自定义算子前端转换函数
 
-  通过Python实现的自定义算子type为 "Python"，需要在 $TPUC_ROOT/customlayer/python/ my_converter.py 中的 MyCaffeConverter 类里根据之前的自定义算子定义一个针对type为 "Python" 的前端算子转换函数。完成转换函数后便可通过 MyCaffeConverter 对包含自定义算子的Caffe模型进行前端转换。
+  通过Python实现的自定义算子type为 "Python"，需要在 $TPUC_ROOT/customlayer/python/my_converter.py 中的 MyCaffeConverter 类里根据之前的自定义算子定义一个针对type为 "Python" 的前端算子转换函数。完成转换函数后便可通过 MyCaffeConverter 对包含自定义算子的Caffe模型进行前端转换。
 
   定义完成后，可以调用my_converter.py接口进行Top MLIR转换:
 
@@ -138,41 +144,25 @@ TpuLang示例
 
 1. 后端算子实现
 
-  ${TPUC_ROOT}/customlayer/include/backend_swapchannel.h 头文件声明如下：
+  ${TPUC_ROOT}/customlayer/include/tpu_impl_custom_ops.h 头文件添加如下声明：
 
-  .. code-block:: cpp
+  .. code-block:: c
 
-    #ifndef BACKEND_SWAPCHANNEL_H_
-    #define BACKEND_SWAPCHANNEL_H_
-
-    #include "tpu_kernel.h"
-
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-
-    void backend_swapchannel_global(
+    void tpu_impl_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
         const int *order,
         data_type_t dtype);
 
-    #ifdef __cplusplus
-    }
-    #endif
 
-    #endif
-
-
-  ${TPUC_ROOT}/customlayer/src/backend_swapchannel.c 代码如下：
+  ${TPUC_ROOT}/customlayer/src/tpu_impl_swapchannel.c 代码如下：
 
   .. code-block:: c
 
-    #include "backend_swapchannel.h"
-    #include "common.h"
+    #include "tpu_impl_custom_ops.h"
 
-    void backend_swapchannel_global(
+    void tpu_impl_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
@@ -209,42 +199,18 @@ TpuLang示例
       int order[3];
     } swapchannel_param_t;
 
-
-  ${TPUC_ROOT}/customlayer/include/api_swapchannel.h 头文件声明如下：
-
-  .. code-block:: cpp
-
-    #pragma once
-    #include "api_common.h"
-    #include "backend_custom_param.h"
-
-    #ifdef __cplusplus
-    extern "C" {
-    #endif
-
-    void api_swapchannel_global(
-        global_tensor_spec_t *input,
-        global_tensor_spec_t *output,
-        custom_param_t *param);
-
-    #ifdef __cplusplus
-    }
-    #endif
-
-
-  ${TPUC_ROOT}/customlayer/src/api_swapchannel.c 代码如下：
+  ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c 代码如下：
 
   .. code-block:: c
 
     #include "tpu_utils.h"
-    #include "api_swapchannel.h"
-    #include "backend_swapchannel.h"
+    #include "tpu_impl_custom_ops.h"
 
     // parse param function
-    swapchannel_param_t parsParam(custom_param_t* param) {
+    static swapchannel_param_t parseParam(const void* param) {
         swapchannel_param_t sc_param = {0};
         for (int i = 0; i < 3; i++) {
-            sc_param.order[i] = param[0].int_arr_t[i];
+            sc_param.order[i] = ((custom_param_t *)param)[0].int_arr_t[i];
         }
         return sc_param;
     }
@@ -253,10 +219,9 @@ TpuLang示例
     void api_swapchannel_global(
         global_tensor_spec_t *input,
         global_tensor_spec_t *output,
-        custom_param_t *param)
+        const void *param)
     {
-        swapchannel_param_t sc_param = parsParam(param);
-
+        swapchannel_param_t sc_param = parseParam(param);
         backend_swapchannel_global(
             input->addr,
             output->addr,
@@ -268,21 +233,13 @@ TpuLang示例
 
 3. 后端调用接口
 
-  ${TPUC_ROOT}/customlayer/src/backend_custom_api.cpp 代码如下：
+  ${TPUC_ROOT}/customlayer/register_ops.cmake 添加如下代码：
 
-  .. code-block:: cpp
+  .. code-block:: c
 
-    #include "backend_helper.h"
-    #include "common_def.h"
-    #include "api_common.h"
+    register_custom_op(swapchannel)
 
-    // 1. include head file of api function
-    #include "api_swapchannel.h"
-
-    // 2. global backend api functions
-    IMPL_CUSTOM_API_GLB(swapchannel, swapchannel_param_t)
-
-  完成后端调用接口后运行 $TPUC_ROOT/customlayer/build.sh 编译并安装自定义算子动态库。
+  完成后端调用接口后运行《TpuLang自定义算子添加》中第5步中列出的命令进行编译。
 
 4. TpuLang接口调用
 

@@ -11,6 +11,8 @@ import os
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
+test_custom_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
+sys.path.append(test_custom_dir)
 import time
 from chip import *
 from run_model import MODEL_RUN
@@ -18,6 +20,7 @@ import test_tpulang
 import test_torch
 import test_tflite
 import test_onnx
+import test_custom_tpulang
 import argparse
 import logging
 from utils.mlir_shell import _os_system_log
@@ -62,6 +65,7 @@ class MAIN_ENTRY(object):
             "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
             "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x"]),
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
+            "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
         # yapf: enable
         self.test_set = {
