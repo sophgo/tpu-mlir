@@ -872,6 +872,7 @@ def Top_ListOp: Top_Op<"List"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_ReshapeOp:Top_Op<"Reshape"> {
