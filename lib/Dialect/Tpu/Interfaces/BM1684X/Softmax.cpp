@@ -80,9 +80,8 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
-  /* trick for A2: because of A2's memory volume or other reason,
-    buffer_size effect layergroup performance seriously */
-  #define SIZE (padding_flag == 1 && !module::isBM1688() ? sizeof(int16_t): sizeof(float))
+
+  #define SIZE (padding_flag == 1 ? sizeof(int16_t): sizeof(float))
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
