@@ -58,6 +58,10 @@ struct AddToScale : public OpRewritePattern<AddOp> {
     auto rhs_shape = module::getShape(op.getInputs()[1]);
     auto output_shape = module::getShape(op.getOutput());
     auto coeffs = module::getF64Array(op.getCoeff(), 2, 1.0);
+
+    if (lhs_shape == rhs_shape) {
+      return failure();
+    }
     for (auto c : *coeffs) {
       if (c != 1.0) {
         return failure();
