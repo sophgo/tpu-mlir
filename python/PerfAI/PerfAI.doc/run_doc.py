@@ -57,7 +57,11 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
         os.makedirs(perfai_doc_dir)
     for file in os.listdir(input_fold):
         if file.endswith('.xlsx') or file.endswith('.csv'):
-            shutil.move(os.path.join(input_fold, file), perfai_doc_dir)
+            src_file = os.path.join(input_fold, file)
+            dst_file = os.path.join(perfai_doc_dir, file)
+            if os.path.exists(dst_file):
+                os.remove(dst_file)
+            shutil.move(src_file, dst_file)
     # regInfo_dir = os.path.join(input_fold, 'RegInfo')
     # if not os.path.exists(regInfo_dir):
     #     os.makedirs(regInfo_dir)

@@ -190,8 +190,8 @@ class Tiu(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             continous_gap = 200
-            if reg_dict['Cmd Id'] < continous_gap:
-                reg_dict['Avg Cycle Last 200'] = round(reg_dict['End Cycle'] / reg_dict['Cmd Id'])
+            if int(reg_dict['Cmd Id']) < continous_gap:
+                reg_dict['Avg Cycle Last 200'] = round(int(reg_dict['End Cycle']) / int(reg_dict['Cmd Id']))
             else:
                 assert(i >= continous_gap - 1)
                 reg_dict['Avg Cycle Last 200'] = round((reg_dict['End Cycle'] - self.reg_list[i-199]['Start Cycle']) / continous_gap)

@@ -1027,7 +1027,7 @@
             let stall = api.value(4);
             let isEmpty = stall === '';
 
-            if (!isEmpty) {
+            if (!isEmpty && stall > 0) {
                 let slashStart = api.coord([api.value(1), categoryIndex]);
                 let slashEnd = api.coord([api.value(1) + stall, categoryIndex]);
 
@@ -1248,8 +1248,15 @@
                         tip += `<br>Start Time: ${usec_str(params.value[1])}`
                         tip += `<br>End Time: ${usec_str(params.value[2])}`
                         tip += `<br>Duratuion: ${usec_str(params.value[3])}`
-                        tip += `<br>Stall Time: ${usec_str(params.value[4])}`
-                        tip += `<br>Execution Rat: 实际时间`
+                        // Check if Stall Time is a number
+                        let stallTime = params.value[4];
+                        if (stallTime !== '' && !isNaN(Number(stallTime))) {
+                            stallTime = Number(stallTime);
+                            tip += `<br>Stall Time: ${usec_str(stallTime)}`;
+                            // Calculate and display Execution Ratio as a percentage
+                            let executionRatio = ((params.value[3] - stallTime) / params.value[3]) * 100;
+                            tip += `<br>Execution Ratio: ${executionRatio.toFixed(2)}%`;
+                        }
                         for (let i = funcTypeIndex; i < header.length - 2; i++) {
                             if (i === heightIndex) continue //height
                             if (params.value[i] === "") continue

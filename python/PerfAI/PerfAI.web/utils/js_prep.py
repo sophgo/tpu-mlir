@@ -146,7 +146,7 @@ def processAddr(lst, lane_size):
         new_shifted_addr = shifted_addr % lane_size
         lane_occupied = math.ceil(shifted_addr / lane_size)
         sublist[3] = new_shifted_addr
-        sublist[-1] += f"<br>Occupied Lane Num:{lane_occupied}" # add the num of lane used
+        sublist[-1] += f"<br>Occupied Lane#:{lane_occupied}" # add the num of lane used
         new_lst.append(sublist)
         # new_lst.append(lane_occupied) #modify the javascript
     return new_lst
@@ -197,10 +197,12 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
             op_type = 0 if direction in read_directions else 1
             if direction in read_directions:
                 size = datasize / lane_num  #c维除以lane_num
-                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, dst, size, f'{direction},{data["dst_shape"][i]}'])
+                info = f'dma:cmdId={cmd},physical start addr:{dst}<br>{direction},{data["dst_shape"][i]}'
+                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, dst, size, info])
             elif direction in write_directions:
                 size = datasize / lane_num #c维除以lane num
-                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, src, size, f'{direction},{data["src_shape"][i]}'])
+                info = f'dma:cmdId={cmd},physical start addr:{src}<br>{direction},{data["src_shape"][i]}'
+                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, src, size, info])
         # import pdb; pdb.set_trace()
         if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) < lane_num:
             worklane = int(data['des_res0_c'][i])
@@ -209,10 +211,12 @@ def process_data(type, data, idx, ip_type, bwlist, lane_num, cycle_data_dict, lm
         if 'des_res0_size' in data and data['des_res0_size'][i] is not None:
             #the memory address reads the result tensor: op=0
             size = data['des_res0_size'][i] / worklane
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], size, f'tiu:cmdId={cmd},{data["des_res0_addr"][i]}'])
+            info = f'tiu:cmdId={cmd},physical start addr:{data["des_res0_addr"][i]}'
+            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], size, info])
         if 'des_opd0_size' in data and data['des_opd0_size'][i] is not None:
             size = (data['des_opd0_size'][i]+data['des_opd1_size'][i] if data['des_opd1_size'][i] is not None else data['des_opd0_size'][i]) / worklane
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, f'tiu:cmdId={cmd},{data["des_opd0_addr"][i]}'])
+            info = f'tiu:cmdId={cmd},physical start addr:{data["des_opd0_addr"][i]}'
+            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, info])
     process_lmem = processAddr(lmem_temp, lane_size) if len(lmem_temp) > 0 else lmem_temp
     lmem_op_dict[f'lmem_op_record{idx}'].extend(process_lmem)
     lmem_op_dict[f'lmem_op_record{idx}'] = deduplicate_ordered_list(lmem_op_dict[f'lmem_op_record{idx}'])
