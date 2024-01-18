@@ -36,7 +36,7 @@ class FpLayerSearcher:
                 print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
                 exit(1)
         self.parser = MlirParser(args.mlir_file)
-    
+
     def parse_inputs(self, input_str):
         ops = [op for op in input_str.split(',')]
         return ops
@@ -52,7 +52,7 @@ class FpLayerSearcher:
             block = [block_start, block_end]
             parsed_blocks.append(block)
         return parsed_blocks
-    
+
     def get_fpfwd_inputs(self, input_names, parser, mode):
         if isinstance(input_names, str):
             input_names = self.parse_inputs(input_names)
@@ -65,7 +65,7 @@ class FpLayerSearcher:
                 op_names.extend(parser.get_all_next_ops_by_op_name(op_name))
         op_names = list(set(op_names))
         return op_names
-    
+
     def get_blocks(self, input_str, parser):
         blocks = self.parse_blocks(input_str)
         blocks_name_set = set()
@@ -75,8 +75,8 @@ class FpLayerSearcher:
             block_name_set = pre_lists & next_lists
             blocks_name_set.update(block_name_set)
         return list(blocks_name_set)
-    
-    def print_log_info(self, fp_layer_list):  
+
+    def print_log_info(self, fp_layer_list):
         with open(self.quantize_free_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
@@ -91,6 +91,6 @@ class FpLayerSearcher:
             fp_layer_set.update(set(self.get_fpfwd_inputs(self.fpfwd_inputs, self.parser, 0)))
         if self.fpfwd_outputs:
             fp_layer_set.update(set(self.get_fpfwd_inputs(self.fpfwd_outputs, self.parser, 1)))
-        if self.fpfwd_outputs:
+        if self.fpfwd_blocks:
             fp_layer_set.update(set(self.get_blocks(self.fpfwd_blocks, self.parser)))
         self.print_log_info(fp_layer_set)
