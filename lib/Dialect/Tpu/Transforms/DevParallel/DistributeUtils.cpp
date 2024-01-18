@@ -493,20 +493,22 @@ static bool isAttentionMatrix(Operation *op,
                               std::vector<Operation *> &begin_ops) {
   LLVM_DEBUG(llvm::dbgs() << "== Start match AttentionMatrix. ==\n");
   if (!isa<tpu::CastOp>(op) || !op->hasOneUse()) {
-    LLVM_DEBUG({
-      if (!isa<tpu::CastOp>(op)) {
-        llvm::dbgs() << "1. This Op is not CastOp: " << *op << "\n";
-        llvm::dbgs() << "Softmax still uses fp32 yet, so it needs CastOp.\n";
-      } else {
-        std::vector<Operation *> users(op->user_begin(), op->user_end());
-        llvm::dbgs() << "1. This Op is: " << *op << "\n";
-        llvm::dbgs() << "This CastOp has " << users.size() << " users:\n";
-        for (auto user : users) {
-          llvm::dbgs() << *user << "\n";
+    if (!isa<tpu::SoftmaxOp>(op) || !op->hasOneUse()) {
+      LLVM_DEBUG({
+        if (!isa<tpu::CastOp>(op)) {
+          llvm::dbgs() << "1. This Op is not CastOp: " << *op << "\n";
+          llvm::dbgs() << "Softmax still uses fp32 yet, so it needs CastOp.\n";
+        } else {
+          std::vector<Operation *> users(op->user_begin(), op->user_end());
+          llvm::dbgs() << "1. This Op is: " << *op << "\n";
+          llvm::dbgs() << "This CastOp has " << users.size() << " users:\n";
+          for (auto user : users) {
+            llvm::dbgs() << *user << "\n";
+          }
         }
-      }
-    });
-    return false;
+      });
+      return false;
+    }
   }
   Operation *attn_mask_op;
   while (!isa<tpu::MatMulOp>(op)) {
