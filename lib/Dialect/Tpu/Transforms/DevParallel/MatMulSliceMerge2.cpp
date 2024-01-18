@@ -64,12 +64,18 @@ MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
     return failure();
   }
   // ActiveOp
-  Value active_value = isCastActive(mul_down_op.getOperand(0));
+  int matmul_idx = 1;
+  auto in = mul_down_op.getOperand(0);
+  if (isa<MatMulOp, A16MatMulOp>(in.getDefiningOp())) {
+    in = mul_down_op.getOperand(1);
+    matmul_idx = 0;
+  }
+  Value active_value = isCastActive(in);
   if (!active_value) {
     return failure();
   }
   // MatMulOp / A16MatMulOp
-  auto mul_right_op = mul_down_op.getOperand(1).getDefiningOp();
+  auto mul_right_op = mul_down_op.getOperand(matmul_idx).getDefiningOp();
   auto right_mm_op = dyn_cast<tpu::MatMulOp>(mul_right_op);
   auto right_a16mm_op = dyn_cast<tpu::A16MatMulOp>(mul_right_op);
   if (!right_mm_op && !right_a16mm_op) {
@@ -325,11 +331,15 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
   Operation *next_op;
   Value cur_out;
   std::vector<Value> other_opds;
+  bool is_qwen_model = false;
   for (int cur_device = 0; cur_device < num_devices; ++cur_device) {
     auto suffix = std::to_string(cur_device);
     // clone residual branch
     next_op = residual;
     cur_out = next_op->getOperand(0);
+    if (isa<tpu::AddOp>(next_op) && cur_out != attn_ln->getOperand(0)) {
+      cur_out = next_op->getOperand(1);
+    }
     if (isa<tpu::MatMulOp>(next_op)) {
       cur_out = next_op->getOperand(2);
     }
@@ -375,6 +385,9 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     // clone attn_mask input branch
     next_op = attn_mask;
     cur_out = next_op->getOperand(0);
+    if (isa<tpu::MulConstOp>(cur_out.getDefiningOp())) {
+      cur_out = next_op->getOperand(1);
+    }
     // (Cast) -> Reshape
     while (isa<tpu::CastOp, tpu::ReshapeOp>(next_op)) {
       next_op = cloneCommonOp(rewriter, next_op, cur_out, -1, num_devices,
@@ -407,11 +420,21 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     cur_out = ln_input;
     std::vector<Operation *> op_branches =
         cloneOpWithWeight(rewriter, next_op, cur_out, suffix);
+
+    // llama2: 0: value, 1: key, 2: query
+    // qwen: 0: query, 1: key, 2: value
+    if (cur_device == 0) {
+      auto reshape = *op_branches[0]->getResult(0).user_begin();
+      if (std::distance(reshape->user_begin(), reshape->user_end()) == 3) {
+        is_qwen_model = true;
+      }
+    }
+
     Value attn_start_out = cur_out;
     // Value branch
     std::vector<Value> outs;
     outs.clear();
-    next_op = op_branches[0];
+    next_op = is_qwen_model ? op_branches[2] : op_branches[0];
     cur_out = attn_start_out;
     other_opds = {past_v_out};
     next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
@@ -419,7 +442,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     Value value_out = outs[0];
     Value value_branch = outs[1];
     // Query branch
-    next_op = op_branches[2];
+    next_op = is_qwen_model ? op_branches[0] : op_branches[2];
     cur_out = attn_start_out;
     next_op = cloneAttentionQuery(rewriter, next_op, cur_out, pos_ids,
                                   num_devices, cur_device, false)[0];

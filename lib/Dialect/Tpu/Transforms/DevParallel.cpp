@@ -32,7 +32,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   std::vector<Value> inputs;
   std::vector<Type> types;
   std::vector<Location> locs;
-  Value opd = ops_begin[0]->getOperand(0);
+  Value opd = ops_begin[1]->getOperand(0);
   for (auto op : ops_begin) {
     auto input = op->getOperand(0);
     if (isa<tpu::GatherOp>(op)) {
@@ -40,8 +40,16 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
     } else if (isa<tpu::MatMulOp>(op)) {
       if (!isa<top::NoneOp>(op->getOperand(2).getDefiningOp())) {
         input = op->getOperand(2);
-        opd = input;
       }
+    } else if (isa<tpu::AddOp>(op)) {
+      for (auto in : op->getOperands()) {
+        if (!isa<tpu::MulConstOp, tpu::MatMulOp, tpu::A16MatMulOp>(in.getDefiningOp())) {
+          input = in;
+        }
+      }
+    }
+    if (opd.getDefiningOp()->isBeforeInBlock(input.getDefiningOp())) {
+      opd = input;
     }
     auto type = input.getType();
     auto loc = module::getLocLike(op, "distribute_begin");
@@ -53,17 +61,17 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   rewriter.setInsertionPointAfterValue(opd);
   auto begin = rewriter.create<tpu::DevBeginOp>(begin_loc, types,
                                                          inputs, attrs);
-  for (auto op : ops_begin) {
-    if (op != ops_begin[0]) {
-      auto in = op->getOperand(0);
-      if (isa<tpu::GatherOp>(op)) {
-        in = op->getOperand(1);
-      }
-      if (!isa<BlockArgument>(in)) {
-        in.getDefiningOp()->moveBefore(begin);
-      }
-    }
-  }
+  // for (auto op : ops_begin) {
+  //   if (op != ops_begin[0]) {
+  //     auto in = op->getOperand(0);
+  //     if (isa<tpu::GatherOp>(op)) {
+  //       in = op->getOperand(1);
+  //     }
+  //     if (!isa<BlockArgument>(in)) {
+  //       in.getDefiningOp()->moveBefore(begin);
+  //     }
+  //   }
+  // }
   for (size_t i = 0; i < ops_begin.size(); ++i) {
     int index = 0;
     for (auto [idx, in] : llvm::enumerate(ops_begin[i]->getOperands())) {
