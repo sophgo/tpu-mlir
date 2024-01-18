@@ -33,10 +33,13 @@ def bmprofile_check_command(input_dir:str, output_dir:str, mark_str, arch="bm168
     parser  = BMProfileParser()
     parser.check_static_command(input_dir, output_dir, mark_str, arch)
 
-def bmprofile_parse_perfAI(input_dir:str, output_dir:str, mark_str, arch="A2"):
+
+def bmprofile_parse_perfAI(input_dir: str, output_dir: str, mark_str, arch="A2", debug=False):
     bmProfile = BMProfileParserPerfAI()
     bmProfile.parse(input_dir)
     bmProfile.to_txt(output_dir)
-    subprocess.run([f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} 2 --style 1"],  shell=True)
-    subprocess.run(
-        [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(output_dir)} --name PerfAI_web"],  shell=True)
+    if not debug:
+        subprocess.run(
+            [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} 2 --style 1"],  shell=True)
+        subprocess.run(
+            [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(output_dir)} --name PerfAI_web"],  shell=True)
