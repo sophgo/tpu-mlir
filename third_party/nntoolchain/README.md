@@ -12,8 +12,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2024-1-14
-sha256: a1f62609880582703e9c6ca1a035865dbd0b6580
+## TPU1686 2024-1-18
+sha256: 5cb30575cbc361df57942ec16b8dda22b6460120
 
 ``` bash
 #bm1684x
