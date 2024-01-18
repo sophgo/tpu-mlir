@@ -391,12 +391,12 @@ class TdbCmdBackend(cmd.Cmd):
 
         if self.cmd_point >= len(self.cmditer):
             raise StopIteration()
-        return self.cmditer[self.cmd_point - 1]
+        return self.cmditer[self.cmd_point]
 
     def get_precmd(self):
         if self.cmd_point == 0:
             raise StopIteration()
-        return self.cmditer[self.cmd_point - 2]
+        return self.cmditer[self.cmd_point - 1]
 
     def get_nextop(self):
         op = self.get_cmd()

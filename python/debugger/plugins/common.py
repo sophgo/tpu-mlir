@@ -58,6 +58,7 @@ class ValueView:
     loc_index: int
     loc_name: str
     cmd_point: int
+    file_line: int
 
     @property
     def is_operand(self):
@@ -204,8 +205,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
             bf_point = max_with_none(tiu_point, dma_point, last_af_point) + 1
             operands_tmp = collections.defaultdict(list)
             operands_tmp[tdb.cmditer[bf_point - 1].tuple_key].extend(
-                Operand(opd, opd_index, loc_index, loc.loc_name, bf_point)
+                Operand(opd, opd_index, loc_index, opd.name, bf_point, loc.file_line)
                 for opd_index, opd in enumerate(loc.operands)
+                if opd
             )
 
             tiu_point = dma_point = None
@@ -216,8 +218,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
             last_af_point = af_point = max_with_none(tiu_point, dma_point)
             results_tmp = collections.defaultdict(list)
             results_tmp[tdb.cmditer[af_point - 1].tuple_key].extend(
-                Result(opd, opd_index, loc_index, loc.loc_name, af_point)
+                Result(opd, opd_index, loc_index, opd.name, af_point, loc.file_line)
                 for opd_index, opd in enumerate(loc.results)
+                if opd
             )
 
             for i in range(tiu_before + 1, tiu_after + 1):
@@ -240,7 +243,6 @@ class FinalMlirIndexPlugin(TdbPlugin):
             for j in range(dma_before + 1, dma_after + 1):
                 record = {
                     "loc_index": loc.loc_index,
-                    "loc_name": loc.loc_name,
                     "line-num": loc.file_line,
                     "subnet_id": subnet_id,
                     "core_id": core_id,
@@ -265,19 +267,17 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
-        loc = self.get_loc_by_point(point)
-        if loc is None:
-            return None
-        file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
+        file_line = self.tdb.index_df.loc[
+            self.tdb.index_df["executed_id"] == point, "line-num"
+        ].item()
         return self.final_mlir.lines[file_line - 1]
 
     def get_mlir_context_by_point(
         self, point=None, pre=2, next=2
     ) -> Optional[List[str]]:
-        loc = self.get_loc_by_point(point)
-        if loc is None:
-            return None
-        file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
+        file_line = self.tdb.index_df.loc[
+            self.tdb.index_df["executed_id"] == point, "line-num"
+        ].item()
         return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
 
     def get_locindex_by_atomic(self, point=None) -> Optional[int]:

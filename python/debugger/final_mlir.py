@@ -208,10 +208,6 @@ class CMD:
     def tuple_key_after(self):
         return (self.subnet_id, *self.tiu_dma_id_after, self.core_id)
 
-    @property
-    def loc_name(self):
-        return self.results[0].name
-
     def __repr__(self) -> str:
         return pformat(self.__dict__)
 
@@ -349,17 +345,6 @@ class FinalMlirIndex:
                     loc_ref = match.group(1)
                     locref2fileline[loc_ref] = lino
                     fileline2locref[lino] = loc_ref
-
-    def get_fileline_by_locname(self, loc_name: str):
-        loc_ref = self.locname2locref[loc_name]
-        lino = self.locref2fileline.get(loc_ref, None)
-        if lino is None:
-            warnings.warn(
-                "some problem happend when get file-line from loc_name. please submit this problem."
-            )
-            lino = -len(self.locref2fileline)
-            self.locref2fileline[loc_ref] = lino
-        return lino
 
     def get_locname_by_fileline(self, lino: int):
         loc_name = self.fileline2locref[lino]

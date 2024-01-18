@@ -282,8 +282,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def reduce_summary(self):
         summary: Dict[int, List[List[str]]] = {}
         for loc_index, v in self.reports.items():
-            loc_name = self.index.final_mlir.loc[loc_index].loc_name
-            lino = self.index.final_mlir.get_fileline_by_locname(loc_name)
+            lino = self.index.final_mlir.loc[loc_index].file_line
 
             loc_summary = summary.setdefault(lino, [])
             current = ([], [])
@@ -304,8 +303,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def table_summary(self):
         summary: List[Tuple[int, List[str], List[str]]] = []
         for loc_index, v in self.reports.items():
-            loc_name = self.index.final_mlir.loc[loc_index].loc_name
-            lino = self.index.final_mlir.get_fileline_by_locname(loc_name)
+            lino = self.index.final_mlir.loc[loc_index].file_line
 
             loc_summary = ([], [])
             for vv in v:
@@ -322,8 +320,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         summary: List[Tuple[int, List[str], List[str]]] = []
         skip = 0
         for loc_index, v in self.reports.items():
-            loc_name = self.index.final_mlir.loc[loc_index].loc_name
-            lino = self.index.final_mlir.get_fileline_by_locname(loc_name)
+            lino = self.index.final_mlir.loc[loc_index].file_line
 
             loc_summary = ([], [])
             if all([vv.state != CmpState.Fail for vv in v]):
@@ -475,7 +472,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
-    def check_data(self, value_view: ValueView) -> ComparedResult:
+    def check_data(self, point_index, value_view: ValueView) -> ComparedResult:
         value = value_view.value
         if value.name in self.excepts:
             value_res = ComparedResult(value_view, None, msg="ignore")
@@ -487,7 +484,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
 
-        cmd = self.tdb.get_cmd()
+        cmd = self.tdb.cmditer[point_index]
         if isinstance(context, SG2260Context) or isinstance(context, BM1688Context):
             raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
         else:
@@ -527,7 +524,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         if is_operand:
             values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index, "operands"
+                tdb.index_df["executed_id"] == point_index + 1, "operands"
             ].tolist()
         else:
             values = tdb.index_df.loc[
@@ -536,7 +533,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         if values:
             values = values[0]
 
-        if values is None:
+        if not values:
             return CmpState.Middle
         if isinstance(values, float) and math.isnan(values):
             return CmpState.Middle
@@ -550,12 +547,14 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if value_view.value is None:  # top.None
                 continue
 
-            cmp_res = self.check_data(value_view)
+            cmp_res = self.check_data(point_index - 1, value_view)
             if cmp_res.state == CmpState.Fail:
                 success = False
 
             reports.setdefault(value_view.loc_index, []).append(cmp_res)
-            lino = index_plugin.final_mlir.get_fileline_by_locname(value_view.loc_name)
+            lino = index_plugin.tdb.index_df.loc[
+                self.tdb.index_df["executed_id"] == value_view.cmd_point, "line-num"
+            ].item()
             self.index_record.setdefault(lino, []).append(cmp_res)
 
         return success
@@ -569,14 +568,12 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             raise StopIteration()
 
     def after_step(self, tdb: TdbCmdBackend):
-        tdb.cmd_point -= 1
         if self.ref_data is None or not self.enabled:
             return
 
         ret = self.compare(tdb, False)
         if not ret and self.break_when_fail:
             raise BreakpointStop()
-        tdb.cmd_point += 1
 
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
