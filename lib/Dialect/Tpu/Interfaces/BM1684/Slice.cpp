@@ -93,6 +93,9 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int slice[4] = {(int)out_g_info.n_slice, (int)output_shape[1],
                   (int)out_g_info.h_slice, (int)output_shape[3]};
 
+  int in_slice[4] = {(int)in_g_info.n_slice, (int)in_g_info.c_slice,
+                     (int)in_g_info.h_slice, (int)in_g_info.w_slice};
+
   for (int i = 0; i < 4; i++) {
     idx[i] = idx[i] >= 0 ? idx[i] : (input_shape[i] + idx[i]);
     slice[i] = slice[i] >= 0 ? slice[i] : (input_shape[i] + slice[i]);
@@ -101,7 +104,7 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   for (int i = 0; i < num_dims; ++i) {
     // ====== calculate begin_index and end_index ======
     begin_index[i] =
-        (offset->at(i) >= idx[i] && offset->at(i) <= idx[i] + slice[i])
+        (offset->at(i) >= idx[i] && offset->at(i) <= idx[i] + in_slice[i])
             ? (offset->at(i) - idx[i])
             : 0;
     strides[i] = steps->at(i);
