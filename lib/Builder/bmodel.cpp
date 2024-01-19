@@ -285,8 +285,11 @@ size_t ModelGen::Finish() {
   }
 
   // create model
+  string version_ = BMODEL_VERSION;
+  version_.append("+");
+  version_.append(MLIR_VERSION);
   auto type = builder_.CreateString(BMODEL_TYPE);
-  auto version = builder_.CreateString(BMODEL_VERSION);
+  auto version = builder_.CreateString(version_);
   auto net = builder_.CreateVector(nets_);
   auto chip = builder_.CreateString(chip_);
   auto now = time(0);
