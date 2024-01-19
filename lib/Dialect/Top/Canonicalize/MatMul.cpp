@@ -484,7 +484,160 @@ struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
   }
 };
 
+
+// in eva02 and gpt2, there is matmul and slice to 3 branches. split matmul to three branch for better cali. now, this one is for eva2 only
+// matmul + reshape + 3*(slice + squeeze) => 3*(matmul + reshape + squeeze) or 3*(matmul+reshape) when squeeze the slice axes
+struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.getOutput().hasOneUse())
+      return failure();
+    ReshapeOp reshape_op = NULL;
+
+    for (auto out:op.getOutput().getUsers()){
+      if (isa<ReshapeOp>(out))
+        reshape_op = dyn_cast<ReshapeOp>(out);
+      else
+        return failure();
+    }
+    int pos[3] = {0};
+    SliceOp slice_op[3] = {NULL};
+    SqueezeOp squeeze_ops[3] = {NULL};
+    int i = 0;
+    int squ_axes = -1;
+    for (auto u:reshape_op.getOutput().getUsers()) {
+      if (!isa<SliceOp>(u)) {
+        if (isa<SplitOp>(u))
+          continue;
+        else
+          return failure();
+      }
+      if (i>3)
+        return failure();
+      slice_op[i] = dyn_cast_or_null<SliceOp>(u);
+      auto off = module::getI64Array(slice_op[i].getOffset());
+      auto steps = module::getI64Array(slice_op[i].getSteps());
+      auto ends = module::getI64Array(slice_op[i].getEnds());
+      auto axes = module::getI64Array(slice_op[i].getAxes());
+      if (axes->size() == 0) {
+        if (steps->size() != off->size() || steps->size() != ends->size())
+          return failure();
+        for (int idx=0;idx<steps->size();idx++) {
+          if (steps->at(idx) != 1)
+            return failure();
+          if (ends->at(idx) > 0 && off->at(idx) == ends->at(idx)-1) {
+            pos[i] = off->at(idx);
+            if (squ_axes >= 0 && squ_axes != idx)
+              return failure();
+            else if (squ_axes < 0)
+              squ_axes = idx;
+            break; // support only one axes slice
+          }
+        }
+      } else {
+        return failure(); // don't know how it looks if axes is set
+      }
+      if (module::getShape(op->getOperands()[0]).size() <= squ_axes)
+        return failure();
+      i ++;
+    }
+
+    if (i != 3 || slice_op[0] == NULL || slice_op[1] == NULL || slice_op[2] == NULL)
+      return failure();
+    for (int i = 0; i<3; i++) {
+      for (auto out:slice_op[i].getOutput().getUsers())
+        if (isa<SqueezeOp>(out))
+          squeeze_ops[i] = dyn_cast<SqueezeOp>(out);
+        else
+          return failure();
+      if (squeeze_ops[i] == NULL)
+        return failure();
+      if (!slice_op[i].getOutput().hasOneUse())
+        return failure();
+    }
+    WeightOp weight_op = NULL;
+    WeightOp bias_op = NULL;
+    std::vector<int64_t> weight_shape;
+    std::vector<int64_t> bias_shape;
+    for (auto in:op.getOperands()) {
+      if (isa<WeightOp>(in.getDefiningOp())){
+        if ( weight_op == NULL) {
+          weight_op = dyn_cast<WeightOp>(in.getDefiningOp());
+          auto shape = in.getType().dyn_cast<TensorType>().getShape();
+          if (shape.size() != 2)
+            return failure();
+          for (auto s : shape)
+            weight_shape.push_back(s);
+        }
+        else if (bias_op == NULL) {
+          bias_op = dyn_cast<WeightOp>(in.getDefiningOp());
+          auto shape = in.getType().dyn_cast<TensorType>().getShape();
+          for (auto s: shape)
+            bias_shape.push_back(s);
+        }
+      }
+    }
+    if (weight_shape[1] != bias_shape[bias_shape.size()-1] || weight_shape[1]%3 != 0)
+      return failure();
+
+    auto weight = weight_op.read<float>();
+    for (int i = 0; i<3; i++) {
+      auto w = std::make_shared<std::vector<float>>(weight_shape[0]*weight_shape[1]/3);
+      for (int k=0;k<weight_shape[0];k++){
+        for (int m=0;m<weight_shape[1]/3;m++) {
+          w->data()[k*weight_shape[1]/3+m] = weight->at(pos[i]*weight_shape[1]/3+k*weight_shape[1]+m);
+        }
+      }
+      auto b = std::make_shared<std::vector<float>>(weight_shape[1]/3);
+      if (bias_op != NULL) {
+        auto bias = bias_op.read<float>();
+        for (int m=0;m<weight_shape[1]/3;m++) {
+          b->data()[m] = bias->at(pos[i]*weight_shape[1]/3+m);
+        }
+      }
+
+      std::vector<NamedAttribute> attrs;
+      for (auto &attr : op->getAttrs()) {
+        attrs.push_back(attr);
+      }
+      std::vector<NamedAttribute> rsattrs;
+      std::vector<int64_t> mmout_shape;
+      int idx = 0;
+      size_t shape_last = 1;
+      for (auto s : module::getShape(slice_op[i].getOutput())) {
+        if (idx < squ_axes)
+          mmout_shape.push_back(s);
+        else if (idx >= squ_axes) // skip squ_axes
+          shape_last *= s;
+        idx ++;
+      }
+      mmout_shape.push_back(shape_last);
+
+      auto weight_type = RankedTensorType::get({weight_shape[0], weight_shape[1]/3}, rewriter.getF32Type());
+      auto mmout_type = RankedTensorType::get(mmout_shape, rewriter.getF32Type());
+      auto w_op = WeightOp::create<float>(op, module::getName(slice_op[i].getOutput()).str()+"_w"+std::to_string(i),*w, weight_type);
+      if (bias_op != NULL) {
+        auto bias_type = RankedTensorType::get({weight_shape[1]/3}, rewriter.getF32Type());
+        auto b_op = WeightOp::create<float>(op, module::getName(slice_op[i].getOutput()).str()+"_b"+std::to_string(i),*b, bias_type);
+        rewriter.replaceOpWithNewOp<MatMulOp>(slice_op[i], mmout_type,
+                                        ValueRange{op.getInput(), w_op, b_op}, attrs);
+        rewriter.replaceOpWithNewOp<ReshapeOp>(squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
+                                        ValueRange{squeeze_ops[i].getInput()}, rsattrs);
+      }
+      else {
+        rewriter.replaceOpWithNewOp<MatMulOp>(slice_op[i], mmout_type,
+                                        ValueRange{op.getInput(), w_op, module::getNoneOp(op)}, attrs);
+        rewriter.replaceOpWithNewOp<ReshapeOp>(squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
+                                        ValueRange{squeeze_ops[i].getInput()}, rsattrs);
+    }
+    }
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, NoKeepDimsAddReshape, MatmulWithPermuteAndSplit, MatMulWithSlice>(context);
+  results.insert<MatMulWithBias, NoKeepDimsAddReshape, MatmulWithPermuteAndSplit, MatMulWithSlice, SplitMatMulEva2>(context);
 }
