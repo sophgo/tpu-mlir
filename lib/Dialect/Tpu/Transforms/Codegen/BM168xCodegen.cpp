@@ -10,6 +10,7 @@
 #include "BM168xCodegen.hpp"
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -64,8 +65,12 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   // add chip name
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
-  if (module::isBM1684X()) {
-    std::string kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
+  if (module::isBM1684X() || module::isBM1688()) {
+    std::string kernel_name;
+    if (module::isBM1684X())
+      kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
+    else
+      kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
     std::string root_path = getenv("TPUC_ROOT");
     std::string kernel_path = root_path + std::string("/lib/") + kernel_name;
     bmodel::Binary kernel_module =
