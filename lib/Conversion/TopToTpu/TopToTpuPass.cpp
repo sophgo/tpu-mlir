@@ -488,6 +488,41 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+template <typename TyOp>
+struct BackwardAddThToMuls: public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    // TODO: need to be more clever
+    for (auto in : op.getInputs()) {
+      if (!module::isCalibratedType(in)) {
+        return failure();
+      }
+      if (!isa<top::MulOp>(in.getDefiningOp()))
+        return failure();
+      if (!in.hasOneUse()) {
+        return failure();
+      }
+    }
+
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+
+    auto out_qtype = module::getCalibratedType(out);
+
+    for (Value in : op.getInputs()) {
+      auto in_type = in.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+      in.setType(new_type);
+      Backward(in);
+    }
+    return success();
+  }
+};
+
 struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
   using OpRewritePattern<top::WhereOp>::OpRewritePattern;
 
@@ -1049,6 +1084,12 @@ void ConvertTopToTpu::calibration_process() {
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
+
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
+      patterns.add<BackwardAddThToMuls<top::AddOp>>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+      patterns.clear();
+    }
     patterns.add<CompareCalibartion>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -1523,6 +1564,31 @@ bool ConvertTopToTpu::convergence(Operation* from, Operation *to) {
   return res;
 }
 
+bool ConvertTopToTpu::convergence_with_sm_matmul(Operation* from, Operation *to, int &sm_cnt, int &matmul_cnt, int &triple_matmul) {
+  bool res = true;
+  auto re = from->getResult(0);
+  int triplem = 0;
+  for (auto r :re.getUsers()) {
+    if (isa<top::NoneOp>(r))
+      return false;
+    else if (r == to)
+      return true;
+    else if (isa<ReturnOp>(r)) {
+      return false;
+    }
+    if (isa<top::SoftmaxOp>(r))
+      sm_cnt ++;
+    if (isa<top::MatMulOp>(r)) {
+      matmul_cnt ++;
+      triplem ++;
+    }
+    res &= convergence_with_sm_matmul(r, to, sm_cnt, matmul_cnt, triple_matmul);
+  }
+  if (triplem == 3)
+    triple_matmul ++;
+  return res;
+}
+
 void ConvertTopToTpu::match_vit_mlp(std::vector<Operation *> &mlp) {
     mainFunc_.walk([&](Operation *op) {
       if (auto addop = dyn_cast<top::AddOp>(op)) {
@@ -1900,12 +1966,27 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
     });
   }
 
+void ConvertTopToTpu::spread_q_config() {
+    mainFunc_.walk([&](Operation *op) {
+      if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp>(op)) {
+        auto pre_op = op->getOperands()[0].getDefiningOp();
+        if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
+              LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(op).str(), LoweringConfig::quantize_map.find(module::getName(pre_op).str())->second});
+              }
+      }
+    });
+  }
+
 void ConvertTopToTpu::qtable_process() {
     bert_mix_precision();
     swin_t_mix_precision();
     vit_mix_precision();
     deit_mix_precision();
+    eva2_mix_precision();
     set_add_before_softmax_fp32();
+    spread_q_config();
   }
 
 Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,

@@ -177,7 +177,215 @@ bool ConvertTopToTpu::deit_mix_precision() {
               LoweringConfig::quantize_map.end()) {
             LoweringConfig::quantize_map.insert(
                 {module::getName(mmop.getOperation()).str(),
-                  module::Mode::F16});
+                 module::Mode::F16});
+          }
+        }
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+void ConvertTopToTpu::match_eva2_mlp(std::vector<Operation *> &mlp) {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::AddOp aop = NULL;
+      top::MatMulOp mmop = NULL;
+      for (auto in : addop.getOperands()) {
+        if (isa<top::MatMulOp>(in.getDefiningOp()))
+          mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
+        else if (isa<top::AddOp>(in.getDefiningOp()))
+          aop = dyn_cast_or_null<top::AddOp>(in.getDefiningOp());
+        else
+          return;
+      }
+      if (mmop == NULL || aop == NULL || !isSISO(mmop.getOperation()))
+        return;
+      top::MulOp mop = NULL;
+      if (auto lnop_ = dyn_cast<top::LayerNormOp>(mmop.getInput().getDefiningOp()))
+        mop = dyn_cast_or_null<top::MulOp>(lnop_.getInput().getDefiningOp());
+      else
+        mop = dyn_cast_or_null<top::MulOp>(mmop.getInput().getDefiningOp());
+      if (mop != NULL) {
+        top::SiLUOp silop = NULL;
+        top::MatMulOp mmop1 = NULL;
+        top::LayerNormOp lnop = NULL;
+        for (auto i : mop.getInputs()) {
+          if (!isa<top::MatMulOp, top::SiLUOp>(i.getDefiningOp())) {
+            return;
+          }
+          if (silop == NULL)
+            silop = dyn_cast_or_null<top::SiLUOp>(i.getDefiningOp());
+          if (lnop == NULL)
+            mmop1 = dyn_cast_or_null<top::MatMulOp>(i.getDefiningOp());
+        }
+        if (silop == NULL || mmop1 == NULL)
+          return;
+        if (!isSISO(mmop1) || !isSISO(silop))
+          return;
+        auto mmop2 = dyn_cast_or_null<top::MatMulOp>(silop.getInput().getDefiningOp());
+        lnop = dyn_cast_or_null<top::LayerNormOp>(mmop1.getInput().getDefiningOp());
+        if (mmop2 && lnop && isSISO(mmop2.getOperation()) && mmop2.getInput().getDefiningOp() == lnop && lnop.getInput().getDefiningOp() == aop) {
+          mlp.push_back(op);
+        }
+      }
+    }
+  });
+}
+
+void ConvertTopToTpu::match_eva2_mhsa(std::vector<Operation *> &mhsa) {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto aop = dyn_cast<top::AddOp>(op)){
+      top::LayerNormOp lnop = NULL;
+      top::AddOp addop = NULL;
+      for(auto u: aop.getOutput().getUsers()) {
+        if (!isa<top::LayerNormOp, top::AddOp>(u)) {
+          return;
+        }
+        if (lnop == NULL) {
+          lnop = dyn_cast_or_null<top::LayerNormOp>(u);
+        }
+        if (addop == NULL) {
+          addop = dyn_cast_or_null<top::AddOp>(u);
+        }
+      }
+      if (lnop == NULL || addop == NULL)
+        return;
+      int sm_cnt = 0;
+      int mm_cnt = 0;
+      int trip_mm = 0;
+      if (!convergence_with_sm_matmul(lnop, addop, sm_cnt, mm_cnt, trip_mm)) {
+        return;
+      }
+      if (sm_cnt != 8 || mm_cnt != 29 || trip_mm == 0) // multi pass in tree
+        return;
+      mhsa.push_back(op);
+    }
+  });
+}
+
+bool ConvertTopToTpu::set_block_fp16(Operation* from, Operation *to) {
+  bool res = true;
+  if (isa<top::MatMulOp>(from)) {
+    if (LoweringConfig::quantize_map.find(
+            module::getName(from).str()) ==
+        LoweringConfig::quantize_map.end()) {
+      LoweringConfig::quantize_map.insert(
+          {module::getName(from).str(), module::Mode::F16});
+        }
+  }
+  auto re = from->getResult(0);
+  for (auto r :re.getUsers()) {
+    if (isa<top::NoneOp>(r))
+      return false;
+    else if (r == to)
+      return true;
+    else if (isa<ReturnOp>(r)) {
+      return false;
+    }
+    res &= set_block_fp16(r, to);
+  }
+  return res;
+}
+
+bool ConvertTopToTpu::eva2_mix_precision() {
+  std::vector<Operation *> mlp;
+  std::vector<Operation *> mhsa;
+
+  match_eva2_mlp(mlp);
+  match_eva2_mhsa(mhsa);
+
+  if (mlp.size() == mhsa.size() && (mlp.size() == 12 || mlp.size() == 24)) {
+    int cnt = 0;
+    for (auto op: mlp){
+      cnt ++;
+      if (!isa<top::AddOp>(op))
+         return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(op).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(op).str(), module::Mode::F16});
+      }
+      for (auto i : op->getOperands()) {
+        if (auto aop = dyn_cast<top::AddOp>(i.getDefiningOp())) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(aop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(aop.getOperation()).str(), module::Mode::F16});
+              }
+        }
+      }
+      for (auto i : op->getOperands()) {
+        if (auto mmop = dyn_cast<top::MatMulOp>(i.getDefiningOp())) {
+          if (cnt <= 2 ||(mlp.size() == 24 && cnt >= 18)) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mmop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mmop.getOperation()).str(), module::Mode::F16});
+                }
+          }
+          if (auto mulop = dyn_cast<top::MulOp>(mmop.getInput().getDefiningOp())) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mulop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mulop.getOperation()).str(), module::Mode::F16});
+                }
+          } else if (auto lnop = dyn_cast<top::LayerNormOp>(mmop.getInput().getDefiningOp())) {
+            if (auto mulop = dyn_cast<top::MulOp>(lnop.getInput().getDefiningOp())) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(mulop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end()) {
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(mulop.getOperation()).str(), module::Mode::F16});
+                  }
+            }
+          }
+        }
+      }
+    }
+
+    cnt =0;
+    for (auto op : mhsa) {
+      cnt ++;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(op).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(op).str(), module::Mode::F16});
+      }
+      if (cnt <= 2 || (mlp.size() == 24 && cnt <= 7)) { // 2 for small
+        top::AddOp aop = NULL;
+        top::LayerNormOp lnop = NULL;
+        for (auto o: op->getResult(0).getUsers()) {
+          if (aop == NULL) {
+            aop = dyn_cast_or_null<top::AddOp>(o);
+          }
+          if (lnop == NULL) {
+            lnop = dyn_cast_or_null<top::LayerNormOp>(o);
+          }
+        }
+        if (aop != NULL && lnop != NULL) {
+          set_block_fp16(lnop.getOperation(), aop.getOperation());
+        }
+      }
+      if (cnt >= 100) { //9) { // don't enable this intresting backward thing
+        for (auto o: op->getResult(0).getUsers()) {
+          if (auto aop = dyn_cast<top::AddOp>(o)) {
+            for (auto i : aop.getOperands()) {
+              if (auto mmop = dyn_cast<top::MatMulOp>(i.getDefiningOp())) {
+                if (LoweringConfig::quantize_map.find(
+                        module::getName(mmop.getOperation()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(mmop.getOperation()).str(), module::Mode::F16});
+                    }
+              }
+            }
           }
         }
       }
