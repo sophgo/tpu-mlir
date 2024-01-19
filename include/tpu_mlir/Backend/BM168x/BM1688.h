@@ -98,6 +98,11 @@ private:
     TAG_ACTIVATION = (2ul << 36),
   };
 
+public:
+  // specific global info
+  static constexpr llvm::StringRef LIB_KERNEL_NAME =
+      "libbmtpulv60_kernel_module.so";
+
 protected:
   BM1688() {
     typeID = TypeID::get<BM1688>();
