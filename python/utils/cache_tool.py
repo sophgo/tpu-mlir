@@ -9,7 +9,6 @@ import datetime
 
 logger = setup_logger("cache")
 
-
 def BModel2Hash(bmodel_file):
     try:
         bmodel = dis.BModel(bmodel_file)
@@ -85,7 +84,7 @@ class CacheTool:
             and self["tpu_mlir"] == new_hash
             and not self.sim_more_strict(self["tpu_sim"], sim)
             and self["tpu_validate"]
-            and os.path.exists(tpu_output)
+            # and os.path.exists(tpu_output)
             and self.cache_skip
         ):
             self["tpu_sim"] = sim  # always update last used similarity
@@ -104,7 +103,7 @@ class CacheTool:
         if (
             self["model_mlir"] == new_hash
             and self["model_validate"]
-            and os.path.exists(model_output)
+            # and os.path.exists(model_output)
             and self.cache_skip
         ):
             logger.info("cached skip model validatation.")
@@ -116,7 +115,8 @@ class CacheTool:
     def hash_file(self, file: str) -> Optional[str]:
         if os.path.exists(file) and os.path.isfile(file):
             with open(file, "rb") as r:
-                return hash(r.read())
+                st = r.read()
+                return hashlib.md5(st).hexdigest()
         return None
 
     def read_json(self, fn):

@@ -165,7 +165,7 @@ def __main():
     parser.add_argument(
         "--format",
         dest="format",
-        choices=["mlir", "reg", "bits", "bin", "reg-set"],
+        choices=["mlir", "reg", "bits", "bin", "reg-set", "version"],
         default="mlir",
         help="The format of format operations.",
     )
@@ -181,6 +181,9 @@ def __main():
         if args.format == "mlir":
             module = BModel2MLIR(args.bmodels[0])
             print(module, flush=True)
+        elif args.format == "version":
+            bmodel = dis.BModel(args.bmodels[0])
+            print(bmodel.version)
         elif args.format == "reg" or args.format == "reg-set":
             import json
 
