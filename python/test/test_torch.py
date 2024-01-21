@@ -2691,6 +2691,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([in_shape], Model())
 
+        _test_softmax((1, 5, 5538), 2) # test large axis dim
         for dim in [1, 2]:
             _test_softmax((3, 100, 10, 1), dim)
             # _test_softmax((3, 100, 32), dim)
@@ -3205,7 +3206,7 @@ class TORCH_IR_TESTER(object):
         _test_unbind([(10, 10, 10, 10)], dim=1)
         _test_unbind([(10, 10, 10, 10)], dim=2)
         _test_unbind([(10, 10, 10, 10)], dim=3)
-    
+
     #######################################################################
     # MovePermuteAfterAdd
     # ------------

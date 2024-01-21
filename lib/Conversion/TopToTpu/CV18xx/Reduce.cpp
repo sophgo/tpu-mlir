@@ -30,7 +30,6 @@ static bool splitReduce(PatternRewriter &rewriter, top::ReduceOp reduceOp) {
   if (reduceOp.getMode() == "ReduceL2") {
     return false;
   }
-  backend::Arch::init(0);
   std::vector<int64_t> axes_v;
   std::vector<std::vector<int64_t>> outputs_shape_v, new_axes_v;
   auto axes = module::getI64Array(reduceOp.getAxes());

@@ -8,6 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Backend/Arch.h"
+
+using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -181,18 +184,37 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
   }
 }
 
+static bool axis_dim_too_large(top::SoftmaxOp op) {
+  auto max_dim = Arch::LMEM_BANK_BYTES / 2; // bf16 or f16
+  auto in_shape = module::getShape(op.getInput());
+  auto axis_dim = in_shape[op.getAxis()];
+  return axis_dim > max_dim;
+}
+
 void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SoftmaxOp op) const {
+  if (axis_dim_too_large(op)) {
+    // ugly code, if nodechip_softmax_local_1x1 support f16 and bf16 in future,
+    // remove code here
+    LoweringF32(rewriter, op);
+    return;
+  }
   lowering_common_bf16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
+  if (axis_dim_too_large(op)) {
+    // ugly code, if nodechip_softmax_local_1x1 support f16 and bf16 in future,
+    // remove code here
+    LoweringF32(rewriter, op);
+    return;
+  }
   lowering_common_f16<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::SoftmaxOp op) const {
+                                 top::SoftmaxOp op) const {
   LoweringF32(rewriter, op);
 }
 
