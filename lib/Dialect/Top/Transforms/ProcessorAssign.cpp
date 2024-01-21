@@ -8,7 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Backend/Arch.h"
 
+using namespace tpu_mlir::backend;
 using namespace llvm;
 
 namespace tpu_mlir {
@@ -35,6 +37,7 @@ public:
     module::setDeviceNum(num_device);
     assert(num_core > 0);
     module::setCoreNum(num_core);
+    backend::Arch::init(0);
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {
       input_type_process(mOp);
