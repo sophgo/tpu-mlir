@@ -129,7 +129,7 @@ class TorchInterpreter():
         func = getattr(torch.ops.aten, node.op_type.split('::')[1])
         if node.op_type == "aten::view":
             func = torch.ops.aten.reshape
-
+        output = None
         # run function
         if node.op_type == "aten::div":
             if len(input_list) == 2:
@@ -138,6 +138,8 @@ class TorchInterpreter():
                 mode = input_list[2]
                 input_list = input_list[:-1]
                 output = func(*input_list, rounding_mode=mode)
+        elif node.op_type ==  "aten::scaled_dot_product_attention":
+            output = func(*input_list[:6])
         elif node.op_type in ParamMap.keys() and \
              (node.op_type != "aten::to" or len(node.inputs) > 6) and \
              (node.op_type != "aten::meshgrid" or len(node.inputs) == 2):

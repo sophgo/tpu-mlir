@@ -250,4 +250,88 @@ void Attention::deinit() {
   delete ((MatMul *)matmul_out);
 }
 
+ScaledDotProductAttention::ScaledDotProductAttention() {
+}
+
+void ScaledDotProductAttention::setup(float *query, float *keys, float *values, float *masks, float *output,
+             int64_t batch, int64_t head, int64_t query_len, int64_t seq_len, int64_t hidden_dim, int64_t value_dim,
+             float scale, bool is_causal, int dtype){
+  // ignore dropout
+  batch_ = batch;
+  head_ = head == 0 ? 1 : head;
+  seq_len_  = seq_len;
+  query_len_= query_len;
+  hidden_dim_ = hidden_dim;
+  value_dim_ = value_dim;
+  scale_ = scale;
+  is_causal_ = is_causal;
+  query_ = query;
+  keys_ = keys;
+  values_ = values;
+  masks_ = masks;
+  output_ = output;
+  if(scale_ == 0.0f || std::isinf(scale_)){
+    scale_ = 1.0f / sqrtf(hidden_dim_);
+  }
+  std::vector<int64_t> lshape = {batch_, head_, query_len_, seq_len};
+  // handle dnnl
+  matmulqk = new MatMul();
+  qk = new float[head_ * head_ * query_len_ * seq_len];
+  ((MatMul *)matmulqk)->setup(query, keys, nullptr, qk, batch_, head_, query_len_, hidden_dim_, seq_len_, 0, -1, 0, 0, 1, 0, 0, 0);
+  binary = nullptr;
+  if(masks == nullptr && masks != reinterpret_cast<float *>(0x0)){
+    p_binary = new float[batch_ * head_ * query_len_ * seq_len_];
+    binary = new Binary();
+    (*(Binary *)binary)
+        .hs(qk, masks, lshape, lshape)
+        .dst(p_binary, lshape)
+        .algorithem(algorithm::binary_add)
+        .setup();
+  } else {
+    masks_ = nullptr;
+    p_binary = qk;
+  }
+  softmax = new Softmax();
+  softmax_attr_t attr;
+  std::vector<int64_t> nshape = {batch_, head_*query_len_, seq_len_};
+  attr.src_shape = nshape;
+  attr.dst_shape = nshape;
+  attr.axis = 2;
+  attr.log = 0;
+  qk_softmax = new float[batch_ * head_ * query_len_ * seq_len_];
+  ((Softmax *)softmax)->setup(p_binary, qk_softmax, attr);
+  matmulv = new MatMul();
+  ((MatMul *)matmulv)->setup(qk_softmax, values, nullptr, output, batch, head, query_len_, seq_len, value_dim, 0, -1, 0, 0, 0, 0, 0, 0);
+}
+
+void ScaledDotProductAttention::run() {
+  assert(dtype_ < 3);
+  ((MatMul *)matmulqk)->run();
+  // scale qk
+#pragma omp parallel for schedule(static, omp_schedule(batch_ * head_ * query_len_ * seq_len_))
+  for (int64_t i = 0; i < batch_ * head_ * query_len_ * seq_len_; i++) {
+    qk[i] *= scale_;
+  }
+  if (binary != nullptr) {
+    ((Binary *)binary)->run();
+  }
+  ((Softmax *)softmax)->run();
+  type_cast(qk_softmax, batch_ * head_ * query_len_ * seq_len_, dtype_);
+  ((MatMul *)matmulv)->run();
+  type_cast(output_, batch_ * head_ * query_len_ * seq_len_, dtype_);
+}
+
+void ScaledDotProductAttention::deinit() {
+  delete ((MatMul *)matmulqk);
+  delete ((MatMul *)matmulv);
+  if (binary != nullptr)
+    delete ((Binary *)binary);
+  delete ((Softmax *)softmax);
+  // relase memory
+  delete [] qk;
+  delete [] qk_softmax;
+  if (masks_ != nullptr)
+    delete[] p_binary;
+}
+
 } // namespace tpu_mlir
