@@ -156,6 +156,7 @@ class TORCH_IR_TESTER(object):
             "Pad2d":            (self.test_Pad2d,             Y, Y, Y, Y),
             "Pow":              (self.test_Pow,               N, Y, Y, Y),
             "Scatter":          (self.test_Scatter,           N, N, N, N),
+            "ScaleDotAtten":    (self.test_ScaleDotAtten,     N, Y, N, N),
             "Select":           (self.test_Select,            N, Y, Y, Y),
             "Sign":             (self.test_Sign,              N, Y, Y, N),
             "Slice":            (self.test_Slice,             N, Y, Y, Y),
@@ -2209,6 +2210,21 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(1, 16, 32, 32)], Model())
 
+    #######################################################################
+    # ScaleDotAttention
+    # ------------
+    def test_ScaleDotAtten(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y, z):
+                res = torch.nn.functional.scaled_dot_product_attention(x, y, z)
+                return res
+
+        # self.trace_and_test([(1,8,64,64), (1,8,64,64), (1,8,64,64)], Model())
     #######################################################################
     # PixelUnshuffle
     # ------------

@@ -197,6 +197,7 @@ class TorchConverter(BaseConverter):
             "aten::roll": lambda node: self.convert_roll_op(node),
             "aten::rsqrt": lambda node: self.convert_rsqrt_op(node),
             "aten::rsub": lambda node: self.convert_sub_op(node, is_reverse=True),
+            "aten::scaled_dot_product_attention": lambda node: self.convert_scaled_dot_product_attention_op(node),
             "aten::ScalarImplicit": lambda node: self.convert_skip_op(node),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::select": lambda node: self.convert_select_op(node),
@@ -644,6 +645,29 @@ class TorchConverter(BaseConverter):
                                 ip=self.mlir.insert_point).output
         self.addOperand(op_name, new_op)
         return new_op
+
+    def convert_scaled_dot_product_attention_op(self, torch_node: TorchNode):
+        query = self.getOp(torch_node.inputs[0])
+        key = self.getOp(torch_node.inputs[1])
+        value = self.getOp(torch_node.inputs[2])
+        mask = self.getOp(torch_node.inputs[3])
+        dropout_p = self.const_val[torch_node.inputs[4]]
+        is_causal = self.const_val[torch_node.inputs[5]]
+        scale = 0.0#default value for no scale
+        if len(torch_node.inputs) > 6:
+            if torch_node.inputs[6] in self.const_val.keys():
+                scale = self.const_val[torch_node.inputs[6]]
+        new_op = top.ScaleDotProductAttentionOp(self.unranked_type,
+                                                 query,
+                                                 key,
+                                                 value,
+                                                 mask,
+                                                 dropout_p=dropout_p,
+                                                 is_causal=is_causal,
+                                                 scale=scale,
+                                                 loc=self.get_loc(torch_node.name),
+                                                 ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
 
     def convert_add_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
@@ -2453,6 +2477,7 @@ class TorchConverter(BaseConverter):
         indices = new_op.indices
         self.addOperand(torch_node.outputs[0], values)
         self.addOperand(torch_node.outputs[1], indices)
+
 
     def convert_unbind_unpack(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
