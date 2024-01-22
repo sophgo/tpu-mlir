@@ -36,4 +36,24 @@ private:
   float scale_;
   bool add_result_;
 };
+
+class ScaledDotProductAttention {
+public:
+  ScaledDotProductAttention();
+
+  void setup(float *query, float *keys, float *values, float *masks, float *output,
+             int64_t batch, int64_t head, int64_t query_len, int64_t seq_len, int64_t hidden_dim, int64_t value_dim,
+             float scale, bool is_causal, int dtype=0);
+  void run();
+  void deinit();
+private:
+  float *query_, *keys_, *values_, *masks_, *output_;
+  void *matmulqk, *softmax, *binary, *matmulv;
+  float *qk, *qk_softmax, *qk_softmax_v, *p_binary;
+  int64_t batch_, head_, seq_len_, hidden_dim_, value_dim_, query_len_;
+  float scale_;
+  bool is_causal_;
+  int dtype_;
+};
+
 } // namespace tpu_mlir

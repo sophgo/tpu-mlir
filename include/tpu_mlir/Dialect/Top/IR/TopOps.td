@@ -3130,6 +3130,26 @@ def Top_CustomOp: Top_Op<"Custom"> {
 
   let results = (outs Variadic<AnyTensor>:$outputs);
 }
+def Top_ScaleDotProductAttentionOp: Top_Op<"ScaleDotProductAttention"> {
+  let summary = "ScaleDotProductAttention operator (pytorch)";
+
+  let description = [{
+    Scale_Dot_Product_Attention Operation for pytorch.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$query,
+    AnyTensor:$key,
+    AnyTensor:$value,
+    AnyTensorOrNone:$mask,
+    DefaultValuedAttr<F64Attr, "0.0">:$dropout_p,
+    DefaultValuedAttr<BoolAttr, "false">:$is_causal,
+    DefaultValuedAttr<F64Attr, "0.0">:$scale
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 
 def Top_CeilOp : Top_Op<"Ceil"> {
   let summary = " Ceil operator";
