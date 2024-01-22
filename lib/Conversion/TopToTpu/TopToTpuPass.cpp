@@ -1929,11 +1929,19 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
       for (auto user : v.getUsers()) {
         if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
           all_next_layer_is_int4 = false;
-        } else if (isa<tpu::Conv2DOp>(user)) {
-          auto conv = dyn_cast<tpu::Conv2DOp>(user);
-          auto conv_attr = getConv2DParam(conv);
-          if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
-            all_next_layer_is_int4 = false;
+        } else if (isa<tpu::Conv2DOp>(user) || isa<tpu::MatMulOp>(user)) {
+          if (isa<tpu::Conv2DOp>(user)) {
+            auto conv = dyn_cast<tpu::Conv2DOp>(user);
+            auto conv_attr = getConv2DParam(conv);
+            if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
+              all_next_layer_is_int4 = false;
+            }
+          }
+          auto user_name = module::getName(user).str();
+          if (LoweringConfig::quantize_map.find(user_name) != LoweringConfig::quantize_map.end()) {
+            if (LoweringConfig::quantize_map[user_name] != module::Mode::INT4) {
+              all_next_layer_is_int4 = false;
+            }
           }
         }
       }
