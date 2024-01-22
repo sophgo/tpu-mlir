@@ -26,9 +26,6 @@ module::Chip Arch::chip;
 uint64_t Arch::FREQ = 0;
 Arch *Arch::inst = nullptr;
 
-using A2_1 = std::integral_constant<int, 900>;
-using A2_2 = std::integral_constant<int, 375>;
-
 void Arch::init(uint64_t freq) {
   if (inst != nullptr) {
     return;
