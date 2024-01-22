@@ -21,7 +21,7 @@ namespace tpu_mlir {
 namespace backend {
 
 using A2_1 = std::integral_constant<int, 900>;
-using A2_2 = std::integral_constant<int, 375>;
+using A2_2 = std::integral_constant<int, 450>;
 
 class Arch {
 public:
