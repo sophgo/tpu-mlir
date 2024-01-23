@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/TPUNnvlcUtil.h"
 using namespace tpu_mlir::backend;
 
 void tpu::StoreOp::codegen_global_bm1684x() {
@@ -31,6 +32,19 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice, real_cslice;
+
+  //set nnvlc param
+  bool do_compress = this->getCompressInfo().has_value() && this->getCompressInfo()->getDoCompress();
+  uint8_t bias0, bias1;
+  int32_t is_signed, zero_guard;
+  if (do_compress) {
+    auto cinfo = this->getCompressInfo();
+    bias0 = (uint8_t)cinfo->getBias0();
+    bias1 = (uint8_t)cinfo->getBias1();
+    is_signed = cinfo->getIsSigned();
+    zero_guard = cinfo->getZeroGuard();
+  }
+
   int64_t gdma_format;
   auto shape = module::getShape(getInput());
   auto data_type = BM168x::getDataType(getOutput());
@@ -92,24 +106,55 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
         int64_t real_c_num_local =
             (channel_index * (int64_t)MAX_TPU_DIM) / Arch::NPU_NUM;
         int64_t src_offset_c = real_c_num_local * c_stride * fmt_bytes;
-        int64_t dst_offset_c =
-            (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
-            fmt_bytes;
         int64_t real_npu_idx =
             (channel_index * (int64_t)MAX_TPU_DIM) % Arch::NPU_NUM;
         int64_t cur_local_offset =
             d * gi.n_slice * c_num_local * c_stride * fmt_bytes + src_offset_c;
-        int64_t cur_global_offset = gi.n_idx * C * D * H * W * fmt_bytes +
-                                    (gi.d_idx + d) * H * W * fmt_bytes +
-                                    gi.h_idx * W * fmt_bytes +
-                                    gi.w_idx * fmt_bytes + dst_offset_c;
-        BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-            gi.out_addr + cur_local_offset, real_npu_idx,
-            g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
-            real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
-            C * D * H * W, D * H * W, W, 1, gdma_format,
-            GDMA_VALUE_DIR_L2S, // 1,
-            0, pid_node);
+        if (do_compress) {
+          shape_t nnvlc_shape;
+          nnvlc_shape.n = N;
+          nnvlc_shape.c = C;
+          nnvlc_shape.h = H;
+          nnvlc_shape.w = W;
+          auto nnvlc_dtype = module::getStorageType(getOutput());
+          int max_meta_bytes = tpu_compress_RACU_max_meta_bytes(nnvlc_shape);
+          shape_t meta_stride = tpu_compress_RACU_meta_stride(nnvlc_shape);
+          shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
+
+          int64_t racu_cur_global_offset = gi.n_idx * racu_stride.n +
+                                           gi.c_idx * racu_stride.c +
+                                           gi.h_idx * racu_stride.h +
+                                           gi.w_idx * racu_stride.w ;
+          int64_t meta_cur_global_offset = (gi.n_idx * meta_stride.n +
+                                            gi.c_idx * meta_stride.c +
+                                            gi.h_idx * meta_stride.h +
+                                            gi.w_idx * meta_stride.w) * 4;
+          BM168x::instance()->dl_tensor_racu_compress_gen_cmd(
+              gi.out_addr + cur_local_offset,
+              g_addr + racu_cur_global_offset + align_up(max_meta_bytes, Arch::EU_BYTES),
+              g_addr + meta_cur_global_offset,
+              gi.n_slice, cur_cslice, real_hslice, real_wslice,
+              c_num_local * c_stride, c_stride, real_wslice,
+              racu_stride.n, racu_stride.c, racu_stride.h,
+              meta_stride.n, meta_stride.c,
+              bias0, bias1, is_signed, zero_guard,
+              gdma_format, pid_node);
+        } else {
+          int64_t dst_offset_c =
+              (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
+              fmt_bytes;
+          int64_t cur_global_offset = gi.n_idx * C * D * H * W * fmt_bytes +
+                                      (gi.d_idx + d) * H * W * fmt_bytes +
+                                      gi.h_idx * W * fmt_bytes +
+                                      gi.w_idx * fmt_bytes + dst_offset_c;
+          BM168x::instance()->dl_tensor_stride_move_gen_cmd(
+              gi.out_addr + cur_local_offset, real_npu_idx,
+              g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
+              real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
+              C * D * H * W, D * H * W, W, 1, gdma_format,
+              GDMA_VALUE_DIR_L2S, // 1,
+              0, pid_node);
+        }
         channel_index++;
       }
     }

@@ -1,7 +1,9 @@
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include <algorithm>
 #include <iostream>
 #include <memory.h>
+using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
 
@@ -337,5 +339,59 @@ std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz, mlir::Type 
   }
   return std::make_tuple(do_compress, obuf);
   // return obuf;
+}
+
+int get_bytesize(mlir::Type dtype) {
+  int bytesize = 4;
+  if (dtype.isInteger(8) || dtype.isInteger(4)) {
+    bytesize = 1;
+  } else if (dtype.isInteger(16) || dtype.isF16() || dtype.isBF16()) {
+    bytesize = 2;
+  }
+  return bytesize;
+}
+
+int tpu_compress_normal_max_bytes(shape_t shape, mlir::Type dtype) {
+    int size = shape.n * shape.c * shape.h * shape.w * get_bytesize(dtype);
+    int blk_len = (dtype.isInteger(16) || dtype.isF16() || dtype.isBF16()) ? 32 : 16;
+    int blk_num = (size + blk_len-1) / blk_len;
+    int kmap_sz = ((blk_num + 15) / 16) << 4;
+    return kmap_sz + (blk_num * blk_len);
+}
+
+int tpu_compress_RACU_max_meta_bytes(shape_t shape){
+    int lane_num = div_up(shape.c, Arch::NPU_NUM);
+    return shape.n*lane_num*shape.h*4;
+}
+
+int tpu_compress_RACU_max_racu_bytes(shape_t shape, mlir::Type dtype){
+    int lane_num = div_up(shape.c, Arch::NPU_NUM);
+    shape_t gcw_shape = {1, (int32_t)Arch::NPU_NUM, 1, shape.w};
+    int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
+    return shape.n*lane_num*shape.h*gcw;
+}
+
+shape_t tpu_compress_RACU_racu_stride(shape_t shape, mlir::Type dtype){
+    int lane_num = div_up(shape.c, Arch::NPU_NUM);
+    shape_t gcw_shape = {1, std::min((int32_t)Arch::NPU_NUM, shape.c), 1, shape.w};
+    int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
+    //[n,lane_num,h,gcw]
+    shape_t stride;
+    stride.w = 1;
+    stride.h = gcw;
+    stride.c = shape.h * stride.h;
+    stride.n = lane_num * stride.c;
+    return stride;
+}
+
+shape_t tpu_compress_RACU_meta_stride(shape_t shape){
+    int lane_num = div_up(shape.c, Arch::NPU_NUM);
+    //[n,lane_num,h,1]
+    shape_t stride;
+    stride.h = 1;
+    stride.w = 1;
+    stride.c = shape.h;
+    stride.n = lane_num*shape.h;
+    return stride;
 }
 } // namespace tpu_mlir

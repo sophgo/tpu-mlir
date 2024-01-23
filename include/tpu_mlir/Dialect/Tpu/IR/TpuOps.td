@@ -101,6 +101,19 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let assemblyFormat = "`<` struct(params) `>`";
 }
 
+def Tpu_CompressAttr : Tpu_Attr<"Compress", "do_compress"> {
+  let summary = "Structure of compress or decompress parameters";
+  let parameters = (ins
+    "bool":$do_compress,
+    "bool":$do_decompress,
+    "int32_t":$bias0,
+    "int32_t":$bias1,
+    "bool":$is_signed,
+    "bool":$zero_guard
+  );
+  let assemblyFormat = "`<` struct(params) `>`";
+}
+
 def Tpu_DequantMode: I32EnumAttr<"DequantMode",
     "dequant mode supported by DequantOp",
     [
@@ -1306,7 +1319,9 @@ def Tpu_LoadOp:Tpu_Op<"Load",
     DefaultValuedAttr<BoolAttr, "false">:$do_bcast,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     DefaultValuedAttr<I64Attr, "0">:$lmem_type,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<BoolAttr, "true">:$support_compress,
+    OptionalAttr<Tpu_CompressAttr>:$compress_info
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -1319,7 +1334,9 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<BoolAttr, "true">:$support_compress,
+    OptionalAttr<Tpu_CompressAttr>:$compress_info
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -1464,7 +1481,9 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     DefaultValuedAttr<I64ArrayAttr, "{}">:$self_down_overlap_op,
     // store timestep_idx(negative) and op_id(positive)
     DefaultValuedAttr<I64ArrayAttr, "{}">:$other_up_overlap_op,
-    DefaultValuedAttr<I64ArrayAttr, "{}">:$other_down_overlap_op
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$other_down_overlap_op,
+    //nnvlc
+    DefaultValuedAttr<BoolAttr, "true">:$support_compress
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);

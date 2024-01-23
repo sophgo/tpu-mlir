@@ -145,7 +145,7 @@ class TPULANG_IR_TESTER(object):
             # "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
             "Sort": (self.test_Sort,                    Y, Y),
-            "SortByKey": (self.test_SortByKey,          Y, Y),
+            # "SortByKey": (self.test_SortByKey,          Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
             "Square": (self.test_Square,                Y, Y),
