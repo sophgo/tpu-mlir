@@ -127,6 +127,7 @@ class MODEL_RUN(object):
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
             self.ini_content["do_dynamic"])) and chip_support[self.chip][-2]
+        self.compress_mode = config.get(self.arch, "compress_mode", fallback="none") if chip == 'bm1688' else "none"
 
     def run_model_transform(self, model_name: str, dynamic: bool = False):
         '''transform from origin model to top mlir'''
@@ -345,6 +346,7 @@ class MODEL_RUN(object):
             cmd += [f"--num_core {self.num_core}"]
         if "tpu_patterns" in self.ini_content:
             cmd += ["--patterns_count {}".format(self.ini_content["tpu_patterns"])]
+        cmd += [f"--compress_mode {self.compress_mode}"]
 
         # add for quant modes which require calibration
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):

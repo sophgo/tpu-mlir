@@ -110,6 +110,7 @@ class DeployTool:
         self.cache_skip = args.cache_skip
         self._prepare_input_npz()
         self.patterns_count = args.patterns_count
+        self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
 
     def cleanup(self):
         file_clean()
@@ -243,7 +244,7 @@ class DeployTool:
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
-                          self.group_by_cores, self.model_version, True if self.patterns_count else False)
+                          self.group_by_cores, self.model_version, True if self.patterns_count else False, self.compress_mode)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()
@@ -352,6 +353,10 @@ if __name__ == '__main__':
     parser.add_argument("--includeWeight", action='store_true', help="include weight in tosa.mlir")
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                         help='used for regression test, check if patterns are successfully applied a specific number of times')
+    # for bm1688
+    parser.add_argument("--compress_mode", default="none", type=str.lower,
+                        choices=["none", "weight", "activation", "all"],
+                        help="set compress mode")
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")

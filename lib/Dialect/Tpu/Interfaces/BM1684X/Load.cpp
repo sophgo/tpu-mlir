@@ -38,6 +38,22 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
   auto data_type = BM168x::getDataType(getOutput());
 
+  auto in = this->getOperand();
+  bool do_nnvlc_decompress = false;
+  uint8_t bias0, bias1;
+  int32_t zero_guard, is_signed;
+  if (module::isWeight(in)) {
+    do_nnvlc_decompress =
+        in.getDefiningOp<top::WeightOp>().getDoCompress().has_value() &&
+        in.getDefiningOp<top::WeightOp>().getDoCompress().value();
+    if (do_nnvlc_decompress) {
+      bias0 = (uint8_t)in.getDefiningOp<top::WeightOp>().getBias0().value();
+      bias1 = (uint8_t)in.getDefiningOp<top::WeightOp>().getBias1().value();
+      is_signed = in.getDefiningOp<top::WeightOp>().getIsSigned().value();
+      zero_guard = in.getDefiningOp<top::WeightOp>().getZeroGuard().value();
+    }
+  }
+
   real_cslice = gi.c_slice;
   real_hslice = gi.h_slice;
   real_wslice = gi.w_slice;
@@ -128,6 +144,22 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           s_stride.N, s_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L,
           pid_node);
     }
+  } else if (do_nnvlc_decompress) {
+    if (!module::isBM1688()) {
+      llvm_unreachable("compress only support bm1688");
+    }
+    // nnvlc1.0
+    auto filter_shape = in.getDefiningOp<top::WeightOp>().getType().getShape();
+    N = filter_shape[0];
+    C = filter_shape[1];
+    H = filter_shape[2];
+    W = filter_shape[3];
+    int stride_h = W;
+    int stride_c = W * H;
+    int stride_n = ceiling_func(C, Arch::NPU_NUM) * stride_c;
+    BM168x::instance()->dl_tensor_normal_decompress_gen_cmd(
+        gi.out_addr, g_addr, N, C, H, W, stride_n, stride_c, stride_h, bias0,
+        bias1, is_signed, zero_guard, gdma_format, pid_node);
   } else {
     int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
     int64_t c_stride = gi.eu_align ? align_up(real_hslice * real_wslice,

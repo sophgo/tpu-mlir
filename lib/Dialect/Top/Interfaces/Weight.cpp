@@ -16,6 +16,7 @@ using namespace tpu_mlir::top;
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
   auto type = getOutput().getType().cast<RankedTensorType>();
+  bool do_compress = getDoCompress().has_value() && getDoCompress().value();
   uint32_t store_mode = 0;
   if (getStoreMode().has_value()) {
     store_mode = StringSwitch<uint32_t>(getStoreModeAttr())
@@ -25,7 +26,7 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
                      .Default(0);
   }
   return module::weightFile().readTensor<T>(module::getName(op).str(), type,
-                                            store_mode);
+                                            store_mode, do_compress);
 }
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {

@@ -114,9 +114,14 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
 
   let arguments = (ins
     OptionalAttr<F64ArrayAttr>:$scale,
-    OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<StoreModeAttr>:$store_mode,
-    OptionalAttr<I64ArrayAttr>:$allow_split
+    OptionalAttr<I64ArrayAttr>:$allow_split,
+    //nnvlc param
+    OptionalAttr<BoolAttr>:$do_compress,
+    OptionalAttr<I64Attr>:$bias0,
+    OptionalAttr<I64Attr>:$bias1,
+    OptionalAttr<BoolAttr>:$is_signed,
+    OptionalAttr<BoolAttr>:$zero_guard
   );
 
   let results = (outs AnyRankedTensor:$output);
