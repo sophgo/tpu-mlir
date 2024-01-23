@@ -50,6 +50,9 @@ GroupOps::GroupOps(::mlir::func::FuncOp func) {
 void GroupOps::process() {
   buildGroups();
   buildMlir();
+  if (module::isBM1688() && (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ACTIVATION || LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)) {
+    buildNnvlcActivation();
+  }
 }
 
 void GroupOps::buildGroups() {
@@ -462,4 +465,117 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
                              builder.getDenseI64ArrayAttr(w_idxs),
                              builder.getDenseI64ArrayAttr(w_slices), id,
                              tensor_info.stage, group_type);
+}
+
+void GroupOps::buildNnvlcActivation() {
+  // set compress param for storeop
+  for (Operation *op : groups_) {
+    if (isa<tpu::GroupOp>(op)) {
+      auto groupop = dyn_cast<GroupOp>(op);
+      auto &body = groupop.getBody().front();
+      body.walk([&](Operation *localop) {
+        if (isa<tpu::StoreOp>(localop)) {
+          auto dtype = module::getStorageType(localop->getOperand(0));
+          if (dtype.isF16() || dtype.isBF16() || dtype.isInteger(8) ||
+              dtype.isInteger(16)) {
+            bool do_compress = true;
+            auto store_result = localop->getResult(0);
+            auto yield_op =
+                dyn_cast<tpu::YieldOp>(*store_result.getUsers().begin());
+            int32_t store_idx;
+            for (auto [index, value] :
+                 llvm::enumerate(yield_op->getOperands())) {
+              if (value == store_result) {
+                store_idx = index;
+                break;
+              }
+            }
+            auto group_result =
+                yield_op->getBlock()->getParentOp()->getResult(store_idx);
+            for (auto user : group_result.getUsers()) {
+              if (isa<tpu::GroupOp>(user)) {
+                for (auto loadop :
+                     dyn_cast<GroupOp>(user).getOps<tpu::LoadOp>()) {
+                  if (loadop.getOperand() == store_result) {
+                    // do not compress if use 3ic_optimize
+                    if (loadop->getAttr("use_3ic_optimize")
+                            .cast<IntegerAttr>()
+                            .getInt() > 0) {
+                      do_compress = false;
+                      break;
+                    }
+                  }
+                }
+              } else if (!user->hasAttr("support_compress") ||
+                         (user->hasAttr("support_compress") &&
+                          user->getAttr("support_compress")
+                                  .cast<BoolAttr>()
+                                  .getValue() == false)) {
+                do_compress = false;
+                break;
+              }
+            }
+            int32_t bias0 = dtype.isInteger(8) ? 127 : 0;
+            int32_t bias1 = 0;
+            bool is_signed = (dtype.isUnsignedInteger()) ? 0 : 1;
+            bool zero_guard = dtype.isInteger(8) ? 0 : 1;
+            auto info = CompressAttr::get(op->getContext(), do_compress, false,
+                                          bias0, bias1, is_signed, zero_guard);
+            localop->setAttr("compress_info", info);
+          }
+        }
+      });
+    }
+  }
+  // set decompress param for loadop
+  for (Operation *op : groups_) {
+    if (isa<tpu::GroupOp>(op)) {
+      auto groupop = dyn_cast<GroupOp>(op);
+      auto &body = groupop.getBody().front();
+      body.walk([&](Operation *localop) {
+        auto preop = localop->getOperand(0).getDefiningOp();
+        if (isa<tpu::LoadOp>(localop) &&
+            !isa<BlockArgument>(op->getOperand(0)) &&
+            !isa<top::WeightOp>(preop)) {
+          if (preop != nullptr && isa<tpu::GroupOp>(preop)) { // preop is local
+            auto pre_value = localop->getOperand(0);
+            auto value_idx = module::getIdx(pre_value);
+            auto yield_op_ =
+                dyn_cast<GroupOp>(preop).getOps<tpu::YieldOp>().begin();
+            auto yield_op = *yield_op_;
+            auto storeop =
+                yield_op->getOperand(value_idx).getDefiningOp<tpu::StoreOp>();
+            if (storeop->hasAttr("compress_info")) {
+              auto cinfo_pre =
+                  storeop->getAttr("compress_info").cast<tpu::CompressAttr>();
+              bool do_decompress = cinfo_pre.getDoCompress();
+              int32_t bias0 = cinfo_pre.getBias0();
+              int32_t bias1 = cinfo_pre.getBias1();
+              bool is_signed = cinfo_pre.getIsSigned();
+              bool zero_guard = cinfo_pre.getZeroGuard();
+
+              auto info =
+                  CompressAttr::get(op->getContext(), false, do_decompress,
+                                    bias0, bias1, is_signed, zero_guard);
+              localop->setAttr("compress_info", info);
+            }
+          } else if (preop != nullptr &&
+                     preop->hasAttr("compress_info")) { // preop is global
+            auto cinfo_pre =
+                preop->getAttr("compress_info").cast<tpu::CompressAttr>();
+            bool do_decompress = cinfo_pre.getDoCompress();
+            int32_t bias0 = cinfo_pre.getBias0();
+            int32_t bias1 = cinfo_pre.getBias1();
+            bool is_signed = cinfo_pre.getIsSigned();
+            bool zero_guard = cinfo_pre.getZeroGuard();
+
+            auto info =
+                CompressAttr::get(op->getContext(), false, do_decompress, bias0,
+                                  bias1, is_signed, zero_guard);
+            localop->setAttr("compress_info", info);
+          }
+        }
+      });
+    }
+  }
 }

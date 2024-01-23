@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/TPUNnvlcUtil.h"
 
 using namespace tpu_mlir::backend;
 
@@ -40,8 +41,9 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   auto in = this->getOperand();
   bool do_nnvlc_decompress = false;
+  bool do_nnvlc2_decompress = false;
   uint8_t bias0, bias1;
-  int32_t zero_guard, is_signed;
+  int32_t is_signed, zero_guard;
   if (module::isWeight(in)) {
     do_nnvlc_decompress =
         in.getDefiningOp<top::WeightOp>().getDoCompress().has_value() &&
@@ -51,6 +53,15 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       bias1 = (uint8_t)in.getDefiningOp<top::WeightOp>().getBias1().value();
       is_signed = in.getDefiningOp<top::WeightOp>().getIsSigned().value();
       zero_guard = in.getDefiningOp<top::WeightOp>().getZeroGuard().value();
+    }
+  } else {
+    do_nnvlc2_decompress = this->getCompressInfo().has_value() && this->getCompressInfo()->getDoDecompress();
+    if (do_nnvlc2_decompress) {
+      auto cinfo = this->getCompressInfo();
+      bias0 = (uint8_t)cinfo->getBias0();
+      bias1 = (uint8_t)cinfo->getBias1();
+      is_signed = cinfo->getIsSigned();
+      zero_guard = cinfo->getZeroGuard();
     }
   }
 
@@ -176,25 +187,59 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                        (int64_t)MAX_TPU_DIM);
           int64_t real_c_num_local =
               (channel_index * (int64_t)MAX_TPU_DIM) / Arch::NPU_NUM;
-          int64_t src_offset_c =
-              (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
-              fmt_bytes;
           int64_t dst_offset_c = real_c_num_local * c_stride * fmt_bytes;
           int64_t real_npu_idx =
               (channel_index * (int64_t)MAX_TPU_DIM) % Arch::NPU_NUM;
           int64_t cur_local_offset =
               d * gi.n_slice * c_num_local * c_stride * fmt_bytes +
               dst_offset_c;
-          int64_t cur_global_offset = gi.n_idx * C * D * H * W * fmt_bytes +
-                                      (gi.d_idx + d) * H * W * fmt_bytes +
-                                      gi.h_idx * W * fmt_bytes +
-                                      gi.w_idx * fmt_bytes + src_offset_c;
-          BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-              gi.out_addr + cur_local_offset, real_npu_idx,
-              g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
-              real_wslice, C * D * H * W, D * H * W, W, 1,
-              c_num_local * c_stride, c_stride, real_wslice, 1, gdma_format,
-              GDMA_VALUE_DIR_S2L, 0, pid_node);
+          if (do_nnvlc2_decompress) {
+            shape_t nnvlc_shape;
+            nnvlc_shape.n = N;
+            nnvlc_shape.c = C;
+            nnvlc_shape.h = H;
+            nnvlc_shape.w = W;
+            auto nnvlc_dtype = module::getStorageType(getOutput());
+            int max_meta_bytes = tpu_compress_RACU_max_meta_bytes(nnvlc_shape);
+            shape_t meta_stride = tpu_compress_RACU_meta_stride(nnvlc_shape);
+            shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
+            int64_t meta_gaddr = g_addr +
+                                (gi.n_idx * meta_stride.n +
+                                 gi.c_idx * meta_stride.c +
+                                 gi.h_idx * meta_stride.h +
+                                 gi.w_idx * meta_stride.w) * 4;
+            int64_t racu_gaddr = g_addr +
+                                 align_up(max_meta_bytes, Arch::EU_BYTES) +
+                                (gi.n_idx * racu_stride.n +
+                                 gi.c_idx * racu_stride.c +
+                                 gi.h_idx * racu_stride.h +
+                                 gi.w_idx * racu_stride.w);
+
+            BM168x::instance()->dl_tensor_racu_decompress_gen_cmd(
+                gi.out_addr + cur_local_offset,
+                racu_gaddr,
+                meta_gaddr,
+                gi.n_slice, cur_cslice, real_hslice, real_wslice,
+                c_num_local * c_stride, c_stride, real_wslice,
+                racu_stride.n, racu_stride.c, racu_stride.h,
+                meta_stride.n, meta_stride.c,
+                bias0, bias1, is_signed, zero_guard,
+                gdma_format, pid_node);
+          } else {
+            int64_t src_offset_c =
+                (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
+                fmt_bytes;
+            int64_t cur_global_offset = gi.n_idx * C * D * H * W * fmt_bytes +
+                                        (gi.d_idx + d) * H * W * fmt_bytes +
+                                        gi.h_idx * W * fmt_bytes +
+                                        gi.w_idx * fmt_bytes + src_offset_c;
+            BM168x::instance()->dl_tensor_stride_move_gen_cmd(
+                gi.out_addr + cur_local_offset, real_npu_idx,
+                g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
+                real_wslice, C * D * H * W, D * H * W, W, 1,
+                c_num_local * c_stride, c_stride, real_wslice, 1, gdma_format,
+                GDMA_VALUE_DIR_S2L, 0, pid_node);
+          }
           channel_index++;
         }
       }      // depth loop

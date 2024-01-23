@@ -34,6 +34,8 @@ protected:
   void buildGroups();
   //  void assign_timestep();
   //  bool assign_lmem_addr();
+  //nnvlc
+  void buildNnvlcActivation();
 
   // create MLIR GroupOp
   void buildMlir();

@@ -11,6 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/Debug.h"
+#include "tpu_mlir/Support/TPUNnvlcUtil.h"
 #define DEBUG_TYPE "addressAssgin"
 
 using namespace llvm;
@@ -774,6 +775,30 @@ BMAddressAssign::getConcatOpLive(Operation *op,
 uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
                                             int64_t aligment_) {
   uint32_t size = Arch::get_gmem_bytes(op->getResult(index));
+
+  //assign address for nnvlc
+  bool do_compress = false;
+  if (op != nullptr && isa<tpu::GroupOp>(op)) {
+    auto yield_ = dyn_cast<GroupOp>(op).getOps<tpu::YieldOp>().begin();
+    auto yieldop = *yield_;
+    auto storeop = yieldop->getOperand(index).getDefiningOp<tpu::StoreOp>();
+    if (storeop->hasAttr("compress_info")) {
+      auto cinfo_pre = storeop->getAttr("compress_info").cast<tpu::CompressAttr>();
+      do_compress = cinfo_pre.getDoCompress();
+    }
+  } else if (op != nullptr && op->hasAttr("compress_info")) {
+    auto cinfo = op->getAttr("compress_info").cast<tpu::CompressAttr>();
+    do_compress = cinfo.getDoCompress();
+  }
+  if (do_compress) {
+    std::vector<int64_t> shape = module::getShape(op->getResult(index));
+    auto stype = module::getStorageType(op->getResult(index));
+    shape_t ishape = {(int)shape[0], (int)shape[1], (int)shape[2], (int)shape[3]};
+    size_t max_meta_bytes = tpu_compress_RACU_max_meta_bytes(ishape);
+    size_t max_racu_bytes = tpu_compress_RACU_max_racu_bytes(ishape, stype);
+    size = std::max((size_t)size, align_up(max_meta_bytes, Arch::EU_BYTES) + align_up(max_racu_bytes, Arch::EU_BYTES));
+  }
+
   // pad to aligment_
   if (size % aligment_) {
     size = size + aligment_ - (size % aligment_);

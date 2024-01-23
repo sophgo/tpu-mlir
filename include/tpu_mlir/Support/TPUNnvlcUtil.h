@@ -13,6 +13,13 @@ namespace tpu_mlir {
 #define MAX_UNARY_FIELD_SIZE 47
 #define MAX_ORDER_K 5
 
+typedef struct {
+  int32_t n;
+  int32_t c;
+  int32_t h;
+  int32_t w;
+} shape_t;
+
 inline int32_t div_up(int32_t v, int32_t align) {
   return (v + align - 1) / align;
 }
@@ -126,6 +133,19 @@ std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz,
                                          mlir::Type dtype, uint8_t bias0,
                                          uint8_t bias1, bool is_signed,
                                          bool zero_guard, int32_t &osz);
+
+/* nnvlc 2.0, random access compress/decompress*/
+int get_bytesize(mlir::Type dtype);
+
+int tpu_compress_normal_max_bytes(shape_t shape, mlir::Type dtype);
+
+int tpu_compress_RACU_max_meta_bytes(shape_t shape);
+
+int tpu_compress_RACU_max_racu_bytes(shape_t shape, mlir::Type dtype);
+
+shape_t tpu_compress_RACU_racu_stride(shape_t shape, mlir::Type dtype);
+
+shape_t tpu_compress_RACU_meta_stride(shape_t shape);
 
 } // namespace tpu_mlir
 
