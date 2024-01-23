@@ -207,7 +207,7 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
   }
 
   for (auto op : ops) {
-    auto out_index = liveRange[op].out_index;
+    auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
     LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
@@ -304,7 +304,7 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
   }
 
   for (auto op : ops) {
-    auto out_index = liveRange[op].out_index;
+    auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
     LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
