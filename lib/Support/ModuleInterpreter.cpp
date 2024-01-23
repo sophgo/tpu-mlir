@@ -155,7 +155,7 @@ void ModuleInterpreter::allocate_tensor_in_reused_mem() {
         // auto iter = infer_ops.end();
         if (!module::isNone(v)) {
           ValueInfo v_info(infer_op, index);
-          TensorLive v_live(index, ops_loc[infer_op], ops_loc[infer_op],
+          TensorLive v_live(ops_loc[infer_op], ops_loc[infer_op],
                             module::getNumElements(v));
           common_ops.emplace_back(v_info);
           liveRange[v_info] = v_live;

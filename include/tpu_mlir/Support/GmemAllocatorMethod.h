@@ -43,14 +43,11 @@ struct GmemBlock {
 };
 
 struct TensorLive {
-  uint32_t out_index;   // the index of OP output
   uint32_t start;       // start liverange
   uint32_t end;         // end liverange
   uint32_t tensor_size; // size of of output tensor
   TensorLive() {}
-  TensorLive(uint32_t _out_index, uint32_t _start, uint32_t _end,
-             uint32_t _tensor_size) {
-    out_index = _out_index;
+  TensorLive(uint32_t _start, uint32_t _end, uint32_t _tensor_size) {
     start = _start;
     end = _end;
     tensor_size = _tensor_size;

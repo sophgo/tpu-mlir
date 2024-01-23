@@ -10,6 +10,8 @@
 #include "BMAddressAssign.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "addressAssgin"
 
 using namespace llvm;
 
@@ -36,6 +38,75 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
     }
   }
   return ret;
+}
+
+std::map<ValueInfo, int64_t>
+L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
+  if (!module::isSG2260Family())
+    return {};
+  // assign tensor with access hot
+  // mutableTensorUsage = uses + store
+  // only support L2 -> lmem, lmem  -> L2
+  // TODO: DDR -> L2 -> Lmem (need insert loadOp)
+  int64_t l2memSize = 1 << 27;
+  struct valueDemand {
+    int64_t size;
+    int64_t hot;
+  };
+  std::map<ValueInfo, valueDemand> valueIntensive;
+  // find all the data
+  for (auto &[value, live] : liveRange) {
+    auto op = (Operation *)value.op;
+    auto result = op->getResult(value.index);
+    bool userIsReturn = llvm::none_of(result.getUsers(), [](Operation *op) {
+      return op->hasTrait<OpTrait::IsTerminator>();
+    });
+    if (!isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op) &&
+        userIsReturn) {
+      auto uses = result.getUses();
+      int64_t hot = std::distance(uses.begin(), uses.end()) + 1;
+      if (live.tensor_size < l2memSize) // l2mem 128M
+        valueIntensive[value] = valueDemand{live.tensor_size, hot};
+    }
+  }
+
+  auto getValues = [](std::map<ValueInfo, valueDemand> &valueMap) {
+    std::vector<ValueInfo> values;
+    values.reserve(valueMap.size());
+    for (auto &[key, v] : valueMap)
+      values.push_back(key);
+    return std::move(values);
+  };
+
+  int64_t start_addr = BM168x::instance()->L2_SRAM_START_ADDR;
+  std::map<ValueInfo, int64_t> L2MemMap;
+  int64_t l2memUsed = 0;
+  do {
+    L2MemMap.clear();
+    l2memUsed = 0;
+    auto ops = getValues(valueIntensive);
+    if (!ops.empty()) {
+      // FitFirstAssign should make sure op's start liverange ascendingly
+      GmemAllocator::sortOpByLiveStart(ops, liveRange);
+      GmemAllocator allocator(L2MemMap, BM168x::ALIGNMENT);
+      l2memUsed = allocator.assignGaddr(ops, liveRange, reuse_addr, start_addr);
+      if (l2memUsed > l2memSize) {
+        // remove the smallest one And try again
+        int64_t minTraffic = valueIntensive.begin()->second.size;
+        minTraffic *= valueIntensive.begin()->second.hot;
+        ValueInfo vMin = valueIntensive.begin()->first;
+        for (auto &[k, v] : valueIntensive) {
+          if (minTraffic > v.size * v.hot) {
+            vMin = k;
+            minTraffic = v.size * v.hot;
+          }
+        }
+        valueIntensive.erase(vMin);
+      }
+    }
+  } while (l2memUsed > l2memSize);
+  LLVM_DEBUG(llvm::dbgs() << "L2Memory usage: " << l2memUsed / 1024 << " KB\n");
+  return std::move(L2MemMap);
 }
 
 void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
@@ -125,6 +196,17 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                              alignment);
     }
   }
+  // L2MEM
+  auto l2memMap = L2MemAssign(liveRange, reuse_addr);
+  if (!l2memMap.empty()) {
+    std::vector<ValueInfo> values;
+    values.reserve(common_ops.size());
+    for (auto v : common_ops)
+      if (l2memMap.count(v) == 0)
+        values.push_back(v);
+    common_ops.swap(values);
+  }
+
   // 1.assign common_ops
   // key: the operation pointer + output index, convert the result to type
   // int64_t
@@ -136,7 +218,13 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     auto gmemUsed =
         allocator.assignGaddr(common_ops, liveRange, reuse_addr, start_addr);
     addr += gmemUsed;
+    LLVM_DEBUG(llvm::dbgs() << "Global Memory usage(without weight): "
+                            << gmemUsed / (1 << 20) << " MB\n");
   }
+
+  // merge l2memMap to gaddrMap
+  for (auto &[k, v] : l2memMap)
+    gaddrMap[k] = v;
 
   // 1.set common op address
   std::vector<ValueInfo> group_ops;
@@ -283,13 +371,10 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         liveRange[v_info].start =
             std::min(liveRange[v_info].start, ops_loc[opd]);
         liveRange[v_info].end = std::max(liveRange[v_info].end, endPosition);
-        liveRange[v_info].out_index = v_info.index;
       } else {
-        // first update the operand, set its start, end, out_index and
-        // tensor_size
+        // first update the operand, set its start, end and tensor_size
         liveRange[v_info].start = ops_loc[opd];
         liveRange[v_info].end = endPosition;
-        liveRange[v_info].out_index = v_info.index;
         liveRange[v_info].tensor_size =
             getTensorGmemSize(opd, v_info.index, alignment);
       }
@@ -308,18 +393,15 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       /* the operands of ops in prehead
          basic block will live forever */
       if (isa<tpu::LoopOp>(op)) {
-        auto set_life_forerver = [&] (ValueInfo &v_info) {
+        auto set_life_forerver = [&](ValueInfo &v_info) {
           if (liveRange.find(v_info) != liveRange.end()) {
             // not first, update operand's liverange
             liveRange[v_info].start = 0;
             liveRange[v_info].end = 0xFFFFFFFF;
-            liveRange[v_info].out_index = v_info.index;
           } else {
-            // first update the operand, set its start, end, out_index and
-            // tensor_size
+            // first update the operand, set its start, end and tensor_size
             liveRange[v_info].start = 0;
             liveRange[v_info].end = 0xFFFFFFFF;
-            liveRange[v_info].out_index = v_info.index;
             liveRange[v_info].tensor_size =
                 getTensorGmemSize(opd, v_info.index, alignment);
           }
@@ -390,7 +472,6 @@ void BMAddressAssign::updateLiveRangeofBMOps(
                                  uint32_t endPosition) {
     liveRange[v_info].start = ops_loc[op];
     liveRange[v_info].end = endPosition;
-    liveRange[v_info].out_index = v_info.index;
     liveRange[v_info].tensor_size =
         getTensorGmemSize(op, v_info.index, alignment);
   };

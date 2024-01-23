@@ -293,7 +293,6 @@ void CVAddressAssign::updateLiveRangeofPreOp(
     op_infos[v_info].live.start =
         std::min(ops_loc[preOp], op_infos[v_info].live.start);
     op_infos[v_info].live.end = std::max(end, op_infos[v_info].live.end);
-    op_infos[v_info].live.out_index = v_info.index;
     if (0 == op_infos[v_info].live.tensor_size) {
       op_infos[v_info].live.tensor_size =
           getTensorGmemSize(preOp, v_info.index, alignment);
@@ -321,7 +320,6 @@ void CVAddressAssign::updateLiveRangeOfInPlaceOp(
           std::min(ops_loc[preOp], op_infos[v_info].live.start);
       max_end = std::max(max_end, op_infos[v_info].live.end);
       op_infos[v_info].live.end = max_end;
-      op_infos[v_info].live.out_index = v_info.index;
       op_infos[v_info].live.tensor_size = 0;
       op_infos[v_info].mem_type = std::min(op_infos[v_info].mem_type, mem_type);
       op_infos[v_info].need_alloc = false;
