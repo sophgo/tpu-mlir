@@ -26,7 +26,8 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
                 std::vector<Operation *> ops_end,
                 tpu::DevPattern pattern,
                 std::vector<int64_t> &begin_methods,
-                std::vector<int64_t> &end_methods);
+                std::vector<int64_t> &end_methods,
+                int num_head);
 void distribute(PatternRewriter &rewriter, Operation *op_begin,
                 Operation *op_end, tpu::DevPattern pattern);
 void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,

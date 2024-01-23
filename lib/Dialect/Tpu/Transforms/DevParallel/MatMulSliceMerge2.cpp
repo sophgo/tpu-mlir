@@ -102,7 +102,7 @@ MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
   std::vector<int64_t> end_methods{1};
   distribute(rewriter, begin_ops, end_ops,
              tpu::DevPattern::MatMulSliceMerge2, begin_methods,
-             end_methods);
+             end_methods, 0);
   return success();
 }
 
@@ -158,7 +158,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = norm_users[0];
     cur_out = start_out;
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, 0);
     while (isa<tpu::CastOp, tpu::ActiveOp>(next_op)) {
       next_op = cloneCommonOp(rewriter, next_op, cur_out, 2, num_devices,
                               cur_device)[0];
@@ -169,7 +169,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = norm_users[1];
     cur_out = start_out;
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, 0);
     auto out1 = cur_out;
     assert(mul0 == next_op);
 
@@ -177,7 +177,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, 2,
                               num_devices, cur_device);
     next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, 0);
 
     if (isa<tpu::AddOp>(next_op)) {
       operands = {residual_out, cur_out};
@@ -251,7 +251,8 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
   }
 
   std::vector<Operation *> attn_begin_ops, attn_end_ops;
-  if (!isAttentionPattern(op, attn_begin_ops, attn_end_ops, false)) {
+  int num_head = 0;
+  if (!isAttentionPattern(op, attn_begin_ops, attn_end_ops, false, &num_head)) {
     return failure();
   }
 
@@ -289,7 +290,7 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
   // Bingo !!
   distribute(rewriter, begin_ops, end_ops,
              tpu::DevPattern::AttentionSliceMerge2, begin_methods,
-             end_methods);
+             end_methods, num_head);
 
   return success();
 }
@@ -324,6 +325,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
       attn_ln = use_ops[1];
     }
   }
+  int num_head = op.getNumHead();
 
   std::vector<Value> end_operands;
   std::vector<Value> operands;
@@ -402,7 +404,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
         next_op = users[j];
         cur_out = next_op->getOperand(0);
         next_op = createSliceOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device);
+                                cur_device, num_head);
         if (isa<tpu::CastOp>(next_op)) {
           next_op = cloneCommonOp(rewriter, next_op, cur_out, 2, num_devices,
                                   cur_device)[0];
@@ -438,14 +440,14 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     cur_out = attn_start_out;
     other_opds = {past_v_out};
     next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  num_devices, cur_device, false)[0];
+                                  num_devices, cur_device, false, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
     // Query branch
     next_op = is_qwen_model ? op_branches[0] : op_branches[2];
     cur_out = attn_start_out;
     next_op = cloneAttentionQuery(rewriter, next_op, cur_out, pos_ids,
-                                  num_devices, cur_device, false)[0];
+                                  num_devices, cur_device, false, num_head)[0];
     Value query_branch = cur_out;
     auto query_next_op = next_op;
     // Key branch
@@ -454,7 +456,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     cur_out = attn_start_out;
     other_opds = {pos_ids[0], pos_ids[1], past_k_out};
     next_op = cloneAttentionKey(rewriter, next_op, cur_out, other_opds, outs,
-                                num_devices, cur_device, false)[0];
+                                num_devices, cur_device, false, num_head)[0];
     Value key_out = outs[0];
     Value key_branch = outs[1];
     assert(query_next_op == next_op);
@@ -477,7 +479,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
                               num_devices, cur_device);
     // Attention Output branch
     next_op = cloneAttentionOutput(rewriter, next_op, cur_out, num_devices,
-                                   cur_device)[0];
+                                   cur_device, num_head)[0];
     Value attn_out = cur_out;
 
     // out0 = attn_out + residual_out

@@ -14,19 +14,21 @@ namespace tpu {
 // only >= 4MB distribute to multi devices
 static const int64_t WEIGHT_LIMIT = 0x400000;
 
+// num_head is used for splitting matmul that dim is not divisible by num_device
 void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
-                std::vector<Operation *> ops_end,
-                tpu::DevPattern pattern,
+                std::vector<Operation *> ops_end, tpu::DevPattern pattern,
                 std::vector<int64_t> &begin_methods,
-                std::vector<int64_t> &end_methods) {
+                std::vector<int64_t> &end_methods, int num_head) {
   // 1. Create pattern params
   auto ctx = rewriter.getContext();
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
+  attrs.push_back(
+      rewriter.getNamedAttr("pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "begin_methods",
       rewriter.getI64ArrayAttr(llvm::ArrayRef(begin_methods))));
+  attrs.push_back(
+      rewriter.getNamedAttr("num_head", rewriter.getI64IntegerAttr(num_head)));
 
   // 2. Insert DevBeginOp
   std::vector<Value> inputs;
@@ -43,7 +45,8 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
       }
     } else if (isa<tpu::AddOp>(op)) {
       for (auto in : op->getOperands()) {
-        if (!isa<tpu::MulConstOp, tpu::MatMulOp, tpu::A16MatMulOp>(in.getDefiningOp())) {
+        if (!isa<tpu::MulConstOp, tpu::MatMulOp, tpu::A16MatMulOp>(
+                in.getDefiningOp())) {
           input = in;
         }
       }
@@ -59,8 +62,8 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   }
   auto begin_loc = FusedLoc::get(ctx, locs);
   rewriter.setInsertionPointAfterValue(opd);
-  auto begin = rewriter.create<tpu::DevBeginOp>(begin_loc, types,
-                                                         inputs, attrs);
+  auto begin =
+      rewriter.create<tpu::DevBeginOp>(begin_loc, types, inputs, attrs);
   // for (auto op : ops_begin) {
   //   if (op != ops_begin[0]) {
   //     auto in = op->getOperand(0);
@@ -89,8 +92,8 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   types.clear();
   locs.clear();
 
-  attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
+  attrs.push_back(
+      rewriter.getNamedAttr("pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
 
@@ -105,13 +108,13 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   }
   auto end_loc = FusedLoc::get(ctx, locs);
   rewriter.setInsertionPointAfter(ops_end[0]);
-  auto end =
-      rewriter.create<tpu::DevEndOp>(end_loc, types, inputs, attrs);
+  auto end = rewriter.create<tpu::DevEndOp>(end_loc, types, inputs, attrs);
 
   for (size_t i = 0; i < ops_end.size(); ++i) {
     // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
     inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
-      return use.getOwner() != end && !isa<tpu::ConcatOp, tpu::MatMulOp>(use.getOwner());
+      return use.getOwner() != end &&
+             !isa<tpu::ConcatOp, tpu::MatMulOp>(use.getOwner());
     });
   }
 }
@@ -124,8 +127,8 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   auto input = op_begin->getOperand(0);
   std::vector<Type> types = {input.getType()};
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
+  attrs.push_back(
+      rewriter.getNamedAttr("pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   std::vector<int64_t> begin_methods{1};
   attrs.push_back(rewriter.getNamedAttr(
       "begin_methods",
@@ -146,8 +149,8 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
 
   attrs.clear();
   std::vector<int64_t> end_methods{2};
-  attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
+  attrs.push_back(
+      rewriter.getNamedAttr("pattern", tpu::DevPatternAttr::get(ctx, pattern)));
   attrs.push_back(rewriter.getNamedAttr(
       "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
   rewriter.setInsertionPointAfter(op_end);
@@ -164,8 +167,8 @@ void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
   // 1. Create pattern params
   auto ctx = rewriter.getContext();
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr(
-      "pattern", tpu::DevPatternAttr::get(ctx, pattern)));
+  attrs.push_back(
+      rewriter.getNamedAttr("pattern", tpu::DevPatternAttr::get(ctx, pattern)));
 
   // 2. Insert DevBeginOp
   auto input = op_begin->getResult(0);

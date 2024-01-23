@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 #include "tpu_mlir/Backend/Arch.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
 
 #define DEBUG_TYPE "distribute_ops"
 
@@ -16,6 +16,50 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace tpu {
 
+int64_t get_splited_size(int64_t size, int64_t num_devices, int64_t cur_device,
+                         int64_t num_head, int64_t q_group_size) {
+  if (q_group_size != 0) {
+    size = size / 2;
+  }
+  int64_t inner_size = num_head > 0 ? size / num_head : 1;
+  auto q_group_size_origin = q_group_size;
+  q_group_size = q_group_size > 0 ? q_group_size : 1;
+  assert(inner_size % q_group_size == 0 || q_group_size % inner_size == 0);
+  int max_size = std::max(inner_size, q_group_size);
+  int num_groups = size / max_size;
+  int64_t remainder = num_groups % num_devices;
+  int64_t cur_group = num_groups / num_devices + (cur_device < remainder);
+  int64_t sz = cur_group * max_size;
+  if (q_group_size_origin != 0) {
+    sz *= 2;
+  }
+
+//  std::cout << "cur_dievce = " << cur_device << ", size = " << size
+//            << ", length = " << sz << std::endl;
+  return sz;
+}
+
+int64_t get_splited_offset(int64_t size, int64_t num_devices,
+                           int64_t cur_device, int64_t num_head,
+                           int64_t q_group_size) {
+  int64_t offset = 0;
+  for (int i = 0; i < cur_device; ++i) {
+    offset += get_splited_size(size, num_devices, i, num_head, q_group_size);
+  }
+  // int64_t inner_size = num_head > 0 ? size / num_head : 1;
+  // q_group_size = q_group_size > 0 ? q_group_size : 1;
+  // assert(inner_size % q_group_size == 0 || q_group_size % inner_size == 0);
+  // int max_size = std::max(inner_size, q_group_size);
+  // int64_t num_groups = size / max_size;
+  // int64_t remainder = num_groups % num_devices;
+  // int64_t group_offset =
+  //     num_groups / num_devices * cur_device + std::min(cur_device,
+  //     remainder);
+  // int64_t offset = group_offset * max_size;
+  // std::cout << "cur_dievce = " << cur_device << ", size = " << size
+  //           << ", offset = " << offset << std::endl;
+  return offset;
+}
 /**
  * pos_id => Gather -> (Reshape) -----------
  *          -> Slice ------------           \
@@ -548,7 +592,8 @@ static bool isAttentionMatrix(Operation *op,
  * Note: Norm is LayerNorm, RMSNorm
  */
 static bool isAttentionValue(Operation *op, std::vector<Operation *> &begin_ops,
-                             std::vector<Operation *> &end_ops, bool GQA) {
+                             std::vector<Operation *> &end_ops, bool GQA,
+                             int *num_head) {
   Operation *past_v_op = nullptr;
   Operation *present_v_op;
   LLVM_DEBUG(llvm::dbgs() << "== Start match AttentionValue. ==\n");
@@ -561,6 +606,11 @@ static bool isAttentionValue(Operation *op, std::vector<Operation *> &begin_ops,
       }
       op = op->getOperand(0).getDefiningOp();
     }
+  }
+
+  if (num_head) {
+    auto out_shape = module::getShape(op->getResult(0));
+    *num_head = out_shape[2];
   }
 
   if (isa<tpu::ConcatOp>(op)) {
@@ -727,7 +777,8 @@ static bool isAttentionOutput(Operation *op,
  *                     -> AttentionValue --------------------
  */
 bool isAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
-                        std::vector<Operation *> &end_ops, bool GQA) {
+                        std::vector<Operation *> &end_ops, bool GQA,
+                        int *num_head) {
   LLVM_DEBUG(llvm::dbgs() << "== Start match AttentionPattern. ==\n");
   // record the inputs users during backward
   std::vector<Operation *> query_pos_ids_op;
@@ -751,7 +802,7 @@ bool isAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
   auto right0 = matmul0.getRight().getDefiningOp();
   begins.clear();
 
-  if (!isAttentionValue(right0, begins, ends, GQA)) {
+  if (!isAttentionValue(right0, begins, ends, GQA, num_head)) {
     LLVM_DEBUG(llvm::dbgs() << "2. Failed to match AttentionValue.\n");
     return false;
   }
@@ -882,7 +933,8 @@ std::vector<Operation *> cloneCommonOp(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(next_op);
   std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
   if (axis > 0) {
-    new_shape[axis] = cur_out.getType().cast<RankedTensorType>().getShape()[axis];
+    new_shape[axis] =
+        cur_out.getType().cast<RankedTensorType>().getShape()[axis];
   }
 
   auto new_op = cloneOp(rewriter, next_op, new_shape, suffix);
@@ -900,14 +952,8 @@ Operation *cloneCommonOp(PatternRewriter &rewriter, Operation *next_op,
                          Value &cur_out, std::string &suffix) {
   rewriter.setInsertionPointAfter(next_op);
   std::vector<int64_t> new_shape = module::getShape(cur_out);
-  while (isa<tpu::CastOp, tpu::ActiveOp, tpu::MulConstOp, tpu::SoftmaxOp, tpu::LutOp>(
-      next_op)) {
-    if (isa<tpu::ReshapeOp, tpu::UnsqueezeOp, tpu::SliceOp, tpu::TileOp>(
-            next_op)) {
-      new_shape = module::getShape(next_op->getResult(0));
-    } else {
-      new_shape = module::getShape(cur_out);
-    }
+  while (isa<tpu::CastOp, tpu::ActiveOp, tpu::MulConstOp, tpu::SoftmaxOp,
+             tpu::LutOp>(next_op)) {
     auto new_op = cloneOp(rewriter, next_op, new_shape, suffix);
     new_op->setOperand(0, cur_out);
     cur_out = new_op->getResult(0);
@@ -919,9 +965,10 @@ Operation *cloneCommonOp(PatternRewriter &rewriter, Operation *next_op,
 std::vector<Operation *> cloneCommonAxisOp(PatternRewriter &rewriter,
                                            Operation *next_op, Value &cur_out,
                                            int axis, int num_devices,
-                                           int cur_device) {
+                                           int cur_device, int num_head) {
   std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
-  new_shape[axis] = new_shape[axis] / num_devices;
+  new_shape[axis] =
+      get_splited_size(new_shape[axis], num_devices, cur_device, num_head, 0);
 
   Operation *new_op;
   rewriter.setInsertionPointAfterValue(cur_out);
@@ -949,7 +996,7 @@ Operation *cloneMultiInsOp(PatternRewriter &rewriter, Operation *next_op,
   auto new_loc = module::getLocLike(org_out, suffix);
   std::vector<int64_t> new_shape = module::getShape(org_out);
   if (axis >= 0) {
-    new_shape[axis] = cur_out.getType().cast<RankedTensorType>().getShape()[axis];
+    new_shape[axis] = module::getShape(cur_out)[axis];
   }
   auto new_type = module::getTypeLike(org_out, new_shape);
   std::vector<NamedAttribute> attrs(next_op->getAttrs().begin(),
@@ -972,16 +1019,17 @@ Operation *cloneMultiInsOp(PatternRewriter &rewriter, Operation *next_op,
   return next_op;
 }
 
-std::vector<Operation *> cloneRotaryEmbedOp(PatternRewriter &rewriter,
-                                            Operation *next_op, Value &cur_out,
-                                            int axis,
-                                            std::vector<Value> pos_ids,
-                                            int num_devices, int cur_device) {
+std::vector<Operation *>
+cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
+                   Value &cur_out, int axis, std::vector<Value> pos_ids,
+                   int num_devices, int cur_device, int num_head) {
   auto suffix = std::to_string(cur_device);
-  std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
-  new_shape[axis] = new_shape[axis] / num_devices;
+  // std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
+  // new_shape[axis] =
+  //     get_splited_size(new_shape[axis], num_devices, cur_device, num_head, 0);
   auto users = next_op->getUsers();
-  cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device);
+  cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device,
+                    num_head);
   std::vector<Value> cat_operands;
   std::vector<Value> add_operands;
   auto start_out = cur_out;
@@ -990,7 +1038,7 @@ std::vector<Operation *> cloneRotaryEmbedOp(PatternRewriter &rewriter,
     cur_out = start_out;
     if (isa<tpu::SliceOp>(next_op)) {
       next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices,
-                                  cur_device)[0];
+                                  cur_device, num_head)[0];
     }
     if (isa<tpu::MulConstOp>(next_op)) {
       next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
@@ -1038,7 +1086,7 @@ std::vector<Operation *> cloneRotaryEmbedOp(PatternRewriter &rewriter,
 
 Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
                                   Value &cur_out, int num_devices,
-                                  int cur_device) {
+                                  int cur_device, int num_head) {
   auto suffix = std::to_string(cur_device);
   auto filterOp = next_op->getOperand(1).getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(filterOp.getOutput());
@@ -1054,13 +1102,16 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   }
 
   auto N = w_trans ? filterShape[num_dims - 2] : filterShape[num_dims - 1];
-  auto length = ceiling_func(N, num_devices);
-  if (q_group_size) {
-    auto scale_c = ceiling_func(N, num_devices * backend::Arch::NPU_NUM);
-    length = q_group_size * scale_c;
-  }
-  auto offset = cur_device * length;
-  length = std::min(length, N - offset);
+  auto length =
+      get_splited_size(N, num_devices, cur_device, num_head, q_group_size);
+  //  // how to splited for q_group_size when no divisible to num_devices
+  //  if (q_group_size) {
+  //    auto scale_c = ceiling_func(N, num_devices * q_group_size);
+  //    length = q_group_size * scale_c;
+  //  }
+  auto offset =
+      get_splited_offset(N, num_devices, cur_device, num_head, q_group_size);
+  // length = std::min(length, N - offset);
 
   auto out = next_op->getResult(0);
   std::vector<int64_t> new_shape = module::getShape(out);
@@ -1094,9 +1145,8 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   } else if (auto mm0 = dyn_cast<tpu::A16MatMulOp>(next_op)) {
     // clone the scale
     if (q_group_size) {
-      assert(
-          module::getShape(mm0.getScale()).size() == 2 &&
-          "scale and zp weight reorder should not happen before distribute");
+      assert(module::getShape(mm0.getScale()).size() == 2 &&
+             "scale and zp weight reorder should not happen before distribute");
     }
 
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
@@ -1129,7 +1179,7 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
 Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
                                   Value &cur_out, int num_devices,
-                                  int cur_device) {
+                                  int cur_device, int num_head) {
   auto suffix = std::to_string(cur_device);
   auto filterOp = next_op->getOperand(1).getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(filterOp.getOutput());
@@ -1145,13 +1195,19 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   }
 
   auto K = filterShape[num_dims - 2 + w_trans];
-  auto length = ceiling_func(K, num_devices);
-  if (q_group_size) {
-    auto scale_w = ceiling_func(2 * K, num_devices * q_group_size);
-    length = scale_w * q_group_size / 2;
+  auto length =
+      get_splited_size(K, num_devices, cur_device, num_head, q_group_size);
+  auto offset =
+      get_splited_offset(K, num_devices, cur_device, num_head, q_group_size);
+  if (q_group_size != 0) {
+    length = get_splited_size(K * 2, num_devices, cur_device, num_head,
+                              q_group_size) /
+             2;
+    offset = get_splited_offset(K * 2, num_devices, cur_device, num_head,
+                                q_group_size) /
+             2;
   }
-  auto offset = cur_device * length;
-  length = std::min(length, K - offset);
+  // length = std::min(length, K - offset);
 
   auto out = next_op->getResult(0);
   auto new_loc = module::getLocLike(out, suffix);
@@ -1188,13 +1244,12 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     int scale_length = 0;
     int scale_offset = 0;
     if (q_group_size) {
-      assert(
-          module::getShape(mm0.getScale()).size() == 2 &&
-          "scale and zp weight reorder should not happen before distribute");
+      assert(module::getShape(mm0.getScale()).size() == 2 &&
+             "scale and zp weight reorder should not happen before distribute");
       assert(2 * length % q_group_size == 0);
 
-      scale_length = ceiling_func(2 * length, q_group_size);
-      scale_offset = cur_device * scale_length;
+      scale_length = 2*length/q_group_size;
+      scale_offset = 2*offset / q_group_size;
     }
 
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
@@ -1249,7 +1304,7 @@ void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
 
 Operation *createSliceOp(PatternRewriter &rewriter, Operation *next_op,
                          Value &cur_out, int axis, int num_devices,
-                         int cur_device) {
+                         int cur_device, int num_head) {
   auto suffix = "slice_" + std::to_string(cur_device);
   auto name = module::getName(cur_out);
   std::string new_name = name.str() + "_" + suffix;
@@ -1261,7 +1316,8 @@ Operation *createSliceOp(PatternRewriter &rewriter, Operation *next_op,
   std::vector<int64_t> offset_v(new_shape.size(), 0);
   std::vector<int64_t> step_v(new_shape.size(), 1);
   std::vector<int64_t> end_v = new_shape;
-  new_shape[axis] = new_shape[axis] / num_devices;
+  new_shape[axis] =
+      get_splited_size(new_shape[axis], num_devices, cur_device, num_head, 0);
   offset_v[axis] = cur_device * new_shape[axis];
   end_v[axis] = (1 + cur_device) * new_shape[axis];
 
@@ -1285,7 +1341,8 @@ Operation *createSliceOp(PatternRewriter &rewriter, Operation *next_op,
 
 std::vector<Operation *> cloneAttentionInput(PatternRewriter &rewriter,
                                              Operation *next_op, Value &cur_out,
-                                             int num_devices, int cur_device) {
+                                             int num_devices, int cur_device,
+                                             int num_head) {
   auto suffix = std::to_string(cur_device);
   while (isa<tpu::CastOp, tpu::LayerNormOp>(next_op)) {
     if (isa<tpu::CastOp>(next_op)) {
@@ -1295,9 +1352,9 @@ std::vector<Operation *> cloneAttentionInput(PatternRewriter &rewriter,
     }
   }
   next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                   cur_device);
-  std::vector<Operation *> next_ops =
-      cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices, cur_device);
+                                   cur_device, num_head);
+  std::vector<Operation *> next_ops = cloneCommonAxisOp(
+      rewriter, next_op, cur_out, 2, num_devices, cur_device, num_head);
   return next_ops;
 }
 
@@ -1305,17 +1362,17 @@ std::vector<Operation *> cloneAttentionQuery(PatternRewriter &rewriter,
                                              Operation *next_op, Value &cur_out,
                                              std::vector<Value> &pos_ids,
                                              int num_devices, int cur_device,
-                                             bool GQA) {
+                                             bool GQA, int num_head) {
   if (GQA) {
     next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device)[0];
+                                cur_device, num_head)[0];
   } else {
     // clone Query MatMul
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, num_head);
   }
   next_op = cloneRotaryEmbedOp(rewriter, next_op, cur_out, 2, pos_ids,
-                               num_devices, cur_device)[0];
+                               num_devices, cur_device, num_head)[0];
   std::vector<Operation *> next_ops{next_op};
   return next_ops;
 }
@@ -1323,21 +1380,21 @@ std::vector<Operation *> cloneAttentionQuery(PatternRewriter &rewriter,
 std::vector<Operation *>
 cloneAttentionKey(PatternRewriter &rewriter, Operation *next_op, Value &cur_out,
                   std::vector<Value> &other_opds, std::vector<Value> &outs,
-                  int num_devices, int cur_device, bool GQA) {
+                  int num_devices, int cur_device, bool GQA, int num_head) {
   auto suffix = std::to_string(cur_device);
   if (GQA) {
     // clone SliceOp
     next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device)[0];
+                                cur_device, num_head)[0];
   } else {
     // clone Key MatMul
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, num_head);
   }
 
   std::vector<Value> pos_ids{other_opds[0], other_opds[1]};
   auto next_ops = cloneRotaryEmbedOp(rewriter, next_op, cur_out, 2, pos_ids,
-                                     num_devices, cur_device);
+                                     num_devices, cur_device, num_head);
   if (!isa<tpu::ReshapeOp, tpu::ConcatOp, tpu::MatMulOp>(next_ops[0])) {
     std::swap(next_ops[0], next_ops[1]);
   }
@@ -1365,7 +1422,7 @@ cloneAttentionKey(PatternRewriter &rewriter, Operation *next_op, Value &cur_out,
     while (isa<tpu::ReshapeOp, tpu::TileOp>(next_op)) {
       if (key_shape[2] != 1) {
         next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                                    cur_device)[0];
+                                    cur_device, num_head)[0];
       } else {
         next_op = *next_op->user_begin();
       }
@@ -1405,21 +1462,21 @@ std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
                                              std::vector<Value> &other_opds,
                                              std::vector<Value> &outs,
                                              int num_devices, int cur_device,
-                                             bool GQA) {
+                                             bool GQA, int num_head) {
   auto suffix = std::to_string(cur_device);
   if (GQA) {
     // clone SliceOp
     next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device)[0];
+                                cur_device, num_head)[0];
   } else {
     // clone Value MatMul
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, num_head);
   }
 
   // clone RehsapeOp
-  auto next_ops =
-      cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices, cur_device);
+  auto next_ops = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
+                                    cur_device, num_head);
   if (!isa<tpu::ReshapeOp, tpu::ConcatOp, tpu::MatMulOp>(next_ops[0])) {
     std::swap(next_ops[0], next_ops[1]);
   }
@@ -1448,7 +1505,7 @@ std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
     while (isa<tpu::ReshapeOp, tpu::TileOp>(next_op)) {
       if (value_shape[2] != 1) {
         next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                                    cur_device)[0];
+                                    cur_device, num_head)[0];
       } else {
         next_op = *next_op->user_begin();
       }
@@ -1466,12 +1523,12 @@ std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
 std::vector<Operation *> cloneAttentionOutput(PatternRewriter &rewriter,
                                               Operation *next_op,
                                               Value &cur_out, int num_devices,
-                                              int cur_device) {
+                                              int cur_device, int num_head) {
   // clone ReshapeOp
   next_op = cloneCommonAxisOp(rewriter, next_op, cur_out, 2, num_devices,
-                              cur_device)[0];
+                              cur_device, num_head)[0];
   next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                   cur_device);
+                                   cur_device, num_head);
 
   std::vector<Operation *> next_ops{next_op};
   return next_ops;

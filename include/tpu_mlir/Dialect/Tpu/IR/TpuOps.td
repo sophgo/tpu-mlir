@@ -1556,6 +1556,7 @@ def Tpu_DevBeginOp:Tpu_BaseOp<"DevBegin"> {
     Tpu_DevPatternAttr:$pattern,
     // TypedArrayAttrBase<Tpu_DevBeginMethodAttr, "Array of BeginMethod">:$begin_methods,
     I64ArrayAttr:$begin_methods,
+    DefaultValuedAttr<I64Attr, "0">:$num_head,
     DefaultValuedAttr<BoolAttr, "false">:$done
 
   );
