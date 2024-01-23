@@ -255,6 +255,14 @@ typedef enum {
 struct cmd_id_node;
 typedef struct cmd_id_node CMD_ID_NODE;
 
+typedef struct nnvlc_common_spec {
+  int32_t do_compress;
+  int32_t do_decompress;
+  int32_t bias0;
+  int32_t bias1;
+  int32_t zero_guard;
+} nnvlc_common_spec_t;
+
 typedef struct bmcompiler_mem_info {
   uint64_t addr;
   uint64_t size;
@@ -377,6 +385,7 @@ typedef struct conv_common_spec {
   int32_t bias_sign; // For merged coeff
   int32_t use_3ic_optimize;
   int32_t weight_is_coeff;
+  nnvlc_common_spec_t nnvlc_param;
 } conv_common_spec_t;
 
 typedef struct conv_global_spec {
