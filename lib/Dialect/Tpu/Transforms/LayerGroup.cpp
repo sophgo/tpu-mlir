@@ -30,6 +30,20 @@ bool force_group_by_cores(const std::string &option) {
   return true;
 }
 
+NnvlcMode force_nnvlc_mode(const std::string &nnvlc_mode) {
+  if (nnvlc_mode == "none") {
+    return NnvlcMode::NONE;
+  } else if (nnvlc_mode == "weight") {
+    return NnvlcMode::WEIGHT;
+  } else if (nnvlc_mode == "activation") {
+    return NnvlcMode::ACTIVATION;
+  } else if (nnvlc_mode == "all") {
+    return NnvlcMode::ALL;
+  } else {
+    llvm_unreachable("Unknown nnvlc mode");
+  }
+}
+
 class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
@@ -37,6 +51,7 @@ public:
     // init global options
     LgPass::OPTIONS.opt = opt;
     LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
+    LgPass::OPTIONS.nnvlc_mode = force_nnvlc_mode(compress_mode);
 
     // group pass by modules
     auto modules = module::getAllModules();

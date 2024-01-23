@@ -16,7 +16,9 @@ namespace tpu {
 LgOptions LgPass::OPTIONS = {
     /*dyn_compile*/ false,
     /*opt*/ 0,
-    /*group_by_cores*/ false};
+    /*group_by_cores*/ false,
+    /*nnvlc_mode*/ NnvlcMode::NONE,
+    };
 
 void LgPassIR::clear() {
   lg_infos.clear();

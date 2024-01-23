@@ -55,6 +55,12 @@ typedef void (*tensor_align_move_gen_cmd)(
     int src_N, int src_C, int src_H, int src_W, int src_format, int direction,
     int transpose, CMD_ID_NODE *pid_node);
 
+typedef void (*tensor_normal_decompress_gen_cmd)(
+    uint32_t local_mem_addr, uint64_t sys_mem_addr, int32_t N, int32_t C, int32_t H,
+    int32_t W, uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
+    uint8_t bias0, uint8_t bias1, int32_t is_signed, int32_t zero_guard,
+    int32_t data_format, CMD_ID_NODE *pid_node);
+
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
                                  void *gdma_group_id_ptr,
@@ -223,6 +229,7 @@ public:
   tensor_compact_move_gen_cmd dl_tensor_compact_move_gen_cmd;
   tensor_broadcast_move_gen_cmd dl_tensor_broadcast_move_gen_cmd;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
+  tensor_normal_decompress_gen_cmd dl_tensor_normal_decompress_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;

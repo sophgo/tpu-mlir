@@ -14,10 +14,18 @@
 namespace tpu_mlir {
 namespace tpu {
 
+enum class NnvlcMode {
+    NONE = 0,
+    WEIGHT = 1,
+    ACTIVATION = 2,
+    ALL = 3
+};
+
 typedef struct {
   bool dyn_compile;
   int64_t opt;
   bool group_by_cores;
+  NnvlcMode nnvlc_mode;
 } LgOptions;
 
 struct LgPassIR {

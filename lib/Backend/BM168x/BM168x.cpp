@@ -108,10 +108,12 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   /*case DTYPE_INT4:   // for SG2260
   case DTYPE_UINT4:
     return GDMA_VALUE_FORMAT_INT4;*/
+  case DTYPE_FP16:
+    return GDMA_VALUE_FORMAT_FLOAT16;
+  case DTYPE_BFP16:
+    return GDMA_VALUE_FORMAT_BFLOAT16;
   case DTYPE_INT16:
   case DTYPE_UINT16:
-  case DTYPE_FP16:
-  case DTYPE_BFP16:
     return GDMA_VALUE_FORMAT_INT16;
   default:
     return GDMA_VALUE_FORMAT_FLOAT32;

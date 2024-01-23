@@ -8,7 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupPostTransform.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/TPUNnvlcUtil.h"
+
 
 using namespace tpu_mlir::backend;
 
@@ -363,6 +366,151 @@ static void matmul_left_reuse_setting(const LgInfo &lg_info) {
     }
   }
 }
+
+void getCompressParameter(const uint8_t *ibuf, int32_t isz, bool &signedness, bool &zero_guard,
+                          mlir::Type dtype, uint8_t &bias0, uint8_t &bias1) {
+  assert(!(dtype.isBF16() &&
+           signedness)); // WARNING: signedness MUST be 0 as isBfloat16==True
+
+  // cmd_info->is_bfloat16 = isBfloat16;
+  if (!dtype.isBF16() && signedness) {
+    // two-side circular shift
+    int hist[256] = {0};
+    for (size_t i = 0; i < isz; i++) {
+      hist[ibuf[i]]++;
+    }
+    int8_t pos_v = 1;
+    while (true) {
+      if (hist[((uint8_t)pos_v)] == 0) {
+        pos_v++;
+      } else {
+        break;
+      }
+    }
+    bias0 = (pos_v > 1) ? (pos_v - 1) : 0;
+    int8_t neg_v = -1;
+    while (true) {
+      if (hist[(uint8_t)neg_v] == 0) {
+        neg_v--;
+      } else {
+        break;
+      }
+    }
+    bias1 = (neg_v < -1) ? abs(neg_v + 1) : 0;
+    signedness = 1;
+  }
+
+  if (dtype.isBF16() || dtype.isF16()) {
+    // center shift
+    int64_t exp_accum = 0;
+    auto bf16_in = reinterpret_cast<const uint16_t *>(ibuf);
+    size_t inum = (isz >> 1), cnt = 0;
+    for (size_t i = 0; i < inum; i++) {
+      uint8_t exp = ((bf16_in[i] >> 7) & 0xFF);
+      if (exp != 0) {
+        exp_accum += exp;
+        cnt++;
+      }
+    }
+    if (cnt > 0) {
+      bias0 = (uint8_t)((exp_accum / (float)cnt) + 0.5);
+    }
+    if (dtype.isBF16()) {
+      zero_guard = 1;
+    } else if (dtype.isF16()) {
+      zero_guard = (inum == cnt) ? 0 : 1;
+    }
+    signedness = 0;
+  }
+}
+
+static void nnvlc_transform(const LgInfo &lg_info) {
+  if (lg_info.group_ops.size() < 2)
+    return;
+  for (auto op : lg_info.group_ops) {
+    if (isa<tpu::Conv2DOp>(op) && op->getAttr("use_3ic_optimize").cast<IntegerAttr>().getInt() == 0 && !module::getStorageType(op->getResult(0)).isF32()) {
+      uint32_t idx;
+      if (isa<top::WeightOp>(op->getOperand(1).getDefiningOp()) && !module::getStorageType(op->getOperand(1)).isF32()) {
+        idx = 1;
+      } else if (isa<top::WeightOp>(op->getOperand(0).getDefiningOp()) && !module::getStorageType(op->getOperand(0)).isF32()) {
+        idx = 0;
+      }
+      auto filter_op = op->getOperand(idx).getDefiningOp<top::WeightOp>();
+      auto filter_type = module::getStorageType(op->getOperand(idx));
+      auto filter_shape = filter_op.getType().getShape();
+
+      uint8_t bias0 = filter_type.isBF16() ? 127 : 0;
+      uint8_t bias1;
+      bool zero_guard = filter_type.isInteger(8) ? 0 : 1;
+      bool is_signed = filter_type.isBF16() ? 0 : 1;
+
+      if (filter_type.isF16() || filter_type.isBF16()) {
+        auto filter_u16 = filter_op.read<uint16_t>();
+        int32_t weight_size = filter_shape[0] * filter_shape[1] * filter_shape[2] * filter_shape[3] *2;
+        int32_t osize;
+        getCompressParameter(reinterpret_cast<uint8_t*>(filter_u16->data()), weight_size, is_signed, zero_guard, filter_type, bias0, bias1);
+        auto nnvlc_results = nnvlc_encode(reinterpret_cast<uint8_t*>(filter_u16->data()), weight_size, filter_type, bias0,
+                                    bias1, is_signed, zero_guard, osize);
+        bool do_compress = std::get<0>(nnvlc_results);
+        if (do_compress) {
+          uint8_t *obuf = std::get<1>(nnvlc_results);
+          auto new_type = RankedTensorType::get(filter_shape, filter_type);
+          auto data = std::vector<uint16_t>(osize / 2);
+          memcpy(data.data(), obuf, osize);
+          delete[]  obuf;
+          auto new_op =
+              top::WeightOp::create(op, "filter_nnvlc", data, new_type);
+          op->setOperand(idx, new_op);
+          auto ctx = op->getContext();
+          auto builder = OpBuilder(ctx);
+          auto filterOp_new = op->getOperand(idx).getDefiningOp<top::WeightOp>();
+          filterOp_new->setAttr("do_compress", builder.getBoolAttr(do_compress));
+          filterOp_new->setAttr("bias0", builder.getI64IntegerAttr((uint64_t)bias0));
+          filterOp_new->setAttr("bias1", builder.getI64IntegerAttr((uint64_t)bias1));
+          filterOp_new->setAttr("is_signed", builder.getBoolAttr(is_signed));
+          filterOp_new->setAttr("zero_guard", builder.getBoolAttr(zero_guard));
+        } else {
+          auto ctx = op->getContext();
+          auto builder = OpBuilder(ctx);
+          auto filterOp_new = op->getOperand(idx).getDefiningOp<top::WeightOp>();
+          filterOp_new->setAttr("do_compress", builder.getBoolAttr(do_compress));
+        }
+      } else if (filter_type.isInteger(8)) {
+        auto filter_i8 = filter_op.read<int8_t>();
+        int32_t weight_size = filter_shape[0] * filter_shape[1] * filter_shape[2] * filter_shape[3] ;
+        int32_t osize;
+        getCompressParameter(reinterpret_cast<uint8_t*>(filter_i8->data()), weight_size, is_signed, zero_guard, filter_type, bias0, bias1);
+        auto nnvlc_results = nnvlc_encode(reinterpret_cast<uint8_t*>(filter_i8->data()), weight_size, filter_type, bias0,
+                                    bias1, true, zero_guard, osize);
+        bool do_compress = std::get<0>(nnvlc_results);
+        if (do_compress) {
+          uint8_t *obuf = std::get<1>(nnvlc_results);
+          auto new_type = RankedTensorType::get(filter_shape, filter_type);
+          auto data = std::vector<int8_t>(osize);
+          memcpy(data.data(), obuf, osize);
+          delete[]  obuf;
+          auto new_op =
+              top::WeightOp::create(op, "filter_reorderd", data, new_type);
+          op->setOperand(idx, new_op);
+          auto ctx = op->getContext();
+          auto builder = OpBuilder(ctx);
+          auto filterOp_new = op->getOperand(idx).getDefiningOp<top::WeightOp>();
+          filterOp_new->setAttr("do_compress", builder.getBoolAttr(do_compress));
+          filterOp_new->setAttr("bias0", builder.getI64IntegerAttr((uint64_t)bias0));
+          filterOp_new->setAttr("bias1", builder.getI64IntegerAttr((uint64_t)bias1));
+          filterOp_new->setAttr("is_signed", builder.getBoolAttr(is_signed));
+          filterOp_new->setAttr("zero_guard", builder.getBoolAttr(zero_guard));
+        } else {
+          auto ctx = op->getContext();
+          auto builder = OpBuilder(ctx);
+          auto filterOp_new = op->getOperand(idx).getDefiningOp<top::WeightOp>();
+          filterOp_new->setAttr("do_compress", builder.getBoolAttr(do_compress));
+        }
+      }
+    }
+  }
+}
+
 class GroupPostTransformPass : public LgPass {
 public:
   GroupPostTransformPass() {}
@@ -372,6 +520,9 @@ public:
       for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
         _3D_group_post_transform(pass_ir->lg_infos[i]);
         matmul_left_reuse_setting(pass_ir->lg_infos[i]);
+        if(module::isBM1688() && (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::WEIGHT || LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)){
+          nnvlc_transform(pass_ir->lg_infos[i]);
+        }
       }
     }
     return true;

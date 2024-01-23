@@ -249,35 +249,35 @@ TensorFile::readAllTensors(std::vector<std::string> &names,
 
 template std::unique_ptr<std::vector<int>>
 TensorFile::readTensor<int>(llvm::StringRef name, RankedTensorType &type,
-                            uint32_t store_mode);
+                            uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<unsigned int>>
 TensorFile::readTensor<unsigned int>(llvm::StringRef name,
                                      RankedTensorType &type,
-                                     uint32_t store_mode);
+                                     uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<short>>
 TensorFile::readTensor<short>(llvm::StringRef name, RankedTensorType &type,
-                              uint32_t store_mode);
+                              uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<float>>
 TensorFile::readTensor<float>(llvm::StringRef name, RankedTensorType &type,
-                              uint32_t store_mode);
+                              uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<unsigned char>>
 TensorFile::readTensor<unsigned char>(llvm::StringRef name,
                                       RankedTensorType &type,
-                                      uint32_t store_mode);
+                                      uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<signed char>>
 TensorFile::readTensor<signed char>(llvm::StringRef name,
                                     RankedTensorType &type,
-                                    uint32_t store_mode);
+                                    uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<unsigned short>>
 TensorFile::readTensor<unsigned short>(llvm::StringRef name,
                                        RankedTensorType &type,
-                                       uint32_t store_mode);
+                                       uint32_t store_mode, bool do_compress);
 /// read a tensor from file
 /// if the name is not found, return failure()
 /// type is provided for checking, return failure() if type does not match
 template <typename T>
 LogicalResult TensorFile::readTensor(llvm::StringRef name, T *data,
-                                     size_t count, bool isINT4) {
+                                     size_t count, bool isINT4, bool do_compress) {
   auto it = map.find(name.str());
   if (it == map.end()) {
     llvm::errs() << "failed to find tensor " << name.str() << " to read\n";
@@ -285,7 +285,7 @@ LogicalResult TensorFile::readTensor(llvm::StringRef name, T *data,
     return failure();
   }
   auto arr = it->second;
-  if (arr.num_bytes() != count * sizeof(T) && !isINT4) {
+  if (arr.num_bytes() != count * sizeof(T) && !isINT4 && !do_compress) {
     llvm::errs() << "size does not match for tensor " << name.str() << "\n";
     llvm_unreachable("readTensor failed");
     return failure();
@@ -306,7 +306,7 @@ LogicalResult TensorFile::readTensor(llvm::StringRef name, T *data,
 template <typename T>
 std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
                                                        RankedTensorType &type,
-                                                       uint32_t store_mode) {
+                                                       uint32_t store_mode, bool do_compress) {
   /// {STORE_MODE_T, align_num}
   std::map<uint32_t, int64_t> stmode_map = {
       {0 /*STORE_MODE_1N*/, 1l},
@@ -339,7 +339,7 @@ std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
   }
 
   auto data = std::make_unique<std::vector<T>>(count);
-  auto ret = readTensor(name, (T *)data.get()->data(), count, isINT4);
+  auto ret = readTensor(name, (T *)data.get()->data(), count, isINT4, do_compress);
   assert(succeeded(ret));
   return data;
 }
