@@ -1414,7 +1414,6 @@ struct PermuteReshapeFuse2 : public OpRewritePattern<tpu::PermuteOp> {
   }
 };
 
-
 /**
  * A ---------------------------------\
  *                                     => MatMulHidmBatch => ...
@@ -1556,9 +1555,11 @@ public:
       auto cur_out = left1;
       Operation *next_op = mm1.getOperation();
       auto suffix = std::to_string(i);
-      next_op = tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i);
+      next_op =
+          tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i, 0);
       next_op = tpu::cloneCommonOp(rewriter, next_op, cur_out, suffix);
-      next_op = tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i);
+      next_op =
+          tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i, 0);
       operands.push_back(cur_out);
     }
 
@@ -2089,6 +2090,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<MatMul2FAttentionPattern>(ctx, 10);
   patterns->add<LargePadConvPattern>(ctx, 9);
+  // clang-format off
   patterns->add<MatMulHdimBatchPattern,
                 MatMulRemoveReshapePattern,
                 MatMulLeftReusePattern,
@@ -2110,6 +2112,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
                 ReshapeSliceSqueezePattern>(ctx, 8);
+  // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
   patterns->add<SplitQuantizedMLPPattern,
                 SplitMixedQuantizedMLPPattern>(ctx);

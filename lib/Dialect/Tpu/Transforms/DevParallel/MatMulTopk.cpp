@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -56,19 +57,25 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
   auto has_bias = !module::isNone(mm.getBias());
   auto num_dims = filterShape.size();
 
+  int a16_mm_w_trans = 0;
+  int q_group_size = 0;
   auto a16_mm = dyn_cast<tpu::A16MatMulOp>(mm.getOperation());
-  auto weight_bits = a16_mm ? a16_mm.getWeightBits() : 16;
-  auto a16_mm_w_trans = a16_mm ? a16_mm.getWTranspose() : 0;
+  if (a16_mm) {
+    a16_mm_w_trans = a16_mm.getWTranspose();
+    q_group_size = a16_mm.getQGroupSize();
+  }
+  // auto weight_bits = a16_mm ? a16_mm.getWeightBits() : 16;
 
   auto N = filterShape[num_dims - 1 - a16_mm_w_trans];
-  auto slice_n = ceiling_func(N, num_devices);
 
   Operation *end_op = nullptr;
   std::vector<Value> t_operands;
   for (int i = 0; i < num_devices; i++) {
-    auto offset = i * slice_n;
-    auto length = std::min(slice_n, N - offset);
+    auto offset = get_splited_offset(N, num_devices, i, 0, q_group_size);
+    auto length = get_splited_size(N, num_devices, i, 0, q_group_size);
     auto suffix = std::to_string(i);
+
+    // next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices, i, 0);
 
     auto newFilter = module::opSliceAxis(
         mm.getOperand(1), num_dims - 1 - a16_mm_w_trans, offset, length);
@@ -102,7 +109,7 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
     }
     auto new_loc = module::getLocLike(mm.getOutput(), suffix);
     std::vector<int64_t> new_shape = outputShape;
-    new_shape[new_shape.size() - 1] = (weight_bits == 4 ? 2 : 1) * length;
+    new_shape[new_shape.size() - 1] = length;
     auto new_type = module::getTypeLike(mm.getOutput(), new_shape);
     rewriter.setInsertionPointAfter(mm);
 
@@ -133,7 +140,7 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
       std::vector<NamedAttribute> attrs;
       attrs.push_back(rewriter.getNamedAttr(
           "const_val",
-          rewriter.getF64FloatAttr((weight_bits == 4 ? 2 : 1) * offset)));
+          rewriter.getF64FloatAttr(offset)));
       rewriter.setInsertionPointAfter(new_op);
       auto new_add = rewriter.create<tpu::AddConstOp>(
           new_loc, indices.getType(), ValueRange{indices}, attrs);

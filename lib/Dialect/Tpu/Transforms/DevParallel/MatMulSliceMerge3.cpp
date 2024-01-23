@@ -110,7 +110,9 @@ MatMulSliceMerge3::matchAndRewrite(tpu::AddOp op,
   if (ffn_begin_op == nullptr) {
     return failure();
   }
-  if (!isAttentionPattern(attn_op, attn_begin_ops, attn_end_ops, true)) {
+  int num_head = 0;
+  if (!isAttentionPattern(attn_op, attn_begin_ops, attn_end_ops, true,
+                          &num_head)) {
     return failure();
   }
 
@@ -139,9 +141,8 @@ MatMulSliceMerge3::matchAndRewrite(tpu::AddOp op,
   end_methods.push_back(1);
   end_methods.push_back(3);
   end_methods.push_back(3);
-  distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::MatMulSliceMerge3, begin_methods,
-             end_methods);
+  distribute(rewriter, begin_ops, end_ops, tpu::DevPattern::MatMulSliceMerge3,
+             begin_methods, end_methods, num_head);
 
   return success();
 }
@@ -157,6 +158,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
   auto ffn_ln = use_ops[1];
   auto attn_ln = use_ops[2];
   bool decode_phase = (users.size() > 5);
+  int num_head = op.getNumHead();
 
   std::vector<Value> end_operands;
   std::vector<Value> operands;
@@ -208,7 +210,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
         next_op = users[j];
         cur_out = next_op->getOperand(0);
         next_op = createSliceOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device);
+                                cur_device, num_head);
         if (isa<tpu::CastOp>(next_op)) {
           next_op = cloneCommonOp(rewriter, next_op, cur_out, 2, num_devices,
                                   cur_device)[0];
@@ -226,10 +228,10 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     cur_out = ln_input;
     next_op = cloneOpWithWeight(rewriter, next_op, cur_out, suffix)[0];
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, num_head);
     next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
     next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device);
+                                     cur_device, num_head);
     Value ffn_out = cur_out;
 
     // Attention
@@ -237,7 +239,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = attn_ln;
     cur_out = ln_input;
     std::vector<Operation *> reshape_users = cloneAttentionInput(
-        rewriter, next_op, cur_out, num_devices, cur_device);
+        rewriter, next_op, cur_out, num_devices, cur_device, num_head);
     Value start_out = cur_out;
     // Value branch
     std::vector<Value> outs;
@@ -245,7 +247,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = reshape_users[0];
     other_opds = {past_v_out};
     next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  num_devices, cur_device, true)[0];
+                                  num_devices, cur_device, true, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
 
@@ -253,7 +255,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = reshape_users[2];
     cur_out = start_out;
     next_op = cloneAttentionQuery(rewriter, next_op, cur_out, pos_ids,
-                                  num_devices, cur_device, true)[0];
+                                  num_devices, cur_device, true, num_head)[0];
     Value query_branch = cur_out;
     auto query_next_op = next_op;
     // Key branch
@@ -262,7 +264,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = reshape_users[1];
     other_opds = {pos_ids[0], pos_ids[1], past_k_out};
     next_op = cloneAttentionKey(rewriter, next_op, cur_out, other_opds, outs,
-                                num_devices, cur_device, true)[0];
+                                num_devices, cur_device, true, num_head)[0];
     Value key_out = outs[0];
     Value key_branch = outs[1];
     assert(query_next_op == next_op);
@@ -285,7 +287,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                               num_devices, cur_device);
     // Attention Output branch
     next_op = cloneAttentionOutput(rewriter, next_op, cur_out, num_devices,
-                                   cur_device)[0];
+                                   cur_device, num_head)[0];
     Value attn_out = cur_out;
 
     // out0 = ffn_out + attn_out

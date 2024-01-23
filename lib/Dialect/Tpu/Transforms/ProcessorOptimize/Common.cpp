@@ -334,9 +334,9 @@ Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *
     auto cur_out = left1;
     Operation *next_op = op;
     auto suffix = std::to_string(i);
-    next_op = tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i);
+    next_op = tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i, 0);
     next_op = tpu::cloneCommonOp(rewriter, next_op, cur_out, suffix);
-    next_op = tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i);
+    next_op = tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i, 0);
     operands.push_back(cur_out);
   }
 

@@ -221,8 +221,7 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
         op->setOperand(idx, op_->getOperand(i));
       }
       skip = (isa<tpu::SliceOp>(op) &&
-              begin_methods->at(i) ==
-                  (int)DevBeginMethod::BeginFromSplit);
+              begin_methods->at(i) == (int)DevBeginMethod::BeginFromSplit);
       continue;
     } else if (!isa<top::WeightOp, top::NoneOp, top::InputOp>(op_)) {
       collect_ops_backward(subf, op_, cur_device);
@@ -258,9 +257,8 @@ static void collect_ops_forward(std::shared_ptr<SubFunction> &subf,
   }
 }
 
-static void buildDistibution(tpu::DevBeginOp begin,
-                             tpu::DevEndOp end, ModuleOp m,
-                             int64_t num_devices, int64_t step) {
+static void buildDistibution(tpu::DevBeginOp begin, tpu::DevEndOp end,
+                             ModuleOp m, int64_t num_devices, int64_t step) {
   std::vector<Operation *> begins(begin->user_begin(), begin->user_end());
   std::vector<Value> ends(end->operand_begin(), end->operand_end());
   for (int i = 0; i < num_devices; i++) {
@@ -286,40 +284,86 @@ static int64_t buildEndToSum(tpu::DevEndOp end, ModuleOp m,
                              int cur_out_idx) {
   OpBuilder builder(end.getContext());
   builder.setInsertionPointAfter(end);
-  int times = num_devices > 2 ? std::ceil(std::sqrt(num_devices)) : 1;
+  int times = std::log2(num_devices);
   std::vector<std::shared_ptr<tpu_mlir::tpu::SubFunction>> subf_v;
   std::vector<Value> operands = origin_operands;
   std::vector<Value> new_operands;
   assert(operands.size() % 2 == 0);
-  for (int t = 0; t < times; ++t) {
-    for (int i = 0; i < operands.size(); ++i) {
-      // if (i + 1 == operands.size() && operands.size() % 2 == 1) {
-      //   new_operands.push_back(operands[i]);
-      //   continue;
-      // }
-      // the other operand idx
-      int k = 1 << t;
-      int j = (i / k) % 2 == 0 ? i + k : i - k;
+  if ((1 << times) != num_devices) {
+    times++;
+    assert(num_devices == 6);
+    //  dev :  0    1    2    3    4    5
+    // t = 0: 0+1, 1+0, 2+3, 3+2, 4+5, 5+4 => (A, A, B, B, C, C)
+    // t = 1: 0+2, 1+3, 2+0, 4->3, 4,   5  => (D, D, D, C, C, C)
+    // t = 2: 0+3, 1+4, 2+5, 3+0, 4+1, 5+2 => (E, E, E, E, E, E)
+    for (int t = 0; t < times; ++t) {
+      for (int i = 0; i < operands.size(); ++i) {
+        int k = 1 << t;
+        int j = (i / k) % 2 == 0 ? i + k : i - k;
+        if (t == 1) {
+          if (i == 3) {
+            // copy dev4 data to dev3
+            std::string suffix = std::string("add_const_") +
+                                 std::to_string(cur_out_idx) + "_" +
+                                 std::to_string(t) + "_" + std::to_string(i);
+            auto loc = module::getLocLike(origin_operands[i], suffix);
+            std::vector<NamedAttribute> attrs;
+            attrs.push_back(
+                builder.getNamedAttr("const_val", builder.getF64FloatAttr(0)));
+            auto addconst = builder.create<tpu::AddConstOp>(
+                loc, operands[4].getType(), mlir::ValueRange{operands[4]},
+                attrs);
+            new_operands.push_back(addconst.getOutput());
+            auto subf = std::make_shared<SubFunction>(i, step);
+            insert_subop(subf, addconst);
+            subf_v.emplace_back(std::move(subf));
+            continue;
+          } else if (i > 3) {
+            // do nothing
+            new_operands.push_back(operands[i]);
+            continue;
+          }
+        } else if (t == 2) {
+          j = i > 2 ? (i - 3) : (i + 3);
+        }
 
-      std::string suffix = std::string("add_") + std::to_string(cur_out_idx) +
-                           "_" + std::to_string(t) + "_" + std::to_string(i);
-      auto loc = module::getLocLike(origin_operands[i], suffix);
-      auto add = builder.create<tpu::AddOp>(
-          loc, operands[i].getType(),
-          mlir::ValueRange{operands[i], operands[j]});
-      new_operands.push_back(add.getOutput());
-      auto subf = std::make_shared<SubFunction>(i, step);
-      insert_subop(subf, add);
-      // if (t == times - 1 && i == 0) {
-      //   module::setLoc(add.getOutput(),
-      //                  module::getLoc(end.getOutputs()[cur_out_idx]));
-      //   end.getOutputs()[cur_out_idx].replaceAllUsesWith(add.getOutput());
-      // }
-      subf_v.emplace_back(std::move(subf));
+        std::string suffix = std::string("add_") + std::to_string(cur_out_idx) +
+                             "_" + std::to_string(t) + "_" + std::to_string(i);
+        auto loc = module::getLocLike(origin_operands[i], suffix);
+        auto add = builder.create<tpu::AddOp>(
+            loc, operands[i].getType(),
+            mlir::ValueRange{operands[i], operands[j]});
+        new_operands.push_back(add.getOutput());
+        auto subf = std::make_shared<SubFunction>(i, step);
+        insert_subop(subf, add);
+        subf_v.emplace_back(std::move(subf));
+      }
+      step++;
+      operands = new_operands;
+      new_operands.clear();
     }
-    step++;
-    operands = new_operands;
-    new_operands.clear();
+  } else {
+    for (int t = 0; t < times; ++t) {
+      for (int i = 0; i < operands.size(); ++i) {
+        // the other operand idx
+        int k = 1 << t;
+        int j = (i / k) % 2 == 0 ? i + k : i - k;
+
+        std::string suffix = std::string("add_") + std::to_string(cur_out_idx) +
+                             "_" + std::to_string(t) + "_" + std::to_string(i);
+        auto loc = module::getLocLike(origin_operands[i], suffix);
+        auto add = builder.create<tpu::AddOp>(
+            loc, operands[i].getType(),
+            mlir::ValueRange{operands[i], operands[j]});
+        new_operands.push_back(add.getOutput());
+        auto subf = std::make_shared<SubFunction>(i, step);
+        insert_subop(subf, add);
+        subf_v.emplace_back(std::move(subf));
+      }
+      step++;
+      operands = new_operands;
+      new_operands.clear();
+    }
   }
 
   builder.setInsertionPointAfterValue(end.getOutputs()[cur_out_idx]);
@@ -420,9 +464,8 @@ static int64_t buildEndToConcat(tpu::DevEndOp end, ModuleOp m,
   return step;
 }
 
-static std::shared_ptr<SubFunction> buildEndOp(tpu::DevEndOp end,
-                                               ModuleOp m, int64_t num_devices,
-                                               int64_t &step) {
+static std::shared_ptr<SubFunction>
+buildEndOp(tpu::DevEndOp end, ModuleOp m, int64_t num_devices, int64_t &step) {
   std::vector<Value> operands(end.operand_begin(), end.operand_end());
   int num_outputs = operands.size() / num_devices;
   std::vector<Value> new_operands;
@@ -563,8 +606,7 @@ static void updateFuncIONames(ModuleOp m) {
                       operands.begin();
             int num_result = end->getNumResults();
             idx = idx - device_id * num_result;
-            if (end_methods->at(idx) ==
-                (int)DevEndMethod::EndToConcat) {
+            if (end_methods->at(idx) == (int)DevEndMethod::EndToConcat) {
               auto next_result = user->getResult(idx);
               auto loc = module::getLocLike(next_result, suffix);
               outputs[i].setLoc(loc);
@@ -579,7 +621,7 @@ static void updateFuncIONames(ModuleOp m) {
         }
       }
       std::vector<Location> retLoc;
-      for (auto o :outputs) {
+      for (auto o : outputs) {
         retLoc.push_back(module::getLoc(o));
       }
       Location call_loc = retLoc[0];
