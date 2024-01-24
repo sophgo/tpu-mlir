@@ -97,7 +97,6 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   switch (getPoolMode()) {
   case tpu::PoolMode::Max:
-    return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
     auto &p = getPool2DParam(*this);
