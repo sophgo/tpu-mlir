@@ -104,6 +104,7 @@ class ONNX_IR_TESTER(object):
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y),
             "Flip":         (self.test_Flip,          Y, Y, Y, N, Y),
             "Floor":        (self.test_Floor,         Y, Y, Y, N, Y),
+            "FitPermute2Hdim": (self.test_FitPermute2Hdim, N, N, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, Y, N, N, Y),
             "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, Y),
@@ -3146,6 +3147,40 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, depth2space_output_shape, transpose_order, block_size, mode)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+
+    def test_FitPermute2Hdim(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                # self.bias = torch.randn(96).float()
+                self.conv2d = nn.Conv2d(in_channels=64,
+                        out_channels=64,
+                        kernel_size=3,
+                        stride=(1, 1),
+                        padding=1,
+                        dilation=1)
+            def forward(self, x, x2):
+                x = x[2:3,:,:,64:128]
+
+                x = torch.reshape(x,[1,14,2,1,28,64])
+                x = torch.permute(x,[0,1,3,5,2,4])
+                x = torch.reshape(x,[14,64,2,28])
+                y1 = self.conv2d(x)
+                y1 = torch.reshape(y1,[14,2,32,56])
+                y1 = torch.permute(y1,[0,1,3,2])
+
+                x = torch.reshape(x,[14,2,32,56])
+                x = torch.permute(x,[0,1,3,2])
+                x2 = torch.permute(x2,[0,2,1,3])
+                y2 = torch.matmul(x2, x)
+                return y1 + y2
+
+        x = torch.randn(3, 1, 784,128).float()
+        x2 = torch.randn(14, 56, 2,56).float()
+        self.torch_and_test((x,x2), Model(), case_name)
 
     def test_Gather2Slice(self, case_name):
 
