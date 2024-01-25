@@ -56,63 +56,63 @@ struct OpReorderPattern : public RewritePattern {
   }
 };
 
-// test by sd_decoder_pt
-struct AttentionReorderPattern : public RewritePattern {
-  AttentionReorderPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override {
-    if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
-      return failure();
-    }
-    if (op->getNumResults() != 1) {
-      return failure();
-    }
-    auto out = op->getResult(0);
-    auto num_uses = std::distance(out.use_begin(), out.use_end());
-    if (num_uses < 2) {
-      return failure();
-    }
-    // collect ops
-    llvm::SmallVector<Operation *, 16> mm_ops;
-    llvm::SmallVector<Operation *, 16> reshape_ops;
-    for (auto user : out.getUsers()) {
-      if (false == isa<tpu::MatMulOp>(user)) {
-        return failure();
-      }
-      if (user->hasOneUse() == false) {
-        return failure();
-      }
-      auto user2 = *user->user_begin();
-      if (false == isa<tpu::ReshapeOp>(user2)) {
-        return failure();
-      }
-      for (auto opd : user->getOperands()) {
-        if (opd == out) {
-          continue;
-        }
-        auto op_ = opd.getDefiningOp();
-        if (op_ == nullptr || isa<top::NoneOp>(op_)) {
-          continue;
-        }
-        mm_ops.push_back(op_);
-      }
-      mm_ops.push_back(user);
-      reshape_ops.push_back(user2);
-    }
-    mm_ops.append(reshape_ops);
-    auto last_op = op;
-    bool fixed = false;
-    for (auto op_ : mm_ops) {
-      if (last_op->getNextNode() != op_) {
-        fixed = true;
-        op_->moveAfter(last_op);
-      }
-      last_op = op_;
-    }
-    return fixed ? success() : failure();
-  }
-};
+// // test by sd_decoder_pt
+// struct AttentionReorderPattern : public RewritePattern {
+//   AttentionReorderPattern(MLIRContext *context)
+//       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
+//   LogicalResult matchAndRewrite(Operation *op,
+//                                 PatternRewriter &rewriter) const override {
+//     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
+//       return failure();
+//     }
+//     if (op->getNumResults() != 1) {
+//       return failure();
+//     }
+//     auto out = op->getResult(0);
+//     auto num_uses = std::distance(out.use_begin(), out.use_end());
+//     if (num_uses < 2) {
+//       return failure();
+//     }
+//     // collect ops
+//     llvm::SmallVector<Operation *, 16> mm_ops;
+//     llvm::SmallVector<Operation *, 16> reshape_ops;
+//     for (auto user : out.getUsers()) {
+//       if (false == isa<tpu::MatMulOp>(user)) {
+//         return failure();
+//       }
+//       if (user->hasOneUse() == false) {
+//         return failure();
+//       }
+//       auto user2 = *user->user_begin();
+//       if (false == isa<tpu::ReshapeOp>(user2)) {
+//         return failure();
+//       }
+//       for (auto opd : user->getOperands()) {
+//         if (opd == out) {
+//           continue;
+//         }
+//         auto op_ = opd.getDefiningOp();
+//         if (op_ == nullptr || isa<top::NoneOp>(op_)) {
+//           continue;
+//         }
+//         mm_ops.push_back(op_);
+//       }
+//       mm_ops.push_back(user);
+//       reshape_ops.push_back(user2);
+//     }
+//     mm_ops.append(reshape_ops);
+//     auto last_op = op;
+//     bool fixed = false;
+//     for (auto op_ : mm_ops) {
+//       if (last_op->getNextNode() != op_) {
+//         fixed = true;
+//         op_->moveAfter(last_op);
+//       }
+//       last_op = op_;
+//     }
+//     return fixed ? success() : failure();
+//   }
+// };
 
 static bool isLgSupport(Operation *op) {
   bool res = false;
@@ -175,8 +175,10 @@ public:
         // applyPatternsAndFoldGreedily(func, std::move(patterns));
         // special for attention
         patterns.clear();
-        patterns.add<AttentionReorderPattern>(ctx);
-        applyPatternsAndFoldGreedily(func, std::move(patterns));
+
+        // // This pattern will lead to negative optimization, so disable it until an update in the future
+        // patterns.add<AttentionReorderPattern>(ctx);
+        // applyPatternsAndFoldGreedily(func, std::move(patterns));
 
         patterns.clear();
         patterns.add<GlobalOpReorderPattern>(ctx);
