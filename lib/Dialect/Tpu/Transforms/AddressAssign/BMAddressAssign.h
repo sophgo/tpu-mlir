@@ -21,6 +21,7 @@ public:
   BMAddressAssign() {}
   void assign(ModuleOp &module, bool reuse_addr);
 
+  static bool isInPlaceOp(Operation *op);
 protected:
   void updateLiveRangeofBMOps(Operation *op, int index,
                               std::map<Operation *, uint32_t> &ops_loc,
@@ -30,7 +31,6 @@ protected:
                               int alignment);
   void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition,
                                    std::map<Operation *, uint32_t> &ops_loc);
-  bool isInPlaceOp(Operation *op);
   int getOutIndex(Operation *op, Value &out);
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
   bool is_next_subnet_input(Operation *op, int index);

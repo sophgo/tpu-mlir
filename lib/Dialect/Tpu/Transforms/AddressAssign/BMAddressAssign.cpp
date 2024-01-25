@@ -40,6 +40,19 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   return ret;
 }
 
+bool valueIsRetrun(Value value) {
+  for (auto op : value.getUsers()) {
+    if (op->hasTrait<OpTrait::IsTerminator>())
+      return true;
+    if (BMAddressAssign::isInPlaceOp(op)) {
+      for (auto v : op->getResults())
+        if (valueIsRetrun(v))
+          return true;
+    }
+  }
+  return false;
+}
+
 std::map<ValueInfo, int64_t>
 L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   if (!module::isSG2260Family())
@@ -47,7 +60,7 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   // assign tensor with access hot
   // mutableTensorUsage = uses + store
   // only support L2 -> lmem, lmem  -> L2
-  // TODO: DDR -> L2 -> Lmem (need insert loadOp)
+  // TODO: DDR -> L2 -> Lmem (need to insert loadOp)
   int64_t l2memSize = 1 << 27;
   struct valueDemand {
     int64_t size;
@@ -57,17 +70,17 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   // find all the data
   for (auto &[value, live] : liveRange) {
     auto op = (Operation *)value.op;
+    if (isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op))
+      continue;
+
     auto result = op->getResult(value.index);
-    bool userIsReturn = llvm::none_of(result.getUsers(), [](Operation *op) {
-      return op->hasTrait<OpTrait::IsTerminator>();
-    });
-    if (!isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op) &&
-        userIsReturn) {
-      auto uses = result.getUses();
-      int64_t hot = std::distance(uses.begin(), uses.end()) + 1;
-      if (live.tensor_size < l2memSize) // l2mem 128M
-        valueIntensive[value] = valueDemand{live.tensor_size, hot};
-    }
+    if (valueIsRetrun(result))
+      continue;
+
+    auto uses = result.getUses();
+    int64_t hot = std::distance(uses.begin(), uses.end()) + 1;
+    if (live.tensor_size < l2memSize) // l2mem 128M
+      valueIntensive[value] = valueDemand{live.tensor_size, hot};
   }
 
   auto getValues = [](std::map<ValueInfo, valueDemand> &valueMap) {
