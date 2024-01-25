@@ -1,4 +1,4 @@
-// RUN: tpuc-opt --core-parallel -split-input-file %s
+// RUN: tpuc-opt --core-parallel -split-input-file %s | FileCheck %s
 
 // CHECK-LABEL: module @Conv2d_2
 // CHECK:        %[[CONV0:.*]] = "tpu.Conv2D"(%[[InputSplit:.*]]#0, %[[FilterSplit:.*]]#0, %[[BiasSplit:.*]]#0) {coeff_merged = false, dilations = [1, 1], do_relu = false, dynweight_reorderd = false, group = 1 : i64, kernel_shape = [3, 3], kernel_zp = 0 : i64, pads = [1, 1, 1, 1], quant_mode = #tpu<rq_mode MultiplierShift>, relu_limit = -1.000000e+00 : f64, strides = [1, 1], use_3ic_optimize = 0 : i64, weight_is_coeff = 1 : i64, with_bias = true} : (tensor<1x16x100x100xf32>, tensor<1x33x16x9xf32>, tensor<1x33x1x1xf32>) -> tensor<1x33x100x100xf32> loc({{.*}})

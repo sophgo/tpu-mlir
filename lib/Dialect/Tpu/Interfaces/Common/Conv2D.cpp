@@ -534,12 +534,6 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 }
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
-  auto &attr = getConv2DParam(*this);
-  bool is_depthwise = attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
-  auto in_etype = module::getStorageType(getInput());
-  if (is_depthwise == false && in_etype.isIntOrIndex() == false) {
-    return {};
-  }
   MLIRContext *context = getContext();
   AffineMap inputMap, filterMap, outputMap, empty;
 
