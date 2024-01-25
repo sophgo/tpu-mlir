@@ -825,21 +825,6 @@ void codegenCoreParallelOp(
   multi_core->useCore(0); // reset the command buffer to 0
 }
 
-void codegenMultiCoreOp(
-    GlobalGenInterfaceDecorator parallelOp, BM168x *bm168x,
-    const std::function<void(GlobalGenInterfaceDecorator)>
-        &codegenGlobalLayer) {
-  auto multi_core = cast<MultiCoreInterface>(bm168x);
-  auto core_num = module::getCoreNum();
-  for (int i = 0; i < core_num; ++i) {
-    multi_core->useCore(i);
-    multi_core->syncAll(); // begin compute sync-all
-    codegenGlobalLayer(parallelOp);
-    multi_core->syncAll(); // end compute sync-all
-  }
-  multi_core->useCore(0); // reset the command buffer to 0
-}
-
 void codegenGroupParallelOp(
     tpu::GroupParallelOp groupParallelOp, BM168x *bm168x,
     const std::function<void(GlobalGenInterfaceDecorator)>
@@ -911,17 +896,6 @@ void BMCodegen::codegen(FuncOp funcOp) {
     if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
       codegenCoreParallelOp(parallelOp, bm168x, codegenGlobalLayer);
       return WalkResult::skip();
-    }
-
-    if (auto Conv2dOp = dyn_cast<tpu::Conv2DOp>(op)) {
-      auto &attr = getConv2DParam(Conv2dOp);
-      bool is_depthwise = attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
-      auto in_etype = module::getStorageType(Conv2dOp.getInput());
-      auto core_num = module::getCoreNum();
-      if (is_depthwise == false && in_etype.isIntOrIndex() == false && core_num != 1) {
-        codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
-        return WalkResult::skip();
-      }
     }
 
     if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
