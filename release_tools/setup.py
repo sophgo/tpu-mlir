@@ -37,8 +37,8 @@ setup(
     extras_require={
         "all": [
             # torch
-            "torch==2.0.1+cpu",
-            "torchvision==0.15.2+cpu",
+            "torch==2.0.1",
+            "torchvision==0.15.2",
             # onnx
             "onnx==1.14.0",
             "onnxruntime==1.15.1",
@@ -53,8 +53,8 @@ setup(
             "paddle2onnx==1.0.8",
         ],
         "torch": [
-            "torch==2.0.1+cpu",
-            "torchvision==0.15.2+cpu"
+            "torch==2.0.1",
+            "torchvision==0.15.2"
         ],
         "onnx": [
             "onnx==1.14.0",

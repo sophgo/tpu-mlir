@@ -25,8 +25,8 @@ dma_index = RegIndex()
 
 def fix_cmd_id_dep(value):
     if value is None:
-        return None
-    return (value & 0x0FFFFF) if value & 0x100000 else None
+        raise RuntimeError("dep_id shouldn't be None type!!")
+    return value & 0x0FFFFF
 
 
 class TiuCmd(BaseTpuCmd, Tiu):
