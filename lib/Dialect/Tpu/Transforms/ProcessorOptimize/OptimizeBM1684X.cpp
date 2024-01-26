@@ -1573,6 +1573,15 @@ public:
 };
 #endif
 
+Operation* get_next_op(Operation *op, std::vector<mlir::Operation *> &mulshifts) {
+  auto next_op = *op->getResult(0).getUsers().begin();
+  if (!isa<tpu::MulShiftOp>(next_op)) {
+    return next_op;
+  }
+  mulshifts.emplace_back(next_op);
+  return *next_op->getResult(0).getUsers().begin();
+}
+
 class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::PermuteOp op,
@@ -1584,60 +1593,66 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     for (auto user : op.getOutput().getUsers()) {
       permute_users.emplace_back(user);
     }
+    if (permute_users.size() != 2){
+      return failure();
+    }
     auto slice_l_op = dyn_cast_or_null<tpu::SliceOp>(permute_users[1]);
     auto slice_r_op = dyn_cast_or_null<tpu::SliceOp>(permute_users[0]);
     if (!(slice_l_op && slice_r_op))
       return failure();
     if (!slice_l_op->hasOneUse() || slice_r_op->hasOneUse())
       return failure();
-    // auto concat_op = dyn_cast_or_null<tpu::ConcatOp>(
-    //     *slice_l_op.getOutput().getUsers().begin());
-    // if (!concat_op || !concat_op->hasOneUse())
-    //   return failure();
     std::vector<mlir::Operation *> slice_users;
     for (auto user : slice_r_op.getOutput().getUsers()) {
       slice_users.emplace_back(user);
     }
+    if (slice_users.size() != 3){
+      return failure();
+    }
     auto mul_0_op = dyn_cast_or_null<tpu::MulOp>(slice_users[2]);
     auto slice_1_op = dyn_cast_or_null<tpu::SliceOp>(slice_users[1]);
     auto slice_2_op = dyn_cast_or_null<tpu::SliceOp>(slice_users[0]);
+    std::vector<mlir::Operation *> mulshifts;
 
     if (!(mul_0_op && slice_1_op && slice_2_op))
       return failure();
     auto mulconst_op = dyn_cast_or_null<tpu::MulConstOp>(
         *slice_1_op.getOutput().getUsers().begin());
-    if (!mulconst_op || !mulconst_op->hasOneUse())
+    auto mulshift_op = dyn_cast_or_null<tpu::MulShiftOp>(
+        *slice_1_op.getOutput().getUsers().begin());
+    if ((!mulconst_op || !mulconst_op->hasOneUse()) && (!mulshift_op || !mulshift_op->hasOneUse()))
       return failure();
+    auto mulconst_or_mulshift_op = mulconst_op ? mulconst_op : mulshift_op;
     auto unsqueeze_0_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
-        *mulconst_op.getOutput().getUsers().begin());
+        *get_next_op(mulconst_or_mulshift_op, mulshifts));
     if (!unsqueeze_0_op || !unsqueeze_0_op->hasOneUse())
       return failure();
     auto unsqueeze_1_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
-        *slice_2_op.getOutput().getUsers().begin());
+        *get_next_op(slice_2_op, mulshifts));
     if (!unsqueeze_1_op || !unsqueeze_1_op->hasOneUse())
       return failure();
     auto concat_0_op = dyn_cast_or_null<tpu::ConcatOp>(
-        *unsqueeze_0_op.getOutput().getUsers().begin());
+        *get_next_op(unsqueeze_0_op, mulshifts));
     if (!concat_0_op || !concat_0_op->hasOneUse())
       return failure();
-    if (concat_0_op.getOperand(1) != unsqueeze_1_op.getOutput())
+    if (concat_0_op.getOperation() != get_next_op(unsqueeze_1_op, mulshifts))
       return failure();
     auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(
-        *concat_0_op.getOutput().getUsers().begin());
+        *get_next_op(concat_0_op, mulshifts));
     if (!reshape_op || !reshape_op->hasOneUse())
       return failure();
     auto mul_1_op = dyn_cast_or_null<tpu::MulOp>(
-        *reshape_op.getOutput().getUsers().begin());
+        *get_next_op(reshape_op, mulshifts));
     if (!mul_1_op || !mul_1_op->hasOneUse())
       return failure();
     auto add_op =
-        dyn_cast_or_null<tpu::AddOp>(*mul_0_op.getOutput().getUsers().begin());
+        dyn_cast_or_null<tpu::AddOp>(*get_next_op(mul_0_op, mulshifts));
     if (!add_op || !add_op->hasOneUse())
       return failure();
     if (add_op.getOperand(1) != mul_1_op.getOutput())
       return failure();
     auto concat_1_op = dyn_cast_or_null<tpu::ConcatOp>(
-        *slice_l_op.getOutput().getUsers().begin());
+        *get_next_op(slice_l_op, mulshifts));
     if (!concat_1_op || !concat_1_op->hasOneUse())
       return failure();
     if (concat_1_op.getOperand(1) != add_op.getOutput())
@@ -1667,9 +1682,9 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     auto slice_r_outshape = module::getShape(slice_r_op.getOutput());
     int64_t h = slice_r_outshape[2];
-    auto mulconst_output = mulconst_op.getOutput();
-    auto mulconst_shape = module::getShape(mulconst_output);
-    if (h != mulconst_shape[2])
+    auto mulconst_or_mulshift_output = mulconst_or_mulshift_op->getResult(0);
+    auto mulconst_or_mulshift_shape = module::getShape(mulconst_or_mulshift_output);
+    if (h != mulconst_or_mulshift_shape[2])
       return failure();
     if (*module::getI64Array(unsqueeze_0_op.getAxes()) !=
         std::vector<int64_t>{-1})
@@ -1693,7 +1708,6 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     if ((concat_1_op.getAxis()) != 2)
       return failure();
-    // rewrite
     // get rid of this permute op
     auto output = op.getInput();
     op.getOutput().replaceAllUsesWith(output);
@@ -1704,7 +1718,6 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     head_n = permute_outshape[1];
     hw = permute_outshape[2];
     head_sz = permute_outshape[3];
-
     std::vector<int64_t> slice_l_shape{batch, 1, head_n, head_sz};
     module::setShape(slice_l_op.getOutput(), slice_l_shape);
     slice_l_op->setAttr("ends", rewriter.getI64ArrayAttr(slice_l_shape));
@@ -1727,7 +1740,7 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     slice_1_op->setAttr("ends", rewriter.getI64ArrayAttr(common_shape));
     module::setShape(slice_2_op.getOutput(), slice_1_shape);
     slice_2_op->setAttr("ends", rewriter.getI64ArrayAttr(common_shape));
-    module::setShape(mulconst_op.getOutput(), slice_1_shape);
+    module::setShape(mulconst_or_mulshift_op->getResult(0), slice_1_shape);
     std::vector<int64_t> unsqueeze_0_shape{batch, hw - 1, head_n, head_sz / 2,
                                            1};
     module::setShape(unsqueeze_0_op.getOutput(), unsqueeze_0_shape);
@@ -1807,6 +1820,9 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     module::setShape(permute_op.getOutput(), permute_shape);
     concat_1_op.getOutput().replaceAllUsesExcept(permute_op.getOutput(),
                                                  permute_op);
+    for (auto mulshift_op : mulshifts) {
+      module::setShape(mulshift_op->getResult(0), module::getShape(mulshift_op->getOperand(0)));
+    }
     return success();
   }
 };
