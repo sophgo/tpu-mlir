@@ -1362,9 +1362,6 @@ struct PermuteReshapeFuse2 : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     }
     auto op_shape = module::getShape(op);
-    if (false == (op_shape.size() == 3)) {
-      return failure();
-    }
 
     auto shape = module::getShape(reshape_op);
     if (false == (shape.size() == 6 &&
@@ -1868,9 +1865,12 @@ class ReshapeSliceSqueezePattern : public OpRewritePattern<tpu::ReshapeOp> {
       new_offset[ax] = offset->at(ax) * inner_size / in_shape[ax];
       new_ends[ax] = inner_size / in_shape[ax] + new_offset[ax];
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(new_offset)));
-      attrs.push_back(rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(new_steps)));
-      attrs.push_back(rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(new_ends)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "offset", rewriter.getI64ArrayAttr(new_offset)));
+      attrs.push_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(new_steps)));
+      attrs.push_back(
+          rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(new_ends)));
 
       rewriter.setInsertionPointAfterValue(in);
       const std::string name_slice =
@@ -1895,8 +1895,7 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
-  patterns->add<
-                MatMulHdimBatchPattern,
+  patterns->add<MatMulHdimBatchPattern,
                 MatMulRemoveReshapePattern,
                 MatMulLeftReusePattern,
                 GroupConv2NormalConv,
@@ -1914,8 +1913,12 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ScatterElementsPattern,
                 PermuteReorderPattern,
                 PermutePadSwap,
-                MatMulActiveMatMulPattern>(ctx, 8);
+                MatMulActiveMatMulPattern,
+                RotaryPosEmbPattern,
+                ReshapeSliceSqueezePattern>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
+  patterns->add<SplitQuantizedMLPPattern,
+                SplitMixedQuantizedMLPPattern>(ctx);
 }
 } // namespace tpu
 
