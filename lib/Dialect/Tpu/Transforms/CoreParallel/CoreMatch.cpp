@@ -144,22 +144,10 @@ bool isReachable(Operation *a, Operation *b) {
     if (!a->isBeforeInBlock(b))
       return false;
   }
-  for (auto user : a->getUsers()) {
-    if (user == b) {
-      return true;
-    }
-    if (user->getBlock() == b->getBlock()) {
-      if (!user->isBeforeInBlock(b))
-        continue;
-    }
-    if (isReachable(user, b))
-      return true;
-  }
-  if (isa<tpu::YieldOp, top::YieldOp>(a))
-    if (isReachable(a->getParentOp(), b))
-      return true;
-
-  return false;
+  if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
+    return isReachable(a->getParentOp(), b);
+  return llvm::any_of(a->getUsers(),
+                      [b](Operation *op) { return isReachable(op, b); });
 }
 
 bool isCircularDependency(std::vector<Operation *> &beginOps,
@@ -198,10 +186,11 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
 
   // check dataFlow form usedByOutside to definedInOutside.
   for (auto uOp : usedByOutside) {
-    for (auto dOp : definedInOutside)
+    for (auto dOp : definedInOutside) {
       if (isReachable(uOp, dOp)) {
         return true;
       }
+    }
   }
   return false;
 }
