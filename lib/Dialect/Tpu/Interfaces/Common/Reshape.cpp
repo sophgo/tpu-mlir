@@ -37,6 +37,12 @@ LogicalResult tpu::ReshapeOp::LocalGenSupport() {
 
 LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
                                              group_type_t group_type) {
+  // temp code for prevent not-inplace reshape
+  // has to fix LmemAllocator in the future
+  if (module::isBM1688()) {
+    return failure();
+  }
+
   if (axis == 0 || axis == 1) {
     return success();
   }
