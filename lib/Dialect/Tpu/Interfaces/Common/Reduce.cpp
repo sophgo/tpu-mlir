@@ -212,6 +212,9 @@ LogicalResult tpu::ReduceOp::canonicalize(tpu::ReduceOp op,
     return failure();
   }
 
+  if (!castf16->hasOneUse()) {
+    return failure();
+  }
   next_op_ = *castf16.getOutput().user_begin();
   auto castf32 = dyn_cast<tpu::CastOp>(next_op_);
   if (!castf32 || (!module::getElementType(castf32.getOutput()).isF32() &&
@@ -220,6 +223,9 @@ LogicalResult tpu::ReduceOp::canonicalize(tpu::ReduceOp op,
     return failure();
   }
 
+  if (!castf32->hasOneUse()) {
+    return failure();
+  }
   next_op_ = *castf32.getOutput().user_begin();
   auto active = dyn_cast<tpu::ActiveOp>(next_op_);
   if (!active) {
