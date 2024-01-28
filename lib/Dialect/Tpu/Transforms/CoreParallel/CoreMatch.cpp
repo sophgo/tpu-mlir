@@ -321,7 +321,8 @@ struct CommonMatch : public RewritePattern {
       auto users = value.getUsers();
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
-        if (isa<tpu::ReshapeOp>(left_op)) {
+        // inPlace op
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
           continue;
         }
         if (find_f(same_ops, left_op)) {
