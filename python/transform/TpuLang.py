@@ -5,12 +5,13 @@
 #
 # ==============================================================================
 
-from typing import List, Union
+from typing import List, Union, Tuple
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 
 import numpy as np
+import uuid
 
 
 class TpuLang:
@@ -109,7 +110,7 @@ def broadcast_shape_inference(ops: list):
     for i in ops[1:]:
         hs_shape = i.shape
         tmp_shape = []
-        for idx in range(max(len(hs_shape), len(out_shape)) - 1, -1, -1):
+        for idx in range(len(hs_shape) - 1 if len(hs_shape) > len(out_shape) else len(out_shape) - 1, -1, -1):
             try:
                 if out_shape[idx] != 1:
                     tmp_shape.append(out_shape[idx])
@@ -210,17 +211,13 @@ def custom(tensors_in: list,
 
 def add(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
     o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
-        o_dtype = out_dtype
-    elif out_dtype is not None:
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
         o_dtype = tensor_i0.dtype
-
+    elif out_dtype is not None:
+        o_dtype = out_dtype
     shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-
     output = Tensor(shape, dtype=o_dtype, name=out_name)
-
     TpuLang.insert_op("top.Add", [tensor_i0, tensor_i1], [output])
-
     return output
 
 
@@ -269,35 +266,113 @@ def conv_v2(input: Tensor,
 
 def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
     o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
-        o_dtype = out_dtype
-    elif out_dtype is not None:
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
         o_dtype = tensor_i0.dtype
-
+    elif out_dtype is not None:
+        o_dtype = out_dtype
     shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-
     output = Tensor(shape, dtype=o_dtype, name=out_name)
-
     TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
-
     return output
 
 
 def sub(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
     o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
-        o_dtype = out_dtype
-    elif out_dtype is not None:
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
         o_dtype = tensor_i0.dtype
-
+    elif out_dtype is not None:
+        o_dtype = out_dtype
     shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-
     output = Tensor(shape, dtype=o_dtype, name=out_name)
-
     TpuLang.insert_op("top.Sub", [tensor_i0, tensor_i1], [output])
-
     return output
 
+def div(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    o_dtype = "float32"
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
+    return output
+
+def max(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+    o_dtype = "int32"
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+        o_dtype = tensor_i0.dtype
+    elif out_dtype is not None:
+        o_dtype = out_dtype
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Max", [tensor_i0, tensor_i1], [output])
+    return output
+
+def min(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+    o_dtype = "int32"
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+        o_dtype = tensor_i0.dtype
+    elif out_dtype is not None:
+        o_dtype = out_dtype
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Min", [tensor_i0, tensor_i1], [output])
+    return output
+
+# def add_shift(tensor_i0: Tensor,
+#               tensor_i1: Tensor,
+#               shift: int,
+#               out_dtype: str = None,
+#               out_name: str = None,
+#               round_mode: str = 'half_up',
+#               is_saturate: bool = True,):
+#     o_dtype = "uint32"
+#     if out_dtype is None:
+#         o_dtype = tensor_i0.dtype
+#     else:
+#         o_dtype = out_dtype
+
+#     shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+
+#     output = Tensor(shape, dtype=o_dtype, name=out_name)
+
+#     TpuLang.insert_op("top.Min", [tensor_i0, tensor_i1], [output])
+
+#     return output
+def generate_name(op):
+    unique_name = str(uuid.uuid4())
+    return f"{op}_{unique_name}"
+def copy(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("copy")
+    attr = {
+        "shape": ArrayAttr(input.shape),
+        "input_stride": ArrayAttr([1] * (len(input.shape))),
+        "output_stride": ArrayAttr([1] * (len(input.shape))),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Copy", [input], [output], params=attr)
+    return output
+
+# def cast(tensor_i: Tensor,
+#          out_dtype: str = 'float32',
+#          out_name: str = None,
+#          round_mode: str = 'half_away_from_zero'):
+#     shape = tensor_i.shape
+#     if out_name is None:
+#         out_name = generate_name("cast")
+#     output = Tensor(shape, dtype=out_dtype, name=out_name)
+#     TpuLang.insert_op("top.Cast", [tensor_i], [output])
+
+#     return output
+
+def clamp(input: Tensor, min:float, max:float, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("clamp")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    attr = {
+        "min": Attr(min, data_type="float64"),
+        "max": Attr(max, data_type="float64"),
+    }
+    TpuLang.insert_op("top.Clip", [input], [output], params=attr)
+    return output
 
 # @deprecated(version=1.0, reason="This function will be removed soon")
 def conv(input: Tensor,
@@ -441,18 +516,337 @@ def maxpool(input: Tensor,
     return output
 
 def relu(input: Tensor, out_name: str = None):
-
-    o_dtype = input.dtype
-
-    def _shape_inference():
-        out_shape = input.shape
-        return out_shape
-
-    attr = {
-        "relu_limit":  Attr(-1.0, "float64")
-    }
-
-    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
-
-    TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output], params=attr)
+    if out_name is None:
+        out_name = generate_name("relu")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output])
     return output
+
+def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("leaky_relu")
+    attr = {
+        "alpha": Attr(negative_slope, data_type="float64"),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.LeakyRelu", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def abs(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("abs")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Abs", inputs=[input], outputs=[output])
+    return output
+
+def ceil(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("ceil")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Ceil", inputs=[input], outputs=[output])
+    return output
+
+def floor(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("floor")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Floor", inputs=[input], outputs=[output])
+    return output
+
+def round(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("round")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Round", inputs=[input], outputs=[output])
+    return output
+
+def sin(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sin")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Sin", inputs=[input], outputs=[output])
+    return output
+
+def cos(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("cos")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Cos", inputs=[input], outputs=[output])
+    return output
+
+def exp(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("exp")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Exp", inputs=[input], outputs=[output])
+    return output
+
+def tanh(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("tanh")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Tanh", inputs=[input], outputs=[output])
+    return output
+
+def sigmoid(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sigmoid")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Sigmoid", inputs=[input], outputs=[output])
+    return output
+
+def elu(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("elu")
+    attr = {
+        "alpha": Attr(1.0, "float64"),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Elu", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def sqrt(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sqrt")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Sqrt", inputs=[input], outputs=[output])
+    return output
+
+# def rsqrt(input: Tensor, out_name: str = None):
+#     if out_name is None:
+#         out_name = generate_name("rsqrt")
+#     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+#     TpuLang.insert_op("top.Rsqrt", inputs=[input], outputs=[output])
+#     return output
+
+def erf(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("erf")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Erf", inputs=[input], outputs=[output])
+    return output
+
+def tan(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("tan")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Tan", inputs=[input], outputs=[output])
+    return output
+
+def softmax(input: Tensor, axis: int, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("softmax")
+    attr = {
+        "axis": Attr(axis, data_type="int32"),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Softmax", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def mish(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("mish")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Mish", inputs=[input], outputs=[output])
+    return output
+
+def hswish(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("hswish")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.HardSwish", inputs=[input], outputs=[output])
+    return output
+
+def arccos(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("arccos")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Arccos", inputs=[input], outputs=[output])
+    return output
+
+def arctanh(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("arctanh")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Arctanh", inputs=[input], outputs=[output])
+    return output
+
+def sinh(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sinh")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Sinh", inputs=[input], outputs=[output])
+    return output
+
+def cosh(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("cosh")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Cosh", inputs=[input], outputs=[output])
+    return output
+
+def sign(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sign")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Sign", inputs=[input], outputs=[output])
+    return output
+
+def gelu(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("gelu")
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.GELU", inputs=[input], outputs=[output])
+    return output
+
+def hsigmoid(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("hsigmoid")
+    attr = {
+        "alpha": Attr(1/6, data_type="float64"),
+        "beta": Attr(0.5, data_type="float64"),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.HardSigmoid", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def arg(input: Tensor,
+        method: str = "max",
+        axis: int = 0,
+        keep_dims: bool = True,
+        out_name: str = None):
+    if input.dtype == "float32":
+        o_dtype = input.dtype
+    else:
+        o_dtype = "int32"
+    if method == 'max':
+        method = 'ArgMax'
+    elif method == 'min':
+        method = 'ArgMin'
+    attr = {
+        "axis": Attr(axis),
+        "keepdims": Attr(keep_dims, "bool"),
+        "mode": Attr(method, "string"),
+    }
+    output1 = Tensor([], dtype=o_dtype, name=out_name)
+    output2 = Tensor([], dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Arg", inputs=[input], outputs=[output1, output2], params=attr)
+    return output1, output2
+
+def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("permute")
+    attr = {
+        "order": ArrayAttr(order),
+    }
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Permute", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("tile")
+    attr = {
+        "tile": ArrayAttr(reps),
+    }
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def concat(input: Tensor, axis: int = 0, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("concat")
+    attr = {
+        "axis": Attr(axis, "int32"),
+    }
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Concat", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def split(input: Tensor,
+          axis: int = 0,
+          num: int = 1,
+          size: Union[Tuple[int], List[int]] = (),
+          out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("split")
+    attr = {
+        "axis": Attr(axis, "int32"),
+        "num": Attr(num),
+        "split_size": ArrayAttr(size),
+    }
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
+    return output
+
+# def pad(input: Tensor,
+#         axis: int = 0,
+#         value:
+#         padding: Union[Tuple[int], List[int]] = None,
+#         out_name: str = None):
+#     if out_name is None:
+#         out_name = generate_name("split")
+#     attr = {
+#         "axis": Attr(axis, "int32"),
+#         "num": Attr(num),
+#         "split_size": ArrayAttr(size),
+#     }
+#     output = Tensor([], dtype=input.dtype, name=out_name)
+#     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
+#     return output
+
+def repeat(input: Tensor, reps: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("repeat")
+    # reps = Tensor(data = reps, shape = input.shape)
+    output = Tensor([], dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Repeat", inputs=[input, reps], outputs=[output])
+    return output
+
+# def nms(boxes: Tensor,
+#         score: int = 0,
+#         num: int = 1,
+#         size: Union[Tuple[int], List[int]] = (),
+#         out_name: str = None):
+#     if out_name is None:
+#         out_name = generate_name("split")
+#     attr = {
+#         "axis": Attr(axis, "int32"),
+#         "num": Attr(num),
+#         "split_size": ArrayAttr(size),
+#     }
+#     output = Tensor([], dtype=input.dtype, name=out_name)
+#     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
+#     return output
+
+# def interpolate(tensor_i: Tensor,
+#                 size: Union[Tuple[int], List[int]],
+#                 scale_factor: Union[Tuple[float], List[float]] = (),
+#                 platform: str = 'CAFFE',
+#                 method: str = 'NEAREST',
+#                 align_corners: bool = False,
+#                 half_pixel_centers: bool = False,
+#                 out_name: str = None):
+#     if out_name is None:
+#         out_name = generate_name("interpolate")
+#     target_shape = tensor_i.shape
+#     if size:
+#         target_shape[2:] = size[:]
+#     if align_corners:
+#         coord = "align_corners"
+#     elif half_pixel_centers:
+#         if platform == 'PYTORCH':
+#             coord = "pytorch_half_pixel"
+#         else:
+#             coord = "half_pixel"
+#     else:
+#         coord = "asymmetric"
+#     attr = {
+#         # "target_shape": ArrayAttr(target_shape),
+#         "mode": Attr(method, 'string'),
+#         "coord_mode": Attr(coord, 'string'),
+#     }
+#     output = Tensor([], dtype=tensor_i.dtype, name=out_name)
+#     TpuLang.insert_op("top.Interp", inputs=[tensor_i, target_shape], outputs=[output], params=attr)
+#     return output
+

@@ -11,7 +11,6 @@ import os, sys
 import transform.TpuLang as tpul
 from typing import List
 
-
 def rand_data(shape, dtype):
     if dtype == 'float32':
         return np.random.random(shape).astype(np.float32)
@@ -32,7 +31,6 @@ def tpulang(func):
 
 Failed_Cases = []
 
-
 class TPULANG_IR_TESTER(object):
     ID = 0
 
@@ -44,20 +42,63 @@ class TPULANG_IR_TESTER(object):
             # TpuLang Test Case, Alphabetically
             #############################
             # case:                 (test,          bm1684x_support)
+            "Abs": (self.test_Abs, Y),
             "Add": (self.test_Add, Y),
+            "Arccos": (self.test_Arccos, Y),
+            "Arctanh": (self.test_Arctanh, Y),
+            "Arg": (self.test_Arg, Y),
+            # "Cast": (self.test_Cast, Y),
+            "Ceil": (self.test_Ceil, Y),
+            "Clamp": (self.test_Clamp, Y),
+            "Concat": (self.test_Concat, Y),
             "Conv2d": (self.test_Conv2d, Y),
-            "HModel": (self.test_Model, N),
-            "Mul": (self.test_Mul, Y),
-            "Sub": (self.test_Sub, Y),
+            "Copy": (self.test_Copy, Y),
+            "Cos": (self.test_Cos, Y),
+            "Cosh": (self.test_Cosh, Y),
             "Custom": (self.test_Custom, Y),
+            "Div": (self.test_Div, Y),
+            "Elu": (self.test_Elu, Y),
+            "Erf": (self.test_Erf, Y),
+            "Exp": (self.test_Exp, Y),
+            "Floor": (self.test_Floor, Y),
+            "Gelu": (self.test_Gelu, Y),
+            "HModel": (self.test_Model, N),
+            "Hsigmoid": (self.test_Hsigmoid, Y),
+            "Hswish": (self.test_Hswish, Y),
+            # "Interpolate": (self.test_Interpolate, Y),
+            "LeakyRelu": (self.test_LeakyRelu, Y),
+            "Lenet": (self.test_Lenet, Y),
             "MatMul": (self.test_MatMul, Y),
+            "Max": (self.test_Max, Y),
             "Maxpool": (self.test_Maxpool, Y),
+            "Min": (self.test_Min, Y),
+            "Mish": (self.test_Mish, Y),
+            "Mul": (self.test_Mul, Y),
+            "Permute": (self.test_Permute, Y),
             "Relu": (self.test_Relu, Y),
-            "Lenet": (self.test_Lenet, Y)
+            "Repeat": (self.test_Repeat, Y),
+            "Round": (self.test_Round, Y),
+            # "Rsqrt": (self.test_Rsqrt, Y),
+            "Sign": (self.test_Sign, Y),
+            "Sigmoid": (self.test_Sigmoid, Y),
+            "Sin": (self.test_Sin, Y),
+            "Sinh": (self.test_Sinh, Y),
+            "Softmax": (self.test_Softmax, Y),
+            "Split": (self.test_Split, Y),
+            "Sqrt": (self.test_Sqrt, Y),
+            "Sub": (self.test_Sub, Y),
+            "Tan": (self.test_Tan, Y),
+            "Tanh": (self.test_Tanh, Y),
+            "Tile": (self.test_Tile, Y),
         }
         # no quantization when quant_mode == "f32"
         self.quant_modes = ["int8"]
         self.chip = chip.lower()
+
+    def unique_name(self, name):
+        name = "{}_{}".format(name, TPULANG_IR_TESTER.ID)
+        TPULANG_IR_TESTER.ID += 1
+        return name
 
     def test_single(self, case: str):
         TPULANG_IR_TESTER.ID = 0
@@ -93,9 +134,10 @@ class TPULANG_IR_TESTER(object):
             if case in Failed_Cases:
                 print(case)
 
-    def coeff_tensor(self, shape, dtype, scale=1.0):
-        data = rand_data(shape, dtype)
-        data = data * scale if dtype == 'float32' else data
+    def coeff_tensor(self, shape, dtype, data = None, scale=1.0):
+        if data is None:
+            data = rand_data(shape, dtype)
+            data = data * scale if dtype == 'float32' else data
         return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
 
     #######################################################################
@@ -116,8 +158,7 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
             add = self.add_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [add], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [add], False, 2)
 
         _test_add([1, 3, 28, 28], [1, 3, 28, 28])
         _test_add([1, 3, 32, 32], [1, 3, 32, 32])
@@ -180,8 +221,7 @@ class TPULANG_IR_TESTER(object):
                                 dilation=dilation,
                                 zp=zp,
                                 dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [conv], False, 2)
 
         _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
@@ -292,8 +332,7 @@ class TPULANG_IR_TESTER(object):
                                 dilation=dilation,
                                 zp=zp,
                                 dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [conv], False, 2)
 
         _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
@@ -347,8 +386,7 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
             mul = self.mul_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [mul], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [mul], False, 2)
 
         _test_mul([1, 3, 28, 28], [1, 3, 28, 28])
         _test_mul([1, 3, 32, 32], [1, 3, 32, 32])
@@ -379,8 +417,7 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
             sub = self.sub_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [sub], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [sub], False, 2)
 
         _test_sub([1, 3, 28, 28], [1, 3, 28, 28])
         _test_sub([1, 3, 32, 32], [1, 3, 32, 32])
@@ -390,6 +427,165 @@ class TPULANG_IR_TESTER(object):
         _test_sub(
             [1, 1, 32, 32],
             [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
+    # Div
+    # ------------
+    def div_op(self, input_0, input_1):
+        div = tpul.div(input_0, input_1)
+        return div
+
+    def test_Div(self, case_name):
+        """Div"""
+
+        @tpulang
+        def _test_div(shape_x: List[int], shape_y: List[int]):
+            x_data = rand_data(shape_x, "float32")
+            y_data = rand_data(shape_y, "float32")
+            x = tpul.Tensor(dtype="float32", shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype="float32", shape=shape_y, data=y_data)
+            div = self.div_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x], [div], False, 2)
+
+        _test_div([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_div([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_div([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_div([1, 3, 32, 32], [1])
+        _test_div([1], [1, 3, 32, 32])
+
+    #######################################################################
+    # Max
+    # ------------
+    def max_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        max = tpul.max(input_0, input_1, out_dtype)
+        return max
+
+    def test_Max(self, case_name):
+        """Max"""
+
+        @tpulang
+        def _test_max(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            max = self.max_op(x, y, dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [max], False, 2)
+
+        _test_max([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_max([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_max([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_max([1, 3, 32, 32], [1])
+        _test_max([1], [1, 3, 32, 32])
+        _test_max(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
+    # Min
+    # ------------
+    def min_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        min = tpul.min(input_0, input_1, out_dtype)
+        return min
+
+    def test_Min(self, case_name):
+        """Min"""
+
+        @tpulang
+        def _test_min(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            min = self.min_op(x, y, dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [min], False, 2)
+
+        _test_min([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_min([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_min([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_min([1, 3, 32, 32], [1])
+        _test_min([1], [1, 3, 32, 32])
+        _test_min(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
+    # Copy
+    # ------------
+    def copy_op(self, input):
+        copy = tpul.copy(input)
+        return copy
+
+    def test_Copy(self, case_name):
+        """Copy"""
+
+        @tpulang
+        def _test_copy(shape: List[int], dtype="float32"):
+            x_data = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            copy = self.copy_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [copy], False, 2)
+
+        _test_copy([1, 3, 28, 28])
+        _test_copy([1, 3, 32, 32])
+        _test_copy(
+            [1, 1, 32, 32],
+            dtype="int8",
+        )
+
+    # #######################################################################
+    # # Cast
+    # # ------------
+    # def cast_op(self, input):
+    #     cast = tpul.cast(input)
+    #     return cast
+
+    # def test_Cast(self, case_name):
+    #     """Cast"""
+
+    #     @tpulang
+    #     def _test_cast(shape: List[int], dtype="float32"):
+    #         x_data = rand_data(shape, dtype)
+    #         x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+    #         cast = self.cast_op(x)
+    #         tpul.compile(self.unique_name(case_name), [x], [cast], False, 2)
+
+    #     _test_cast([1, 3, 28, 28], dtype="uint16")
+    #     _test_cast([1, 3, 32, 32])
+    #     _test_cast(
+    #         [1, 1, 32, 32],
+    #         dtype="int8",
+    #     )
+
+    #######################################################################
+    # Clamp
+    # ------------
+    def clamp_op(self, input):
+        clamp = tpul.clamp(input, -100., 100.)
+        return clamp
+
+    def test_Clamp(self, case_name):
+        """Clamp"""
+
+        @tpulang
+        def _test_clamp(shape: List[int], dtype="float32"):
+            x_data = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            clamp = self.clamp_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [clamp], False, 2)
+
+        _test_clamp([1, 3, 28, 28])
+        _test_clamp([1, 3, 32, 32])
+        _test_clamp(
+            [1, 1, 32, 32],
             dtype="int8",
         )
 
@@ -425,13 +621,12 @@ class TPULANG_IR_TESTER(object):
                                   params=params,
                                   dtypes=[dtype],
                                   out_names=out_names)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID),
+            tpul.compile(self.unique_name(case_name),
                          inputs,
                          outs,
                          False,
                          2,
                          has_custom=True)
-            TPULANG_IR_TESTER.ID += 1
             # save the origin output for comparison
             # There are two outputs because in non-f32 quant mode, the result will be
             # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
@@ -497,8 +692,7 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right)
             matmul = self.matmul_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [matmul], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [matmul], False, 2)
 
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
 
@@ -526,16 +720,15 @@ class TPULANG_IR_TESTER(object):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             maxpool = self.maxpool_op(x, kshape, stride, pad)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [maxpool], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [maxpool], False, 2)
 
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
 
     #######################################################################
     # Relu
     # ------------
-    def relu_op(self, input_0):
-        relu = tpul.relu(input_0)
+    def relu_op(self, input):
+        relu = tpul.relu(input)
         return relu
 
     def test_Relu(self, case_name):
@@ -546,10 +739,620 @@ class TPULANG_IR_TESTER(object):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             relu = self.relu_op(x)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [relu], False, 2)
-            TPULANG_IR_TESTER.ID += 1
+            tpul.compile(self.unique_name(case_name), [x], [relu], False, 2)
 
         _test_relu([1, 32, 28, 28])
+
+    #######################################################################
+    # LeakyRelu
+    # ------------
+    def leaky_relu_op(self, input):
+        leaky_relu = tpul.leaky_relu(input)
+        return leaky_relu
+
+    def test_LeakyRelu(self, case_name):
+        """LeakyRelu"""
+
+        @tpulang
+        def _test_leaky_relu(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            leaky_relu = self.leaky_relu_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [leaky_relu], False, 2)
+
+        _test_leaky_relu([1, 32, 28, 28])
+
+    #######################################################################
+    # Abs
+    # ------------
+    def abs_op(self, input):
+        abs = tpul.abs(input)
+        return abs
+
+    def test_Abs(self, case_name):
+        """Abs"""
+
+        @tpulang
+        def _test_abs(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            abs = self.abs_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [abs], False, 2)
+
+        _test_abs([1, 32, 28, 28])
+
+    #######################################################################
+    # Ceil
+    # ------------
+    def ceil_op(self, input):
+        ceil = tpul.ceil(input)
+        return ceil
+
+    def test_Ceil(self, case_name):
+        """Ceil"""
+
+        @tpulang
+        def _test_ceil(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            ceil = self.ceil_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [ceil], False, 2)
+
+        _test_ceil([1, 32, 28, 28])
+
+    #######################################################################
+    # Floor
+    # ------------
+    def floor_op(self, input):
+        floor = tpul.floor(input)
+        return floor
+
+    def test_Floor(self, case_name):
+        """Floor"""
+
+        @tpulang
+        def _test_floor(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            floor = self.floor_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [floor], False, 2)
+
+        _test_floor([1, 32, 28, 28])
+
+    #######################################################################
+    # Round
+    # ------------
+    def round_op(self, input):
+        round = tpul.round(input)
+        return round
+
+    def test_Round(self, case_name):
+        """Round"""
+
+        @tpulang
+        def _test_round(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            round = self.round_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [round], False, 2)
+
+        _test_round([1, 32, 28, 28])
+
+    #######################################################################
+    # Sin
+    # ------------
+    def sin_op(self, input):
+        sin = tpul.sin(input)
+        return sin
+
+    def test_Sin(self, case_name):
+        """sin"""
+
+        @tpulang
+        def _test_sin(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            sin = self.sin_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [sin], False, 2)
+
+        _test_sin([1, 32, 28, 28])
+
+    #######################################################################
+    # Cos
+    # ------------
+    def cos_op(self, input):
+        cos = tpul.cos(input)
+        return cos
+
+    def test_Cos(self, case_name):
+        """cos"""
+
+        @tpulang
+        def _test_cos(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            cos = self.cos_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [cos], False, 2)
+
+        _test_cos([1, 32, 28, 28])
+
+    #######################################################################
+    # Exp
+    # ------------
+    def exp_op(self, input):
+        exp = tpul.exp(input)
+        return exp
+
+    def test_Exp(self, case_name):
+        """exp"""
+
+        @tpulang
+        def _test_exp(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            exp = self.exp_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [exp], False, 2)
+
+        _test_exp([1, 32, 28, 28])
+
+    #######################################################################
+    # Tanh
+    # ------------
+    def tanh_op(self, input):
+        tanh = tpul.tanh(input)
+        return tanh
+
+    def test_Tanh(self, case_name):
+        """tanh"""
+
+        @tpulang
+        def _test_tanh(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            tanh = self.tanh_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [tanh], False, 2)
+
+        _test_tanh([1, 32, 28, 28])
+
+    #######################################################################
+    # Sigmoid
+    # ------------
+    def sigmoid_op(self, input):
+        sigmoid = tpul.sigmoid(input)
+        return sigmoid
+
+    def test_Sigmoid(self, case_name):
+        """sigmoid"""
+
+        @tpulang
+        def _test_sigmoid(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            sigmoid = self.sigmoid_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [sigmoid], False, 2)
+
+        _test_sigmoid([1, 32, 28, 28])
+
+    #######################################################################
+    # Elu
+    # ------------
+    def elu_op(self, input):
+        elu = tpul.elu(input)
+        return elu
+
+    def test_Elu(self, case_name):
+        """elu"""
+
+        @tpulang
+        def _test_elu(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            elu = self.elu_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [elu], False, 2)
+
+        _test_elu([1, 32, 28, 28])
+
+    #######################################################################
+    # Sqrt
+    # ------------
+    def sqrt_op(self, input):
+        sqrt = tpul.sqrt(input)
+        return sqrt
+
+    def test_Sqrt(self, case_name):
+        """sqrt"""
+
+        @tpulang
+        def _test_sqrt(shape_x: List[int], dtype="float32"):
+            input = np.abs(rand_data(shape_x, dtype))
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            sqrt = self.sqrt_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [sqrt], False, 2)
+
+        _test_sqrt([1, 32, 28, 28])
+
+    # #######################################################################
+    # # Rsqrt
+    # # ------------
+    # def rsqrt_op(self, input):
+    #     rsqrt = tpul.rsqrt(input)
+    #     return rsqrt
+
+    # def test_Rsqrt(self, case_name):
+    #     """rsqrt"""
+
+    #     @tpulang
+    #     def _test_rsqrt(shape_x: List[int], dtype="float32"):
+    #         input = np.abs(rand_data(shape_x, dtype))
+    #         x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+    #         rsqrt = self.rsqrt_op(x)
+    #         tpul.compile(self.unique_name(case_name), [x], [rsqrt], False, 2)
+
+    #     _test_rsqrt([1, 32, 28, 28])
+
+    #######################################################################
+    # Erf
+    # ------------
+    def erf_op(self, input):
+        erf = tpul.erf(input)
+        return erf
+
+    def test_Erf(self, case_name):
+        """erf"""
+
+        @tpulang
+        def _test_erf(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            erf = self.erf_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [erf], False, 2)
+
+        _test_erf([1, 32, 28, 28])
+
+    #######################################################################
+    # Tan
+    # ------------
+    def tan_op(self, input):
+        tan = tpul.tan(input)
+        return tan
+
+    def test_Tan(self, case_name):
+        """tan"""
+
+        @tpulang
+        def _test_tan(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            tan = self.tan_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [tan], False, 2)
+
+        _test_tan([1, 32, 28, 28])
+
+    #######################################################################
+    # Softmax
+    # ------------
+    def softmax_op(self, input):
+        softmax = tpul.softmax(input, 0)
+        return softmax
+
+    def test_Softmax(self, case_name):
+        """softmax"""
+
+        @tpulang
+        def _test_softmax(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            softmax = self.softmax_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [softmax], False, 2)
+
+        _test_softmax([1, 32, 28, 28])
+
+    #######################################################################
+    # Mish
+    # ------------
+    def mish_op(self, input):
+        mish = tpul.mish(input)
+        return mish
+
+    def test_Mish(self, case_name):
+        """mish"""
+
+        @tpulang
+        def _test_mish(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            mish = self.mish_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [mish], False, 2)
+
+        _test_mish([1, 32, 28, 28])
+
+    #######################################################################
+    # Hswish
+    # ------------
+    def hswish_op(self, input):
+        hswish = tpul.hswish(input)
+        return hswish
+
+    def test_Hswish(self, case_name):
+        """hswish"""
+
+        @tpulang
+        def _test_hswish(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            hswish = self.hswish_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [hswish], False, 2)
+
+        _test_hswish([1, 32, 28, 28])
+
+    #######################################################################
+    # Arccos
+    # ------------
+    def arccos_op(self, input):
+        arccos = tpul.arccos(input)
+        return arccos
+
+    def test_Arccos(self, case_name):
+        """arccos"""
+
+        @tpulang
+        def _test_arccos(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            arccos = self.arccos_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [arccos], False, 2)
+
+        _test_arccos([1, 32, 28, 28])
+
+    #######################################################################
+    # Arctanh
+    # ------------
+    def arctanh_op(self, input):
+        arctanh = tpul.arctanh(input)
+        return arctanh
+
+    def test_Arctanh(self, case_name):
+        """arctanh"""
+
+        @tpulang
+        def _test_arctanh(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            arctanh = self.arctanh_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [arctanh], False, 2)
+
+        _test_arctanh([1, 32, 28, 28])
+
+    #######################################################################
+    # Sinh
+    # ------------
+    def sinh_op(self, input):
+        sinh = tpul.sinh(input)
+        return sinh
+
+    def test_Sinh(self, case_name):
+        """sinh"""
+
+        @tpulang
+        def _test_sinh(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            sinh = self.sinh_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [sinh], False, 2)
+
+        _test_sinh([1, 32, 28, 28])
+
+    #######################################################################
+    # Cosh
+    # ------------
+    def cosh_op(self, input):
+        cosh = tpul.cosh(input)
+        return cosh
+
+    def test_Cosh(self, case_name):
+        """cosh"""
+
+        @tpulang
+        def _test_cosh(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            cosh = self.cosh_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [cosh], False, 2)
+
+        _test_cosh([1, 32, 28, 28])
+
+    #######################################################################
+    # Sign
+    # ------------
+    def sign_op(self, input):
+        sign = tpul.sign(input)
+        return sign
+
+    def test_Sign(self, case_name):
+        """sign"""
+
+        @tpulang
+        def _test_sign(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            sign = self.sign_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [sign], False, 2)
+
+        _test_sign([1, 32, 28, 28])
+
+    #######################################################################
+    # Gelu
+    # ------------
+    def gelu_op(self, input):
+        gelu = tpul.gelu(input)
+        return gelu
+
+    def test_Gelu(self, case_name):
+        """gelu"""
+
+        @tpulang
+        def _test_gelu(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            gelu = self.gelu_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [gelu], False, 2)
+
+        _test_gelu([1, 32, 28, 28])
+
+    #######################################################################
+    # Hsigmoid
+    # ------------
+    def hsigmoid_op(self, input):
+        hsigmoid = tpul.hsigmoid(input)
+        return hsigmoid
+
+    def test_Hsigmoid(self, case_name):
+        """hsigmoid"""
+
+        @tpulang
+        def _test_hsigmoid(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            hsigmoid = self.hsigmoid_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [hsigmoid], False, 2)
+
+        _test_hsigmoid([1, 32, 28, 28])
+
+    #######################################################################
+    # Arg
+    # ------------
+    def arg_op(self, input):
+        arg = tpul.arg(input)
+        return arg
+
+    def test_Arg(self, case_name):
+        """arg"""
+
+        @tpulang
+        def _test_arg(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            arg1, arg2 = self.arg_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [arg1, arg2], False, 2)
+
+        _test_arg([1, 32, 28, 28])
+
+    #######################################################################
+    # Permute
+    # ------------
+    def permute_op(self, input):
+        permute = tpul.permute(input, [1, 3, 2, 0])
+        return permute
+
+    def test_Permute(self, case_name):
+        """permute"""
+
+        @tpulang
+        def _test_permute(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            permute = self.permute_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [permute], False, 2)
+
+        _test_permute([1, 32, 28, 28])
+
+    #######################################################################
+    # Tile
+    # ------------
+    def tile_op(self, input):
+        tile = tpul.tile(input, [1,3,2,4])
+        return tile
+
+    def test_Tile(self, case_name):
+        """tile"""
+
+        @tpulang
+        def _test_tile(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            tile = self.tile_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [tile], False, 2)
+
+        _test_tile([1, 32, 28, 28])
+
+    #######################################################################
+    # Concat
+    # ------------
+    def concat_op(self, input):
+        concat = tpul.concat(input)
+        return concat
+
+    def test_Concat(self, case_name):
+        """concat"""
+
+        @tpulang
+        def _test_concat(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            concat = self.concat_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [concat], False, 2)
+
+        _test_concat([1, 32, 28, 28])
+
+    #######################################################################
+    # Split
+    # ------------
+    def split_op(self, input):
+        split = tpul.split(input, size = [2])
+        return split
+
+    def test_Split(self, case_name):
+        """split"""
+
+        @tpulang
+        def _test_split(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            split = self.split_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [split], False, 2)
+
+        _test_split([1, 32, 28, 28])
+
+    #######################################################################
+    # Repeat
+    # ------------
+    def repeat_op(self, input):
+        reps = self.coeff_tensor(len(input.shape), "float32", data=np.random.randint(low=1, high=3,size=len(input.shape)).astype(np.float32))
+        repeat = tpul.repeat(input, reps)
+        return repeat
+
+    def test_Repeat(self, case_name):
+        """repeat"""
+
+        @tpulang
+        def _test_repeat(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            repeat = self.repeat_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [repeat], False, 2)
+
+        _test_repeat([1, 3, 28, 28])
+
+    # #######################################################################
+    # # Interpolate
+    # # ------------
+    # def interpolate_op(self, input):
+    #     interpolate = tpul.interpolate(input, [1,2])
+    #     return interpolate
+
+    # def test_Interpolate(self, case_name):
+    #     """interpolate"""
+
+    #     @tpulang
+    #     def _test_interpolate(shape_x: List[int], dtype="float32"):
+    #         x_data = rand_data(shape_x, dtype)
+    #         # y_data = rand_data(shape_y, dtype)
+    #         x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+    #         # y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+    #         interpolate = self.interpolate_op(x)
+    #         tpul.compile(self.unique_name(case_name), [x], [interpolate], False, 2)
+
+    #     _test_interpolate([1, 3, 28, 28])
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     import traceback
