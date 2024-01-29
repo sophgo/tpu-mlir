@@ -422,10 +422,11 @@ class OnnxConverter(BaseConverter):
         for node in self.converted_nodes:
             if node.op_type != "Constant":
                 continue
-            onnx_tensor = node.attrs['value']
-            return numpy_helper.to_array(onnx_tensor)
+            if node.name == name:
+                onnx_tensor = node.attrs['value']
+                return numpy_helper.to_array(onnx_tensor)
 
-    def load_onnx_model(self,onnx_file, input_shapes: list, output_names: list, static_shape=True):
+    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
@@ -451,11 +452,18 @@ class OnnxConverter(BaseConverter):
         self.get_output_name(self.model.graph)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
-        onnx.save(self.model,
-                  self.onnx_file,
-                  save_as_external_data=True,
-                  location=self.model_name + "_external_data",
-                  size_threshold=1024000000)
+        try:
+            onnx.save(self.model, self.onnx_file)
+        except Exception as E:
+            if "The proto size is larger than the 2 GB limit." in str(E):
+                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(self.onnx_file))
+                onnx.save(self.model,
+                          self.onnx_file,
+                          save_as_external_data=True,
+                          location=self.model_name + "_external_data",
+                          convert_attribute=True)
+            else:
+                raise E
         strip_model = onnx.ModelProto()
         strip_model.CopyFrom(self.model)
         strip_model.graph.ClearField("initializer")
