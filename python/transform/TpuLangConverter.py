@@ -27,6 +27,14 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     s = "\n".join([line.__repr__() for line in sOrIt_])
     return _indent(s, numSpaces)
 
+class Scalar:
+
+    def __init__(self, value, dtype=None):
+        self.value = value
+        if dtype is None:
+            self.dtype = 'float32'
+        else:
+            self.dtype = dtype
 
 class Tensor:
     ID = 0
@@ -189,9 +197,16 @@ class TpuLangConverter(BaseConverter):
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
         output_shapes = list()
+        # print(output_shapes)
+        # print(self.getShape(_name))
         for _name in self.output_names:
-            output_shapes.append(self.getShape(_name))
+            if self.getShape(_name) != [1]:
+                output_shapes.append(self.getShape(_name))
+            else:
+                output_shapes.append([])
+        # print(output_shapes)
         # init importer
+        # print(output_shapes)
         self.mlir = MLIRImporter(input_shapes,
                                  output_shapes,
                                  self.model_name,
@@ -280,12 +295,32 @@ class TpuLangConverter(BaseConverter):
                 storage_max)
 
     def __get_tensor_type(self, tensor: Tensor):
-        elem_type = self.type_to_mlir[tensor.dtype]
-        if tensor.is_quantized:
-            elem_type = self.get_quantized_type(tensor)
-        if tensor.shape is not None:
-            return RankedTensorType.get(tensor.shape, elem_type)
-        return UnrankedTensorType.get(elem_type)
+        if tensor is None:
+            self.type_to_mlir["float32"]
+            output_shapes = []
+        else:
+            type = self.type_to_mlir[tensor.dtype]
+            output_shapes = tensor.shape
+        if output_shapes == []:
+            return UnrankedTensorType.get(type)
+        if output_shapes is None:
+            return NoneType.get()
+        if isinstance(output_shapes, tuple):
+            output_shapes = list(output_shapes)
+        assert (isinstance(output_shapes, list))
+        assert (len(output_shapes) > 0)
+        if not isinstance(output_shapes[0], list) and output_shapes[0] is not None:
+            return RankedTensorType.get(tuple(output_shapes), type)
+        # multi output
+        out_types = []
+        for s in output_shapes:
+            if s == []:
+                out_types.append(UnrankedTensorType.get(type))
+            elif s is None:
+                out_types.append(NoneType.get())
+            else:
+                out_types.append(RankedTensorType.get(tuple(s), type))
+        return out_types
 
     def convert_subgraph(self, subgraph: Graph):
 

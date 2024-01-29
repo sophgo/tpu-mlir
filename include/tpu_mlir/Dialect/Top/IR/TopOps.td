@@ -1738,7 +1738,7 @@ def Top_TileOp: Top_Op<"Tile"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_RepeatOp: Top_Op<"Repeate"> {
+def Top_RepeatOp: Top_Op<"Repeat"> {
   let summary = "Repeat operator";
   let description = [{
     Perform aten::repeat operation on the given tensor
