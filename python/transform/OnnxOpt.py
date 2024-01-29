@@ -214,21 +214,28 @@ class ConstantFolding(object):
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
         sess_options.log_severity_level = 3
         try:
-            sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
-                                       providers=["CPUExecutionProvider"])
+            try:
+                sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
+                                           providers=["CPUExecutionProvider"])
+            except Exception as E:
+                if "Message onnx.ModelProto exceeds maximum protobuf size of 2GB" in str(E):
+                    print("LOG: Try to convert through a temporary file when Constant Folding.")
+                    # large models try to convert through a temporary file
+                    import os
+                    import tempfile
+                    with tempfile.TemporaryDirectory() as tmpdirname:
+                        model_path = os.path.join(tmpdirname, 'model.onnx')
+                        onnx.save(model,
+                                  model_path,
+                                  save_as_external_data=True,
+                                  location="temp_external_data",
+                                  convert_attribute=True)
+                        sess = rt.InferenceSession(model_path, sess_options=sess_options,
+                                                   providers=["CPUExecutionProvider"])
+                else:
+                    raise E
         except ValueError:
-            print("Waring: Try to convert through a temporary file.")
-            # large models try to convert through a temporary file
-            import os
-            import tempfile
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                model_path = os.path.join(tmpdirname, 'model.onnx')
-                onnx.save(model,
-                          model_path,
-                          save_as_external_data=True,
-                          location="temp_external_data",
-                          size_threshold=1024000000)
-                sess = rt.InferenceSession(model_path)
+            print("WARNING: onnxruntime.InferenceSession error.")
 
         input_names = self.get_input_names()
         inputs = {}
