@@ -613,19 +613,22 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
           if (subnet->is_dynamic()) {
             info.dynamic_ir_mem_size += subnet->ir_len() * sizeof(uint32_t);
           } else {
-            int group_num = subnet->cmd_group()->size();
-            for (int group_idx = 0; group_idx < group_num; group_idx++) {
-              auto cmd_group = subnet->cmd_group()->Get(group_idx);
-              // just for bm1684. bm1684x instructions may be of variable length
-              if (model()->chip()->str() == "BM1682") {
-                info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 8);
-                info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 8);
-              } else if (model()->chip()->str() == "BM1684") {
-                info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 7);
-                info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 7);
-              } else {
-                info.bd_cmd_mem_size += cmd_group->binary_bdc()->size();
-                info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
+            if (subnet->cmd_group() != nullptr) {
+              int group_num = subnet->cmd_group()->size();
+              for (int group_idx = 0; group_idx < group_num; group_idx++) {
+                auto cmd_group = subnet->cmd_group()->Get(group_idx);
+                // just for bm1684. bm1684x instructions may be of variable
+                // length
+                if (model()->chip()->str() == "BM1682") {
+                  info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 8);
+                  info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 8);
+                } else if (model()->chip()->str() == "BM1684") {
+                  info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 7);
+                  info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 7);
+                } else {
+                  info.bd_cmd_mem_size += cmd_group->binary_bdc()->size();
+                  info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
+                }
               }
             }
           }
