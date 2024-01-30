@@ -175,7 +175,8 @@ struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
   }
 };
 
-// Matmul + Reshape + Permute0 + (Permute1) + (Reshape2) + n*(slice + squeeze) => Matmul + Reshape + n*(slice + squeeze + Permute2 + (Reshape3))
+// Matmul + Reshape + Permute0 + (Permute1) + (Reshape2) + n*(slice + squeeze)
+// => Matmul + Reshape + n*(slice + squeeze + Permute2 + (Reshape3))
 struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -213,7 +214,8 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     if (reshape2) {
       if (!permute_output.hasOneUse())
         return failure();
-      if (module::getShape(reshape2.getOutput()).size() + 1 != module::getShape(permute_output).size())
+      if (module::getShape(reshape2.getOutput()).size() + 1 !=
+          module::getShape(permute_output).size())
         return failure();
       before_slice = reshape2.getOutput();
       reshape2_inshape = module::getShape(reshape2.getInput()).vec();
@@ -228,8 +230,8 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       if (!slice) {
         return failure();
       } else {
-        auto squeeze = dyn_cast<SqueezeOp>(
-             *slice.getOutput().getUsers().begin());
+        auto squeeze =
+            dyn_cast<SqueezeOp>(*slice.getOutput().getUsers().begin());
         if (!squeeze) {
           return failure();
         }
@@ -250,14 +252,14 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     }
     int mixed_idx = 0;
     if (reshape2) {
-      for(int i = 0; i < reshape2_outshape.size(); ++i) {
+      for (int i = 0; i < reshape2_outshape.size(); ++i) {
         if (reshape2_inshape[i] != reshape2_outshape[i]) {
           mixed_idx = i;
           break;
         }
       }
       if (mixed_idx < slice_axis)
-        slice_axis ++;
+        slice_axis++;
     }
 
     // Check Param
@@ -267,12 +269,13 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     // check-1.1: 64x49x288 -> 64x49x3x3x32: 3x3 is from 288
     if ((matmul_output_shape.size() + 2 != reshape_output_shape.size() ||
          !std::equal(matmul_output_shape.begin(), matmul_output_shape.end() - 1,
-                    reshape_output_shape.begin())) &&
-    // check-1.2: 25x14x14x2304 -> 25x196x3x12x64
+                     reshape_output_shape.begin())) &&
+        // check-1.2: 25x14x14x2304 -> 25x196x3x12x64
         (matmul_output_shape.size() + 1 != reshape_output_shape.size() ||
          !(matmul_output_shape.size() >= 3 && reshape_output_shape.size() > 2 &&
            matmul_output_shape[0] == reshape_output_shape[0] &&
-           matmul_output_shape[1] * matmul_output_shape[2] == reshape_output_shape[1]))) {
+           matmul_output_shape[1] * matmul_output_shape[2] ==
+               reshape_output_shape[1]))) {
       return failure();
     }
     if (reshape_output_shape[order0[slice_axis]] != slice_vec.size()) {
@@ -309,9 +312,10 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       std::vector<int64_t> new_steps(num_dims, 0);
       auto in_steps = module::getI64Array(slice_op.getSteps());
       if (reshape2) {
-        old_offset->insert(old_offset->begin()+mixed_idx+1, 0);
-        in_steps->insert(in_steps->begin()+mixed_idx+1, 1);
-        old_ends->insert(old_ends->begin()+mixed_idx+1, reshape2_inshape[mixed_idx+1]);
+        old_offset->insert(old_offset->begin() + mixed_idx + 1, 0);
+        in_steps->insert(in_steps->begin() + mixed_idx + 1, 1);
+        old_ends->insert(old_ends->begin() + mixed_idx + 1,
+                         reshape2_inshape[mixed_idx + 1]);
         old_ends->at(mixed_idx) = reshape2_inshape[mixed_idx];
       }
       for (int j = 0; j < num_dims; j++) {
@@ -339,7 +343,8 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       if (reshape2) {
         squeeze_out_shape = reshape2_inshape;
         squeeze_out_shape.erase(squeeze_out_shape.begin() + slice_axis);
-        squeeze_out_type = RankedTensorType::get(squeeze_out_shape, module::getElementType(squeeze_out));
+        squeeze_out_type = RankedTensorType::get(
+            squeeze_out_shape, module::getElementType(squeeze_out));
       }
       auto inv_order_size = squeeze_out_shape.size();
       // caculate permute order
@@ -362,18 +367,19 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       squeeze_op.shape_inference();
 
       std::vector<mlir::Operation *> users;
-      for (auto user: squeeze_out.getUsers()) {
+      for (auto user : squeeze_out.getUsers()) {
         users.emplace_back(user);
       }
 
       // don't worry, if the new permute is not reused, it will be folded.
-      for(auto user : users ) {
+      for (auto user : users) {
         std::vector<NamedAttribute> attrs;
-        attrs.push_back(
-            rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(inv_order)));
+        attrs.push_back(rewriter.getNamedAttr(
+            "order", rewriter.getI64ArrayAttr(inv_order)));
         auto name = module::getName(squeeze_op->getResults()[0]);
-        auto permute_loc =
-            NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_for_" + module::getName(user->getResult(0))));
+        auto permute_loc = NameLoc::get(
+            rewriter.getStringAttr(name.str() + "_permute_for_" +
+                                   module::getName(user->getResult(0))));
         std::vector<Value> operands;
         operands.emplace_back(squeeze_out);
         // rewriter.setInsertionPointAfterValue(squeeze_out);
@@ -390,16 +396,19 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
           rewriter.setInsertionPoint(user);
           auto reshape3_outshape = reshape2_outshape;
           reshape3_outshape.erase(reshape3_outshape.begin() + slice_axis);
-          auto reshape3_type = RankedTensorType::get(reshape3_outshape, module::getElementType(last_output));
-          auto reshape3_loc = NameLoc::get(rewriter.getStringAttr(permute_loc.getName().str() + "_reshape3"));
-          auto reshape3_op =
-              rewriter.create<ReshapeOp>(reshape3_loc, reshape3_type, ValueRange{last_output});
-          // new_permute_op.getOutput().replaceAllUsesExcept(reshape3_op.getOutput(), reshape3_op);
+          auto reshape3_type = RankedTensorType::get(
+              reshape3_outshape, module::getElementType(last_output));
+          auto reshape3_loc = NameLoc::get(rewriter.getStringAttr(
+              permute_loc.getName().str() + "_reshape3"));
+          auto reshape3_op = rewriter.create<ReshapeOp>(
+              reshape3_loc, reshape3_type, ValueRange{last_output});
+          // new_permute_op.getOutput().replaceAllUsesExcept(reshape3_op.getOutput(),
+          // reshape3_op);
           last_output = reshape3_op.getOutput();
         }
 
         std::vector<Value> user_operands;
-        for(auto opd : user->getOperands()) {
+        for (auto opd : user->getOperands()) {
           if (opd == squeeze_out) {
             user_operands.emplace_back(last_output);
           } else {
@@ -443,7 +452,8 @@ struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
       return failure();
     }
     auto shape = module::getShape(op.getOutput());
-    for (auto user = op->getUsers().begin(); user != op->getUsers().end(); ++user) {
+    for (auto user = op->getUsers().begin(); user != op->getUsers().end();
+         ++user) {
       if (auto slice_op = dyn_cast<SliceOp>(*user)) {
         if (!module::isNone(slice_op.getOffsetT()) ||
             !module::isNone(slice_op.getEndsT()) ||
@@ -451,7 +461,8 @@ struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
           return failure();
         }
         auto s_shape = module::getShape(slice_op.getOutput());
-        if (shape[0] != s_shape[0] || shape[1] != s_shape[1] || s_shape[2] < 128) {
+        if (shape[0] != s_shape[0] || shape[1] != s_shape[1] ||
+            s_shape[2] < 128) {
           return failure();
         }
         auto offset = module::getI64Array(slice_op.getOffsetAttr());
@@ -468,25 +479,32 @@ struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
     }
 
     std::string out_name = module::getName(op.getOutput()).data();
-    for (auto user = op->getUsers().begin(); user != op->getUsers().end(); ++user) {
+    for (auto user = op->getUsers().begin(); user != op->getUsers().end();
+         ++user) {
       auto slice_op = dyn_cast<SliceOp>(*user);
       std::vector<Value> operands;
       operands.push_back(op.getInput());
       auto offset = module::getI64Array(slice_op.getOffsetAttr())->at(2);
       auto size = module::getShape(slice_op.getOutput())[2];
-      operands.push_back(get_weight(op.getRight(), offset, offset + size, -1, rewriter.getF32Type(), "_offset" + std::to_string(offset)));
-      operands.push_back(get_weight(op.getBias(), offset, offset + size, -1, rewriter.getF32Type(), "_offset" + std::to_string(offset)));
-      rewriter.replaceOpWithNewOp<top::MatMulOp>(slice_op, slice_op.getOutput().getType(),
-          operands, op->getAttrs());
+      operands.push_back(get_weight(op.getRight(), offset, offset + size, -1,
+                                    rewriter.getF32Type(),
+                                    "_offset" + std::to_string(offset)));
+      operands.push_back(get_weight(op.getBias(), offset, offset + size, -1,
+                                    rewriter.getF32Type(),
+                                    "_offset" + std::to_string(offset)));
+      rewriter.replaceOpWithNewOp<top::MatMulOp>(
+          slice_op, slice_op.getOutput().getType(), operands, op->getAttrs());
     }
     rewriter.eraseOp(op);
     return success();
   }
 };
 
-
-// in eva02 and gpt2, there is matmul and slice to 3 branches. split matmul to three branch for better cali. now, this one is for eva2 only
-// matmul + reshape + 3*(slice + squeeze) => 3*(matmul + reshape + squeeze) or 3*(matmul+reshape) when squeeze the slice axes
+// in eva02 and gpt2, there is matmul and slice to 3 branches. split matmul to
+// three branch for better cali. now, this one is for eva2 only matmul + reshape
+// + 3*(slice + squeeze) => 3*(matmul + reshape + squeeze) or 3*(matmul+reshape)
+// when squeeze the slice axes
+// 2024.01.30 pp_ocr_rec match here, too. :(
 struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -496,105 +514,108 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
       return failure();
     ReshapeOp reshape_op = NULL;
 
-    for (auto out:op.getOutput().getUsers()){
+    for (auto out : op.getOutput().getUsers()) {
       if (isa<ReshapeOp>(out))
-        reshape_op = dyn_cast<ReshapeOp>(out);
+        reshape_op = dyn_cast_or_null<ReshapeOp>(out);
       else
         return failure();
     }
+    if (reshape_op == NULL)
+      return failure();
     int pos[3] = {0};
     SliceOp slice_op[3] = {NULL};
     SqueezeOp squeeze_ops[3] = {NULL};
     int i = 0;
     int squ_axes = -1;
-    for (auto u:reshape_op.getOutput().getUsers()) {
+    for (auto u : reshape_op.getOutput().getUsers()) {
       if (!isa<SliceOp>(u)) {
         if (isa<SplitOp>(u))
           continue;
         else
           return failure();
       }
-      if (i>3)
+      if (i > 3)
         return failure();
       slice_op[i] = dyn_cast_or_null<SliceOp>(u);
+      if (slice_op[i] == NULL || !slice_op[i].getOutput().hasOneUse())
+        return failure();
+      for (auto out : slice_op[i].getOutput().getUsers()) {
+        if (isa<SqueezeOp>(out))
+          squeeze_ops[i] = dyn_cast_or_null<SqueezeOp>(out);
+        else
+          return failure();
+      }
+      if (squeeze_ops[i] == NULL)
+        return failure();
+      auto axes_ = module::getI64Array(squeeze_ops[i].getAxes());
+      if (squ_axes < 0)
+        squ_axes = axes_->at(0);
+      else if (squ_axes != axes_->at(0))
+        return failure();
       auto off = module::getI64Array(slice_op[i].getOffset());
       auto steps = module::getI64Array(slice_op[i].getSteps());
       auto ends = module::getI64Array(slice_op[i].getEnds());
       auto axes = module::getI64Array(slice_op[i].getAxes());
       if (axes->size() == 0) {
-        if (steps->size() != off->size() || steps->size() != ends->size())
+        if (steps->size() != off->size() || steps->size() != ends->size() ||
+            steps->size() <= squ_axes)
           return failure();
-        for (int idx=0;idx<steps->size();idx++) {
+        for (int idx = 0; idx < steps->size(); idx++) {
           if (steps->at(idx) != 1)
             return failure();
-          if (ends->at(idx) > 0 && off->at(idx) == ends->at(idx)-1) {
-            pos[i] = off->at(idx);
-            if (squ_axes >= 0 && squ_axes != idx)
-              return failure();
-            else if (squ_axes < 0)
-              squ_axes = idx;
-            break; // support only one axes slice
-          }
         }
+        pos[i] = off->at(squ_axes);
       } else {
         return failure(); // don't know how it looks if axes is set
       }
       if (module::getShape(op->getOperands()[0]).size() <= squ_axes)
         return failure();
-      i ++;
+      i++;
     }
 
-    if (i != 3 || slice_op[0] == NULL || slice_op[1] == NULL || slice_op[2] == NULL)
+    if (i != 3 || slice_op[0] == NULL || slice_op[1] == NULL ||
+        slice_op[2] == NULL)
       return failure();
-    for (int i = 0; i<3; i++) {
-      for (auto out:slice_op[i].getOutput().getUsers())
-        if (isa<SqueezeOp>(out))
-          squeeze_ops[i] = dyn_cast<SqueezeOp>(out);
-        else
-          return failure();
-      if (squeeze_ops[i] == NULL)
-        return failure();
-      if (!slice_op[i].getOutput().hasOneUse())
-        return failure();
-    }
     WeightOp weight_op = NULL;
     WeightOp bias_op = NULL;
     std::vector<int64_t> weight_shape;
     std::vector<int64_t> bias_shape;
-    for (auto in:op.getOperands()) {
-      if (isa<WeightOp>(in.getDefiningOp())){
-        if ( weight_op == NULL) {
+    for (auto in : op.getOperands()) {
+      if (isa<WeightOp>(in.getDefiningOp())) {
+        if (weight_op == NULL) {
           weight_op = dyn_cast<WeightOp>(in.getDefiningOp());
           auto shape = in.getType().dyn_cast<TensorType>().getShape();
           if (shape.size() != 2)
             return failure();
           for (auto s : shape)
             weight_shape.push_back(s);
-        }
-        else if (bias_op == NULL) {
+        } else if (bias_op == NULL) {
           bias_op = dyn_cast<WeightOp>(in.getDefiningOp());
           auto shape = in.getType().dyn_cast<TensorType>().getShape();
-          for (auto s: shape)
+          for (auto s : shape)
             bias_shape.push_back(s);
         }
       }
     }
-    if (weight_shape[1] != bias_shape[bias_shape.size()-1] || weight_shape[1]%3 != 0)
+    if (weight_shape[1] != bias_shape[bias_shape.size() - 1] ||
+        weight_shape[1] % 3 != 0)
       return failure();
 
     auto weight = weight_op.read<float>();
-    for (int i = 0; i<3; i++) {
-      auto w = std::make_shared<std::vector<float>>(weight_shape[0]*weight_shape[1]/3);
-      for (int k=0;k<weight_shape[0];k++){
-        for (int m=0;m<weight_shape[1]/3;m++) {
-          w->data()[k*weight_shape[1]/3+m] = weight->at(pos[i]*weight_shape[1]/3+k*weight_shape[1]+m);
+    for (int i = 0; i < 3; i++) {
+      auto w = std::make_shared<std::vector<float>>(weight_shape[0] *
+                                                    weight_shape[1] / 3);
+      for (int k = 0; k < weight_shape[0]; k++) {
+        for (int m = 0; m < weight_shape[1] / 3; m++) {
+          w->data()[k * weight_shape[1] / 3 + m] = weight->at(
+              pos[i] * weight_shape[1] / 3 + k * weight_shape[1] + m);
         }
       }
-      auto b = std::make_shared<std::vector<float>>(weight_shape[1]/3);
+      auto b = std::make_shared<std::vector<float>>(weight_shape[1] / 3);
       if (bias_op != NULL) {
         auto bias = bias_op.read<float>();
-        for (int m=0;m<weight_shape[1]/3;m++) {
-          b->data()[m] = bias->at(pos[i]*weight_shape[1]/3+m);
+        for (int m = 0; m < weight_shape[1] / 3; m++) {
+          b->data()[m] = bias->at(pos[i] * weight_shape[1] / 3 + m);
         }
       }
 
@@ -611,27 +632,41 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
           mmout_shape.push_back(s);
         else if (idx >= squ_axes) // skip squ_axes
           shape_last *= s;
-        idx ++;
+        idx++;
       }
       mmout_shape.push_back(shape_last);
 
-      auto weight_type = RankedTensorType::get({weight_shape[0], weight_shape[1]/3}, rewriter.getF32Type());
-      auto mmout_type = RankedTensorType::get(mmout_shape, rewriter.getF32Type());
-      auto w_op = WeightOp::create<float>(op, module::getName(slice_op[i].getOutput()).str()+"_w"+std::to_string(i),*w, weight_type);
+      auto weight_type = RankedTensorType::get(
+          {weight_shape[0], weight_shape[1] / 3}, rewriter.getF32Type());
+      auto mmout_type =
+          RankedTensorType::get(mmout_shape, rewriter.getF32Type());
+      auto w_op = WeightOp::create<float>(
+          op,
+          module::getName(slice_op[i].getOutput()).str() + "_w" +
+              std::to_string(i),
+          *w, weight_type);
       if (bias_op != NULL) {
-        auto bias_type = RankedTensorType::get({weight_shape[1]/3}, rewriter.getF32Type());
-        auto b_op = WeightOp::create<float>(op, module::getName(slice_op[i].getOutput()).str()+"_b"+std::to_string(i),*b, bias_type);
-        rewriter.replaceOpWithNewOp<MatMulOp>(slice_op[i], mmout_type,
-                                        ValueRange{op.getInput(), w_op, b_op}, attrs);
-        rewriter.replaceOpWithNewOp<ReshapeOp>(squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
-                                        ValueRange{squeeze_ops[i].getInput()}, rsattrs);
+        auto bias_type =
+            RankedTensorType::get({weight_shape[1] / 3}, rewriter.getF32Type());
+        auto b_op = WeightOp::create<float>(
+            op,
+            module::getName(slice_op[i].getOutput()).str() + "_b" +
+                std::to_string(i),
+            *b, bias_type);
+        rewriter.replaceOpWithNewOp<MatMulOp>(
+            slice_op[i], mmout_type, ValueRange{op.getInput(), w_op, b_op},
+            attrs);
+        rewriter.replaceOpWithNewOp<ReshapeOp>(
+            squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
+            ValueRange{squeeze_ops[i].getInput()}, rsattrs);
+      } else {
+        rewriter.replaceOpWithNewOp<MatMulOp>(
+            slice_op[i], mmout_type,
+            ValueRange{op.getInput(), w_op, module::getNoneOp(op)}, attrs);
+        rewriter.replaceOpWithNewOp<ReshapeOp>(
+            squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
+            ValueRange{squeeze_ops[i].getInput()}, rsattrs);
       }
-      else {
-        rewriter.replaceOpWithNewOp<MatMulOp>(slice_op[i], mmout_type,
-                                        ValueRange{op.getInput(), w_op, module::getNoneOp(op)}, attrs);
-        rewriter.replaceOpWithNewOp<ReshapeOp>(squeeze_ops[i], squeeze_ops[i].getOutput().getType(),
-                                        ValueRange{squeeze_ops[i].getInput()}, rsattrs);
-    }
     }
     return success();
   }
@@ -639,5 +674,7 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
 
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, NoKeepDimsAddReshape, MatmulWithPermuteAndSplit, MatMulWithSlice, SplitMatMulEva2>(context);
+  results.insert<MatMulWithBias, NoKeepDimsAddReshape,
+                 MatmulWithPermuteAndSplit, MatMulWithSlice>(
+      context);
 }
