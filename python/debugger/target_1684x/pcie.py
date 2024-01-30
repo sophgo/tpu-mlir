@@ -101,7 +101,164 @@ class Memory(DeviceMemory):
         self.lib = lib
         self.runner_p = runner_p
         self.reserved_offset = lib.get_reserved_mem(runner_p)
+
+        self.LMEM = np.zeros(16 * 1024 * 1024, dtype=np.uint8)
+
         print(f"use reserved memory {self.reserved_offset}")
+
+    def _local_mem_to_numpy(self, memref: MemRef):
+        NPU_OFFSET = memref.npu_offset
+        itemsize = memref.itemsize
+        l2s_ret = self.lib.chip_l2s(
+            self.runner_p,
+            self.LMEM.ctypes.data_as(ctypes.c_void_p),
+        )
+        assert l2s_ret == 0
+
+        def data_view(shape, stride):
+            offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
+            return np.lib.stride_tricks.as_strided(
+                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                shape,
+                np.array(stride) * itemsize,
+                writeable=False,
+            )
+
+        def get_stride_data_base(shape, stride):
+            n, c, h, w = shape
+            n_s, c_s, h_s, w_s = stride
+            _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
+            _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
+
+        def get_stride_data():
+            return get_stride_data_base(memref.shape, memref.stride)
+
+        def get_64ic_data():
+            n, c, h, w = memref.shape
+            shape = ((n + 63) // 64, 64, (c + 63) // 64, 64, h, w)
+            stride = (
+                (c + 63) // 64 * 64 * h * w,
+                LANE_SIZE // itemsize,
+                64 * h * w,
+                1,
+                64 * w,
+                64,
+            )
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
+
+        def get_32ic_data():
+            n, c, h, w = memref.shape
+            shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
+            stride = (
+                (c + 32) // 32 * 32 * h * w,
+                LANE_SIZE // itemsize,
+                32 * h * w,
+                1,
+                32 * w,
+                32,
+            )
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
+
+        def get_1ic_data():
+            n, c, h, w = memref.shape
+            shape = ((n + 63) // 64, 64, c, h, w)
+            stride = (
+                c * h * w,
+                LANE_SIZE // itemsize,
+                h * w,
+                w,
+                1,
+            )
+            return data_view(shape, stride).reshape(-1, c, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
+
+        def get_matrix_data():
+            r, c = memref.shape
+            w = memref.layout.args[0]
+            shape = (r, (c + w - 1) // w, 1, w)
+            _memref = copy.copy(memref)
+            _memref.shape = shape
+            _memref.layout = Layout.alignEU
+            stride = local_layout_to_stride(_memref)
+            return get_stride_data_base(shape, stride).reshape(r, -1)[:r, :c]
+
+        def get_matrix2_data():
+            r, c = memref.shape
+            shape = (1, r, 1, c)
+            _memref = copy.copy(memref)
+            _memref.shape = shape
+            _memref.layout = Layout.alignEU
+            stride = local_layout_to_stride(_memref)
+            return get_stride_data_base(shape, stride).reshape(r, c)
+
+        def _lane_mask_filter(c, lane_mask):
+            lane_mask = np.unpackbits(
+                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
+            )
+            _c = (NPU_OFFSET + c + 63) // 64
+            index = np.zeros(_c * 64, bool)
+            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index = index.reshape(_c, 64)
+            index[:, lane_mask == 0] = False
+            return index.flatten()
+
+        def get_dma4bank_data():
+            n, c, h, w = memref.shape
+            shape = (4, n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            n_s, c_s, h_s, w_s = memref.stride
+            stride = (BANK_SIZE, n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            index = _lane_mask_filter(c, memref.layout.args[0])
+            return data_view(shape, stride).reshape(4, n, -1, h, w)[:, :, index, :, :]
+
+        def get_dma_stride_data(_memref=memref):
+            n, c, h, w = _memref.shape
+            shape = (n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            n_s, c_s, h_s, w_s = _memref.stride
+            stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            index = _lane_mask_filter(c, _memref.layout.args[0])
+            return data_view(shape, stride).reshape(n, -1, h, w)[:, index, :, :]
+
+        def get_dma_matrix_data():
+            r, c = memref.shape
+            w = memref.layout.args[1]
+            shape = (r, (c + w - 1) // w, 1, w)
+            _memref = copy.copy(memref)
+            _memref.shape = shape
+            return get_dma_stride_data(_memref).reshape(r, -1)[:r, :c]
+
+        def get_dma_linear_data():
+            return data_view(memref.shape, memref.stride)
+
+        get_data = {
+            Layout.alignEU: get_stride_data,
+            Layout.compact: get_stride_data,
+            Layout.offset: get_stride_data,
+            Layout.stride: get_stride_data,
+            Layout._64IC: get_64ic_data,
+            Layout._32IC: get_32ic_data,
+            Layout._1IC: get_1ic_data,
+            Layout.matrix: get_matrix_data,
+            Layout.matrix2: get_matrix2_data,
+            Layout.T3: get_stride_data,
+            Layout.T4: get_stride_data,
+            Layout.T5: get_stride_data,
+            Layout.DMA4Bank: get_dma4bank_data,
+            Layout.DMAstride: get_dma_stride_data,
+            Layout.DMAmatrix: get_dma_matrix_data,
+            Layout.DMAlinear: get_dma_linear_data,
+        }
+        data = get_data[memref.layout]()
+        if memref.dtype == DType.bf16:
+            return bf16_to_fp32(data)
+        return data
 
     def _ddr_to_numpy(self, memref: MemRef):
         assert memref.shape is not None
@@ -151,8 +308,8 @@ class Memory(DeviceMemory):
         assert isinstance(value, MemRef)
         if value.mtype == MType.G:
             return self._ddr_to_numpy(value)
-        # if value.mtype == MType.R:
-        #     return self._local_mem_to_numpy(value)
+        if value.mtype == MType.R:
+            return self._local_mem_to_numpy(value)
         raise ValueError(f"unsupported memory view: {value}")
 
     def set_data_to_address(self, address: int, data: np.ndarray):

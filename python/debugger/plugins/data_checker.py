@@ -496,9 +496,10 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         context = self.tdb.context
         memref = value.get_memref(context)
-        if memref.mtype != MType.G and not context.memory.using_cmodel:
-            value_res = ComparedResult(value_view, None, msg="ignore")
-            return value_res
+        if not context.memory.using_cmodel:
+            if memref.mtype != MType.G and memref.mtype != MType.R:
+                value_res = ComparedResult(value_view, None, msg="ignore")
+                return value_res
 
         cmd = self.tdb.cmditer[point_index]
         if isinstance(context, SG2260Context) or isinstance(context, BM1688Context):

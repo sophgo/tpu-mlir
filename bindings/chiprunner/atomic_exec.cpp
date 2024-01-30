@@ -8,8 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "bmlib_runtime.h"
+#include "tpu_kernel.h"
 #include <iostream>
+#include <stdio.h>
 #include <string>
+#include <sys/time.h>
 
 #ifndef WIN32
 #define WITH_PLATFORM(x) __attribute__((packed)) x
@@ -22,6 +25,10 @@ typedef struct {
   int command_type;
   char data[128];
 } WITH_PLATFORM(sg_api_atomic_t);
+
+typedef struct {
+  global_addr_t global_addr;
+} WITH_PLATFORM(sg_api_mcu_cpy_t);
 
 #define MAX_CMD_NUM 4
 
@@ -60,11 +67,15 @@ public:
   }
 
   int init_reserved_memory() {
-    auto ret =
+    auto ret_device =
         bm_malloc_device_byte(bm_handle, &device_mem, 1024 * 1024 * 1024);
+    auto ret_local =
+        bm_malloc_device_byte(bm_handle, &device_loc_mem, 16 * 1024 * 1024);
     u64 res_addr = bm_mem_get_device_addr(device_mem);
+    u64 loc_addr = bm_mem_get_device_addr(device_loc_mem);
     set_reserved_mem(res_addr);
-    return (int)ret;
+    set_loc_mem(loc_addr);
+    return (int)ret_device & (int)ret_local;
   }
 
   ~ChipRunner() {
@@ -83,6 +94,9 @@ public:
   }
   u64 get_reserved_mem() { return reserved_offset; }
 
+  void set_loc_mem(u64 _loc_offset) { loc_offset = _loc_offset; }
+  u64 get_loc_mem() { return loc_offset; }
+
   int chip_s2d(u64 address, size_t size, void *data) {
     bm_device_mem_t device_mem = bm_mem_from_device(address, size);
 
@@ -96,6 +110,26 @@ public:
     // std::cout << "copy from device " << address << std::endl;
     auto ret = bm_memcpy_d2s(bm_handle, (void *)data, device_mem);
     return (int)ret;
+  }
+
+  // move all 16MB local mem
+  int chip_l2s(void *data) {
+    // auto func_id = tpu_kernel_get_function(bm_handle, tpu_module,
+                                          //  "tpu_kernel_mcu_cpy_l2s");
+
+    auto func_id = tpu_kernel_get_function(bm_handle, tpu_module,
+                                           "tpu_kernel_gdma_cpy_l2s");
+                                           
+    u64 mid_data_addr = get_loc_mem();
+    // unsigned char *mid_data_ptr =
+    //     reinterpret_cast<unsigned char *>(mid_data_addr);
+    sg_api_mcu_cpy_t params = {0};
+    params.global_addr = mid_data_addr;
+    auto ret_mcu_cpy =
+        tpu_kernel_launch(bm_handle, func_id, &params, sizeof(params));
+
+    auto ret_d2s = chip_d2s(mid_data_addr, 16 * 1024 * 1024, data);
+    return ret_mcu_cpy & ret_d2s;
   }
 
   int launch_single_cmd(void *command, int command_type, size_t size) {
@@ -174,8 +208,10 @@ public:
   bm_handle_t bm_handle;
   tpu_kernel_function_t func_id;
   u64 reserved_offset;
+  u64 loc_offset;
   tpu_kernel_module_t tpu_module;
   bm_device_mem_t device_mem;
+  bm_device_mem_t device_loc_mem;
 };
 
 #ifdef __cplusplus
@@ -198,6 +234,9 @@ int chip_s2d(void *runner, u64 address, size_t size, void *data) {
 int chip_d2s(void *runner, u64 address, size_t size, void *data) {
   return ((ChipRunner *)runner)->chip_d2s(address, size, data);
 }
+int chip_l2s(void *runner, void *data) {
+  return ((ChipRunner *)runner)->chip_l2s(data);
+}
 int launch_single_cmd(void *runner, void *command, int command_type,
                       size_t size) {
   return ((ChipRunner *)runner)->launch_single_cmd(command, command_type, size);
@@ -215,12 +254,10 @@ u64 get_reserved_mem(void *runner) {
 // BM1684X
 #define GLOBAL_MEM_START_ADDR 0x100000000
 
-
-
 /**
  * adpted from tpu-runtime/src/bmruntime.cpp:491@convert_cmd
  * currently only support BM1684X
-*/
+ */
 void convert_addr(u32 *cmd, u64 reserved_offset) {
 
   u64 src_addr = ((u64)(cmd[17] & 0xff) << 32) | ((u64)cmd[16]);

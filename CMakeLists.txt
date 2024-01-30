@@ -93,6 +93,11 @@ link_directories(${CV18XX_PATH}/lib)
 #-------------------------------------------------------------------------------
 set(PROGRESSBAR_PATH ${PROJECT_SOURCE_DIR}/third_party/progressbar)
 include_directories(${PROGRESSBAR_PATH}/include)
+#-------------------------------------------------------------------------------
+# TDB in pcie Configuration
+#-------------------------------------------------------------------------------
+set(CUSTOM_PATH ${PROJECT_SOURCE_DIR}/third_party/customlayer)
+include_directories(${CUSTOM_PATH}/include/kernel)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)
