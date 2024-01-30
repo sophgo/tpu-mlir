@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import List, Union, Tuple
-from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
+from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 
@@ -263,6 +263,110 @@ def conv_v2(input: Tensor,
     TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
     return output
 
+def conv3d_v2(input: Tensor,
+                weight: Tensor,
+                bias: Tensor = None,
+                stride: List[int] = None,
+                dilation: List[int] = None,
+                pad: List[int] = None,
+                group=1,
+                input_zp: Union[int, List[int]] = None,
+                weight_zp: Union[int, List[int]] = None,
+                out_dtype: str = None,
+                out_name: str = None):
+    dilation = [1, 1, 1] if dilation is None else dilation
+    stride = [1, 1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    o_dtype = "int32"
+    if out_dtype is not None:
+        o_dtype = out_dtype
+    else:
+        o_dtype = input.dtype
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    input.quantization(zero_point=input_zp)
+    weight.quantization(zero_point=weight_zp)
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+def deconv_v2(input: Tensor,
+            weight: Tensor,
+            bias: Tensor = None,
+            stride: List[int] = None,
+            dilation: List[int] = None,
+            pad: List[int] = None,
+            group=1,
+            input_zp: Union[int, List[int]] = None,
+            weight_zp: Union[int, List[int]] = None,
+            out_dtype: str = None,
+            out_name: str = None):
+    dilation = [1, 1] if dilation is None else dilation
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    o_dtype = "int32"
+    if out_dtype is not None:
+        o_dtype = out_dtype
+    else:
+        o_dtype = input.dtype
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    input.quantization(zero_point=input_zp)
+    weight.quantization(zero_point=weight_zp)
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+def deconv3d_v2(input: Tensor,
+                weight: Tensor,
+                bias: Tensor = None,
+                stride: List[int] = None,
+                dilation: List[int] = None,
+                pad: List[int] = None,
+                group=1,
+                input_zp: Union[int, List[int]] = None,
+                weight_zp: Union[int, List[int]] = None,
+                out_dtype: str = None,
+                out_name: str = None):
+    dilation = [1, 1, 1] if dilation is None else dilation
+    stride = [1, 1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    o_dtype = "int32"
+    if out_dtype is not None:
+        o_dtype = out_dtype
+    else:
+        o_dtype = input.dtype
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    input.quantization(zero_point=input_zp)
+    weight.quantization(zero_point=weight_zp)
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
+    return output
 
 def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
     o_dtype = "int32"
@@ -394,6 +498,45 @@ def conv(input: Tensor,
                    out_dtype=input.dtype,
                    out_name=out_name)
 
+# @deprecated(version=1.0, reason="Th  is function will be removed soon")
+def conv3d(input: Tensor,
+         weight: Tensor,
+         bias: Tensor = None,
+         kernel=None,
+         dilation: List[int] = None,
+         pad: List[int] = None,
+         stride: List[int] = None,
+         group: int = 1,
+         out_name: str = None):
+    return conv3d_v2(input=input,
+                   weight=weight,
+                   bias=bias,
+                   stride=stride,
+                   dilation=dilation,
+                   pad=pad,
+                   group=group,
+                   out_dtype=input.dtype,
+                   out_name=out_name)
+
+# @deprecated(version=1.0, reason="This function will be removed soon")
+def deconv(input: Tensor,
+           weight: Tensor,
+           bias: Tensor = None,
+           kernel=None,
+           dilation: List[int] = None,
+           pad: List[int] = None,
+           stride: List[int] = None,
+           group: int = 1,
+           out_name: str = None):
+    return deconv_v2(input=input,
+                     weight=weight,
+                     bias=bias,
+                     stride=stride,
+                     dilation=dilation,
+                     pad=pad,
+                     group=group,
+                     out_dtype=input.dtype,
+                     out_name=out_name)
 
 def requant_fp_to_int(tensor_i: Tensor,
                       scale,
@@ -850,3 +993,134 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 #     TpuLang.insert_op("top.Interp", inputs=[tensor_i, target_shape], outputs=[output], params=attr)
 #     return output
 
+def gt(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("gt")
+    attr = {
+        "mode": Attr("Greater", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def lt(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("lt")
+    attr = {
+        "mode": Attr("Less", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def ge(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("ge")
+    attr = {
+        "mode": Attr("GreaterOrEqual", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def le(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("le")
+    attr = {
+        "mode": Attr("LessOrEqual", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def eq(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("eq")
+    attr = {
+        "mode": Attr("Equal", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def ne(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("ne")
+    attr = {
+        "mode": Attr("NotEqual", "string"),
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+def gts(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("gts")
+    attr = {
+        "mode": Attr("Greater", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output
+
+def lts(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("lts")
+    attr = {
+        "mode": Attr("Less", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output
+
+def ges(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("ges")
+    attr = {
+        "mode": Attr("GreaterOrEqual", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output
+
+def les(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("les")
+    attr = {
+        "mode": Attr("LessOrEqual", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output
+
+def eqs(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("eqs")
+    attr = {
+        "mode": Attr("Equal", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output
+
+def nes(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("nes")
+    attr = {
+        "mode": Attr("NotEqual", "string"),
+        "const_val": Attr(scalar_i1, "float64"),
+        'inversed': Attr(False, "bool")
+    }
+    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    return output

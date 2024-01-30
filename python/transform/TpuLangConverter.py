@@ -197,16 +197,12 @@ class TpuLangConverter(BaseConverter):
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
         output_shapes = list()
-        # print(output_shapes)
-        # print(self.getShape(_name))
         for _name in self.output_names:
             if self.getShape(_name) != [1]:
                 output_shapes.append(self.getShape(_name))
             else:
                 output_shapes.append([])
-        # print(output_shapes)
         # init importer
-        # print(output_shapes)
         self.mlir = MLIRImporter(input_shapes,
                                  output_shapes,
                                  self.model_name,
