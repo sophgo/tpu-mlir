@@ -60,6 +60,7 @@ def main():
     )
 
     parser.add_argument("--no_interactive", action="store_true")
+    parser.add_argument("--dump_dataframe", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -91,7 +92,6 @@ if __name__ == "__main__":
     else:
         excepts = []
 
-
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
         final_mlir_fn=final_mlir_fn,
@@ -115,6 +115,8 @@ if __name__ == "__main__":
     tdb.do_run("")
     tdb.message("(<file-line>:\[operands]|\[results])")
     plugin.do_summary("table")
+    if args.dump_dataframe:
+        plugin.dump_dataframe()
     plugin.failed_results_fn = args.report
     plugin.do_dump_names(args.report)
     msg = """
