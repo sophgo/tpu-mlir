@@ -263,12 +263,11 @@ class mm_op(TiuCmd):
     description = "matrix multiply"
 
     def ops(self, is_arch=False):
-        m, lk = self.operands[0].shape
-        rk, n = self.operands[1].shape
+        m = self.reg.opd0_n
+        k = self.reg.opd0_w * (self.reg.opd0_c - 1) + self.reg.opd0_w
+        n = self.reg.res0_w * (self.reg.res0_c - 1) + self.reg.res0_w
         if self.attribute["l_trans"]:
-            lk, m = m, lk
-        assert lk == rk
-        k = lk
+            k, m = m, k
         has_bias = len(self.operands) > 2
         if is_arch:
             dtype = self.operands[0].dtype
@@ -299,22 +298,19 @@ class mm2_op(TiuCmd):
     description = "matrix multiply2"
 
     def ops(self, is_arch=False):
-        m, lk = self.operands[0].shape
-        rk, n = self.operands[1].shape
+        # m, lk = self.operands[0].shape
+        # rk, n = self.operands[1].shape
+        m = self.reg.res0_c
+        k = self.reg.opd1_w
+        n = self.reg.opd1_c
         if self.eu_name == "mm2.nt":
-            rk, n = n, rk
+            k, n = n, k
         elif self.eu_name == "mm2.tt":
-            rk, n = n, rk
-            lk, m = m, lk
-
-        assert lk == rk
-        k = lk
-        has_bias = len(self.operands) > 2
-        dtype = self.operands[0].dtype
+            m, k, n = k, m, k
+        dtype = self.results[0].dtype
         channelNumPerCyc = CUBE_NUM(dtype)
         activatedEuNumber = CubeOutputHeightWidthAlignNum
         if is_arch:
-            dtype = self.operands[0].dtype
             k = ALIGN(k, activatedEuNumber)
             m = ALIGN(m, LANE_NUMBER)
             n = ALIGN(n, channelNumPerCyc)
@@ -328,7 +324,7 @@ class mm2_op(TiuCmd):
         dtype = self.operands[0].dtype
         channelNumPerCyc = CUBE_NUM(dtype)
         activatedEuNumber = CubeOutputHeightWidthAlignNum
-        return DIV_UP(alg_ops, channelNumPerCyc * activatedEuNumber * 2)
+        return DIV_UP(alg_ops, channelNumPerCyc * activatedEuNumber * LANE_NUMBER * 2)
 
 class smm2_op(mm2_op):
     name = "sMM2"
