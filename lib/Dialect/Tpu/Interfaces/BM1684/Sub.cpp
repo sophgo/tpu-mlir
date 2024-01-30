@@ -131,7 +131,7 @@ void tpu::SubOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     sign[2] = module::isSign(getOutput()) ? 1 : 0;
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_local(
         input_addrs[0], input_addrs[1], out_gi.out_addr, out_gi.buffer_addr,
-        b0_shape, b1_shape, module::getShape(getInputs()[0]).size(),
+        b0_shape, b1_shape, 4,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         op_code, (int)multiplier_v->at(0), (int)multiplier_v->at(1),
         (uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1), is_int8, sign,

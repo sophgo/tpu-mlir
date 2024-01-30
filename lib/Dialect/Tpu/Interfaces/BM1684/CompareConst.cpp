@@ -35,7 +35,7 @@ void tpu::CompareConstOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_parallel(
         module::getAddress(getInput()), module::getAddress(getOutput()),
         getConstVal().convertToDouble(), b0_shape,
-        module::getShape(getInput()).size(), binary_type, 1, 1, 0, 0,
+        4, binary_type, 1, 1, 0, 0,
         getInversed(), 0, is_int8s, is_signs,
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
@@ -72,7 +72,7 @@ void tpu::CompareConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                        module::getDtypeSize(getOutput()) == 1};
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr,
-        const_val, b0_shape, module::getShape(getInput()).size(), binary_type,
+        const_val, b0_shape, 4, binary_type,
         1, 1, 0, 0, getInversed(), 0, is_int8s, is_signs,
         BM1684::instance()->bdc_node);
   }
