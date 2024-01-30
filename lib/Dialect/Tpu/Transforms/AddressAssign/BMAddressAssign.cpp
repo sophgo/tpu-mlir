@@ -549,6 +549,14 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     // region.
     updateOperandsLiveRange(op, ops_loc[op->getParentOp()->getNextNode()]);
     common_ops.emplace_back(v);
+  } else if (isa_and_nonnull<tpu::CoreParallelOp>(op->getParentOp())) {
+    auto upper = op->getParentOp()->getParentOp(); // nested liveRange
+    if (isa_and_nonnull<tpu::GroupParallelOp>(upper))
+      endPosition = ops_loc[upper->getNextNode()];
+    else
+      endPosition = ops_loc[op->getParentOp()->getNextNode()];
+    updateSOLOLiveRange(op, v, endPosition);
+    common_ops.emplace_back(v);
   } else if (op->getDialect()->getNamespace() == "tpu") {
     ValueInfo cur_info(op, index);
     if (!module::isNone(op->getResult(index))) {
