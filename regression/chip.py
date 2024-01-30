@@ -156,11 +156,17 @@ full_model_list = {
 basic_multi_core_model_list = {
     # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     ######## onnx ###############
-    "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
+    "attention_2batch_block_0_1": (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "pp_yoloe":                   (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "pp_ocr_cls":                 (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
 }
 
 full_multi_core_model_list = {
     # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     ######## onnx ###############
-    "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
+    "attention_2batch_block_0_1": (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "pp_yoloe":                   (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "pp_ocr_cls":                 (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
 }
