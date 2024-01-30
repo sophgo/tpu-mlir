@@ -52,28 +52,43 @@ class TPULANG_IR_TESTER(object):
             "Clamp": (self.test_Clamp, Y),
             "Concat": (self.test_Concat, Y),
             "Conv2d": (self.test_Conv2d, Y),
+            "Conv3d": (self.test_Conv3d, Y),
             "Copy": (self.test_Copy, Y),
             "Cos": (self.test_Cos, Y),
             "Cosh": (self.test_Cosh, Y),
             "Custom": (self.test_Custom, Y),
+            "Deconv2d": (self.test_Deconv2d, Y),
+            "Deconv3d": (self.test_Deconv3d, Y),
             "Div": (self.test_Div, Y),
             "Elu": (self.test_Elu, Y),
+            "Eq": (self.test_Eq, Y),
+            "Eqs": (self.test_Eqs, Y),
             "Erf": (self.test_Erf, Y),
             "Exp": (self.test_Exp, Y),
             "Floor": (self.test_Floor, Y),
             "Gelu": (self.test_Gelu, Y),
+            "Ge": (self.test_Ge, Y),
+            "Ges": (self.test_Ges, Y),
+            "Gt": (self.test_Gt, Y),
+            "Gts": (self.test_Gts, Y),
             "HModel": (self.test_Model, N),
             "Hsigmoid": (self.test_Hsigmoid, Y),
             "Hswish": (self.test_Hswish, Y),
             # "Interpolate": (self.test_Interpolate, Y),
+            "Le": (self.test_Le, Y),
+            "Les": (self.test_Les, Y),
             "LeakyRelu": (self.test_LeakyRelu, Y),
             "Lenet": (self.test_Lenet, Y),
+            "Lt": (self.test_Lt, Y),
+            "Lts": (self.test_Lts, Y),
             "MatMul": (self.test_MatMul, Y),
             "Max": (self.test_Max, Y),
             "Maxpool": (self.test_Maxpool, Y),
             "Min": (self.test_Min, Y),
             "Mish": (self.test_Mish, Y),
             "Mul": (self.test_Mul, Y),
+            "Ne": (self.test_Ne, Y),
+            "Nes": (self.test_Nes, Y),
             "Permute": (self.test_Permute, Y),
             "Relu": (self.test_Relu, Y),
             "Repeat": (self.test_Repeat, Y),
@@ -199,6 +214,31 @@ class TPULANG_IR_TESTER(object):
                             out_dtype=out_dtype)
         return conv
 
+    def conv3d_op(self,
+                x,
+                kshape,
+                stride,
+                pad=None,
+                group=1,
+                dilation=[1, 1, 1],
+                zp=[None, None],
+                dtype="float32"):
+        oc = kshape[0]
+        weight = self.coeff_tensor(kshape, dtype)
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        bias = self.coeff_tensor(oc, out_dtype)
+        deconv = tpul.conv3d_v2(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            input_zp=zp[0],
+                            weight_zp=zp[1],
+                            out_dtype=out_dtype)
+        return deconv
+
     def test_Conv2d(self, case_name):
         """Conv 2D"""
 
@@ -230,6 +270,143 @@ class TPULANG_IR_TESTER(object):
                           pad=[1, 1, 1, 1],
                           dtype="int8",
                           zp=[5, -8])
+
+    def test_Conv3d(self, case_name):
+        """Conv 3D"""
+
+        @tpulang
+        def _test_convolution(input_shape: List[int],
+                              kernel_shape: List[int],
+                              stride: List[int] = [1, 1, 1],
+                              dilation: List[int] = [1, 1, 1],
+                              pad: List[int] = None,
+                              group=1,
+                              dtype="float32",
+                              zp: List[int] = [None, None]):
+            x_data = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+            conv = self.conv3d_op(x,
+                                kernel_shape,
+                                stride,
+                                pad,
+                                group=group,
+                                dilation=dilation,
+                                zp=zp,
+                                dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [conv], False, 2)
+
+        _test_convolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
+
+ #######################################################################
+    # Deconvolution
+    # ------------
+    def deconv_op(self,
+                x,
+                kshape,
+                stride,
+                pad=None,
+                group=1,
+                dilation=[1, 1],
+                zp=[None, None],
+                dtype="float32"):
+        oc = kshape[0]
+        weight = self.coeff_tensor(kshape, dtype)
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        bias = self.coeff_tensor(oc, out_dtype)
+        deconv = tpul.deconv_v2(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            input_zp=zp[0],
+                            weight_zp=zp[1],
+                            out_dtype=out_dtype)
+        return deconv
+
+    def deconv3d_op(self,
+                x,
+                kshape,
+                stride,
+                pad=None,
+                group=1,
+                dilation=[1, 1, 1],
+                zp=[None, None],
+                dtype="float32"):
+        oc = kshape[0]
+        weight = self.coeff_tensor(kshape, dtype)
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        bias = self.coeff_tensor(oc, out_dtype)
+        deconv = tpul.deconv3d_v2(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            input_zp=zp[0],
+                            weight_zp=zp[1],
+                            out_dtype=out_dtype)
+        return deconv
+
+    def test_Deconv2d(self, case_name):
+        """Deconv 2D"""
+
+        @tpulang
+        def _test_deconvolution(input_shape: List[int],
+                              kernel_shape: List[int],
+                              stride: List[int] = [1, 1],
+                              dilation: List[int] = [1, 1],
+                              pad: List[int] = None,
+                              group=1,
+                              dtype="float32",
+                              zp: List[int] = [None, None]):
+            x_data = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+            deconv = self.deconv_op(x,
+                                kernel_shape,
+                                stride,
+                                pad,
+                                group=group,
+                                dilation=dilation,
+                                zp=zp,
+                                dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [deconv], False, 2)
+
+        _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
+        _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
+        _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3],
+                          stride=[2, 2],
+                          pad=[1, 1, 1, 1],
+                          dtype="int8",
+                          zp=[5, -8])
+
+    def test_Deconv3d(self, case_name):
+        """Deconv 3D"""
+
+        @tpulang
+        def _test_deconvolution(input_shape: List[int],
+                              kernel_shape: List[int],
+                              stride: List[int] = [1, 1, 1],
+                              dilation: List[int] = [1, 1, 1],
+                              pad: List[int] = None,
+                              group=1,
+                              dtype="float32",
+                              zp: List[int] = [None, None]):
+            x_data = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+            conv = self.deconv3d_op(x,
+                                kernel_shape,
+                                stride,
+                                pad,
+                                group=group,
+                                dilation=dilation,
+                                zp=zp,
+                                dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [conv], False, 2)
+
+        _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
 
     #######################################################################
     # HModel
@@ -1332,6 +1509,258 @@ class TPULANG_IR_TESTER(object):
             tpul.compile(self.unique_name(case_name), [x], [repeat], False, 2)
 
         _test_repeat([1, 3, 28, 28])
+
+    #######################################################################
+    # Gt
+    # ------------
+    def gt_op(self, input_0, input_1):
+        gt = tpul.gt(input_0, input_1)
+        return gt
+
+    def test_Gt(self, case_name):
+        """Gt"""
+
+        @tpulang
+        def _test_gt(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            gt = self.gt_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [gt], False, 2)
+
+        _test_gt([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_gt([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Lt
+    # ------------
+    def lt_op(self, input_0, input_1):
+        lt = tpul.lt(input_0, input_1)
+        return lt
+
+    def test_Lt(self, case_name):
+        """Lt"""
+
+        @tpulang
+        def _test_lt(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            lt = self.lt_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [lt], False, 2)
+
+        _test_lt([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_lt([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Ge
+    # ------------
+    def ge_op(self, input_0, input_1):
+        ge = tpul.ge(input_0, input_1)
+        return ge
+
+    def test_Ge(self, case_name):
+        """Ge"""
+
+        @tpulang
+        def _test_ge(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            ge = self.ge_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [ge], False, 2)
+
+        _test_ge([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_ge([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Le
+    # ------------
+    def le_op(self, input_0, input_1):
+        le = tpul.le(input_0, input_1)
+        return le
+
+    def test_Le(self, case_name):
+        """Le"""
+
+        @tpulang
+        def _test_le(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            le = self.le_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [le], False, 2)
+
+        _test_le([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_le([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Eq
+    # ------------
+    def eq_op(self, input_0, input_1):
+        eq = tpul.eq(input_0, input_1)
+        return eq
+
+    def test_Eq(self, case_name):
+        """Eq"""
+
+        @tpulang
+        def _test_eq(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            eq = self.eq_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [eq], False, 2)
+
+        _test_eq([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_eq([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Ne
+    # ------------
+    def ne_op(self, input_0, input_1):
+        ne = tpul.ne(input_0, input_1)
+        return ne
+
+    def test_Ne(self, case_name):
+        """Ne"""
+
+        @tpulang
+        def _test_ne(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            ne = self.ne_op(x, y)
+            tpul.compile(self.unique_name(case_name), [x, y], [ne], False, 2)
+
+        _test_ne([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_ne([1, 3, 32, 32], [1, 3, 32, 32])
+
+    #######################################################################
+    # Gts
+    # ------------
+    def gts_op(self, input_0):
+        gts = tpul.gts(input_0, 0)
+        return gts
+
+    def test_Gts(self, case_name):
+        """Gts"""
+
+        @tpulang
+        def _test_gts(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            gts = self.gts_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [gts], False, 2)
+
+        _test_gts([1, 3, 28, 28])
+        _test_gts([1, 3, 32, 32])
+
+    #######################################################################
+    # Lts
+    # ------------
+    def lts_op(self, input_0):
+        lts = tpul.lts(input_0, 0)
+        return lts
+
+    def test_Lts(self, case_name):
+        """Lts"""
+
+        @tpulang
+        def _test_lts(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            lts = self.lts_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [lts], False, 2)
+
+        _test_lts([1, 3, 28, 28])
+        _test_lts([1, 3, 32, 32])
+
+    #######################################################################
+    # Ges
+    # ------------
+    def ges_op(self, input_0):
+        ges = tpul.ges(input_0, 0)
+        return ges
+
+    def test_Ges(self, case_name):
+        """Ges"""
+
+        @tpulang
+        def _test_ges(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            ges = self.ges_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [ges], False, 2)
+
+        _test_ges([1, 3, 28, 28])
+        _test_ges([1, 3, 32, 32])
+
+    #######################################################################
+    # Les
+    # ------------
+    def les_op(self, input_0):
+        les = tpul.les(input_0, 0)
+        return les
+
+    def test_Les(self, case_name):
+        """Les"""
+
+        @tpulang
+        def _test_les(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            les = self.les_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [les], False, 2)
+
+        _test_les([1, 3, 28, 28])
+        _test_les([1, 3, 32, 32])
+
+    #######################################################################
+    # Eqs
+    # ------------
+    def eqs_op(self, input_0):
+        eqs = tpul.eqs(input_0, 0)
+        return eqs
+
+    def test_Eqs(self, case_name):
+        """Eqs"""
+
+        @tpulang
+        def _test_eqs(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            eqs = self.eqs_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [eqs], False, 2)
+
+        _test_eqs([1, 3, 28, 28])
+        _test_eqs([1, 3, 32, 32])
+
+    #######################################################################
+    # Nes
+    # ------------
+    def nes_op(self, input_0):
+        nes = tpul.nes(input_0, 0)
+        return nes
+
+    def test_Nes(self, case_name):
+        """Nes"""
+
+        @tpulang
+        def _test_nes(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            nes = self.nes_op(x)
+            tpul.compile(self.unique_name(case_name), [x], [nes], False, 2)
+
+        _test_nes([1, 3, 28, 28])
+        _test_nes([1, 3, 32, 32])
 
     # #######################################################################
     # # Interpolate
