@@ -392,7 +392,6 @@ typedef struct conv_global_spec {
    */
   int32_t merge_coeff;
   int32_t weight_is_tensor;
-  int32_t using_multicore;
 } conv_global_spec_t;
 
 typedef struct conv_local_spec {
