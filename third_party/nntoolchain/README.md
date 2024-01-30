@@ -1,7 +1,7 @@
 **注意：所有提交到代码库的第三方依赖库都必须是release版本的**
 
 ## TPU1684 2023-11-24
-sha256: c8b990be7fa980e995b3d5c43a4cf41b5ca74047
+sha256: a809f267eabd9aa477646a89db5ce53542dc0062
 
 ``` bash
 cd  nntoolchain/net_compiler/
