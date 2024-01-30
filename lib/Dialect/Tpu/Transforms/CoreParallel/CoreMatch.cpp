@@ -299,7 +299,7 @@ struct CommonMatch : public RewritePattern {
       return failure();
     }
     if (isa<ReturnOp, top::NoneOp, FuncOp, tpu::YieldOp, top::YieldOp,
-            top::WeightOp>(op)) {
+            top::WeightOp, tpu::Conv2DOp>(op)) {
       return failure();
     }
 
@@ -325,7 +325,7 @@ struct CommonMatch : public RewritePattern {
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
         // inPlace op
-        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::Conv2DOp>(left_op)) {
           continue;
         }
         if (find_f(same_ops, left_op)) {
