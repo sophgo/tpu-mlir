@@ -270,7 +270,10 @@ static void common_match(PatternRewriter &rewriter,
         break;
       }
       auto next_op = *op->getUsers().begin();
-      if (isa<ReturnOp>(next_op)) {
+      // Disable the in-place operation since it complicates the process of
+      // address assignment. TODO: refine address assignment.
+      if (isa<ReturnOp, tpu::ReshapeOp, tpu::ConcatOp, tpu::IdentityOp>(
+              next_op)) {
         break;
       }
       next_ops.push_back(next_op);
