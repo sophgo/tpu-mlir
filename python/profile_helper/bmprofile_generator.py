@@ -978,7 +978,7 @@ class BMProfileGenerator:
             tiu_freq = 1.0 / BDPeriod # MHz
             peak_tops = 32
             layer_type = layer_type.lower()
-            if layer_type in ["conv", "conv2d", "matmul", "batch_matmul", "deconv", "attention"]:
+            if layer_type in ["conv", "conv2d", "matmul", "batch_matmul", "deconv", "attention", "a16matmul"]:
                 if "INT8" in dtypes or "UINT8" in dtypes:
                     peak_tops = 32 * tiu_freq / 1000
                 elif ("FP16" in dtypes or "BF16" in dtypes or "INT16" in dtypes or "UINT16" in dtypes):
@@ -1329,6 +1329,7 @@ class BMProfileGenerator:
             "cast": "Cast",
             "lut": "Lut",
             "gather": "Gather",
+            "a16matmul": "A16MatMul"
         }
         total_weight_size = 0
         total_s2l_bytes = 0
