@@ -165,11 +165,6 @@ class FinalMlirIndexPlugin(TdbPlugin):
             else:
                 raise RuntimeError("Not Supported CMDType!")
 
-        # debug options
-        # pd.set_option("display.max_rows", None)
-        # pd.set_option("display.max_columns", None)
-        # pd.set_option("display.expand_frame_repr", False)
-
         # when cmd_point reach point
         # it means the cmd in cmditer[point-1] has been executed
         # data-checker need to compare loc operands before execute bf_point

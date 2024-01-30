@@ -14,6 +14,7 @@ from typing import Tuple, Dict, List
 import os
 import json
 import zipfile
+import pandas as pd
 
 from rich import get_console
 from rich.console import Group
@@ -350,6 +351,21 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self.tdb.message(self.failed_summary())
         else:
             self.tdb.error(f"not support summary mode {arg}")
+
+    def dump_dataframe(self):
+        # debug options
+        pd.set_option("display.max_rows", None)
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.expand_frame_repr", False)
+
+        data_str = self.index.index_df.to_string()
+        with open("./dumped_dataframe.txt", "w+", encoding="utf-8") as f:
+            f.write(data_str)
+
+        # reset debug option
+        pd.reset_option("display.max_rows")
+        pd.reset_option("display.max_columns")
+        pd.reset_option("display.expand_frame_repr")
 
     def do_data(self, arg: str):
         if arg == "":
