@@ -159,14 +159,15 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
 LogicalResult
 PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
                                        PatternRewriter &rewriter) const {
+
+  if (!op.getOutput().hasOneUse()) {
+    return failure();
+  }
   auto nextOp = *op.getOutput().getUsers().begin();
   if (!nextOp->hasOneUse()) {
     return failure();
   }
 
-  if (!op.getOutput().hasOneUse()) {
-    return failure();
-  }
 
   // NOTE: if remove this constrain, new_bi_out_shape should be dynamicly
   // calculated
