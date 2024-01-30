@@ -258,7 +258,7 @@ void ConvertTopToTpu::match_eva2_mhsa(std::vector<Operation *> &mhsa) {
       if (!convergence_with_sm_matmul(lnop, addop, sm_cnt, mm_cnt, trip_mm)) {
         return;
       }
-      if (sm_cnt != 8 || mm_cnt != 29 || trip_mm == 0) // multi pass in tree
+      if (sm_cnt != 8 || !((mm_cnt == 29 && trip_mm > 0) || (mm_cnt == 30 && trip_mm == 0))) // multi pass in tree
         return;
       mhsa.push_back(op);
     }
