@@ -300,6 +300,7 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
+    
     if (module::isBM1688())
       return failure();
     auto filter = op.getRight();
