@@ -10,6 +10,8 @@ source build.sh RELEASE
 
 # set mlir_version
 export mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
+export mlir_commit_id="$(git rev-parse --short HEAD)"
+export mlir_commit_date="$(grep BUILD_TIME ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
 
 # collect tpu_mlir core files
 export release_archive="./tpu_mlir"
