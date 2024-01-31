@@ -195,16 +195,24 @@ int getNumSubModule();
 std::shared_ptr<std::vector<ModuleOp>> getAllModules();
 void setSubModuleId(ModuleOp submodule, int64_t device_id, int64_t step);
 void getSubModuleId(ModuleOp submodule, int64_t &device_id, int64_t &step);
+
 int64_t getNeuronSize(ModuleOp submodule);
 void setNeuronSize(ModuleOp submodule, int64_t size);
 int64_t getNeuronAddr(ModuleOp submodule);
 void setNeuronAddr(ModuleOp submodule, int64_t addr);
+
+int64_t getIOSize(ModuleOp submodule);
+void setIOSize(ModuleOp submodule, int64_t size);
+int64_t getIOAddr(ModuleOp submodule);
+void setIOAddr(ModuleOp submodule, int64_t addr);
+
 int64_t getCoeffSize(ModuleOp submodule);
 void setCoeffSize(ModuleOp submodule, int64_t size);
-int64_t getGmemPrivateSize(ModuleOp submodule);
-void setGmemPrivateSize(ModuleOp submodule, int64_t size);
 int64_t getCoeffAddr(ModuleOp submodule);
 void setCoeffAddr(ModuleOp submodule, int64_t addr);
+
+int64_t getGmemPrivateSize(ModuleOp submodule);
+void setGmemPrivateSize(ModuleOp submodule, int64_t size);
 //-----------------------------------------------------------------
 // Helper Functions for op translate
 //-----------------------------------------------------------------

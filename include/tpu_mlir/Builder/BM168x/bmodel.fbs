@@ -145,6 +145,10 @@ table NetParameter {
 
     // The net may be deployed on multi cores
     core_num: uint32 (id: 16);
+
+    // io address alone
+    io_addr:uint64 (id: 17);
+    io_size:uint64 (id: 18);
 }
 
 table Cascade {

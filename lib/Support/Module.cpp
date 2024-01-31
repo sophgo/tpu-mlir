@@ -24,6 +24,8 @@ struct Attr {
   static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
   static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
   static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
+  static constexpr llvm::StringRef IO_ADDR = "module.io_addr";
+  static constexpr llvm::StringRef IO_SIZE = "module.io_size";
   static constexpr llvm::StringRef GMEM_PRIVATE_SIZE = "module.private_size";
   static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
   static constexpr llvm::StringRef MODE = "module.mode";
@@ -911,6 +913,28 @@ int64_t getNeuronAddr(ModuleOp s) {
 
 void setNeuronAddr(ModuleOp s, int64_t addr) {
   s->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
+}
+
+int64_t getIOSize(ModuleOp s) {
+  if (s->hasAttrOfType<IntegerAttr>(Attr::IO_SIZE)) {
+    return s->getAttrOfType<IntegerAttr>(Attr::IO_SIZE).getInt();
+  }
+  return 0;
+}
+
+void setIOSize(ModuleOp s, int64_t size) {
+  s->setAttr(Attr::IO_SIZE, Builder(ctx).getI64IntegerAttr(size));
+}
+
+int64_t getIOAddr(ModuleOp s) {
+  if (s->hasAttrOfType<IntegerAttr>(Attr::IO_ADDR)) {
+    return s->getAttrOfType<IntegerAttr>(Attr::IO_ADDR).getInt();
+  }
+  return 0;
+}
+
+void setIOAddr(ModuleOp s, int64_t addr) {
+  s->setAttr(Attr::IO_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
 
 llvm::StringRef getPostprocess() {
