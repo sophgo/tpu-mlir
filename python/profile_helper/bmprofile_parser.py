@@ -610,6 +610,9 @@ class BMProfileParser:
     def __base_read_command_data(self, base, offset, engine_type, command_num, command_parser):
         basename = "cmd_%x_%d.dat"
         command_filename = os.path.join(self.in_dir, basename%(base, engine_type.value))
+        if not os.path.isfile(command_filename):
+            basename = "cmd_%x_0_%d.dat"
+            command_filename = os.path.join(self.in_dir, basename%(base, engine_type.value))
         byte_len = command_parser.command_byte_len()
         if not os.path.isfile(command_filename):
             return []
