@@ -106,6 +106,9 @@ static void WeightFolder(Operation *op) {
   if (module::isAllWeight(op) == false) {
     return;
   }
+  if (isa<top::ExpandOp>(op)) {
+    return;
+  }
   auto infer = dyn_cast<InferenceInterface>(op);
   if (!infer) {
     return;

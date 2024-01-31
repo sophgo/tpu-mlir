@@ -38,10 +38,20 @@ void tpu::ScatterElementsOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ScatterElementsOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(scatter_elements_global_spec_t);
+  scatter_elements_global_spec_t param{0};
+  auto data_shape = module::getShape(getInput());
+  auto indices_shape = module::getShape(getIndices());
+  auto updates_shape = module::getShape(getUpdates());
+  param.data_dims = data_shape.size();
+  param.indices_dims = indices_shape.size();
+  param.updates_dims = updates_shape.size();
+  param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
+  param.axis = getAxis();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::ScatterElementsOp::get_fw_type_bm1684x() {
-  llvm_unreachable("Not Implemented");
-  return FW_LAYER_UNKNOWN;
+  return FW_BMNET_SCATTERELEMENTS;
 }

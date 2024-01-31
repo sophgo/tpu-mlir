@@ -2520,11 +2520,6 @@ class OnnxConverter(BaseConverter):
         values = self.getOp(onnx_node.inputs[2])
         axis = onnx_node.attrs.get("axis",-1)
         assert (axis == -1)
-        ind_dims = list(self.getWeight(onnx_node.inputs[0]).shape)
-        ind_dims.extend(self.getWeight(onnx_node.inputs[1]))
-        ind_unsq = list(self.getWeight(onnx_node.inputs[0]).shape)
-        ind_unsq.extend([1])
-        padding_shape = np.array(ind_dims).astype(np.int64)
         output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         min_value = 0
         max_value = 0
@@ -2558,26 +2553,60 @@ class OnnxConverter(BaseConverter):
                                     mode=StringAttr.get("ReduceMax"),
                                     loc=self.get_loc(output_name + "_max"),
                                     ip=self.mlir.insert_point).output
-        input_data = top.ExpandOp(self.unranked_type,
+        if (self.isWeight(indices)):
+            ind_dims = list(self.getWeight(onnx_node.inputs[0]).shape)
+            ind_unsq = list(self.getWeight(onnx_node.inputs[0]).shape)
+            ind_dims.extend(self.getWeight(onnx_node.inputs[1]))
+            ind_unsq.extend([1])
+            padding_shape = np.array(ind_dims).astype(np.int64)
+            input_data = top.ExpandOp(self.unranked_type,
                                 min_value,
                                 shape=padding_shape,
                                 loc=self.get_loc(output_name + "_expandmin"),
                                 ip=self.mlir.insert_point).output
-        updates = top.ExpandOp(self.unranked_type,
+            updates = top.ExpandOp(self.unranked_type,
                                 max_value,
                                 shape=ind_unsq,
+                                loc=self.get_loc(output_name + "_expandmax"),
+                                ip=self.mlir.insert_point).output
+        else:
+            depth_max = self.getWeightOp(onnx_node.inputs[1])
+            depth_min = np.array([1], dtype=np.int64)
+            depth_min_name = output_name + "_undates_concat_depth_min"
+            self.addWeight(depth_min_name, depth_min)
+            shape_op = top.ShapeOp(self.unranked_type,
+                             indices,
+                             start=0,
+                             loc=self.get_loc(output_name + "_shape"),
+                             ip=self.mlir.insert_point).output
+            padding_shape = top.ConcatOp(self.unranked_type, [shape_op, depth_max],
+                                axis=-1,
+                                loc=self.get_loc(output_name + "_indata_concat"),
+                                ip=self.mlir.insert_point).output
+            ind_unsq = top.ConcatOp(self.unranked_type, [shape_op, self.getWeightOp(depth_min_name)],
+                                axis=-1,
+                                loc=self.get_loc(output_name + "_undates_concat"),
+                                ip=self.mlir.insert_point).output
+            input_data = top.ExpandOp(self.unranked_type,
+                                min_value,
+                                shapeT=padding_shape,
+                                loc=self.get_loc(output_name + "_expandmin"),
+                                ip=self.mlir.insert_point).output
+            updates = top.ExpandOp(self.unranked_type,
+                                max_value,
+                                shapeT=ind_unsq,
                                 loc=self.get_loc(output_name + "_expandmax"),
                                 ip=self.mlir.insert_point).output
         indices_unsq = top.UnsqueezeOp(self.unranked_type,
                                 indices,
                                 loc=self.get_loc(output_name + "_indices_unsqeeze"),
                                 ip=self.mlir.insert_point,
-                                axes=[1]).output
+                                axes=[-1]).output
         new_op = top.ScatterElementsOp(self.unranked_type,
                                 input_data,
                                 indices_unsq,
                                 updates,
-                                axis=1,
+                                axis=-1,
                                 loc=self.get_loc(output_name + "_scatter_elements"),
                                 ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
