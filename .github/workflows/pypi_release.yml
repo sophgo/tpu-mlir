@@ -72,5 +72,8 @@ jobs:
             ./TPU-MLIR_Technical_Reference_Manual.pdf
             ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
+      - name: Delete .tar.gz file
+        run: rm ./dist/*.tar.gz
+
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
