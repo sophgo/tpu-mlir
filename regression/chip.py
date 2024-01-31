@@ -33,12 +33,13 @@ multi_core_info = {
 }
 
 '''
-    basic_model_list is for each commit test
-    full_model_list is for daily test
+    basic_model_list is for each commit test (int8_sym only)
+    full_model_list is for daily test (all quant mode)
 
     Note:
         1. suffix: _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
         2. order of chips in model list should keep the same as in chip_support
+        3. disable a certain quant mode in config file if needed
 '''
 
 ######################################
@@ -61,14 +62,14 @@ basic_model_list = {
 full_model_list = {
     # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     ######## onnx ###############
-    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 int8_sym problem
+    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 int8_sym has problem
     "blazeface":                  (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N),
     "densenet121-12":             (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
     "densenet201":                (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     "ecanet50":                   (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "efficientdet-d0":            (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "efficientnet":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
+    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 f16, bf16 has problem
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
@@ -167,6 +168,6 @@ full_multi_core_model_list = {
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
     "pp_yoloe":                   (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
-    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
+    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      N), # sg2260 f16, b16 has problem
     "pp_ocr_cls":                 (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
 }
