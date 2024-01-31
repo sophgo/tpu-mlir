@@ -12,7 +12,22 @@ foreach(op_name ${REGSTERED_OP_NAMES})
         "IMPL_CUSTOM_API_GLB\(" ${op_name} "\)\n"
     )
 endforeach()
+foreach(op_name ${REGSTERED_GLOBAL_BFSZ_NAMES})
+    file(APPEND ${BACKEND_API_FILE}
+        "IMPL_CUSTOM_API_GLB_BFSZ\(" ${op_name} "\)\n"
+    )
+endforeach()
 file(APPEND ${BACKEND_API_FILE}
     "\n"
-    "// local backend api functions"
+    "// local backend api functions\n"
 )
+foreach(op_name ${REGSTERED_LOCAL_OP_NAMES})
+    file(APPEND ${BACKEND_API_FILE}
+        "IMPL_CUSTOM_API_LOC\(" ${op_name} "\)\n"
+    )
+endforeach()
+foreach(op_name ${REGSTERED_LOCAL_BFSZ_NAMES})
+    file(APPEND ${BACKEND_API_FILE}
+        "IMPL_CUSTOM_API_LOC_BFSZ\(" ${op_name} "\)\n"
+    )
+endforeach()

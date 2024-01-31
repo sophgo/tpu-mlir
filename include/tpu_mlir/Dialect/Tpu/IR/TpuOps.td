@@ -2989,8 +2989,10 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
   }];
 }
 
-def Tpu_CustomOp: Tpu_Op<"Custom",
-  [DeclareOpInterfaceMethods<TypeInterface>]> {
+def Tpu_CustomOp: Tpu_Op<"Custom", [
+  DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "AllowDataSplit"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Custom operator";
   let description = [{
     Custom operator
@@ -2998,11 +3000,13 @@ def Tpu_CustomOp: Tpu_Op<"Custom",
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
+    AnyTensorOrNone:$buffer,
     StrAttr:$name,
-    DictArrayAttr:$params
+    DictArrayAttr:$params,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
     );
 
-  let results = (outs Variadic<AnyTensor>:$output);
+  let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
 def Tpu_Weight2ActivationOp: Tpu_Op<"Weight2Activation"> {

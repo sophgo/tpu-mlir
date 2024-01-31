@@ -22,7 +22,7 @@ class TestTPULangCustom(unittest.TestCase):
         # os.system('rm -r tmp')
     def compile(self, name:str, inputs:list, outputs:list, dtype:str):
         self.assertTrue(dtype in ('float32', 'float16'), "Unknown dtype: {}".format(dtype))
-        tpul.compile(name, inputs, outputs, has_custom=True)
+        tpul.compile(name, inputs, outputs)
         deploy_cmd = "model_deploy.py --mlir {}.mlir --model {}.bmodel ".format(name, name)
         deploy_cmd += "--quantize {} --chip {}".format(get_dtype_alisas(dtype), self.chip)
         self.assertTrue(os.system(deploy_cmd) == 0, "Deploy fail")

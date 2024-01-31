@@ -93,6 +93,15 @@ namespace backend {
 #define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)
 #define CAST_CPU_FUNCTION(name) dl_##name = CpuCastToFPtr<name>(#name)
 
+typedef enum {
+  PLUGIN_FORCEDYNAMICRUN,
+  PLUGIN_LOCALGENSUPPORT,
+  PLUGIN_ALLOWDATASPLIT,
+  PLUGIN_BACKWARDH,
+  PLUGIN_BACKWARDW,
+  PLUGIN_INFERENCE,
+} kCustomPluginTypes;
+
 class BM168x : public Arch {
 
 public:
@@ -121,6 +130,16 @@ public:
   static void call_local_custom_func(const char *symbolName, void *params,
                                      int param_size, void *info, void *input,
                                      void *output);
+  static int64_t call_global_bfsz_custom_func(const char *symbolName, void *params,
+                                              int param_size, void *input,
+                                              void *output);
+  static int call_local_bfsz_custom_func(const char *symbolName, void *params,
+                                         int param_size, void *info, void *input,
+                                         void *output);
+  static void call_custom_plugin_func(kCustomPluginTypes plugin_type, void* ret,
+                                      const char *symbolName,
+                                      void *params, int param_size,
+                                      void* args);
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);

@@ -27,25 +27,26 @@ def conv_op(x,
     weight = coeff_tensor(kshape, dtype)
     out_dtype = dtype if dtype == 'float32' else 'int32'
     bias = coeff_tensor(oc, out_dtype)
-    conv = tpul.conv_v2(x,
-                        weight,
-                        bias=bias,
-                        stride=stride,
-                        pad=pad,
-                        dilation=dilation,
-                        group=group,
-                        input_zp=zp[0],
-                        weight_zp=zp[1],
-                        out_dtype=out_dtype)
+    conv = tpul.conv(x,
+                    weight,
+                    bias=bias,
+                    stride=stride,
+                    pad=pad,
+                    dilation=dilation,
+                    group=group,
+                    out_dtype=out_dtype)
     return conv
 
 def abs_add_op(x, b, dtype="float32"):
     return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
 
+def crop_op(x, dtype="float32"):
+    return my_tpulang_layer.crop.tpulang([x], 0, 0, 3, 3, dtype)[0]
+
 def model_def(x, flag: int):
     if flag & 0b1:
-        custom = abs_add_op(x, 1.2)
-    conv1 = conv_op(custom if flag & 0b1 else x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
+        x = abs_add_op(x, 1.2)
+    conv1 = conv_op(x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
     relu1 = tpul.relu(conv1)
     conv2 = conv_op(relu1, [4, 4, 3, 3], [2, 2], [2, 2, 2, 2])
     if flag & 0b10:
@@ -60,21 +61,26 @@ def model_def(x, flag: int):
 def gen_name(flag: int):
     return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else "mix"
 
-def compile_model(flag: int):
+def compile_model(flag: int, chip: str, dynamic: bool):
     shape = [4, 32, 64, 48]
     x_data = np.random.random(shape).astype(np.float32)
     x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
     y = model_def(x, flag)
-    tpul.compile("model_def_{}".format(gen_name(flag)), [x], [y], has_custom=True)
-    deploy_cmd = "model_deploy.py --mlir model_def_{}.mlir --model model_{}.bmodel " \
-                 "--quantize f32 --chip BM1684X".format(gen_name(flag), gen_name(flag))
-    assert(os.system(deploy_cmd) == 0)
+    postfix = "dyn" if dynamic else "static"
+    tpul.compile("model_def_{}_{}".format(gen_name(flag), postfix), [x], [y], dynamic=dynamic)
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--chip", default="bm1684x", type=str,
+                        choices=['bm1684x', 'bm1688'],
+                        help="chip platform name")
+    parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
+    args = parser.parse_args()
     os.makedirs("tmp", exist_ok=True)
     os.chdir("tmp")
     for flag in (0b1, 0b10, 0b100, 0b111):
-        tpul.init("BM1684X")
-        print(">>> flag = {}\n".format(flag))
-        compile_model(flag)
+        tpul.init(args.chip.upper())
+        print("--- model_def_{} ---".format(gen_name(flag)))
+        compile_model(flag, args.chip.upper(), args.dynamic)
         tpul.deinit()

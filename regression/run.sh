@@ -5,6 +5,7 @@ pip list
 if [ "$1" = "op" ]; then
     echo "::RUN operation test."
     source $PROJECT_ROOT/third_party/customlayer/envsetup.sh
+    rebuild_custom_plugin
     rebuild_custom_backend
     rebuild_custom_firmware_cmodel bm1684x
     rebuild_custom_firmware_cmodel bm1688

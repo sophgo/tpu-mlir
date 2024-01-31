@@ -2,8 +2,8 @@
 #include "tpu_impl_custom_ops.h"
 #include "param_parser.h"
 
-// shape infer function
-void shape_infer_crop(
+// type infer function
+void type_infer_crop(
     const global_tensor_spec_t *input,
     global_tensor_spec_t *output,
     const void *param) {
