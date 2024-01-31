@@ -116,6 +116,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   auto coeff_size = module::getCoeffSize(s);
   auto neuron_addr = module::getNeuronAddr(s);
   auto neuron_size = module::getNeuronSize(s);
+  auto io_addr = module::getIOAddr(s);
+  auto io_size = module::getIOSize(s);
 
   auto &builder = model_gen->Builder();
   // if tensor not in device 0, will be hidden
@@ -216,6 +218,9 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
       npb.add_core_num(module::getCoreNum());
     }
   }
+  // io alone
+  npb.add_io_addr(io_addr);
+  npb.add_io_size(io_size);
 
   if (embed_debug_info) {
     auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {

@@ -53,6 +53,25 @@ bool valueIsRetrun(Value value) {
   return false;
 }
 
+static int64_t getIOLimit(ModuleOp m) {
+  auto main = module::getMainFuncOp(m);
+  int64_t limit = 0;
+  std::vector<Value> io_v;
+  main.walk([&](top::InputOp op) { io_v.push_back(op.getOutput()); });
+  auto retOp = main.back().getTerminator();
+  for (auto v : retOp->getResults()) {
+    io_v.push_back(v);
+  }
+  for (auto v : io_v) {
+    auto l = align_up(module::getAddress(v) + module::getBytes(v),
+                      BM168x::ALIGNMENT);
+    if (l > limit) {
+      limit = l;
+    }
+  }
+  return limit;
+}
+
 std::map<ValueInfo, int64_t>
 L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   if (!module::isSG2260Family())
@@ -236,8 +255,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   }
 
   // merge l2memMap to gaddrMap
-  for (auto &[k, v] : l2memMap)
+  for (auto &[k, v] : l2memMap) {
     gaddrMap[k] = v;
+  }
 
   // 1.set common op address
   std::vector<ValueInfo> group_ops;
@@ -361,7 +381,16 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       }
     });
   }
-
+  if (module::isIoAlone()) {
+    auto limit = getIOLimit(m);
+    module::setIOAddr(m, start_addr);
+    module::setIOSize(m, limit - start_addr);
+    start_addr = limit;
+    if (module::isBM1688() || module::isSG2260Family()) {
+      start_addr = BM168x::CTX_START_ADDR;
+      addr = (addr - limit) + start_addr;
+    }
+  }
   module::setNeuronAddr(m, start_addr);
   module::setNeuronSize(m, addr - start_addr);
 }
