@@ -6,7 +6,7 @@ setup(
     version=os.getenv("mlir_version").split("-")[0],
     author="SOPHGO",
     author_email="sales@sophgo.com",
-    description=f"Machine learning compiler based on MLIR for Sophgo TPU {os.getenv('mlir_version')}.",
+    description=f"Machine learning compiler based on MLIR for Sophgo TPU {os.getenv('mlir_version').split('-')[0]}-g{os.getenv('mlir_commit_id')}-{os.getenv('mlir_commit_date')}",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     license="2-Clause BSD",

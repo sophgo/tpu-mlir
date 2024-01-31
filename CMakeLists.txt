@@ -143,6 +143,7 @@ endif()
 
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
 set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "tpu-mlir version" FORCE)
+set(BUILD_TIME "${BUILD_TIME}" CACHE STRING "Build time" FORCE)
 message(STATUS "tpu-mlir version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
 #-------------------------------------------------------------------------------
