@@ -186,6 +186,7 @@ public:
     module::setState(module::State::TPU_DIVIDED);
   }
 
+  #include "tpu_mlir/Support/CustomLayer.h"
   static bool force_dynamic_run(Operation *op) {
     if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
             NmsOp>(op)) {
@@ -200,6 +201,21 @@ public:
       if (isa<tpu::GatherOp>(op)) {
         return true;
       }
+    } else if (isa<tpu::CustomOp>(op)) {
+      auto custom_op = dyn_cast<tpu::CustomOp>(op);
+      auto params = custom_op.getParams();
+      std::vector<custom_param_t> values;
+      values.push_back({0});
+      customOpProcessParam(params, values);
+      std::string op_name = custom_op.getName().str();
+      std::string api_name = "force_dynamic_run_" + op_name;
+      bool ret = false;
+      BM168x::call_custom_plugin_func(
+        kCustomPluginTypes::PLUGIN_FORCEDYNAMICRUN, &ret,
+        api_name.c_str(), values.data(),
+        values.size() * sizeof(custom_param_t),
+        nullptr);
+      return ret;
     }
     return false;
   }

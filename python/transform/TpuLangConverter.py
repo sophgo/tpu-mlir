@@ -57,7 +57,7 @@ def to_scalar(num):
         return decorate
     return wrapper
 
-def annotayion_check(func):
+def annotation_check(func):
 
     def __type_instance(type0, type1):
         if get_origin(type1) is Union:

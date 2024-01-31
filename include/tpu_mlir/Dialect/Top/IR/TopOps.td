@@ -2936,7 +2936,7 @@ def Top_CustomOp: Top_Op<"Custom"> {
     DictArrayAttr:$params
     );
 
-  let results = (outs Variadic<AnyTensor>:$output);
+  let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
 def Top_CeilOp : Top_Op<"Ceil"> {

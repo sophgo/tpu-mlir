@@ -987,6 +987,47 @@ public:
     return success();
   }
 };
+
+#include "tpu_mlir/Support/CustomLayer.h"
+class CustomGlobalBuffer : public OpRewritePattern<tpu::CustomOp> {
+public:
+  using OpRewritePattern<tpu::CustomOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::CustomOp customOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto op = customOp.getOperation();
+    auto input_spec = BM168x::get_input_spec(op);
+    auto output_spec = BM168x::get_output_spec(op);
+    // call backend api according to the custom op name
+    std::string op_name = customOp.getName().str();
+    std::string api_name = "backend_api_" + op_name + "_global_bfsz";
+    // parse param of the custom op
+    auto params = customOp.getParams();
+    std::vector<custom_param_t> values;
+    values.push_back({0});
+    customOpProcessParam(params, values);
+    int64_t buffer_size = BM168x::call_global_bfsz_custom_func(
+                            api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
+                            input_spec->data(), output_spec->data());
+
+    if (buffer_size > 0) {
+      std::vector<int64_t> buffer_shape = {buffer_size};
+      auto buffer_type = RankedTensorType::get(buffer_shape, rewriter.getI8Type());
+      OpBuilder builder(customOp->getContext());
+      builder.setInsertionPoint(customOp);
+      auto loc = module::getLocLike(customOp, "buffer");
+      auto buf_op = builder.create<tpu::BufferOp>(loc, buffer_type);
+      customOp.setOperand(customOp.getNumOperands() - 1, buf_op);
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
 } // namespace bm168x
 
 namespace tpu {
@@ -1018,7 +1059,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       NmsGlobalBuffer,
       YoloDetectionGlobalBuffer,
       DetectionOutputGlobalBuffer,
-      TopKGlobalBuffer
+      TopKGlobalBuffer,
+      CustomGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

@@ -15,8 +15,6 @@ typedef union {
 typedef struct {
   char     name[CUSTOM_LAYER_NAME_LEN + 1];
   int      param_size;
-  uint64_t buffer_addr;
-  int      buffer_size;
 } tpu_param_t;
 
 static void customOpProcessParam(const mlir::ArrayAttr &params, std::vector<custom_param_t> &values) {

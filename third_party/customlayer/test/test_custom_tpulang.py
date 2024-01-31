@@ -45,7 +45,7 @@ class CUSTOM_TPULANG_TESTER(object):
         # yapf: enable
 
         # no quantization when quant_mode == "f32"
-        self.support_quant_modes = ["f32", "f16", "bf16"] # "int8"
+        self.support_quant_modes = ["f32", "f16", "bf16"]
         self.support_asym = [False]
         self.model_file = ".bmodel"
         self.chip = chip.lower()
@@ -55,7 +55,7 @@ class CUSTOM_TPULANG_TESTER(object):
         self.num_core = num_core
         self.mode = mode.lower()
         if self.simple:
-            self.support_quant_modes = ["f16"] # "int8"
+            self.support_quant_modes = ["f16"]
             self.support_asym = [False]
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
@@ -89,33 +89,23 @@ class CUSTOM_TPULANG_TESTER(object):
             return True
         return False
 
+    def make_test_calibration_table(self, tensors, table_name, qmode=None):
+        # simple calibration table
+        with open(table_name, 'w') as f:
+            for name in tensors:
+                flatten_tensor = tensors[name].flatten()
+                max_val = max(flatten_tensor)
+                min_val = min(flatten_tensor)
+                if max_val == min_val:
+                    max_val = max_val + 0.01
+                t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
+                f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
+
     def compile_and_check(self, model_name, graph_ins, graph_outs, ref_data):
         # compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz
         model_name = model_name + ("_dyn" if self.dynamic else "_static")
-        tpul.compile(model_name, graph_ins, graph_outs, has_custom=True)
-        ref_output = f"{model_name}_ref_data.npz"
-        file_mark(ref_output)
-        np.savez(ref_output.replace(".npz", ""), **ref_data)
-        # deploy the model
-        deploy_cmd_base = f"model_deploy.py --mlir {model_name}.mlir "
         for mode in self.quant_modes:
-            bmodel_name = "{}.bmodel".format(model_name + "_" + mode)
-            deploy_cmd = deploy_cmd_base
-            deploy_cmd += "--model {} ".format(bmodel_name)
-            deploy_cmd += "--quantize {} " .format(mode.upper())
-            deploy_cmd += "--chip {} ".format(self.chip)
-            if self.dynamic:
-                deploy_cmd += "--dynamic"
-            print(">>>", deploy_cmd)
-            assert(os.system(deploy_cmd) == 0)
-            # do bmodel inference and compare with the origin output
-            bmodel_output = f"{model_name}_target_data.npz"
-            file_mark(bmodel_output)
-            infer_cmd = "model_runner.py --input {}_in_f32.npz --model {} --output {}".format(model_name, bmodel_name, bmodel_output)
-            print(">>>", infer_cmd)
-            assert(os.system(infer_cmd) == 0)
-            cmp_cmd = f"npz_tool.py compare {bmodel_output} {ref_output}"
-            assert(os.system(cmp_cmd) == 0)
+            tpul.compile(model_name, graph_ins, graph_outs, mode=mode, refs=ref_data, dynamic=self.dynamic)
 
     ##################################
     # adding your operators here
@@ -135,7 +125,8 @@ class CUSTOM_TPULANG_TESTER(object):
         out_data = my_tpulang_layer.absAdd.native(x_data, b)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
-        ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("absadd", ins, outs, ref_data)
 
     def test_CeilAdd(self):
@@ -152,7 +143,7 @@ class CUSTOM_TPULANG_TESTER(object):
         out_data = my_tpulang_layer.ceilAdd.native(x_data, b)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
-        ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("ceiladd", ins, outs, ref_data)
 
     def test_SwapChannel(self):
@@ -168,7 +159,7 @@ class CUSTOM_TPULANG_TESTER(object):
         out_data = my_tpulang_layer.swapChannel.native(x_data)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
-        ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("swap_channel", ins, outs, ref_data)
 
     def test_Crop(self):
@@ -185,7 +176,7 @@ class CUSTOM_TPULANG_TESTER(object):
         out_data = my_tpulang_layer.crop.native(x_data, hoffset, woffset, hnew, wnew)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
-        ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("crop", ins, outs, ref_data)
 
 def test_one_case_in_all(tester: CUSTOM_TPULANG_TESTER, case, error_cases, success_cases):

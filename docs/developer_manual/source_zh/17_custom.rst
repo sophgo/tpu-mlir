@@ -38,20 +38,61 @@ TpuLang自定义算子添加
 
 .. include:: ./../../quick_start/source_zh/env_var.rst
 
+2. 前端准备
 
-2. 基于tpu-kernel编写后端算子
+  在文件 ${TPUC_ROOT}/customlayer/python/my_tpulang_layer.py 中调用TpuLang接口构建自定义算子swapChannel， 它只有一个输入和一个输出，且有一个属性order，是一个长度为3的整数列表：
 
-  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/tpu_impl_custom_ops.h 头文件中，声明global layer与local layer的自定义算子函数 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local (可选) ， 并在 ./src 下添加 tpu_impl_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
+   .. code-block:: python
 
-3. 定义算子参数结构体与编写算子调用接口
+      import transform.TpuLang as tpul
 
-  a. 在 ./src 目录下添加自定义算子函数的调用接口:
+      class swapChannel:
+          @staticmethod
+          def native(data):
+              return data[:, [2, 1, 0], :, :]
+          @staticmethod
+          def tpulang(inputs, dtype="float32"):
+              def shape_func(tensors_in:list):
+                  return [tensors_in[0].shape]
+              params = {"order": [2, 1, 0]}
+              outs = tpul.custom(
+                  tensors_in=inputs,
+                  shape_func=shape_func,
+                  # op_name should be consistent with the backend
+                  op_name="swapchannel",
+                  params=params,
+                  out_dtypes=[dtype])
+              return outs
 
-    void api_{op_name}_global 和 api_{op_name}_local (可选) (分别用于调用 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local)
+  在文件 ${TPUC_ROOT}/customlayer/test_if/unittest/test_swapchannel.py 中, 对自定义的swapChannel算子进行单元测试：
 
-    void shape_infer_{op_name} (从输入的形状和数据类型推理出输出的形状和数据类型)
+   .. code-block:: python
 
-  b. 同时，用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过 `custom_param_t` 数组的指针进行传递，其中，数组的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性，每个 `custom_param_t` 结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的 `custom_param_t` 成员变量中。参数的顺序与用户后续在调用tpulang接口（第6步）时提供的参数顺序相同。 `custom_param_t` 结构体的定义如下：
+      import numpy as np
+      import unittest
+      from tpulang_custom_test_base import TestTPULangCustom
+      import transform.TpuLang as tpul
+      import my_tpulang_layer
+
+      class TestSwapChannel(TestTPULangCustom):
+          def _test(self, dtype):
+              shape = [4, 32, 36, 36]
+              self.data_in = np.random.random(shape).astype(dtype)
+              x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
+              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x],
+                    dtype=dtype)[0]
+              self.compile('SwapChannel', [x], [y], dtype)
+          def test_fp32(self):
+              self._test('float32')
+          def test_fp16(self):
+              self._test('float16')
+
+      if __name__ == '__main__':
+          unittest.main()
+
+3. 参数结构体解析
+
+  用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过 `custom_param_t` 数组的指针进行传递，其中，数组的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性，每个 `custom_param_t` 结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的 `custom_param_t` 成员变量中。参数的顺序与用户在调用tpulang接口时提供的参数顺序相同。 `custom_param_t` 结构体的定义如下：
 
   .. code-block:: c
 
@@ -63,8 +104,83 @@ TpuLang自定义算子添加
       float float_arr_t[16];
     } custom_param_t;
 
+4. 编译器补丁
 
-4. 注册自定义算子
+  有时候，需要对编译器进行修改，以对不同的自定义算子在不同参数下的编译行为进行控制，这时候就需要添加一些补丁。现时，已支持以下补丁函数(在文件夹 ./plugin中定义)：
+
+  a. 强制动态运行。在某些场合，如形状动态变化时，需要强制动态运行。补丁函数形式如下：
+
+  .. code-block:: c
+
+    bool force_dynamic_run_{op_name}(void* param, int param_size);
+
+  若不提供该函数，则即使在静态编译模式下，仍默认{op_name}对应的算子必须静态运行。
+
+  b. 是否支持与其他算子融合。补丁函数形式如下：
+
+  .. code-block:: c
+
+    bool local_gen_support_{op_name}(void* param, int param_size);
+
+  若不提供该函数，则默认{op_name}对应的算子不支持与其他算子融合。否则，需要在允许的参数情形下实现 `api_xxx_local`和 `api_xxx_local_bfsz`(可选)接口。
+
+  c. 在与其他算子融合时，是否允许对轴axis进行切割。补丁函数形式如下：
+
+  .. code-block:: c
+
+    bool allow_data_split_{op_name}(void* param, int param_size, int axis, group_type_t group_type);
+
+  若不提供该函数，则默认与其他算子融合时，{op_name}对应的算子允许对所有的轴进行切割。
+
+  d. 切片反向推导函数。补丁函数形式如下：
+
+  .. code-block:: c
+
+    bool backwardh_{op_name}(void* param, int param_size, int* in_idx, int* in_slice, int out_idx, int out_slice);
+
+    bool backwardw_{op_name}(void* param, int param_size, int* in_idx, int* in_slice, int out_idx, int out_slice);
+
+  其中，in_idx和in_slice分别表示指向该层输入张量切片的索引和大小的指针，out_idx和out_slice表示该层输出张量切片的索引索引和大小。若不提供该函数，则in_idx指向的数值与out_idx相同，in_slice指向的数值与out_slice相同。
+
+  e. 推理函数。此补丁函数用于TOP层和TPU层的数据比对，必须实现。补丁函数形式如下：
+
+  .. code-block:: c
+
+    void inference_absadd(void* param, int param_size, const int (*input_shapes)[MAX_SHAPE_DIMS],
+      const int* input_dims, const float** inputs, float** outputs);
+
+  其中，input_shapes为输入张量形状的数组，input_dims为输入张量维度的数组。inputs表示输入张量的指针数组，outputs表示输出张量的指针数组。
+
+  e. 形状推断函数。此补丁函数用于TOP层形状推断，若不实现，默认只有一个输入一个输出，且输出形状跟输入形状相同。补丁函数形式如下：
+
+  .. code-block:: c
+
+    void shape_inference_absadd(void* param, int param_size, const int (*input_shapes)[MAX_SHAPE_DIMS],
+      const int* input_dims, int (*output_shapes)[MAX_SHAPE_DIMS], int* output_dims);
+
+  其中，input_shapes/output_shapes为输入/出张量形状的数组，input_dims/output_dims为输入/出张量维度的数组。
+
+5. 基于tpu-kernel编写后端算子
+
+  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/tpu_impl_custom_ops.h 头文件中，声明global layer与local layer的自定义算子函数 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local (可选) ， 并在 ./src 下添加 tpu_impl_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
+
+6. 定义算子参数结构体与编写算子调用接口
+
+  注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{processor_arch} 表示架构名称，当前可选 `bm1684x` 和 `bm1686` 。
+
+  在 ./src 目录下添加自定义算子函数的调用接口:
+
+    void api_{op_name}_global 和 api_{op_name}_local (可选) (分别用于调用 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local)
+
+    int64_t api_{op_name}_global_bfsz (可选，计算global layer需要的缓存大小)
+
+    int api_{op_name}_local_bfsz (可选，计算local layer需要的缓存大小)
+
+    void type_infer_{op_name} (动态时使用，从输入的形状和数据类型推理出输出的形状和数据类型，若不实现，则默认只有一个输入和一个输出，且输出的形状和数据类型与输入的形状和数据类型相同)
+
+    void slice_infer_{op_name} (动态时使用，从输入的切片推理出输出的切片，若不实现，则默认只有一个输入和一个输出，且输出的切片与输入的切片相同)
+
+7. 定义后端调用接口
 
   在 register_ops.cmake 中添加算子的名字以注册自定义算子：
 
@@ -72,8 +188,26 @@ TpuLang自定义算子添加
 
     register_custom_op({op_name})
 
+  假如自定义算子存在local layer，则需要注册一下:
 
-5. 编译并安装动态库
+  .. code-block:: shell
+
+    register_custom_local_op({op_name})
+
+  假如自定义算子global layer需要缓存，则需要注册一下:
+
+  .. code-block:: shell
+
+    register_custom_global_bfsz({op_name})
+
+  假如自定义算子local layer需要缓存，则需要注册一下:
+
+  .. code-block:: shell
+
+    register_custom_local_bfsz({op_name})
+
+
+8. 编译并安装动态库
 
   先初始化环境：
 
@@ -81,8 +215,13 @@ TpuLang自定义算子添加
 
     source $TPUC_ROOT/customlayer/envsetup.sh
 
+  然后需要完成补丁的编译（得到 `libplugin_custom.so`）：
 
-  然后需要完成自定义算子后端接口的编译（得到 `libbackend_custom.so`）：
+  .. code-block:: shell
+
+    rebuild_custom_plugin
+
+  自定义算子后端接口的编译（得到 `libbackend_custom.so`）：
 
   .. code-block:: shell
 
@@ -108,79 +247,7 @@ TpuLang自定义算子添加
 
     rebuild_custom_firmware_pcie {processor_arch}
 
-
-  至此我们就完成了自定义算子后端部分的工作。
-
-
-6. 利用TpuLang构建自定义算子
-
-  关于TpuLang的使用方式请参考TpuLang接口章节。
-
-  TpuLang中提供了 `TpuLang.custom` 接口用于在工具链前端构建自定义算子（请保证 `op_name` 部分与后端算子的名称一致）。需要注意的是， `params` 是一个python字典，其中，键 *必须* 是字符串，表示属性的名字，值 *只能* 是整数/浮点数，或整数/浮点数的列表(要求长度不超过16)。在构建神经网络时，对于同一个自定义算子，键的个数和排列顺序必须保持一致；对于同一个键，如果它的值是个列表，则列表的长度也必须保持一致。
-
-  .. code-block:: python
-
-    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
-                   shape_func,
-                   op_name: str,
-                   out_dtypes: List[str],
-                   out_names: List[str] = None,
-                   params: dict = None)
-                   -> List[TpuLang.Tensor]
-    '''
-        自定义算子
-        参数:
-            tensors_in: 输入张量的列表 (包括权重)
-            shape_func: 形状推理函数，输入为输入张量的形状的列表，
-                        输出为输出张量的形状的列表
-            op_name: 自定义算子的名字
-            out_dtypes: 输出张量的数据类型的列表
-            out_names: 输出张量的名字列表
-            params: 自定义算子的属性字典
-
-        Return:
-            tensors_out: 输出张量的列表
-    '''
-
-  a. 定义自定义算子的tpulang接口
-
-  为方便起见，可在 $TPUC_ROOT/customlayer/python/my_tpulang_layer.py 中标准化定义你的自定义算子，格式如下：
-
-  .. code-block:: python
-
-    class xxx:
-      @staticmethod
-      def native(...):
-          ...
-          return ...
-      @staticmethod
-      def tpulang(inputs, ...):
-          def shape_func(tensors_in:list, ...):
-              ...
-              return ...
-          params = dict(...)
-          outputs = tpul.custom(
-              tensors_in=inputs,
-              shape_func=shape_func,
-              op_name=...,
-              params=params,
-              out_dtypes=...)
-          return outputs
-
-  其中， `native` 函数可用于计算输出张量的参考数据，而 `tpulang` 函数则用 `TpuLang.custom` 函数来构建自定义层。
-
-  b. 单元测试
-
-  在定义完自定义算子前端接口后，需要测试一下这个接口是否可靠。在目录 `$TPUC_ROOT/customlayer/test_if/unittest` 下，创建名为"test_xxx.py"的python文件，并创建一个测试类，继承 `TestTPULangCustom` 类，并创建名为"test_xxx"的方法来测试你的自定义算子。
-
-  通过运行以下shell命令来进行自定义算子的单元测试：
-
-  .. code-block:: shell
-
-    run_custom_unittest {processor_arch}
-
-
-7. 上卡测试
+9. 上卡测试
   当网络中存在自定义动态算子时，bmodel中包含的固件可能无法使bmrt_test正常工作，这时就需要替换固件了，使用shell命令可以达到这一目标：
 
   .. code-block:: shell
@@ -212,7 +279,7 @@ Caffe自定义算子添加
     --input_shapes # list of input shapes (e.g., [[1,2,3],[3,4,5]]) \
     --mlir # output mlir file
 
-后面步骤与TpuLang自定义算子添加中的第2-6步相同，此处不再赘述。
+后面步骤与TpuLang自定义算子添加中的第3-9步相同，此处不再赘述。
 
 自定义算子示例
 --------------
@@ -224,7 +291,7 @@ TpuLang示例
 
 本小节提供了一个swapchanel算子实现与通过TpuLang接口应用的样例。
 
-1. 算子参数解析与后端接口
+1. 算子参数解析
 
   在文件 ${TPUC_ROOT}/customlayer/include/backend_custom_param.h 中定义参数结构体 `swapchannel_param_t`：
 
@@ -236,7 +303,7 @@ TpuLang示例
 
   其中，这里的字段order对应前端的属性order 。
 
-  值得注意的是，从编译器传递到后端的是一个 `custom_param_t` 的数组A，它的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性。为方便起见，在头文件 {TPUC_ROOT}/customlayer/include/api_common.h 中，提供了一个宏来完成了一个对应： `PARSE_PARAM(swapchannel, sc_param, param)` , 其中， `param` 表示数组A， `sc_param` 表示后端参数结构体。用户需要在文件 ${TPUC_ROOT}/customlayer/include/param_parser.h 中定义一个swapchannel_parse_param解析函数来完成这种转换，其输入实际上是数组A的剔除第一个元素后的子数组的指针：
+  值得注意的是，从编译器传递到后端的是一个 `custom_param_t` 的数组A，它的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性。为方便起见，在头文件 {TPUC_ROOT}/customlayer/include/api_common.h 中，提供了一个宏来完成了一个对应： `PARSE_PARAM(swapchannel, sc_param, param)` , 其中， `param` 表示数组A， `sc_param` 表示后端参数结构体。用户需要在文件 ${TPUC_ROOT}/customlayer/include/param_parser.h 中定义一个swapchannel_parse_param解析函数来完成这种转换，其输入实际上是数组A的剔除第一个元素后的子数组的指针。 在文件 ${TPUC_ROOT}/customlayer/include/param_parser.h 中，实现参数解析代码：
 
   .. code-block:: c
 
@@ -248,7 +315,41 @@ TpuLang示例
         return sc_param;
     }
 
-  接着，在文件 ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c 中定义函数void shape_infer_swapchannel和void api_swapchannel_global：
+  参数解析在补丁函数和后端实现中都会被用到。
+
+2. 补丁函数
+
+  在文件 ${TPUC_ROOT}/customlayer/plugin/plugin_swapchannel.c 中：
+
+  .. code-block:: c
+
+    #include <string.h>
+    #include <assert.h>
+    #include "param_parser.h"
+
+    void inference_swapchannel(void* param, int param_size, const int (*input_shapes)[MAX_SHAPE_DIMS],
+      const int* input_dims, const float** inputs, float** outputs) {
+      PARSE_PARAM(swapchannel, sc_param, param);
+      int in_num = 1;
+      for (int i = 2; i < input_dims[0]; ++i) {
+        in_num *= input_shapes[0][i];
+      }
+      int N = input_shapes[0][0];
+      int C = input_shapes[0][1];
+      assert(C == 3);
+      for (int n = 0; n < N; ++n) {
+        for (int c = 0; c < 3; ++c) {
+          for (int x = 0; x < in_num; ++x) {
+            memcpy(outputs[0] + n * C * in_num + sc_param.order[c] * in_num,
+                  inputs[0] + n * C * in_num + c * in_num, in_num * sizeof(float));
+          }
+        }
+      }
+    }
+
+3. 后端接口
+
+  在文件 ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c 中定义函数 `void type_infer_swapchannel`和 `void api_swapchannel_global`：
 
   .. code-block:: c
 
@@ -257,8 +358,8 @@ TpuLang示例
     #include "tpu_impl_custom_ops.h"
     #include "param_parser.h"
 
-    // shape infer function
-    void shape_infer_swapchannel(
+    // type infer function
+    void type_infer_swapchannel(
         const global_tensor_spec_t *input,
         global_tensor_spec_t *output,
         const void *param) {
@@ -282,9 +383,9 @@ TpuLang示例
             tpu_type_convert(input->dtype));
     }
 
-2. 后端算子实现
+4. 后端算子实现
 
-  ${TPUC_ROOT}/customlayer/include/tpu_impl_custom_ops.h 头文件添加如下声明：
+  在 ${TPUC_ROOT}/customlayer/include/tpu_impl_custom_ops.h 头文件中添加如下声明：
 
   .. code-block:: c
 
@@ -328,9 +429,9 @@ TpuLang示例
         }
     }
 
-3. 后端算子注册
+5. 后端算子注册
 
-  ${TPUC_ROOT}/customlayer/register_ops.cmake 添加如下代码，可用于注册后端算子：
+  在文件 ${TPUC_ROOT}/customlayer/register_ops.cmake 添加如下代码，可用于注册后端算子：
 
   .. code-block:: c
 
@@ -339,7 +440,7 @@ TpuLang示例
   完成后，可参看《TpuLang自定义算子添加》中第5步中列出的命令进行编译。
 
 
-4. 前端准备
+6. 前端准备
 
   在文件 ${TPUC_ROOT}/customlayer/python/my_tpulang_layer.py 中调用TpuLang接口构建自定义算子swapChannel， 它只有一个输入和一个输出，且有一个属性order，是一个长度为3的整数列表：
 

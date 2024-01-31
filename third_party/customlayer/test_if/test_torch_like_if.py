@@ -27,24 +27,24 @@ def conv_op(x,
     weight = coeff_tensor(kshape, dtype)
     out_dtype = dtype if dtype == 'float32' else 'int32'
     bias = coeff_tensor(oc, out_dtype)
-    conv = tpul.conv_v2(x,
-                        weight,
-                        bias=bias,
-                        stride=stride,
-                        pad=pad,
-                        dilation=dilation,
-                        group=group,
-                        input_zp=zp[0],
-                        weight_zp=zp[1],
-                        out_dtype=out_dtype)
+    conv = tpul.conv(x,
+                    weight,
+                    bias=bias,
+                    stride=stride,
+                    pad=pad,
+                    dilation=dilation,
+                    group=group,
+                    out_dtype=out_dtype)
     return conv
 
 def abs_add_op(x, b, dtype="float32"):
     return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
 
 class Model:
-  def __init__(self, flag:int):
-      self.flag = flag
+  def __init__(self, flag:int, chip:str, dynamic:bool):
+    self.flag = flag
+    self.chip = chip
+    self.dynamic = dynamic
 
   def forward(self, x):
     if self.flag & 0b1:
@@ -59,26 +59,31 @@ class Model:
     relu3 = tpul.relu(conv3)
     if self.flag & 0b100:
         relu3 = abs_add_op(relu3, 2.1)
-    tpul.compile('torch_like_model_{}'.format(gen_name(self.flag)), [x], [relu3], has_custom=True)
-    deploy_cmd = "model_deploy.py --mlir torch_like_model_{}.mlir --model model_{}.bmodel " \
-                 "--quantize f32 --chip BM1684X".format(gen_name(flag), gen_name(self.flag))
-    assert(os.system(deploy_cmd) == 0)
+    postfix = "dyn" if self.dynamic else "static"
+    tpul.compile('torch_like_model_{}_{}'.format(gen_name(self.flag), postfix), [x], [relu3], dynamic=self.dynamic)
 
 def gen_name(flag: int):
     return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else "mix"
 
-def model_main(shape, flag:int):
-    tpul.init('BM1684X')
+def model_main(shape, flag:int, chip:str, dynamic:bool):
+    tpul.init(chip)
     x_data = np.random.random(shape).astype(np.float32)
     x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
-    model = Model(flag)
+    model = Model(flag, chip, dynamic)
     model.forward(x)
     tpul.deinit()
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--chip", default="bm1684x", type=str,
+                        choices=['bm1684x', 'bm1688'],
+                        help="chip platform name")
+    parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
+    args = parser.parse_args()
     os.makedirs("tmp", exist_ok=True)
     os.chdir("tmp")
     for flag in (0b1, 0b10, 0b100, 0b111):
-        print(">>> flag = {}\n".format(flag))
-        model_main([4,32,36,36], flag)
+        print("--- torch_like_model_{} ---".format(gen_name(flag)))
+        model_main([4,32,36,36], flag, args.chip, args.dynamic)
     print('Test succeed.')

@@ -59,16 +59,28 @@ public:
   }
 
   // the cast function only for custom op
-  template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName) {
+  template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName, bool fatal=true) {
     llvm::StringRef custom_lib_name = "libbackend_custom.so";
     std::string Err;
     auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
     assert(custom_dl.isValid());
     auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
-      llvm::errs() << "can't find symbol: " << symbolName << "\n";
-      llvm_unreachable(symbolName);
+      if (fatal) {
+        llvm::errs() << "[FATAL] can't find symbol: " << symbolName << "\n";
+        llvm_unreachable(symbolName);
+      }
     }
+    return reinterpret_cast<FPtrTy>(fPtr);
+  }
+
+  // the cast function only for custom op
+  template <typename FPtrTy> FPtrTy CastToCustomPluginPtr(const char *symbolName) {
+    llvm::StringRef custom_lib_name = "libplugin_custom.so";
+    std::string Err;
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
+    assert(custom_dl.isValid());
+    auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
     return reinterpret_cast<FPtrTy>(fPtr);
   }
 
