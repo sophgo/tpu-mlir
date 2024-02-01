@@ -117,11 +117,11 @@ void ModelGen::AddNet(const string &net_name,
     NET_INFO_T net_info;
     net_info.name = net_name;
     net_info.parameters.push_back(parameter);
+    net_info.io_alone = io_alone;
     if (cascade) {
       net_info.cascade.main_name = cascade->main_name()->str();
       net_info.cascade.device_id = cascade->device_id();
       net_info.cascade.step = cascade->step();
-      net_info.io_alone = io_alone;
     }
     net_vector_.push_back(net_info);
     if (stage_idx != NULL) {
