@@ -87,7 +87,7 @@ LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
                      op.getMultiplier() == 1 && op.getRshift() == 0;
 
   if (is_type_match && is_identity) {
-    op.getResult().replaceAllUsesWith(op.getInput());
+    rewriter.replaceOp(op, op.getInput());
     return success();
   }
   return failure();
