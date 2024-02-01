@@ -114,12 +114,55 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     for (auto &attr : next_op->getAttrs()) {
       attrs.push_back(attr);
     }
-    std::vector<Value> gn_opds = {input, next_op->getOperand(1), next_op->getOperand(2)};
+
     auto gn_out_type =
       RankedTensorType::get(ishape, module::getElementType(input));
     auto loc = NameLoc::get(
       rewriter.getStringAttr(module::getName(input).str() + "_GroupNorm"));
-    rewriter.setInsertionPointAfterValue(input);
+
+    auto groupnorm_filter_broadcast =
+        [](const std::vector<int64_t> &filter_shape, const void *filter_orig,
+           void *filter_trans, const int num_groups) -> void {
+      int c = filter_shape[1];
+      for (int kc = 0; kc < c; kc++) {
+        *((float *)filter_trans + kc) =
+            *((float *)filter_orig + kc / (c / num_groups));
+      }
+    };
+    // broadcast for weight and bias
+    int new_filter_count = ishape[1];
+    auto out_type = module::getStorageType(next_op.getOutput());
+    if (ishape.size() <= 2)
+      return failure();
+    std::vector<int64_t> new_filter_shape(ishape.size(), 1);
+    new_filter_shape[1] = ishape[1];
+    auto filterOp = next_op.getWeight().getDefiningOp<top::WeightOp>();
+    auto weight_data = filterOp.read_as_byte();
+    auto new_weight = std::make_shared<std::vector<float>>(new_filter_count, 0);
+    groupnorm_filter_broadcast(new_filter_shape, weight_data->data(),
+                              new_weight->data(), num_groups);
+    auto new_w_type = RankedTensorType::get(new_filter_shape, out_type);
+    auto new_weightOp = top::WeightOp::create(
+        next_op.getWeight().getDefiningOp(), "reorderd", *new_weight, new_w_type);
+
+    auto biasOp = next_op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_data = biasOp.read_as_byte();
+    auto new_bias = std::make_shared<std::vector<float>>(new_filter_count, 0);
+    groupnorm_filter_broadcast(new_filter_shape, bias_data->data(),
+                              new_bias->data(), num_groups);
+    auto new_b_type = RankedTensorType::get(new_filter_shape, out_type);
+    auto new_biasOp = top::WeightOp::create(next_op.getBias().getDefiningOp(),
+                                            "reorderd", *new_bias, new_b_type);
+    
+    std::vector<Value> gn_opds = {input, new_weightOp, new_biasOp};
+    Value insertpoint = gn_opds[gn_opds.size() - 1];
+    for (int i = gn_opds.size() - 1; i >= 0; i--) {
+      insertpoint = gn_opds[i];
+      if (!module::isNone(insertpoint)) {
+        break;
+      }
+    }
+    rewriter.setInsertionPointAfterValue(insertpoint);
     auto gn_op = rewriter.create<GroupNormOp>(
       loc, gn_out_type, gn_opds, attrs);
     rewriter.replaceOp(op, gn_op);
