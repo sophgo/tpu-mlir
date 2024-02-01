@@ -242,11 +242,18 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 model.graph.output.append(intermediate_layer_value_info)
                 output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
-        onnx.save(model,
-                  dump_all_tensors_onnx,
-                  save_as_external_data=True,
-                  location="model_runner_external_data",
-                  size_threshold=1024000000)
+        try:
+            onnx.save(model, dump_all_tensors_onnx)
+        except Exception as E:
+            if "The proto size is larger than the 2 GB limit." in str(E):
+                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(dump_all_tensors_onnx))
+                onnx.save(model,
+                        dump_all_tensors_onnx,
+                        save_as_external_data=True,
+                        location="model_runner_external_data",
+                        convert_attribute=True)
+            else:
+                raise E
         return output_keys, dump_all_tensors_onnx
 
     output_keys = []
