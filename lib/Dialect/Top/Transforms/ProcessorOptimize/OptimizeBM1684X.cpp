@@ -370,6 +370,9 @@ public:
     if (!matmul_values || !module::isWeight(matmul_values.getRight())) {
       return failure();
     }
+    if (matmul_queries.getInput() == matmul_keys.getInput() && matmul_queries.getInput() != matmul_values.getInput()) {
+      return failure();
+    }
     auto len = module::getNumElements(matmul_queries.getInput());
     auto n = module::getShape(matmul_queries.getInput())[0];
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
