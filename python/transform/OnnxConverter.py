@@ -2379,10 +2379,10 @@ class OnnxConverter(BaseConverter):
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         if len(onnx_node.inputs) > 1:
-            if not self.isScalar_(onnx_node.inputs[1], 1):
+            if self.isWeight(onnx_node.inputs[1]):
                 scale_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
-            if not self.isScalar_(onnx_node.inputs[2], 0):
+            if self.isWeight(onnx_node.inputs[2]):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2])
         new_op = top.InstanceNormOp(self.unranked_type,
                                     input_opd,

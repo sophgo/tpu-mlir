@@ -2808,9 +2808,9 @@ class ONNX_IR_TESTER(object):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, C):
                 super(Model, self).__init__()
-                self.instance_norm = nn.InstanceNorm2d(8, affine=True)
+                self.instance_norm = nn.InstanceNorm2d(C, affine=True)
                 nn.init.normal_(self.instance_norm.weight, std=0.01)
                 nn.init.normal_(self.instance_norm.bias, std=0.01)
 
@@ -2818,15 +2818,17 @@ class ONNX_IR_TESTER(object):
                 return self.instance_norm(x + 1)
 
         x = torch.randn(2, 8, 15, 15).float()
-        self.torch_and_test(x, Model(), case_name)
+        self.torch_and_test(x, Model(x.shape[1]), case_name)
+        x = torch.randn(4, 1, 1, 100).float()
+        self.torch_and_test(x, Model(x.shape[1]), case_name)
 
     def test_TorchGroupNorm(self, case_name):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, C, num_groups):
                 super(Model, self).__init__()
-                self.group_norm = nn.GroupNorm(3, 6)
+                self.group_norm = nn.GroupNorm(num_groups, C)
                 nn.init.normal_(self.group_norm.weight, std=0.01)
                 nn.init.normal_(self.group_norm.bias, std=0.01)
 
@@ -2834,7 +2836,10 @@ class ONNX_IR_TESTER(object):
                 return self.group_norm(x)
 
         x = torch.randn(20, 6, 10, 10).float()
-        self.torch_and_test(x, Model(), case_name)
+        self.torch_and_test(x, Model(x.shape[1], 3), case_name)
+        if self.chip in ["bm1684x", "sg2260", "bm1688"]:
+            x = torch.randn(2, 129, 4, 4).float()
+            self.torch_and_test(x, Model(x.shape[1], 43), case_name)
 
     def test_TorchGroupNorm2(self, case_name):
 

@@ -91,14 +91,30 @@ void tpu::InstanceNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::InstanceNormOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(instance_norm_global_spec_t);
+  instance_norm_global_spec_t param = {0};
+  const bool have_weight = !module::isNone(getWeight());
+  const bool have_bias = !module::isNone(getBias());
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic LocalGenInterface
 // ======================================
 int64_t tpu::InstanceNormOp::dyn_codegen_local_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(instance_norm_local_spec_t);
+  instance_norm_local_spec_t param = {0};
+  const bool have_weight = !module::isNone(getWeight());
+  const bool have_bias = !module::isNone(getBias());
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::InstanceNormOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }
+int64_t tpu::InstanceNormOp::get_fw_type_bm1684x() { return FW_BMNET_INSTANCENORM; }
