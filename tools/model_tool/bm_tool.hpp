@@ -520,6 +520,7 @@ static void combine_bmodels(ModelGen &model_gen,
         // no more stage
         assert(net->parameter()->size() == 1);
       }
+      auto io_alone = net->io_alone();
       for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
         shared_ptr<NET_INDEX_T> net_idx(new NET_INDEX_T);
         if (is_dir) {
@@ -529,7 +530,7 @@ static void combine_bmodels(ModelGen &model_gen,
         auto netT = net->parameter()->Get(idx)->UnPack();
         auto net_offset = NetParameter::Pack(builder, netT);
         model_gen.AddNet(net_name, net_offset, &net_idx->net_idx,
-                         &net_idx->stage_idx, cascade);
+                         &net_idx->stage_idx, cascade, io_alone);
         delete netT;
         model_info->net_index_v.push_back(net_idx);
       }
