@@ -300,7 +300,7 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
-    
+
     if (module::isBM1688())
       return failure();
     auto filter = op.getRight();
@@ -369,6 +369,9 @@ public:
     }
     auto matmul_values = dyn_cast<top::MatMulOp>(matmul_out3.getDefiningOp());
     if (!matmul_values || !module::isWeight(matmul_values.getRight())) {
+      return failure();
+    }
+    if (matmul_queries.getInput() == matmul_keys.getInput() && matmul_queries.getInput() != matmul_values.getInput()) {
       return failure();
     }
     auto len = module::getNumElements(matmul_queries.getInput());
