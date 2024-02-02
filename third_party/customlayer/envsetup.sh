@@ -6,7 +6,16 @@ function _rebuild() {
   cmake -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" ..
   make
   make install
-  cd ..
+  popd
+}
+
+function _run_test() {
+  pushd ${PROJECT_ROOT}/third_party/customlayer
+  rm -rf build
+  mkdir build
+  cd build
+  cmake -DCMAKE_INSTALL_PREFIX="${CMAKE_CURRENT_BINARY_DIR}" ..
+  make test -j4
   popd
 }
 
@@ -60,5 +69,12 @@ function rebuild_custom_firmware_soc() {
   _rebuild
 }
 
+function run_custom_unittest() {
+  export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
+  export CUSTOM_LAYER_DEV_MODE=unittest
+  _run_test
+}
+
 export CROSS_TOOLCHAINS_DIR="${PWD}/cross_toolchains/"
 export TPUKERNEL_CUSTOM_FIRMWARE_PATH="${INSTALL_PATH}/lib/libcmodel_custom.so"
+export CUSTOM_LAYER_UNITTEST_DIR="${PWD}/test_if/unittest/"

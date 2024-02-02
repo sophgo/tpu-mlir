@@ -1,14 +1,7 @@
 #include <string.h>
 #include "tpu_utils.h"
 #include "tpu_impl_custom_ops.h"
-#include "backend_custom_param.h"
-
-// parse param function
-static ceiladd_param_t ceiladd_parse_param(const void* param) {
-    ceiladd_param_t ceiladd_param = {0};
-    ceiladd_param.b_val = ((custom_param_t *)param)[0].float_t;
-    return ceiladd_param;
-}
+#include "param_parser.h"
 
 // shape infer function
 void shape_infer_ceiladd(
@@ -26,7 +19,7 @@ void api_ceiladd_global(
     const global_tensor_spec_t *input,
     global_tensor_spec_t *output,
     const void *param) {
-    ceiladd_param_t ceiladd_param = ceiladd_parse_param(param);
+    PARSE_PARAM(ceiladd, ceiladd_param, param);
     tpu_impl_ceiladd_global(
         input->addr,
         output->addr,

@@ -39,7 +39,7 @@ layer {
   bottom: "input0_bn"
   top: "myabsadd"
   python_param {
-    module: "my_layer"
+    module: "my_caffe_layer"
     layer: "AbsAdd"
     param_str: "{ 'b_val': 1.2}"
   }
@@ -51,7 +51,7 @@ layer {
   bottom: "input1_bn"
   top: "myceiladd"
   python_param {
-    module: "my_layer"
+    module: "my_caffe_layer"
     layer: "CeilAdd"
     param_str: "{ 'b_val': 1.5}"
   }

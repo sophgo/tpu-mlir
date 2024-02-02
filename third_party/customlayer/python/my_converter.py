@@ -14,7 +14,7 @@ from utils.mlir_shell import mlir_opt_for_top
 from utils.misc import *
 import mlir.dialects.top as top
 from mlir.ir import *
-import my_layer
+import my_caffe_layer
 
 
 def dict_attr_convert(param_dict: dict):
@@ -66,7 +66,7 @@ class MyCaffeConverter(CaffeConverter):
         # p.layer.lower() to keep the consistency with the backend op name
         attrs = {"name": p.layer.lower(), "params": params, 'loc': self.get_loc(layer.top[0])}
 
-        # The output shape is obtained according to the overridden reshape function in my_layer
+        # The output shape is obtained according to the overridden reshape function in my_caffe_layer
         out_shape = self.getShape(layer.top[0])
         outs = top.CustomOp([self.mlir.get_tensor_type(out_shape)], [in_op],
                             **attrs,

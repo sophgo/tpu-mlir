@@ -31,23 +31,83 @@ Custom Operator Addition Process
 Add TpuLang Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Load TPU-MLIR
+1. Invoke TpuLang to build the model
+
+  Refer to the TPULang Interface section for instructions on how to use TpuLang.
+
+  TpuLang provides the `TpuLang.custom` interface to build custom operators in the frontend of toolchain (please ensure that the `op_name` matches the name of the backend operator): Note that, `params` should be dictionary in python, whose key should be a string representing the name of parameter and value should be a integer or floating-point number, or a list of integer or floating-point number (the length of list should be no greater than 16). When building the neural network, the number and order of keys should keep the same for the same custom operator and for the same key, if its value is a list, the length should keep the same.
+
+  .. code-block:: python
+
+    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
+                   shape_func,
+                   op_name: str,
+                   out_dtypes: List[str],
+                   out_names: List[str] = None,
+                   params: dict = None)
+                   -> List[TpuLang.Tensor]
+    '''
+        The custom op
+        Arguments:
+            tensors_in: list of input tensors (including weight tensors)
+            shape_func: function for doing shape inference, taking shape of tensors_in as inputs,
+                        and returning a list of shape of output tensors
+            op_name: name of the custom operator
+            out_dtypes: list of data type of outputs
+            out_names: list of name of outputs
+            params: parameters of the custom op
+
+        Return:
+            tensors_out: list of output tensors
+    '''
+
+  a. Define a custom operator
+  For convenient, one could standardize custom operator in file $TPUC_ROOT/customlayer/python/my_tpulang_layer.py :
+
+  .. code-block:: python
+
+    class xxx:
+      @staticmethod
+      def native(...):
+          ...
+          return ...
+      @staticmethod
+      def tpulang(inputs, ...):
+          def shape_func(tensors_in:list, ...):
+              ...
+              return ...
+          params = dict(...)
+          outputs = TpuLang.custom(
+              tensors_in=inputs,
+              shape_func=shape_func,
+              op_name=...,
+              params=params,
+              out_dtypes=...)
+          return outputs
+
+  where `native` function is used to calculate the reference output data of custom layer. `tpulang` function constructs the custom layer using `TpuLang.custom` function.
+
+  b. Unit test
+  After defining the custom operator, one should test whether this inferface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_xxx.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create a method named "test_xxx" for testing custom layer.
+  The shell command `run_custom_unittest {chip_arch}` would tries to automatically perform the unit tests.
+
+2. Load TPU-MLIR
 
 .. include:: ./../../quick_start/source_en/env_var.rst
 
-2. Develop backend operators based on TPU-Kernel
+3. Develop backend operators based on TPU-Kernel
 
   Assuming the current path is $TPUC_ROOT/customlayer, add the ./include/tpu_impl_custom_ops.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local, respectively). Then, add the tpu_impl_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
 
-3. Define the operator's parameter structure and write the operator's interface
+4. Define the operator's parameter structure and write the operator's interface
 
-  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {chip_arch} represents architecture of chip, whose possible values are `bm1684x` or `bm1686` recently.
+  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {chip_arch} represents architecture of chip, whose optional values are `bm1684x` or `bm1686` recently.
 
   a. Add the interface_{op_name}.c file in the ./src directory and implement the corresponding interfaces:
     void api_{op_name}_global, void api_{op_name}_local (calling void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local respectively)
     void shape_infer_{op_name} (infer shape and dtype of outputs from those of inputs).
 
-  b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a custom_param_t array, where each custom_param_t structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in custom_param_t (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the custom_param_t is as follows:
+  b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a `custom_param_t` array. Starting from the second element of the array, a `custom_param_t` structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in `custom_param_t` (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the `custom_param_t` is as follows:
 
   .. code-block:: c
 
@@ -60,7 +120,7 @@ Add TpuLang Custom Operator
     } custom_param_t;
 
 
-4. Register the operator
+5. Register the operator
 
   In file register_ops.cmake, add op name for registering your operator:
 
@@ -69,55 +129,29 @@ Add TpuLang Custom Operator
     register_custom_op({op_name})
 
 
-5. Compile and install the dynamic library
+6. Compile and install the dynamic library
 
-  Firstly, initialize your environment by running the command: source envsetup.sh in $TPUC_ROOT/customlayer.
-  Then the command: **rebuild_custom_backend**: tries to compile the backend apis supporting custom operator.
-  The command: **rebuild_custom_firmware_cmodel {chip_arch}**, tries to compile the firmware supporting custom operator in cmodel mode.
-  The command: **rebuild_custom_firmware_soc {chip_arch}**, tries to compile the firmware supporting custom operator in soc mode.
-  The command: **rebuild_custom_firmware_pcie {chip_arch}**, tries to compile the firmware supporting custom operator in pcie mode.
+  Firstly, initialize your environment by running the shell command: `source envsetup.sh in $TPUC_ROOT/customlayer`. Then compile the backend apis and firmware.
+  Then the shell command: `rebuild_custom_backend`: tries to compile the backend apis supporting custom operator. Once compilation has succeeded, the target `libbackend_custom.so` would be installed.
+  The shell command: `rebuild_custom_firmware_cmodel {chip_arch}`, tries to compile the firmware supporting custom operator in CMODEL mode. Once compilation has succeeded, the target `libfirmware_custom_xxx.so` would be installed.
+  The shell command: `rebuild_custom_firmware_soc {chip_arch}`, tries to compile the firmware supporting custom operator in SOC mode. Once compilation has succeeded, the target `libxxx_kernel_module_custom_soc.so` would be installed.
+  The shell command: `rebuild_custom_firmware_pcie {chip_arch}`, tries to compile the firmware supporting custom operator in PCIE mode. Once compilation has succeeded, the target `libxxx_kernel_module_custom_pcie.so` would be installed.
 
-6. Invoke TpuLang to build the model
-
-  Refer to the TPULang Interface section for instructions on how to use TpuLang.
-
-  TpuLang provides the TpuLang.custom interface to build custom operators in the frontend of toolchain (ensure that the op_name part matches the name of the backend operator):
-
-  .. code-block:: python
-
-    TpuLang.custom(tensors_in: list,
-                    shape_func,
-                    op_name: str,
-                    out_dtypes: list,
-                    out_names: list = None,
-                    params: dict = None)
-    '''
-        The custom op
-        Arguments:
-            tensors_in: list of input tensors (including weight tensors)
-            shape_func: function for doing shape inference, taking tensors_in as the
-                        parameter, return is the list of output tensors shape
-            op_name: name of the custom operator,
-            out_dtypes: list of outputs' data type
-            out_name: list of output names
-            params: parameters of the custom op
-
-        Return:
-            tensors_out: list of output tensors
-    '''
+7. On-chip test
+  When at least a dynamic subnet exists in the network, the firmware containing in bmodel might be not useful since shell command `bmrt_test` does not work. In this case, one might need the following shell command to replace the old firmware with new one:
+  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so` (on SOC mode)
+  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so` (on PCIE mode)
 
 Add Caffe Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Steps 1-5 are the same as in Add TpuLang Custom Operator section, and will not be repeated here.
+1. Defining custom operators in Caffe
 
-6. Defining custom operators in Caffe
+  To define custom operators in Caffe, you need to define a class in the file $TPUC_ROOT/customlayer/python/my_caffe_layer.py that inherits from caffe.Layer and override the `setup`, `reshape`, `forward`, and `backward` functions as needed.
 
-  To define custom operators in Caffe, you need to define a class in the file $TPUC_ROOT/customlayer/python/my_layer.py that inherits from caffe.Layer and override the setup, reshape, forward, and backward functions as needed.
+2. Implementing the frontend conversion function
 
-7. Implementing the frontend conversion function
-
-  The type of custom operators implemented in python is "Python", so you need to implement a corresponding conversion function of MyCaffeConverter class defined in the file $TPUC_ROOT/customlayer/python/my_converter.py, based on the definition in step 6.
+  Provided that the caffe layer type of custom operators is "Python". One needs to implement a corresponding conversion function of `MyCaffeConverter` class defined in the file $TPUC_ROOT/customlayer/python/my_converter.py.
 
   After the definition, you can call my_converter.py interface for Top MLIR conversion:
 
@@ -130,6 +164,7 @@ Steps 1-5 are the same as in Add TpuLang Custom Operator section, and will not b
     --input_shapes # list of input shapes (e.g., [[1,2,3],[3,4,5]]) \
     --mlir # output mlir file
 
+The next steps are the same as steps 2-6 in "Add TpuLang Custom Operator" section, and will not be repeated here.
 
 Custom Operator Example
 -----------------------
@@ -141,7 +176,118 @@ Example of TpuLang
 
 This subsection provides a sample of swapchanel operator implementation and application through TpuLang interface.
 
-1. Backend Operator Implementation
+1. TpuLang Interface Invocation
+
+  In file ${TPUC_ROOT}/customlayer/python/my_tpulang_layer.py, by using function `TpuLang.custom`, one could construct a custom operator named swapChannel, which has one input, one output, and an attribute whose value is an integer list of length 3:
+
+   .. code-block:: python
+
+      import transform.TpuLang as tpul
+
+      class swapChannel:
+          @staticmethod
+          def native(data):
+              return data[:, [2, 1, 0], :, :]
+          @staticmethod
+          def tpulang(inputs, dtype="float32"):
+              def shape_func(tensors_in:list):
+                  return [tensors_in[0].shape]
+              params = {"order": [2, 1, 0]}
+              outs = tpul.custom(
+                  tensors_in=inputs,
+                  shape_func=shape_func,
+                  # op_name should be consistent with the backend
+                  op_name="swapchannel",
+                  params=params,
+                  out_dtypes=[dtype])
+              return outs
+
+  In file ${TPUC_ROOT}/customlayer/test_if/unittest/test_swapchannel.py, one could create a unittest on custom operator named "swapChannel":
+
+   .. code-block:: python
+
+      import numpy as np
+      import unittest
+      from tpulang_custom_test_base import TestTPULangCustom
+      import transform.TpuLang as tpul
+      import my_tpulang_layer
+
+      class TestSwapChannel(TestTPULangCustom):
+          def _test(self, dtype):
+              shape = [4, 32, 36, 36]
+              self.data_in = np.random.random(shape).astype(dtype)
+              x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
+              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x], dtype=dtype)[0]
+              self.compile('SwapChannel', [x], [y], dtype)
+          def test_fp32(self):
+              self._test('float32')
+          def test_fp16(self):
+              self._test('float16')
+
+      if __name__ == '__main__':
+          unittest.main()
+
+2. Parameter Parser and Backend Interface
+
+  The definition of `swapchannel_param_t` in
+
+  ${TPUC_ROOT}/customlayer/include/backend_custom_param.h is as follows:
+
+  .. code-block:: c
+
+    typedef struct swapchannel_param {
+      int order[3];
+    } swapchannel_param_t;
+
+  where the field `order` is corresponding to the frontend attribute named "order".
+
+  Note that there is an array (here alias A) passing from compiler. Starting from the second element of the array, each element is corresponding to an frontend attribute of frontend. For convenient, file {TPUC_ROOT}/customlayer/include/api_common.h, provides a macro `PARSE_PARAM(swapchannel, sc_param, param)` to transform `param`(pointer to array A) into `sc_param`(pointer to backend custom param). One should define a parser function, whose parameter is a pointer of array B (constructing by dropping the first element from array A) in file ${TPUC_ROOT}/customlayer/include/param_parser.h and output type is `swapchannel_parse_param`.
+
+  .. code-block:: c
+
+    static swapchannel_param_t swapchannel_parse_param(const void* param) {
+        swapchannel_param_t sc_param = {0};
+        for (int i = 0; i < 3; i++) {
+            sc_param.order[i] = ((custom_param_t *)param)[0].int_arr_t[i];
+        }
+        return sc_param;
+    }
+
+  In file ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c, one should define tow functions: void shape_infer_swapchannel and void api_swapchannel_global：
+
+  .. code-block:: c
+
+    #include <string.h>
+    #include "tpu_utils.h"
+    #include "tpu_impl_custom_ops.h"
+    #include "param_parser.h"
+
+    // shape infer function
+    void shape_infer_swapchannel(
+        const global_tensor_spec_t *input,
+        global_tensor_spec_t *output,
+        const void *param) {
+        output->dtype = input->dtype;
+        output->dims = input->dims;
+        memcpy(output->shape, input->shape, output->dims);
+        output->elem_num = input->elem_num;
+    }
+
+    // global api function
+    void api_swapchannel_global(
+        const global_tensor_spec_t *input,
+        global_tensor_spec_t *output,
+        const void *param) {
+        PARSE_PARAM(swapchannel, sc_param, param);
+        tpu_impl_swapchannel_global(
+            input->addr,
+            output->addr,
+            input->shape,
+            sc_param.order,
+            tpu_type_convert(input->dtype));
+    }
+
+3. Backend Operator Implementation
 
   The following is the declaration in the header file
 
@@ -185,51 +331,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
     }
 
 
-2. Operator Parameter Structure and Implementation of the Operator Interface
-
-  The definition of swapchannel_param_t in
-
-  ${TPUC_ROOT}/customlayer/include/backend_custom_param.h is as follows:
-
-  .. code-block:: c
-
-    typedef struct swapchannel_param {
-      int order[3];
-    } swapchannel_param_t;
-
-  The code of ${TPUC_ROOT}/customlayer/src/interface_swapchannel.c:
-
-  .. code-block:: c
-
-    #include "tpu_utils.h"
-    #include "tpu_impl_custom_ops.h"
-
-    // parse param function
-    static swapchannel_param_t parseParam(const custom_param_t* param) {
-        swapchannel_param_t sc_param = {0};
-        for (int i = 0; i < 3; i++) {
-            sc_param.order[i] = ((custom_param_t *)param)[0].int_arr_t[i];
-        }
-        return sc_param;
-    }
-
-    // global api function
-    void api_swapchannel_global(
-        global_tensor_spec_t *input,
-        global_tensor_spec_t *output,
-        const custom_param_t *param)
-    {
-        swapchannel_param_t sc_param = parseParam(param);
-        backend_swapchannel_global(
-            input->addr,
-            output->addr,
-            input->shape,
-            sc_param.order,
-            tpu_type_convert(input->dtype));
-    }
-
-
-3. Backend Interface
+4. Backend Interface
 
   Add the code in ${TPUC_ROOT}/customlayer/register_ops.cmake:
 
@@ -237,61 +339,17 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
     register_custom_op(swapchannel)
 
-  After completing the implementation of the backend interface, you can run the command listed in step 5 in "Add TpuLang Custom Operator".
+  After completing the implementation of the backend interface, you can run the command listed in step 6 in "Add TpuLang Custom Operator".
 
-4. TpuLang Interface Invocation
-
-  Here is an example of Python code that utilizes the TpuLang interface to build a custom operator model:
-
-   .. code-block:: python
-
-      import numpy as np
-      import transform.TpuLang as tpul
-
-      # 1. initialize tpulang
-      tpul.init("BM1684X", True)
-
-      # 2. prepare the input
-      dtype = "float32"
-      input_shape = [1, 3, 14, 14]
-      x_data = np.random.random(input_shape).astype(np.float32)
-      x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
-
-      # 3. build model
-      def shape_func(tensors_in):
-          # the shape inference function
-          return [tensors_in[0].shape]
-
-      out_names = ["out"]
-      params = {"order": [2, 1, 0]}
-
-      outs = tpul.custom(
-              tensors_in=[x],
-              shape_func=shape_func,
-              # op_name should be consistent with the backend
-              op_name="swapchannel",
-              params=params,
-              out_dtypes=[dtype],
-              out_names=out_names)
-
-      # 4. compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz
-      top_mlir = "tpulang_test_net"
-      tpul.compile(top_mlir, [x], outs, False, 2, has_custom=True)
-
-  By running the above code, you can obtain the Top MLIR file tpulang_test_net.mlir. For the subsequent model deployment process, please refer to the User Interface chapter.
 
 Example of Caffe
 ~~~~~~~~~~~~~~~~~
 
 This subsection provides application examples of custom operators absadd and ceiladd in Caffe.
 
-1. Backend operator and interface implementation
+1. Defining Caffe custom operators
 
-  The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.
-
-2. Defining Caffe custom operators
-
-  The definition of absadd and ceiladd in Caffe can be found in $TPUC_ROOT/customlayer/python/my_layer.py as follows:
+  The definition of absadd and ceiladd in Caffe can be found in $TPUC_ROOT/customlayer/python/my_caffe_layer.py as follows:
 
   .. code-block:: python
 
@@ -339,7 +397,7 @@ This subsection provides application examples of custom operators absadd and cei
       bottom: "input0_bn"
       top: "myabsadd"
       python_param {
-        module: "my_layer"
+        module: "my_caffe_layer"
         layer: "AbsAdd"
         param_str: "{ 'b_val': 1.2}"
       }
@@ -351,13 +409,13 @@ This subsection provides application examples of custom operators absadd and cei
       bottom: "input1_bn"
       top: "myceiladd"
       python_param {
-        module: "my_layer"
+        module: "my_caffe_layer"
         layer: "CeilAdd"
         param_str: "{ 'b_val': 1.5}"
       }
     }
 
-3. Implement operator front-end conversion functions
+2. Implement operator front-end conversion functions
 
   Define a convert_python_op function of the MyCaffeConverter class in $TPUC_ROOT/customlayer/python/my_converter.py, the code is as follows:
 
@@ -374,15 +432,15 @@ This subsection provides application examples of custom operators absadd and cei
         # p.layer.lower() to keep the consistency with the backend op name
         attrs = {"name": p.layer.lower(), "params": params, 'loc': self.get_loc(layer.top[0])}
 
-        # The output shape compute based on reshape function in my_layer
+        # The output shape compute based on reshape function in my_caffe_layer
         out_shape = self.getShape(layer.top[0])
         outs = top.CustomOp([self.mlir.get_tensor_type(out_shape)], [in_op],
-                            **attrs,
+                            attrs,
                             ip=self.mlir.insert_point).output
         # add the op result to self.operands
         self.addOperand(layer.top[0], outs[0])
 
-4. Caffe front-end conversion
+3. Caffe front-end conversion
 
   Complete the conversion of Caffe model in the $TPUC_ROOT/customlayer/test directory (i.e., my_model.prototxt and my_model.caffemodel, which contain absadd and ceiladd operators) by calling the my_converter.py interface, the command is as follows:
 
@@ -396,3 +454,7 @@ This subsection provides application examples of custom operators absadd and cei
     --mlir caffe_test_net.mlir
 
   So far, the Top MLIR file caffe_test_net.mlir has been obtained. For the subsequent model deployment process, please refer to the user interface chapter.
+
+4. Backend operator and interface implementation
+
+  The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.

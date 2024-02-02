@@ -1,16 +1,7 @@
 #include <string.h>
 #include "tpu_utils.h"
 #include "tpu_impl_custom_ops.h"
-#include "backend_custom_param.h"
-
-// parse param function
-static swapchannel_param_t swapchannel_parse_param(const void* param) {
-    swapchannel_param_t sc_param = {0};
-    for (int i = 0; i < 3; i++) {
-        sc_param.order[i] = ((custom_param_t *)param)[0].int_arr_t[i];
-    }
-    return sc_param;
-}
+#include "param_parser.h"
 
 // shape infer function
 void shape_infer_swapchannel(
@@ -28,7 +19,7 @@ void api_swapchannel_global(
     const global_tensor_spec_t *input,
     global_tensor_spec_t *output,
     const void *param) {
-    swapchannel_param_t sc_param = swapchannel_parse_param(param);
+    PARSE_PARAM(swapchannel, sc_param, param);
     tpu_impl_swapchannel_global(
         input->addr,
         output->addr,
