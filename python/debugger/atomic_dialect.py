@@ -202,14 +202,14 @@ class Block(Node):
                 self.core_operations: List[MsgCore] = []
                 while msgcore_id < msgcore_nums:
                     for core_id, core_cmds in enumerate(self.cores_cmds):
-                        assert msgcore_nums == len(core_cmds.msgcores)
-                        self.core_operations.append(core_cmds.msgcores[msgcore_id])
+                        if core_cmds.msgcores and msgcore_id <= len(core_cmds.msgcores):
+                            self.core_operations.append(core_cmds.msgcores[msgcore_id])
                     msgcore_id += 1
 
-                for msgcore in self.core_operations:  # type:
-                    if msgcore.nearing_before_cmds:
-                        self.operations.extend(msgcore.nearing_before_cmds)
-                    self.operations.extend(msgcore.mlir_cmds)
+                for msgcore in self.core_operations:
+                    if msgcore.no_sys_cmds:
+                        self.operations.extend(msgcore.no_sys_cmds)
+                    self.operations.extend(msgcore.sys_cmds)
                 return
 
             if subnet.cmd_group:
