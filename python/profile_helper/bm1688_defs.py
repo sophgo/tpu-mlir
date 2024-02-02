@@ -242,7 +242,7 @@ def get_tiu_info(monitor_info, reg_info):
     tiu_info0["Cmd Id"] = monitor_info.inst_id + 1
     tiu_info0["Asic Cycle"] = monitor_info.inst_end_time - \
         monitor_info.inst_start_time + 1
-    tiu_info0["Engine Id"] = 1
+    tiu_info0["Engine Id"] = 0
 
     tiu_info0["Alg Ops"] = _reg_info.ops(False)
     tiu_info0["uArch Ops"] = _reg_info.ops(True)
