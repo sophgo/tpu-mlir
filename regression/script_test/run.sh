@@ -18,5 +18,5 @@ if [ $IS_BASIC == 'all' ]; then
   $DIR/test3.sh
   $DIR/test4.sh
 fi
-
+$DIR/test8.sh
 popd
