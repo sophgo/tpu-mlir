@@ -52,8 +52,10 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(
   auto dtype_B = BM168x::getDataType(getInputs()[1]);
   auto dtype_O = BM168x::getDataType(getOutput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
+    buffer_size = out_lmem_bytes * 2;
+    //aligned with backend
     if (getMultiplier() != 1 || getRshift() != 0) {
-      buffer_size = out_lmem_bytes * 2;
+      buffer_size += out_lmem_bytes * 2;
     }
   } else if (dtype_A == DTYPE_F8E4M3) {
     //calc method keep the same as add/sub at backend
