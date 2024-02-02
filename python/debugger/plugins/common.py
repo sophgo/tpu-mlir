@@ -263,7 +263,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
         file_line = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point, "line-num"
+            self.tdb.index_df["executed_id"] == point + 1, "line-num"
         ].item()
         return self.final_mlir.lines[file_line - 1]
 
@@ -271,7 +271,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
         self, point=None, pre=2, next=2
     ) -> Optional[List[str]]:
         file_line = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point, "line-num"
+            self.tdb.index_df["executed_id"] == point + 1, "line-num"
         ].item()
         return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
 
@@ -284,7 +284,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
             point = self.tdb.cmd_point
 
         loc_index = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point, "loc_index"
+            self.tdb.index_df["executed_id"] == point + 1, "loc_index"
         ].item()
 
         if np.isnan(loc_index):
