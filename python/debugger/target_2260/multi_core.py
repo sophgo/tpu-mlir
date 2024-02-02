@@ -78,28 +78,30 @@ class MsgCore(Node):
         msgcore_id,
         msgcore_num,
         core_nums,
-        mlir_cmds,
-        mlir_rets,
-        nearing_before_cmds,
+        sys_cmds,
+        sys_rets,
+        no_sys_cmds,
         indent=0,
     ):
         self.msgcore_id = msgcore_id
         self.msgcore_num = msgcore_num
-        self.core_id = mlir_cmds[0].core_id
-        self.core_nums = core_nums
-        self.mlir_cmds = mlir_cmds
-        self.mlir_rets = mlir_rets
-        self.nearing_before_cmds = nearing_before_cmds
-        self.indent = indent
-        self.in_msg_id = mlir_cmds[0].attribute["msg_id"]
-        self.out_msg_id = mlir_cmds[-1].attribute.get("msg_id", None)
-        self.in_msg = mlir_cmds[0]
-        self.out_msg = mlir_cmds[-1]
-        self.msg_operand = []
-        self.msg_result = []
+        self.sys_cmds = sys_cmds
+        self.no_sys_cmds = no_sys_cmds
 
-        # get in_msg and out_msg
-        self.get_DAG()
+        if self.sys_cmds:
+            self.core_id = sys_cmds[0].core_id
+            self.core_nums = core_nums
+            self.sys_rets = sys_rets
+            self.indent = indent
+            self.in_msg_id = sys_cmds[0].attribute["msg_id"]
+            self.out_msg_id = sys_cmds[-1].attribute.get("msg_id", None)
+            self.in_msg = sys_cmds[0]
+            self.out_msg = sys_cmds[-1]
+            self.msg_operand = []
+            self.msg_result = []
+
+            # get in_msg and out_msg
+            self.get_DAG()
 
     def get_DAG(self):
         assert isinstance(self.in_msg.reg, (tiu_sys, dma_sys))
@@ -115,54 +117,65 @@ class MsgCore(Node):
                 self.msg_result = f"%D{self.out_msg.cmd_id}C{self.out_msg.core_id}"
 
     def __str__(self):
-        if self.msgcore_id == 0:
-            repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}) {{'
-        elif self.msgcore_id == self.msgcore_num - 1:
-            msg_result = []
-            if isinstance(self.mlir_cmds[1].reg, tiu_sys):
-                msg_result = f"%B{self.mlir_cmds[1].cmd_id}C{self.mlir_cmds[1].core_id}"
-            elif isinstance(self.mlir_cmds[1].reg, dma_sys):
-                msg_result = f"%D{self.mlir_cmds[1].cmd_id}C{self.mlir_cmds[1].core_id}"
-            repr_head = f'{msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
-        else:
-            repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
-        repr_tail = "}"
-
+        repr_head = repr_tail = ""
         not_sys_cmds_str = ""
-        if self.nearing_before_cmds:
+        ops_str = ""
+
+        if self.no_sys_cmds:
             not_sys_cmds_str_list = []
-            for idx, x in enumerate(self.nearing_before_cmds):
+            for idx, x in enumerate(self.no_sys_cmds):
                 if x.operands == []:
                     str_x = str(x)[:-1] + f", status = {None}"
                 else:
                     str_x = str(x)
                 not_sys_cmds_str_list.append(str_x)
-            not_sys_cmds_str = "\n".join(not_sys_cmds_str_list) + "\n"
+            not_sys_cmds_str = "\n".join(not_sys_cmds_str_list)
 
-        ops_str_list = []
-        for idx, x in enumerate(self.mlir_cmds):
-            if x.operands == [] and not isinstance(x, tiu_sys_tr_acc):
-                if MultiCore.get_cmd_type(x) == SYS_TYPE.SEND:
-                    match1 = re.search(r"=", str(x))
-                    match2 = re.search(r",", str(x))
-                    match3 = re.search(r"{", str(x))
-                    str_x = (
-                        str(x)[: match1.start() - 1]
-                        + f", %msg{self.out_msg_id} "
-                        + str(x)[match1.start() : match2.start()]
-                        + ") "
-                        + str(x)[match3.start() : -1]
-                        + f", status = {self.mlir_rets[idx]}}}"
+        if self.sys_cmds:
+            if self.no_sys_cmds:
+                not_sys_cmds_str += "\n"
+
+            if self.msgcore_id == 0:
+                repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}) {{\n'
+            elif self.msgcore_id == self.msgcore_num - 1:
+                msg_result = []
+                if isinstance(self.sys_cmds[1].reg, tiu_sys):
+                    msg_result = (
+                        f"%B{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}"
                     )
-                else:
-                    str_x = str(x)[:-1] + f", status = {self.mlir_rets[idx]}}}"
+                elif isinstance(self.sys_cmds[1].reg, dma_sys):
+                    msg_result = (
+                        f"%D{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}"
+                    )
+                repr_head = f'{msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
             else:
-                str_x = str(x)
-            ops_str_list.append(str_x)
+                repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
+            repr_tail = "\n}"
 
-        ops_str = "\n".join(ops_str_list)
-        ops_str = textwrap.indent(ops_str, INDENT_SPACE)
-        return f"{not_sys_cmds_str}{repr_head}\n{ops_str}\n{repr_tail}"
+            ops_str_list = []
+            for idx, x in enumerate(self.sys_cmds):
+                if x.operands == [] and not isinstance(x, tiu_sys_tr_acc):
+                    if MultiCore.get_cmd_type(x) == SYS_TYPE.SEND:
+                        match1 = re.search(r"=", str(x))
+                        match2 = re.search(r",", str(x))
+                        match3 = re.search(r"{", str(x))
+                        str_x = (
+                            str(x)[: match1.start() - 1]
+                            + f", %msg{self.out_msg_id} "
+                            + str(x)[match1.start() : match2.start()]
+                            + ") "
+                            + str(x)[match3.start() : -1]
+                            + f", status = {self.sys_rets[idx]}}}"
+                        )
+                    else:
+                        str_x = str(x)[:-1] + f", status = {self.sys_rets[idx]}}}"
+                else:
+                    str_x = str(x)
+                ops_str_list.append(str_x)
+
+            ops_str = "\n".join(ops_str_list)
+            ops_str = textwrap.indent(ops_str, INDENT_SPACE)
+        return f"{not_sys_cmds_str}{repr_head}{ops_str}{repr_tail}"
 
 
 class MultiCore(Node):
@@ -213,7 +226,6 @@ class MultiCore(Node):
                     )
 
             if cmd_id == len(mlir_cmds) - 1:
-                assert len(tmp_cmds) > 0
                 self.core_split_cmds.append(tmp_cmds)
                 self.core_split_rets.append(tmp_rets)
                 tmp_cmds = []
@@ -224,12 +236,12 @@ class MultiCore(Node):
                 msgcore_id,
                 len(self.core_split_cmds),
                 core_nums,
-                msgcore_cmds,
+                self.core_split_cmds[msgcore_id],
                 self.core_split_rets[msgcore_id],
                 self.not_sys_cmds[msgcore_id],
                 indent,
             )
-            for msgcore_id, msgcore_cmds in enumerate(self.core_split_cmds)
+            for msgcore_id in range(len(self.core_split_cmds))
         ]
 
     @staticmethod
