@@ -37,17 +37,25 @@ protected:
   void match_deit_mha(std::vector<Operation *> &mha);
   bool deit_mix_precision();
   void match_swin_mlp(std::vector<Operation *> &mlp);
-  void match_swin_wmsa(std::vector<Operation *> &wmsa, std::vector<Operation *> &sm_ops);
-  bool convergence(Operation* from, Operation *to);
-  bool convergence_with_sm_matmul(Operation* from, Operation *to, int &sm_cnt, int &matmul_cnt, int &triple_matmul);
-  bool set_block_fp16(Operation* from, Operation *to); // must be a block with single input and single output
+  void match_swin_wmsa(std::vector<Operation *> &wmsa,
+                       std::vector<Operation *> &sm_ops);
+  void match_cswin_cswsa(std::vector<Operation *> &cswsa);
+  bool convergence(Operation *from, Operation *to);
+  bool convergence_with_sm_matmul_slice(Operation *from, Operation *to,
+                                        int &sm_cnt, int &matmul_cnt,
+                                        int &triple_matmul, int &triple_slice,
+                                        int &six_slice);
+  bool set_block_fp16(
+      Operation *from,
+      Operation *to); // must be a block with single input and single output
   bool vit_mix_precision();
   void match_eva2_mlp(std::vector<Operation *> &mlp);
   void match_eva2_mhsa(std::vector<Operation *> &mhsa);
   bool eva2_mix_precision();
   void set_add_before_softmax_fp32();
   void spread_q_config();
-  bool swin_t_mix_precision();
+  bool swin_mix_precision();
+  bool cswin_mix_precision();
   void qtable_process();
   Value do_cast(Value v, Type to, TypeCastMode mode,
                 Operation *user_op = nullptr);

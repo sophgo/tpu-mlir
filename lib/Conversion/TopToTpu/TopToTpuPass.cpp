@@ -10,13 +10,14 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
+#include "tpu_mlir/Support/Float8.h"
 #include <regex>
 
 namespace tpu_mlir {
 
-template <typename OpTy> static void BackwardOp(OpTy op) {
+template <typename OpTy>
+static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -35,7 +36,8 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy> static void ForwardOp(OpTy op) {
+template <typename OpTy>
+static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -203,7 +205,7 @@ struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
     bool in_signed[2] = {true, true};
 
     int idx = 0;
-    for (auto i:op.getInputs()) {
+    for (auto i : op.getInputs()) {
       if (isa<top::WeightOp>(i.getDefiningOp())) {
         top::WeightOp w = dyn_cast<top::WeightOp>(i.getDefiningOp());
         auto filter_f32 = w.read<float>();
@@ -211,21 +213,20 @@ struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
           return failure();
         if (filter_f32->at(0) >= 0.0)
           in_signed[idx] = false;
-      }
-      else {
+      } else {
         auto in_qtype = module::getCalibratedType(i);
         if (in_qtype.getMin() >= 0.0)
           in_signed[idx] = false;
       }
-      idx ++;
+      idx++;
     }
 
     if (in_signed[0] == out_signed)
       return failure();
     else if (in_signed[1] == out_signed) {
-      //switch inputs
+      // switch inputs
       std::vector<Value> operands;
-      for (auto in:op.getOperands()) {
+      for (auto in : op.getOperands()) {
         operands.insert(operands.begin(), in);
       }
       op.getOperation()->setOperands(operands);
@@ -233,7 +234,8 @@ struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
     } else {
       // two inputs are same but output is not the same
       if (in_signed[0]) {
-        // in all signed, output unsigned, set output to signed, though possible eg. sqr, but ic has the restriction
+        // in all signed, output unsigned, set output to signed, though possible
+        // eg. sqr, but ic has the restriction
         float min = -out_qtype.getMax() * 0.1;
         auto etype = module::getStorageType(out);
         auto new_qtype =
@@ -242,10 +244,14 @@ struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
         out.setType(new_type);
         Forward(out);
         return success();
-      }
-      else {
-        // in all unsigned, output signed, may be caused by other pass? bad cali_table?
-        llvm_unreachable((std::string("not reasonable, two unsigned get signed, check cali-table and graph op is:") + std::string(module::getName(op.getOperation()).str())).data());
+      } else {
+        // in all unsigned, output signed, may be caused by other pass? bad
+        // cali_table?
+        llvm_unreachable(
+            (std::string("not reasonable, two unsigned get signed, check "
+                         "cali-table and graph op is:") +
+             std::string(module::getName(op.getOperation()).str()))
+                .data());
       }
     }
     return failure();
@@ -489,7 +495,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
 };
 
 template <typename TyOp>
-struct BackwardAddThToMuls: public OpRewritePattern<TyOp> {
+struct BackwardAddThToMuls : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
 
   LogicalResult matchAndRewrite(TyOp op,
@@ -893,7 +899,8 @@ struct CastActivePattern : public OpRewritePattern<tpu::ActiveOp> {
       return failure();
     }
     auto storage_type = module::getStorageType(out);
-    if (!storage_type.isF32() && !storage_type.isF16() && !storage_type.isBF16()) {
+    if (!storage_type.isF32() && !storage_type.isF16() &&
+        !storage_type.isBF16()) {
       return failure();
     }
     auto ctx = in.getContext();
@@ -918,131 +925,131 @@ struct CastActivePattern : public OpRewritePattern<tpu::ActiveOp> {
 };
 
 void ConvertTopToTpu::runOnOperation() {
-    module_ = getOperation();
-    ctx_ = &getContext();
-    mainFunc_ = module::getMainFuncOp(module_);
-    LoweringConfig::isQuantized = false;
-    auto mode_ = StringRef(mode).upper();
-    auto mode = module::symbolizeMode(mode_);
-    assert(mode.has_value());
-    module::setMode(mode.value());
-    module::setQuantGroupSize(quantGroupSize);
-    if (weightFileName != "") {
-      module::setWeightFileName(weightFileName);
-    }
-
-    RewritePatternSet patterns(ctx_);
-    patterns.clear();
-    patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
-                 TryInsertTileBinaryPattern<top::SubOp>,
-                 TryInsertTileBinaryPattern<top::MulOp>,
-                 TryInsertTileBinaryPattern<top::MaxOp>,
-                 TryInsertTileBinaryPattern<top::MinOp>,
-                 TryInsertTileBinaryPattern<top::CompareOp>,
-                 TryInsertTileMatMulPattern>(ctx_);
-
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    patterns.clear();
-    LoweringConfig::doWinograd =
-        doWinograd.hasValue() ? doWinograd.getValue() : false;
-    init_qtable();
-
-    if (module::isState(module::State::TOP_QUANTIZED)) {
-      module::setAsymmetric(true);
-      LoweringConfig::isQuantized = true;
-    } else {
-      LoweringConfig::isQuantized = false;
-      module::setAsymmetric(isAsymmetric);
-      calibration_process();
-    }
-
-    if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
-        !LoweringConfig::isQuantized &&
-        (module::getMode() == module::Mode::INT8 ||
-         module::getMode() == module::Mode::UINT8)) {
-      qtable_process();
-      module::updateModuleTypes();
-    }
-
-    // process shape related ops
-    if (module::isBM1684XFamily() || module::isSG2260Family()) {
-      bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
-    } else if (module::isBM1684Family()) {
-      bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
-    }
-
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-
-    patterns.clear();
-    if (module::isBM1684XFamily() || module::isSG2260Family()) {
-      ConversionTarget target(*ctx_);
-      ScfTypeConverter typeConverter;
-      target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
-                             tpu::TpuDialect>();
-      target.addIllegalOp<top::IfOp, top::LoopOp>();
-
-      target.addDynamicallyLegalOp<mlir::func::CallOp>(
-          [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
-      bm1684x::populateTopCfOpToTpuConversionPatterns(patterns, typeConverter,
-                                                      ctx_);
-      if (failed(applyPartialConversion(module_, target, std::move(patterns))))
-        signalPassFailure();
-      patterns.clear();
-    }
-    host2device_convert_process();
-
-    // process other ops
-    if (module::isBM1684XFamily() || module::isSG2260Family()) {
-      bm1684x::populateTopToTpuConversionPatterns(&patterns);
-    } else if (module::isBM1684Family()) {
-      bm1684::populateTopToTpuConversionPatterns(&patterns);
-    } else if (module::isCV18xx()) {
-      cv18xx::populateTopToTpuConversionPatterns(&patterns);
-    } else {
-      llvm_unreachable("Not Implemented");
-    }
-    auto config = GreedyRewriteConfig();
-    config.maxIterations = 1; // apply each pattern only once.
-    applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
-    // adjust reshape
-    patterns.clear();
-    patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    cast_process();
-    if (module::isBM1684XFamily()) {
-      patterns.clear();
-      patterns.add<CastActivePattern>(ctx_);
-      applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    }
-    relu_process();
-    if (module::isCV18xx()) {
-      patterns.clear();
-      patterns.add<CastInputCV18xxPattern>(ctx_);
-      applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    }
-    module::updateModuleTypes();
-    module::setState(module::State::TPU_LOWERED);
-    bool hasTopOp = false;
-    mainFunc_.walk([&](Operation *op) {
-      if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
-              ReturnOp>(op)) {
-        return;
-      }
-      if (!isa<tpu::TpuDialect>(op->getDialect())) {
-        op->dump();
-        hasTopOp = true;
-      }
-    });
-    if (hasTopOp) {
-      llvm_unreachable("unimplemented tpu dialect!");
-    }
+  module_ = getOperation();
+  ctx_ = &getContext();
+  mainFunc_ = module::getMainFuncOp(module_);
+  LoweringConfig::isQuantized = false;
+  auto mode_ = StringRef(mode).upper();
+  auto mode = module::symbolizeMode(mode_);
+  assert(mode.has_value());
+  module::setMode(mode.value());
+  module::setQuantGroupSize(quantGroupSize);
+  if (weightFileName != "") {
+    module::setWeightFileName(weightFileName);
   }
 
-void ConvertTopToTpu::calibration_process() {
-    if (!module::isState(module::State::TOP_CALIBRATED)) {
+  RewritePatternSet patterns(ctx_);
+  patterns.clear();
+  patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
+               TryInsertTileBinaryPattern<top::SubOp>,
+               TryInsertTileBinaryPattern<top::MulOp>,
+               TryInsertTileBinaryPattern<top::MaxOp>,
+               TryInsertTileBinaryPattern<top::MinOp>,
+               TryInsertTileBinaryPattern<top::CompareOp>,
+               TryInsertTileMatMulPattern>(ctx_);
+
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  patterns.clear();
+  LoweringConfig::doWinograd =
+      doWinograd.hasValue() ? doWinograd.getValue() : false;
+  init_qtable();
+
+  if (module::isState(module::State::TOP_QUANTIZED)) {
+    module::setAsymmetric(true);
+    LoweringConfig::isQuantized = true;
+  } else {
+    LoweringConfig::isQuantized = false;
+    module::setAsymmetric(isAsymmetric);
+    calibration_process();
+  }
+
+  if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+      !LoweringConfig::isQuantized &&
+      (module::getMode() == module::Mode::INT8 ||
+       module::getMode() == module::Mode::UINT8)) {
+    qtable_process();
+    module::updateModuleTypes();
+  }
+
+  // process shape related ops
+  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+    bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
+  } else if (module::isBM1684Family()) {
+    bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
+  }
+
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+
+  patterns.clear();
+  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+    ConversionTarget target(*ctx_);
+    ScfTypeConverter typeConverter;
+    target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
+                           tpu::TpuDialect>();
+    target.addIllegalOp<top::IfOp, top::LoopOp>();
+
+    target.addDynamicallyLegalOp<mlir::func::CallOp>(
+        [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
+    bm1684x::populateTopCfOpToTpuConversionPatterns(patterns, typeConverter,
+                                                    ctx_);
+    if (failed(applyPartialConversion(module_, target, std::move(patterns))))
+      signalPassFailure();
+    patterns.clear();
+  }
+  host2device_convert_process();
+
+  // process other ops
+  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+    bm1684x::populateTopToTpuConversionPatterns(&patterns);
+  } else if (module::isBM1684Family()) {
+    bm1684::populateTopToTpuConversionPatterns(&patterns);
+  } else if (module::isCV18xx()) {
+    cv18xx::populateTopToTpuConversionPatterns(&patterns);
+  } else {
+    llvm_unreachable("Not Implemented");
+  }
+  auto config = GreedyRewriteConfig();
+  config.maxIterations = 1; // apply each pattern only once.
+  applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
+  // adjust reshape
+  patterns.clear();
+  patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  cast_process();
+  if (module::isBM1684XFamily()) {
+    patterns.clear();
+    patterns.add<CastActivePattern>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  }
+  relu_process();
+  if (module::isCV18xx()) {
+    patterns.clear();
+    patterns.add<CastInputCV18xxPattern>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  }
+  module::updateModuleTypes();
+  module::setState(module::State::TPU_LOWERED);
+  bool hasTopOp = false;
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
+            ReturnOp>(op)) {
       return;
     }
-    // clang-format off
+    if (!isa<tpu::TpuDialect>(op->getDialect())) {
+      op->dump();
+      hasTopOp = true;
+    }
+  });
+  if (hasTopOp) {
+    llvm_unreachable("unimplemented tpu dialect!");
+  }
+}
+
+void ConvertTopToTpu::calibration_process() {
+  if (!module::isState(module::State::TOP_CALIBRATED)) {
+    return;
+  }
+  // clang-format off
     RewritePatternSet patterns(ctx_);
     patterns.add<ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>>(ctx_);
@@ -1120,438 +1127,439 @@ void ConvertTopToTpu::calibration_process() {
                  ForwardMulConst,
                  ForwardArg
                 >(ctx_);
-    // clang-format on
-    if (!module::isCV18xx()) {
-      // notice it will cause cumulative error
-      patterns.add<ForwardCalibartion<top::PReluOp>>(ctx_);
-    } else {
-      patterns.add<ForwardCalibartion<top::ReduceOp>>(ctx_);
-    }
-    if (module::isBM1684Family()) {
-      // TODO: support asymmetric mode
-      patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
-    }
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    // keep sign for some ops
-    // backend not support in out not the same sign
-    patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>,
-                 KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
-                 SetSubConstSignPattern>(ctx_);
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    patterns.clear();
-    patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    patterns.clear();
+  // clang-format on
+  if (!module::isCV18xx()) {
+    // notice it will cause cumulative error
+    patterns.add<ForwardCalibartion<top::PReluOp>>(ctx_);
+  } else {
+    patterns.add<ForwardCalibartion<top::ReduceOp>>(ctx_);
   }
+  if (module::isBM1684Family()) {
+    // TODO: support asymmetric mode
+    patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
+  }
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  // keep sign for some ops
+  // backend not support in out not the same sign
+  patterns.clear();
+  patterns.add<KeepSignPattern<top::AvgPoolOp>,
+               KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+               SetSubConstSignPattern>(ctx_);
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  patterns.clear();
+  patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  patterns.clear();
+}
 
 void ConvertTopToTpu::host2device_convert_process() {
-    // return types
-    mainFunc_.walk([&](Operation *op) {
-      if (!isa<ReturnOp>(op))
-        return;
-      for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-        try_insert_host2device(op, idx);
-      }
-    });
-  }
+  // return types
+  mainFunc_.walk([&](Operation *op) {
+    if (!isa<ReturnOp>(op))
+      return;
+    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+      try_insert_host2device(op, idx);
+    }
+  });
+}
 
 void ConvertTopToTpu::relu_process() {
-    Builder builder(ctx_);
-    mainFunc_.walk([&](Operation *op) {
-      if (module::isTpuOp(op)) {
-        if (op->hasTrait<trait::SupportFuseRelu>() || isa<tpu::ReluOp>(op)) {
-          if (module::isUniformQuantized(op->getResult(0)) ||
-              module::isUniformQuantized(op->getOperand(0))) {
-            op->setAttr("relu_limit", builder.getF64FloatAttr(-1.0));
-          }
+  Builder builder(ctx_);
+  mainFunc_.walk([&](Operation *op) {
+    if (module::isTpuOp(op)) {
+      if (op->hasTrait<trait::SupportFuseRelu>() || isa<tpu::ReluOp>(op)) {
+        if (module::isUniformQuantized(op->getResult(0)) ||
+            module::isUniformQuantized(op->getOperand(0))) {
+          op->setAttr("relu_limit", builder.getF64FloatAttr(-1.0));
         }
-      }
-    });
-  }
-
-void ConvertTopToTpu::cast_process() {
-    // return types
-    auto retTypes = mainFunc_.getResultTypes();
-    mainFunc_.walk([&](Operation *op) {
-      bool is_tpu = module::isTpuOp(op);
-      if (isa<tpu::YieldOp>(op)) {
-        // do nothing
-      } else if (auto in_op = dyn_cast<top::InputOp>(op)) {
-        auto mode = TypeCastMode::DO_NOTHING;
-        mlir::Type target_type;
-        if (module::isCV18xx() == false) {
-          target_type = type_verify_case_same(op, 0, mode);
-        }
-        if (mode != TypeCastMode::DO_NOTHING) {
-          auto in = in_op.getInput();
-          Value out = in_op.getOutput();
-          auto out_type = out.getType();
-          out.setType(in.getType());
-          auto castOp = do_cast(out, target_type, mode);
-          castOp.setType(out_type);
-          out.replaceAllUsesExcept(castOp, castOp.getDefiningOp());
-        }
-      } else if (is_tpu || isa<ReturnOp>(op)) {
-        for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-          auto opd = op->getOperand(idx);
-          auto defByWeight = [&](auto &&m, Operation *op) {
-            if (!op)
-              return false;
-            if (isa<top::WeightOp>(op))
-              return true;
-            else if (!isa<top::ReshapeOp, tpu::ReshapeOp>(op))
-              return false;
-            else
-              return m(m, op->getOperand(0).getDefiningOp());};
-          if (module::isWeight(opd)
-              || module::isNone(opd)
-              || defByWeight(defByWeight, opd.getDefiningOp())) {
-            continue;
-          }
-          auto inner_requant = op->getAttr("quant_inner_requant");
-          if (inner_requant)
-            continue;
-          auto mode = TypeCastMode::DO_NOTHING;
-          mlir::Type target_type;
-          if (auto typeIf = dyn_cast<TypeInterface>(op)) {
-            target_type = typeIf.type_verify(idx, mode);
-          } else if (isa<ReturnOp>(op)) {
-            auto stype = module::getStorageType(opd);
-            if (module::isUniformQuantized(opd) || stype.isBF16() ||
-                stype.isF16() || stype.isFloat8E4M3FN() || stype.isFloat8E5M2() || (stype.isF32() && module::isCalibratedType(opd))) {
-              target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
-            }
-          } else {
-            target_type = type_verify_case_same(op, idx, mode);
-          }
-          if (mode != TypeCastMode::DO_NOTHING) {
-            auto castOp = do_cast(opd, target_type, mode, op);
-            op->setOperand(idx, castOp);
-          }
-        }
-      }
-    });
-  }
-
-  // SISO is single input single output, not counting weight and none and
-  // input/output
-bool ConvertTopToTpu::isSISO(Operation *op) {
-    int cnt = 0;
-    for (auto in : op->getOperands()) {
-      if (isa<top::InputOp>(in.getDefiningOp()) ||
-          isa<top::WeightOp>(in.getDefiningOp()) ||
-          isa<top::NoneOp>(in.getDefiningOp()))
-        continue;
-      else {
-        if (cnt != 0)
-          return false;
-        else
-          cnt++;
       }
     }
-    if (cnt == 0)
-      return false;
-    return (std::distance(op->getResult(0).user_begin(), op->getResult(0).user_end()) == 1);
-  }
+  });
+}
 
-  // return a list of end layernorms after ffn , the count would be the number of
-  // encoder ffn part
+void ConvertTopToTpu::cast_process() {
+  // return types
+  auto retTypes = mainFunc_.getResultTypes();
+  mainFunc_.walk([&](Operation *op) {
+    bool is_tpu = module::isTpuOp(op);
+    if (isa<tpu::YieldOp>(op)) {
+      // do nothing
+    } else if (auto in_op = dyn_cast<top::InputOp>(op)) {
+      auto mode = TypeCastMode::DO_NOTHING;
+      mlir::Type target_type;
+      if (module::isCV18xx() == false) {
+        target_type = type_verify_case_same(op, 0, mode);
+      }
+      if (mode != TypeCastMode::DO_NOTHING) {
+        auto in = in_op.getInput();
+        Value out = in_op.getOutput();
+        auto out_type = out.getType();
+        out.setType(in.getType());
+        auto castOp = do_cast(out, target_type, mode);
+        castOp.setType(out_type);
+        out.replaceAllUsesExcept(castOp, castOp.getDefiningOp());
+      }
+    } else if (is_tpu || isa<ReturnOp>(op)) {
+      for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+        auto opd = op->getOperand(idx);
+        auto defByWeight = [&](auto &&m, Operation *op) {
+          if (!op)
+            return false;
+          if (isa<top::WeightOp>(op))
+            return true;
+          else if (!isa<top::ReshapeOp, tpu::ReshapeOp>(op))
+            return false;
+          else
+            return m(m, op->getOperand(0).getDefiningOp());
+        };
+        if (module::isWeight(opd) || module::isNone(opd) ||
+            defByWeight(defByWeight, opd.getDefiningOp())) {
+          continue;
+        }
+        auto inner_requant = op->getAttr("quant_inner_requant");
+        if (inner_requant)
+          continue;
+        auto mode = TypeCastMode::DO_NOTHING;
+        mlir::Type target_type;
+        if (auto typeIf = dyn_cast<TypeInterface>(op)) {
+          target_type = typeIf.type_verify(idx, mode);
+        } else if (isa<ReturnOp>(op)) {
+          auto stype = module::getStorageType(opd);
+          if (module::isUniformQuantized(opd) || stype.isBF16() ||
+              stype.isF16() || stype.isFloat8E4M3FN() || stype.isFloat8E5M2() ||
+              (stype.isF32() && module::isCalibratedType(opd))) {
+            target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
+          }
+        } else {
+          target_type = type_verify_case_same(op, idx, mode);
+        }
+        if (mode != TypeCastMode::DO_NOTHING) {
+          auto castOp = do_cast(opd, target_type, mode, op);
+          op->setOperand(idx, castOp);
+        }
+      }
+    }
+  });
+}
+
+// SISO is single input single output, not counting weight and none and
+// input/output
+bool ConvertTopToTpu::isSISO(Operation *op) {
+  int cnt = 0;
+  for (auto in : op->getOperands()) {
+    if (isa<top::InputOp>(in.getDefiningOp()) ||
+        isa<top::WeightOp>(in.getDefiningOp()) ||
+        isa<top::NoneOp>(in.getDefiningOp()))
+      continue;
+    else {
+      if (cnt != 0)
+        return false;
+      else
+        cnt++;
+    }
+  }
+  if (cnt == 0)
+    return false;
+  return (std::distance(op->getResult(0).user_begin(),
+                        op->getResult(0).user_end()) == 1);
+}
+
+// return a list of end layernorms after ffn , the count would be the number of
+// encoder ffn part
 void ConvertTopToTpu::match_bert_ffn(std::vector<Operation *> &ffn) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
-        if (auto addop =
-                dyn_cast<top::AddOp>(lnop.getInput().getDefiningOp())) {
-          if (!addop.getOutput().hasOneUse())
+  mainFunc_.walk([&](Operation *op) {
+    if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
+      if (auto addop = dyn_cast<top::AddOp>(lnop.getInput().getDefiningOp())) {
+        if (!addop.getOutput().hasOneUse())
+          return;
+        top::MatMulOp mmop = NULL;
+        top::LayerNormOp lnop1 = NULL;
+        for (auto in : addop.getOperands()) {
+          if (isa<top::LayerNormOp>(in.getDefiningOp()))
+            lnop1 = dyn_cast_or_null<top::LayerNormOp>(in.getDefiningOp());
+          else if (isa<top::MatMulOp>(in.getDefiningOp()))
+            mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
+          else
             return;
-          top::MatMulOp mmop = NULL;
-          top::LayerNormOp lnop1 = NULL;
-          for (auto in : addop.getOperands()) {
-            if (isa<top::LayerNormOp>(in.getDefiningOp()))
-              lnop1 = dyn_cast_or_null<top::LayerNormOp>(in.getDefiningOp());
-            else if (isa<top::MatMulOp>(in.getDefiningOp()))
-              mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
-            else
-              return;
-          }
-          if (mmop == NULL || lnop1 == NULL || !isSISO(mmop.getOperation()))
+        }
+        if (mmop == NULL || lnop1 == NULL || !isSISO(mmop.getOperation()))
+          return;
+        if (isa<top::GELUOp>(mmop.getInput().getDefiningOp())) {
+          auto geluop =
+              dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
+          if (!isSISO(geluop.getOperation()))
             return;
-          if (isa<top::GELUOp>(mmop.getInput().getDefiningOp())) {
-            auto geluop =
-                dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
-            if (!isSISO(geluop.getOperation()))
-              return;
-            if (isa<top::MatMulOp>(geluop.getInput().getDefiningOp())) {
-              auto mmop1 = dyn_cast_or_null<top::MatMulOp>(
-                  geluop.getInput().getDefiningOp());
-              if (mmop1.getInput().getDefiningOp() != lnop1 ||
-                  !isSISO(mmop1.getOperation())) {
-                return;
-              }
-              if (!addop.getOutput().hasOneUse() ||
-                  !mmop.getOutput().hasOneUse() ||
-                  !geluop.getOutput().hasOneUse() ||
-                  !mmop1.getOutput().hasOneUse())
-                return;
-              ffn.push_back(lnop);
+          if (isa<top::MatMulOp>(geluop.getInput().getDefiningOp())) {
+            auto mmop1 = dyn_cast_or_null<top::MatMulOp>(
+                geluop.getInput().getDefiningOp());
+            if (mmop1.getInput().getDefiningOp() != lnop1 ||
+                !isSISO(mmop1.getOperation())) {
               return;
             }
+            if (!addop.getOutput().hasOneUse() ||
+                !mmop.getOutput().hasOneUse() ||
+                !geluop.getOutput().hasOneUse() ||
+                !mmop1.getOutput().hasOneUse())
+              return;
+            ffn.push_back(lnop);
+            return;
           }
         }
       }
-    });
-  }
+    }
+  });
+}
 
-  // return a set of end layernorms after ffn , the count would be the number of
-  // encoder ffn part
+// return a set of end layernorms after ffn , the count would be the number of
+// encoder ffn part
 void ConvertTopToTpu::match_bert_mha(std::vector<Operation *> &mha) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
-        if (auto addop =
-                dyn_cast<top::AddOp>(lnop.getInput().getDefiningOp())) {
-          if (!addop.getOutput().hasOneUse()) {
-            return;
-          }
-          top::MatMulOp mmop = NULL;
-          top::LayerNormOp top_lnop = NULL;
-
-          top::ReshapeOp reshapeop = NULL;
-          top::PermuteOp pmop = NULL;
-          top::MatMulOp mmop1 = NULL;
-
-          for (auto in : addop.getOperands()) {
-            if (isa<top::MatMulOp>(in.getDefiningOp())) {
-              mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
-            } else if (isa<top::LayerNormOp>(in.getDefiningOp())) {
-              top_lnop = dyn_cast_or_null<top::LayerNormOp>(in.getDefiningOp());
-            } else
-              return;
-          }
-          if (mmop == NULL || top_lnop == NULL || !isSISO(mmop.getOperation()))
-            return;
-          if (isa<top::ReshapeOp>(mmop.getInput().getDefiningOp())) {
-            reshapeop = dyn_cast_or_null<top::ReshapeOp>(
-                mmop.getInput().getDefiningOp());
-          }
-          if (reshapeop == NULL || !isSISO(reshapeop.getOperation()))
-            return;
-          if (isa<top::PermuteOp>(reshapeop.getInput().getDefiningOp())) {
-            pmop = dyn_cast_or_null<top::PermuteOp>(
-                reshapeop.getInput().getDefiningOp());
-          }
-          if (pmop == NULL || !isSISO(pmop.getOperation()))
-            return;
-          if (isa<top::MatMulOp>(pmop.getInput().getDefiningOp())) {
-            mmop1 = dyn_cast_or_null<top::MatMulOp>(
-                pmop.getInput().getDefiningOp());
-          }
-          if (mmop1 == NULL)
-            return;
-
-          top::PermuteOp pmv = NULL;
-          top::ReshapeOp rsv = NULL;
-          top::SoftmaxOp sm = NULL;
-
-          for (auto in : mmop1.getOperands()) {
-            if (isa<top::PermuteOp>(in.getDefiningOp()))
-              pmv = dyn_cast_or_null<top::PermuteOp>(in.getDefiningOp());
-            else if (isa<top::SoftmaxOp>(in.getDefiningOp()))
-              sm = dyn_cast_or_null<top::SoftmaxOp>(in.getDefiningOp());
-            else if (isa<top::NoneOp>(in.getDefiningOp()))
-              continue;
-            else
-              return;
-          }
-          if (pmv == NULL || sm == NULL)
-            return;
-
-          // check value branch
-          if (isa<top::ReshapeOp>(pmv.getInput().getDefiningOp()))
-            rsv = dyn_cast_or_null<top::ReshapeOp>(
-                pmv.getInput().getDefiningOp());
-          if (rsv == NULL || !isSISO(rsv.getOperation()))
-            return;
-          if (isa<top::MatMulOp>(rsv.getInput().getDefiningOp())) {
-            auto mm_ =
-                dyn_cast_or_null<top::MatMulOp>(rsv.getInput().getDefiningOp());
-            if (mm_ == NULL || !isSISO(mm_.getOperation()) ||
-                mm_.getInput().getDefiningOp() != top_lnop)
-              return;
-          }
-
-          // check k,v branches
-          top::AddOp addop1 = NULL;
-          top::MulConstOp mcop = NULL;
-          if (isa<top::AddOp>(sm.getInput().getDefiningOp()))
-            addop1 =
-                dyn_cast_or_null<top::AddOp>(sm.getInput().getDefiningOp());
-          if (!addop1 || !addop1.getOutput().hasOneUse())
-            return;
-          for (auto in : addop1.getOperands()) {
-            top::MulConstOp mcop_ = NULL;
-            if (isa<top::MulConstOp>(in.getDefiningOp()))
-              mcop_ = dyn_cast_or_null<top::MulConstOp>(in.getDefiningOp());
-            else
-              return;
-            if (mcop_.getConstVal().convertToDouble() == 0.125)
-              mcop = mcop_;
-            else if (mcop_.getConstVal().convertToDouble() == -10000)
-              continue;
-            else
-              return;
-          }
-          if (mcop == NULL || !isSISO(mcop.getOperation()))
-            return;
-
-          top::MatMulOp mmop2 = NULL;
-          if (isa<top::MatMulOp>(mcop.getInput().getDefiningOp()))
-            mmop2 = dyn_cast_or_null<top::MatMulOp>(
-                mcop.getInput().getDefiningOp());
-          if (mmop2 == NULL)
-            return;
-          int inputs = 0;
-          for (auto in : mmop2.getOperands()) {
-            if (isa<top::WeightOp>(in.getDefiningOp()))
-              continue;
-            else if (isa<top::PermuteOp>(in.getDefiningOp())) {
-              auto p_ = dyn_cast_or_null<top::PermuteOp>(in.getDefiningOp());
-              if (p_ == NULL || !isSISO(p_.getOperation()))
-                return;
-              if (!isa<top::ReshapeOp>(p_.getInput().getDefiningOp()))
-                return;
-              auto r_ = dyn_cast_or_null<top::ReshapeOp>(
-                  p_.getInput().getDefiningOp());
-              if (r_ == NULL || !isSISO(r_.getOperation()))
-                return;
-              if (!isa<top::MatMulOp>(r_.getInput().getDefiningOp()))
-                return;
-              auto m_ = dyn_cast_or_null<top::MatMulOp>(
-                  r_.getInput().getDefiningOp());
-              if (m_ == NULL || !isSISO(m_.getOperation()))
-                return;
-              if (m_.getInput().getDefiningOp() != top_lnop)
-                return;
-              inputs++;
-            }
-          }
-          if (inputs != 2)
-            return;
-          mha.push_back(lnop);
+  mainFunc_.walk([&](Operation *op) {
+    if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
+      if (auto addop = dyn_cast<top::AddOp>(lnop.getInput().getDefiningOp())) {
+        if (!addop.getOutput().hasOneUse()) {
+          return;
         }
+        top::MatMulOp mmop = NULL;
+        top::LayerNormOp top_lnop = NULL;
+
+        top::ReshapeOp reshapeop = NULL;
+        top::PermuteOp pmop = NULL;
+        top::MatMulOp mmop1 = NULL;
+
+        for (auto in : addop.getOperands()) {
+          if (isa<top::MatMulOp>(in.getDefiningOp())) {
+            mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
+          } else if (isa<top::LayerNormOp>(in.getDefiningOp())) {
+            top_lnop = dyn_cast_or_null<top::LayerNormOp>(in.getDefiningOp());
+          } else
+            return;
+        }
+        if (mmop == NULL || top_lnop == NULL || !isSISO(mmop.getOperation()))
+          return;
+        if (isa<top::ReshapeOp>(mmop.getInput().getDefiningOp())) {
+          reshapeop =
+              dyn_cast_or_null<top::ReshapeOp>(mmop.getInput().getDefiningOp());
+        }
+        if (reshapeop == NULL || !isSISO(reshapeop.getOperation()))
+          return;
+        if (isa<top::PermuteOp>(reshapeop.getInput().getDefiningOp())) {
+          pmop = dyn_cast_or_null<top::PermuteOp>(
+              reshapeop.getInput().getDefiningOp());
+        }
+        if (pmop == NULL || !isSISO(pmop.getOperation()))
+          return;
+        if (isa<top::MatMulOp>(pmop.getInput().getDefiningOp())) {
+          mmop1 =
+              dyn_cast_or_null<top::MatMulOp>(pmop.getInput().getDefiningOp());
+        }
+        if (mmop1 == NULL)
+          return;
+
+        top::PermuteOp pmv = NULL;
+        top::ReshapeOp rsv = NULL;
+        top::SoftmaxOp sm = NULL;
+
+        for (auto in : mmop1.getOperands()) {
+          if (isa<top::PermuteOp>(in.getDefiningOp()))
+            pmv = dyn_cast_or_null<top::PermuteOp>(in.getDefiningOp());
+          else if (isa<top::SoftmaxOp>(in.getDefiningOp()))
+            sm = dyn_cast_or_null<top::SoftmaxOp>(in.getDefiningOp());
+          else if (isa<top::NoneOp>(in.getDefiningOp()))
+            continue;
+          else
+            return;
+        }
+        if (pmv == NULL || sm == NULL)
+          return;
+
+        // check value branch
+        if (isa<top::ReshapeOp>(pmv.getInput().getDefiningOp()))
+          rsv =
+              dyn_cast_or_null<top::ReshapeOp>(pmv.getInput().getDefiningOp());
+        if (rsv == NULL || !isSISO(rsv.getOperation()))
+          return;
+        if (isa<top::MatMulOp>(rsv.getInput().getDefiningOp())) {
+          auto mm_ =
+              dyn_cast_or_null<top::MatMulOp>(rsv.getInput().getDefiningOp());
+          if (mm_ == NULL || !isSISO(mm_.getOperation()) ||
+              mm_.getInput().getDefiningOp() != top_lnop)
+            return;
+        }
+
+        // check k,v branches
+        top::AddOp addop1 = NULL;
+        top::MulConstOp mcop = NULL;
+        if (isa<top::AddOp>(sm.getInput().getDefiningOp()))
+          addop1 = dyn_cast_or_null<top::AddOp>(sm.getInput().getDefiningOp());
+        if (!addop1 || !addop1.getOutput().hasOneUse())
+          return;
+        for (auto in : addop1.getOperands()) {
+          top::MulConstOp mcop_ = NULL;
+          if (isa<top::MulConstOp>(in.getDefiningOp()))
+            mcop_ = dyn_cast_or_null<top::MulConstOp>(in.getDefiningOp());
+          else
+            return;
+          if (mcop_.getConstVal().convertToDouble() == 0.125)
+            mcop = mcop_;
+          else if (mcop_.getConstVal().convertToDouble() == -10000)
+            continue;
+          else
+            return;
+        }
+        if (mcop == NULL || !isSISO(mcop.getOperation()))
+          return;
+
+        top::MatMulOp mmop2 = NULL;
+        if (isa<top::MatMulOp>(mcop.getInput().getDefiningOp()))
+          mmop2 =
+              dyn_cast_or_null<top::MatMulOp>(mcop.getInput().getDefiningOp());
+        if (mmop2 == NULL)
+          return;
+        int inputs = 0;
+        for (auto in : mmop2.getOperands()) {
+          if (isa<top::WeightOp>(in.getDefiningOp()))
+            continue;
+          else if (isa<top::PermuteOp>(in.getDefiningOp())) {
+            auto p_ = dyn_cast_or_null<top::PermuteOp>(in.getDefiningOp());
+            if (p_ == NULL || !isSISO(p_.getOperation()))
+              return;
+            if (!isa<top::ReshapeOp>(p_.getInput().getDefiningOp()))
+              return;
+            auto r_ =
+                dyn_cast_or_null<top::ReshapeOp>(p_.getInput().getDefiningOp());
+            if (r_ == NULL || !isSISO(r_.getOperation()))
+              return;
+            if (!isa<top::MatMulOp>(r_.getInput().getDefiningOp()))
+              return;
+            auto m_ =
+                dyn_cast_or_null<top::MatMulOp>(r_.getInput().getDefiningOp());
+            if (m_ == NULL || !isSISO(m_.getOperation()))
+              return;
+            if (m_.getInput().getDefiningOp() != top_lnop)
+              return;
+            inputs++;
+          }
+        }
+        if (inputs != 2)
+          return;
+        mha.push_back(lnop);
       }
-    });
-  }
+    }
+  });
+}
 
 void ConvertTopToTpu::match_attention(std::vector<Operation *> &attention) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto atop = dyn_cast<top::AttentionOp>(op)) {
-        attention.push_back(op);
-      }
-    });
-  }
+  mainFunc_.walk([&](Operation *op) {
+    if (auto atop = dyn_cast<top::AttentionOp>(op)) {
+      attention.push_back(op);
+    }
+  });
+}
 
 static int partial_float_bert_ffn = -1;
 bool ConvertTopToTpu::bert_mix_precision() {
-    std::vector<Operation *> ffn;
-    std::vector<Operation *> mha;
-    std::vector<Operation *> attention;
+  std::vector<Operation *> ffn;
+  std::vector<Operation *> mha;
+  std::vector<Operation *> attention;
 
-    match_bert_ffn(ffn);
-    match_bert_mha(mha);
-    match_attention(attention);
+  match_bert_ffn(ffn);
+  match_bert_mha(mha);
+  match_attention(attention);
 
-    if (ffn.size() > 0 && (mha.size() > 0 || attention.size() > 0)) {
-      // now to set
-      // 1. all add before layernorm to f16
-      // 2. last matmul of mha output to f16
-      // 3. add before softmax to f32
-      for (auto op : mha) {
-        auto addop = dyn_cast_or_null<top::AddOp>(
-            dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
-        if (addop == NULL)
-          return false;
-        if (LoweringConfig::quantize_map.find(
-                module::getName(addop.getOperation()).str()) ==
-            LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(addop.getOperation()).str(), module::Mode::F16});
-        }
+  if (ffn.size() > 0 && (mha.size() > 0 || attention.size() > 0)) {
+    // now to set
+    // 1. all add before layernorm to f16
+    // 2. last matmul of mha output to f16
+    // 3. add before softmax to f32
+    for (auto op : mha) {
+      auto addop = dyn_cast_or_null<top::AddOp>(
+          dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
       }
-      int cnt = 0;
-      for (auto op : ffn) {
-	      cnt ++;
-        auto addop = dyn_cast_or_null<top::AddOp>(
-            dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
-        if (addop == NULL)
-          return false;
-        if (LoweringConfig::quantize_map.find(
-                module::getName(addop.getOperation()).str()) ==
-            LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(addop.getOperation()).str(), module::Mode::F16});
-        }
-        for (auto in : addop.getOperands()) {
-          if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-            if (cnt >= 5 && (partial_float_bert_ffn > 0))
-                    continue;
-            if (LoweringConfig::quantize_map.find(
-                module::getName(mmop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-                  LoweringConfig::quantize_map.insert(
-                    {module::getName(mmop.getOperation()).str(),
-                    module::Mode::F16});
-            }
+    }
+    int cnt = 0;
+    for (auto op : ffn) {
+      cnt++;
+      auto addop = dyn_cast_or_null<top::AddOp>(
+          dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      for (auto in : addop.getOperands()) {
+        if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+          if (cnt >= 5 && (partial_float_bert_ffn > 0))
+            continue;
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(mmop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(mmop.getOperation()).str(),
+                 module::Mode::F16});
           }
         }
       }
+    }
 
-      for (auto op : attention) {
-        auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
-        assert(atenop != NULL);
-        auto lnop = dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
-        if (lnop == NULL)
-          return false;
-        for (auto out : lnop.getResult().getUsers()) {
-          if (auto addop = dyn_cast<top::AddOp>(*out)) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(addop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(addop.getOperation()).str(),
-                   module::Mode::F16});
-            }
+    for (auto op : attention) {
+      auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
+      assert(atenop != NULL);
+      auto lnop =
+          dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
+      if (lnop == NULL)
+        return false;
+      for (auto out : lnop.getResult().getUsers()) {
+        if (auto addop = dyn_cast<top::AddOp>(*out)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(addop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(addop.getOperation()).str(),
+                 module::Mode::F16});
           }
         }
       }
+    }
 
-      for (auto op : attention) {
-        auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
-        assert(atenop != NULL);
-        auto lnop = dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
-        if (lnop == NULL)
-          return false;
-        for (auto out : lnop.getResult().getUsers()) {
-          if (auto addop = dyn_cast<top::AddOp>(*out)) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(addop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(addop.getOperation()).str(),
-                   module::Mode::F16});
-            }
+    for (auto op : attention) {
+      auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
+      assert(atenop != NULL);
+      auto lnop =
+          dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
+      if (lnop == NULL)
+        return false;
+      for (auto out : lnop.getResult().getUsers()) {
+        if (auto addop = dyn_cast<top::AddOp>(*out)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(addop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(addop.getOperation()).str(),
+                 module::Mode::F16});
           }
         }
       }
+    }
 
-      return true;
-    } else
-      return false;
-  }
+    return true;
+  } else
+    return false;
+}
 
-bool ConvertTopToTpu::convergence(Operation* from, Operation *to) {
+bool ConvertTopToTpu::convergence(Operation *from, Operation *to) {
   bool res = true;
   auto re = from->getResult(0);
-  for (auto r :re.getUsers()) {
+  for (auto r : re.getUsers()) {
     if (isa<top::NoneOp>(r))
       return false;
     else if (r == to)
@@ -1564,11 +1572,14 @@ bool ConvertTopToTpu::convergence(Operation* from, Operation *to) {
   return res;
 }
 
-bool ConvertTopToTpu::convergence_with_sm_matmul(Operation* from, Operation *to, int &sm_cnt, int &matmul_cnt, int &triple_matmul) {
+bool ConvertTopToTpu::convergence_with_sm_matmul_slice(
+    Operation *from, Operation *to, int &sm_cnt, int &matmul_cnt,
+    int &triple_matmul, int &triple_slice, int &six_slice) {
   bool res = true;
   auto re = from->getResult(0);
-  int triplem = 0;
-  for (auto r :re.getUsers()) {
+  int mm_cnt = 0;
+  int slice_cnt = 0;
+  for (auto r : re.getUsers()) {
     if (isa<top::NoneOp>(r))
       return false;
     else if (r == to)
@@ -1577,151 +1588,276 @@ bool ConvertTopToTpu::convergence_with_sm_matmul(Operation* from, Operation *to,
       return false;
     }
     if (isa<top::SoftmaxOp>(r))
-      sm_cnt ++;
+      sm_cnt++;
     if (isa<top::MatMulOp>(r)) {
-      matmul_cnt ++;
-      triplem ++;
+      matmul_cnt++;
+      mm_cnt++;
     }
-    res &= convergence_with_sm_matmul(r, to, sm_cnt, matmul_cnt, triple_matmul);
+    if (isa<top::SliceOp>(r)) {
+      slice_cnt++;
+    }
+
+    res &= convergence_with_sm_matmul_slice(
+        r, to, sm_cnt, matmul_cnt, triple_matmul, triple_slice, six_slice);
   }
-  if (triplem == 3)
-    triple_matmul ++;
+  if (mm_cnt == 3)
+    triple_matmul++;
+  if (slice_cnt == 3)
+    triple_slice++;
+  if (slice_cnt == 6)
+    six_slice++;
   return res;
 }
 
 void ConvertTopToTpu::match_vit_mlp(std::vector<Operation *> &mlp) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto addop = dyn_cast<top::AddOp>(op)) {
-          top::AddOp aop = NULL;
-          top::MatMulOp mmop = NULL;
-          for (auto in : addop.getOperands()) {
-            if (isa<top::MatMulOp>(in.getDefiningOp()))
-              mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
-            else if (isa<top::AddOp>(in.getDefiningOp()))
-              aop = dyn_cast_or_null<top::AddOp>(in.getDefiningOp());
-            else
-              return;
-          }
-          if (mmop == NULL || aop == NULL || !isSISO(mmop.getOperation()))
-            return;
-          if (isa<top::GELUOp>(mmop.getInput().getDefiningOp())) {
-            auto geluop =
-                dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
-            if (!isSISO(geluop.getOperation()))
-              return;
-            if (isa<top::MatMulOp>(geluop.getInput().getDefiningOp())) {
-              auto mmop1 = dyn_cast_or_null<top::MatMulOp>(
-                  geluop.getInput().getDefiningOp());
-              if (isa<top::LayerNormOp>(mmop1.getInput().getDefiningOp())) {
-                auto lnop = dyn_cast_or_null<top::LayerNormOp>(mmop1.getInput().getDefiningOp());
-                if (lnop.getInput().getDefiningOp() != aop ||
-                    !isSISO(lnop.getOperation())) {
-                  return;
-                }
-              }
-              if (!mmop.getOutput().hasOneUse() ||
-                  !geluop.getOutput().hasOneUse() ||
-                  !mmop1.getOutput().hasOneUse())
-                return;
-              mlp.push_back(addop);
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::AddOp aop = NULL;
+      top::MatMulOp mmop = NULL;
+      for (auto in : addop.getOperands()) {
+        if (isa<top::MatMulOp>(in.getDefiningOp()))
+          mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
+        else if (isa<top::AddOp>(in.getDefiningOp()))
+          aop = dyn_cast_or_null<top::AddOp>(in.getDefiningOp());
+        else
+          return;
+      }
+      if (mmop == NULL || aop == NULL || !isSISO(mmop.getOperation()))
+        return;
+      if (isa<top::GELUOp>(mmop.getInput().getDefiningOp())) {
+        auto geluop =
+            dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
+        if (!isSISO(geluop.getOperation()))
+          return;
+        if (isa<top::MatMulOp>(geluop.getInput().getDefiningOp())) {
+          auto mmop1 = dyn_cast_or_null<top::MatMulOp>(
+              geluop.getInput().getDefiningOp());
+          if (isa<top::LayerNormOp>(mmop1.getInput().getDefiningOp())) {
+            auto lnop = dyn_cast_or_null<top::LayerNormOp>(
+                mmop1.getInput().getDefiningOp());
+            if (lnop.getInput().getDefiningOp() != aop ||
+                !isSISO(lnop.getOperation())) {
               return;
             }
           }
+          if (!mmop.getOutput().hasOneUse() ||
+              !geluop.getOutput().hasOneUse() || !mmop1.getOutput().hasOneUse())
+            return;
+          mlp.push_back(addop);
+          return;
         }
-      });
+      }
     }
+  });
+}
 
 void ConvertTopToTpu::match_vit_mha(std::vector<Operation *> &mha) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto addop = dyn_cast<top::AddOp>(op)) {
-        top::LayerNormOp lnop = NULL;
-        top::AddOp aop = NULL;
-        for (auto user: addop.getOutput().getUsers()) {
-          if (isa<top::LayerNormOp>(user)) {
-            lnop = dyn_cast<top::LayerNormOp>(user);
-          } else if (isa<top::AddOp>(user)) {
-            aop = dyn_cast<top::AddOp>(user);
-          }
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::LayerNormOp lnop = NULL;
+      top::AddOp aop = NULL;
+      for (auto user : addop.getOutput().getUsers()) {
+        if (isa<top::LayerNormOp>(user)) {
+          lnop = dyn_cast<top::LayerNormOp>(user);
+        } else if (isa<top::AddOp>(user)) {
+          aop = dyn_cast<top::AddOp>(user);
         }
-        if (lnop == NULL || aop == NULL)
-          return;
-        if (!isSISO(lnop.getOperation()))
-          return;
-        if (!convergence(lnop, aop))
-          return;
-        if(isa<top::MatMulOp>(*(lnop.getResult().getUsers().begin()))) {
-          auto mmop = dyn_cast<top::MatMulOp>(*(lnop.getResult().getUsers().begin()));
-          if (isa<top::ReshapeOp>(*(mmop.getResult().getUsers().begin()))) {
-            auto rsop = dyn_cast<top::ReshapeOp>(*(mmop.getResult().getUsers().begin()));
-            if (isa<top::PermuteOp>(*(rsop.getResult().getUsers().begin()))) {
-              auto permop = dyn_cast<top::PermuteOp>(*(rsop.getResult().getUsers().begin()));
-              if (std::distance(permop.getResult().getUsers().begin(), permop.getResult().getUsers().end()) != 3)
-                return;
-              top::SliceOp sop[3] = {NULL};
-              top::ReshapeOp rsop_[3] = {NULL};
-              top::MatMulOp matop = NULL;
-              for (auto u:permop.getResult().getUsers()) {
-                if (auto sliceop = dyn_cast<top::SliceOp>(u)) {
-                  if (module::getI64Array(sliceop.getOffsetAttr())->at(0) == 0)
-                    sop[0] = sliceop;
-                  else if (module::getI64Array(sliceop.getOffsetAttr())->at(0) == 1)
-                    sop[1] = sliceop;
-                  else if (module::getI64Array(sliceop.getOffsetAttr())->at(0) == 2)
-                    sop[2] = sliceop;
-                  else
-                    return;
-                } else {
+      }
+      if (lnop == NULL || aop == NULL)
+        return;
+      if (!isSISO(lnop.getOperation()))
+        return;
+      if (!convergence(lnop, aop))
+        return;
+      if (isa<top::MatMulOp>(*(lnop.getResult().getUsers().begin()))) {
+        auto mmop =
+            dyn_cast<top::MatMulOp>(*(lnop.getResult().getUsers().begin()));
+        if (isa<top::ReshapeOp>(*(mmop.getResult().getUsers().begin()))) {
+          auto rsop =
+              dyn_cast<top::ReshapeOp>(*(mmop.getResult().getUsers().begin()));
+          if (isa<top::PermuteOp>(*(rsop.getResult().getUsers().begin()))) {
+            auto permop = dyn_cast<top::PermuteOp>(
+                *(rsop.getResult().getUsers().begin()));
+            if (std::distance(permop.getResult().getUsers().begin(),
+                              permop.getResult().getUsers().end()) != 3)
+              return;
+            top::SliceOp sop[3] = {NULL};
+            top::ReshapeOp rsop_[3] = {NULL};
+            top::MatMulOp matop = NULL;
+            for (auto u : permop.getResult().getUsers()) {
+              if (auto sliceop = dyn_cast<top::SliceOp>(u)) {
+                if (module::getI64Array(sliceop.getOffsetAttr())->at(0) == 0)
+                  sop[0] = sliceop;
+                else if (module::getI64Array(sliceop.getOffsetAttr())->at(0) ==
+                         1)
+                  sop[1] = sliceop;
+                else if (module::getI64Array(sliceop.getOffsetAttr())->at(0) ==
+                         2)
+                  sop[2] = sliceop;
+                else
                   return;
-                }
-              }
-              if (!isa<top::ReshapeOp>(*(sop[0]->getResult(0).getUsers().begin())))
+              } else {
                 return;
-              else {
-                rsop_[0] = dyn_cast<top::ReshapeOp>(*(sop[0]->getResult(0).getUsers().begin()));
               }
-              if (!isa<top::ReshapeOp>(*(sop[1]->getResult(0).getUsers().begin())))
+            }
+            if (!isa<top::ReshapeOp>(
+                    *(sop[0]->getResult(0).getUsers().begin())))
+              return;
+            else {
+              rsop_[0] = dyn_cast<top::ReshapeOp>(
+                  *(sop[0]->getResult(0).getUsers().begin()));
+            }
+            if (!isa<top::ReshapeOp>(
+                    *(sop[1]->getResult(0).getUsers().begin())))
+              return;
+            else {
+              rsop_[1] = dyn_cast<top::ReshapeOp>(
+                  *(sop[1]->getResult(0).getUsers().begin()));
+            }
+            if (!isa<top::ReshapeOp>(
+                    *(sop[2]->getResult(0).getUsers().begin())))
+              return;
+            else {
+              rsop_[2] = dyn_cast<top::ReshapeOp>(
+                  *(sop[2]->getResult(0).getUsers().begin()));
+              if (!isa<top::MatMulOp>(
+                      *(rsop_[2]->getResult(0).getUsers().begin())))
                 return;
-              else {
-                rsop_[1] = dyn_cast<top::ReshapeOp>(*(sop[1]->getResult(0).getUsers().begin()));
-              }
-              if (!isa<top::ReshapeOp>(*(sop[2]->getResult(0).getUsers().begin())))
-                return;
-              else {
-                rsop_[2] = dyn_cast<top::ReshapeOp>(*(sop[2]->getResult(0).getUsers().begin()));
-                if (!isa<top::MatMulOp>(*(rsop_[2]->getResult(0).getUsers().begin())))
-                  return;
-                matop = dyn_cast<top::MatMulOp>(*(rsop_[2]->getResult(0).getUsers().begin()));
-              }
+              matop = dyn_cast<top::MatMulOp>(
+                  *(rsop_[2]->getResult(0).getUsers().begin()));
+            }
 
-              if (!isa<top::MatMulOp>(*(rsop_[0]->getResult(0).getUsers().begin())) || !isa<top::MatMulOp>(*(rsop_[1]->getResult(0).getUsers().begin())))
-                return;
-              if (*(rsop_[0]->getResult(0).getUsers().begin()) != (*(rsop_[1]->getResult(0).getUsers().begin())))
-                return;
-              auto mmop_ = dyn_cast<top::MatMulOp>(*(rsop_[0]->getResult(0).getUsers().begin()));
-              if (auto mcop = dyn_cast<top::MulConstOp>(*(mmop_.getOutput().getUsers().begin()))) {
-                if (auto smop = dyn_cast<top::SoftmaxOp>(*(mcop.getOutput().getUsers().begin()))) {
-                  if (*(smop.getOutput().getUsers().begin()) != matop)
-                    return;
-                } else
+            if (!isa<top::MatMulOp>(
+                    *(rsop_[0]->getResult(0).getUsers().begin())) ||
+                !isa<top::MatMulOp>(
+                    *(rsop_[1]->getResult(0).getUsers().begin())))
+              return;
+            if (*(rsop_[0]->getResult(0).getUsers().begin()) !=
+                (*(rsop_[1]->getResult(0).getUsers().begin())))
+              return;
+            auto mmop_ = dyn_cast<top::MatMulOp>(
+                *(rsop_[0]->getResult(0).getUsers().begin()));
+            if (auto mcop = dyn_cast<top::MulConstOp>(
+                    *(mmop_.getOutput().getUsers().begin()))) {
+              if (auto smop = dyn_cast<top::SoftmaxOp>(
+                      *(mcop.getOutput().getUsers().begin()))) {
+                if (*(smop.getOutput().getUsers().begin()) != matop)
                   return;
               } else
                 return;
+            } else
+              return;
             if (!isa<top::PermuteOp>(*(matop.getResult().getUsers().begin())))
               return;
             else {
-              auto pop = dyn_cast<top::PermuteOp>(*(matop.getResult().getUsers().begin()));
+              auto pop = dyn_cast<top::PermuteOp>(
+                  *(matop.getResult().getUsers().begin()));
               if (!isa<top::ReshapeOp>(*(pop.getResult().getUsers().begin())))
                 return;
-              auto rop = dyn_cast<top::ReshapeOp>(*(pop.getResult().getUsers().begin()));
+              auto rop = dyn_cast<top::ReshapeOp>(
+                  *(pop.getResult().getUsers().begin()));
               if (!isa<top::MatMulOp>(*(rop.getResult().getUsers().begin())))
                 return;
-              auto mop = dyn_cast<top::MatMulOp>(*(rop.getResult().getUsers().begin()));
+              auto mop = dyn_cast<top::MatMulOp>(
+                  *(rop.getResult().getUsers().begin()));
               if (!isa<top::AddOp>(*(mop.getResult().getUsers().begin())))
                 return;
               if (*(mop.getResult().getUsers().begin()) != aop)
                 return;
               mha.push_back(addop);
             }
+          } else {
+            return;
+          }
+        } else {
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+  });
+}
+
+void ConvertTopToTpu::match_vit_mha1(std::vector<Operation *> &mha) {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::LayerNormOp lnop = NULL;
+      top::AddOp aop = NULL;
+      for (auto user : addop.getOutput().getUsers()) {
+        if (isa<top::LayerNormOp>(user)) {
+          lnop = dyn_cast<top::LayerNormOp>(user);
+        } else if (isa<top::AddOp>(user)) {
+          aop = dyn_cast<top::AddOp>(user);
+        }
+      }
+      if (lnop == NULL || aop == NULL)
+        return;
+      if (!convergence(lnop, aop))
+        return;
+      if ((std::distance(lnop.getOutput().user_begin(),
+                         lnop.getOutput().user_end()) != 3) &&
+          (std::distance(lnop.getOutput().user_begin(),
+                         lnop.getOutput().user_end()) !=
+           4)) // chip opt may split matmul to 3, but left the original matmul
+               // not removed
+        return;
+      top::MatMulOp mmop_[3] = {NULL};
+      top::ReshapeOp rsop_[3] = {NULL};
+      top::PermuteOp pmop_[3] = {NULL};
+      top::MulConstOp mcop_ = NULL;
+      top::MatMulOp mmop1 = NULL;
+      top::MatMulOp mmop2 = NULL;
+      int idx = 0;
+      // seems the order or qkv is not fixed in the patterns, try to find them
+      // out, 0 mulconst after permute, 1 matmul 1, 2 is matmul after softmax
+      for (auto u : lnop.getResult().getUsers()) {
+        if (auto mmop = dyn_cast<top::MatMulOp>(u)) {
+          if (!isSISO(mmop.getOperation()))
+            return;
+          if (auto rsop =
+                  dyn_cast<top::ReshapeOp>(*(mmop.getResult().user_begin()))) {
+            if (rsop.getResult().getUsers().empty()) // the original matmul
+              continue;
+            if (!isSISO(rsop))
+              return;
+            if (auto pmop = dyn_cast<top::PermuteOp>(
+                    *(rsop.getResult().user_begin()))) {
+              if (!isSISO(pmop))
+                return;
+              if (isa<top::MulConstOp>(*(pmop.getResult().user_begin()))) {
+                mcop_ =
+                    dyn_cast<top::MulConstOp>(*(pmop.getResult().user_begin()));
+                if (!isSISO(mcop_))
+                  return;
+                idx = 0;
+              } else if (isa<top::MatMulOp>(*(pmop.getResult().user_begin()))) {
+                auto mmop_tmp =
+                    dyn_cast<top::MatMulOp>(*(pmop.getResult().user_begin()));
+                if (isa<top::SoftmaxOp>(*(mmop_tmp.getResult().user_begin()))) {
+                  idx = 1;
+                } else if (isa<top::PermuteOp>(
+                               *(mmop_tmp.getResult().user_begin()))) {
+                  idx = 2;
+                } else if (isa<top::MulConstOp>(
+                               *(mmop_tmp.getResult().user_begin()))) {
+                  // in vit_l, must const is after mmop1
+                  if (mmop_[0] == NULL)
+                    idx = 0;
+                  else if (mmop_[1] != NULL)
+                    return;
+                  else
+                    idx = 1;
+                } else {
+                  (*(mmop_tmp.getResult().user_begin()))->dump();
+                  return;
+                }
+              } else {
+                return;
+              }
+              mmop_[idx] = mmop;
+              rsop_[idx] = rsop;
+              pmop_[idx] = pmop;
             } else {
               return;
             }
@@ -1732,474 +1868,414 @@ void ConvertTopToTpu::match_vit_mha(std::vector<Operation *> &mha) {
           return;
         }
       }
-    });
-  }
+      if (pmop_[0] == NULL || pmop_[1] == NULL || pmop_[2] == NULL)
+        return;
 
-void ConvertTopToTpu::match_vit_mha1(std::vector<Operation *> &mha) {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto addop = dyn_cast<top::AddOp>(op)) {
-        top::LayerNormOp lnop = NULL;
-        top::AddOp aop = NULL;
-        for (auto user: addop.getOutput().getUsers()) {
-          if (isa<top::LayerNormOp>(user)) {
-            lnop = dyn_cast<top::LayerNormOp>(user);
-          } else if (isa<top::AddOp>(user)) {
-            aop = dyn_cast<top::AddOp>(user);
-          }
-        }
-        if (lnop == NULL || aop == NULL)
+      if (mcop_ != NULL) {
+        if (!isa<top::MatMulOp>(*(mcop_.getResult().user_begin())) ||
+            !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
+            (*mcop_.getResult().user_begin() !=
+             *pmop_[1].getResult().user_begin()))
           return;
-        if (!convergence(lnop, aop))
+      } else {
+        if (!isa<top::MatMulOp>(*(pmop_[0].getResult().user_begin())) ||
+            !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
+            (*pmop_[0].getResult().user_begin() !=
+             *pmop_[1].getResult().user_begin()))
           return;
-        if ((std::distance(lnop.getOutput().user_begin(), lnop.getOutput().user_end()) != 3) &&
-           (std::distance(lnop.getOutput().user_begin(), lnop.getOutput().user_end()) != 4)) // chip opt may split matmul to 3, but left the original matmul not removed
+      }
+
+      mmop1 = dyn_cast<top::MatMulOp>(*(pmop_[1].getResult().user_begin()));
+      top::SoftmaxOp smop = NULL;
+      if (mcop_ == NULL &&
+          isa<top::MulConstOp>(*(mmop1.getOutput().getUsers().begin()))) {
+        auto mcop =
+            dyn_cast<top::MulConstOp>(*(mmop1.getOutput().getUsers().begin()));
+        if (!isa<top::SoftmaxOp>(*mcop.getResult().user_begin()) ||
+            !isSISO(mcop.getOperation()))
           return;
-        top::MatMulOp mmop_[3] = {NULL};
-        top::ReshapeOp rsop_[3] = {NULL};
-        top::PermuteOp pmop_[3] = {NULL};
-        top::MulConstOp mcop_ = NULL;
-        top::MatMulOp mmop1 = NULL;
-        top::MatMulOp mmop2 = NULL;
-        int idx = 0;
-        // seems the order or qkv is not fixed in the patterns, try to find them out, 0 mulconst after permute, 1 matmul 1, 2 is matmul after softmax
-        for (auto u:lnop.getResult().getUsers()) {
-          if (auto mmop = dyn_cast<top::MatMulOp>(u)) {
-            if (!isSISO(mmop.getOperation()))
+        smop = dyn_cast<top::SoftmaxOp>(*mcop.getResult().user_begin());
+      } else
+        smop = dyn_cast_or_null<top::SoftmaxOp>(
+            *(mmop1.getOutput().getUsers().begin()));
+      if (smop == NULL)
+        return;
+      if (*(smop.getOutput().getUsers().begin()) !=
+          *(pmop_[2].getResult().user_begin()))
+        return;
+      mmop2 = dyn_cast_or_null<top::MatMulOp>(*(smop.getResult().user_begin()));
+      if (mmop2 == NULL)
+        return;
+      if (auto pmop1 =
+              dyn_cast<top::PermuteOp>(*(mmop2.getResult().user_begin()))) {
+        if (auto rsop1 =
+                dyn_cast<top::ReshapeOp>(*(pmop1.getResult().user_begin()))) {
+          if (auto mmop3 =
+                  dyn_cast<top::MatMulOp>(*(rsop1.getResult().user_begin()))) {
+            if (*(mmop3.getResult().user_begin()) != aop)
               return;
-            if (auto rsop = dyn_cast<top::ReshapeOp>(*(mmop.getResult().user_begin()))) {
-              if (rsop.getResult().getUsers().empty()) // the original matmul
-                continue;
-              if (!isSISO(rsop))
-                return;
-              if (auto pmop = dyn_cast<top::PermuteOp>(*(rsop.getResult().user_begin()))) {
-                if (!isSISO(pmop))
-                  return;
-                if (isa<top::MulConstOp>(*(pmop.getResult().user_begin()))) {
-                  mcop_ = dyn_cast<top::MulConstOp>(*(pmop.getResult().user_begin()));
-                  if (!isSISO(mcop_))
-                    return;
-                  idx = 0;
-                } else if (isa<top::MatMulOp>(*(pmop.getResult().user_begin()))) {
-                  auto mmop_tmp = dyn_cast<top::MatMulOp>(*(pmop.getResult().user_begin()));
-                  if (isa<top::SoftmaxOp>(*(mmop_tmp.getResult().user_begin()))) {
-                    idx = 1;
-                  } else if (isa<top::PermuteOp>(*(mmop_tmp.getResult().user_begin()))) {
-                    idx = 2;
-                  } else if (isa<top::MulConstOp>(*(mmop_tmp.getResult().user_begin()))) {
-                    // in vit_l, must const is after mmop1
-                    if (mmop_[0] == NULL)
-                      idx = 0;
-                    else if (mmop_[1] != NULL)
-                      return;
-                    else
-                      idx = 1;
-                  } else {
-                    (*(mmop_tmp.getResult().user_begin()))->dump();
-                    return;
-                  }
-                } else {
-                  return;
-                }
-                mmop_[idx] = mmop;
-                rsop_[idx] = rsop;
-                pmop_[idx] = pmop;
-              } else {
-                return;
-              }
-            }
-            else {
-              return;
-            }
-          } else {
-            return;
-          }
-        }
-        if (pmop_[0] == NULL || pmop_[1] == NULL || pmop_[2] == NULL)
-          return;
-
-        if (mcop_ != NULL) {
-          if (!isa<top::MatMulOp>(*(mcop_.getResult().user_begin())) ||
-              !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
-              (*mcop_.getResult().user_begin() != *pmop_[1].getResult().user_begin()))
-            return;
-        } else {
-          if (!isa<top::MatMulOp>(*(pmop_[0].getResult().user_begin())) ||
-              !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
-              (*pmop_[0].getResult().user_begin() != *pmop_[1].getResult().user_begin()))
-            return;
-        }
-
-        mmop1 = dyn_cast<top::MatMulOp>(*(pmop_[1].getResult().user_begin()));
-        top::SoftmaxOp smop = NULL;
-        if (mcop_ == NULL && isa<top::MulConstOp>(*(mmop1.getOutput().getUsers().begin()))) {
-          auto mcop = dyn_cast<top::MulConstOp>(*(mmop1.getOutput().getUsers().begin()));
-          if (!isa<top::SoftmaxOp>(*mcop.getResult().user_begin()) || !isSISO(mcop.getOperation()))
-            return;
-          smop = dyn_cast<top::SoftmaxOp>(*mcop.getResult().user_begin());
-        } else
-          smop = dyn_cast_or_null<top::SoftmaxOp>(*(mmop1.getOutput().getUsers().begin()));
-        if (smop == NULL)
-          return;
-        if (*(smop.getOutput().getUsers().begin()) != *(pmop_[2].getResult().user_begin()))
-          return;
-        mmop2 = dyn_cast_or_null<top::MatMulOp>(*(smop.getResult().user_begin()));
-        if (mmop2 == NULL)
-          return;
-        if (auto pmop1 = dyn_cast<top::PermuteOp>(*(mmop2.getResult().user_begin()))) {
-          if (auto rsop1 = dyn_cast<top::ReshapeOp>(*(pmop1.getResult().user_begin()))) {
-            if (auto mmop3 = dyn_cast<top::MatMulOp>(*(rsop1.getResult().user_begin()))) {
-              if (*(mmop3.getResult().user_begin()) != aop)
-                return;
-              else
-                mha.push_back(addop);
-            }
+            else
+              mha.push_back(addop);
           }
         }
       }
-    });
-  }
+    }
+  });
+}
 
 bool ConvertTopToTpu::vit_mix_precision() {
-    std::vector<Operation *> mlp;
-    std::vector<Operation *> mha;
+  std::vector<Operation *> mlp;
+  std::vector<Operation *> mha;
 
-    match_vit_mlp(mlp); //ending add in mlp
-    match_vit_mha(mha); // beginging add in mha, infact mostly same with those in mlp
-    if (mha.size() == 0)
-      match_vit_mha1(mha);
+  match_vit_mlp(mlp); // ending add in mlp
+  match_vit_mha(
+      mha); // beginging add in mha, infact mostly same with those in mlp
+  if (mha.size() == 0)
+    match_vit_mha1(mha);
 
-    if (mlp.size() > 0 && mha.size() > 0 && (mlp.size() == mha.size())) {
-      for (auto op : mha) {
-        auto addop = dyn_cast_or_null<top::AddOp>(op);
-        if (addop == NULL)
-          return false;
-        if (LoweringConfig::quantize_map.find(module::getName(addop.getOperation()).str()) ==
-            LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(addop.getOperation()).str(), module::Mode::F16});
-        }
-        for (auto u:addop.getResult().getUsers()) {
-          if (auto aop = dyn_cast<top::AddOp>(u)) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(aop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(aop.getOperation()).str(), module::Mode::F16});
-            }
-          }
-        }
+  if (mlp.size() > 0 && mha.size() > 0 && (mlp.size() == mha.size())) {
+    for (auto op : mha) {
+      auto addop = dyn_cast_or_null<top::AddOp>(op);
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
       }
-      int total_blk = mlp.size();
-      int idx = 0;
-      for (auto op : mlp) {
-        idx ++;
-        auto addop = dyn_cast_or_null<top::AddOp>(op);
-        if (addop == NULL)
-          return false;
-        if (LoweringConfig::quantize_map.find(
-                module::getName(addop.getOperation()).str()) ==
-            LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(addop.getOperation()).str(), module::Mode::F16});
-        }
-        for (auto in : addop.getOperands()) {
-          if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-            if ((idx >= total_blk -3) && (total_blk > 18)) { // base 224 has 12 block and large 384 has 24 block
-              if (LoweringConfig::quantize_map.find(
-                      module::getName(mmop.getOperation()).str()) ==
-                  LoweringConfig::quantize_map.end()) {
-                LoweringConfig::quantize_map.insert(
-                    {module::getName(mmop.getOperation()).str(),
-                    module::Mode::F16});
-              }
-            }
-          }
-        }
-      }
-      return true;
-    } else
-      return false;
-  }
-
-void ConvertTopToTpu::set_add_before_softmax_fp32() {
-    mainFunc_.walk([&](Operation *op) {
-      if (auto addop = dyn_cast<top::AddOp>(op)) {
-        if (isa<top::InputOp>(addop)) {
-          return;
-        }
-        if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
-            LoweringConfig::quantize_map.end())
-          return;
-
-        int idx = 0;
-        float th[2] = {0.0};
-        for (auto in : addop.getInputs()) {
-          if (!module::isCalibratedType(in))
-            return;
-          if (isa<top::WeightOp>(in.getDefiningOp())) {
-            auto weight =
-                dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
-            float absmax = fabs(weight.get()->at(0));
-            for (int i = 0; i < weight.get()->size(); i++) {
-              float value = fabs(weight.get()->at(i));
-              absmax = value > absmax ? value : absmax;
-            }
-            th[idx++] = absmax;
-          } else {
-            auto in_type = module::getCalibratedType(in);
-            th[idx++] = std::max(std::abs(in_type.getMin()),
-                                 std::abs(in_type.getMax()));
-          }
-          if (idx > 2)
-            return;
-        }
-        if (th[0] < 1e-8 || th[1] < 1e-8)
-          return;
-        if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
-          if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+      for (auto u : addop.getResult().getUsers()) {
+        if (auto aop = dyn_cast<top::AddOp>(u)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(aop.getOperation()).str()) ==
               LoweringConfig::quantize_map.end()) {
             LoweringConfig::quantize_map.insert(
-                {module::getName(op).str(), module::Mode::F16});
+                {module::getName(aop.getOperation()).str(), module::Mode::F16});
           }
         }
       }
-    });
-  }
+    }
+    int total_blk = mlp.size();
+    int idx = 0;
+    for (auto op : mlp) {
+      idx++;
+      auto addop = dyn_cast_or_null<top::AddOp>(op);
+      if (addop == NULL)
+        return false;
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      for (auto in : addop.getOperands()) {
+        if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+          if ((idx >= total_blk - 3) &&
+              (total_blk >
+               18)) { // base 224 has 12 block and large 384 has 24 block
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mmop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mmop.getOperation()).str(),
+                   module::Mode::F16});
+            }
+          }
+        }
+      }
+    }
+    return true;
+  } else
+    return false;
+}
+
+void ConvertTopToTpu::set_add_before_softmax_fp32() {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      if (isa<top::InputOp>(addop)) {
+        return;
+      }
+      if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
+          LoweringConfig::quantize_map.end())
+        return;
+
+      int idx = 0;
+      float th[2] = {0.0};
+      for (auto in : addop.getInputs()) {
+        if (!module::isCalibratedType(in))
+          return;
+        if (isa<top::WeightOp>(in.getDefiningOp())) {
+          auto weight =
+              dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+          float absmax = fabs(weight.get()->at(0));
+          for (int i = 0; i < weight.get()->size(); i++) {
+            float value = fabs(weight.get()->at(i));
+            absmax = value > absmax ? value : absmax;
+          }
+          th[idx++] = absmax;
+        } else {
+          auto in_type = module::getCalibratedType(in);
+          th[idx++] =
+              std::max(std::abs(in_type.getMin()), std::abs(in_type.getMax()));
+        }
+        if (idx > 2)
+          return;
+      }
+      if (th[0] < 1e-8 || th[1] < 1e-8)
+        return;
+      if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
+        if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(op).str(), module::Mode::F16});
+        }
+      }
+    }
+  });
+}
 
 void ConvertTopToTpu::spread_q_config() {
-    mainFunc_.walk([&](Operation *op) {
-      if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp>(op)) {
-        auto pre_op = op->getOperands()[0].getDefiningOp();
-        if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
-              LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(op).str(), LoweringConfig::quantize_map.find(module::getName(pre_op).str())->second});
-              }
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp>(op)) {
+      auto pre_op = op->getOperands()[0].getDefiningOp();
+      if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(op).str(),
+             LoweringConfig::quantize_map.find(module::getName(pre_op).str())
+                 ->second});
       }
-    });
-  }
+    }
+  });
+}
 
 void ConvertTopToTpu::qtable_process() {
-    bert_mix_precision();
-    swin_t_mix_precision();
-    vit_mix_precision();
-    deit_mix_precision();
-    eva2_mix_precision();
-    set_add_before_softmax_fp32();
-    spread_q_config();
-  }
+  bert_mix_precision();
+  swin_mix_precision();
+  cswin_mix_precision();
+  vit_mix_precision();
+  deit_mix_precision();
+  eva2_mix_precision();
+  set_add_before_softmax_fp32();
+  spread_q_config();
+}
 
 Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
-                Operation *user_op) {
-    auto to_stype = module::getStorageType(to);
-    // check whether value has been casted
+                               Operation *user_op) {
+  auto to_stype = module::getStorageType(to);
+  // check whether value has been casted
+  for (auto user : v.getUsers()) {
+    if (false == isa<tpu::CastOp>(user) &&
+        (false == isa<tpu::GenericCpuOp>(user) ||
+         dyn_cast<tpu::GenericCpuOp>(user).getCpuOpName() != "quant")) {
+      continue;
+    }
+    if (type_need_cast(user->getResult(0).getType(), to) == false) {
+      return user->getResult(0);
+    }
+  }
+
+  bool all_next_layer_is_int4 = false;
+  if (module::getMode() == module::Mode::INT4) {
+    all_next_layer_is_int4 = true;
     for (auto user : v.getUsers()) {
-      if (false == isa<tpu::CastOp>(user) &&
-          (false == isa<tpu::GenericCpuOp>(user) ||
-           dyn_cast<tpu::GenericCpuOp>(user).getCpuOpName() != "quant")) {
-        continue;
-      }
-      if (type_need_cast(user->getResult(0).getType(), to) == false) {
-        return user->getResult(0);
-      }
-    }
-
-    bool all_next_layer_is_int4 = false;
-    if (module::getMode() == module::Mode::INT4) {
-      all_next_layer_is_int4 = true;
-      for (auto user : v.getUsers()) {
-        if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
-          all_next_layer_is_int4 = false;
-        } else if (isa<tpu::Conv2DOp>(user) || isa<tpu::MatMulOp>(user)) {
-          if (isa<tpu::Conv2DOp>(user)) {
-            auto conv = dyn_cast<tpu::Conv2DOp>(user);
-            auto conv_attr = getConv2DParam(conv);
-            if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
-              all_next_layer_is_int4 = false;
-            }
+      if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
+        all_next_layer_is_int4 = false;
+      } else if (isa<tpu::Conv2DOp>(user) || isa<tpu::MatMulOp>(user)) {
+        if (isa<tpu::Conv2DOp>(user)) {
+          auto conv = dyn_cast<tpu::Conv2DOp>(user);
+          auto conv_attr = getConv2DParam(conv);
+          if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
+            all_next_layer_is_int4 = false;
           }
-          auto user_name = module::getName(user).str();
-          if (LoweringConfig::quantize_map.find(user_name) != LoweringConfig::quantize_map.end()) {
-            if (LoweringConfig::quantize_map[user_name] != module::Mode::INT4) {
-              all_next_layer_is_int4 = false;
-            }
+        }
+        auto user_name = module::getName(user).str();
+        if (LoweringConfig::quantize_map.find(user_name) !=
+            LoweringConfig::quantize_map.end()) {
+          if (LoweringConfig::quantize_map[user_name] != module::Mode::INT4) {
+            all_next_layer_is_int4 = false;
           }
         }
       }
     }
+  }
 
-    auto ctx = v.getContext();
-    OpBuilder builder(ctx);
-    builder.setInsertionPointAfterValue(v);
-    auto name = module::getName(module::getOriValue(v)).str();
-    if (user_op && !isa<ReturnOp>(user_op)) {
-      name += module::getName(user_op).str();
-    }
-    switch (mode) {
-    case TypeCastMode::DO_DEQUANTIZE:
-    case TypeCastMode::DO_CAST: {
-      name += "_" + type_string(to_stype);
-      auto newType = RankedTensorType::get(module::getShape(v), to_stype);
-      auto loc = NameLoc::get(builder.getStringAttr(name));
-      if (module::getOriValue(v)
-              .getDefiningOp()
-              ->hasTrait<trait::ShapeProducer>()) {
-        auto castOp =
-            builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
-        return castOp.getOutput();
-      } else {
-        if (module::getStorageType(v).isFloat8E4M3FN()) {
-          name += std::string("_dequant");
-          auto loc = NameLoc::get(builder.getStringAttr(name));
-          double const_v = module::getCalibratedType(v).getMax() / get_f8e4m3_max();
-          std::vector<NamedAttribute> attrs;
-          attrs.push_back(builder.getNamedAttr("const_val", builder.getF64FloatAttr(const_v)));
-          auto mulOp = builder.create<tpu::MulConstOp>(loc, newType, ValueRange{v}, attrs);
-          v.replaceAllUsesExcept(mulOp.getOutput(), mulOp);
-          return mulOp.getOutput();
-        } else {
-          auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
-          return castOp.getOutput();
-        }
-      }
-    }
-    case TypeCastMode::DO_QUANTIZE: {
-      if (module::isCalibratedType(v) == false) {
-        v.dump();
-        llvm_unreachable("Only calibrated type can do quantize");
-      }
-      if (to.isFloat8E4M3FN()) {
-        //auto newType = RankedTensorType::get(module::getShape(v), module::getCalibratedType(v));
-        builder.setInsertionPointAfterValue(v);
-        name += std::string("_requant");
-        float scale = get_f8e4m3_max() / module::getCalibratedType(v).getMax();
-        auto value = do_requantFp(v, scale, 0.0, getQuantF8E4M3Type(v), name, tpu::RequantMode::OnlyScale);
-        return value;
-      } else if (to.isFloat8E5M2()) {
-        auto value = do_cast(v, getQuantF8E5M2Type(v), TypeCastMode::DO_CAST);
-        return value;
-      } else {
-        auto newType = getQuantInt8Type(v, module::isAsymmetric());
-        if (all_next_layer_is_int4) {
-          newType = getQuantInt4Type(v, module::isAsymmetric());
-        }
-        name += "_" + type_string(newType);
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(v);
+  auto name = module::getName(module::getOriValue(v)).str();
+  if (user_op && !isa<ReturnOp>(user_op)) {
+    name += module::getName(user_op).str();
+  }
+  switch (mode) {
+  case TypeCastMode::DO_DEQUANTIZE:
+  case TypeCastMode::DO_CAST: {
+    name += "_" + type_string(to_stype);
+    auto newType = RankedTensorType::get(module::getShape(v), to_stype);
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    if (module::getOriValue(v)
+            .getDefiningOp()
+            ->hasTrait<trait::ShapeProducer>()) {
+      auto castOp =
+          builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
+      return castOp.getOutput();
+    } else {
+      if (module::getStorageType(v).isFloat8E4M3FN()) {
+        name += std::string("_dequant");
         auto loc = NameLoc::get(builder.getStringAttr(name));
-        if (module::isCV18xx()) {
-          auto parentOp = v.getDefiningOp();
-          if (isa<top::InputOp>(parentOp)) {
-            return insert_18xx_cpu_cast(builder, v, loc, newType);
-          }
-        }
+        double const_v =
+            module::getCalibratedType(v).getMax() / get_f8e4m3_max();
+        std::vector<NamedAttribute> attrs;
+        attrs.push_back(builder.getNamedAttr("const_val",
+                                             builder.getF64FloatAttr(const_v)));
+        auto mulOp =
+            builder.create<tpu::MulConstOp>(loc, newType, ValueRange{v}, attrs);
+        v.replaceAllUsesExcept(mulOp.getOutput(), mulOp);
+        return mulOp.getOutput();
+      } else {
         auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
         return castOp.getOutput();
       }
     }
-    default:
-      break;
+  }
+  case TypeCastMode::DO_QUANTIZE: {
+    if (module::isCalibratedType(v) == false) {
+      v.dump();
+      llvm_unreachable("Only calibrated type can do quantize");
     }
-    return v;
+    if (to.isFloat8E4M3FN()) {
+      // auto newType = RankedTensorType::get(module::getShape(v),
+      // module::getCalibratedType(v));
+      builder.setInsertionPointAfterValue(v);
+      name += std::string("_requant");
+      float scale = get_f8e4m3_max() / module::getCalibratedType(v).getMax();
+      auto value = do_requantFp(v, scale, 0.0, getQuantF8E4M3Type(v), name,
+                                tpu::RequantMode::OnlyScale);
+      return value;
+    } else if (to.isFloat8E5M2()) {
+      auto value = do_cast(v, getQuantF8E5M2Type(v), TypeCastMode::DO_CAST);
+      return value;
+    } else {
+      auto newType = getQuantInt8Type(v, module::isAsymmetric());
+      if (all_next_layer_is_int4) {
+        newType = getQuantInt4Type(v, module::isAsymmetric());
+      }
+      name += "_" + type_string(newType);
+      auto loc = NameLoc::get(builder.getStringAttr(name));
+      if (module::isCV18xx()) {
+        auto parentOp = v.getDefiningOp();
+        if (isa<top::InputOp>(parentOp)) {
+          return insert_18xx_cpu_cast(builder, v, loc, newType);
+        }
+      }
+      auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
+      return castOp.getOutput();
+    }
   }
+  default:
+    break;
+  }
+  return v;
+}
 
-Value ConvertTopToTpu::insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
-                             Type &newType) {
-    float scale = module::getUniformQuantizedType(newType).getScale();
-    scale = 1 / scale;
-    std::vector<NamedAttribute> attrs;
-    std::vector<NamedAttribute> param;
-    attrs.emplace_back(
-        builder.getNamedAttr("cpu_op_name", builder.getStringAttr("quant")));
-    param.emplace_back(
-        builder.getNamedAttr("from", builder.getStringAttr("FP32")));
-    param.emplace_back(
-        builder.getNamedAttr("to", builder.getStringAttr("INT8")));
-    param.emplace_back(
-        builder.getNamedAttr("scale", builder.getF32FloatAttr(scale)));
-    attrs.emplace_back(
-        builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
-    auto castOp = builder.create<tpu::GenericCpuOp>(
-        loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
-    return castOp.getOutputs()[0];
-  }
+Value ConvertTopToTpu::insert_18xx_cpu_cast(OpBuilder &builder, Value &v,
+                                            NameLoc &loc, Type &newType) {
+  float scale = module::getUniformQuantizedType(newType).getScale();
+  scale = 1 / scale;
+  std::vector<NamedAttribute> attrs;
+  std::vector<NamedAttribute> param;
+  attrs.emplace_back(
+      builder.getNamedAttr("cpu_op_name", builder.getStringAttr("quant")));
+  param.emplace_back(
+      builder.getNamedAttr("from", builder.getStringAttr("FP32")));
+  param.emplace_back(builder.getNamedAttr("to", builder.getStringAttr("INT8")));
+  param.emplace_back(
+      builder.getNamedAttr("scale", builder.getF32FloatAttr(scale)));
+  attrs.emplace_back(
+      builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
+  auto castOp = builder.create<tpu::GenericCpuOp>(
+      loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
+  return castOp.getOutputs()[0];
+}
 
 module::Mode ConvertTopToTpu::qmode(const std::string &mode) {
-    std::string tmp = StringRef(mode).upper();
-    auto mode_ = module::symbolizeMode(tmp);
-    if (mode_.has_value()) {
-      return mode_.value();
-    }
-    llvm::errs() << "Unknown quantize mode: [" << mode << "]\n";
-    llvm_unreachable("Unknown quantize mode");
-    return module::Mode::F32;
+  std::string tmp = StringRef(mode).upper();
+  auto mode_ = module::symbolizeMode(tmp);
+  if (mode_.has_value()) {
+    return mode_.value();
   }
+  llvm::errs() << "Unknown quantize mode: [" << mode << "]\n";
+  llvm_unreachable("Unknown quantize mode");
+  return module::Mode::F32;
+}
 void ConvertTopToTpu::init_qtable() {
-    LoweringConfig::quantize_map.clear();
-    if (ignore_f16_overflow == false && module::isF16Modes()) {
-      mainFunc_.walk([&](Operation *op) {
-        // if have other op need convert from f16 to f32, add here.
-        // if need better performence, just set ignore_f16_overflow in model_deploy.
-        // defaultly we need ensure the computation is correct.
-        if (isa<top::AvgPoolOp>(op)) {
-          auto name = module::getName(op).str();
-          LoweringConfig::quantize_map[name] = module::Mode::F32;
-        }
-      });
-    }
-    if (qtable.empty()) {
-      return;
-    }
-    std::regex map_pattern("\\S+\\s+\\S+");
-    std::regex name_pattern("\\S+");
-    std::regex info_pattern("#.*");
-    std::regex empty_pattern("^\\s*$");
-    std::ifstream infile(qtable);
-    if (!infile) {
-      llvm::errs() << "Can't open file: " << qtable << " !\n";
-      llvm_unreachable("Open quantize table failed");
-    }
-    std::string line;
-    while (std::getline(infile, line)) {
-      if (line.back() == '\r') {
-        line.pop_back();
+  LoweringConfig::quantize_map.clear();
+  if (ignore_f16_overflow == false && module::isF16Modes()) {
+    mainFunc_.walk([&](Operation *op) {
+      // if have other op need convert from f16 to f32, add here.
+      // if need better performence, just set ignore_f16_overflow in
+      // model_deploy. defaultly we need ensure the computation is correct.
+      if (isa<top::AvgPoolOp>(op)) {
+        auto name = module::getName(op).str();
+        LoweringConfig::quantize_map[name] = module::Mode::F32;
       }
-      std::istringstream iss(line);
-      std::string name;
-      std::string mode;
-      if (std::regex_match(line, empty_pattern)) {
-        continue;
-      }
-      if (std::regex_match(line, info_pattern)) {
-        continue;
-      }
-      if (std::regex_match(line, map_pattern)) {
-        iss >> name;
-        iss >> mode;
-        auto src_mode = StringRef(mode).upper();
-        if (module::isCV18xx()) {
-          if (src_mode == "F32" || src_mode == "F16")
-            mode = "BF16";
-        }
-        if ((src_mode == "W8F16" || src_mode == "W4F16") &&
-            module::isBF16Modes()) {
-          llvm_unreachable(
-              "WxF16 and BF16 mix precision is not allowed, check your qtable");
-        }
-        if ((src_mode == "W8BF16" || src_mode == "W4BF16") &&
-            module::isF16Modes()) {
-          llvm_unreachable(
-              "WxBF16 and F16 mix precision is not allowed, check your qtable");
-        }
-        LoweringConfig::quantize_map[name] = qmode(mode);
-        continue;
-      }
-      if (std::regex_match(line, name_pattern)) {
-        continue;
-      }
-
-      llvm::errs() << "Error, quantize file in [" << line << "]\n";
-      assert(false);
-    }
+    });
   }
+  if (qtable.empty()) {
+    return;
+  }
+  std::regex map_pattern("\\S+\\s+\\S+");
+  std::regex name_pattern("\\S+");
+  std::regex info_pattern("#.*");
+  std::regex empty_pattern("^\\s*$");
+  std::ifstream infile(qtable);
+  if (!infile) {
+    llvm::errs() << "Can't open file: " << qtable << " !\n";
+    llvm_unreachable("Open quantize table failed");
+  }
+  std::string line;
+  while (std::getline(infile, line)) {
+    if (line.back() == '\r') {
+      line.pop_back();
+    }
+    std::istringstream iss(line);
+    std::string name;
+    std::string mode;
+    if (std::regex_match(line, empty_pattern)) {
+      continue;
+    }
+    if (std::regex_match(line, info_pattern)) {
+      continue;
+    }
+    if (std::regex_match(line, map_pattern)) {
+      iss >> name;
+      iss >> mode;
+      auto src_mode = StringRef(mode).upper();
+      if (module::isCV18xx()) {
+        if (src_mode == "F32" || src_mode == "F16")
+          mode = "BF16";
+      }
+      if ((src_mode == "W8F16" || src_mode == "W4F16") &&
+          module::isBF16Modes()) {
+        llvm_unreachable(
+            "WxF16 and BF16 mix precision is not allowed, check your qtable");
+      }
+      if ((src_mode == "W8BF16" || src_mode == "W4BF16") &&
+          module::isF16Modes()) {
+        llvm_unreachable(
+            "WxBF16 and F16 mix precision is not allowed, check your qtable");
+      }
+      LoweringConfig::quantize_map[name] = qmode(mode);
+      continue;
+    }
+    if (std::regex_match(line, name_pattern)) {
+      continue;
+    }
+
+    llvm::errs() << "Error, quantize file in [" << line << "]\n";
+    assert(false);
+  }
+}
 
 std::unique_ptr<Pass> createConvertTopToTpu() {
   return std::make_unique<ConvertTopToTpu>();
