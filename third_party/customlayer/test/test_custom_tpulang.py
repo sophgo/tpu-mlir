@@ -12,6 +12,7 @@ import numpy as np
 import os
 import transform.TpuLang as tpul
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
+import my_tpulang_layer
 
 def rand_data(shape, dtype):
     if dtype == 'float32':
@@ -106,13 +107,13 @@ class CUSTOM_TPULANG_TESTER(object):
             if self.dynamic:
                 deploy_cmd += "--dynamic"
             print(">>>", deploy_cmd)
-            os.system(deploy_cmd)
+            assert(os.system(deploy_cmd) == 0)
             # do bmodel inference and compare with the origin output
             bmodel_output = f"{model_name}_target_data.npz"
             file_mark(bmodel_output)
             infer_cmd = "model_runner.py --input {}_in_f32.npz --model {} --output {}".format(model_name, bmodel_name, bmodel_output)
             print(">>>", infer_cmd)
-            os.system(infer_cmd)
+            assert(os.system(infer_cmd) == 0)
             cmp_cmd = f"npz_tool.py compare {bmodel_output} {ref_output}"
             assert(os.system(cmp_cmd) == 0)
 
@@ -121,25 +122,6 @@ class CUSTOM_TPULANG_TESTER(object):
     ##################################
 
     def test_AbsAdd(self):
-        def absadd_native(data, b):
-            return np.abs(data) + b
-        # define the swapChannel op by tpul.custom
-        def absAdd(inputs, b, dtype="float32"):
-            def shape_func(tensors_in):
-                # the shape inference function
-                # return the list of output shapes
-                return [tensors_in[0].shape]
-            out_names = ["out"]
-            params = {"b": b}
-            outs = tpul.custom(
-                tensors_in=inputs,
-                shape_func=shape_func,
-                # op_name should be consistent with the backend
-                op_name="absadd",
-                params=params,
-                out_dtypes=[dtype],
-                out_names=out_names)
-            return outs
         # 1. prepare the input
         dtype = "float32"
         input_shape = [2, 2, 2, 2]
@@ -148,34 +130,15 @@ class CUSTOM_TPULANG_TESTER(object):
         ins = [x]
         # 2. build model
         b = 1.2
-        outs = absAdd(inputs=[x], b=float(b), dtype=dtype)
+        outs = my_tpulang_layer.absAdd.tpulang(inputs=[x], b=float(b), dtype=dtype)
         # 3. save the origin output for comparison
-        out_data = absadd_native(x_data, b)
+        out_data = my_tpulang_layer.absAdd.native(x_data, b)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("absadd", ins, outs, ref_data)
 
     def test_CeilAdd(self):
-        def ceiladd_native(data, b):
-            return np.ceil(data) + b
-        # define the swapChannel op by tpul.custom
-        def ceilAdd(inputs, b, dtype="float32"):
-            def shape_func(tensors_in):
-                # the shape inference function
-                # return the list of output shapes
-                return [tensors_in[0].shape]
-            out_names = ["out"]
-            params = {"b": b}
-            outs = tpul.custom(
-                tensors_in=inputs,
-                shape_func=shape_func,
-                # op_name should be consistent with the backend
-                op_name="ceiladd",
-                params=params,
-                out_dtypes=[dtype],
-                out_names=out_names)
-            return outs
         # 1. prepare the input
         dtype = "float32"
         input_shape = [10, 3, 14, 14]
@@ -184,34 +147,15 @@ class CUSTOM_TPULANG_TESTER(object):
         ins = [x]
         # 2. build model
         b = 1.2
-        outs = ceilAdd(inputs=[x], b=float(b), dtype=dtype)
+        outs = my_tpulang_layer.ceilAdd.tpulang(inputs=[x], b=float(b), dtype=dtype)
         # 3. save the origin output for comparison
-        out_data = ceiladd_native(x_data, b)
+        out_data = my_tpulang_layer.ceilAdd.native(x_data, b)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("ceiladd", ins, outs, ref_data)
 
     def test_SwapChannel(self):
-        def swap_channel_native(data):
-            return data[:, [2, 1, 0], :, :]
-        # define the swapChannel op by tpul.custom
-        def swapChannel(inputs, dtype="float32"):
-            def shape_func(tensors_in):
-                # the shape inference function
-                # return the list of output shapes
-                return [tensors_in[0].shape]
-            out_names = ["out"]
-            params = {"order": [2, 1, 0]}
-            outs = tpul.custom(
-                tensors_in=inputs,
-                shape_func=shape_func,
-                # op_name should be consistent with the backend
-                op_name="swapchannel",
-                params=params,
-                out_dtypes=[dtype],
-                out_names=out_names)
-            return outs
         # 1. prepare the input
         dtype = "float32"
         input_shape = [10, 3, 14, 14]
@@ -219,51 +163,26 @@ class CUSTOM_TPULANG_TESTER(object):
         x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
         ins = [x]
         # 2. build model
-        outs = swapChannel(inputs=[x], dtype=dtype)
+        outs = my_tpulang_layer.swapChannel.tpulang(inputs=[x], dtype=dtype)
         # 3. save the origin output for comparison
-        out_data = swap_channel_native(x_data)
+        out_data = my_tpulang_layer.swapChannel.native(x_data)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("swap_channel", ins, outs, ref_data)
 
     def test_Crop(self):
-        def crop_native(data, hoffset, woffset, hnew, wnew):
-            data_crop = np.zeros([hnew, wnew])
-            for i in range(hnew):
-                iold = i + hoffset
-                for j in range(wnew):
-                    jold = j + woffset
-                    data_crop[i, j] = data[iold, jold]
-            return data_crop
-        # define the swapChannel op by tpul.custom
-        def crop(inputs, hoffset, woffset, hnew, wnew, dtype="float32"):
-            def shape_func(tensors_in):
-                # the shape inference function
-                # return the list of output shapes
-                return [[hnew, wnew]]
-            out_names = ["out"]
-            params = {"hoffset": hoffset, "woffset": woffset, "hnew": hnew, "wnew": wnew}
-            outs = tpul.custom(
-                tensors_in=inputs,
-                shape_func=shape_func,
-                # op_name should be consistent with the backend
-                op_name="crop",
-                params=params,
-                out_dtypes=[dtype],
-                out_names=out_names)
-            return outs
         # 1. prepare the input
         dtype = "float32"
-        input_shape = [6, 7]
+        input_shape = [4, 32, 6, 7]
         x_data = rand_data(input_shape, dtype)
         x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
         ins = [x]
         # 2. build model
         hoffset = 1; woffset = 2; hnew = 3; wnew = 4
-        outs = crop(ins, hoffset, woffset, hnew, wnew, dtype=dtype)
+        outs = my_tpulang_layer.crop.tpulang(ins, hoffset, woffset, hnew, wnew, dtype=dtype)
         # 3. save the origin output for comparison
-        out_data = crop_native(x_data, hoffset, woffset, hnew, wnew)
+        out_data = my_tpulang_layer.crop.native(x_data, hoffset, woffset, hnew, wnew)
         # There are two outputs because in non-f32 quant mode, the result will be
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {x.name: x_data, outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
@@ -327,12 +246,14 @@ if __name__ == "__main__":
                         help="quantize modes")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
+    parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.num_core)
+    tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
+                                   args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

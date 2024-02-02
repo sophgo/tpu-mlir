@@ -12,7 +12,7 @@ import numpy as np
 import os
 import caffe
 from my_converter import MyCaffeConverter
-import my_layer
+import my_caffe_layer
 
 
 def rand_data(shape, dtype):
