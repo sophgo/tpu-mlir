@@ -88,6 +88,11 @@ patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$O
 patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ${release_archive}/python/mlir/_mlir_libs/_mlirRegisterEverything.cpython-310-x86_64-linux-gnu.so
 for file in ${release_archive}/lib/*
 do
+    if [[ $file = *kernel_module.so ]]; then
+        echo Skip $file
+        continue
+    fi
+
     if [ -f "$file" ]
     then
         patchelf --set-rpath '$ORIGIN/:$ORIGIN/../lib/third_party/' $file
