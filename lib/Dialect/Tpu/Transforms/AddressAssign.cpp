@@ -107,7 +107,6 @@ public:
         addr_assign.assign(s, reuse_addr);
       }
     }
-    module::updateModuleTypes();
     module::setState(module::State::TPU_ADDRESSED);
   }
 };

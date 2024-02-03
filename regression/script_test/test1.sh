@@ -88,7 +88,7 @@ model_deploy.py \
   --compare_all \
   --model mobilenet_v2_1684x_int8_fuse.bmodel
 
-# no test
+# no test_input
 model_deploy.py \
   --mlir mobilenet_v2.mlir \
   --quantize INT8 \
@@ -96,6 +96,17 @@ model_deploy.py \
   --calibration_table mobilenet_v2_cali_table \
   --fuse_preprocess \
   --model mobilenet_v2_1684x_int8_fuse2.bmodel
+
+# io alone
+model_deploy.py \
+  --mlir mobilenet_v2.mlir \
+  --quantize INT8 \
+  --chip bm1684x \
+  --calibration_table mobilenet_v2_cali_table \
+  --test_input mobilenet_v2_in_f32.npz \
+  --test_reference mobilenet_v2_top_outputs.npz \
+  --io_alone \
+  --model mobilenet_v2_1684x_int8_io.bmodel
 
 # convert to tosa without weight
 # tpuc-opt mobilenet_v2.mlir \

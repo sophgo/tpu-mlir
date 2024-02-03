@@ -58,8 +58,8 @@ static int64_t getIOLimit(ModuleOp m) {
   int64_t limit = 0;
   std::vector<Value> io_v;
   main.walk([&](top::InputOp op) { io_v.push_back(op.getOutput()); });
-  auto retOp = main.back().getTerminator();
-  for (auto v : retOp->getResults()) {
+  auto retOp = main.getBody().back().getTerminator();
+  for (auto v : retOp->getOperands()) {
     io_v.push_back(v);
   }
   for (auto v : io_v) {
@@ -381,6 +381,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       }
     });
   }
+  module::updateModuleTypes();
   if (module::isIoAlone()) {
     auto limit = getIOLimit(m);
     module::setIOAddr(m, start_addr);

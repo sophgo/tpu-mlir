@@ -281,7 +281,7 @@ size_t ModelGen::Finish() {
     nb.add_name(net_name);
     nb.add_cascade(cascade);
     nb.add_parameter(parameter);
-    nb.add_io_alone(net_info.io_alone);
+    nb.add_io_alone(net_info.io_alone ? 1 : 0);
     nets_.push_back(nb.Finish());
   }
   if (nets_.empty()) {
