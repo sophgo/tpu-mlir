@@ -268,7 +268,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
 
   // TODO markGmemReusedOp
   // TODO crop concat pattern
-
+  module::updateModuleTypes();
   module::setNeuronSize(m, sharedGmemSize);
   module::setGmemPrivateSize(m, privateGmemSize);
 }
