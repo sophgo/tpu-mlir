@@ -11,6 +11,28 @@ import os, sys
 import transform.TpuLang as tpul
 from typing import List
 
+def is_int(dtype, width = None):
+    if width == None:
+        if is_int(dtype, 8) or is_int(dtype, 16) or is_int(dtype, 32) or is_int(dtype, 64):
+            return True
+    if width == 64 or width == 32 or width == 16 or width == 8:
+        if dtype == 'int'+str(width) or dtype == 'uint'+str(width):
+            return True
+    return False
+
+def is_fp(dtype, width = None):
+    if width == None:
+        if is_fp(dtype, 8) or is_fp(dtype, 16) or is_fp(dtype, 32) or is_fp(dtype, 64):
+            return True
+    if width == 64 or width == 32 or width == 20:
+        if dtype == 'float'+str(width):
+            return True
+    if width == 8 and dtype in ['float8e5m2', 'float8e5m2fnuz', 'float8e4m3fn', 'float8e4m3fnuz']:
+        return True
+    if width == 16 and dtype in ['float16', 'bfloat16']:
+        return True
+    return False
+
 def rand_data(shape, dtype, min=-10, max=10):
     if dtype == 'float32':
         return np.clip(np.random.randn(*shape).astype(np.float32), min, max)
@@ -19,13 +41,13 @@ def rand_data(shape, dtype, min=-10, max=10):
     raise Exception("Not supported data type: {}!".format(dtype))
 
 
-def tpulang(func):
-
-    def wrapper(*args, **kwargs):
-        tpul.init("BM1684X", True)
-        func(*args, **kwargs)
-        tpul.deinit()
-
+def tpulang(chip):
+    def wrapper(func):
+        def decorate(*args, **kwargs):
+            tpul.init(chip, True)
+            func(*args, **kwargs)
+            tpul.deinit()
+        return decorate
     return wrapper
 
 
@@ -193,14 +215,14 @@ class TPULANG_IR_TESTER(object):
     # Add
     # ------------
     def add_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        add = tpul.add(input_0, input_1, out_dtype)
+        out_dtype = dtype if is_fp(dtype) else 'int32'
+        add = tpul.add(input_0, input_1, out_dtype = out_dtype)
         return add
 
     def test_Add(self, case_name):
         """Add"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_add(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -209,7 +231,16 @@ class TPULANG_IR_TESTER(object):
             add = self.add_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [add])
 
+        @tpulang(self.chip)
+        def _test_add_const(shape: List[int], value, is_reverse = False, dtype = "float32"):
+            input = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input)
+            add = self.add_op(value, x, dtype=dtype) if is_reverse else self.add_op(x, value, dtype=dtype)
+            tpul.compile(self.unique_name(case_name), [x], [add], False, 2)
+
         _test_add([1, 3, 28, 28], [1, 3, 28, 28])
+        # _test_add_const([1, 3, 28, 28], 3, False, "float16")
+        # _test_add([1, 3, 28, 28], [1, 3, 28, 28], "int32")
         _test_add([1, 3, 32, 32], [1, 3, 32, 32])
         _test_add([1, 3, 32, 32], [1, 1, 32, 32])
         _test_add([1, 3, 32, 32], [1])
@@ -248,7 +279,7 @@ class TPULANG_IR_TESTER(object):
     def test_Conv3d(self, case_name):
         """Conv 3D"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_convolution(input_shape: List[int],
                               kernel_shape: List[int],
                               stride: List[int] = [1, 1, 1],
@@ -333,7 +364,7 @@ class TPULANG_IR_TESTER(object):
     def test_Deconv2d(self, case_name):
         """Deconv 2D"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_deconvolution(input_shape: List[int],
                               kernel_shape: List[int],
                               stride: List[int] = [1, 1],
@@ -360,7 +391,7 @@ class TPULANG_IR_TESTER(object):
     def test_Deconv3d(self, case_name):
         """Deconv 3D"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_deconvolution(input_shape: List[int],
                               kernel_shape: List[int],
                               stride: List[int] = [1, 1, 1],
@@ -425,7 +456,7 @@ class TPULANG_IR_TESTER(object):
             # dq29 = tpul.dequant_int_to_fp(rq28, 0.0625, 0)
             return conv1
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_model_def(in_shape):
             x_data = (rand_data(in_shape, 'float32') - 0.5) * 256
             x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
@@ -466,7 +497,7 @@ class TPULANG_IR_TESTER(object):
     def test_Conv2d(self, case_name):
         """Conv 2D"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_convolution(input_shape: List[int],
                               kernel_shape: List[int],
                               stride: List[int] = [1, 1],
@@ -507,7 +538,7 @@ class TPULANG_IR_TESTER(object):
             conv9 = self.conv_op(relu7,  kshape=[10, 1024, 1, 1], stride=[1,1], dtype='float32')
             return conv9
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_lenet(in_shape):
             x_data = (rand_data(in_shape, 'float32') - 0.5) * 256
             x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
@@ -527,7 +558,7 @@ class TPULANG_IR_TESTER(object):
     def test_Mul(self, case_name):
         """Mul"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_mul(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -553,7 +584,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sub(self, case_name):
         """Sub"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sub(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -578,7 +609,7 @@ class TPULANG_IR_TESTER(object):
     def test_Div(self, case_name):
         """Div"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_div(shape_x: List[int], shape_y: List[int]):
             x_data = rand_data(shape_x, "float32")
             y_data = rand_data(shape_y, "float32")
@@ -604,7 +635,7 @@ class TPULANG_IR_TESTER(object):
     def test_Max(self, case_name):
         """Max"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_max(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -630,7 +661,7 @@ class TPULANG_IR_TESTER(object):
     def test_Min(self, case_name):
         """Min"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_min(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -655,7 +686,7 @@ class TPULANG_IR_TESTER(object):
     def test_Copy(self, case_name):
         """Copy"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_copy(shape: List[int], dtype="float32"):
             x_data = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
@@ -675,7 +706,7 @@ class TPULANG_IR_TESTER(object):
     # def test_Cast(self, case_name):
     #     """Cast"""
 
-    #     @tpulang
+    #     @tpulang(self.chip)
     #     def _test_cast(shape: List[int], dtype="float32"):
     #         x_data = rand_data(shape, dtype)
     #         x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
@@ -695,7 +726,7 @@ class TPULANG_IR_TESTER(object):
     def test_Clamp(self, case_name):
         """Clamp"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_clamp(shape: List[int], dtype="float32"):
             x_data = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
@@ -715,7 +746,7 @@ class TPULANG_IR_TESTER(object):
     def test_MatMul(self, case_name):
         """Matmul"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_matmul(shape_x: List[int], shape_y: List[int], dtype="float32"):
             left = rand_data(shape_x, dtype)
             right = rand_data(shape_y, dtype)
@@ -741,7 +772,7 @@ class TPULANG_IR_TESTER(object):
     def test_Maxpool(self, case_name):
         """Maxpool"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_maxpool(shape_x: List[int],
                                 kshape: List[int] = [1,1],
                                 stride: List[int] = [1, 1],
@@ -764,7 +795,7 @@ class TPULANG_IR_TESTER(object):
     def test_Relu(self, case_name):
         """Relu"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_relu(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -783,7 +814,7 @@ class TPULANG_IR_TESTER(object):
     def test_LeakyRelu(self, case_name):
         """LeakyRelu"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_leaky_relu(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -802,7 +833,7 @@ class TPULANG_IR_TESTER(object):
     def test_Abs(self, case_name):
         """Abs"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_abs(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -821,7 +852,7 @@ class TPULANG_IR_TESTER(object):
     def test_Ceil(self, case_name):
         """Ceil"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_ceil(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -840,7 +871,7 @@ class TPULANG_IR_TESTER(object):
     def test_Floor(self, case_name):
         """Floor"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_floor(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -859,7 +890,7 @@ class TPULANG_IR_TESTER(object):
     def test_Round(self, case_name):
         """Round"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_round(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -878,7 +909,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sin(self, case_name):
         """sin"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sin(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -897,7 +928,7 @@ class TPULANG_IR_TESTER(object):
     def test_Cos(self, case_name):
         """cos"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_cos(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -916,7 +947,7 @@ class TPULANG_IR_TESTER(object):
     def test_Exp(self, case_name):
         """exp"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_exp(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -935,7 +966,7 @@ class TPULANG_IR_TESTER(object):
     def test_Tanh(self, case_name):
         """tanh"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_tanh(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -954,7 +985,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sigmoid(self, case_name):
         """sigmoid"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sigmoid(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -973,7 +1004,7 @@ class TPULANG_IR_TESTER(object):
     def test_Elu(self, case_name):
         """elu"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_elu(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -992,7 +1023,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sqrt(self, case_name):
         """sqrt"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sqrt(shape_x: List[int], dtype="float32"):
             input = np.abs(rand_data(shape_x, dtype))
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1011,7 +1042,7 @@ class TPULANG_IR_TESTER(object):
     # def test_Rsqrt(self, case_name):
     #     """rsqrt"""
 
-    #     @tpulang
+    #     @tpulang(self.chip)
     #     def _test_rsqrt(shape_x: List[int], dtype="float32"):
     #         input = np.abs(rand_data(shape_x, dtype))
     #         x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1030,7 +1061,7 @@ class TPULANG_IR_TESTER(object):
     def test_Erf(self, case_name):
         """erf"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_erf(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1049,7 +1080,7 @@ class TPULANG_IR_TESTER(object):
     def test_Tan(self, case_name):
         """tan"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_tan(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1068,7 +1099,7 @@ class TPULANG_IR_TESTER(object):
     def test_Softmax(self, case_name):
         """softmax"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_softmax(shape_x: List[int], axis: int, dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1087,7 +1118,7 @@ class TPULANG_IR_TESTER(object):
     def test_Mish(self, case_name):
         """mish"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_mish(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1106,7 +1137,7 @@ class TPULANG_IR_TESTER(object):
     def test_Hswish(self, case_name):
         """hswish"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_hswish(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1125,7 +1156,7 @@ class TPULANG_IR_TESTER(object):
     def test_Arccos(self, case_name):
         """arccos"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_arccos(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype, -0.99, 0.99)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1144,7 +1175,7 @@ class TPULANG_IR_TESTER(object):
     def test_Arctanh(self, case_name):
         """arctanh"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_arctanh(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype, -0.99, 0.99)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1163,7 +1194,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sinh(self, case_name):
         """sinh"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sinh(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1182,7 +1213,7 @@ class TPULANG_IR_TESTER(object):
     def test_Cosh(self, case_name):
         """cosh"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_cosh(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1201,7 +1232,7 @@ class TPULANG_IR_TESTER(object):
     def test_Sign(self, case_name):
         """sign"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_sign(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1220,7 +1251,7 @@ class TPULANG_IR_TESTER(object):
     def test_Gelu(self, case_name):
         """gelu"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_gelu(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1239,7 +1270,7 @@ class TPULANG_IR_TESTER(object):
     def test_Hsigmoid(self, case_name):
         """hsigmoid"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_hsigmoid(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1258,7 +1289,7 @@ class TPULANG_IR_TESTER(object):
     def test_Arg(self, case_name):
         """arg"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_arg(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1277,7 +1308,7 @@ class TPULANG_IR_TESTER(object):
     def test_Permute(self, case_name):
         """permute"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_permute(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1296,7 +1327,7 @@ class TPULANG_IR_TESTER(object):
     def test_Tile(self, case_name):
         """tile"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_tile(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1315,7 +1346,7 @@ class TPULANG_IR_TESTER(object):
     def test_Concat(self, case_name):
         """concat"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_concat(shapes: List[List[int]], dtype="float32"):
             input0 = rand_data(shapes[0], dtype)
             input1 = rand_data(shapes[1], dtype)
@@ -1337,7 +1368,7 @@ class TPULANG_IR_TESTER(object):
     def test_Split(self, case_name):
         """split"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_split(shape_x: List[int], axis=0, num=1, size=None, dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
@@ -1357,7 +1388,7 @@ class TPULANG_IR_TESTER(object):
     def test_Repeat(self, case_name):
         """repeat"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_repeat(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1376,7 +1407,7 @@ class TPULANG_IR_TESTER(object):
     def test_Gt(self, case_name):
         """Gt"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_gt(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -1398,7 +1429,7 @@ class TPULANG_IR_TESTER(object):
     def test_Lt(self, case_name):
         """Lt"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_lt(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -1420,7 +1451,7 @@ class TPULANG_IR_TESTER(object):
     def test_Ge(self, case_name):
         """Ge"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_ge(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -1442,7 +1473,7 @@ class TPULANG_IR_TESTER(object):
     def test_Le(self, case_name):
         """Le"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_le(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -1464,7 +1495,7 @@ class TPULANG_IR_TESTER(object):
     def test_Eq(self, case_name):
         """Eq"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_eq(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = np.random.randint(0, 256, size=shape_x).astype(np.float32)
             y_data = np.random.randint(0, 256, size=shape_x).astype(np.float32)
@@ -1486,7 +1517,7 @@ class TPULANG_IR_TESTER(object):
     def test_Ne(self, case_name):
         """Ne"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_ne(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
@@ -1508,14 +1539,14 @@ class TPULANG_IR_TESTER(object):
     def test_Gts(self, case_name):
         """Gts"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_gts(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             gts = self.gts_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [gts])
 
-        _test_gts([1, 3, 28, 28])
+        _test_gts([1, 3, 28, 28], "float16")
         _test_gts([1, 3, 32, 32])
 
     #######################################################################
@@ -1528,7 +1559,7 @@ class TPULANG_IR_TESTER(object):
     def test_Lts(self, case_name):
         """Lts"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_lts(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1548,7 +1579,7 @@ class TPULANG_IR_TESTER(object):
     def test_Ges(self, case_name):
         """Ges"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_ges(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1568,7 +1599,7 @@ class TPULANG_IR_TESTER(object):
     def test_Les(self, case_name):
         """Les"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_les(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1588,7 +1619,7 @@ class TPULANG_IR_TESTER(object):
     def test_Eqs(self, case_name):
         """Eqs"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_eqs(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1608,7 +1639,7 @@ class TPULANG_IR_TESTER(object):
     def test_Nes(self, case_name):
         """Nes"""
 
-        @tpulang
+        @tpulang(self.chip)
         def _test_nes(shape_x: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
@@ -1767,7 +1798,7 @@ class TPULANG_IR_TESTER(object):
     # def test_Interpolate(self, case_name):
     #     """interpolate"""
 
-    #     @tpulang
+    #     @tpulang(self.chip)
     #     def _test_interpolate(shape_x: List[int], dtype="float32"):
     #         x_data = rand_data(shape_x, dtype)
     #         # y_data = rand_data(shape_y, dtype)
