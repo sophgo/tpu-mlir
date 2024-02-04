@@ -34,7 +34,7 @@ deconv_attr_t tpu::Deconv3DOp::parseParam() {
   p.dd = dilation->at(0);
   p.dh = dilation->at(1);
   p.dw = dilation->at(2);
-  auto output_padding = module::getI64Array(getOutputPadding(), 3, 1);
+  auto output_padding = module::getI64Array(getOutputPadding(), 3, 0);
   p.output_pad_d = output_padding->at(0);
   p.output_pad_h = output_padding->at(1);
   p.output_pad_w = output_padding->at(2);

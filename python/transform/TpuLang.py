@@ -241,6 +241,8 @@ def conv_v2(input: Tensor,
     elif input.dtype == "float32" or input.dtype == "float16":
         o_dtype = input.dtype
 
+    assert(input.shape[1] == weight.shape[1] * group and "ic != kic * group")
+
     def _shape_inference():
         kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
         kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
@@ -283,6 +285,8 @@ def conv3d_v2(input: Tensor,
     else:
         o_dtype = input.dtype
 
+    assert(input.shape[1] == weight.shape[1] * group and "ic != kic * group")
+
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
         "strides": ArrayAttr(stride),
@@ -304,6 +308,7 @@ def deconv_v2(input: Tensor,
             stride: List[int] = None,
             dilation: List[int] = None,
             pad: List[int] = None,
+            output_padding: List[int] = None,
             group=1,
             input_zp: Union[int, List[int]] = None,
             weight_zp: Union[int, List[int]] = None,
@@ -312,6 +317,8 @@ def deconv_v2(input: Tensor,
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    output_padding = [0, 0] if output_padding is None else output_padding
+
     o_dtype = "int32"
     if out_dtype is not None:
         o_dtype = out_dtype
@@ -323,6 +330,7 @@ def deconv_v2(input: Tensor,
         "strides": ArrayAttr(stride),
         "dilations": ArrayAttr(dilation),
         "pads": ArrayAttr(pad),
+        "output_padding": ArrayAttr(output_padding),
         "do_relu": Attr(False, "bool"),
         "group": Attr(group)
     }
@@ -339,6 +347,7 @@ def deconv3d_v2(input: Tensor,
                 stride: List[int] = None,
                 dilation: List[int] = None,
                 pad: List[int] = None,
+                output_padding: List[int] = None,
                 group=1,
                 input_zp: Union[int, List[int]] = None,
                 weight_zp: Union[int, List[int]] = None,
@@ -347,6 +356,7 @@ def deconv3d_v2(input: Tensor,
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    output_padding = [0, 0, 0] if output_padding is None else output_padding
     o_dtype = "int32"
     if out_dtype is not None:
         o_dtype = out_dtype
@@ -358,6 +368,7 @@ def deconv3d_v2(input: Tensor,
         "strides": ArrayAttr(stride),
         "dilations": ArrayAttr(dilation),
         "pads": ArrayAttr(pad),
+        "output_padding": ArrayAttr(output_padding),
         "do_relu": Attr(False, "bool"),
         "group": Attr(group)
     }
@@ -525,6 +536,7 @@ def deconv(input: Tensor,
            kernel=None,
            dilation: List[int] = None,
            pad: List[int] = None,
+           output_padding: List[int] = None,
            stride: List[int] = None,
            group: int = 1,
            out_name: str = None):
@@ -534,6 +546,7 @@ def deconv(input: Tensor,
                      stride=stride,
                      dilation=dilation,
                      pad=pad,
+                     output_padding=output_padding,
                      group=group,
                      out_dtype=input.dtype,
                      out_name=out_name)
@@ -896,31 +909,44 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
     TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
     return output
 
-def concat(input: Tensor, axis: int = 0, out_name: str = None):
+def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
+    assert(len(inputs) > 1 and "concat should have more than one input")
     if out_name is None:
         out_name = generate_name("concat")
     attr = {
         "axis": Attr(axis, "int32"),
     }
-    output = Tensor([], dtype=input.dtype, name=out_name)
-    TpuLang.insert_op("top.Concat", inputs=[input], outputs=[output], params=attr)
+    output = Tensor([], dtype=inputs[0].dtype, name=out_name)
+    TpuLang.insert_op("top.Concat", inputs=inputs, outputs=[output], params=attr)
     return output
 
 def split(input: Tensor,
           axis: int = 0,
           num: int = 1,
           size: Union[Tuple[int], List[int]] = (),
-          out_name: str = None):
+          out_name: str = None) -> List[Tensor]:
+    assert(num > 1 and "number of split output should be more than 1")
+    if not size:
+        assert(input.shape[axis] % num == 0 and "invalid split size")
+        size = [int(input.shape[axis] / num)] * num
+    else:
+        assert(num == len(size) and "size should be the same as num")
+        assert(sum(size) == input.shape[axis] and "invalid size")
+
     if out_name is None:
         out_name = generate_name("split")
+
     attr = {
         "axis": Attr(axis, "int32"),
         "num": Attr(num),
         "split_size": ArrayAttr(size),
     }
-    output = Tensor([], dtype=input.dtype, name=out_name)
-    TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
-    return output
+    outputs = []
+    for i in range(num):
+        outputs.append(Tensor([], dtype=input.dtype, name=f"{out_name}_{i}"))
+
+    TpuLang.insert_op("top.Split", inputs=[input], outputs=outputs, params=attr)
+    return outputs
 
 # def pad(input: Tensor,
 #         axis: int = 0,
