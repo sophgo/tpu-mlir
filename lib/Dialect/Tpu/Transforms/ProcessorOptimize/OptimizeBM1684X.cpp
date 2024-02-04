@@ -2052,7 +2052,7 @@ public:
     assert(o_shape[2] == mq && sf_shape[1] == head);
 
     // ppl flash attention only support d <= 256, bf16 & fp16
-    if (d > 256 || mk < 4 || mk > 12 * 1024) {
+    if (d > 160 || mk < 4) {
       return failure();
     }
     std::vector<NamedAttribute> attrs;
