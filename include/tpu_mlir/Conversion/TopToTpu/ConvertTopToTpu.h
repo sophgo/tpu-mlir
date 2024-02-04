@@ -56,6 +56,18 @@ protected:
   void spread_q_config();
   bool swin_mix_precision();
   bool cswin_mix_precision();
+  void match_detr_ffn(std::vector<Operation *> &ffn);
+  void match_detr_mha(std::vector<Operation *> &mha);
+  bool match_detr_decoder(std::vector<Operation *> &dec,
+                          std::vector<Operation *> &addops,
+                          std::vector<Operation *> &smops);
+  void match_detr_encoder_mha(std::vector<Operation *> &mha,
+                              std::vector<Operation *> &smops);
+  template <typename opType>
+  bool find_in_block(Operation *from, Operation *to,
+                     std::vector<Operation *> &ops);
+  void float_till_output(Operation *start);
+  bool detr_mix_precision();
   void qtable_process();
   Value do_cast(Value v, Type to, TypeCastMode mode,
                 Operation *user_op = nullptr);

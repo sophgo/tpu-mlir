@@ -1590,7 +1590,6 @@ bool ConvertTopToTpu::convergence_with_sm_matmul_slice(
     if (isa<top::SoftmaxOp>(r))
       sm_cnt++;
     if (isa<top::MatMulOp>(r)) {
-      matmul_cnt++;
       mm_cnt++;
     }
     if (isa<top::SliceOp>(r)) {
@@ -2056,6 +2055,7 @@ void ConvertTopToTpu::qtable_process() {
   vit_mix_precision();
   deit_mix_precision();
   eva2_mix_precision();
+  detr_mix_precision();
   set_add_before_softmax_fp32();
   spread_q_config();
 }
