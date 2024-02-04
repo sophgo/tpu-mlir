@@ -544,37 +544,6 @@ class Memory(CModelMemory):
             smem[: len(lut)] = lut[...]
 
     def get_data(self, value: MemRef, core_id=0):
-        # currently core_id won't be used in "get_data" func in ../debugger/plugins/common.py
-        # because the cmds in different cores are executed core by core, take tiu_cmds for example:
-        #         core0                          core1                            core2                     execute sequence
-        # tiu_core(0)_cmdid(1)                                                                                      ▼
-        # tiu_core(0)_cmdid(2)                                                                                      |
-        #         ...                                                                                               |
-        # tiu_core(0)_cmdid(10)                                                                                     |
-        # tiu_core(0)_cmdid(11)                                                                                     |
-        #                                 tiu_core(1)_cmdid(1)                                                      |
-        #                                 tiu_core(1)_cmdid(2)                                                      |
-        #                                         ...                                                               |
-        #                                 tiu_core(1)_cmdid(7)                                                      |
-        #                                 tiu_core(1)_cmdid(8)                                                      |
-        #                                                                 tiu_core(2)_cmdid(1)                      |
-        #                                                                 tiu_core(2)_cmdid(2)                      ▼
-        #                                                                         ...                               |
-        #                                                                 tiu_core(2)_cmdid(6)                      |
-        #                                                                 tiu_core(2)_cmdid(7)                      |
-        # tiu_core(0)_cmdid(12)                                                                                     |
-        #         ...                                                                                               |
-        # tiu_core(0)_cmdid(20)                                                                                     |
-        #                                 tiu_core(1)_cmdid(9)                                                      |
-        #                                         ...                                                               |
-        #                                 tiu_core(1)_cmdid(15)                                                     |
-        #                                                                 tiu_core(2)_cmdid(8)                      |
-        #                                                                         ...                               |
-        #                                                                 tiu_core(2)_cmdid(10)                     ▼
-        # so the sg2260 backend config the same absolute address for LMEM on different cores, since a dma cmd would transfer
-        # the result data of tiu_core(0)_cmdid(11) to gmem before tiu_core(1)_cmdid(1) is executed.
-        #
-        # this `core_id` is set in case the absolute address are set different.
         if isinstance(value, Scalar):
             return value.data
         assert isinstance(value, MemRef)

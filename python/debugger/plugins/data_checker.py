@@ -488,11 +488,21 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
-    def check_data(self, point_index, value_view: ValueView) -> ComparedResult:
+    def check_data(
+        self, point_index, is_operand, value_view: ValueView
+    ) -> ComparedResult:
         value = value_view.value
         if value.name in self.excepts:
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
+
+        # this hack should only enable in multicore
+        if not is_operand:
+            if value_view.file_line in self.index.tdb.global_layer_line:
+                self.index.tdb.global_layer_line[value_view.file_line] -= 1
+                if self.index.tdb.global_layer_line[value_view.file_line] != 0:
+                    value_res = ComparedResult(value_view, None, msg="ignore")
+                    return value_res
 
         context = self.tdb.context
         memref = value.get_memref(context)
@@ -540,13 +550,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         values = None
 
         if is_operand:
+            point_index += 1
             values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index + 1, "operands"
+                tdb.index_df["executed_id"] == point_index, "operands"
             ].tolist()
         else:
             values = tdb.index_df.loc[
                 tdb.index_df["executed_id"] == point_index, "results"
             ].tolist()
+
         if values:
             values = values[0]
 
@@ -564,7 +576,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if value_view.value is None:  # top.None
                 continue
 
-            cmp_res = self.check_data(point_index - 1, value_view)
+            cmp_res = self.check_data(point_index - 1, is_operand, value_view)
             if cmp_res.state == CmpState.Fail:
                 success = False
 

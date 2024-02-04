@@ -190,6 +190,15 @@ class CMD:
         # None for no usage results
         self.results = [Value(i) if len(i) > 0 else None for i in dic["results"]]
 
+        operands_slice_all = results_slice_all = False
+        operands_slice_all = all(
+            operand.slice == "[...]" for operand in self.operands if self.operands if operand
+        )
+        results_slice_all = all(
+            result.slice == "[...]" for result in self.results if self.results if result
+        )
+        self.slice_all = operands_slice_all and results_slice_all
+
     @property
     def cmd_type(self) -> CMDType:
         if self.opcode in {

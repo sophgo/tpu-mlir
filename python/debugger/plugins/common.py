@@ -165,13 +165,17 @@ class FinalMlirIndexPlugin(TdbPlugin):
             else:
                 raise RuntimeError("Not Supported CMDType!")
 
-        # when cmd_point reach point
-        # it means the cmd in cmditer[point-1] has been executed
+        # when cmd_point reach int `point`(index start from 1)
+        # it means the atomic_cmd in cmditer[point-1] has been executed
         # data-checker need to compare loc operands before execute bf_point
         # and after execute af_point
 
         loc_records = []
+        tdb.global_layer_line = collections.defaultdict(lambda: 0)
         for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
+            if loc.slice_all:
+                tdb.global_layer_line[loc.file_line] += 1
+
             if loc.tiu_dma_id_before == loc.tiu_dma_id_after:
                 # no cmd operation, like reshape
                 continue
