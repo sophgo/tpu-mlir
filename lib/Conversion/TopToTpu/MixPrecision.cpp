@@ -703,6 +703,345 @@ bool ConvertTopToTpu::cswin_mix_precision() {
   return false;
 }
 
+void ConvertTopToTpu::match_detr_ffn(std::vector<Operation *> &ffn) {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::LayerNormOp lnop = NULL;
+      top::MatMulOp mmop = NULL;
+      for (auto in : addop.getOperands()) {
+        if (isa<top::MatMulOp>(in.getDefiningOp()))
+          mmop = dyn_cast_or_null<top::MatMulOp>(in.getDefiningOp());
+        else if (isa<top::LayerNormOp>(in.getDefiningOp()))
+          lnop = dyn_cast_or_null<top::LayerNormOp>(in.getDefiningOp());
+        else
+          return;
+      }
+      if (mmop == NULL || lnop == NULL || !isSISO(mmop.getOperation()))
+        return;
+      if (isa<top::MatMulOp>(mmop.getInput().getDefiningOp())) {
+        auto mmop1 =
+            dyn_cast_or_null<top::MatMulOp>(mmop.getInput().getDefiningOp());
+        if (isa<top::LayerNormOp>(mmop1.getInput().getDefiningOp())) {
+          if (mmop1.getInput().getDefiningOp() != lnop)
+            return;
+        }
+        if (!mmop1.getOutput().hasOneUse() || !mmop1.getDoRelu())
+          return;
+        ffn.push_back(op);
+        return;
+      }
+    }
+  });
+}
+
+void ConvertTopToTpu::match_detr_encoder_mha(std::vector<Operation *> &mha,
+                                             std::vector<Operation *> &smops) {
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::LayerNormOp, top::PermuteOp>(op)) {
+      top::AddOp addu = NULL;
+      top::AddOp addl = NULL;
+      top::MatMulOp mmop = NULL;
+      if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
+        for (auto u : lnop.getOutput().getUsers()) {
+          if (!isa<top::MatMulOp, top::AddOp>(u)) {
+            return;
+          }
+          if (isa<top::AddOp>(u)) {
+            auto aop_ = dyn_cast<top::AddOp>(u);
+            if (std::distance(aop_.getResult().getUsers().begin(),
+                              aop_.getResult().getUsers().end()) == 2) {
+              addu = aop_;
+            } else if (std::distance(aop_.getResult().getUsers().begin(),
+                                     aop_.getResult().getUsers().end()) == 1) {
+              addl = aop_;
+            } else {
+              return;
+            }
+          } else if (isa<top::MatMulOp>(u))
+            mmop = dyn_cast<top::MatMulOp>(u);
+        }
+      } else if (auto pop = dyn_cast<top::PermuteOp>(op)) {
+        for (auto u : pop.getOutput().getUsers()) {
+          if (!isa<top::MatMulOp, top::AddOp>(u)) {
+            return;
+          }
+          if (isa<top::AddOp>(u)) {
+            auto aop_ = dyn_cast<top::AddOp>(u);
+            if (std::distance(aop_.getResult().getUsers().begin(),
+                              aop_.getResult().getUsers().end()) == 2) {
+              addu = aop_;
+            } else if (std::distance(aop_.getResult().getUsers().begin(),
+                                     aop_.getResult().getUsers().end()) == 1) {
+              addl = aop_;
+            } else {
+              return;
+            }
+          } else if (isa<top::MatMulOp>(u))
+            mmop = dyn_cast<top::MatMulOp>(u);
+        }
+      }
+      if (addu == NULL || addl == NULL || mmop == NULL)
+        return;
+      int sm_cnt = 0;
+      int mm_cnt = 0;
+      int trip_mm = 0;
+      int trip_slices = 0;
+      int six_slices = 0;
+      if (!convergence_with_sm_matmul_slice(addu, addl, sm_cnt, mm_cnt, trip_mm,
+                                            trip_slices, six_slices)) {
+        return;
+      }
+      if (!convergence_with_sm_matmul_slice(mmop, addl, sm_cnt, mm_cnt, trip_mm,
+                                            trip_slices, six_slices)) {
+        return;
+      }
+      if (sm_cnt != 2 || mm_cnt != 10) // multi pass in tree
+        return;
+      mha.push_back(op);
+    }
+  });
+}
+
+template <typename opType>
+bool ConvertTopToTpu::find_in_block(Operation *from, Operation *to,
+                                    std::vector<Operation *> &ops) {
+  bool res = true;
+  auto re = from->getResult(0);
+  for (auto r : re.getUsers()) {
+    if (isa<top::NoneOp>(r))
+      return false;
+    else if (r == to)
+      return true;
+    else if (isa<ReturnOp>(r)) {
+      return true;
+    }
+    if (isa<opType>(r)) {
+      if (std::find(ops.begin(), ops.end(), r) == ops.end())
+        ops.push_back(r);
+    }
+    res = res && find_in_block<opType>(r, to, ops);
+  }
+  return res;
+}
+
+void ConvertTopToTpu::float_till_output(Operation *start) {
+  if (isa<top::NoneOp>(start) || !(start->getLoc().isa<NameLoc>()))
+    return;
+  if (LoweringConfig::quantize_map.find(module::getName(start).str()) ==
+      LoweringConfig::quantize_map.end()) {
+    LoweringConfig::quantize_map.insert(
+        {module::getName(start).str(), module::Mode::F16});
+  }
+  for (auto o : start->getResult(0).getUsers()) {
+    if (isa<top::NoneOp>(o))
+      continue;
+    else {
+      float_till_output(o);
+    }
+  }
+}
+
+bool ConvertTopToTpu::match_detr_decoder(std::vector<Operation *> &dec,
+                                         std::vector<Operation *> &addops,
+                                         std::vector<Operation *> &smops) {
+  top::LayerNormOp lnop = NULL;
+  top::AddOp aop = NULL;
+  top::ConcatOp cop = NULL;
+  mainFunc_.walk([&](Operation *op) {
+    if (auto lnop_ = dyn_cast<top::LayerNormOp>(op)) {
+      if (std::distance(op->getResult(0).getUsers().begin(),
+                        op->getResult(0).getUsers().end()) != 7) {
+        return;
+      }
+      int mmcnt = 0;
+      int addcnt = 0;
+      std::vector<Operation *> mmops;
+      top::AddOp aop_ = NULL;
+      for (auto u : lnop_.getResult().getUsers()) {
+        if (dyn_cast<top::MatMulOp>(u))
+          mmcnt++;
+        if (dyn_cast<top::AddOp>(u)) {
+          addcnt++;
+          aop_ = dyn_cast_or_null<top::AddOp>(u);
+        }
+      }
+      if (mmcnt == 6 && addcnt == 1) {
+        for (auto m : mmops) {
+          auto mm = dyn_cast<top::MatMulOp>(m);
+          if (mm.getOperand(1).getDefiningOp() != aop_)
+            return;
+        }
+        lnop = lnop_;
+        aop = aop_;
+      }
+    }
+  });
+  mainFunc_.walk([&](Operation *op) {
+    if (auto concat = dyn_cast<top::ConcatOp>(op)) {
+      if (op->getOperands().size() == 6) {
+        cop = dyn_cast_or_null<top::ConcatOp>(op);
+      }
+    }
+  });
+  if (lnop != NULL && cop != NULL && aop != NULL) {
+    int sm_cnt = 0;
+    int mm_cnt = 0;
+    int trip_mm = 0;
+    int trip_slices = 0;
+    int six_slices = 0;
+    if (!convergence_with_sm_matmul_slice(aop, cop, sm_cnt, mm_cnt, trip_mm,
+                                          trip_slices, six_slices)) {
+      return false;
+    }
+    dec.push_back(aop.getOperation());
+    dec.push_back(cop.getOperation());
+    find_in_block<top::AddOp>(aop, cop, addops);
+    find_in_block<top::SoftmaxOp>(aop, cop, smops);
+    return true;
+  } else
+    return false;
+}
+
+bool ConvertTopToTpu::detr_mix_precision() {
+  std::vector<Operation *> ffn;
+  std::vector<Operation *> mha;
+  std::vector<Operation *> dec;
+  std::vector<Operation *> decoder_addops;
+  std::vector<Operation *> decoder_smops;
+  std::vector<Operation *> encoder_smops;
+  match_detr_ffn(ffn);
+  match_detr_encoder_mha(mha, encoder_smops);
+  if (!match_detr_decoder(dec, decoder_addops, decoder_smops))
+    return false;
+
+  if (ffn.size() != 12 || mha.size() != 6)
+    return false;
+  for (auto op : ffn) {
+    if (auto aop = dyn_cast<top::AddOp>(op)) {
+      if (LoweringConfig::quantize_map.find(
+              module::getName(aop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(aop.getOperation()).str(), module::Mode::F16});
+      }
+      for (auto i : aop.getInputs()) {
+        if (auto mm0 = dyn_cast<top::MatMulOp>(i.getDefiningOp())) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(mm0.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(mm0.getOperation()).str(), module::Mode::F16});
+          }
+          if (auto mm1 =
+                  dyn_cast<top::MatMulOp>(mm0.getInput().getDefiningOp())) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mm1.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mm1.getOperation()).str(),
+                   module::Mode::F16});
+            }
+          }
+        }
+      }
+    }
+  }
+  for (auto op : mha) {
+    if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
+      for (auto u : lnop.getResult().getUsers()) {
+        if (auto aop = dyn_cast<top::AddOp>(u)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(aop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(aop.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
+    } else if (auto pop = dyn_cast<top::PermuteOp>(op)) {
+      for (auto u : pop.getResult().getUsers()) {
+        if (auto aop = dyn_cast<top::AddOp>(u)) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(aop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(aop.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
+      if (auto rop = dyn_cast<top::ReshapeOp>(pop.getInput().getDefiningOp())) {
+        if (auto cop = dyn_cast<top::ConvOp>(rop.getInput().getDefiningOp())) {
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(cop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(cop.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
+    }
+    top::AddOp aopu = NULL;
+    top::AddOp aopl = NULL;
+    top::MatMulOp mmop = NULL;
+    for (auto u : op->getResult(0).getUsers()) {
+      if (auto aop_ = dyn_cast<top::AddOp>(u)) {
+        if (isa<top::MatMulOp>(*aop_.getResult().getUsers().begin()))
+          aopu = aop_;
+        else
+          aopl = aop_;
+      } else if (isa<top::MatMulOp>(u)) {
+        mmop = dyn_cast<top::MatMulOp>(u);
+      }
+    }
+    if (aopu != NULL && aopl != NULL && mmop != NULL) {
+      set_block_fp16(aopu.getOperation(), aopl.getOperation());
+      set_block_fp16(mmop.getOperation(), aopl.getOperation());
+    }
+  }
+
+  for (auto cop : dec) {
+    if (isa<top::ConcatOp>(cop)) {
+      if (LoweringConfig::quantize_map.find(module::getName(cop).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(cop).str(), module::Mode::F16});
+      }
+      for (auto o : cop->getResult(0).getUsers()) {
+        float_till_output(o);
+      }
+    }
+  }
+  for (auto a : decoder_addops) {
+    if (LoweringConfig::quantize_map.find(module::getName(a).str()) ==
+        LoweringConfig::quantize_map.end()) {
+      LoweringConfig::quantize_map.insert(
+          {module::getName(a).str(), module::Mode::F16});
+    }
+  }
+  for (auto a : decoder_smops) {
+    if (auto mmop = dyn_cast<top::MatMulOp>(a->getOperand(0).getDefiningOp())) {
+      if (LoweringConfig::quantize_map.find(
+              module::getName(mmop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(mmop.getOperation()).str(), module::Mode::F16});
+      }
+    }
+  }
+  for (auto a : encoder_smops) {
+    if (auto mmop = dyn_cast<top::MatMulOp>(a->getOperand(0).getDefiningOp())) {
+      if (LoweringConfig::quantize_map.find(
+              module::getName(mmop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(mmop.getOperation()).str(), module::Mode::F16});
+      }
+    }
+  }
+
+  return true;
+}
+
 void ConvertTopToTpu::match_deit_mha(std::vector<Operation *> &mha) {
   mainFunc_.walk([&](Operation *op) {
     if (isa<top::AddOp>(op)) {
