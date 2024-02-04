@@ -64,7 +64,7 @@ class MAIN_ENTRY(object):
             "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1688", "cv183x"]),
             "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
             "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x"]),
-            "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
+            "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
         # yapf: enable
@@ -123,7 +123,7 @@ class MAIN_ENTRY(object):
         case_name = f"{op_source}_test_{chip}"
         os.makedirs(case_name, exist_ok=True)
         os.chdir(dir)
-        if op_source == "tflite" or op_source == "tpulang":
+        if op_source == "tflite":
             tester = tester(chip=chip)
         else:
             tester = tester(chip=chip, simple=self.is_basic)
