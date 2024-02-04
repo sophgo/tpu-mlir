@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import List, Union, Tuple
-from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar
+from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotayion_check
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 
@@ -208,26 +208,57 @@ def custom(tensors_in: list,
 
     return tensors_out
 
+def binary_dtype_check(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_dtype: str = None, sign: bool = False):
+    in0_dtype = tensor_i0.dtype if isinstance(tensor_i0, Tensor) else tensor_i1.dtype
+    in1_dtype = tensor_i1.dtype if isinstance(tensor_i1, Tensor) else tensor_i0.dtype
+    if in0_dtype in ["float32", "float16"]:
+        assert in0_dtype == in1_dtype
+        out_dtype = in0_dtype if out_dtype == None else out_dtype
+        assert in0_dtype == out_dtype
+    elif in0_dtype.find("int") >= 0:
+        assert in1_dtype.find("int") >= 0
+        out_dtype = "int32" if out_dtype == None else out_dtype
+        assert out_dtype.find("int") >= 0
+        if sign:
+            assert out_dtype.find("uint") < 0
+    return out_dtype
 
-def add(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-        o_dtype = tensor_i0.dtype
-    elif out_dtype is not None:
-        o_dtype = out_dtype
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Add", [tensor_i0, tensor_i1], [output])
+def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = None):
+    if in1_dtype is not None:
+        assert in0_dtype == in1_dtype
+    if out_dtype is not None:
+        assert in0_dtype == out_dtype
+    return in0_dtype
+
+
+@annotayion_check
+@to_scalar
+def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float], out_dtype: str = None, out_name: str = None):
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
+        TpuLang.insert_op("top.Add", [tensor_i0, tensor_i1], [output])
+    else:
+        tensor = tensor_i0 if isinstance(tensor_i0, Tensor) else tensor_i1
+        scalar = tensor_i0 if isinstance(tensor_i1, Tensor) else tensor_i1
+
+        if tensor == scalar:
+            raise "input muat be have Tensor"
+        attr = {
+            "const_val": Attr(scalar.value, 'float64'),
+        }
+        TpuLang.insert_op("top.AddConst", [tensor], [output], params = attr)
     return output
 
-
+@annotayion_check
 def conv_v2(input: Tensor,
             weight: Tensor,
             bias: Tensor = None,
             stride: List[int] = None,
             dilation: List[int] = None,
             pad: List[int] = None,
-            group=1,
+            group: int = 1,
             input_zp: Union[int, List[int]] = None,
             weight_zp: Union[int, List[int]] = None,
             out_dtype: str = None,
@@ -265,6 +296,7 @@ def conv_v2(input: Tensor,
     TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def conv3d_v2(input: Tensor,
                 weight: Tensor,
                 bias: Tensor = None,
@@ -302,6 +334,7 @@ def conv3d_v2(input: Tensor,
     TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def deconv_v2(input: Tensor,
             weight: Tensor,
             bias: Tensor = None,
@@ -341,6 +374,7 @@ def deconv_v2(input: Tensor,
     TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def deconv3d_v2(input: Tensor,
                 weight: Tensor,
                 bias: Tensor = None,
@@ -379,55 +413,59 @@ def deconv3d_v2(input: Tensor,
     TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-        o_dtype = tensor_i0.dtype
-    elif out_dtype is not None:
-        o_dtype = out_dtype
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, True)
+    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+    #     o_dtype = tensor_i0.dtype
+    # elif out_dtype is not None:
+    #     o_dtype = out_dtype
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
     return output
 
-
+@annotayion_check
 def sub(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-        o_dtype = tensor_i0.dtype
-    elif out_dtype is not None:
-        o_dtype = out_dtype
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, True)
+    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+    #     o_dtype = tensor_i0.dtype
+    # elif out_dtype is not None:
+    #     o_dtype = out_dtype
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Sub", [tensor_i0, tensor_i1], [output])
     return output
 
+@annotayion_check
 def div(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    o_dtype = "float32"
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype, "float32")
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
     return output
 
-def max(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-        o_dtype = tensor_i0.dtype
-    elif out_dtype is not None:
-        o_dtype = out_dtype
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
+@annotayion_check
+def max(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+    #     o_dtype = tensor_i0.dtype
+    # elif out_dtype is not None:
+    #     o_dtype = out_dtype
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Max", [tensor_i0, tensor_i1], [output])
     return output
 
-def min(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = "int32"
-    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-        o_dtype = tensor_i0.dtype
-    elif out_dtype is not None:
-        o_dtype = out_dtype
-    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor(shape, dtype=o_dtype, name=out_name)
+@annotayion_check
+def min(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
+    #     o_dtype = tensor_i0.dtype
+    # elif out_dtype is not None:
+    #     o_dtype = out_dtype
+    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+    output = Tensor([], dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Min", [tensor_i0, tensor_i1], [output])
     return output
 
@@ -454,6 +492,8 @@ def min(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: s
 def generate_name(op):
     unique_name = str(uuid.uuid4())
     return f"{op}_{unique_name}"
+
+@annotayion_check
 def copy(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("copy")
@@ -478,6 +518,7 @@ def copy(input: Tensor, out_name: str = None):
 
 #     return output
 
+@annotayion_check
 def clamp(input: Tensor, min:float, max:float, out_name: str = None):
     if out_name is None:
         out_name = generate_name("clamp")
@@ -490,6 +531,7 @@ def clamp(input: Tensor, min:float, max:float, out_name: str = None):
     return output
 
 # @deprecated(version=1.0, reason="This function will be removed soon")
+@annotayion_check
 def conv(input: Tensor,
          weight: Tensor,
          bias: Tensor = None,
@@ -510,6 +552,7 @@ def conv(input: Tensor,
                    out_name=out_name)
 
 # @deprecated(version=1.0, reason="Th  is function will be removed soon")
+@annotayion_check
 def conv3d(input: Tensor,
          weight: Tensor,
          bias: Tensor = None,
@@ -530,6 +573,7 @@ def conv3d(input: Tensor,
                    out_name=out_name)
 
 # @deprecated(version=1.0, reason="This function will be removed soon")
+@annotayion_check
 def deconv(input: Tensor,
            weight: Tensor,
            bias: Tensor = None,
@@ -551,11 +595,12 @@ def deconv(input: Tensor,
                      out_dtype=input.dtype,
                      out_name=out_name)
 
+@annotayion_check
 def requant_fp_to_int(tensor_i: Tensor,
-                      scale,
-                      offset,
-                      requant_mode,
-                      out_dtype,
+                      scale: Union[float, List[float]],
+                      offset: Union[int, List[int], float, List[float]],
+                      requant_mode: int,
+                      out_dtype: str,
                       out_name=None,
                       round_mode='half_away_from_zero'):
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
@@ -563,6 +608,7 @@ def requant_fp_to_int(tensor_i: Tensor,
     TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
     return output
 
+@annotayion_check
 def matmul(input: Tensor,
             right: Tensor,
             bias: Tensor = None,
@@ -622,11 +668,12 @@ def matmul(input: Tensor,
     TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def maxpool(input: Tensor,
-            kernel=None,
+            kernel: List[int]=None,
             stride: List[int] = None,
             pad: List[int] = None,
-            ceil_mode = False,
+            ceil_mode: bool = False,
             out_name: str = None):
     kernel = [1, 1] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
@@ -671,6 +718,7 @@ def maxpool(input: Tensor,
     TpuLang.insert_op("top.MaxPool", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def relu(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("relu")
@@ -678,6 +726,7 @@ def relu(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None):
     if out_name is None:
         out_name = generate_name("leaky_relu")
@@ -688,6 +737,7 @@ def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None
     TpuLang.insert_op("top.LeakyRelu", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def abs(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("abs")
@@ -695,6 +745,7 @@ def abs(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Abs", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def ceil(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("ceil")
@@ -702,6 +753,7 @@ def ceil(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Ceil", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def floor(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("floor")
@@ -709,6 +761,7 @@ def floor(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Floor", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def round(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("round")
@@ -716,6 +769,7 @@ def round(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Round", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def sin(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("sin")
@@ -723,6 +777,7 @@ def sin(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Sin", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def cos(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("cos")
@@ -730,6 +785,7 @@ def cos(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Cos", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def exp(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("exp")
@@ -737,6 +793,7 @@ def exp(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Exp", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def tanh(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("tanh")
@@ -744,6 +801,7 @@ def tanh(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Tanh", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def sigmoid(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("sigmoid")
@@ -751,6 +809,7 @@ def sigmoid(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Sigmoid", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def elu(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("elu")
@@ -761,6 +820,7 @@ def elu(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Elu", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def sqrt(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("sqrt")
@@ -775,6 +835,7 @@ def sqrt(input: Tensor, out_name: str = None):
 #     TpuLang.insert_op("top.Rsqrt", inputs=[input], outputs=[output])
 #     return output
 
+@annotayion_check
 def erf(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("erf")
@@ -782,6 +843,7 @@ def erf(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Erf", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def tan(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("tan")
@@ -789,6 +851,7 @@ def tan(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Tan", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def softmax(input: Tensor, axis: int, out_name: str = None):
     if out_name is None:
         out_name = generate_name("softmax")
@@ -799,6 +862,7 @@ def softmax(input: Tensor, axis: int, out_name: str = None):
     TpuLang.insert_op("top.Softmax", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def mish(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("mish")
@@ -806,6 +870,7 @@ def mish(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Mish", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def hswish(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("hswish")
@@ -813,6 +878,7 @@ def hswish(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.HardSwish", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def arccos(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("arccos")
@@ -820,6 +886,7 @@ def arccos(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Arccos", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def arctanh(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("arctanh")
@@ -827,6 +894,7 @@ def arctanh(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Arctanh", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def sinh(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("sinh")
@@ -834,6 +902,7 @@ def sinh(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Sinh", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def cosh(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("cosh")
@@ -841,6 +910,7 @@ def cosh(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Cosh", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def sign(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("sign")
@@ -848,6 +918,7 @@ def sign(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Sign", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def gelu(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("gelu")
@@ -855,6 +926,7 @@ def gelu(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.GELU", inputs=[input], outputs=[output])
     return output
 
+@annotayion_check
 def hsigmoid(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("hsigmoid")
@@ -866,6 +938,7 @@ def hsigmoid(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.HardSigmoid", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def arg(input: Tensor,
         method: str = "max",
         axis: int = 0,
@@ -889,6 +962,7 @@ def arg(input: Tensor,
     TpuLang.insert_op("top.Arg", inputs=[input], outputs=[output1, output2], params=attr)
     return output1, output2
 
+@annotayion_check
 def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = None):
     if out_name is None:
         out_name = generate_name("permute")
@@ -899,6 +973,7 @@ def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = 
     TpuLang.insert_op("top.Permute", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     if out_name is None:
         out_name = generate_name("tile")
@@ -909,6 +984,7 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
     TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
     assert(len(inputs) > 1 and "concat should have more than one input")
     if out_name is None:
@@ -920,6 +996,7 @@ def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
     TpuLang.insert_op("top.Concat", inputs=inputs, outputs=[output], params=attr)
     return output
 
+@annotayion_check
 def split(input: Tensor,
           axis: int = 0,
           num: int = 1,
@@ -964,6 +1041,7 @@ def split(input: Tensor,
 #     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
 #     return output
 
+@annotayion_check
 def repeat(input: Tensor, reps: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("repeat")
@@ -1019,134 +1097,188 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 #     TpuLang.insert_op("top.Interp", inputs=[tensor_i, target_shape], outputs=[output], params=attr)
 #     return output
 
+def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, out_name: str = None):
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    if out_name is None:
+        out_name = generate_name(type)
+    attr = {
+        "mode": Attr(type, "string"),
+    }
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
 def gt(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("gt")
-    attr = {
-        "mode": Attr("Greater", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("gt")
+    # attr = {
+    #     "mode": Attr("Greater", "string"),
+    # }
+    # output = Tensor([], dtype=o_dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    return __compare(tensor_i0, tensor_i1, "Greater", out_name)
 
+@annotayion_check
 def lt(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("lt")
-    attr = {
-        "mode": Attr("Less", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("lt")
+    # attr = {
+    #     "mode": Attr("Less", "string"),
+    # }
+    # output = Tensor([], dtype=o_dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    # return output
+    return __compare(tensor_i0, tensor_i1, "Less", out_name)
 
+@annotayion_check
 def ge(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("ge")
-    attr = {
-        "mode": Attr("GreaterOrEqual", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("ge")
+    # attr = {
+    #     "mode": Attr("GreaterOrEqual", "string"),
+    # }
+    # output = Tensor([], dtype=o_dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    # return output
+    return __compare(tensor_i0, tensor_i1, "GreaterOrEqual", out_name)
 
+@annotayion_check
 def le(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("le")
-    attr = {
-        "mode": Attr("LessOrEqual", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("le")
+    # attr = {
+    #     "mode": Attr("LessOrEqual", "string"),
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    # return output
+    return __compare(tensor_i0, tensor_i1, "LessOrEqual", out_name)
 
+@annotayion_check
 def eq(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("eq")
-    attr = {
-        "mode": Attr("Equal", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("eq")
+    # attr = {
+    #     "mode": Attr("Equal", "string"),
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    # return output
+    return __compare(tensor_i0, tensor_i1, "Equal", out_name)
 
+@annotayion_check
 def ne(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("ne")
-    attr = {
-        "mode": Attr("NotEqual", "string"),
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
-    return output
+    # o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    # if out_name is None:
+    #     out_name = generate_name("ne")
+    # attr = {
+    #     "mode": Attr("NotEqual", "string"),
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
+    # return output
+    return __compare(tensor_i0, tensor_i1, "NotEqual", out_name)
 
-def gts(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
+@to_scalar
+def __compare_const(tensor_i0: Tensor, scalar_i1: Scalar, type: str, out_name: str = None):
     if out_name is None:
-        out_name = generate_name("gts")
+        out_name = generate_name(type)
     attr = {
-        "mode": Attr("Greater", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
+        "mode": Attr(type, "string"),
+        "const_val": Attr(scalar_i1.value, "float64"),
         'inversed': Attr(False, "bool")
     }
     output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
     TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
     return output
 
-def lts(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("lts")
-    attr = {
-        "mode": Attr("Less", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
-        'inversed': Attr(False, "bool")
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    return output
+@annotayion_check
+def gts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("gts")
+    # attr = {
+    #     "mode": Attr("Greater", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "Greater", out_name)
 
-def ges(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("ges")
-    attr = {
-        "mode": Attr("GreaterOrEqual", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
-        'inversed': Attr(False, "bool")
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    return output
+@annotayion_check
+def lts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("lts")
+    # attr = {
+    #     "mode": Attr("Less", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "Less", out_name)
 
-def les(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("les")
-    attr = {
-        "mode": Attr("LessOrEqual", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
-        'inversed': Attr(False, "bool")
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    return output
+@annotayion_check
+def ges(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("ges")
+    # attr = {
+    #     "mode": Attr("GreaterOrEqual", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "GreaterOrEqual", out_name)
 
-def eqs(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("eqs")
-    attr = {
-        "mode": Attr("Equal", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
-        'inversed': Attr(False, "bool")
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    return output
+@annotayion_check
+def les(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("les")
+    # attr = {
+    #     "mode": Attr("LessOrEqual", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "LessOrEqual", out_name)
 
-def nes(tensor_i0: Tensor, scalar_i1: Scalar, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("nes")
-    attr = {
-        "mode": Attr("NotEqual", "string"),
-        "const_val": Attr(scalar_i1, "float64"),
-        'inversed': Attr(False, "bool")
-    }
-    output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    return output
+@annotayion_check
+def eqs(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("eqs")
+    # attr = {
+    #     "mode": Attr("Equal", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "Equal", out_name)
+
+@annotayion_check
+def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
+    # if out_name is None:
+    #     out_name = generate_name("nes")
+    # attr = {
+    #     "mode": Attr("NotEqual", "string"),
+    #     "const_val": Attr(scalar_i1, "float64"),
+    #     'inversed': Attr(False, "bool")
+    # }
+    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
+    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
+    # return output
+    return __compare_const(tensor_i0, scalar_i1, "NotEqual", out_name)
+

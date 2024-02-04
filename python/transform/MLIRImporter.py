@@ -178,7 +178,7 @@ class MLIRImporter(object):
         init_args["ip"] = self.insert_point
         init_args["input"] = self.func_args[index]
         init_args["output"] = self.input_types[
-            index] if self.platform == Platform.TFLITE else self.input_op_types[index]
+            index] if self.platform in [Platform.TFLITE, Platform.TPULANG] else self.input_op_types[index]
         input_op = top.InputOp(**init_args)
         return input_op.output
 

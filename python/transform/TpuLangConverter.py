@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from typing import Union, Iterable, List
+from typing import Union, Iterable, List, Tuple, get_origin, get_args
 from .MLIRImporter import MLIRImporter, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
@@ -26,6 +26,75 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
         return "\n".join(s)
     s = "\n".join([line.__repr__() for line in sOrIt_])
     return _indent(s, numSpaces)
+
+def to_scalar(func):
+
+    def __to_scalar(data):
+        if isinstance(data, float):
+            return Scalar(data, "float32")
+        elif isinstance(data, int):
+            return Scalar(data, "int32")
+        return data
+
+    def wrapper(*args, **kwargs):
+        need_to_scalar = False
+        for idx, v in enumerate(args):
+            if isinstance(v, Union[int, float]):
+                need_to_scalar = True
+        for k, v in kwargs.items():
+            if isinstance(v, Union[int, float]):
+                kwargs[k] = __to_scalar(v)
+        if need_to_scalar:
+            new_args = []
+            for idx, v in enumerate(args):
+                if isinstance(v, Union[int, float]):
+                    new_args.append(__to_scalar(v))
+                else:
+                    new_args.append(v)
+            return func(*new_args, **kwargs)
+        else:
+            return func(*args, **kwargs)
+
+    return wrapper
+
+def annotayion_check(func):
+
+    def __type_instance(type0, type1):
+        if get_origin(type1) is Union:
+            ret = False
+            for t in get_args(type1):
+                ret = ret or __type_instance(type0, t)
+            return ret
+        if get_origin(type1) is list or get_origin(type1) is tuple:
+            if not isinstance(type0, list) and not isinstance(type0, tuple):
+                return False
+            ret = True
+            for i in range(len(type0)):
+                ret = ret and isinstance(type0[i], get_args(type1))
+            return ret
+        else:
+            return isinstance(type0, type1)
+
+    def wrapper(*args, **kwargs):
+        idx = 0
+        for k, v in func.__annotations__.items():
+            if idx >= len(args):
+                if k in kwargs and kwargs[k] is None:
+                    continue
+                if k in kwargs and not __type_instance(kwargs[k], v):
+                    print("function {} input type error, wish type: {}".format(func.__name__, func.__annotations__))
+                    raise
+            else:
+                if args[idx] is None:
+                    continue
+                if not __type_instance(args[idx], v):
+                    print("function {} input type error, wish type: {}".format(func.__name__, func.__annotations__))
+                    raise
+            idx += 1
+
+        return func(*args, **kwargs)
+
+    return wrapper
 
 class Scalar:
 
