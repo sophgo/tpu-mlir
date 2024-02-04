@@ -83,16 +83,6 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   current_step = 0;
   current_device = 0;
   updateAllHidden();
-
-  auto core_num = module::getCoreNum();
-  if (core_num > 1) {
-    if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
-      multi_core->setupMultiCoreContext(0, core_num, 0);
-      multi_core->setCoreNum(module::getCoreNum());
-    } else {
-      llvm_unreachable("This chip lacks multi-core capabilities.");
-    }
-  }
 }
 
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
@@ -667,6 +657,12 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   int core_id = 0;
   auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
   useMuliCore &= (secs > 1) && multi_core;
+  if (useMuliCore && (multi_core->getCoreNum() != core_num)) {
+    assert(multi_core->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
+    multi_core->setupMultiCoreContext(0, core_num, 0);
+    multi_core->setCoreNum(module::getCoreNum());
+  }
   // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
@@ -796,6 +792,13 @@ void codegenCoreParallelOp(
     const std::function<void(GlobalGenInterfaceDecorator)>
         &codegenGlobalLayer) {
   auto multi_core = cast<MultiCoreInterface>(bm168x);
+  auto core_num = module::getCoreNum();
+  if (multi_core->getCoreNum() != core_num) {
+    assert(multi_core->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
+    multi_core->setupMultiCoreContext(0, core_num, 0);
+    multi_core->setCoreNum(module::getCoreNum());
+  }
   // For the sync-all method, we can use two message IDs to represent all
   // the dependencies in a single run. We can try the following sequence:
   // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
@@ -832,6 +835,12 @@ void codegenGroupParallelOp(
   // The begin of the parallel, and keep all the core in sync.
   auto core_num = module::getCoreNum();
   auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+  if (multi_core->getCoreNum() != core_num) {
+    assert(multi_core->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
+    multi_core->setupMultiCoreContext(0, core_num, 0);
+    multi_core->setCoreNum(module::getCoreNum());
+  }
   for (int i = 0; i < core_num; i++) {
     multi_core->useCore(i);
     multi_core->syncAll();
