@@ -46,19 +46,19 @@ public:
 
   LogicalResult matchAndRewrite(tpu::FAttentionOp FaOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isNone(FaOp.getBuffer())) {
-      return failure();
-    }
-    auto type = module::getStorageType(FaOp.getOutput());
-    int64_t batch = FaOp.getBatch();
-    int64_t head = FaOp.getHead();
-    int64_t mq = FaOp.getMq();
-    int64_t mk = FaOp.getMk();
-    // add buffer
-    std::vector<int64_t> buffer_shape = {batch, mq, head, mk};
-    auto buffer_type = RankedTensorType::get(buffer_shape, type);
-    auto buffer = tpu::BufferOp::create(FaOp, buffer_type);
-    FaOp.getBufferMutable().assign(buffer);
+    // if (!module::isNone(FaOp.getBuffer())) {
+    //   return failure();
+    // }
+    // auto type = module::getStorageType(FaOp.getOutput());
+    // int64_t batch = FaOp.getBatch();
+    // int64_t head = FaOp.getHead();
+    // int64_t mq = FaOp.getMq();
+    // int64_t mk = FaOp.getMk();
+    // // add buffer
+    // std::vector<int64_t> buffer_shape = {batch, mq, head, mk};
+    // auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    // auto buffer = tpu::BufferOp::create(FaOp, buffer_type);
+    // FaOp.getBufferMutable().assign(buffer);
     return success();
   }
 };
@@ -994,7 +994,6 @@ using namespace bm168x;
 void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
-      FAttentionGlobalBuffer,
       GatherGlobalBuffer,
       GatherElementsGlobalBuffer,
       GRUGlobalBuffer,
