@@ -11,9 +11,9 @@ import os, sys
 import transform.TpuLang as tpul
 from typing import List
 
-def rand_data(shape, dtype):
+def rand_data(shape, dtype, min=-10, max=10):
     if dtype == 'float32':
-        return np.random.random(shape).astype(np.float32)
+        return np.clip(np.random.randn(*shape).astype(np.float32), min, max)
     if dtype == 'int32' or 'uint32' or 'int16' or 'uint16' or 'int8' or 'uint8':
         return np.random.randint(0, 256, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
@@ -50,44 +50,46 @@ class TPULANG_IR_TESTER(object):
             # "Cast": (self.test_Cast,                    Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
             "Clamp": (self.test_Clamp,                  Y, Y),
-            "Concat": (self.test_Concat,                N, N),
-            "Conv2d": (self.test_Conv2d,                N, N),
-            "Conv3d": (self.test_Conv3d,                N, N),
+            "Concat": (self.test_Concat,                Y, Y),
+            "Conv2d": (self.test_Conv2d,                Y, Y),
+            "Conv3d": (self.test_Conv3d,                Y, Y),
             # "Copy": (self.test_Copy,                    Y, Y), # only supports cv18xx
             "Cos": (self.test_Cos,                      Y, Y),
             "Cosh": (self.test_Cosh,                    Y, Y),
-            "Deconv2d": (self.test_Deconv2d,            N, N),
-            "Deconv3d": (self.test_Deconv3d,            N, N),
+            "Deconv2d": (self.test_Deconv2d,            Y, Y),
+            # "Deconv3d": (self.test_Deconv3d,            N, N), # not support
             "Div": (self.test_Div,                      Y, Y),
             "Elu": (self.test_Elu,                      Y, Y),
-            "Eq": (self.test_Eq,                        N, N),
+            "Eq": (self.test_Eq,                        Y, Y),
             "Eqs": (self.test_Eqs,                      Y, Y),
             "Erf": (self.test_Erf,                      Y, Y),
             "Exp": (self.test_Exp,                      Y, Y),
-            "Floor": (self.test_Floor,                  N, N),
+            "Floor": (self.test_Floor,                  Y, Y),
             "Gelu": (self.test_Gelu,                    Y, Y),
             "Ge": (self.test_Ge,                        Y, Y),
             "Ges": (self.test_Ges,                      Y, Y),
             "Gt": (self.test_Gt,                        Y, Y),
             "Gts": (self.test_Gts,                      Y, Y),
-            "HModel": (self.test_Model,                 N, N),
+            # "HModel": (self.test_Model,                 N, N),
             "Hsigmoid": (self.test_Hsigmoid,            Y, Y),
             "Hswish": (self.test_Hswish,                Y, Y),
             # "Interpolate": (self.test_Interpolate,      Y, Y),
             "Le": (self.test_Le,                        Y, Y),
             "Les": (self.test_Les,                      Y, Y),
             "LeakyRelu": (self.test_LeakyRelu,          Y, Y),
-            "Lenet": (self.test_Lenet,                  N, N),
+            # "Lenet": (self.test_Lenet,                  N, N),
             "Lt": (self.test_Lt,                        Y, Y),
             "Lts": (self.test_Lts,                      Y, Y),
             "MatMul": (self.test_MatMul,                Y, Y),
             "Max": (self.test_Max,                      Y, Y),
             "Maxpool": (self.test_Maxpool,              Y, Y),
-            "Min": (self.test_Min,                      Y, Y),
-            "Mish": (self.test_Mish,                    Y, Y),
-            "Mul": (self.test_Mul,                      Y, Y),
             "Ne": (self.test_Ne,                        Y, Y),
             "Nes": (self.test_Nes,                      Y, Y),
+            "Min": (self.test_Min,                      Y, Y),
+            "Mish": (self.test_Mish,                    Y, Y),
+            "Model1": (self.test_Model1,                Y, Y),
+            "Model2": (self.test_Model2,                Y, Y),
+            "Mul": (self.test_Mul,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
             "Repeat": (self.test_Repeat,                Y, Y),
@@ -98,7 +100,7 @@ class TPULANG_IR_TESTER(object):
             "Sin": (self.test_Sin,                      Y, Y),
             "Sinh": (self.test_Sinh,                    Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
-            "Split": (self.test_Split,                  N, N),
+            "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
             "Sub": (self.test_Sub,                      Y, Y),
             "Tan": (self.test_Tan,                      Y, Y),
@@ -109,18 +111,15 @@ class TPULANG_IR_TESTER(object):
         self.support_quant_modes = ["f32", "f16", "bf16"]
         self.mode = mode.lower()
         self.simple = simple
+        self.chip = chip.lower()
         if self.simple:
             self.support_quant_modes = ["f16"]
-            self.support_asym = [False]
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1688":
-                self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [self.mode]
-        self.chip = chip.lower()
 
     def unique_name(self, name):
         name = "{}_{}".format(name, TPULANG_IR_TESTER.ID)
@@ -169,21 +168,26 @@ class TPULANG_IR_TESTER(object):
             data = data * scale if dtype == 'float32' else data
         return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
 
-    def compile_and_check(self, model_name, inputs, outputs):
-        tpul.compile(model_name, inputs, outputs, False, 2)
+    def deploy(self, model_name, compare_all=False):
         in_f32_npz = model_name + '_in_f32.npz'
         top_out = model_name + '_top_outputs.npz'
         # deploy the model
         deploy_cmd_base = f"model_deploy.py --mlir {model_name}.mlir "
+        deploy_cmd_base += "--chip {} ".format(self.chip)
+        deploy_cmd_base += "--test_input {} ".format(in_f32_npz)
+        deploy_cmd_base += "--test_reference {} ".format(top_out)
+        if compare_all:
+            deploy_cmd_base += "--compare_all "
         for mode in self.quant_modes:
             bmodel_name = "{}.bmodel".format(model_name + "_" + self.chip + "_" + mode)
             deploy_cmd = deploy_cmd_base
             deploy_cmd += "--model {} ".format(bmodel_name)
             deploy_cmd += "--quantize {} " .format(mode.upper())
-            deploy_cmd += "--chip {} ".format(self.chip)
-            deploy_cmd += "--test_input {} ".format(in_f32_npz)
-            deploy_cmd += "--test_reference {} ".format(top_out)
             assert(os.system(deploy_cmd) == 0)
+
+    def compile_and_check(self, model_name, inputs, outputs):
+        tpul.compile(model_name, inputs, outputs, False, 2)
+        self.deploy(model_name)
 
     #######################################################################
     # Add
@@ -214,30 +218,6 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Convolution
     # ------------
-    def conv_op(self,
-                x,
-                kshape,
-                stride,
-                pad=None,
-                group=1,
-                dilation=[1, 1],
-                zp=[None, None],
-                dtype="float32"):
-        oc = kshape[0]
-        weight = self.coeff_tensor(kshape, dtype)
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype)
-        conv = tpul.conv_v2(x,
-                            weight,
-                            bias=bias,
-                            stride=stride,
-                            pad=pad,
-                            dilation=dilation,
-                            group=group,
-                            input_zp=zp[0],
-                            weight_zp=zp[1],
-                            out_dtype=out_dtype)
-        return conv
 
     def conv3d_op(self,
                 x,
@@ -247,11 +227,12 @@ class TPULANG_IR_TESTER(object):
                 group=1,
                 dilation=[1, 1, 1],
                 zp=[None, None],
+                bias=False,
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype)
+        bias = self.coeff_tensor(oc, out_dtype) if bias else None
         deconv = tpul.conv3d_v2(x,
                             weight,
                             bias=bias,
@@ -263,33 +244,6 @@ class TPULANG_IR_TESTER(object):
                             weight_zp=zp[1],
                             out_dtype=out_dtype)
         return deconv
-
-    def test_Conv2d(self, case_name):
-        """Conv 2D"""
-
-        @tpulang
-        def _test_convolution(input_shape: List[int],
-                              kernel_shape: List[int],
-                              stride: List[int] = [1, 1],
-                              dilation: List[int] = [1, 1],
-                              pad: List[int] = None,
-                              group=1,
-                              dtype="float32",
-                              zp: List[int] = [None, None]):
-            x_data = rand_data(input_shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
-            conv = self.conv_op(x,
-                                kernel_shape,
-                                stride,
-                                pad,
-                                group=group,
-                                dilation=dilation,
-                                zp=zp,
-                                dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [conv])
-
-        _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
-        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
 
     def test_Conv3d(self, case_name):
         """Conv 3D"""
@@ -315,7 +269,7 @@ class TPULANG_IR_TESTER(object):
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv])
 
-        _test_convolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
+        _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
 
  #######################################################################
     # Deconvolution
@@ -325,19 +279,22 @@ class TPULANG_IR_TESTER(object):
                 kshape,
                 stride,
                 pad=None,
+                output_padding=None,
                 group=1,
                 dilation=[1, 1],
                 zp=[None, None],
+                bias=False,
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype)
+        bias = self.coeff_tensor(oc, out_dtype) if bias else None
         deconv = tpul.deconv_v2(x,
                             weight,
                             bias=bias,
                             stride=stride,
                             pad=pad,
+                            output_padding=None,
                             dilation=dilation,
                             group=group,
                             input_zp=zp[0],
@@ -350,19 +307,22 @@ class TPULANG_IR_TESTER(object):
                 kshape,
                 stride,
                 pad=None,
+                output_padding=None,
                 group=1,
                 dilation=[1, 1, 1],
                 zp=[None, None],
+                bias=False,
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype)
+        bias = self.coeff_tensor(oc, out_dtype) if bias else None
         deconv = tpul.deconv3d_v2(x,
                             weight,
                             bias=bias,
                             stride=stride,
                             pad=pad,
+                            output_padding=output_padding,
                             dilation=dilation,
                             group=group,
                             input_zp=zp[0],
@@ -485,11 +445,12 @@ class TPULANG_IR_TESTER(object):
                 group=1,
                 dilation=[1, 1],
                 zp=[None, None],
+                bias=False,
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype)
+        bias = self.coeff_tensor(oc, out_dtype) if bias else None
         conv = tpul.conv_v2(x,
                             weight,
                             bias=bias,
@@ -526,7 +487,7 @@ class TPULANG_IR_TESTER(object):
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv])
 
-        _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
+        _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
 
     #######################################################################
@@ -1100,21 +1061,21 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Softmax
     # ------------
-    def softmax_op(self, input):
-        softmax = tpul.softmax(input, 0)
+    def softmax_op(self, input, axis=0):
+        softmax = tpul.softmax(input, axis=axis)
         return softmax
 
     def test_Softmax(self, case_name):
         """softmax"""
 
         @tpulang
-        def _test_softmax(shape_x: List[int], dtype="float32"):
+        def _test_softmax(shape_x: List[int], axis: int, dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            softmax = self.softmax_op(x)
+            softmax = self.softmax_op(x, axis)
             self.compile_and_check(self.unique_name(case_name), [x], [softmax])
 
-        _test_softmax([1, 32, 28, 28])
+        _test_softmax([1, 32, 28, 28], axis=1)
 
     #######################################################################
     # Mish
@@ -1166,7 +1127,7 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang
         def _test_arccos(shape_x: List[int], dtype="float32"):
-            input = rand_data(shape_x, dtype)
+            input = rand_data(shape_x, dtype, -0.99, 0.99)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             arccos = self.arccos_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [arccos])
@@ -1185,7 +1146,7 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang
         def _test_arctanh(shape_x: List[int], dtype="float32"):
-            input = rand_data(shape_x, dtype)
+            input = rand_data(shape_x, dtype, -0.99, 0.99)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             arctanh = self.arctanh_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [arctanh])
@@ -1347,40 +1308,43 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Concat
     # ------------
-    def concat_op(self, input):
-        concat = tpul.concat(input)
+    def concat_op(self, input, axis=0):
+        concat = tpul.concat(input, axis)
         return concat
 
     def test_Concat(self, case_name):
         """concat"""
 
         @tpulang
-        def _test_concat(shape_x: List[int], dtype="float32"):
-            input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            concat = self.concat_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [concat])
+        def _test_concat(shapes: List[List[int]], dtype="float32"):
+            input0 = rand_data(shapes[0], dtype)
+            input1 = rand_data(shapes[1], dtype)
 
-        _test_concat([1, 32, 28, 28])
+            x = tpul.Tensor(dtype=dtype, shape=shapes[0], data=input0)
+            y = tpul.Tensor(dtype=dtype, shape=shapes[1], data=input1)
+            concat = self.concat_op([x, y], axis=1)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [concat])
+
+        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
 
     #######################################################################
     # Split
     # ------------
-    def split_op(self, input):
-        split = tpul.split(input, size = [2])
+    def split_op(self, input, axis=0, num=1, size=None):
+        split = tpul.split(input, axis=axis, num=num, size=size)
         return split
 
     def test_Split(self, case_name):
         """split"""
 
         @tpulang
-        def _test_split(shape_x: List[int], dtype="float32"):
+        def _test_split(shape_x: List[int], axis=0, num=1, size=None, dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            split = self.split_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [split])
+            splits = self.split_op(x, axis, num, size)
+            self.compile_and_check(self.unique_name(case_name), [x], splits)
 
-        _test_split([1, 32, 28, 28])
+        _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22])
 
     #######################################################################
     # Repeat
@@ -1502,8 +1466,8 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang
         def _test_eq(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
+            x_data = np.random.randint(0, 256, size=shape_x).astype(np.float32)
+            y_data = np.random.randint(0, 256, size=shape_x).astype(np.float32)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
             eq = self.eq_op(x, y)
@@ -1654,6 +1618,145 @@ class TPULANG_IR_TESTER(object):
         _test_nes([1, 3, 28, 28])
         _test_nes([1, 3, 32, 32])
 
+    #######################################################################
+    # Model Case 1: Use case of tpulang
+    # ------------
+    def test_Model1(self, case_name):
+        def conv_op(x,
+                    kshape,
+                    stride,
+                    pad=None,
+                    group=1,
+                    dilation=[1, 1],
+                    zp=[None, None],
+                    bias=False,
+                    dtype="float32"):
+            oc = kshape[0]
+            weight = self.coeff_tensor(kshape, dtype)
+            out_dtype = dtype if dtype == 'float32' else 'int32'
+            bias = self.coeff_tensor(oc, out_dtype) if bias else None
+            conv = tpul.conv_v2(x,
+                                weight,
+                                bias=bias,
+                                stride=stride,
+                                pad=pad,
+                                dilation=dilation,
+                                group=group,
+                                input_zp=zp[0],
+                                weight_zp=zp[1],
+                                out_dtype=out_dtype)
+            return conv
+
+        # 1. define model
+        def model_def(x):
+            conv0 = conv_op(x, kshape=[32, 1, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+            relu1 = tpul.relu(conv0)
+            maxpool2 = tpul.maxpool(relu1, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+            conv3 = conv_op(maxpool2, kshape=[64, 32, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+            relu4 =  tpul.relu(conv3)
+            maxpool5 = tpul.maxpool(relu4, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+            conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
+            relu7 =  tpul.relu(conv6)
+            softmax8 = tpul.softmax(relu7, axis=1)
+            return softmax8
+
+        def _test_model1(in_shape):
+            # 2. prepare input
+            x_data = rand_data(in_shape, 'float32')
+            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+            # 3. init and compile tpulang model to top.mlir
+            tpul.init(device=self.chip.upper())
+            out = model_def(x)
+            tpul.compile(case_name, [x], [out], False, 2)
+            tpul.deinit()
+            # tpul.compile will do top mlir inference with random input
+            in_f32_npz = case_name + '_in_f32.npz'
+            top_out = case_name + '_top_outputs.npz'
+            # 4. deploy to bmodel
+            deploy_cmd_base = f"model_deploy.py --mlir {case_name}.mlir "
+            deploy_cmd_base += "--chip {} ".format(self.chip)
+            deploy_cmd_base += "--test_input {} ".format(in_f32_npz)
+            deploy_cmd_base += "--test_reference {} ".format(top_out)
+            # deploy to [f32, f16, bf16] quant mode
+            for mode in self.quant_modes:
+                bmodel_name = "{}.bmodel".format(case_name + "_" + self.chip + "_" + mode)
+                deploy_cmd = deploy_cmd_base
+                deploy_cmd += "--model {} ".format(bmodel_name)
+                deploy_cmd += "--quantize {} " .format(mode.upper())
+                assert(os.system(deploy_cmd) == 0)
+
+        _test_model1([1, 1, 28, 28])
+
+    #######################################################################
+    # Model Case 2: Use case of tpulang
+    # ------------
+    def test_Model2(self, case_name):
+        def conv_op(x,
+                    kshape,
+                    stride,
+                    pad=None,
+                    group=1,
+                    dilation=[1, 1],
+                    zp=[None, None],
+                    bias=False,
+                    dtype="float32"):
+            oc = kshape[0]
+            weight = self.coeff_tensor(kshape, dtype)
+            out_dtype = dtype if dtype == 'float32' else 'int32'
+            bias = self.coeff_tensor(oc, out_dtype) if bias else None
+            conv = tpul.conv_v2(x,
+                                weight,
+                                bias=bias,
+                                stride=stride,
+                                pad=pad,
+                                dilation=dilation,
+                                group=group,
+                                input_zp=zp[0],
+                                weight_zp=zp[1],
+                                out_dtype=out_dtype)
+            return conv
+
+        # 1. model define
+        class Model2():
+            def __init__(self):
+                super(Model2, self).__init__()
+            def forward(self, input):
+                conv0 = conv_op(input, kshape=[32, 1, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+                relu1 = tpul.relu(conv0)
+                maxpool2 = tpul.maxpool(relu1, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+                conv3 = conv_op(maxpool2, kshape=[64, 32, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+                relu4 =  tpul.relu(conv3)
+                maxpool5 = tpul.maxpool(relu4, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+                conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
+                relu7 =  tpul.relu(conv6)
+                softmax8 = tpul.softmax(relu7, axis=1)
+                tpul.compile(case_name, [input], [softmax8], False, 2)
+
+        def _test_model2(in_shape):
+            # 2. prepare input
+            x_data = rand_data(in_shape, 'float32')
+            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+            # 3. init and compile model to top.mlir
+            tpul.init(device=self.chip.upper())
+            model2 = Model2()
+            model2.forward(x)
+            # tpul.compile will do top mlir inference with random input
+            in_f32_npz = case_name + '_in_f32.npz'
+            top_out = case_name + '_top_outputs.npz'
+            # 4. deploy to bmodel
+            deploy_cmd_base = f"model_deploy.py --mlir {case_name}.mlir "
+            deploy_cmd_base += "--chip {} ".format(self.chip)
+            deploy_cmd_base += "--test_input {} ".format(in_f32_npz)
+            deploy_cmd_base += "--test_reference {} ".format(top_out)
+            for mode in self.quant_modes:
+                bmodel_name = "{}.bmodel".format(case_name + "_" + self.chip + "_" + mode)
+                deploy_cmd = deploy_cmd_base
+                deploy_cmd += "--model {} ".format(bmodel_name)
+                deploy_cmd += "--quantize {} " .format(mode.upper())
+                assert(os.system(deploy_cmd) == 0)
+
+        _test_model2([1, 1, 28, 28])
+
     # #######################################################################
     # # Interpolate
     # # ------------
@@ -1731,13 +1834,13 @@ if __name__ == "__main__":
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = TPULANG_IR_TESTER(args.chip)
+    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:
             print(case)
         exit(0)
-    dir = "tpulang_test_{}".format(args.chip, args.mode, args.simple)
+    dir = "tpulang_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":

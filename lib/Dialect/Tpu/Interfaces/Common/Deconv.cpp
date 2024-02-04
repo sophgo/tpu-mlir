@@ -21,7 +21,7 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   auto dilation =
       module::getI64Array(getDilations(), getKernelShape().size(), 1);
   auto pad = module::getI64Array(getPads());
-  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 1);
+  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 0);
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = getWithBias();;
