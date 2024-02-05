@@ -145,6 +145,9 @@ def open_lib(lib_name):
 class MemoryBase:
     using_cmodel = True
 
+    def __init_subclass__(cls) -> None:
+        cls.CPU_MEM = {}
+
     def __init__(self):
         self.CPU_MEM = {}
 
@@ -164,6 +167,7 @@ class MemoryBase:
         raise NotImplementedError()
 
     def set_cpu_data(self, cmd_id: int, data: List[np.ndarray]):
+
         self.CPU_MEM[cmd_id] = data
 
     def get_cpu_data(self, cmd_id: int) -> List[np.ndarray]:
@@ -219,7 +223,7 @@ class Runner:
         # TODO add python type check
         args = (
             command.op_type.value,  # int
-            command.buf,  # bytes param
+            bytes(command.buf),  # bytes param
             len(command.buf),  # int param_size
             input_tensors,  # List[List[float]]
             input_shapes,  # List[List[int]]
@@ -271,6 +275,7 @@ class CModelMemory(MemoryBase):
     using_cmodel = True
 
     def __init__(self, LMEM: ndarray, DDR: ndarray, SMEM: ndarray) -> None:
+        super().__init__()
         self.LMEM = LMEM.ravel()
         self.DDR = DDR.ravel()
         self.SMEM = SMEM.ravel()
