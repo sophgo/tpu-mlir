@@ -207,3 +207,97 @@ The conversion process:
 4. Output
 
   Save the mlir text as Conv_origin.mlir and the weights in tensors as Conv_TOP_F32_all_weight.npz.
+
+Tpulang API usage method
+---------------------------
+
+TpuLang is currently only applicable to the inference portion of inference frameworks. For static graph frameworks like TensorFlow,
+when integrating the network with TpuLang, users need to first initialize with tpul.init('processor') (where 'processor' can be BM1684X or BM1688).
+Next, prepare the tensors, use operators to build the network, and finally, call the tpul.compile interface to compile and generate top.mlir.
+Subsequently, model deployment can be completed using model_deploy.py. The detailed steps for each of these processes are explained below.
+You can find detailed information on various interfaces used (such as tpul.init, deinit, Tensor, and operator interfaces) in appx02 (:ref:`Appendix 02: Basic Elements of TpuLang`).
+
+Initialization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The specific definition of the initialization function can be found in the documentation under the section titled (:ref:`Initialization Function <init>`).
+
+   .. code-block:: python
+
+      tpul.init('BM1684X')
+
+Prepare the tensors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The specific definition of the initialization function can be found in the documentation under the section titled (:ref:`tensor <tensor>`)
+
+   .. code-block:: python
+
+      x_data = np.random.randn(shape).astype(np.float32)
+      x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
+
+
+Build the graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Continuing with the utilization of existing operators (:ref:`operator`) and the tensors prepared earlier, here is a simple model construction example:
+
+   .. code-block:: python
+
+      def conv_op(x,
+                  kshape,
+                  stride,
+                  pad=None,
+                  group=1,
+                  dilation=[1, 1],
+                  zp=[None, None],
+                  bias=False,
+                  dtype="float32"):
+         oc = kshape[0]
+         weight = self.coeff_tensor(kshape, dtype)
+         bias = self.coeff_tensor(oc, dtype) if bias else None
+         conv = tpul.conv(x,
+                        weight,
+                        bias=bias,
+                        stride=stride,
+                        pad=pad,
+                        dilation=dilation,
+                        group=group)
+         return conv
+
+      def model_def(x):
+         conv0 = conv_op(x, kshape=[32, 1, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+         relu1 = tpul.relu(conv0)
+         maxpool2 = tpul.maxpool(relu1, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+         conv3 = conv_op(maxpool2, kshape=[64, 32, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+         relu4 =  tpul.relu(conv3)
+         maxpool5 = tpul.maxpool(relu4, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+         conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
+         relu7 =  tpul.relu(conv6)
+         softmax8 = tpul.softmax(relu7, axis=1)
+         return softmax8
+      y = model_def(x)
+
+compile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Call the tpul.compile function:(:ref:`compile`)：
+
+   .. code-block:: python
+
+      tpul.compile("example", [x], [y])
+
+deinit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The specific definition can be found in the documentation under the section titled (:ref:`Deinitialization Function <deinit>`)
+
+   .. code-block:: python
+
+      tpul.deinit()
+
+deploy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Finally, use model_deploy.py to complete the model deployment. Refer to the documentation for specific usage instructions.(:ref:`model_deploy <model_deploy>`)。

@@ -205,7 +205,7 @@ model_transform.py
      - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况, 默认为bgr
    * - channel_format
      - 否
-     - 通道类型，对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认是nchw
+     - 通道类型, 对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认是nchw
    * - output_names
      - 否
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
@@ -238,7 +238,7 @@ model_transform.py
      - 是否进行layer group操作
    * - opt
      - 否
-     - 优化级别，默认2
+     - 优化级别, 默认2
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
 
@@ -396,6 +396,8 @@ run_qtable.py
 
 它代表对应的Layer改成浮点计算后, 得到的输出的Loss。
 
+.. _model_deploy:
+
 model_deploy.py
 ~~~~~~~~~~~~~~~~~
 
@@ -463,7 +465,7 @@ model_deploy.py
    * - core
      - 否
      - 当target选择为bm1688或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
-    * - asymmetric
+   * - asymmetric
      - 否
      - 指定做int8非对称量化
    * - dynamic

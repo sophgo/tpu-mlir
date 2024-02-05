@@ -65,7 +65,7 @@ bdc_bytes: bdc instruction byte number
 
 
 BM168X and Related classes in TPU-MLIR
-----------------
+------------------------------------------------
 These related classes are defined in the folder `tpu-mlir/include/tpu_mlir/Backend`. Their purpose is to encapsulate different processor backends, thereby isolating the backend from the CodeGen process.
 
 The inheritance relationship is as follows:
@@ -83,7 +83,7 @@ The inheritance relationship is as follows:
 Only one class exists during a single run (singleton design pattern). When this class is initialized, it undergoes: reading the backend dynamic link library, loading functions (setting backend function pointers), initializing instruction data structures, and setting some hardware-related parameters like NPU_NUM, L2_SRAM starting address, etc.
 
 Backend Function Loading
-----------------
+--------------------------------
 The backend is placed as a dynamic library in the TPU-MLIR project, specifically at `third_party/nntoolchain/lib/libbackend_xxx.so`.
 The loading method of the backend function is: first define the function pointer, and then load the dynamic library so that the function pointer points to the function in the dynamic library.
 
@@ -94,7 +94,7 @@ Take the synchronization function tpu_sync_all as an example, as we will add mul
 After obtaining an instance of this class, we can use the functions in the dynamic library.
 
 Backend `store_cmd`
-----------------
+--------------------
 
 The function `store_cmd` in the backend refers to the process where the compiler calls the operators and saves the configured instructions to the designated space.
 The key function in the backend is in `store_cmd.cpp`; for example, `cmodel/src/store_cmd.cpp`; `cmodel/include/store_cmd.h`.

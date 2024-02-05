@@ -12,7 +12,7 @@ def get_dtype_alisas(dtype):
 class TestTPULangCustom(unittest.TestCase):
     def setUp(self):
         self.chip = os.getenv('CUSTOM_LAYER_CHIP_ARCH').upper()
-        self.assertTrue(self.chip in ('BM1684X', 'BM1686'), "Unknown chip arch: {}".format(self.chip))
+        self.assertTrue(self.chip in ('BM1684X', 'BM1688'), "Unknown chip arch: {}".format(self.chip))
         tpul.init(self.chip)
         os.makedirs("tmp", exist_ok=True)
         os.chdir("tmp")

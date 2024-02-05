@@ -40,9 +40,6 @@ def compile(name: str,
             inputs: List[Tensor],
             outputs: List[Tensor],
             cmp=True,
-            opt=2,
-            dyn=False,
-            profile=False,
             has_custom=False,
             refs=None):
     TpuLang.graph.inputs = inputs
@@ -90,7 +87,7 @@ def model_validate(model_name, refs: dict):
     f32_blobs_compare(res_npz, ref_npz, '0.99,0.99')
 
 
-def init(device: str, assist=False, outdir=''):
+def init(device: str):
     TpuLang(device=device)
 
 
@@ -1025,21 +1022,24 @@ def split(input: Tensor,
     TpuLang.insert_op("top.Split", inputs=[input], outputs=outputs, params=attr)
     return outputs
 
-# def pad(input: Tensor,
-#         axis: int = 0,
-#         value:
-#         padding: Union[Tuple[int], List[int]] = None,
-#         out_name: str = None):
-#     if out_name is None:
-#         out_name = generate_name("split")
-#     attr = {
-#         "axis": Attr(axis, "int32"),
-#         "num": Attr(num),
-#         "split_size": ArrayAttr(size),
-#     }
-#     output = Tensor([], dtype=input.dtype, name=out_name)
-#     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
-#     return output
+@annotayion_check
+def pad(input: Tensor,
+        method: str = "constant",
+        value: Scalar = None,
+        padding: Union[Tuple[int], List[int]] = None,
+        out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("pad")
+    if padding is None:
+        padding = [0] * (len(input.shape)*2)
+    attr = {
+        "paddings": ArrayAttr(padding, "int64"),
+        "val": Attr(value.value if value is not None else 0.0, "float64"),
+        "mode": Attr(method, "string"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Pad", inputs=[input], outputs=[output], params=attr)
+    return output
 
 @annotayion_check
 def repeat(input: Tensor, reps: Tensor, out_name: str = None):
@@ -1282,3 +1282,40 @@ def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str =
     # return output
     return __compare_const(tensor_i0, scalar_i1, "NotEqual", out_name)
 
+@annotayion_check
+def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("squeeze")
+    attr = {
+        "axes": ArrayAttr(axis),
+    }
+    output = Tensor(dtype=tensor_i.dtype, name=out_name)
+    TpuLang.insert_op("top.Squeeze", inputs=[tensor_i], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("reshape")
+    attr = {
+        "shape": ArrayAttr(new_shape),
+    }
+    output = Tensor(dtype=tensor.dtype, name=out_name)
+    TpuLang.insert_op("top.Reshape", inputs=[tensor], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def shape_fetch(tensor_i: Tensor,
+                begin_axis: int = 0,
+                end_axis: int = 1,
+                step: int = 1,
+                out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("shape_fetch")
+    attr = {
+        "start": Attr(begin_axis),
+        "end": Attr(end_axis),
+    }
+    output = Tensor(dtype=tensor_i.dtype, name=out_name)
+    TpuLang.insert_op("top.Shape", inputs=[tensor_i], outputs=[output], params=attr)
+    return output

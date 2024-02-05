@@ -206,3 +206,95 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 4. 输出
 
   将 mlir 文本保存为 Conv_origin.mlir, tensors 中的权重保存为 Conv_TOP_F32_all_weight.npz。
+
+Tpulang接口使用方式
+-------------------
+
+目前TpuLang只适用于推理框架的推理部分。
+类tensorflow等框架的静态图，使用TpuLang进行网络集成时，用户需要首先使用tpul.init('processor')初始化（processor可以是BM1684X或者BM1688），
+然后准备tensor，接着使用operator构建网络，最后调用tpul.compile接口编译生成top.mlir，后续请使用model_deploy.py完成模型部署。
+下面详细介绍一下每一步怎么做，以下使用到的各种接口（tpul.init, deinit, Tensor以及算子接口等）都可以在appx02(:ref:`附录02：TpuLang的基本元素`)中查看到详细介绍。
+
+初始化
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+具体的定义参见(:ref:`初始化函数 <init>`)
+
+   .. code-block:: python
+
+      tpul.init('BM1684X')
+
+准备Tensor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+具体的定义参见(:ref:`tensor <tensor>`)
+
+   .. code-block:: python
+
+      x_data = np.random.randn(shape).astype(np.float32)
+      x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
+
+
+构建graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+接着利用现有的OP(:ref:`operator`)和刚刚准备好的Tensor构建graph，
+下面是一个简单的模型构建示例：
+
+   .. code-block:: python
+
+      def conv_op(x,
+                  kshape,
+                  stride,
+                  pad=None,
+                  group=1,
+                  dilation=[1, 1],
+                  zp=[None, None],
+                  bias=False,
+                  dtype="float32"):
+         oc = kshape[0]
+         weight = self.coeff_tensor(kshape, dtype)
+         bias = self.coeff_tensor(oc, dtype) if bias else None
+         conv = tpul.conv(x,
+                        weight,
+                        bias=bias,
+                        stride=stride,
+                        pad=pad,
+                        dilation=dilation,
+                        group=group)
+         return conv
+
+      def model_def(x):
+         conv0 = conv_op(x, kshape=[32, 1, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+         relu1 = tpul.relu(conv0)
+         maxpool2 = tpul.maxpool(relu1, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+         conv3 = conv_op(maxpool2, kshape=[64, 32, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
+         relu4 =  tpul.relu(conv3)
+         maxpool5 = tpul.maxpool(relu4, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
+         conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
+         relu7 =  tpul.relu(conv6)
+         softmax8 = tpul.softmax(relu7, axis=1)
+         return softmax8
+      y = model_def(x)
+
+compile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+调用tpul.compile函数(:ref:`compile`)：
+
+   .. code-block:: python
+
+      tpul.compile("example", [x], [y])
+
+deinit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+具体的定义参见(:ref:`反初始化函数 <deinit>`)
+
+   .. code-block:: python
+
+      tpul.deinit()
+
+deploy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+最后使用model_deploy.py完成模型部署，具体使用方法参考定义(:ref:`model_deploy <model_deploy>`)。

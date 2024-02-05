@@ -240,7 +240,7 @@ Supported parameters:
    * - calibration_table
      - N
      - The quantization table path
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - input_num
@@ -272,7 +272,7 @@ A sample mixed precision quantization table is as follows:
     # genetated time: 2022-11-09 21:35:47.981562
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # chip: bm1684x  mix_mode: F32
+    # processor: bm1684x  mix_mode: F32
     ###
     # op_name   quantize_mode
     conv2_1/linear/bn F32
@@ -288,7 +288,7 @@ At the same time, a loss table will be generated, the default is ``full_loss_tab
     # genetated time: 2022-11-09 22:30:31.912270
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # chip: bm1684x  mix_mode: F32
+    # processor: bm1684x  mix_mode: F32
     ###
     No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
     No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
@@ -318,7 +318,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
 
 
 .. list-table:: Function of model_deploy parameters
-   :widths: 18 12 50
+   :widths: 20 12 50
    :header-rows: 1
 
    * - Name
@@ -342,7 +342,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - quant_output_list
      - N
      - Choose index to strip cast, such as 1,3 means first & third output`s cast
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
@@ -375,7 +375,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - core
      - N
      - When the target is selected as bm1688 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
-    * - asymmetric
+   * - asymmetric
      - N
      - Do INT8 asymmetric quantization
    * - dynamic
@@ -595,12 +595,10 @@ Supported functions:
      - Used for CV tasks to generate random images, otherwise generate npz files. The default image value range is [0,255], the data type is 'uint8', and cannot be changed.
    * - ranges
      - N
-     - Set the value ranges of the model inputs, expressed in list form, such as [[0,300],[0,0]]. If you want to generate a picture, you do not need to specify the value range, the default is [0,255].
-     In other cases, value ranges need to be specified.
+     - Set the value ranges of the model inputs, expressed in list form, such as [[0,300],[0,0]]. If you want to generate a picture, you do not need to specify the value range, the default is [0,255]. In other cases, value ranges need to be specified.
    * - input_types
      - N
-     - Set the model input types, such as 'si32,f32'. 'si32' and 'f32' types are supported. False by default, and it will be read from mlir. If you generate an image
-     , you do not need to specify the data type, the default is 'uint8'.
+     - Set the model input types, such as 'si32,f32'. 'si32' and 'f32' types are supported. False by default, and it will be read from mlir. If you generate an image, you do not need to specify the data type, the default is 'uint8'.
    * - output
      - Y
      - The names of the output.
