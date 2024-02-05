@@ -13,7 +13,7 @@ def rand_data(shape, dtype):
 def coeff_tensor(shape, dtype, scale=1.0):
     data = rand_data(shape, dtype)
     data = data * scale if dtype == 'float32' else data
-    return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+    return tpul.Tensor(dtype=dtype, shape=shape, data=data)
 
 def conv_op(x,
             kshape,
@@ -43,22 +43,22 @@ def abs_add_op(x, b, dtype="float32"):
     return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
 
 def model_def(x, flag: int):
-    conv1 = conv_op(x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
     if flag & 0b1:
-        conv1 = abs_add_op(conv1, 1.2)
+        custom = abs_add_op(x, 1.2)
+    conv1 = conv_op(custom if flag & 0b1 else x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
     relu1 = tpul.relu(conv1)
     conv2 = conv_op(relu1, [4, 4, 3, 3], [2, 2], [2, 2, 2, 2])
     if flag & 0b10:
         conv2 = abs_add_op(conv2, -1.5)
     relu2 = tpul.relu(conv2)
     conv3 = conv_op(relu2, [4, 4, 3, 3], [1, 1], [1, 1, 1, 1])
-    if flag & 0b100:
-        conv3 = abs_add_op(conv3, 2.1)
     relu3 = tpul.relu(conv3)
+    if flag & 0b100:
+        relu3 = abs_add_op(relu3, 2.1)
     return relu3
 
 def gen_name(flag: int):
-    return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else ""
+    return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else "mix"
 
 def compile_model(flag: int):
     shape = [4, 32, 64, 48]
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     os.makedirs("tmp", exist_ok=True)
     os.chdir("tmp")
     for flag in (0b1, 0b10, 0b100, 0b111):
-        tpul.init("BM1684X", True)
+        tpul.init("BM1684X")
         print(">>> flag = {}\n".format(flag))
         compile_model(flag)
         tpul.deinit()

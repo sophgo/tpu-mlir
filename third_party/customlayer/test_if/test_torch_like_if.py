@@ -13,7 +13,7 @@ def rand_data(shape, dtype):
 def coeff_tensor(shape, dtype, scale=1.0):
     data = rand_data(shape, dtype)
     data = data * scale if dtype == 'float32' else data
-    return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+    return tpul.Tensor(dtype=dtype, shape=shape, data=data)
 
 def conv_op(x,
             kshape,
@@ -47,28 +47,28 @@ class Model:
       self.flag = flag
 
   def forward(self, x):
-    conv1 = conv_op(x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
     if self.flag & 0b1:
-        conv1 = abs_add_op(conv1, 1.2)
+        custom = abs_add_op(x, 1.2)
+    conv1 = conv_op(custom if self.flag & 0b1 else x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
     relu1 = tpul.relu(conv1)
     conv2 = conv_op(relu1, [4, 4, 3, 3], [2, 2], [2, 2, 2, 2])
     if self.flag & 0b10:
         conv2 = abs_add_op(conv2, -1.5)
     relu2 = tpul.relu(conv2)
     conv3 = conv_op(relu2, [4, 4, 3, 3], [1, 1], [1, 1, 1, 1])
-    if self.flag & 0b100:
-        conv3 = abs_add_op(conv3, 2.1)
     relu3 = tpul.relu(conv3)
+    if self.flag & 0b100:
+        relu3 = abs_add_op(relu3, 2.1)
     tpul.compile('torch_like_model_{}'.format(gen_name(self.flag)), [x], [relu3], has_custom=True)
     deploy_cmd = "model_deploy.py --mlir torch_like_model_{}.mlir --model model_{}.bmodel " \
                  "--quantize f32 --chip BM1684X".format(gen_name(flag), gen_name(self.flag))
     assert(os.system(deploy_cmd) == 0)
 
 def gen_name(flag: int):
-    return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else ""
+    return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else "mix"
 
 def model_main(shape, flag:int):
-    tpul.init('BM1684X', assist = True)
+    tpul.init('BM1684X')
     x_data = np.random.random(shape).astype(np.float32)
     x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
     model = Model(flag)
