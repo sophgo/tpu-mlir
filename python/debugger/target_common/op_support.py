@@ -632,7 +632,6 @@ class CpuCmd(BaseCmd):
         return self
 
     @property
-    @property
     def name(self):
         return self.op_type.name
 

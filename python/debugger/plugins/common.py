@@ -100,6 +100,14 @@ class ReloadPlugin(TdbPlugin, TdbPluginCmd):
     complete_mlir = complete_file
     complete_input = complete_file
 
+class DumpIndex(TdbPlugin, TdbPluginCmd):
+    name = "dump"
+
+    def do_index(self, arg):
+        """
+        reload mlir <final.mlir> <tensor_location.json>
+        """
+        self.tdb.index_df.to_excel("index.xlsx")
 
 class FinalMlirIndexPlugin(TdbPlugin):
     """
@@ -269,6 +277,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
         file_line = self.tdb.index_df.loc[
             self.tdb.index_df["executed_id"] == point + 1, "line-num"
         ].item()
+
+        file_line = int(file_line)
+
         return self.final_mlir.lines[file_line - 1]
 
     def get_mlir_context_by_point(
