@@ -59,7 +59,7 @@ class Model:
     if self.flag & 0b100:
         conv3 = abs_add_op(conv3, 2.1)
     relu3 = tpul.relu(conv3)
-    tpul.compile('torch_like_model_{}'.format(flag), [x], [relu3], has_custom=True)
+    tpul.compile('torch_like_model_{}'.format(gen_name(self.flag)), [x], [relu3], has_custom=True)
     deploy_cmd = "model_deploy.py --mlir torch_like_model_{}.mlir --model model_{}.bmodel " \
                  "--quantize f32 --chip BM1684X".format(gen_name(flag), gen_name(self.flag))
     assert(os.system(deploy_cmd) == 0)

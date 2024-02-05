@@ -520,7 +520,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [conv])
 
         _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3)
-        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
+        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[0, 0, 1, 1])
 
     #######################################################################
     # Lenet
