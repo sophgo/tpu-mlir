@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+import json
 import numpy as np
 import os, sys
 import transform.TpuLang as tpul
@@ -1893,8 +1894,7 @@ def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_c
         return
     success_cases.append(case)
 
-
-def test_all(tester: TPULANG_IR_TESTER):
+def test_all_base(tester: TPULANG_IR_TESTER):
     import multiprocessing
     from utils.misc import collect_process
     process_number = multiprocessing.cpu_count() // 2 + 1
@@ -1912,20 +1912,17 @@ def test_all(tester: TPULANG_IR_TESTER):
             processes = []
     collect_process(processes, error_cases)
     processes = []
-    # error_cases = []
-    # success_cases = []
-    # for case in tester.test_cases:
-    #     if tester.check_support(case):
-    #         test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
         print("====== test_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
-        # exit(1)
     else:
         print("====== test_tpulang.py --chip {} TEST Success ======".format(tester.chip))
-    return error_cases
+    return error_cases, success_cases
 
+def test_all(tester: TPULANG_IR_TESTER):
+    f, s = test_all_base(tester)
+    return f
 
 if __name__ == "__main__":
     import argparse
@@ -1937,6 +1934,7 @@ if __name__ == "__main__":
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--show_all", action="store_true", help='show all cases')
+    parser.add_argument("--report", default="", type=str, help="report file name")
     # yapf: enable
     args = parser.parse_args()
     tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple)
@@ -1949,6 +1947,13 @@ if __name__ == "__main__":
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
-        test_all(tester)
+        if args.report:
+            f, s = test_all_base(tester)
+        else:
+            test_all(tester)
     else:
         tester.test_single(args.case)
+    if args.report:
+        result = {'succsess': list(s), 'failure': list(f)}
+        with open(args.report, "w") as f:
+            json.dump(result, f)
