@@ -277,8 +277,8 @@ def conv_v2(input: Tensor,
     def _shape_inference():
         kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
         kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
-        oh = (input.shape[2] + pad[0] + pad[1] - kh_ext) // stride[0] + 1
-        ow = (input.shape[3] + pad[2] + pad[3] - kw_ext) // stride[1] + 1
+        oh = (input.shape[2] + pad[0] + pad[2] - kh_ext) // stride[0] + 1
+        ow = (input.shape[3] + pad[1] + pad[3] - kw_ext) // stride[1] + 1
         return [input.shape[0], weight.shape[0], oh, ow]
 
     attr = {
