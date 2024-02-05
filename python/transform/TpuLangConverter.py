@@ -109,12 +109,11 @@ class Tensor:
     ID = 0
 
     def __init__(self,
-                 shape,
+                 shape: list = [],
                  name: str = None,
                  ttype="neuron",
                  data=None,
-                 dtype: str = "float32",
-                 is_const=False):
+                 dtype: str = "float32"):
         self.id = int(Tensor.ID)
         self.shape = shape if isinstance(shape, list) else [shape]
         self.name = "BMTensor" + str(self.id) if name is None else name
@@ -125,7 +124,6 @@ class Tensor:
         ]
         self.dtype = dtype.lower()
         self.buffer = data
-        self.is_const = is_const
         self.is_quantized: bool = False
         self.quantization()
         Tensor.ID += 1

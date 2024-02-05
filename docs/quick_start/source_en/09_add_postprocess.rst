@@ -101,7 +101,7 @@ In this way, the converted model is a model that includes post-processing. The m
     :linenos:
 
     bmodel version: B.2.2
-    chip: BM1684X
+    processor: BM1684X
     create time: Wed Jan  3 07:29:14 2024
 
     kernel_module name: libbm1684x_kernel_module.so

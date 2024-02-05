@@ -28,3 +28,4 @@ TPU-MLIR Technical Reference Manual
    16_tpulang
    17_custom
    Appx.01_nntc2mlir.rst
+   Appx.02_tpulang_support_op

@@ -66,7 +66,7 @@ class CUSTOM_TPULANG_TESTER(object):
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [self.mode]
         # initialize tpulang
-        tpul.init(self.chip.upper(), True)
+        tpul.init(self.chip.upper())
 
     def test_single(self, case: str):
         np.random.seed(0)

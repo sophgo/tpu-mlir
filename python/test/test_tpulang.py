@@ -44,7 +44,7 @@ def rand_data(shape, dtype):
 def tpulang(chip):
     def wrapper(func):
         def decorate(*args, **kwargs):
-            tpul.init(chip, True)
+            tpul.init(chip)
             func(*args, **kwargs)
             tpul.deinit()
         return decorate
@@ -112,11 +112,14 @@ class TPULANG_IR_TESTER(object):
             "Model1": (self.test_Model1,                Y, Y),
             "Model2": (self.test_Model2,                Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
+            "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
             "Repeat": (self.test_Repeat,                Y, Y),
+            "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             # "Rsqrt": (self.test_Rsqrt,                  Y, Y),
+            "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
             "Sin": (self.test_Sin,                      Y, Y),
@@ -124,6 +127,7 @@ class TPULANG_IR_TESTER(object):
             "Softmax": (self.test_Softmax,              Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
+            "Squeeze": (self.test_Squeeze,              Y, Y),
             "Sub": (self.test_Sub,                      Y, Y),
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
@@ -189,7 +193,7 @@ class TPULANG_IR_TESTER(object):
         if data is None:
             data = rand_data(shape, dtype)
             data = data * scale if dtype == 'float32' else data
-        return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+        return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
     def deploy(self, model_name, compare_all=False):
         in_f32_npz = model_name + '_in_f32.npz'
@@ -209,7 +213,7 @@ class TPULANG_IR_TESTER(object):
             assert(os.system(deploy_cmd) == 0)
 
     def compile_and_check(self, model_name, inputs, outputs):
-        tpul.compile(model_name, inputs, outputs, False, 2)
+        tpul.compile(model_name, inputs, outputs)
         self.deploy(model_name)
 
     #######################################################################
@@ -1319,6 +1323,83 @@ class TPULANG_IR_TESTER(object):
         _test_permute([1, 32, 28, 28])
 
     #######################################################################
+    # Reshape
+    # ------------
+    def reshape_op(self, input):
+        reshape = tpul.reshape(input, [32, 28, 1, 28])
+        return reshape
+
+    def test_Reshape(self, case_name):
+        """reshape"""
+
+        @tpulang(self.chip)
+        def _test_reshape(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            reshape = self.reshape_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [reshape])
+
+        _test_reshape([1, 32, 28, 28])
+
+    #######################################################################
+    # Shape_fetch
+    # ------------
+    def shape_fetch_op(self, input):
+        shape_fetch = tpul.shape_fetch(input)
+        return shape_fetch
+
+    def test_Shape_fetch(self, case_name):
+        """Shape_fetch"""
+
+        @tpulang(self.chip)
+        def _test_shape_fetch(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            shape_fetch = self.shape_fetch_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [shape_fetch])
+
+        _test_shape_fetch([1, 32, 28, 28])
+
+    #######################################################################
+    # Squeeze
+    # ------------
+    def squeeze_op(self, input):
+        squeeze = tpul.squeeze(input, [0])
+        return squeeze
+
+    def test_Squeeze(self, case_name):
+        """squeeze"""
+
+        @tpulang(self.chip)
+        def _test_squeeze(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            squeeze = self.squeeze_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [squeeze])
+
+        _test_squeeze([1, 32, 28, 28])
+
+    #######################################################################
+    # Pad
+    # ------------
+    def pad_op(self, input):
+        pad_val = tpul.Scalar(1.0)
+        pad = tpul.pad(input, value=pad_val)
+        return pad
+
+    def test_Pad(self, case_name):
+        """pad"""
+
+        @tpulang(self.chip)
+        def _test_pad(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            pad = self.pad_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [pad])
+
+        _test_pad([1, 32, 28, 28])
+
+    #######################################################################
     # Tile
     # ------------
     def tile_op(self, input):
@@ -1665,18 +1746,14 @@ class TPULANG_IR_TESTER(object):
                     dtype="float32"):
             oc = kshape[0]
             weight = self.coeff_tensor(kshape, dtype)
-            out_dtype = dtype if dtype == 'float32' else 'int32'
-            bias = self.coeff_tensor(oc, out_dtype) if bias else None
-            conv = tpul.conv_v2(x,
-                                weight,
-                                bias=bias,
-                                stride=stride,
-                                pad=pad,
-                                dilation=dilation,
-                                group=group,
-                                input_zp=zp[0],
-                                weight_zp=zp[1],
-                                out_dtype=out_dtype)
+            bias = self.coeff_tensor(oc, dtype) if bias else None
+            conv = tpul.conv(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group)
             return conv
 
         # 1. define model
@@ -1699,7 +1776,7 @@ class TPULANG_IR_TESTER(object):
             # 3. init and compile tpulang model to top.mlir
             tpul.init(device=self.chip.upper())
             out = model_def(x)
-            tpul.compile(case_name, [x], [out], False, 2)
+            tpul.compile(case_name, [x], [out])
             tpul.deinit()
             # tpul.compile will do top mlir inference with random input
             in_f32_npz = case_name + '_in_f32.npz'
@@ -1734,18 +1811,14 @@ class TPULANG_IR_TESTER(object):
                     dtype="float32"):
             oc = kshape[0]
             weight = self.coeff_tensor(kshape, dtype)
-            out_dtype = dtype if dtype == 'float32' else 'int32'
-            bias = self.coeff_tensor(oc, out_dtype) if bias else None
-            conv = tpul.conv_v2(x,
-                                weight,
-                                bias=bias,
-                                stride=stride,
-                                pad=pad,
-                                dilation=dilation,
-                                group=group,
-                                input_zp=zp[0],
-                                weight_zp=zp[1],
-                                out_dtype=out_dtype)
+            bias = self.coeff_tensor(oc, dtype) if bias else None
+            conv = tpul.conv(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group)
             return conv
 
         # 1. model define
@@ -1762,7 +1835,7 @@ class TPULANG_IR_TESTER(object):
                 conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
                 relu7 =  tpul.relu(conv6)
                 softmax8 = tpul.softmax(relu7, axis=1)
-                tpul.compile(case_name, [input], [softmax8], False, 2)
+                tpul.compile(case_name, [input], [softmax8])
 
         def _test_model2(in_shape):
             # 2. prepare input
