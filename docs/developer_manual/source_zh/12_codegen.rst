@@ -61,7 +61,7 @@ bdc_bytes：bdc指令字节数
 
 
 TPU-MLIR中BM168X及其相关类
-----------------
+---------------------------
 TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，目的是将不同的硬件后端封装，以实现后端与Codegen过程的隔离。其继承关系如下：
 
 .. raw:: latex

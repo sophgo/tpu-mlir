@@ -31,7 +31,11 @@ Custom Operator Addition Process
 Add TpuLang Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Invoke TpuLang to build the model
+1. Load TPU-MLIR
+
+.. include:: ./../../quick_start/source_en/env_var.rst
+
+2. Invoke TpuLang to build the model
 
   Refer to the TPULang Interface section for instructions on how to use TpuLang.
 
@@ -49,19 +53,21 @@ Add TpuLang Custom Operator
     '''
         The custom op
         Arguments:
-            tensors_in: list of input tensors (including weight tensors)
-            shape_func: function for doing shape inference, taking shape of tensors_in as inputs,
-                        and returning a list of shape of output tensors
-            op_name: name of the custom operator
-            out_dtypes: list of data type of outputs
-            out_names: list of name of outputs
-            params: parameters of the custom op
+            tensors_in: list of input tensors (including weight tensors).
+            shape_func: function for doing shape inference, taking shape of
+                        tensors_in as inputs, and returning a list of shape
+                        of output tensors.
+            op_name: name of the custom operator.
+            out_dtypes: list of data type of outputs.
+            out_names: list of name of outputs.
+            params: parameters of the custom op.
 
         Return:
-            tensors_out: list of output tensors
+            tensors_out: list of output tensors.
     '''
 
   a. Define a custom operator
+
   For convenient, one could standardize custom operator in file $TPUC_ROOT/customlayer/python/my_tpulang_layer.py :
 
   .. code-block:: python
@@ -88,12 +94,9 @@ Add TpuLang Custom Operator
   where `native` function is used to calculate the reference output data of custom layer. `tpulang` function constructs the custom layer using `TpuLang.custom` function.
 
   b. Unit test
+
   After defining the custom operator, one should test whether this inferface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_xxx.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create a method named "test_xxx" for testing custom layer.
-  The shell command `run_custom_unittest {chip_arch}` would tries to automatically perform the unit tests.
-
-2. Load TPU-MLIR
-
-.. include:: ./../../quick_start/source_en/env_var.rst
+  The shell command `run_custom_unittest {processor_arch}` would tries to automatically perform the unit tests.
 
 3. Develop backend operators based on TPU-Kernel
 
@@ -101,10 +104,12 @@ Add TpuLang Custom Operator
 
 4. Define the operator's parameter structure and write the operator's interface
 
-  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {chip_arch} represents architecture of chip, whose optional values are `bm1684x` or `bm1686` recently.
+  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {processor_arch} represents architecture of processor, whose optional values are `bm1684x` or `bm1686` recently.
 
   a. Add the interface_{op_name}.c file in the ./src directory and implement the corresponding interfaces:
+
     void api_{op_name}_global, void api_{op_name}_local (calling void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local respectively)
+
     void shape_infer_{op_name} (infer shape and dtype of outputs from those of inputs).
 
   b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a `custom_param_t` array. Starting from the second element of the array, a `custom_param_t` structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in `custom_param_t` (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the `custom_param_t` is as follows:
@@ -124,23 +129,53 @@ Add TpuLang Custom Operator
 
   In file register_ops.cmake, add op name for registering your operator:
 
-  .. code-block::
+  .. code-block:: shell
 
     register_custom_op({op_name})
 
 
 6. Compile and install the dynamic library
 
-  Firstly, initialize your environment by running the shell command: `source envsetup.sh in $TPUC_ROOT/customlayer`. Then compile the backend apis and firmware.
-  Then the shell command: `rebuild_custom_backend`: tries to compile the backend apis supporting custom operator. Once compilation has succeeded, the target `libbackend_custom.so` would be installed.
-  The shell command: `rebuild_custom_firmware_cmodel {chip_arch}`, tries to compile the firmware supporting custom operator in CMODEL mode. Once compilation has succeeded, the target `libfirmware_custom_xxx.so` would be installed.
-  The shell command: `rebuild_custom_firmware_soc {chip_arch}`, tries to compile the firmware supporting custom operator in SOC mode. Once compilation has succeeded, the target `libxxx_kernel_module_custom_soc.so` would be installed.
-  The shell command: `rebuild_custom_firmware_pcie {chip_arch}`, tries to compile the firmware supporting custom operator in PCIE mode. Once compilation has succeeded, the target `libxxx_kernel_module_custom_pcie.so` would be installed.
+  Firstly, initialize your environment by running the shell command:
 
-7. On-chip test
+  .. code-block:: shell
+
+    source envsetup.sh in $TPUC_ROOT/customlayer
+
+  Then compile the backend apis (target: `libbackend_custom.so`):
+
+  .. code-block:: shell
+
+    rebuild_custom_backend
+
+  After that, compile the corresponding firmware according to the actual usage scenario:
+
+  a. CMODEL mode (target: `libfirmware_custom_xxx.so`):
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_cmodel {processor_arch}
+
+  b. SOC mode (target: `libxxx_kernel_module_custom_soc.so`):
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_soc {processor_arch}
+
+  c. PCIE mode (target: `libxxx_kernel_module_custom_pcie.so`):
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_pcie {processor_arch}
+
+7. On-Processor test
   When at least a dynamic subnet exists in the network, the firmware containing in bmodel might be not useful since shell command `bmrt_test` does not work. In this case, one might need the following shell command to replace the old firmware with new one:
-  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so` (on SOC mode)
-  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so` (on PCIE mode)
+
+  .. code-block:: shell
+
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so # SOC mode
+
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIE mode
 
 Add Caffe Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -217,7 +252,8 @@ This subsection provides a sample of swapchanel operator implementation and appl
               shape = [4, 32, 36, 36]
               self.data_in = np.random.random(shape).astype(dtype)
               x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
-              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x], dtype=dtype)[0]
+              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x],
+                    dtype=dtype)[0]
               self.compile('SwapChannel', [x], [y], dtype)
           def test_fp32(self):
               self._test('float32')
