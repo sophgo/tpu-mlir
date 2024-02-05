@@ -106,7 +106,7 @@ class ONNX_IR_TESTER(object):
             "Floor":        (self.test_Floor,         Y, Y, Y, N, Y),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, Y, N, N, Y),
-            "GatherND":     (self.test_GatherND,      Y, Y, N, Y, Y),
+            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, Y),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N, Y),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N, Y),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y, Y),
@@ -282,8 +282,8 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y),
-            "If":               (self.test_If,              N, Y, N, N, Y),
-            "Loop":            (self.test_Loop,            N, Y, N, N, Y)
+            "If":               (self.test_If,              N, Y, Y, N, Y),
+            "Loop":            (self.test_Loop,            N, Y, Y, N, Y)
         }
         # yapf: enable
 

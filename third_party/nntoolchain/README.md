@@ -47,15 +47,15 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 ```
 
 
-## tpu-runtime 2024-2-3
-build from tpu-runtime f26e60a83526ab7b7a9300fd62d6ee498cd8eabb
+## tpu-runtime 2023-12-25
+build from tpu-runtime ea2ef0c38706056162f82bf0117f5d113445aaee
 ``` bash
 pushd libsophon
 mkdir -p build && cd build
 cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=Debug ../
 ninja
-cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp -P tpu-runtime/libbmrt.so* /workspace/third_party/nntoolchain/lib/
+cp -P bmlib/libbmlib.so* /workspace/third_party/nntoolchain/lib/
 popd
 ```
 
