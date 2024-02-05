@@ -817,8 +817,9 @@ static bool backward_update_slice(
     auto iter = tensor_infos.find(in);
     if (iter != tensor_infos.end()) {
       if (false == is_same_slice_info(si, iter->second.slice_info)) {
-        if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC)
+        if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC || !pre_op) {
           return false;
+        }
         // only Conv2D allow differnece for now
         if (pre_op) {
           for (auto user : pre_op->getUsers()) {
