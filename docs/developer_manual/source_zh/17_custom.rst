@@ -32,11 +32,15 @@ tpu-mlir当前已经包含了丰富的算子库，可以满足大部分神经网
 
 TpuLang自定义算子添加
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1. 利用TpuLang构建自定义算子
+1. 加载tpu-mlir
+
+.. include:: ./../../quick_start/source_zh/env_var.rst
+
+2. 利用TpuLang构建自定义算子
 
   关于TpuLang的使用方式请参考TpuLang接口章节。
 
-  TpuLang中提供了 `TpuLang.custom`接口用于在工具链前端构建自定义算子（请保证`op_name`部分与后端算子的名称一致）。需要注意的是， `params`是一个python字典，其中，键**必须**是字符串，表示属性的名字，值**只能**是整数/浮点数，或整数/浮点数的列表(要求长度不超过16)。在构建神经网络时，对于同一个自定义算子，键的个数和排列数序必须保持一致；对于同一个键，如果它的值是个列表，则列表的长度也必须保持一致。
+  TpuLang中提供了 `TpuLang.custom` 接口用于在工具链前端构建自定义算子（请保证 `op_name` 部分与后端算子的名称一致）。需要注意的是， `params` 是一个python字典，其中，键 *必须* 是字符串，表示属性的名字，值 *只能* 是整数/浮点数，或整数/浮点数的列表(要求长度不超过16)。在构建神经网络时，对于同一个自定义算子，键的个数和排列顺序必须保持一致；对于同一个键，如果它的值是个列表，则列表的长度也必须保持一致。
 
   .. code-block:: python
 
@@ -51,7 +55,8 @@ TpuLang自定义算子添加
         自定义算子
         参数:
             tensors_in: 输入张量的列表 (包括权重)
-            shape_func: 形状推理函数，输入为输入张量的形状的列表，输出为输出张量的形状的列表
+            shape_func: 形状推理函数，输入为输入张量的形状的列表，
+                        输出为输出张量的形状的列表
             op_name: 自定义算子的名字
             out_dtypes: 输出张量的数据类型的列表
             out_names: 输出张量的名字列表
@@ -62,6 +67,7 @@ TpuLang自定义算子添加
     '''
 
   a. 定义自定义算子
+
   为方便起见，可在 $TPUC_ROOT/customlayer/python/my_tpulang_layer.py 中标准化定义你的自定义算子，格式如下：
 
   .. code-block:: python
@@ -85,15 +91,13 @@ TpuLang自定义算子添加
               out_dtypes=...)
           return outputs
 
-  其中， `native`函数可用于计算输出张量的参考数据，而 `tpulang`函数则用`TpuLang.custom`函数来构建自定义层。
+  其中， `native` 函数可用于计算输出张量的参考数据，而 `tpulang` 函数则用 `TpuLang.custom` 函数来构建自定义层。
 
   b. 单元测试
-  在定义完自定义算子前端接口后，需要测试一下这个接口是否可靠。在目录 `$TPUC_ROOT/customlayer/test_if/unittest`下，创建名为"test_xxx.py"的python文件，并创建一个测试类，继承 `TestTPULangCustom`类，并创建名为"test_xxx"的方法来测试你的自定义算子。
-  通过运行shell命令 `run_custom_unittest {chip_arch}` ，来进行自定义算子的单元测试。
 
-2. 加载tpu-mlir
+  在定义完自定义算子前端接口后，需要测试一下这个接口是否可靠。在目录 `$TPUC_ROOT/customlayer/test_if/unittest` 下，创建名为"test_xxx.py"的python文件，并创建一个测试类，继承 `TestTPULangCustom` 类，并创建名为"test_xxx"的方法来测试你的自定义算子。
+  通过运行shell命令 `run_custom_unittest {processor_arch}` ，来进行自定义算子的单元测试。
 
-.. include:: ./../../quick_start/source_zh/env_var.rst
 
 3. 基于tpu-kernel编写后端算子
 
@@ -101,10 +105,12 @@ TpuLang自定义算子添加
 
 4. 定义算子参数结构体与编写算子调用接口
 
-  注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{chip_arch} 表示架构名称，当前可选 `bm1684x` 和 `bm1686` 。
+  注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{processor_arch} 表示架构名称，当前可选 `bm1684x` 和 `bm1686` 。
 
   a. 在 ./src 目录下添加自定义算子函数的调用接口:
-    void api_{op_name}_global 和 api_{op_name}_local (可选)（分别用于调用 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local ）
+
+    void api_{op_name}_global 和 api_{op_name}_local (可选) (分别用于调用 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local)
+
     void shape_infer_{op_name} (从输入的形状和数据类型推理出输出的形状和数据类型)
 
   b. 同时，用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过 `custom_param_t` 数组的指针进行传递，其中，数组的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性，每个 `custom_param_t` 结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的 `custom_param_t` 成员变量中。参数的顺序与用户在调用tpulang接口时提供的参数顺序相同。 `custom_param_t` 结构体的定义如下：
@@ -124,23 +130,54 @@ TpuLang自定义算子添加
 
   在 register_ops.cmake 中添加算子的名字以注册自定义算子：
 
-  .. code-block::
+  .. code-block:: shell
 
     register_custom_op({op_name})
 
 
 6. 编译并安装动态库
 
-  先运行命令 `source $TPUC_ROOT/customlayer/envsetup.sh` 初始化环境，然后需要完成自定义算子后端接口和固件的编译：
-  通过运行shell命令 `rebuild_custom_backend` ，可以完成自定义算子后端接口的编译，这将得到 `libbackend_custom.so`。
-  通过运行shell命令 `rebuild_custom_firmware_cmodel {chip_arch}` ，可以在CMODEL模式下完成支持自定义算子的固件的编译，这将得到 `libfirmware_custom_xxx.so`。
-  通过运行shell命令 `rebuild_custom_firmware_soc {chip_arch}` ，可以在SOC模式下完成支持自定义算子的固件的编译，这将得到 `libxxx_kernel_module_custom_soc.so`。
-  通过运行shell命令 `rebuild_custom_firmware_pcie {chip_arch}` ，可以在PCIE模式下完成支持自定义算子的固件的编译，这将得到 `libxxx_kernel_module_custom_pcie.so`。
+  先初始化环境：
+
+  .. code-block:: shell
+
+    source $TPUC_ROOT/customlayer/envsetup.sh
+
+
+  然后需要完成自定义算子后端接口的编译（得到 `libbackend_custom.so`）：
+
+  .. code-block:: shell
+
+    rebuild_custom_backend
+
+  之后根据实际使用场景编译对应的固件：
+
+  a. CMODEL模式（得到 `libfirmware_custom_xxx.so`）
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_cmodel {processor_arch}
+
+  b. SOC模式（得到 `libxxx_kernel_module_custom_soc.so`）
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_soc {processor_arch}
+
+  c. PCIE模式（得到 `libxxx_kernel_module_custom_pcie.so`）
+
+  .. code-block:: shell
+
+    rebuild_custom_firmware_pcie {processor_arch}
 
 7. 上卡测试
   当网络中存在自定义动态算子时，bmodel中包含的固件可能无法使bmrt_test正常工作，这时就需要替换固件了，使用shell命令可以达到这一目标：
-  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so` (SOC模式下)
-  `tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so` (PCIE模式下)
+
+  .. code-block:: shell
+
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so #SOC模式下
+
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIE模式下
 
 
 Caffe自定义算子添加
@@ -218,7 +255,8 @@ TpuLang示例
               shape = [4, 32, 36, 36]
               self.data_in = np.random.random(shape).astype(dtype)
               x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
-              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x], dtype=dtype)[0]
+              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x],
+                    dtype=dtype)[0]
               self.compile('SwapChannel', [x], [y], dtype)
           def test_fp32(self):
               self._test('float32')
@@ -241,7 +279,7 @@ TpuLang示例
 
   其中，这里的字段order对应前端的属性order 。
 
-  值得注意的是，从编译器传递到后端的是一个 `custom_param_t`的数组A，它的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性。为方便期间，在头文件 {TPUC_ROOT}/customlayer/include/api_common.h 中，提供了一个宏来完成了一个对应： `PARSE_PARAM(swapchannel, sc_param, param)`, 其中， `param`表示数组A， `sc_param`表示后端参数结构体。用户需要在文件 ${TPUC_ROOT}/customlayer/include/param_parser.h 中定义一个swapchannel_parse_param解析函数来完成这种转换，其输入实际上是数组A的剔除第一个元素后的子数组的指针：
+  值得注意的是，从编译器传递到后端的是一个 `custom_param_t` 的数组A，它的第一个元素是保留的，从第二个元素开始，每个元素对应前端的一个属性。为方便起见，在头文件 {TPUC_ROOT}/customlayer/include/api_common.h 中，提供了一个宏来完成了一个对应： `PARSE_PARAM(swapchannel, sc_param, param)` , 其中， `param` 表示数组A， `sc_param` 表示后端参数结构体。用户需要在文件 ${TPUC_ROOT}/customlayer/include/param_parser.h 中定义一个swapchannel_parse_param解析函数来完成这种转换，其输入实际上是数组A的剔除第一个元素后的子数组的指针：
 
   .. code-block:: c
 
