@@ -50,6 +50,21 @@ static bmodel::Binary CreateBinaryFromFile(bmodel::ModelGen *model_gen,
   return CreateBinaryFromFile(model_gen, fp);
 }
 
+void setupMultiCoreCodegen() {
+  auto multi_core = dyn_cast<MultiCoreInterface>(BM168x::instance());
+  auto core_num = module::getCoreNum();
+  if (core_num < 2)
+    return;
+  if (!multi_core)
+    llvm_unreachable("This chip lacks multi-core capabilities.");
+  if (multi_core->getCoreNum() != core_num) {
+    assert(multi_core->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
+    multi_core->setupMultiCoreContext(0, core_num, 0);
+    multi_core->setCoreNum(module::getCoreNum());
+  }
+}
+
 void BMCodegen::init(ModuleOp m, const std::string &filename) {
   this->filename = filename;
   llvm::raw_null_ostream os;
@@ -83,16 +98,6 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   current_step = 0;
   current_device = 0;
   updateAllHidden();
-
-  auto core_num = module::getCoreNum();
-  if (core_num > 1) {
-    if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
-      multi_core->setupMultiCoreContext(0, core_num, 0);
-      multi_core->setCoreNum(module::getCoreNum());
-    } else {
-      llvm_unreachable("This chip lacks multi-core capabilities.");
-    }
-  }
 }
 
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
@@ -672,6 +677,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   int core_id = 0;
   auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
   useMuliCore &= (secs > 1) && multi_core;
+  if (useMuliCore)
+    setupMultiCoreCodegen();
   // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
@@ -908,11 +915,13 @@ void BMCodegen::codegen(FuncOp funcOp) {
     }
 
     if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
+      setupMultiCoreCodegen();
       codegenGroupParallelOp(groupParallelOp, bm168x, codegenGlobalLayer);
       return WalkResult::skip();
     }
 
     if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
+      setupMultiCoreCodegen();
       codegenCoreParallelOp(parallelOp, bm168x, codegenGlobalLayer);
       return WalkResult::skip();
     }
@@ -925,6 +934,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
       auto core_num = module::getCoreNum();
       if (is_depthwise == false && in_etype.isIntOrIndex() == false &&
           core_num != 1) {
+        setupMultiCoreCodegen();
         codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
         return WalkResult::skip();
       }
