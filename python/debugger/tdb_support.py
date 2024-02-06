@@ -199,6 +199,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.add_plugin("info")  # `info`` command
         self.add_plugin("final-mlir")
         self.add_plugin("reload")  # `reload` command
+        self.add_plugin("watch")
 
         if len(reference_data_fn) > 0:
             self.add_plugin("data-check")
@@ -386,6 +387,7 @@ class TdbCmdBackend(cmd.Cmd):
         return self.cmditer[pre : cmd_point + next + 1]
 
     def get_cmd(self):
+        # This method return next cmd which is about to execute but not executed yet
         if self.status == TdbStatus.UNINIT:
             raise StopIteration()
 
@@ -394,14 +396,10 @@ class TdbCmdBackend(cmd.Cmd):
         return self.cmditer[self.cmd_point]
 
     def get_precmd(self):
+        # This method return the pre cmd which is just executed
         if self.cmd_point == 0:
             raise StopIteration()
         return self.cmditer[self.cmd_point - 1]
-
-    def get_nextop(self):
-        op = self.get_cmd()
-        self.cmd_point += 1
-        return op
 
     @add_callback("step")
     def step(self):
@@ -579,6 +577,27 @@ class Breakpoint:
         if isinstance(cls.pattern, re.Pattern):
             return cls.pattern.search(text) is not None
         return False
+
+
+class Watchpoint:
+    def __init__(self, index, cmd_type, cmd_id, core_id, value):
+        self.index = index
+        self.cmd_type = cmd_type
+        self.cmd_id = cmd_id
+        self.core_id = core_id
+        self.value = value
+
+    def __str__(self) -> str:
+        return "\t".join(self.tostrlist())
+
+    def tostrlist(self) -> List[str]:
+        return [
+            str(self.index),
+            str(self.cmd_type),
+            str(self.cmd_id),
+            str(self.core_id),
+            str(self.value),
+        ]
 
 
 class TdbPlugin:

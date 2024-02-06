@@ -1,6 +1,12 @@
-from ..tdb_support import TdbPlugin, TdbPluginCmd, codelike_format, safe_command
+from ..tdb_support import (
+    TdbPlugin,
+    TdbPluginCmd,
+    codelike_format,
+    safe_command,
+)
 from .common import FinalMlirIndexPlugin
 from .breakpoints import BreakpointPlugin
+from .watchpoints import WatchPlugin
 
 
 class InfoPlugin(TdbPlugin, TdbPluginCmd):
@@ -129,6 +135,10 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
         b: BreakpointPlugin = self.tdb.get_plugin(BreakpointPlugin)
         return str(b.breakpoints)
 
+    def info_watch(self, arg):
+        w: WatchPlugin = self.tdb.get_plugin(WatchPlugin)
+        return str(w)
+
     @safe_command
     def do_status(self, arg):
         self.tdb.message(self.tdb.status)
@@ -158,6 +168,12 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
         self.tdb.message(self.info_break(arg))
 
     do_b = do_break
+
+    @safe_command
+    def do_watch(self, arg):
+        self.tdb.message(self.info_watch(arg))
+
+    do_w = do_watch
 
     @safe_command
     def do_progress(self, arg):
