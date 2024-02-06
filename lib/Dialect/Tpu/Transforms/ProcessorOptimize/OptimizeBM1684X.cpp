@@ -585,6 +585,52 @@ public:
   }
 };
 
+// reorder op when transpose is before mulconst
+// permute order = {0,2,3,1}
+class PermuteMulconstSwap : public OpRewritePattern<tpu::PermuteOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (op->hasOneUse() == false) {
+      return failure();
+    }
+    std::vector<int64_t> ps = {0, 2, 3, 1};
+    auto order = module::getI64Array(op.getOrder());
+    if (*order != ps) {
+      return failure();
+    }
+
+    auto in_shape = module::getShape(op.getInput());
+    auto out_shape = module::getShape(op.getOutput());
+    auto nextOp = *op.getOutput().user_begin();
+    if (nextOp->hasOneUse() == false) {
+      return failure();
+    }
+    if (isa<tpu::MulShiftOp, tpu::MulConstOp>(nextOp)) {
+      auto mulconst_or_mulshift_op = nextOp;
+      Value mulconst_or_mulshift_out = nextOp->getOpResult(0);
+      module::setShape(mulconst_or_mulshift_out, in_shape);
+      op.replaceAllUsesWith(op.getInput());
+      rewriter.setInsertionPointAfter(mulconst_or_mulshift_op);
+      auto newType = module::getTypeLike(mulconst_or_mulshift_out, out_shape);
+      auto out_loc = mulconst_or_mulshift_op->getLoc(); // keep out location unchanged.
+      module::setLocSuffix(mulconst_or_mulshift_op, "trans");
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(
+          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
+      auto new_op = rewriter.create<tpu::PermuteOp>(
+          out_loc, newType, ValueRange{mulconst_or_mulshift_out, module::getNoneOp(mulconst_or_mulshift_op)},
+          attrs);
+      mulconst_or_mulshift_out.replaceAllUsesExcept(new_op.getOutput(), {new_op});
+      rewriter.eraseOp(op);
+      return success();
+    }
+    return failure();
+  }
+};
+
 /**
  * input0 + Permute \              => input0           \
  *                   => MaskedFill =>                   => MaskedFill + Permute
@@ -961,8 +1007,10 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     for (auto o : in1_order_fix) {
       result1_data.push_back(result0_data[o]);
     }
-    if (result1_data != origin_data) {
-      return failure();
+    if (in0_order == in1_order) {
+      if (result1_data != origin_data) {
+        return failure();
+      }
     }
     // bingo !
     if (out1_shape == in0_shape) {
@@ -970,12 +1018,13 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
       rewriter.eraseOp(op);
       rewriter.eraseOp(permute_op);
     } else {
-      auto loc = module::getLocLike(permute_op.getInput(), "Reshape");
-      rewriter.setInsertionPoint(op);
-      auto rs_op = rewriter.create<tpu::ReshapeOp>(
-          loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});
-      op.getOutput().replaceAllUsesWith(rs_op.getOutput());
-      rewriter.eraseOp(op);
+      std::vector<int64_t> new_order;
+      for (auto o : in1_order_fix) {
+        new_order.push_back(in0_order_fix[o]);
+      }
+      permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
+      op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+      rewriter.eraseOp(permute_op);
     }
     return success();
   }
@@ -1835,10 +1884,16 @@ public:
 Operation *get_next_op(Operation *op,
                        std::vector<mlir::Operation *> &mulshifts) {
   auto next_op = *op->getResult(0).getUsers().begin();
+  // if (!isa<tpu::MulShiftOp, tpu::CastOp>(next_op)) {
+  //   return next_op;
+  // }
   if (!isa<tpu::MulShiftOp>(next_op)) {
     return next_op;
   }
   mulshifts.emplace_back(next_op);
+  // if (isa<tpu::MulShiftOp>(next_op)) {
+  //   mulshifts.emplace_back(next_op);
+  // }
   return *next_op->getResult(0).getUsers().begin();
 }
 
@@ -2376,6 +2431,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermutePadSwap,
                 FitPermute2Hdim,
                 ErasePermuteAroundAdd,
+                PermuteMulconstSwap,
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
                 ReshapeSliceSqueezePattern>(ctx, 8);
