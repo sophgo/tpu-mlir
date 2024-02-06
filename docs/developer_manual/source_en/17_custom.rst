@@ -28,6 +28,8 @@ The frontend can build models containing custom operators using tpulang or Caffe
 Custom Operator Addition Process
 --------------------------------
 
+Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {processor_arch} represents architecture of processor, whose optional values are `bm1684x` or `bm1688`.
+
 Add TpuLang Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -35,76 +37,12 @@ Add TpuLang Custom Operator
 
 .. include:: ./../../quick_start/source_en/env_var.rst
 
-2. Invoke TpuLang to build the model
 
-  Refer to the TPULang Interface section for instructions on how to use TpuLang.
-
-  TpuLang provides the `TpuLang.custom` interface to build custom operators in the frontend of toolchain (please ensure that the `op_name` matches the name of the backend operator): Note that, `params` should be dictionary in python, whose key should be a string representing the name of parameter and value should be a integer or floating-point number, or a list of integer or floating-point number (the length of list should be no greater than 16). When building the neural network, the number and order of keys should keep the same for the same custom operator and for the same key, if its value is a list, the length should keep the same.
-
-  .. code-block:: python
-
-    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
-                   shape_func,
-                   op_name: str,
-                   out_dtypes: List[str],
-                   out_names: List[str] = None,
-                   params: dict = None)
-                   -> List[TpuLang.Tensor]
-    '''
-        The custom op
-        Arguments:
-            tensors_in: list of input tensors (including weight tensors).
-            shape_func: function for doing shape inference, taking shape of
-                        tensors_in as inputs, and returning a list of shape
-                        of output tensors.
-            op_name: name of the custom operator.
-            out_dtypes: list of data type of outputs.
-            out_names: list of name of outputs.
-            params: parameters of the custom op.
-
-        Return:
-            tensors_out: list of output tensors.
-    '''
-
-  a. Define a custom operator
-
-  For convenient, one could standardize custom operator in file $TPUC_ROOT/customlayer/python/my_tpulang_layer.py :
-
-  .. code-block:: python
-
-    class xxx:
-      @staticmethod
-      def native(...):
-          ...
-          return ...
-      @staticmethod
-      def tpulang(inputs, ...):
-          def shape_func(tensors_in:list, ...):
-              ...
-              return ...
-          params = dict(...)
-          outputs = TpuLang.custom(
-              tensors_in=inputs,
-              shape_func=shape_func,
-              op_name=...,
-              params=params,
-              out_dtypes=...)
-          return outputs
-
-  where `native` function is used to calculate the reference output data of custom layer. `tpulang` function constructs the custom layer using `TpuLang.custom` function.
-
-  b. Unit test
-
-  After defining the custom operator, one should test whether this inferface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_xxx.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create a method named "test_xxx" for testing custom layer.
-  The shell command `run_custom_unittest {processor_arch}` would tries to automatically perform the unit tests.
-
-3. Develop backend operators based on TPU-Kernel
+2. Develop backend operators based on TPU-Kernel
 
   Assuming the current path is $TPUC_ROOT/customlayer, add the ./include/tpu_impl_custom_ops.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local, respectively). Then, add the tpu_impl_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
 
-4. Define the operator's parameter structure and write the operator's interface
-
-  Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {processor_arch} represents architecture of processor, whose optional values are `bm1684x` or `bm1686` recently.
+3. Define the operator's parameter structure and write the operator's interface
 
   a. Add the interface_{op_name}.c file in the ./src directory and implement the corresponding interfaces:
 
@@ -112,7 +50,7 @@ Add TpuLang Custom Operator
 
     void shape_infer_{op_name} (infer shape and dtype of outputs from those of inputs).
 
-  b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a `custom_param_t` array. Starting from the second element of the array, a `custom_param_t` structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in `custom_param_t` (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the `custom_param_t` is as follows:
+  b. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a `custom_param_t` array. Starting from the second element of the array, a `custom_param_t` structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in `custom_param_t` (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface (6th step). The definition of the `custom_param_t` is as follows:
 
   .. code-block:: c
 
@@ -125,7 +63,7 @@ Add TpuLang Custom Operator
     } custom_param_t;
 
 
-5. Register the operator
+4. Register the operator
 
   In file register_ops.cmake, add op name for registering your operator:
 
@@ -134,7 +72,7 @@ Add TpuLang Custom Operator
     register_custom_op({op_name})
 
 
-6. Compile and install the dynamic library
+5. Compile and install the dynamic library
 
   Firstly, initialize your environment by running the shell command:
 
@@ -167,6 +105,77 @@ Add TpuLang Custom Operator
   .. code-block:: shell
 
     rebuild_custom_firmware_pcie {processor_arch}
+
+  At this point we have completed the work on the backend part of the custom operator.
+
+6. Invoke TpuLang to build the model
+
+  Refer to the TPULang Interface section for instructions on how to use TpuLang.
+
+  TpuLang provides the `TpuLang.custom` interface to build custom operators in the frontend of toolchain (please ensure that the `op_name` matches the name of the backend operator): Note that, `params` should be dictionary in python, whose key should be a string representing the name of parameter and value should be a integer or floating-point number, or a list of integer or floating-point number (the length of list should be no greater than 16). When building the neural network, the number and order of keys should keep the same for the same custom operator and for the same key, if its value is a list, the length should keep the same.
+
+  .. code-block:: python
+
+    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
+                   shape_func,
+                   op_name: str,
+                   out_dtypes: List[str],
+                   out_names: List[str] = None,
+                   params: dict = None)
+                   -> List[TpuLang.Tensor]
+    '''
+        The custom op
+        Arguments:
+            tensors_in: list of input tensors (including weight tensors).
+            shape_func: function for doing shape inference, taking shape of
+                        tensors_in as inputs, and returning a list of shape
+                        of output tensors.
+            op_name: name of the custom operator.
+            out_dtypes: list of data type of outputs.
+            out_names: list of name of outputs.
+            params: parameters of the custom op.
+
+        Return:
+            tensors_out: list of output tensors.
+    '''
+
+  a. Define the tpulang interface of custom operator
+
+  For convenient, one could standardize custom operator in file $TPUC_ROOT/customlayer/python/my_tpulang_layer.py :
+
+  .. code-block:: python
+
+    class xxx:
+      @staticmethod
+      def native(...):
+          ...
+          return ...
+      @staticmethod
+      def tpulang(inputs, ...):
+          def shape_func(tensors_in:list, ...):
+              ...
+              return ...
+          params = dict(...)
+          outputs = TpuLang.custom(
+              tensors_in=inputs,
+              shape_func=shape_func,
+              op_name=...,
+              params=params,
+              out_dtypes=...)
+          return outputs
+
+  where `native` function is used to calculate the reference output data of custom layer. `tpulang` function constructs the custom layer using `TpuLang.custom` function.
+
+  b. Unit test
+
+  After defining the custom operator, one should test whether this inferface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_xxx.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create a method named "test_xxx" for testing custom layer.
+
+  The shell command below would tries to automatically perform the unit tests:
+
+  .. code-block:: shell
+
+    run_custom_unittest {processor_arch}
+
 
 7. On-Processor test
   When at least a dynamic subnet exists in the network, the firmware containing in bmodel might be not useful since shell command `bmrt_test` does not work. In this case, one might need the following shell command to replace the old firmware with new one:
@@ -211,59 +220,7 @@ Example of TpuLang
 
 This subsection provides a sample of swapchanel operator implementation and application through TpuLang interface.
 
-1. TpuLang Interface Invocation
-
-  In file ${TPUC_ROOT}/customlayer/python/my_tpulang_layer.py, by using function `TpuLang.custom`, one could construct a custom operator named swapChannel, which has one input, one output, and an attribute whose value is an integer list of length 3:
-
-   .. code-block:: python
-
-      import transform.TpuLang as tpul
-
-      class swapChannel:
-          @staticmethod
-          def native(data):
-              return data[:, [2, 1, 0], :, :]
-          @staticmethod
-          def tpulang(inputs, dtype="float32"):
-              def shape_func(tensors_in:list):
-                  return [tensors_in[0].shape]
-              params = {"order": [2, 1, 0]}
-              outs = tpul.custom(
-                  tensors_in=inputs,
-                  shape_func=shape_func,
-                  # op_name should be consistent with the backend
-                  op_name="swapchannel",
-                  params=params,
-                  out_dtypes=[dtype])
-              return outs
-
-  In file ${TPUC_ROOT}/customlayer/test_if/unittest/test_swapchannel.py, one could create a unittest on custom operator named "swapChannel":
-
-   .. code-block:: python
-
-      import numpy as np
-      import unittest
-      from tpulang_custom_test_base import TestTPULangCustom
-      import transform.TpuLang as tpul
-      import my_tpulang_layer
-
-      class TestSwapChannel(TestTPULangCustom):
-          def _test(self, dtype):
-              shape = [4, 32, 36, 36]
-              self.data_in = np.random.random(shape).astype(dtype)
-              x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
-              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x],
-                    dtype=dtype)[0]
-              self.compile('SwapChannel', [x], [y], dtype)
-          def test_fp32(self):
-              self._test('float32')
-          def test_fp16(self):
-              self._test('float16')
-
-      if __name__ == '__main__':
-          unittest.main()
-
-2. Parameter Parser and Backend Interface
+1. Parameter Parser and Backend Interface
 
   The definition of `swapchannel_param_t` in
 
@@ -323,7 +280,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
             tpu_type_convert(input->dtype));
     }
 
-3. Backend Operator Implementation
+2. Backend Operator Implementation
 
   The following is the declaration in the header file
 
@@ -367,7 +324,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
     }
 
 
-4. Backend Interface
+3. Register the Custom Operator
 
   Add the code in ${TPUC_ROOT}/customlayer/register_ops.cmake:
 
@@ -375,7 +332,60 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
     register_custom_op(swapchannel)
 
-  After completing the implementation of the backend interface, you can run the command listed in step 6 in "Add TpuLang Custom Operator".
+  After completing the implementation of the backend interface, you can run the command listed in step 5 in "Add TpuLang Custom Operator".
+
+
+4. TpuLang Interface Invocation
+
+  In file ${TPUC_ROOT}/customlayer/python/my_tpulang_layer.py, by using function `TpuLang.custom`, one could construct a custom operator named swapChannel, which has one input, one output, and an attribute whose value is an integer list of length 3:
+
+   .. code-block:: python
+
+      import transform.TpuLang as tpul
+
+      class swapChannel:
+          @staticmethod
+          def native(data):
+              return data[:, [2, 1, 0], :, :]
+          @staticmethod
+          def tpulang(inputs, dtype="float32"):
+              def shape_func(tensors_in:list):
+                  return [tensors_in[0].shape]
+              params = {"order": [2, 1, 0]}
+              outs = tpul.custom(
+                  tensors_in=inputs,
+                  shape_func=shape_func,
+                  # op_name should be consistent with the backend
+                  op_name="swapchannel",
+                  params=params,
+                  out_dtypes=[dtype])
+              return outs
+
+  In file ${TPUC_ROOT}/customlayer/test_if/unittest/test_swapchannel.py, one could create a unittest on custom operator named "swapChannel":
+
+   .. code-block:: python
+
+      import numpy as np
+      import unittest
+      from tpulang_custom_test_base import TestTPULangCustom
+      import transform.TpuLang as tpul
+      import my_tpulang_layer
+
+      class TestSwapChannel(TestTPULangCustom):
+          def _test(self, dtype):
+              shape = [4, 32, 36, 36]
+              self.data_in = np.random.random(shape).astype(dtype)
+              x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
+              y = my_tpulang_layer.swapChannel.tpulang(inputs=[x],
+                    dtype=dtype)[0]
+              self.compile('SwapChannel', [x], [y], dtype)
+          def test_fp32(self):
+              self._test('float32')
+          def test_fp16(self):
+              self._test('float16')
+
+      if __name__ == '__main__':
+          unittest.main()
 
 
 Example of Caffe

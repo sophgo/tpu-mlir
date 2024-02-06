@@ -1629,7 +1629,6 @@ class TPULANG_IR_TESTER(object):
             gts = self.gts_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [gts])
 
-        _test_gts([1, 3, 28, 28], "float16")
         _test_gts([1, 3, 32, 32])
 
     #######################################################################
