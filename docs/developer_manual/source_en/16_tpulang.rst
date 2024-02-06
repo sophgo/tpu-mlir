@@ -217,12 +217,17 @@ Next, prepare the tensors, use operators to build the network, and finally, call
 Subsequently, model deployment can be completed using model_deploy.py. The detailed steps for each of these processes are explained below.
 You can find detailed information on various interfaces used (such as tpul.init, deinit, Tensor, and operator interfaces) in appx02 (:ref:`Appendix 02: Basic Elements of TpuLang`).
 
+The following steps assume that the loading of the tpu-mlir release package has been completed.
+
 Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The specific definition of the initialization function can be found in the documentation under the section titled (:ref:`Initialization Function <init>`).
 
    .. code-block:: python
+
+      import transform.TpuLang as tpul
+      import numpy as np
 
       tpul.init('BM1684X')
 
@@ -233,7 +238,8 @@ The specific definition of the initialization function can be found in the docum
 
    .. code-block:: python
 
-      x_data = np.random.randn(shape).astype(np.float32)
+      shape = [1, 1, 28, 28]
+      x_data = np.random.randn(*shape).astype(np.float32)
       x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
 
 
@@ -249,19 +255,20 @@ Continuing with the utilization of existing operators (:ref:`operator`) and the 
                   pad=None,
                   group=1,
                   dilation=[1, 1],
-                  zp=[None, None],
                   bias=False,
                   dtype="float32"):
          oc = kshape[0]
-         weight = self.coeff_tensor(kshape, dtype)
-         bias = self.coeff_tensor(oc, dtype) if bias else None
+         weight_data = np.random.randn(*kshape).astype(np.float32)
+         weight = tpul.Tensor(dtype=dtype, shape=kshape, data=weight_data, ttype="coeff")
+         bias_data = np.random.randn(oc).astype(np.float32)
+         bias = tpul.Tensor(dtype=dtype, shape=[oc], data=bias_data, ttype="coeff")
          conv = tpul.conv(x,
-                        weight,
-                        bias=bias,
-                        stride=stride,
-                        pad=pad,
-                        dilation=dilation,
-                        group=group)
+                     weight,
+                     bias=bias,
+                     stride=stride,
+                     pad=pad,
+                     dilation=dilation,
+                     group=group)
          return conv
 
       def model_def(x):
@@ -275,13 +282,14 @@ Continuing with the utilization of existing operators (:ref:`operator`) and the 
          relu7 =  tpul.relu(conv6)
          softmax8 = tpul.softmax(relu7, axis=1)
          return softmax8
+
       y = model_def(x)
 
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Call the tpul.compile function:(:ref:`compile`)：
+Call the tpul.compile function (:ref:`compile`). After compilation, you will get `example.mlir` and `example_top_f32_all_weight.npz` for subsequent model deployment:
 
    .. code-block:: python
 
