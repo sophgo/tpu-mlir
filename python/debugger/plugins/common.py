@@ -35,6 +35,7 @@ from ..tdb_support import (
     Displays,
     TdbStatus,
     TdbPluginCmd,
+    Watchpoint,
     complete_file,
 )
 from ..target_1688.context import BM1688Context
@@ -100,6 +101,7 @@ class ReloadPlugin(TdbPlugin, TdbPluginCmd):
     complete_mlir = complete_file
     complete_input = complete_file
 
+
 class DumpIndex(TdbPlugin, TdbPluginCmd):
     name = "dump"
 
@@ -108,6 +110,7 @@ class DumpIndex(TdbPlugin, TdbPluginCmd):
         reload mlir <final.mlir> <tensor_location.json>
         """
         self.tdb.index_df.to_excel("index.xlsx")
+
 
 class FinalMlirIndexPlugin(TdbPlugin):
     """
@@ -435,9 +438,56 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                     data = cmd.results[index].data
                 else:
                     if isinstance(self.tdb.context, SG2260Context) or isinstance(self.tdb.context, BM1688Context):
-                        data = self.tdb.memory.get_data(cmd.operands[index], core_id=cmd.core_id)
+                        data = self.tdb.memory.get_data(cmd.results[index], core_id=cmd.core_id)
                     else:
-                        data = self.tdb.memory.get_data(cmd.operands[index])
+                        data = self.tdb.memory.get_data(cmd.results[index])
+            else:
+                self.tdb.error("")
+                return
+            print(data)
+        except (IndexError, SyntaxError, ValueError) as e:
+            self.tdb.error(e)
+
+    def do_w(self, arg):
+        return self.do_watch(arg)
+
+    def do_watch(self, arg):
+        if arg == "":
+            self.tdb.message("Please enter the watch index to print")
+            return
+
+        watches = self.tdb.watches
+        watchid2value = self.tdb.watchid2value
+
+        arg_values = arg.split()
+        index, watchpoint_type = (arg_values + [None])[:2]
+        index = int(index)
+        try:
+            if watchpoint_type == "now" or not watchpoint_type:
+                watchpoint: Watchpoint = watches[watchid2value[index][0]]
+            elif watchpoint_type == "old":
+                print(watchid2value[index][1])
+                return
+        except Exception:
+            self.tdb.message(
+                "Please input correct watch index, enter `w` or `watch` to checkout current watchpoints"
+            )
+            return
+
+        try:
+            if watchpoint.cmd_type == CMDType.cpu:
+                if watchpoint.cmd_id == 0:
+                    data = self.tdb.memory.get_data(watchpoint.value)
+                else:
+                    data = self.tdb.memory.get_cpu_data(watchpoint.cmd_id)[watchpoint.value]
+            elif watchpoint.cmd_type.is_static():
+                if watchpoint.value.is_scalar:
+                    data = watchpoint.value.data
+                else:
+                    if isinstance(self.tdb.context, SG2260Context) or isinstance(self.tdb.context, BM1688Context):
+                        data = self.tdb.memory.get_data(watchpoint.value, core_id=watchpoint.core_id)
+                    else:
+                        data = self.tdb.memory.get_data(watchpoint.value)
             else:
                 self.tdb.error("")
                 return
