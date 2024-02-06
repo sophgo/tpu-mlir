@@ -215,12 +215,17 @@ Tpulang接口使用方式
 然后准备tensor，接着使用operator构建网络，最后调用tpul.compile接口编译生成top.mlir，后续请使用model_deploy.py完成模型部署。
 下面详细介绍一下每一步怎么做，以下使用到的各种接口（tpul.init, deinit, Tensor以及算子接口等）都可以在appx02(:ref:`附录02：TpuLang的基本元素`)中查看到详细介绍。
 
+以下步骤假定当前已经完成tpu-mlir发布包的加载。
+
 初始化
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 具体的定义参见(:ref:`初始化函数 <init>`)
 
    .. code-block:: python
+
+      import transform.TpuLang as tpul
+      import numpy as np
 
       tpul.init('BM1684X')
 
@@ -231,7 +236,8 @@ Tpulang接口使用方式
 
    .. code-block:: python
 
-      x_data = np.random.randn(shape).astype(np.float32)
+      shape = [1, 1, 28, 28]
+      x_data = np.random.randn(*shape).astype(np.float32)
       x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
 
 
@@ -248,19 +254,20 @@ Tpulang接口使用方式
                   pad=None,
                   group=1,
                   dilation=[1, 1],
-                  zp=[None, None],
                   bias=False,
                   dtype="float32"):
          oc = kshape[0]
-         weight = self.coeff_tensor(kshape, dtype)
-         bias = self.coeff_tensor(oc, dtype) if bias else None
+         weight_data = np.random.randn(*kshape).astype(np.float32)
+         weight = tpul.Tensor(dtype=dtype, shape=kshape, data=weight_data, ttype="coeff")
+         bias_data = np.random.randn(oc).astype(np.float32)
+         bias = tpul.Tensor(dtype=dtype, shape=[oc], data=bias_data, ttype="coeff")
          conv = tpul.conv(x,
-                        weight,
-                        bias=bias,
-                        stride=stride,
-                        pad=pad,
-                        dilation=dilation,
-                        group=group)
+                     weight,
+                     bias=bias,
+                     stride=stride,
+                     pad=pad,
+                     dilation=dilation,
+                     group=group)
          return conv
 
       def model_def(x):
@@ -274,12 +281,13 @@ Tpulang接口使用方式
          relu7 =  tpul.relu(conv6)
          softmax8 = tpul.softmax(relu7, axis=1)
          return softmax8
+
       y = model_def(x)
 
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-调用tpul.compile函数(:ref:`compile`)：
+调用tpul.compile函数(:ref:`compile`), 编译完成后会得到 `example.mlir` 以及 `example_top_f32_all_weight.npz` 用于后续的模型部署：
 
    .. code-block:: python
 
