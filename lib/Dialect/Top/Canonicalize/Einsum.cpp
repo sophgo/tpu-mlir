@@ -16,10 +16,10 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
 
   LogicalResult matchAndRewrite(EinsumOp op,
                                 PatternRewriter &rewriter) const override {
-    if (op.getInputs().size() != 2 || module::isWeight(op.getInputs()[0])) {
-      llvm_unreachable("Not support now.");
-      // return failure();
-    }
+    // if (op.getInputs().size() != 2 || module::isWeight(op.getInputs()[0])) {
+    //   llvm_unreachable("Not support now.");
+    //   // return failure();
+    // }
     auto none = module::getNoneOp(op);
     auto mode = op.getMode().str();
     auto lhs = op.getInputs()[0];
@@ -249,6 +249,69 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
       op.replaceAllUsesWith(tranBackOp.getOperation());
       rewriter.eraseOp(op);
 
+    } else if (mode == "abc,acde->abde") {
+      // lhs :
+      //     abc
+      // rhs :
+      //     acde -> ac(de)(reshape)
+      // matmul:
+      //   lhs(abc) * rhs(ac(de)) = result(ab(de))
+      // result:
+      //     ab(de) -> abde(reshape)
+      // success!
+      operands.push_back(lhs);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      auto newType = RankedTensorType::get({rshape[0], rshape[1], rshape[2] * rshape[3]}, module::getElementType(op));
+      if (module::isWeight(rhs)) {
+        rhs.setType(newType);
+        operands.push_back(rhs);
+      } else {
+        auto loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+        auto rhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+        operands.push_back(rhsOp);
+      }
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      newType = RankedTensorType::get({lshape[0], lshape[1], rshape[2] * rshape[3]}, module::getElementType(op));
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if (mode == "abc,abde->acde") {
+      // lhs :
+      //     abc -> acb(permute)
+      // rhs :
+      //     abde -> ab(de)(reshape)
+      // matmul:
+      //   lhs(acb) * rhs(ab(de)) = result(ac(de))
+      // result:
+      //     ab(de) -> abde(reshape)
+      // success!
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_trans"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[2], lshape[1]}, module::getElementType(lhs));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto tranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{lhs}, attrs);
+      operands.push_back(tranOp.getOutput());
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({rshape[0], rshape[1], rshape[2] * rshape[3]}, module::getElementType(op));
+      if (module::isWeight(rhs)) {
+        rhs.setType(newType);
+        operands.push_back(rhs);
+      } else {
+        loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+        auto rhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+        operands.push_back(rhsOp);
+      }
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      newType = RankedTensorType::get({lshape[0], lshape[2], rshape[2] * rshape[3]}, module::getElementType(op));
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
     } else {
       llvm_unreachable("Einsum not support this mode now");
     }
