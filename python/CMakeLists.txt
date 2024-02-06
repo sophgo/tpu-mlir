@@ -97,6 +97,7 @@ install(
   DIRECTORY ./ DESTINATION python FILES_MATCHING
   USE_SOURCE_PERMISSIONS
   PATTERN "test_onnx.py"
+  PATTERN "test_tpulang.py"
 )
 
 install(CODE "
