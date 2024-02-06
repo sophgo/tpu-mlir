@@ -1563,7 +1563,7 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
           return success();
         }
 
-        else {
+        else if (ori_shape[0] == 1 && ori_shape [1] != 1){
           // ReshapeOp
           rewriter.setInsertionPointAfter(slc_op);
           auto new_reshape_loc = module::getLocLike(slc_op.getOutput(), "Reshape");
