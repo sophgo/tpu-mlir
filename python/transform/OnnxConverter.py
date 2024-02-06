@@ -1351,7 +1351,7 @@ class OnnxConverter(BaseConverter):
             return new_equation
 
         equation = normalize_equation(equation)
-        lhs = self.getOperand(onnx_node.inputs[0])
+        lhs = self.getOp(onnx_node.inputs[0])
         rhs = self.getOp(onnx_node.inputs[1])
         new_op = top.EinsumOp(self.unranked_type,
                               [lhs, rhs],

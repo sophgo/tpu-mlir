@@ -73,7 +73,7 @@ def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
-def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abcd,cde->abce"]>;
+def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
