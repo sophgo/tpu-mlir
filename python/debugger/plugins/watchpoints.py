@@ -185,7 +185,7 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
                 result = np.array_equal(old_value, data)
                 if not result:
                     self.tdb.message(
-                        f"watchpoint index {k} has changed!\nold_value: \n{old_value}\nnow_value: \n{data}"
+                        f"\nwatchpoint index {k} has changed!\nold_value: \n{old_value}\nnow_value: \n{data}"
                     )
                     raise BreakpointStop()
         return
