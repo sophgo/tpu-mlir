@@ -20,7 +20,10 @@ static void LoweringDetectionOutput(PatternRewriter &rewriter, top::DetectionOut
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::DetectionOutputOp>(op, new_type, operands, op.getOperation()->getAttrs());
+  auto tpuOp = rewriter.replaceOpWithNewOp<tpu::DetectionOutputOp>(
+      op, new_type, operands, op.getOperation()->getAttrs());
+  // onnx ssd just have loc、conf
+  tpuOp.setOnnxNms(op.getInputs().size() < 3);
   return;
 }
 
