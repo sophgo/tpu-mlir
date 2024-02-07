@@ -1421,7 +1421,6 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
 
-
     int pattern_case = -1;
     auto left = op.getInput();
     auto right = op.getRight();
@@ -1436,158 +1435,168 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
     auto l_permute_op = dyn_cast<tpu::PermuteOp>(l_op);
     auto r_reshape_op = dyn_cast<tpu::ReshapeOp>(r_op);
 
-
     if (l_permute_op && r_reshape_op) {
-          pattern_case = 1;
+      pattern_case = 1;
     }
     auto l_reshape_op = dyn_cast<tpu::ReshapeOp>(l_op);
     auto r_permute_op = dyn_cast<tpu::PermuteOp>(r_op);
 
     if (l_reshape_op && r_permute_op) {
-          pattern_case = 2; // to do
+      pattern_case = 2; // to do
     }
 
-    if(pattern_case < 0) {
+    if (pattern_case < 0) {
       return failure();
     }
-    if (pattern_case == 1){
+    if (pattern_case == 1) {
 
-        auto order = module::getI64Array(l_permute_op.getOrder());
-        if (false ==
-        (order->size() == 4 && order->at(0) == 0 && order->at(1) == 2
-                            && order->at(2) == 1 && order->at(3) == 3)){
-          return failure();
-        }
-        // check forward
-        // slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) -- reshape(in_rs_op) -- reshape(r_reshape_op) -- matmul(op)
-        //                                                               |
-        //                                                            conv2d ...
+      auto order = module::getI64Array(l_permute_op.getOrder());
+      if (false ==
+          (order->size() == 4 && order->at(0) == 0 && order->at(1) == 2 &&
+           order->at(2) == 1 && order->at(3) == 3)) {
+        return failure();
+      }
+      // check forward
+      // slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) --
+      // reshape(in_rs_op) -- reshape(r_reshape_op) -- matmul(op)
+      //                                                               |
+      //                                                            conv2d ...
 
-        auto in_rs = r_reshape_op.getInput();
-        auto in_rs_op = dyn_cast<tpu::ReshapeOp>(in_rs.getDefiningOp());
-        if(!in_rs_op){
-          return failure();
-        }
-        if(in_rs_op->hasOneUse()){
-          return failure();
-        }
+      auto in_rs = r_reshape_op.getInput();
+      auto in_rs_op = dyn_cast<tpu::ReshapeOp>(in_rs.getDefiningOp());
+      if (!in_rs_op) {
+        return failure();
+      }
+      if (in_rs_op->hasOneUse()) {
+        return failure();
+      }
 
-        auto in_pm = in_rs_op.getInput();
-        auto in_pm_op = dyn_cast<tpu::PermuteOp>(in_pm.getDefiningOp());
-        if(!in_pm_op){
-          return failure();
-        }
-        if(!in_pm_op->hasOneUse()){
-          return failure();
-        }
+      auto in_pm = in_rs_op.getInput();
+      auto in_pm_op = dyn_cast<tpu::PermuteOp>(in_pm.getDefiningOp());
+      if (!in_pm_op) {
+        return failure();
+      }
+      if (!in_pm_op->hasOneUse()) {
+        return failure();
+      }
 
-        auto ori_rs = in_pm_op.getInput();
-        auto ori_rs_op = dyn_cast<tpu::ReshapeOp>(ori_rs.getDefiningOp());
-        if(!in_rs_op){
-          return failure();
-        }
-        if(!ori_rs_op->hasOneUse()){
-          return failure();
-        }
-        auto ori_shape = module::getShape(ori_rs_op);
+      auto ori_rs = in_pm_op.getInput();
+      auto ori_rs_op = dyn_cast<tpu::ReshapeOp>(ori_rs.getDefiningOp());
+      if (!in_rs_op) {
+        return failure();
+      }
+      if (!ori_rs_op->hasOneUse()) {
+        return failure();
+      }
+      auto ori_shape = module::getShape(ori_rs_op);
 
-        auto in_pm_order = module::getI64Array(in_pm_op.getOrder());
-        if (false ==
-        (in_pm_order->size() == 6 && in_pm_order->at(0) == 0 && in_pm_order->at(1) == 1
-                                  && in_pm_order->at(2) == 3 && in_pm_order->at(3) == 5
-                                  && in_pm_order->at(4) == 2 && in_pm_order->at(5) == 4)){
-          return failure();
-        }
+      auto in_pm_order = module::getI64Array(in_pm_op.getOrder());
+      if (false == (in_pm_order->size() == 6 && in_pm_order->at(0) == 0 &&
+                    in_pm_order->at(1) == 1 && in_pm_order->at(2) == 3 &&
+                    in_pm_order->at(3) == 5 && in_pm_order->at(4) == 2 &&
+                    in_pm_order->at(5) == 4)) {
+        return failure();
+      }
 
-        auto slc = ori_rs_op.getInput();
-        auto slc_op = dyn_cast<tpu::SliceOp>(slc.getDefiningOp());
-        if(!slc_op){
-          return failure();
-        }
-        if(!slc_op->hasOneUse()){
-          return failure();
-        }
+      auto slc = ori_rs_op.getInput();
+      auto slc_op = dyn_cast<tpu::SliceOp>(slc.getDefiningOp());
+      if (!slc_op) {
+        return failure();
+      }
+      if (!slc_op->hasOneUse()) {
+        return failure();
+      }
 
-        // check over
+      // check over
 
-        // set new right permute op order
-        std::vector<int64_t> new_order = {0,2,3,1};
+      // set new right permute op order
+      std::vector<int64_t> new_order = {0, 2, 3, 1};
 
-        // set new right reshape op shape
-        auto shape = module::getShape(r_reshape_op);
-        std::vector<int64_t> new_shape(4);
-        new_shape[0] = shape[0];
-        new_shape[1] = shape[3];
-        new_shape[2] = shape[1];
-        new_shape[3] = shape[2];
+      // set new right reshape op shape
+      auto shape = module::getShape(r_reshape_op);
+      std::vector<int64_t> new_shape(4);
+      new_shape[0] = shape[0];
+      new_shape[1] = shape[3];
+      new_shape[2] = shape[1];
+      new_shape[3] = shape[2];
 
-        /**
-         *                                                             conv2d ...
-         *                                                                |
-         * slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) -- reshape(in_rs_op) -- reshape(r_reshape_op) => matmul(op) <= permute(l_permute_op)
-         *
-         * transformed into:
-         *
-         * slice(slc) -- reshape(ori_rs_op) -- ...
-         *                   |                                            => matmul(op) <= permute(l_permute_op)
-         *                permute     --    reshape     --    permute   /
-         *          (new_permute_op_1)  (new_reshape_op)  (new_permute_op_2)
-         */
-        if (ori_shape[0] == 1 && ori_shape [1] == 1) {
-          rewriter.setInsertionPointAfter(ori_rs_op);
-          std::vector<int64_t> first_permute_order = {0, 1, 3, 2, 4, 5};
+      /**
+       *                                                             conv2d ...
+       *                                                                |
+       * slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) --
+       * reshape(in_rs_op) -- reshape(r_reshape_op) => matmul(op) <=
+       * permute(l_permute_op)
+       *
+       * transformed into:
+       *
+       * slice(slc) -- reshape(ori_rs_op) -- ...
+       *                   |                                            =>
+       * matmul(op) <= permute(l_permute_op) permute     --    reshape     --
+       * permute   / (new_permute_op_1)  (new_reshape_op)  (new_permute_op_2)
+       */
+      if (ori_shape[0] == 1 && ori_shape[1] == 1) {
+        rewriter.setInsertionPointAfter(ori_rs_op);
+        std::vector<int64_t> first_permute_order = {0, 1, 3, 2, 4, 5};
 
-          auto new_permute_op_1_loc = module::getLocLike(ori_rs_op.getOutput(), "new_Transpose_1");
-          auto new_permute_op_1 = rewriter.create<tpu::PermuteOp>(
-              new_permute_op_1_loc, ori_rs_op.getOutput().getType(),
-              ValueRange{ori_rs_op.getOutput(), module::getNoneOp(ori_rs_op)});
-          new_permute_op_1->setAttr("order", rewriter.getI64ArrayAttr(first_permute_order));
+        auto new_permute_op_1_loc =
+            module::getLocLike(ori_rs_op.getOutput(), "new_Transpose_1");
+        auto new_permute_op_1 = rewriter.create<tpu::PermuteOp>(
+            new_permute_op_1_loc, ori_rs_op.getOutput().getType(),
+            ValueRange{ori_rs_op.getOutput(), module::getNoneOp(ori_rs_op)});
+        new_permute_op_1->setAttr(
+            "order", rewriter.getI64ArrayAttr(first_permute_order));
 
-          rewriter.setInsertionPointAfter(new_permute_op_1);
-          auto new_reshape_op_loc = module::getLocLike(ori_rs_op.getOutput(), "new_Reshape");
-          auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
-              new_reshape_op_loc, new_permute_op_1.getOutput().getType(), new_permute_op_1.getOutput());
-          new_reshape_op.setOperand(0, new_permute_op_1.getOutput());
-          module::setShape(new_reshape_op.getOutput(), new_shape);
+        rewriter.setInsertionPointAfter(new_permute_op_1);
+        auto new_reshape_op_loc =
+            module::getLocLike(ori_rs_op.getOutput(), "new_Reshape");
+        auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+            new_reshape_op_loc, new_permute_op_1.getOutput().getType(),
+            new_permute_op_1.getOutput());
+        new_reshape_op.setOperand(0, new_permute_op_1.getOutput());
+        module::setShape(new_reshape_op.getOutput(), new_shape);
 
-          rewriter.setInsertionPointAfter(new_reshape_op);
-          auto new_permute_op_2_loc = module::getLocLike(ori_rs_op.getOutput(), "new_Transpose_2");
-          auto new_permute_op_2 = rewriter.create<tpu::PermuteOp>(
-              new_permute_op_2_loc, r_reshape_op.getOutput().getType(),
-              ValueRange{new_reshape_op.getOutput(), module::getNoneOp(new_reshape_op)});
-          new_permute_op_2->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+        rewriter.setInsertionPointAfter(new_reshape_op);
+        auto new_permute_op_2_loc =
+            module::getLocLike(ori_rs_op.getOutput(), "new_Transpose_2");
+        auto new_permute_op_2 = rewriter.create<tpu::PermuteOp>(
+            new_permute_op_2_loc, r_reshape_op.getOutput().getType(),
+            ValueRange{new_reshape_op.getOutput(),
+                       module::getNoneOp(new_reshape_op)});
+        new_permute_op_2->setAttr("order", rewriter.getI64ArrayAttr(new_order));
 
-          op.setOperand(1, new_permute_op_2.getOutput());
-          rewriter.eraseOp(r_reshape_op);
+        op.setOperand(1, new_permute_op_2.getOutput());
+        rewriter.eraseOp(r_reshape_op);
 
-          return success();
-        }
+        return success();
+      }
 
-        else if (ori_shape[0] == 1 && ori_shape [1] != 1){
-          // ReshapeOp
-          rewriter.setInsertionPointAfter(slc_op);
-          auto new_reshape_loc = module::getLocLike(slc_op.getOutput(), "Reshape");
-          auto rs_op = rewriter.create<tpu::ReshapeOp>(
-              new_reshape_loc, slc_op.getOutput().getType(), slc_op.getOutput());
-          rs_op.setOperand(0, slc_op.getOutput());
-          module::setShape(rs_op.getOutput(), new_shape);
+      else if (ori_shape[0] == 1 && ori_shape[1] != 1) {
+        // ReshapeOp
+        rewriter.setInsertionPointAfter(slc_op);
+        auto new_reshape_loc =
+            module::getLocLike(slc_op.getOutput(), "Reshape");
+        auto rs_op = rewriter.create<tpu::ReshapeOp>(
+            new_reshape_loc, slc_op.getOutput().getType(), slc_op.getOutput());
+        rs_op.setOperand(0, slc_op.getOutput());
+        module::setShape(rs_op.getOutput(), new_shape);
 
-          rewriter.setInsertionPointAfter(rs_op);
-          auto new_permute_loc = module::getLocLike(rs_op.getOutput(), "Transpose");
-          auto new_permute_op = rewriter.create<tpu::PermuteOp>(
-            new_permute_loc, r_reshape_op.getOutput().getType(), ValueRange{rs_op.getOutput(),module::getNoneOp(rs_op)});
-          new_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+        rewriter.setInsertionPointAfter(rs_op);
+        auto new_permute_loc =
+            module::getLocLike(rs_op.getOutput(), "Transpose");
+        auto new_permute_op = rewriter.create<tpu::PermuteOp>(
+            new_permute_loc, r_reshape_op.getOutput().getType(),
+            ValueRange{rs_op.getOutput(), module::getNoneOp(rs_op)});
+        new_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
 
-          op.setOperand(1, new_permute_op.getOutput());
-          rewriter.eraseOp(r_reshape_op);
+        op.setOperand(1, new_permute_op.getOutput());
+        rewriter.eraseOp(r_reshape_op);
 
-          return success();
-        }
+        return success();
+      }
     }
     return failure();
   }
 };
-
 
 /**
  * permute \                            \
@@ -1603,18 +1612,18 @@ struct ErasePermuteAroundAdd : public OpRewritePattern<tpu::AddOp> {
 
     auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
     auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
-    if (!l_permute_op || !r_permute_op){
+    if (!l_permute_op || !r_permute_op) {
       return failure();
     }
     auto l_in_shape = module::getShape(l_permute_op.getInput()).vec();
     auto r_in_shape = module::getShape(r_permute_op.getInput()).vec();
 
-    if (l_in_shape.size() != r_in_shape.size()){
+    if (l_in_shape.size() != r_in_shape.size()) {
       return failure();
     }
 
     std::vector<int64_t> new_order(l_in_shape.size());
-    for(int i = 0; i < l_in_shape.size(); i++){
+    for (int i = 0; i < l_in_shape.size(); i++) {
 
       auto it = std::find(r_in_shape.begin(), r_in_shape.end(), l_in_shape[i]);
       size_t permute_index = std::distance(r_in_shape.begin(), it);
@@ -1624,21 +1633,21 @@ struct ErasePermuteAroundAdd : public OpRewritePattern<tpu::AddOp> {
     auto next_op = *op->getResult(0).getUsers().begin();
     auto out_permute_op = dyn_cast<tpu::PermuteOp>(next_op);
 
-    if (!out_permute_op){
+    if (!out_permute_op) {
       return failure();
     }
-    if (!out_permute_op->hasOneUse()){
+    if (!out_permute_op->hasOneUse()) {
       return failure();
     }
 
     auto l_permute_order = *module::getI64Array(l_permute_op.getOrder());
     auto r_permute_order = *module::getI64Array(r_permute_op.getOrder());
     auto out_permute_order = *module::getI64Array(out_permute_op.getOrder());
-    if (l_permute_order != out_permute_order){
+    if (l_permute_order != out_permute_order) {
       return failure();
     }
-    op.setOperand(0,l_permute_op.getInput());
-    out_permute_op.getOutput().replaceAllUsesExcept(op.getOutput(),op);
+    op.setOperand(0, l_permute_op.getInput());
+    out_permute_op.getOutput().replaceAllUsesExcept(op.getOutput(), op);
 
     r_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
     auto new_shape = module::getShape(out_permute_op.getOutput()).vec();
@@ -1810,7 +1819,8 @@ public:
 };
 #endif
 
-Operation* get_next_op(Operation *op, std::vector<mlir::Operation *> &mulshifts) {
+Operation *get_next_op(Operation *op,
+                       std::vector<mlir::Operation *> &mulshifts) {
   auto next_op = *op->getResult(0).getUsers().begin();
   if (!isa<tpu::MulShiftOp>(next_op)) {
     return next_op;
@@ -1830,7 +1840,7 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     for (auto user : op.getOutput().getUsers()) {
       permute_users.emplace_back(user);
     }
-    if (permute_users.size() != 2){
+    if (permute_users.size() != 2) {
       return failure();
     }
     auto slice_l_op = dyn_cast_or_null<tpu::SliceOp>(permute_users[1]);
@@ -1843,7 +1853,7 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     for (auto user : slice_r_op.getOutput().getUsers()) {
       slice_users.emplace_back(user);
     }
-    if (slice_users.size() != 3){
+    if (slice_users.size() != 3) {
       return failure();
     }
     auto mul_0_op = dyn_cast_or_null<tpu::MulOp>(slice_users[2]);
@@ -1857,15 +1867,16 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
         *slice_1_op.getOutput().getUsers().begin());
     auto mulshift_op = dyn_cast_or_null<tpu::MulShiftOp>(
         *slice_1_op.getOutput().getUsers().begin());
-    if ((!mulconst_op || !mulconst_op->hasOneUse()) && (!mulshift_op || !mulshift_op->hasOneUse()))
+    if ((!mulconst_op || !mulconst_op->hasOneUse()) &&
+        (!mulshift_op || !mulshift_op->hasOneUse()))
       return failure();
     auto mulconst_or_mulshift_op = mulconst_op ? mulconst_op : mulshift_op;
     auto unsqueeze_0_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
         *get_next_op(mulconst_or_mulshift_op, mulshifts));
     if (!unsqueeze_0_op || !unsqueeze_0_op->hasOneUse())
       return failure();
-    auto unsqueeze_1_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
-        *get_next_op(slice_2_op, mulshifts));
+    auto unsqueeze_1_op =
+        dyn_cast_or_null<tpu::UnsqueezeOp>(*get_next_op(slice_2_op, mulshifts));
     if (!unsqueeze_1_op || !unsqueeze_1_op->hasOneUse())
       return failure();
     auto concat_0_op = dyn_cast_or_null<tpu::ConcatOp>(
@@ -1874,12 +1885,12 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     if (concat_0_op.getOperation() != get_next_op(unsqueeze_1_op, mulshifts))
       return failure();
-    auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(
-        *get_next_op(concat_0_op, mulshifts));
+    auto reshape_op =
+        dyn_cast_or_null<tpu::ReshapeOp>(*get_next_op(concat_0_op, mulshifts));
     if (!reshape_op || !reshape_op->hasOneUse())
       return failure();
-    auto mul_1_op = dyn_cast_or_null<tpu::MulOp>(
-        *get_next_op(reshape_op, mulshifts));
+    auto mul_1_op =
+        dyn_cast_or_null<tpu::MulOp>(*get_next_op(reshape_op, mulshifts));
     if (!mul_1_op || !mul_1_op->hasOneUse())
       return failure();
     auto add_op =
@@ -1888,8 +1899,8 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     if (add_op.getOperand(1) != mul_1_op.getOutput())
       return failure();
-    auto concat_1_op = dyn_cast_or_null<tpu::ConcatOp>(
-        *get_next_op(slice_l_op, mulshifts));
+    auto concat_1_op =
+        dyn_cast_or_null<tpu::ConcatOp>(*get_next_op(slice_l_op, mulshifts));
     if (!concat_1_op || !concat_1_op->hasOneUse())
       return failure();
     if (concat_1_op.getOperand(1) != add_op.getOutput())
@@ -1920,7 +1931,8 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     auto slice_r_outshape = module::getShape(slice_r_op.getOutput());
     int64_t h = slice_r_outshape[2];
     auto mulconst_or_mulshift_output = mulconst_or_mulshift_op->getResult(0);
-    auto mulconst_or_mulshift_shape = module::getShape(mulconst_or_mulshift_output);
+    auto mulconst_or_mulshift_shape =
+        module::getShape(mulconst_or_mulshift_output);
     if (h != mulconst_or_mulshift_shape[2])
       return failure();
     if (*module::getI64Array(unsqueeze_0_op.getAxes()) !=
@@ -2058,7 +2070,8 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
     concat_1_op.getOutput().replaceAllUsesExcept(permute_op.getOutput(),
                                                  permute_op);
     for (auto mulshift_op : mulshifts) {
-      module::setShape(mulshift_op->getResult(0), module::getShape(mulshift_op->getOperand(0)));
+      module::setShape(mulshift_op->getResult(0),
+                       module::getShape(mulshift_op->getOperand(0)));
     }
     return success();
   }
@@ -2324,7 +2337,10 @@ namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-  patterns->add<MatMul2FAttentionPattern>(ctx, 10);
+  if (module::getDeviceNum() < 2) {
+    // DevParallel not support FAttention, need to support in future
+    patterns->add<MatMul2FAttentionPattern>(ctx, 10);
+  }
   patterns->add<LargePadConvPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,
@@ -2352,8 +2368,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ReshapeSliceSqueezePattern>(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern,
-                SplitMixedQuantizedMLPPattern>(ctx);
+  patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
 }
 } // namespace tpu
 
