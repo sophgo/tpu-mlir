@@ -91,9 +91,12 @@ struct AttentionReorderPattern : public RewritePattern {
         if (opd == out) {
           continue;
         }
+
         auto op_ = opd.getDefiningOp();
         if (op_ == nullptr || isa<top::NoneOp>(op_)) {
           continue;
+        } else if (!isa<top::WeightOp>(op_)) {
+          return failure(); // move activations may cause use before define problem
         }
         mm_ops.push_back(op_);
       }
@@ -110,6 +113,7 @@ struct AttentionReorderPattern : public RewritePattern {
       }
       last_op = op_;
     }
+
     return fixed ? success() : failure();
   }
 };
