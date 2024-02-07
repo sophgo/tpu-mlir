@@ -34,7 +34,11 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   std::vector<Value> inputs;
   std::vector<Type> types;
   std::vector<Location> locs;
-  Value opd = ops_begin[1]->getOperand(0);
+  Value opd = ops_begin[0]->getOperand(0);
+  if (isa<tpu::MatMulOp, tpu::A16MatMulOp>(ops_begin[0])) {
+    int num_opds = ops_begin[0]->getNumOperands();
+    opd = ops_begin[0]->getOperand(num_opds - 1);
+  }
   for (auto op : ops_begin) {
     auto input = op->getOperand(0);
     if (isa<tpu::GatherOp>(op)) {
@@ -59,6 +63,11 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
     inputs.push_back(input);
     types.push_back(type);
     locs.push_back(loc);
+  }
+  for (auto op : ops_begin) {
+    if (op->isBeforeInBlock(opd.getDefiningOp())) {
+      op->moveAfter(opd.getDefiningOp());
+    }
   }
   auto begin_loc = FusedLoc::get(ctx, locs);
   rewriter.setInsertionPointAfterValue(opd);

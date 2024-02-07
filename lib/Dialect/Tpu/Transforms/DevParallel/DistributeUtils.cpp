@@ -1024,9 +1024,6 @@ cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
                    Value &cur_out, int axis, std::vector<Value> pos_ids,
                    int num_devices, int cur_device, int num_head) {
   auto suffix = std::to_string(cur_device);
-  // std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
-  // new_shape[axis] =
-  //     get_splited_size(new_shape[axis], num_devices, cur_device, num_head, 0);
   auto users = next_op->getUsers();
   cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device,
                     num_head);
@@ -1101,17 +1098,20 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     q_group_size = mm0.getQGroupSize();
   }
 
+  // auto N = w_trans ? filterShape[num_dims - 2] : filterShape[num_dims - 1];
+  // auto length = ceiling_func(N, num_devices);
+  // if (q_group_size) {
+  //   auto scale_c = ceiling_func(N, num_devices * backend::Arch::NPU_NUM);
+  //   length = q_group_size * scale_c;
+  // }
+  // auto offset = cur_device * length;
+  // length = std::min(length, N - offset);
+
   auto N = w_trans ? filterShape[num_dims - 2] : filterShape[num_dims - 1];
   auto length =
       get_splited_size(N, num_devices, cur_device, num_head, q_group_size);
-  //  // how to splited for q_group_size when no divisible to num_devices
-  //  if (q_group_size) {
-  //    auto scale_c = ceiling_func(N, num_devices * q_group_size);
-  //    length = q_group_size * scale_c;
-  //  }
   auto offset =
       get_splited_offset(N, num_devices, cur_device, num_head, q_group_size);
-  // length = std::min(length, N - offset);
 
   auto out = next_op->getResult(0);
   std::vector<int64_t> new_shape = module::getShape(out);
@@ -1194,6 +1194,15 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     q_group_size = mm0.getQGroupSize();
   }
 
+  // auto K = filterShape[num_dims - 2 + w_trans];
+  // auto length = ceiling_func(K, num_devices);
+  // if (q_group_size) {
+  //   auto scale_w = ceiling_func(2 * K, num_devices * q_group_size);
+  //   length = scale_w * q_group_size / 2;
+  // }
+  // auto offset = cur_device * length;
+  // length = std::min(length, K - offset);
+
   auto K = filterShape[num_dims - 2 + w_trans];
   auto length =
       get_splited_size(K, num_devices, cur_device, num_head, q_group_size);
@@ -1207,7 +1216,6 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
                                 q_group_size) /
              2;
   }
-  // length = std::min(length, K - offset);
 
   auto out = next_op->getResult(0);
   auto new_loc = module::getLocLike(out, suffix);
@@ -1247,7 +1255,6 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
       assert(module::getShape(mm0.getScale()).size() == 2 &&
              "scale and zp weight reorder should not happen before distribute");
       assert(2 * length % q_group_size == 0);
-
       scale_length = 2*length/q_group_size;
       scale_offset = 2*offset / q_group_size;
     }
@@ -1293,8 +1300,9 @@ void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
   auto new_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   rewriter.setInsertionPointAfterValue(cur_out);
   std::vector<NamedAttribute> attrs;
+  float const_val = cur_device == 0 ? 1.0 : 0;
   attrs.push_back(rewriter.getNamedAttr(
-      "const_val", rewriter.getF64FloatAttr(1. / num_devices)));
+      "const_val", rewriter.getF64FloatAttr(const_val)));
   auto new_type = cur_out.getType();
   auto new_op = rewriter.create<tpu::MulConstOp>(new_loc, new_type,
                                                  ValueRange{cur_out}, attrs);
