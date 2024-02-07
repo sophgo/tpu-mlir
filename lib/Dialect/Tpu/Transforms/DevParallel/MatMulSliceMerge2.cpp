@@ -100,9 +100,8 @@ MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
   std::vector<int64_t> begin_methods{1, 1};
   std::vector<Operation *> end_ops{end_op};
   std::vector<int64_t> end_methods{1};
-  distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::MatMulSliceMerge2, begin_methods,
-             end_methods, 0);
+  distribute(rewriter, begin_ops, end_ops, tpu::DevPattern::MatMulSliceMerge2,
+             begin_methods, end_methods, 0);
   return success();
 }
 
@@ -289,8 +288,8 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
 
   // Bingo !!
   distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::AttentionSliceMerge2, begin_methods,
-             end_methods, num_head);
+             tpu::DevPattern::AttentionSliceMerge2, begin_methods, end_methods,
+             num_head);
 
   return success();
 }
@@ -301,8 +300,7 @@ template LogicalResult AttentionSliceMerge2<tpu::MatMulOp>::matchAndRewrite(
 template LogicalResult AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
-void sliceAttentionMerge2Split(PatternRewriter &rewriter,
-                               tpu::DevBeginOp op,
+void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                                int64_t num_devices) {
   // Without StripIOQuant:
   // users: residual(norm), pos0, pos1, attn_mask, [past_k, past_v]
@@ -339,7 +337,8 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     // clone residual branch
     next_op = residual;
     cur_out = next_op->getOperand(0);
-    if (isa<tpu::AddOp>(next_op) && cur_out != attn_ln->getOperand(0)) {
+    if (isa<tpu::AddOp>(next_op) &&
+        cur_out.getDefiningOp() != attn_ln->getOperand(0).getDefiningOp()) {
       cur_out = next_op->getOperand(1);
     }
     if (isa<tpu::MatMulOp>(next_op)) {
@@ -485,7 +484,8 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter,
     // out0 = attn_out + residual_out
     if (!isa<tpu::AddOp>(next_op)) {
       auto matmul = attn_out.getDefiningOp();
-      matmul->setOperand(2, residual_out);
+      int num_opds = matmul->getNumOperands();
+      matmul->setOperand(num_opds - 1, residual_out);
     } else {
       operands.clear();
       operands.push_back(residual_out);
