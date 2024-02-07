@@ -88,10 +88,14 @@ static string shape_str(const Shape *shape, bool n_dynamic = false,
 }
 
 static string tensor_str(const Tensor *tensor, bool is_output = false,
-                         bool n_dynamic = false, bool h_w_dynamic = false) {
+                         bool n_dynamic = false, bool h_w_dynamic = false,
+                         int devid = -1) {
   stringstream ss;
   string prefix = is_output ? "output: " : "input: ";
   ss << prefix;
+  if (devid >= 0) {
+    ss << "devid(" << devid << ") ";
+  }
   auto shape = tensor->shape()->Get(0);
   ss << tensor->name()->str() << ", "
      << shape_str(shape, n_dynamic, h_w_dynamic) << ", "
@@ -114,10 +118,15 @@ static void show(const NetParameter *parameter, bool dynamic = false) {
   }
 }
 
-static void reorder(std::vector<const Tensor *> &tensors) {
-  std::sort(tensors.begin(), tensors.end(),
-            [](const Tensor *a, const Tensor *b) {
-              return a->index() <= b->index();
+typedef std::pair<const bmodel::Tensor *, uint32_t> tensor_pair_t;
+
+static void reorder(std::vector<tensor_pair_t> &pairs) {
+  std::sort(pairs.begin(), pairs.end(),
+            [](const tensor_pair_t &a, const tensor_pair_t &b) {
+              if (a.second != b.second) {
+                return a.second < b.second;
+              }
+              return a.first->index() <= b.first->index();
             });
 }
 
@@ -180,6 +189,9 @@ void bm_show(const string &filename, bool all) {
     if (net->io_alone()) {
       cout << "io alone: true" << endl;
     }
+    if (cascade) {
+      cout << "device id: " << cascade->device_id() << endl;
+    }
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();
@@ -195,8 +207,8 @@ void bm_show(const string &filename, bool all) {
     cout << "==========================================" << endl;
     cout << "net: [" << it.first << "]  cascade" << endl;
     // show inputs
-    std::vector<const bmodel::Tensor *> ins;
-    std::vector<const bmodel::Tensor *> outs;
+    std::vector<tensor_pair_t> ins;
+    std::vector<tensor_pair_t> outs;
     for (auto idx : *it.second) {
       auto net = model->net()->Get(idx);
       auto parameter = net->parameter()->Get(0);
@@ -204,28 +216,30 @@ void bm_show(const string &filename, bool all) {
       auto output_tensors = parameter->output_tensor();
       for (uint32_t idx = 0; idx < input_tensors->size(); idx++) {
         auto in = input_tensors->Get(idx);
-        if (in->hidden() == 1) {
-          ins.push_back(in);
-        } else if (in->hidden() == 2) {
-          outs.push_back(in);
+        auto pair = tensor_pair_t(in, net->cascade()->device_id());
+        if (in->hidden() == 1 || in->hidden() == 3) {
+          ins.push_back(pair);
+        } else if (in->hidden() == 2 || in->hidden() == 4) {
+          outs.push_back(pair);
         }
       }
       for (uint32_t idx = 0; idx < output_tensors->size(); idx++) {
         auto out = output_tensors->Get(idx);
-        if (out->hidden() == 1) {
-          ins.push_back(out);
-        } else if (out->hidden() == 2) {
-          outs.push_back(out);
+        auto pair = tensor_pair_t(out, net->cascade()->device_id());
+        if (out->hidden() == 1 || out->hidden() == 3) {
+          ins.push_back(pair);
+        } else if (out->hidden() == 2 || out->hidden() == 4) {
+          outs.push_back(pair);
         }
       }
     }
     reorder(ins);
     reorder(outs);
-    for (auto &in : ins) {
-      cout << tensor_str(in, false);
+    for (size_t i = 0; i < ins.size(); i++) {
+      cout << tensor_str(ins[i].first, false, false, false, ins[i].second);
     }
-    for (auto &out : outs) {
-      cout << tensor_str(out, true);
+    for (size_t i = 0; i < outs.size(); i++) {
+      cout << tensor_str(outs[i].first, true, false, false, outs[i].second);
     }
   }
   cout << std::endl;
