@@ -52,9 +52,13 @@ cpu_num=`cat /proc/stat | grep cpu[0-9] -c`
 cmake --build $BUILD_PATH --target install -j${cpu_num}
 
 # Clean up some files for release build
-if [ "$1" = "RELEASE" ]; then
+if [ "$1" != "DEBUG" ]; then
   # build doc
-  ./release_doc.sh
+  ./release_doc.sh > doc.log 2>&1
+  if grep -i 'error' doc.log; then
+      exit 1
+  fi
+
   # strip mlir tools
   pushd $INSTALL_PATH
   find ./ -name "*.so"  ! -name "*_kernel_module.so" ! -name "*_atomic_kernel.so" | xargs strip

@@ -55,7 +55,7 @@ class Table(Node):
 
         :arg row: list of items in the table.
         """
-        self.children.append([txt for txt in row])
+        self.children.append([("`" + txt + "`" if txt else txt) for txt in row])
 
     def __repr__(self):
         def print_table(header):
