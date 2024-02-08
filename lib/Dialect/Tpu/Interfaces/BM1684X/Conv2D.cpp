@@ -200,7 +200,8 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
   p.spec.buffer_local_addr = gi.buffer_addr;
@@ -216,10 +217,14 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.stride_h = attr.sh;
   common.stride_w = attr.sw;
   common.groups = attr.groups;
-  common.pad_h_t = (sec_info.h_idx == 0 ? attr.pht : 0);
-  common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
-  common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
-  common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
+  common.pad_h_t = (in_gi.h_idx == 0 ? attr.pht : 0);
+  common.pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+  common.pad_w_l = (in_gi.w_idx == 0 ? attr.pwl : 0);
+  common.pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
+  // common.pad_h_t = (sec_info.h_idx == 0 ? attr.pht : 0);
+  // common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
+  // common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
+  // common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
   common.round_mode = ROUNDING_HALF_UP;
   common.has_bias = attr.has_bias;
   common.bias_sign = true;

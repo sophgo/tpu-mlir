@@ -2430,6 +2430,275 @@ public:
   }
 };
 
+// merge_mode = 1: only merge weight oc
+// merge_mode = 2: merge weight ic and oc
+static Value merge_conv_weight(PatternRewriter &rewriter, Operation *op,
+                               Value w0, Value w1, int merge_mode,
+                               std::string suffix) {
+  auto op0 = w0.getDefiningOp();
+  auto op1 = w1.getDefiningOp();
+  auto weight0 = dyn_cast<top::WeightOp>(op0);
+  auto weight1 = dyn_cast<top::WeightOp>(op1);
+  auto data0 = weight0.read<int8_t>();
+  auto data1 = weight1.read<int8_t>();
+
+  auto wshape0 = module::getShape(weight0.getOutput());
+  // auto wshape1 = module::getShape(weight1.getOutput());
+  std::shared_ptr<std::vector<int8_t>> new_data;
+  std::vector<int64_t> new_shape{wshape0[0], wshape0[1], wshape0[2],
+                                 wshape0[3]};
+  if (merge_mode == 1) {
+    new_shape[0] = wshape0[0] * 2;
+    int size = data0->size() + data1->size();
+    new_data = std::make_shared<std::vector<int8_t>>(size, 0);
+    std::copy(data0->data(), data0->data() + data0->size(), new_data->data());
+    std::copy(data1->data(), data1->data() + data1->size(),
+              new_data->data() + data0->size());
+  } else if (merge_mode == 2) {
+    new_shape[0] = wshape0[0] * 2;
+    new_shape[1] = wshape0[1] * 2;
+    int size = (data0->size() + data1->size()) * 2;
+    new_data = std::make_shared<std::vector<int8_t>>(size, 0);
+    int size0 = data0->size() * 2;
+    int offset = wshape0[1] * wshape0[2] * wshape0[3];
+    for (int i = 0; i < wshape0[0]; ++i) {
+      std::copy(data0->data() + offset * i, data0->data() + offset * (i + 1),
+                new_data->data() + offset * i * 2);
+      std::copy(data1->data() + offset * i, data1->data() + offset * (i + 1),
+                new_data->data() + size0 + offset * i * 2 + offset);
+    }
+  } else {
+    return nullptr;
+  }
+  // auto stype = module::getStorageType(weight0.getOutput());
+  rewriter.setInsertionPointAfter(op);
+  auto new_type = RankedTensorType::get(
+      new_shape, module::getElementType(weight0.getOutput()));
+  return top::WeightOp::create<int8_t>(op0, suffix, *new_data, new_type);
+}
+
+static Value merge_conv_bias(PatternRewriter &rewriter, Operation *op, Value b0,
+                             Value b1, std::string suffix) {
+  auto op0 = b0.getDefiningOp();
+  auto op1 = b1.getDefiningOp();
+  auto bias0 = dyn_cast<top::WeightOp>(op0);
+  auto bias1 = dyn_cast<top::WeightOp>(op1);
+  auto data0 = bias0.read<int32_t>();
+  auto data1 = bias1.read<int32_t>();
+
+  auto bshape0 = module::getShape(bias0.getOutput());
+  std::vector<int64_t> new_shape{bshape0[0], bshape0[1] * 2, bshape0[2],
+                                 bshape0[3]};
+  std::shared_ptr<std::vector<int32_t>> new_data =
+      std::make_shared<std::vector<int32_t>>(new_shape[1], 0);
+  std::copy(data0->data(), data0->data() + data0->size(), new_data->data());
+  std::copy(data1->data(), data1->data() + data1->size(),
+            new_data->data() + data0->size());
+  // auto stype = module::getStorageType(bias0.getOutput());
+  rewriter.setInsertionPointAfter(op);
+  auto new_type = RankedTensorType::get(
+      new_shape, module::getElementType(bias0.getOutput()));
+  return top::WeightOp::create<int32_t>(op0, suffix, *new_data, new_type);
+}
+
+static tpu::SliceOp create_slice_op(PatternRewriter &rewriter, Operation *op,
+                                    Value input, int offset, int end,
+                                    std::string suffix) {
+  auto name = module::getName(input);
+  auto new_name = name.str() + "_" + suffix;
+  auto new_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  rewriter.setInsertionPointAfterValue(input);
+  std::vector<int64_t> new_shape = module::getShape(input);
+  std::vector<int64_t> offset_v(new_shape.size(), 0);
+  std::vector<int64_t> step_v(new_shape.size(), 1);
+  std::vector<int64_t> end_v = new_shape;
+  offset_v[1] = offset;
+  end_v[1] = end;
+  new_shape[1] = end - offset;
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offset_v)));
+  attrs.push_back(
+      rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(step_v)));
+  attrs.push_back(
+      rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(end_v)));
+  attrs.push_back(rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(1)));
+  auto new_type = module::getTypeLike(input, new_shape);
+  auto none = module::getNoneOp(input.getDefiningOp());
+  auto new_op = rewriter.create<tpu::SliceOp>(
+      new_loc, new_type, ValueRange{input, none, none, none, none}, attrs);
+
+  return new_op;
+}
+
+class ConvMergePattern : public OpRewritePattern<tpu::Conv2DOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+    if (!module::isUniformQuantized(in)) {
+      return failure();
+    }
+    auto pre_op = in.getDefiningOp();
+
+    auto ins = pre_op->getOperands();
+    if (!isa<tpu::ConcatOp>(pre_op) || ins.size() != 3) {
+      return failure();
+    }
+
+    tpu::Conv2DOp conv1, conv2, conv3;
+    for (size_t i = 0; i < ins.size(); ++i) {
+      if (!isa<tpu::Conv2DOp>(ins[i].getDefiningOp())) {
+        return failure();
+      }
+
+      auto op_ = ins[i].getDefiningOp();
+      int num_conv = 1;
+      int num_users = std::distance(op_->user_begin(), op_->user_end());
+      while (num_users == 1) {
+        op_ = op_->getOperand(0).getDefiningOp();
+        num_users = std::distance(op_->user_begin(), op_->user_end());
+        if (num_users == 1) {
+          if (!isa<tpu::Conv2DOp>(op_)) {
+            return failure();
+          }
+          num_conv++;
+        }
+      }
+      if (num_conv == 1) {
+        conv1 = cast<tpu::Conv2DOp>(ins[i].getDefiningOp());
+      } else if (num_conv == 2) {
+        conv2 = cast<tpu::Conv2DOp>(ins[i].getDefiningOp());
+      } else if (num_conv == 3) {
+        conv3 = cast<tpu::Conv2DOp>(ins[i].getDefiningOp());
+      } else {
+        return failure();
+      }
+    }
+    auto conv2_ishape = module::getShape(conv2->getOperand(0));
+    auto conv2_wshape = module::getShape(conv2->getOperand(1));
+    auto conv3_ishape = module::getShape(conv3->getOperand(0));
+    auto conv3_wshape = module::getShape(conv3->getOperand(1));
+    if (conv2_ishape[1] != 32 || conv2_wshape[0] != 32 ||
+        conv3_ishape[1] != 32 || conv3_wshape[0] != 32) {
+      return failure();
+    }
+    auto conv4 = dyn_cast<tpu::Conv2DOp>(conv2->getOperand(0).getDefiningOp());
+    auto conv5 = dyn_cast<tpu::Conv2DOp>(conv3->getOperand(0).getDefiningOp());
+    auto conv4_ishape = module::getShape(conv4->getOperand(0));
+    auto conv4_wshape = module::getShape(conv4->getOperand(1));
+    auto conv5_ishape = module::getShape(conv5->getOperand(0));
+    auto conv5_wshape = module::getShape(conv5->getOperand(1));
+    if (conv4_ishape[1] != 256 || conv4_wshape[0] != 32 ||
+        conv5_ishape[1] != 32 || conv5_wshape[0] != 32) {
+      return failure();
+    }
+    auto conv6 = dyn_cast<tpu::Conv2DOp>(conv5->getOperand(0).getDefiningOp());
+    auto conv6_ishape = module::getShape(conv6->getOperand(0));
+    auto conv6_wshape = module::getShape(conv6->getOperand(1));
+    if (conv6_ishape[1] != 256 || conv6_wshape[0] != 32) {
+      return failure();
+    }
+    auto src_op = conv6.getInput().getDefiningOp();
+
+    // merge conv4 and conv6
+    auto new_weight0 = merge_conv_weight(rewriter, src_op, conv4->getOperand(1),
+                                         conv6->getOperand(1), 1, "merge_0");
+    auto new_bias0 =
+        merge_conv_bias(rewriter, new_weight0.getDefiningOp(),
+                        conv4->getOperand(2), conv6->getOperand(2), "merge_0");
+    auto multi4 =
+        module::getI64Array(conv4.getMultiplier(), conv4_wshape[0], 1);
+    auto multi6 =
+        module::getI64Array(conv6.getMultiplier(), conv6_wshape[0], 1);
+    auto rshift4 = module::getI64Array(conv4.getRshift(), conv4_wshape[0], 0);
+    auto rshift6 = module::getI64Array(conv6.getRshift(), conv6_wshape[0], 0);
+    std::vector<int64_t> new_multi0(conv4_wshape[0] * 2, 0);
+    std::vector<int64_t> new_rshift0(conv4_wshape[0] * 2, 0);
+    std::copy(multi4->begin(), multi4->end(), new_multi0.begin());
+    std::copy(rshift4->begin(), rshift4->end(), new_rshift0.begin());
+    std::copy(multi6->begin(), multi6->end(),
+              new_multi0.begin() + conv4_wshape[0]);
+    std::copy(rshift6->begin(), rshift6->end(),
+              new_rshift0.begin() + conv4_wshape[0]);
+
+    std::vector<int64_t> conv6_oshape = module::getShape(conv6.getOutput());
+    conv6_oshape[1] = conv4_wshape[0] + conv6_wshape[0];
+    std::string conv_name6 =
+        module::getName(conv6.getOperation()).str() + "_merge_0";
+    auto new_loc0 = NameLoc::get(rewriter.getStringAttr(conv_name6));
+    auto new_type0 = module::getTypeLike(conv6.getOutput(), conv6_oshape);
+    std::vector<Value> operands0{src_op->getResult(0), new_weight0, new_bias0};
+    std::vector<NamedAttribute> attrs0;
+    for (auto &attr : conv6->getAttrs()) {
+      attrs0.push_back(attr);
+    }
+    rewriter.setInsertionPointAfter(src_op);
+    auto new_conv0 =
+        rewriter.create<tpu::Conv2DOp>(new_loc0, new_type0, operands0, attrs0);
+    new_conv0.setMultiplierAttr(rewriter.getI64ArrayAttr(new_multi0));
+    new_conv0.setRshiftAttr(rewriter.getI64ArrayAttr(new_rshift0));
+    new_weight0.getDefiningOp()->moveBefore(new_conv0);
+    new_bias0.getDefiningOp()->moveBefore(new_conv0);
+
+    // merge conv2 and conv5
+    auto new_weight1 =
+        merge_conv_weight(rewriter, new_conv0, conv2->getOperand(1),
+                          conv5->getOperand(1), 2, "merge_1");
+    auto new_bias1 =
+        merge_conv_bias(rewriter, new_weight1.getDefiningOp(),
+                        conv2->getOperand(2), conv5->getOperand(2), "merge_1");
+    auto multi2 =
+        module::getI64Array(conv2.getMultiplier(), conv2_wshape[0], 1);
+    auto multi5 =
+        module::getI64Array(conv5.getMultiplier(), conv5_wshape[0], 1);
+    auto rshift2 = module::getI64Array(conv2.getRshift(), conv2_wshape[0], 0);
+    auto rshift5 = module::getI64Array(conv5.getRshift(), conv5_wshape[0], 0);
+    std::vector<int64_t> new_multi1(conv2_wshape[0] * 2, 0);
+    std::vector<int64_t> new_rshift1(conv5_wshape[0] * 2, 0);
+    std::copy(multi2->begin(), multi2->end(), new_multi1.begin());
+    std::copy(rshift2->begin(), rshift2->end(), new_rshift1.begin());
+    std::copy(multi5->begin(), multi5->end(),
+              new_multi1.begin() + conv5_wshape[0]);
+    std::copy(rshift5->begin(), rshift5->end(),
+              new_rshift1.begin() + conv5_wshape[0]);
+    std::vector<int64_t> conv5_oshape = module::getShape(conv5.getOutput());
+    conv5_oshape[1] = conv2_wshape[0] + conv5_wshape[0];
+    std::string conv_name5 =
+        module::getName(conv5.getOperation()).str() + "_merge_1";
+    auto new_loc1 = NameLoc::get(rewriter.getStringAttr(conv_name5));
+    auto new_type1 = module::getTypeLike(conv5.getOutput(), conv5_oshape);
+    std::vector<Value> operands1{new_conv0.getResult(), new_weight1, new_bias1};
+    std::vector<NamedAttribute> attrs1;
+    for (auto &attr : conv2->getAttrs()) {
+      attrs1.push_back(attr);
+    }
+    rewriter.setInsertionPointAfter(new_conv0);
+    auto new_conv1 =
+        rewriter.create<tpu::Conv2DOp>(new_loc1, new_type1, operands1, attrs1);
+    new_conv1.setMultiplierAttr(rewriter.getI64ArrayAttr(new_multi1));
+    new_conv1.setRshiftAttr(rewriter.getI64ArrayAttr(new_rshift1));
+    new_weight1.getDefiningOp()->moveBefore(new_conv1);
+    new_bias1.getDefiningOp()->moveBefore(new_conv1);
+
+    // create SliceOp
+    auto slice0 = create_slice_op(rewriter, new_conv1, new_conv1.getResult(), 0,
+                                  32, "slice_0");
+    auto slice1 = create_slice_op(rewriter, slice0, new_conv1.getResult(), 32,
+                                  64, "slice_1");
+
+    // replace
+    conv2.replaceAllUsesWith(slice0.getResult());
+    conv5.replaceAllUsesWith(slice1.getResult());
+    rewriter.eraseOp(conv5);
+    rewriter.eraseOp(conv2);
+    rewriter.eraseOp(conv6);
+    rewriter.eraseOp(conv4);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -2464,7 +2733,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermuteMulconstSwap,
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
-                ReshapeSliceSqueezePattern>(ctx, 8);
+                ReshapeSliceSqueezePattern,
+                ConvMergePattern
+                >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
   patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
