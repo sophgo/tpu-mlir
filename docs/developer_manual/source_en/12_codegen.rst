@@ -99,6 +99,7 @@ Backend `store_cmd`
 The function `store_cmd` in the backend refers to the process where the compiler calls the operators and saves the configured instructions to the designated space.
 The key function in the backend is in `store_cmd.cpp`; for example, `cmodel/src/store_cmd.cpp`; `cmodel/include/store_cmd.h`.
 `store_cmd` has a series of EngineStorer and CmdStorer classes:
+
   1. EngineStoreInterface (interface class), GDMAEngineStorer, BDEngineStorer and other specific classes that inherit from the EngineStoreInterface interface, EngineStorerDecorator (decoration class interface),
   VectorDumpEngineStorerDecorator and other specific decoration classes that inherit from EngineStorerDecorator
   2. CmdStorerInterface (interface), ConcretCmdStorer inherited from the interface, StorerDecorator: decoration interface, VectorDumpStorerDecorator specific decoration class.
@@ -132,7 +133,7 @@ Relationship and Logic Among the Classes:
         }
 
 
-  2. The function of 'EngineStorer' is to parse commands. 'VectorDumpEngineStorerDecorator' executes the 'store' function and 'take_cmds' function in the 'EngineStorer' class to store all instructions in 'output_'.
+  2. The function of 'EngineStorer' is to parse commands. 'VectorDumpEngineStorerDecorator' executes the 'store' function and 'take_cmds' function in the 'EngineStorer' class to store all instructions in `output_`.
 
 
     .. code-block:: cpp
