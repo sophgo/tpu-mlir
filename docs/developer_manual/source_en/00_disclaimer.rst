@@ -6,7 +6,7 @@
    :alt: SOPHGO LOGO
 
 | **Legal Notices**
-| Copyright © SOPHGO 2022. All rights reserved.
+| Copyright © SOPHGO 2024. All rights reserved.
 | No part or all of the contents of this document may be copied, reproduced or transmitted in any form by any organization or individual without the written permission of the Company.
 
 | **Attention**

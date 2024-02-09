@@ -38,7 +38,7 @@ def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1686/sg2260/mars3">,
+           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1688/sg2260/mars3">,
     Option<"num_device", "num_device", "int64_t", /*default=*/"1",
            "num of devices to distributed.">,
     Option<"num_core", "num_core", "int64_t", /*default=*/"1",
