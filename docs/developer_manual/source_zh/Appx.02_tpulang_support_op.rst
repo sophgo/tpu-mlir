@@ -2077,7 +2077,7 @@ pad
 参数说明
 """""""""""
 * tensor：Tensor类型，表示将要进行填充的Tensor。
-* padding：List[int]或Tuple[int]型或None。padding为None时使用一个长度为2*len(tensor.shape)的全0list。
+* padding：List[int]或Tuple[int]型或None。padding为None时使用一个长度为2*len(tensor.shape)的全 0 list。例如，一个hw的二维Tensor对应的padding是 [h_top, w_left, h_bottom,  w_right]。
 * value：Saclar或Variable型或None，表示待填充的数值。数据类型和tensor一致；
 * method：string类型，表示填充方法，可选方法"constant"，"reflect"，"symmetric"，"edge"。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。

@@ -110,8 +110,8 @@ class TPULANG_IR_TESTER(object):
             "Nes": (self.test_Nes,                      Y, Y),
             "Min": (self.test_Min,                      Y, Y),
             "Mish": (self.test_Mish,                    Y, Y),
-            "Model1": (self.test_Model1,                Y, Y),
-            "Model2": (self.test_Model2,                Y, Y),
+            "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
+            "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
@@ -1383,9 +1383,9 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Pad
     # ------------
-    def pad_op(self, input):
-        pad_val = tpul.Scalar(1.0)
-        pad = tpul.pad(input, value=pad_val)
+    def pad_op(self, input, pad_val=0.0, pad=None):
+        pad_val = tpul.Scalar(pad_val)
+        pad = tpul.pad(input, value=pad_val, padding=pad)
         return pad
 
     def test_Pad(self, case_name):
@@ -1395,7 +1395,7 @@ class TPULANG_IR_TESTER(object):
         def _test_pad(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            pad = self.pad_op(x)
+            pad = self.pad_op(x, pad=[0, 0, 1, 2, 0, 0, 3, 4])
             self.compile_and_check(self.unique_name(case_name), [x], [pad])
 
         _test_pad([1, 32, 28, 28])
@@ -1732,9 +1732,9 @@ class TPULANG_IR_TESTER(object):
         _test_nes([1, 3, 32, 32])
 
     #######################################################################
-    # Model Case 1: Use case of tpulang
+    # Resnet50 like model case
     # ------------
-    def test_Model1(self, case_name):
+    def test_ResnetBlock(self, case_name):
         def conv_op(x,
                     kshape,
                     stride,
@@ -1758,18 +1758,18 @@ class TPULANG_IR_TESTER(object):
 
         # 1. define model
         def model_def(x):
-            conv0 = conv_op(x, kshape=[32, 1, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
-            relu1 = tpul.relu(conv0)
-            maxpool2 = tpul.maxpool(relu1, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
-            conv3 = conv_op(maxpool2, kshape=[64, 32, 5, 5], stride=[1,1], pad=[2, 2, 2, 2], dtype='float32')
-            relu4 =  tpul.relu(conv3)
-            maxpool5 = tpul.maxpool(relu4, kernel=[2, 2], stride=[2, 2], pad=[0, 0, 0, 0])
-            conv6 = conv_op(maxpool5, kshape=[1024, 64, 7, 7], stride=[1,1], dtype='float32')
-            relu7 =  tpul.relu(conv6)
-            softmax8 = tpul.softmax(relu7, axis=1)
-            return softmax8
+            maxpool1 = tpul.maxpool(x, kernel=[3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
+            conv2 = conv_op(maxpool1, kshape=[64, 64, 1, 1], stride=[1, 1], dtype='float32')
+            relu3 = tpul.relu(conv2)
+            conv4 = conv_op(relu3, kshape=[64, 64, 3, 3], stride=[1, 1], pad=[1, 1, 1, 1], dtype='float32')
+            relu5 =  tpul.relu(conv4)
+            conv6 = conv_op(relu5, kshape=[256, 64, 1, 1], stride=[1, 1], dtype='float32')
+            conv7 =  conv_op(maxpool1, kshape=[256, 64, 1, 1], stride=[1, 1], dtype='float32')
+            add8 = tpul.add(conv6, conv7)
+            relu9 = tpul.relu(add8)
+            return relu9
 
-        def _test_model1(in_shape):
+        def _test_resnet_block(in_shape):
             # 2. prepare input
             x_data = rand_data(in_shape, 'float32')
             x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
@@ -1794,12 +1794,12 @@ class TPULANG_IR_TESTER(object):
                 deploy_cmd += "--quantize {} " .format(mode.upper())
                 assert(os.system(deploy_cmd) == 0)
 
-        _test_model1([1, 1, 28, 28])
+        _test_resnet_block([1, 64, 112, 112])
 
     #######################################################################
-    # Model Case 2: Use case of tpulang
+    # Mobilenet like model case
     # ------------
-    def test_Model2(self, case_name):
+    def test_MobilenetBlock(self, case_name):
         def conv_op(x,
                     kshape,
                     stride,
@@ -1837,7 +1837,7 @@ class TPULANG_IR_TESTER(object):
                 softmax8 = tpul.softmax(relu7, axis=1)
                 tpul.compile(case_name, [input], [softmax8])
 
-        def _test_model2(in_shape):
+        def _test_mobilenet_block(in_shape):
             # 2. prepare input
             x_data = rand_data(in_shape, 'float32')
             x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
@@ -1860,7 +1860,7 @@ class TPULANG_IR_TESTER(object):
                 deploy_cmd += "--quantize {} " .format(mode.upper())
                 assert(os.system(deploy_cmd) == 0)
 
-        _test_model2([1, 1, 28, 28])
+        _test_mobilenet_block([1, 1, 28, 28])
 
     # #######################################################################
     # # Interpolate

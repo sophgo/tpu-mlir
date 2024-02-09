@@ -672,6 +672,9 @@ def maxpool(input: Tensor,
             pad: List[int] = None,
             ceil_mode: bool = False,
             out_name: str = None):
+    assert(not kernel or (len(kernel) == 2))
+    assert(not stride or len(stride) == 2)
+    assert(not pad or len(pad) == 4)
     kernel = [1, 1] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
@@ -1028,6 +1031,8 @@ def pad(input: Tensor,
         value: Scalar = None,
         padding: Union[Tuple[int], List[int]] = None,
         out_name: str = None):
+    assert(method in ["constant","reflect","symmetric","edge"] and "Not supported pad type")
+    assert(not padding or len(padding) == 2 * len(input.shape) and "Invalid padding length")
     if out_name is None:
         out_name = generate_name("pad")
     if padding is None:
