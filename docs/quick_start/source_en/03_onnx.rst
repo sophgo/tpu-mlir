@@ -16,10 +16,10 @@ This chapter requires the tpu_mlir python package.
    * - platform
      - file name
      - info
-   * - cv183x/cv182x/cv181x/cv180x/cv186x
+   * - cv183x/cv182x/cv181x/cv180x
      - xxx.cvimodel
      - please refer to the :ref:`CV18xx Guidance <onnx to cvimodel>`
-   * - 其它
+   * - Other
      - xxx.bmodel
      - please refer to the :ref:`following <onnx to bmodel>`
 

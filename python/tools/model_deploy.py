@@ -258,49 +258,26 @@ if __name__ == '__main__':
     logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--mlir", required=True,
-                        help="optimized mlir fp32 model")
-    parser.add_argument("--calibration_table",
-                        help="calibration table for int8 quantization")
-    parser.add_argument("--quantize_table",
-                        help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ', 'W8F16', 'W8BF16', 'W4F16', 'W4BF16', "F8E4M3", "F8E5M2"],
-                        help="set default qauntization type: F32/BF16/F16/INT8/F8")
-    parser.add_argument("--asymmetric", action='store_true',
-                        help="do INT8 asymmetric quantization")
-    parser.add_argument("--q_group_size", default=64, type=int,
-                        help="group size for per-group quant, only used in W4A16 quant mode")
-    parser.add_argument("--ignore_f16_overflow", action='store_true',
-                        help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
+    # ========== Basic Options ===========
+    parser.add_argument("--mlir", required=True, help="top mlir for model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
                         choices=['bm1688', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
+    parser.add_argument("--quantize", default="F32", type=str.upper,
+                        choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
+                                 'W4F16', 'W4BF16', "F8E4M3", "F8E5M2", 'QDQ'],
+                        help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
-    parser.add_argument("--dynamic", action='store_true',
-                        help="do compile dynamic")
-    # tosa includeWeight
-    parser.add_argument("--includeWeight", action='store_true',
-                        help="include weight in tosa.mlir")
-    # fuse preprocess
-    parser.add_argument("--fuse_preprocess", action='store_true',
-                        help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
-    parser.add_argument("--customization_format", default='', type=str.upper,
-                        choices=supported_customization_format,
-                        help="pixel format of input frame to the model")
-    parser.add_argument("--aligned_input", action='store_true',
-                        help='if the input frame is width/channel aligned')
-    # check result
-    parser.add_argument("--test_input", default="", type=str2list,
-                        help="input npy/npz/image file for inference; image if fuse preprocess"
-                        "if has more than one input, join npy with semicolon")
-    parser.add_argument("--test_reference", default="",
-                        help="reference npz file; if none, will run inner")
-    parser.add_argument("--compare_all", action="store_true",
-                        help="Decide if compare all tensors when lowering")
-    parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
-    parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance for compare")
-    # other functions
+    # ========== Quantization Options ==============
+    parser.add_argument("--calibration_table",
+                        help="calibration table for int8 quantization")
+    parser.add_argument("--quantize_table",
+                        help="table of OPs that quantized to specific mode")
+    parser.add_argument("--asymmetric", action='store_true',
+                        help="do INT8 asymmetric quantization")
+    parser.add_argument("--q_group_size", default=64, type=int,
+                        help="group size for per-group quant, only used in W4A16 quant mode")
     parser.add_argument("--quant_input", action="store_true",
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
@@ -309,26 +286,53 @@ if __name__ == '__main__':
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third output`s cast")
-    parser.add_argument("--disable_layer_group", action="store_true",
-                        help="Decide whether to enable layer group pass")
-    parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
-    parser.add_argument("--op_divide", action="store_true",
-                        help="if do large global op divide.")
+    parser.add_argument("--ignore_f16_overflow", action='store_true',
+                        help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
+    # ========== Validation Options ==============
+    parser.add_argument("--test_input", default="", type=str2list,
+                        help="input npy/npz/image file for inference; image if fuse preprocess"
+                        "if has more than one input, join npy with semicolon")
+    parser.add_argument("--test_reference", default="",
+                        help="reference npz file; if none, will run inner")
+    parser.add_argument("--compare_all", action="store_true",
+                        help="Decide if compare all tensors when lowering")
+    parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance for compare")
+    parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
+    parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
+    parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
+    # ========== Fuse Preprocess Options ==============
+    parser.add_argument("--fuse_preprocess", action='store_true',
+                        help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
+    parser.add_argument("--customization_format", default='', type=str.upper,
+                        choices=supported_customization_format,
+                        help="pixel format of input frame to the model")
+    parser.add_argument("--aligned_input", action='store_true',
+                        help='if the input frame is width/channel aligned')
+    # ========== Parallel Options ==============
     parser.add_argument("--num_device", default=1, type=int,
                         help="The number of devices to run for distributed computation.")
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
-    parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
-    parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
-    parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
-    parser.add_argument("--merge_weight", action="store_true", default=False,
-                        help="merge weights into one weight binary with previous generated cvimodel")
-    parser.add_argument("--do_winograd", action="store_true", default=False,
-                        help="do_winograd")
+    # ========== Compiler Options ==============
+    parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
+    parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="io alone physical address, not in neuron space")
+    # ========== Debug Options ==============
+    parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
+    # ========== Other Options ==============
+    # for cv18xx
+    parser.add_argument("--op_divide", action="store_true", help="if do large global op divide.")
+    parser.add_argument("--merge_weight", action="store_true", default=False,
+                        help="merge weights into one weight binary with previous generated cvimodel")
     parser.add_argument("--model_version", default="latest",
                         help="if need old version cvimodel, set the verion, such as 1.2")
+    # for bm1684
+    parser.add_argument("--do_winograd", action="store_true", default=False,
+                        help="do_winograd")
+    # for tosa includeWeight
+    parser.add_argument("--includeWeight", action='store_true', help="include weight in tosa.mlir")
 
     # yapf: enable
     args = parser.parse_args()
