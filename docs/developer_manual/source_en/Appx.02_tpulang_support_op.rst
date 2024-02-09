@@ -2103,7 +2103,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A `Tensor` type, indicating the tensor that is to be padded.
-* padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used.
+* padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used. For example, the padding of a hw 2D Tensor is [h_top, w_left, h_bottom, w_right]
 * value: A `Scalar`, `Variable` type, or `None`, representing the value to be filled. The data type is consistent with that of the tensor.
 * method：string类型，表示填充方法，可选方法"constant"，"reflect"，"symmetric"，"edge"。
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
