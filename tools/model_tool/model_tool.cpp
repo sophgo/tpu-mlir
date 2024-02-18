@@ -138,9 +138,8 @@ static void update_kernel(ModelGen &model_gen,
         // no more stage
         assert(net->parameter()->size() == 1);
       }
-      auto io_alone = net->io_alone();
       model_gen.AddNet(net_name, net_offset, &net_idx->net_idx,
-                       &net_idx->stage_idx, cascade, io_alone);
+                       &net_idx->stage_idx, cascade, net->addr_mode());
       delete netT;
       model_info->net_index_v.push_back(net_idx);
     }

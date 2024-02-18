@@ -121,7 +121,7 @@ def mlir_to_model(tpu_mlir: str,
                   merge_weight: bool = False,
                   op_divide: bool = False,
                   embed_debug_info: bool = False,
-                  io_alone: bool = False,
+                  addr_mode: str = "auto",
                   model_version: str = ""):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
@@ -130,7 +130,7 @@ def mlir_to_model(tpu_mlir: str,
     if not disable_layer_group:
         lg_param = '--layer-group="opt={}"'.format(opt)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
-    address_assign_param = '--address-assign="io_alone={}"'.format(io_alone)
+    address_assign_param = '--address-assign="addr_mode={}"'.format(addr_mode)
     if merge_weight:
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     distribute_param = f"--dev-parallel"

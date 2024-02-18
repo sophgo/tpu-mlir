@@ -382,7 +382,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     });
   }
   module::updateModuleTypes();
-  if (module::isIoAlone()) {
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
     auto limit = getIOLimit(m);
     module::setIOAddr(m, start_addr);
     module::setIOSize(m, limit - start_addr);
@@ -429,7 +429,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       }
 
       if (isa<top::InputOp>(opd) ||
-          (isa<ReturnOp>(op) && module::isIoAlone())) {
+          (isa<ReturnOp>(op) &&
+           module::isAddrMode(module::AddrMode::IO_ALONE))) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
       }

@@ -76,7 +76,7 @@ void ModelGen::AddNet(const flatbuffers::Offset<bmodel::Net> &net) {
 void ModelGen::AddNet(const std::string &net_name,
                       const CASCADE_INFO_T &cascade,
                       const flatbuffers::Offset<NetParameter> &parameter,
-                      bool io_alone) {
+                      int32_t addr_mode) {
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
   if (net_new->ctx_size() > max_neuron_size_) {
@@ -86,14 +86,14 @@ void ModelGen::AddNet(const std::string &net_name,
   net_info.name = net_name;
   net_info.cascade = cascade;
   net_info.parameters.push_back(parameter);
-  net_info.io_alone = io_alone;
+  net_info.addr_mode = addr_mode;
   net_vector_.push_back(net_info);
 }
 
 void ModelGen::AddNet(const string &net_name,
                       const Offset<NetParameter> &parameter, uint32_t *net_idx,
                       uint32_t *stage_idx, const bmodel::Cascade *cascade,
-                      bool io_alone) {
+                      int32_t addr_mode) {
   ASSERT(net_name.empty() == false);
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
@@ -117,7 +117,7 @@ void ModelGen::AddNet(const string &net_name,
     NET_INFO_T net_info;
     net_info.name = net_name;
     net_info.parameters.push_back(parameter);
-    net_info.io_alone = io_alone;
+    net_info.addr_mode = addr_mode;
     if (cascade) {
       net_info.cascade.main_name = cascade->main_name()->str();
       net_info.cascade.device_id = cascade->device_id();
@@ -128,6 +128,11 @@ void ModelGen::AddNet(const string &net_name,
       *stage_idx = 0;
     }
   } else { // if found
+    if (net_vector_[idx].addr_mode != addr_mode) {
+      BMODEL_LOG(FATAL) << "net[" << net_name
+                        << "] addr_mode should be the same" << std::endl;
+      exit(-1);
+    }
     auto &parameters = net_vector_[idx].parameters;
     for (auto &net_offset : parameters) {
       // check whether conflict
@@ -136,7 +141,7 @@ void ModelGen::AddNet(const string &net_name,
           net_offset.o);
       if (net_old->is_dynamic() != net_new->is_dynamic()) {
         BMODEL_LOG(FATAL) << "net[" << net_name
-                          << "] cannot has dynamic and static at the same time"
+                          << "] cannot have dynamic and static at the same time"
                           << std::endl;
         exit(-1);
       }
@@ -281,7 +286,7 @@ size_t ModelGen::Finish() {
     nb.add_name(net_name);
     nb.add_cascade(cascade);
     nb.add_parameter(parameter);
-    nb.add_io_alone(net_info.io_alone ? 1 : 0);
+    nb.add_addr_mode(net_info.addr_mode);
     nets_.push_back(nb.Finish());
   }
   if (nets_.empty()) {

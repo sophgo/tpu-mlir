@@ -163,7 +163,8 @@ table Net {
     net_dynamic:[NetDynamic] (id: 2);  // for old bmodel, not use any more
     parameter:[NetParameter] (id: 3);  // one net can one or more stages
     cascade:Cascade (id: 4);           // may run in multi devices or multi steps
-    io_alone:int32 (id: 5);            // 0: default; 1: io alone, not in neuron space
+    addr_mode:int32 (id: 5);           // 0: basic mode, io and neuron mem alloc together by runtime
+                                       // 1: io alone mode, io mem and neuron mem alloc seperated by runtime
 }
 
 table KernelModule {

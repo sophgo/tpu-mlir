@@ -268,7 +268,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
     cascade.main_name = module::getName(module::getModuleOp());
   }
   model_gen->AddNet(module::getName(s).str(), cascade, npb.Finish(),
-                    module::isIoAlone());
+                    static_cast<int32_t>(module::getAddrMode()));
 }
 
 void BMCodegen::store() {
