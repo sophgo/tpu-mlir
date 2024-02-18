@@ -36,7 +36,7 @@ struct Attr {
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
   static constexpr llvm::StringRef TRAIN = "module.train";
-  static constexpr llvm::StringRef IO_ALONE = "module.io_alone";
+  static constexpr llvm::StringRef ADDR_MODE = "module.addr_mode";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
 };
 
@@ -1061,16 +1061,20 @@ void setTrain(bool is_train) {
   m->setAttr(Attr::TRAIN, BoolAttr::get(ctx, is_train));
 }
 
-void setIoAlone(bool alone) {
-  m->setAttr(Attr::IO_ALONE, BoolAttr::get(ctx, alone));
+void setAddrMode(AddrMode mode) {
+  auto s = stringifyAddrMode(mode);
+  m->setAttr(Attr::ADDR_MODE, StringAttr::get(ctx, s));
 }
 
-bool isIoAlone() {
-  if (m->hasAttrOfType<BoolAttr>(Attr::IO_ALONE)) {
-    return m->getAttrOfType<BoolAttr>(Attr::IO_ALONE).getValue();
+AddrMode getAddrMode() {
+  if (m->hasAttrOfType<StringAttr>(Attr::ADDR_MODE)) {
+    auto s = m->getAttrOfType<StringAttr>(Attr::ADDR_MODE);
+    return symbolizeAddrMode(s).value_or(AddrMode::BASIC);
   }
-  return false;
+  return AddrMode::BASIC;
 }
+
+bool isAddrMode(AddrMode mode) { return mode == getAddrMode(); }
 
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);

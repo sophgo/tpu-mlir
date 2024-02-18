@@ -71,10 +71,10 @@ public:
   void AddNet(const std::string &net_name,
               const flatbuffers::Offset<NetParameter> &parameter,
               uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL,
-              const bmodel::Cascade *cascade = NULL, bool io_alone = false);
+              const bmodel::Cascade *cascade = NULL, int32_t addr_mode = 0);
   void AddNet(const std::string &net_name, const CASCADE_INFO_T &cascade,
               const flatbuffers::Offset<NetParameter> &parameter,
-              bool io_alone = false);
+              int32_t addr_mode = 0);
   // firmware_core.so save into bmodel
   void AddKernelModule(std::string &filename, Binary &tpu_module);
   // finish and save to file
@@ -96,7 +96,7 @@ private:
     std::string name;
     CASCADE_INFO_T cascade;
     std::vector<flatbuffers::Offset<NetParameter>> parameters;
-    bool io_alone;
+    int32_t addr_mode;
   } NET_INFO_T;
 
   typedef struct {

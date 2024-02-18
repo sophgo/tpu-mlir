@@ -186,8 +186,8 @@ void bm_show(const string &filename, bool all) {
     cout << "==========================================" << endl;
     cout << "net " << idx << ": [" << net->name()->c_str() << "]  " << net_type
          << endl;
-    if (net->io_alone()) {
-      cout << "io alone: true" << endl;
+    if (net->addr_mode()) {
+      cout << "addr mode: " << net->addr_mode() << endl;
     }
     if (cascade) {
       cout << "device id: " << cascade->device_id() << endl;
@@ -534,7 +534,7 @@ static void combine_bmodels(ModelGen &model_gen,
         // no more stage
         assert(net->parameter()->size() == 1);
       }
-      auto io_alone = net->io_alone();
+      auto addr_mode = net->addr_mode();
       for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
         shared_ptr<NET_INDEX_T> net_idx(new NET_INDEX_T);
         if (is_dir) {
@@ -544,7 +544,7 @@ static void combine_bmodels(ModelGen &model_gen,
         auto netT = net->parameter()->Get(idx)->UnPack();
         auto net_offset = NetParameter::Pack(builder, netT);
         model_gen.AddNet(net_name, net_offset, &net_idx->net_idx,
-                         &net_idx->stage_idx, cascade, io_alone);
+                         &net_idx->stage_idx, cascade, addr_mode);
         delete netT;
         model_info->net_index_v.push_back(net_idx);
       }

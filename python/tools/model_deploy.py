@@ -97,7 +97,7 @@ class DeployTool:
         self.compare_all = args.compare_all
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
-        self.io_alone = args.io_alone
+        self.addr_mode = args.addr_mode
         self.q_group_size = args.q_group_size if self.quantize in ["w4f16", "w4bf16"] else 0
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
@@ -235,7 +235,7 @@ class DeployTool:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
-                          self.merge_weight, self.op_divide, self.embed_debug_info, self.io_alone,
+                          self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
                           self.model_version)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
@@ -254,12 +254,17 @@ class DeployTool:
         self.cache_tool.mark_model_success()
 
 
+def deprecated_option(cond, msg):
+    if cond:
+        raise RuntimeError(msg)
+
+
 if __name__ == '__main__':
     logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     # ========== Basic Options ===========
-    parser.add_argument("--mlir", required=True, help="top mlir for model_transform.py")
+    parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
                         choices=['bm1688', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
@@ -316,8 +321,9 @@ if __name__ == '__main__':
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
-    parser.add_argument("--io_alone", action="store_true", default=False,
-                        help="io alone physical address, not in neuron space")
+    parser.add_argument("--addr_mode", default="auto", type=str.lower,
+                        choices=['auto', 'basic', 'io_alone'],
+                        help="set address assign mode, if not set, auto as default")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
@@ -333,9 +339,13 @@ if __name__ == '__main__':
                         help="do_winograd")
     # for tosa includeWeight
     parser.add_argument("--includeWeight", action='store_true', help="include weight in tosa.mlir")
+    # ========== DEPRECATED Options ==============
+    parser.add_argument("--io_alone", action="store_true", default=False,
+                        help="DEPRECATED, please use --addr_mode io_alone")
 
     # yapf: enable
     args = parser.parse_args()
+    deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
 
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True

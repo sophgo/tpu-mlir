@@ -216,7 +216,7 @@ void cvi_backend_tg_bf16_lrn_kernel(uint32_t layer_id, gaddr_t input_gaddr,
     CV18xx::tiu_mul(&p10);
 
     // Original global memory shape used to calculate global stride
-    // Asign global memory shape as local memory's
+    // Assign global memory shape as local memory's
     CV18xx::tdma_store_stride(top, slice_top_gaddr, gstride);
 
     CV18xx::lmem_free_tensor(top);

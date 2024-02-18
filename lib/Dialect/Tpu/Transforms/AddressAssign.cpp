@@ -90,7 +90,12 @@ public:
     if (!module::isState(module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
-    module::setIoAlone(io_alone);
+    auto mode = module::AddrMode::BASIC;
+    if (addr_mode != "auto") {
+      mode = module::symbolizeAddrMode(addr_mode).value_or(
+          module::AddrMode::BASIC);
+    }
+    module::setAddrMode(mode);
     module::removeUnusedOp();
     auto modules = module::getAllModules();
     for (auto s : *modules) {

@@ -83,4 +83,12 @@ def Module_Platform: I32EnumAttr<"Platform", "module platform",[
   let cppNamespace = "::tpu_mlir::module";
 }
 
+def Module_AddrMode: I32EnumAttr<"AddrMode", "address mode",[
+      I32EnumAttrCase<"BASIC",  0, "basic">,
+      I32EnumAttrCase<"IO_ALONE", 1, "io_alone">,
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::module";
+}
+
 #endif // TPU_MLIR_MODULE_ATTR
