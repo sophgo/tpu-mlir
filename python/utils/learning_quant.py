@@ -21,6 +21,8 @@ pymlir.set_mem_mode("value_mem")
 from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector
+from utils.mlir_shell import mlir_lowering
+
 
 import torch
 
@@ -30,7 +32,8 @@ SKIP_OPERATION = [
 ]
 
 LEARNING_WEIGHT_OPERATION = [
-    'top.Conv', 'top.MatMul'#
+    #'top.Conv', 'top.MatMul'#
+    'top.MatMul'#
 ]
 
 def r_show(op, alpha, weight):
@@ -407,6 +410,7 @@ class LearningGptqWeight:
             self.grid = grid
             self.maxshrink = maxshrink
 
+
         def find_params(self, x, weight=False):
             shape = x.shape
             if self.perchannel:
@@ -535,6 +539,11 @@ class LearningGptqWeight:
                     self.finetune_layer_weights[op] = top_ops[op].opds[1]
         loger.logging(f'Learning Gptq Weight running on layers and weights: {self.finetune_layers}')
 
+    def filter_fixed_floats(self, except_layers):
+        for l in self.finetune_layers:
+            if l in except_layers:
+                self.finetune_layers.remove(l)
+
     def backup_weights(self):
         for op in self.finetune_layers:
             self.orig_weights[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_weights[op]))
@@ -557,16 +566,18 @@ class LearningGptqWeight:
         tick  = time.time()
 
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+            shape = W.shape
             W = W.reshape(shape[0],-1)
             shape = W.shape
             rows = W.reshape(shape[0],-1).shape[0]
             columns = W.reshape(shape[0],-1).shape[1]
             quanter = self.GptqQuantizer(shape, bits=bitwidth, perchannel=True, sym=True, mse=False)
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+            shape_org = W.shape
             W = W.t()
             shape = W.shape
-            rows = W.shape[0]
-            columns = W.reshape(W.shape[0],-1).shape[1]
+            rows = shape[0]
+            columns = shape[1]
             quanter = self.GptqQuantizer(shape, bits=bitwidth, perchannel=False, sym=True, mse=False)
         quanter.find_params(W, weight=True)
 
@@ -586,6 +597,11 @@ class LearningGptqWeight:
         damp = percdamp * torch.mean(torch.diag(H))
         diag = torch.arange(columns)
         H[diag, diag] += damp
+        if op == "/transformer/decoder/layers.0/linear2/Add_output_0_Add":
+            import sys
+            np.set_printoptions(threshold=sys.maxsize)
+            print(H)
+            np.save('haha', H)
         H = torch.linalg.cholesky(H)
         H = torch.cholesky_inverse(H)
         H = torch.linalg.cholesky(H, upper=True)
@@ -631,7 +647,7 @@ class LearningGptqWeight:
             self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().reshape(shape))
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
             self.update_weight(op, Q.numpy().transpose().reshape(shape))
-            self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().transpose().reshape(shape))
+            self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().transpose().reshape(shape_org))
 
     def quant_requant_weight_orig(self, op, bits=8):
         weight_tmp = copy.deepcopy(self.orig_weights[op])
@@ -705,6 +721,7 @@ class LearningGptqWeight:
         in_num = shape[0]
         if op not in self.H:
             weight_shape = self.orig_weights[op].shape
+            print(f'input shape {shape} weight shape {weight_shape}')
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
                 weight_shape = self.orig_weights[op].reshape(weight_shape[0],-1).shape
             elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
@@ -744,6 +761,8 @@ class LearningGptqWeight:
 
     def learning_one(self, epoch, op, total):
         loger.logging(f"now to learn {op} in epoch {epoch}")
+        if op == "/transformer/encoder/layers.0/linear2/Add_output_0_Add":
+            print('haha')
         sub_total = 1
         if epoch == 0:
             sub_total += 1
@@ -1718,6 +1737,24 @@ class LearningScale:
             for l in self.finetune_layers:
                 self.learning_one(l, total)
 
+def get_fixed_float_layers(mlir, mode, chip, cali_table, q_table, ref_tensor):
+    quanted_mlir_file = '{}_int8.quant_test.mlir'.format(mlir)
+    float_tensors = []
+    mlir_lowering(mlir, quanted_mlir_file, mode, chip, 1, 1, cali_table, False, q_table)
+    module = pymlir.module()
+    module.load(quanted_mlir_file)
+    for input_name in module.input_names:
+        data = ref_tensor.get(input_name, 0)
+        module.set_tensor(input_name, data)
+    module.invoke()
+    #loop over op to check if its output tensor is int8
+    for op in module.all_tensor_names:
+        qinfo = module.get_tensor_qinfo(op)
+        if qinfo.dtype != "I8" and qinfo.dtype != "U8":
+            float_tensors.append(op)
+    return float_tensors
+
+
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     # yapf: disable
@@ -1763,6 +1800,8 @@ if __name__ == '__main__':
                         help='to learn scale or weight or both')
     parser.add_argument('-o', '--output_calibration_table', required=False, default="./new_cali",
                         help='output of calibration table after learning')
+    parser.add_argument('-qtable', '--qtable', required=False, default="",
+                        help='qtable in which not quant layers marked')
     parser.add_argument('-excepts', '--excepts', required=False, default="",
                         help='learning excepts these layers, split with comma')
 
@@ -1814,6 +1853,8 @@ if __name__ == '__main__':
         weight_searcher.scales = cali_table.table
         weight_searcher.num_sample = num_sample
         weight_searcher.ref_tensors = ref_tensors(weight_searcher, all_inputs)
+        fix_float = get_fixed_float_layers(args.mlir_file, 'INT8', args.chip, args.calibration_table, args.qtable, weight_searcher.ref_tensors)
+        weight_searcher.filter_fixed_floats(fix_float)
         weight_searcher.learning()
         del weight_searcher
 
