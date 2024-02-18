@@ -74,6 +74,10 @@ def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
 def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde"]>;
+def RoundModeAttr: AnyStrAttrOf<["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]>;
+def DequantModeAttr: AnyStrAttrOf<["Normal", "TFLite"]>;
+def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift", "OnlyShift", "QDM", "OnlyScale"]>;
+
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -267,6 +271,37 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_RequantIntOp:Top_Op<"RequantInt"> {
+  let summary = "requant operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$multiplier,
+    I64ArrayAttr:$rshift,
+    RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Top_DequantIntOp:Top_Op<"DequantInt"> {
+  let summary = "dequant operation";
+  let description = [{
+    Dequant 8 bit data to 32/16 bit data
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$multiplier,
+    I64ArrayAttr:$shift,
+    DefaultValuedAttr<I64Attr, "0">:$lshift,
+    DequantModeAttr:$quant_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+  let results = (outs AnyRankedTensor:$output);
 }
 
 def Top_PackOp: Top_Op<"Pack"> {
@@ -729,9 +764,8 @@ def Top_AttentionOp: Top_Op<"Attention"> {
   let summary = "Attention operator";
 
   let description = [{
-    Performs a two dimensional matrix multiplication. This allows both inputs to
-    be activations, rather than reserving weights as an attribute in the
-    FULLY_CONNECTED operator.
+    Performs a multi head attention block. https://en.wikipedia.org/wiki/Attention_(machine_learning)
+    This block has Q_w, K_w,V_w, O_w and mask
   }];
 
   let arguments = (ins

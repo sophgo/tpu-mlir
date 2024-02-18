@@ -1127,9 +1127,8 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
   let summary = "Attention operator";
 
   let description = [{
-    Performs a two dimensional matrix multiplication. This allows both inputs to
-    be activations, rather than reserving weights as an attribute in the
-    FULLY_CONNECTED operator.
+    Performs a multi head attention block. https://en.wikipedia.org/wiki/Attention_(machine_learning)
+    This block has Q_w, K_w,V_w, O_w and mask
   }];
 
   let arguments = (ins

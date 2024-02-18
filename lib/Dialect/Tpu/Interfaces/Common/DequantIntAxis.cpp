@@ -46,12 +46,13 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
     int64_t lshift_val = getLshift();
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
+      int64_t multi = p.inputs[1][c * 3];
       int64_t shift_val = p.inputs[1][c * 3 + 1];
       int64_t zero_point = p.inputs[1][c * 3 + 2];
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point)
+          int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point) * multi
                         << lshift_val;
           p.outputs[0][offset] =
               MultiplyByQuantizedMultiplier(tmp, 1, -shift_val, (RoundingMode)rmode);

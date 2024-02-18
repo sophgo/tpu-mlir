@@ -192,7 +192,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       RangeLowering,
       ConvBwdWeightLowering,
       GatherNDLowering,
-      TriluLowering
+      TriluLowering,
+      RequantIntLowering,
+      DequantIntLowering
       // clang-format on
       >(patterns->getContext());
 }
