@@ -752,12 +752,34 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     return false;
   }
 
+  static inline void merge_two_dims(
+          std::vector<int64_t> & ashape,
+          std::vector<int64_t> & bshape,
+          int dims,
+          int d_th) {
+    ashape[d_th] *= ashape[d_th + 1];
+    bshape[d_th] *= bshape[d_th + 1];
+    for (int i = d_th + 1; i < dims - 1; i++) {
+      ashape[i] = ashape[i + 1];
+      bshape[i] = bshape[i + 1];
+    }
+  }
+
   bool canMergeTo4D(const std::vector<int64_t> &ashape,
                     const std::vector<int64_t> &bshape, int shape_dim) const {
+    std::vector<int64_t> ashape_(8, 1);
+    std::vector<int64_t> bshape_(8, 1);
+    for (int i = 0; i < ashape.size(); i++) {
+      ashape_[i] = ashape[i];
+    }
+    for (int i = 0; i < bshape.size(); i++) {
+      bshape_[i] = bshape[i];
+    }
     if (shape_dim > 4) {
       int i = 0;
       while (i < shape_dim - 1) {
-        if (can_be_merged(ashape[i], ashape[i + 1], bshape[i], bshape[i + 1])) {
+        if (can_be_merged(ashape_[i], ashape_[i + 1], bshape_[i], bshape_[i + 1])) {
+          merge_two_dims(ashape_, bshape_, shape_dim, i);
           --shape_dim;
         } else {
           ++i;
@@ -828,7 +850,7 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     if (needBroadcast(shape1, shape2) &&
         !canMergeTo4D(shape1, shape2, shape_dim)) {
 
-      for (int i = 0; i < shape_dim - max_allow_dim_backend; ++i) {
+      for (int i = 0; i <= shape_dim - max_allow_dim_backend; ++i) {
         if (shape1[i] == shape2[i]) {
           continue;
         } else if (shape1[i] == 1) {
