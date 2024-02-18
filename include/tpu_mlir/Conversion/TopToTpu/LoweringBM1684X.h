@@ -179,5 +179,7 @@ LOWERING_BM1684X(SoftmaxBwd)
 LOWERING_BM1684X(WeightReorder)
 LOWERING_BM1684X(GatherND)
 LOWERING_BM1684X(ConvBwdWeight)
+LOWERING_BM1684X(RequantInt)
+LOWERING_BM1684X(DequantInt)
 } // namespace bm1684x
 } // namespace tpu_mlir

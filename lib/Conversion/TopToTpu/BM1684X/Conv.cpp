@@ -730,43 +730,22 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::ConvOp op) const {
-  if (module::isUniformQuantized(op.getInput(), op.getOutput()) == false) {
+  if (module::isUniformQuantized(op.getInput()) == false) {
     llvm_unreachable("input output should be quantized");
   }
+  bool out_i32 = module::isUniformQuantized(op.getOutput()) == false;
   auto p = op.parseParam();
   auto input_qtype = module::getUniformQuantizedType(op.getInput());
-  auto output_qtype = module::getUniformQuantizedType(op.getOutput());
   auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto filter_qtype = filter_type.getElementType()
                           .dyn_cast<quant::UniformQuantizedPerAxisType>();
-  int quant_size = 1;
-  SmallVector<int64_t> shift(1);
-  SmallVector<int64_t> multiplier(1);
-  auto input_scale = input_qtype.getScale();
-  auto output_scale = output_qtype.getScale();
   int32_t filter_zeroPoint;
 
   if (!filter_qtype) {
     auto filter_qtype = module::getUniformQuantizedType(op.getFilter());
     filter_zeroPoint = filter_qtype.getZeroPoint();
-    auto filter_scale = filter_qtype.getScale();
-    const double effective_output_scale =
-        input_scale * filter_scale / output_scale;
-    QuantizeMultiplier(effective_output_scale, &multiplier[0], &shift[0]);
   } else {
-    auto filter_scales = filter_qtype.getScales();
     filter_zeroPoint = filter_qtype.getZeroPoints()[0];
-    quant_size = filter_scales.size();
-    shift.resize(quant_size);
-    multiplier.resize(quant_size);
-    // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
-    // Populate multiplier and shift using affine quantization.
-    for (auto filter : llvm::enumerate(filter_scales)) {
-      const double effective_output_scale =
-          input_scale * filter.value() / output_scale;
-      QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
-                         &shift[filter.index()]);
-    }
   }
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
@@ -839,6 +818,13 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
         "kernel_zp", rewriter.getI64IntegerAttr(filter_zeroPoint)));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  if (out_i32) {
+    auto newValue =
+      CreateConvOp(rewriter, p.dims, op->getLoc(), op.getOutput().getType(), operands, attrs);
+    rewriter.replaceOp(op, {newValue});
+    return;
+  }
+
   auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
                                        rewriter.getI32Type());
   auto new_name = module::getName(op.getOperation()).str() + "_int32";
@@ -846,6 +832,37 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   auto newValue =
       CreateConvOp(rewriter, p.dims, name_loc, newType, operands, attrs);
+
+  // generate requant param
+  auto output_qtype = module::getUniformQuantizedType(op.getOutput());
+  int quant_size = 1;
+  SmallVector<int64_t> shift(1);
+  SmallVector<int64_t> multiplier(1);
+  auto input_scale = input_qtype.getScale();
+  auto output_scale = output_qtype.getScale();
+
+  if (!filter_qtype) {
+    auto filter_qtype = module::getUniformQuantizedType(op.getFilter());
+    filter_zeroPoint = filter_qtype.getZeroPoint();
+    auto filter_scale = filter_qtype.getScale();
+    const double effective_output_scale =
+        input_scale * filter_scale / output_scale;
+    QuantizeMultiplier(effective_output_scale, &multiplier[0], &shift[0]);
+  } else {
+    auto filter_scales = filter_qtype.getScales();
+    filter_zeroPoint = filter_qtype.getZeroPoints()[0];
+    quant_size = filter_scales.size();
+    shift.resize(quant_size);
+    multiplier.resize(quant_size);
+    // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
+    // Populate multiplier and shift using affine quantization.
+    for (auto filter : llvm::enumerate(filter_scales)) {
+      const double effective_output_scale =
+          input_scale * filter.value() / output_scale;
+      QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
+                         &shift[filter.index()]);
+    }
+  }
 
   // do requant
   if (quant_size == 1) {
