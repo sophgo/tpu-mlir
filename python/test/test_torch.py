@@ -48,6 +48,7 @@ class TORCH_IR_TESTER(object):
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
             "Add":              (self.test_Add,               N, Y, Y, Y),
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
+            "Add6d":            (self.test_Add6d,             N, Y, Y, Y),
             "Addmm":            (self.test_Addmm,             N, Y, Y, Y),
             "Arange":           (self.test_Arange,            N, Y, Y, Y),
             "Arctan":           (self.test_Arctan,            N, Y, Y, N),
@@ -770,6 +771,18 @@ class TORCH_IR_TESTER(object):
         """AddError"""
 
         self._test_binary(torch.add, (1, 4, 12, 147, 147), (1, 4, 1, 147, 147))
+    
+    def test_Add6d(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                return x + y
+
+        self.trace_and_test([(1, 8, 8, 3, 4, 2), (1, 8, 1, 3, 1, 2)], Model())
 
     #######################################################################
     # Sub

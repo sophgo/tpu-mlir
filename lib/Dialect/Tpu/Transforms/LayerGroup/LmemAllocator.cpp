@@ -273,6 +273,7 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
   int64_t buffer_idx = 0;
   MemBlock lmem_locate(0, 0);
   bool inplace_valid;
+  bool need_store = false;
   auto src_layer = value.getDefiningOp();
   if (src_layer) {
     if (isa<top::WeightOp>(src_layer)) {
@@ -288,9 +289,17 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
            ++buffer_idx) {
         auto &src_buffer_value =
             time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
+        auto &tensors = time_step->getTensors(src_buffer_value.end_ts);
+        for (auto t : tensors) {
+          if (ts_overlap_buffer[buffer_idx].value == t.first &&
+              t.second.mode == TIMESTEP_STORE) {
+            need_store = true;
+          }
+        }
         if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
             ts_overlap_buffer[buffer_idx].value == src_in &&
-            src_buffer_value.end_ts == buffer_value.start_ts) {
+            src_buffer_value.end_ts == buffer_value.start_ts &&
+            !need_store) {
           // llvm::errs() <<
           // "-----------------if-----------------------------------\n";
           if (can_membuf_inplace_alloc(
