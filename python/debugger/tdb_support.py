@@ -270,9 +270,9 @@ class TdbCmdBackend(cmd.Cmd):
                 self.LMEM = self.runner.LMEM
                 self.SMEM = self.runner.SMEM
                 self.DDR = self.runner.DDR
-                self.DDR[
-                    addr_offset_ddr : addr_offset_ddr + len(coeff.data)
-                ] = memoryview(coeff.data)
+                self.DDR[addr_offset_ddr : addr_offset_ddr + len(coeff.data)] = (
+                    memoryview(coeff.data)
+                )
             else:
                 self.memory.set_data_to_address(
                     coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
@@ -581,6 +581,7 @@ class Breakpoint:
 
 class Watchpoint:
     def __init__(self, index, cmd_type, cmd_id, core_id, value):
+        self.enabled = True
         self.index = index
         self.cmd_type = cmd_type
         self.cmd_id = cmd_id
@@ -591,13 +592,18 @@ class Watchpoint:
         return "\t".join(self.tostrlist())
 
     def tostrlist(self) -> List[str]:
+        enable_str = "y" if self.enabled else "n"
         return [
             str(self.index),
             str(self.cmd_type),
             str(self.cmd_id),
             str(self.core_id),
+            enable_str,
             str(self.value),
         ]
+
+    def toggle_enable(self, flag: bool):
+        self.enabled = flag
 
 
 class TdbPlugin:

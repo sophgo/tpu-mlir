@@ -40,7 +40,7 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
         tdb.watchid2value = self.watchid2value
 
     def __str__(self) -> str:
-        table = [["index", "cmd_type", "cmd_id", "core_id", "value"]]
+        table = [["index", "cmd_type", "cmd_id", "core_id", "enabled", "value"]]
 
         for k, v in self.watches.items():
             table.append(v.tostrlist())
@@ -71,6 +71,22 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
             self.watches.clear()
             self.watchid2value.clear()
 
+    def do_enable(self, arg):
+        """enable breakpoint"""
+        arg = self._decode_watch_index(arg)
+        for i in arg:
+            value = self.watchid2value[i][0]
+            self.watches[value].toggle_enable(True)
+        return
+
+    def do_disable(self, arg):
+        """disable breakpoint"""
+        arg = self._decode_watch_index(arg)
+        for i in arg:
+            value = self.watchid2value[i][0]
+            self.watches[value].toggle_enable(False)
+        return
+
     def _watch_in(self, value_index: str):
         try:
             cmd = self.tdb.get_cmd()
@@ -86,14 +102,14 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
                 return
 
             if get_tuple(cmd.core_id, cmd.operands[value_index]) not in self.watches:
-                self.watches[
-                    get_tuple(cmd.core_id, cmd.operands[value_index])
-                ] = Watchpoint(
-                    index=self.watch_id,
-                    cmd_type=cmd.cmd_type,
-                    cmd_id=cmd.cmd_id,
-                    core_id=cmd.core_id,
-                    value=cmd.operands[value_index],
+                self.watches[get_tuple(cmd.core_id, cmd.operands[value_index])] = (
+                    Watchpoint(
+                        index=self.watch_id,
+                        cmd_type=cmd.cmd_type,
+                        cmd_id=cmd.cmd_id,
+                        core_id=cmd.core_id,
+                        value=cmd.operands[value_index],
+                    )
                 )
                 self.watchid2value[self.watch_id] = [
                     get_tuple(cmd.core_id, cmd.operands[value_index]),
@@ -122,14 +138,14 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
                 return
 
             if get_tuple(cmd.core_id, cmd.results[value_index]) not in self.watches:
-                self.watches[
-                    get_tuple(cmd.core_id, cmd.results[value_index])
-                ] = Watchpoint(
-                    index=self.watch_id,
-                    cmd_type=cmd.cmd_type,
-                    cmd_id=cmd.cmd_id,
-                    core_id=cmd.core_id,
-                    value=cmd.results[value_index],
+                self.watches[get_tuple(cmd.core_id, cmd.results[value_index])] = (
+                    Watchpoint(
+                        index=self.watch_id,
+                        cmd_type=cmd.cmd_type,
+                        cmd_id=cmd.cmd_id,
+                        core_id=cmd.core_id,
+                        value=cmd.results[value_index],
+                    )
                 )
                 self.watchid2value[self.watch_id] = [
                     get_tuple(cmd.core_id, cmd.results[value_index]),
@@ -172,7 +188,7 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
         for k, v in self.watchid2value.items():
             cur_watchpoint, old_value = v
             watchpoint: Watchpoint = self.watches[cur_watchpoint]
-            if k:
+            if k and watchpoint.enabled:
                 try:
                     data = self.read_memref_data(watchpoint, watchpoint.value)
                     if data is None:
