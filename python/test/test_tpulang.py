@@ -120,6 +120,7 @@ class TPULANG_IR_TESTER(object):
             "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             # "Rsqrt": (self.test_Rsqrt,                  Y, Y),
+            "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
             "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
@@ -1308,7 +1309,7 @@ class TPULANG_IR_TESTER(object):
     # Permute
     # ------------
     def permute_op(self, input):
-        permute = tpul.permute(input, [1, 3, 2, 0])
+        permute = tpul.permute(input, [0, 2, 3, 1])
         return permute
 
     def test_Permute(self, case_name):
@@ -1321,7 +1322,7 @@ class TPULANG_IR_TESTER(object):
             permute = self.permute_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [permute])
 
-        _test_permute([1, 32, 28, 28])
+        _test_permute([1, 1024, 10, 128])
 
     #######################################################################
     # Reshape
@@ -1882,6 +1883,61 @@ class TPULANG_IR_TESTER(object):
     #         self.compile_and_check(self.unique_name(case_name), [x], [interpolate])
 
     #     _test_interpolate([1, 3, 28, 28])
+
+
+    def test_SelfAttnBlock(self, case_name):
+        class SelfAttnBlock():
+            def __init__(self, batch, d, head, mq, mk):
+                super(SelfAttnBlock, self).__init__()
+                self.batch = batch
+                self.d = d
+                self.head = head
+                self.mq = mq
+                self.mk = mk
+
+            def forward(self, q, k, v):
+                permute_q = tpul.permute(q, [0, 2, 1, 3]) # 1, 10, 1024, 128
+                permute_k = tpul.permute(k, [0, 2, 3, 1]) # 1, 10, 128, 1024
+                mm0 = tpul.matmul(permute_q, permute_k)
+                rsqrt0 = tpul.mul(mm0, tpul.Scalar(1 / np.sqrt(self.d), dtype=mm0.dtype))
+                softmax0 = tpul.softmax(rsqrt0, axis=3)
+                permute_v = tpul.permute(v, [0, 2, 1, 3])
+                mm1 = tpul.matmul(softmax0, permute_v)
+                permute_mm1 = tpul.permute(mm1, [0, 2, 1, 3])
+                reshape_mm1 = tpul.reshape(permute_mm1, [self.batch, self.mq, self.head * self.d])
+
+                tpul.compile(case_name, [q, k, v], [reshape_mm1])
+
+        def _test_self_attn_block(batch, d, head, mq, mk):
+            # 2. prepare input
+            q_data = rand_data([batch, mq, head, d], 'float32')
+            q = tpul.Tensor(dtype='float32', shape=[batch, mq, head, d], data=q_data) # 1, 1024, 10, 128
+            k_data = rand_data([batch, mk, head, d], 'float32')
+            k = tpul.Tensor(dtype='float32', shape=[batch, mq, head, d], data=k_data) # 1, 1024, 10, 128
+            v_data = rand_data([batch, mk, head, d], 'float32')
+            v = tpul.Tensor(dtype='float32', shape=[batch, mq, head, d], data=v_data) # 1, 1024, 10, 128
+            # 3. init and compile tpulang model to top.mlir
+            tpul.init(device=self.chip.upper())
+            swint_block = SelfAttnBlock(batch, d, head, mq, mk)
+            swint_block.forward(q, k, v)
+            tpul.deinit()
+            # tpul.compile will do top mlir inference with random input
+            in_f32_npz = case_name + '_in_f32.npz'
+            top_out = case_name + '_top_outputs.npz'
+            # 4. deploy to bmodel
+            deploy_cmd_base = f"model_deploy.py --mlir {case_name}.mlir "
+            deploy_cmd_base += "--chip {} ".format(self.chip)
+            deploy_cmd_base += "--test_input {} ".format(in_f32_npz)
+            deploy_cmd_base += "--test_reference {} ".format(top_out)
+            # deploy to [f32, f16, bf16] quant mode
+            for mode in self.quant_modes:
+                bmodel_name = "{}.bmodel".format(case_name + "_" + self.chip + "_" + mode)
+                deploy_cmd = deploy_cmd_base
+                deploy_cmd += "--model {} ".format(bmodel_name)
+                deploy_cmd += "--quantize {} " .format(mode.upper())
+                assert(os.system(deploy_cmd) == 0)
+
+        _test_self_attn_block(1, 128, 10, 1024, 1024)
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     import traceback

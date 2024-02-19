@@ -411,7 +411,8 @@ def deconv3d_v2(input: Tensor,
     return output
 
 @annotayion_check
-def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_dtype: str = None, out_name: str = None):
     o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, True)
     # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
     #     o_dtype = tensor_i0.dtype
@@ -419,7 +420,19 @@ def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: s
     #     o_dtype = out_dtype
     # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
     output = Tensor([], dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
+    if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
+        TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
+    else:
+        tensor = tensor_i0 if isinstance(tensor_i0, Tensor) else tensor_i1
+        scalar = tensor_i0 if isinstance(tensor_i1, Tensor) else tensor_i1
+
+        if tensor == scalar:
+            raise "input must be have Tensor"
+        attr = {
+            "const_val": Attr(scalar.value, 'float64'),
+        }
+        TpuLang.insert_op("top.MulConst", [tensor], [output], params = attr)
+
     return output
 
 @annotayion_check
@@ -613,42 +626,10 @@ def matmul(input: Tensor,
             left_transpose=False,
             output_transpose=False,
             hdim_is_batch=False,
-            keep_dims=False,
+            keep_dims=True,
             out_name: str = None):
 
     o_dtype = input.dtype
-
-    def _shape_inference():
-        l_dims = len(input.shape)
-        r_dims =len(right.shape)
-        k = input.shape[l_dims - 1]
-        k_idx = r_dims - (1 if right_transpose else 2)
-        n_idx = r_dims - (2 if right_transpose else 1)
-        n = right.shape[n_idx]
-        import copy
-        out_shape = copy.copy(input.shape)
-        if r_dims == 1:
-            assert(right.shape[0] == k)
-            out_shape.pop()
-        elif right.shape[k_idx] == k:
-            out_shape[-1] = n
-        elif r_dims == 2:
-            sum = right.shape[k_idx]
-            while len(out_shape) > 0 and sum % out_shape[-1] == 0 and sum != 1:
-                sum = sum // out_shape.pop()
-            if sum != 1:
-                raise ValueError("shape is illegal")
-            out_shape.append(n)
-        else:
-            out_shape[-1] = n
-        if not keep_dims:
-            batch_size = 1
-            for s in out_shape[:-1]:
-                batch_size *= s
-            out_shape = [batch_size, n]
-        return out_shape
-
-
 
     attr = {
         "right_transpose": Attr(right_transpose, "bool"),
@@ -660,7 +641,7 @@ def matmul(input: Tensor,
         "relu_limit":  Attr(-1.0, "float64")
     }
 
-    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+    output = Tensor([], dtype=o_dtype, name=out_name)
     inputs = [input, right, bias]
     TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
