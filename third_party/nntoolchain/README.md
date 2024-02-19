@@ -12,7 +12,7 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/SG2260 2024-2-4
+## TPU1684X/1688/SG2260 2024-2-19
 ``` bash
 #bm1684x sha256: acf6deffefb7d91e4dba52ca93ff2eb2cd827240
 
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#sg2260 sha256: abb91412e02ba4a68763b33abec0a0a93083cf17
+#sg2260 sha256: 96561f0a40e76c809a35f687be4bffcfde5add1c
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**
