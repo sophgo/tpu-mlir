@@ -750,10 +750,6 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  auto filter_stype = module::getStorageType(op.getFilter());
-  auto filter_new_type =
-      RankedTensorType::get(filter_type.getShape(), filter_stype);
-  op.getFilter().setType(filter_new_type);
   operands.push_back(op.getFilter());
 
   std::vector<NamedAttribute> attrs;
