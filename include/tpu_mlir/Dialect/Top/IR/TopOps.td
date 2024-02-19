@@ -279,13 +279,13 @@ def Top_RequantIntOp:Top_Op<"RequantInt"> {
     Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift
   }];
   let arguments = (ins
-    AnyRankedTensor:$input,
+    AnyTensor:$input,
     I64ArrayAttr:$multiplier,
     I64ArrayAttr:$rshift,
     RequantModeAttr:$quant_mode,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_DequantIntOp:Top_Op<"DequantInt"> {
@@ -294,14 +294,14 @@ def Top_DequantIntOp:Top_Op<"DequantInt"> {
     Dequant 8 bit data to 32/16 bit data
   }];
   let arguments = (ins
-    AnyRankedTensor:$input,
+    AnyTensor:$input,
     I64ArrayAttr:$multiplier,
     I64ArrayAttr:$shift,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     DequantModeAttr:$quant_mode,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_PackOp: Top_Op<"Pack"> {

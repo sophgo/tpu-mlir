@@ -638,21 +638,16 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::MatMulOp op) const {
-  if (!module::isUniformQuantized(op.getInput(), op.getRight(),
-                                  op.getOutput())) {
+  if (!module::isUniformQuantized(op.getInput(), op.getRight())) {
     llvm_unreachable("input output should be quantized");
   }
+  bool out_i32 = module::isUniformQuantized(op.getOutput()) == false;
   auto p = op.parseParam();
   // assert(batch == 1);
   auto input_qtype = module::getUniformQuantizedType(op.getInput());
   auto right_qtype = module::getUniformQuantizedType(op.getRight());
-  auto output_qtype = module::getUniformQuantizedType(op.getOutput());
   int64_t left_num_dims = module::getShape(op.getInput()).size();
 
-  const double real_multiplier =
-      input_qtype.getScale() * right_qtype.getScale() / output_qtype.getScale();
-  int64_t multiplier, shift;
-  QuantizeMultiplier(real_multiplier, &multiplier, &shift);
   int32_t right_zero_point = right_qtype.getZeroPoint();
   auto ctx = getContext();
   OpBuilder builder(ctx);
@@ -673,8 +668,6 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     op.getBias().setType(bias_new_type);
   }
 
-  // std::string suffix = "_matmul";
-  // std::string new_name = module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -704,15 +697,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   shape[left_num_dims - 1] = col_size;
   auto bias_type = RankedTensorType::get(shape, rewriter.getI32Type());
 
+  Value matValue;
   if (can_merge_izp) {
-    //    attrs.push_back(rewriter.getNamedAttr(
-    //        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
-    //    attrs.push_back(
-    //        rewriter.getNamedAttr("rshifts",
-    //        rewriter.getI64ArrayAttr(-shift)));
-    //    attrs.push_back(rewriter.getNamedAttr(
-    //        "quant_mode",
-    //        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
     if (input_zeroPoint) {
       // merge input_zeroPoint to bias
       std::shared_ptr<std::vector<int8_t>> right_quant;
@@ -740,13 +726,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
-    // do requant
-    auto newValue =
-        do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
-    rewriter.replaceOp(op, {newValue});
-    // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.getOutput().getType(),
-    //                                            operands, attrs);
+    matValue = newOp.getOutput();
   } else {
     // (M * K) (K * N)
     // (Input - izp) Matmul (Right - kzp) ==> (Input) Matmul (Right - kzp) -
@@ -754,14 +734,6 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // - (izp) Matmul (Right - kzp) ==> izp * kzp * K - izp *
     // reduce_sum(Right.col) for each row
 
-    // merge izp * kzp * K to bias
-    // for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
-    //   bias_quant->data()[c_ind] +=
-    //       input_zeroPoint * right_zero_point * row_size;
-    // }
-    // auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
-    //                                       *bias_quant, bias_type);
-    // operands.push_back(new_bias);
     operands.push_back(op.getBias());
     if (input_zeroPoint)
       attrs.push_back(rewriter.getNamedAttr(
@@ -773,55 +745,24 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
-
-    // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.getOutput().getType(),
-    //                                            operands, attrs);
-#if 0
-    // do reduce
-    new_name = module::getName(op.getRight()).str() + "_reduce_h";
-    attrs.erase(attrs.begin(), attrs.end());
-    attrs.push_back(
-        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({K_idx})));
-    attrs.push_back(
-        rewriter.getNamedAttr("keepdims", rewriter.getI64IntegerAttr(1)));
-    attrs.push_back(
-        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceSum")));
-    auto reduce_shape = std::vector<int64_t>(module::getShape(op.getRight()));
-    reduce_shape[K_idx] = 1;
-
-    auto newType = RankedTensorType::get(reduce_shape, rewriter.getI32Type());
-    if (op.getRightTranspose())
-      newType = RankedTensorType::get(reduce_shape, rewriter.getI32Type());
-    name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    rewriter.setInsertionPointAfterValue(op.getRight());
-    auto reduceOp = rewriter.create<tpu::ReduceOp>(
-        name_loc, newType,
-        ValueRange{op.getRight(), module::getNoneOp(op), module::getNoneOp(op)},
-        attrs);
-    Value newValue = reduceOp.getOutput();
-    // do reshape
-    attrs.erase(attrs.begin(), attrs.end());
-    if (op.getRightTranspose()) {
-      auto reshapeType =
-          RankedTensorType::get({1, col_size}, rewriter.getI32Type());
-      newValue = do_reshape(newValue, reshapeType);
-    }
-    // do mulconst
-    newValue = do_binary_saclar<tpu::MulConstOp>(
-        newValue, rewriter.getI32Type(), -input_zeroPoint);
-    // do add
-    new_name = module::getName(newOp.getOutput()).str() + "_add_zp";
-    name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    rewriter.setInsertionPointAfterValue(newOp);
-    auto addOp = rewriter.create<tpu::AddOp>(
-        name_loc, matmul_type, ValueRange{newOp.getOutput(), newValue}, attrs);
-#endif
-    // do requant
-    auto newValue =
-        do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
-    rewriter.replaceOp(op, {newValue});
+    matValue = newOp.getOutput();
   }
+  if (out_i32) {
+    rewriter.replaceOp(op, {matValue});
+    return;
+  }
+
+  // generate quantize param
+  auto output_qtype = module::getUniformQuantizedType(op.getOutput());
+  const double real_multiplier =
+      input_qtype.getScale() * right_qtype.getScale() / output_qtype.getScale();
+  int64_t multiplier, shift;
+  QuantizeMultiplier(real_multiplier, &multiplier, &shift);
+  // do requant
+  auto newValue =
+      do_requant(op->getLoc(), matValue, op.getOutput().getType(),
+                 true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
+  rewriter.replaceOp(op, {newValue});
 }
 
 } // namespace bm1684x
