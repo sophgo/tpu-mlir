@@ -19,6 +19,10 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
+
+    if (op.getDoRelu()) {
+      return failure();
+    }
     auto nextOp = *op->getUsers().begin();
     if (!op->hasOneUse() || !isa<ScaleOp>(nextOp)) {
       return failure();
