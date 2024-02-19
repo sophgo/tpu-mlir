@@ -90,7 +90,7 @@ TpuLang自定义算子添加
 
   之后根据实际使用场景编译对应的固件：
 
-  a. CMODEL模式（得到 `libfirmware_custom_xxx.so`）
+  a. CMODEL模式（得到 `libcmodel_custom_xxx.so`）
 
   .. code-block:: shell
 

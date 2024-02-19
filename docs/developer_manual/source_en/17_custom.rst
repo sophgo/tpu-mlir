@@ -88,7 +88,7 @@ Add TpuLang Custom Operator
 
   After that, compile the corresponding firmware according to the actual usage scenario:
 
-  a. CMODEL mode (target: `libfirmware_custom_xxx.so`):
+  a. CMODEL mode (target: `libcmodel_custom_xxx.so`):
 
   .. code-block:: shell
 
