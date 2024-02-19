@@ -371,7 +371,8 @@ public:
     if (!matmul_values || !module::isWeight(matmul_values.getRight())) {
       return failure();
     }
-    if (matmul_queries.getInput() == matmul_keys.getInput() && matmul_queries.getInput() != matmul_values.getInput()) {
+    if (matmul_queries.getInput() == matmul_keys.getInput() &&
+        matmul_queries.getInput() != matmul_values.getInput()) {
       return failure();
     }
     auto len = module::getNumElements(matmul_queries.getInput());
@@ -885,6 +886,24 @@ public:
       return failure();
     }
 
+    // fix bug for chatglm2/chatglm3
+    if (std::distance(op->user_begin(), op->user_end()) != 0) {
+      auto nextOp = *op->user_begin();
+      if (isa<top::ReshapeOp>(nextOp)) {
+        std::vector<Operation *> users = {nextOp->user_begin(),
+                                          nextOp->user_end()};
+        if (users.size() == 2 && isa<top::SliceOp>(users[0]) &&
+            isa<top::SliceOp>(users[1])) {
+          if (!isa<top::ConcatOp>(*users[0]->user_begin())) {
+            std::swap(users[0], users[1]);
+          }
+          if (isa<top::ConcatOp>(*users[0]->user_begin()) &
+              isa<top::ReshapeOp>(*users[1]->user_begin()))
+            return failure();
+        }
+      }
+    }
+
     const auto canSplit = [&](Operation *op) {
       using TYPE = std::function<std::pair<bool, std::vector<Operation *>>(
           Operation * op)>;
@@ -1079,18 +1098,12 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns->add<
-            ConvertGLMTilePermute,
-            ConvertMatMulWithRightTranspose,
-            ConvertMatMul2Attention,
-            ReshapeReorderPattern,
-            ConvertMultiInputAdd,
-            WhereBroadcastToTile,
-            ConvertConv2DToImg2Col,
-            SplitMatMulPattern,
-            ConvertScaleOp,
-            ConcatToSwapDimInner>(
-  patterns->getContext(), 8);
+  patterns
+      ->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
+            ConvertMatMul2Attention, ReshapeReorderPattern,
+            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
+            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
+          patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
