@@ -13,15 +13,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void GatherND_lowering_common(PatternRewriter &rewriter, top::GatherNDOp op) {
-  std::vector<NamedAttribute> attrs;
-  std::vector<NamedAttribute> cpu_param;
-  attrs.emplace_back(rewriter.getNamedAttr(
-      "cpu_op_name", rewriter.getStringAttr("gathernd_tf")));
-  for (auto &attr : op->getAttrs()) {
-    cpu_param.push_back(attr);
-  }
-  attrs.emplace_back(
-      rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
+
   std::vector<Value> operands;
   operands.push_back(op.getInput());
 
@@ -44,8 +36,26 @@ static void GatherND_lowering_common(PatternRewriter &rewriter, top::GatherNDOp 
   } else {
     operands.push_back(op.getIndices());
   }
-  rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
-                                                 operands, attrs);
+
+  auto batch_dims = op.getBatchDims();
+  if (batch_dims == 0) {
+    rewriter.replaceOpWithNewOp<tpu::GatherNDOp>(op, op.getOutput().getType(),
+                                                operands, op->getAttrs());
+  } else {
+    //TODO implement batch_dims backend
+    std::vector<NamedAttribute> attrs;
+    std::vector<NamedAttribute> cpu_param;
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "cpu_op_name", rewriter.getStringAttr("gathernd_tf")));
+    for (auto &attr : op->getAttrs()) {
+      cpu_param.push_back(attr);
+    }
+    attrs.emplace_back(
+        rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
+
+    rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
+                                                  operands, attrs);
+  }
 }
 
 void GatherNDLowering::LoweringF32(PatternRewriter &rewriter,
