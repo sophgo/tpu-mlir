@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import numpy as np
 from collections import OrderedDict
 
@@ -64,11 +64,10 @@ def sqnr(ref_data, test_data, remove_zero = False):
 
     var_raw_zero_mean = np.sum(np.square(raw_zero_mean))
     var_noise_zero_mean = np.sum(np.square(noise_zero_mean))
-                                                                                                                                                        
+
     if var_noise_zero_mean == 0.0:
         return math.inf
 
     sqnr = 10 * np.log10(var_raw_zero_mean / var_noise_zero_mean)
 
     return sqnr
-
