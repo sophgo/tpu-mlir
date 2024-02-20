@@ -861,7 +861,6 @@ void codegenGroupParallelOp(
   for (int i = 0; i < core_num; i++) {
     multi_core->useCore(i);
     multi_core->syncAll();
-    multi_core->syncAll();
   }
   // Region codegen 0 ~ N
   int regionNum = groupParallelOp.getNumRegions();
@@ -882,7 +881,6 @@ void codegenGroupParallelOp(
   }
   for (int i = 0; i < core_num; i++) {
     multi_core->useCore(i);
-    multi_core->syncAll();
     multi_core->syncAll();
   }
   multi_core->useCore(0); // reset the command buffer to 0
