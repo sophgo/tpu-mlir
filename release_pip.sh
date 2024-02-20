@@ -8,6 +8,11 @@ rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
 source build.sh RELEASE
 
+# build customlayer for regression test
+source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
+rebuild_custom_backend
+rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
+
 # set mlir_version
 export mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
 export mlir_commit_id="$(git rev-parse --short HEAD)"
@@ -86,6 +91,7 @@ patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/' $
 patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ${release_archive}/python/mlir/_mlir_libs/_mlir.cpython-310-x86_64-linux-gnu.so
 patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ${release_archive}/python/mlir/_mlir_libs/_mlirDialectsQuant.cpython-310-x86_64-linux-gnu.so
 patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ${release_archive}/python/mlir/_mlir_libs/_mlirRegisterEverything.cpython-310-x86_64-linux-gnu.so
+
 for file in ${release_archive}/lib/*
 do
     if [[ $file = *kernel_module.so ]]; then

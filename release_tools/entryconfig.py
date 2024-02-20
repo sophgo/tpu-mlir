@@ -10,6 +10,7 @@ def entrygen(execute_path):
     files = os.listdir(abspath)
     entrygen_functions.append(f'# f"{{package_path}}/{execute_path}\n')
     entrygen_count = 0
+    exclude_file_type = [".prototxt", ".caffemodel", ".pt", ".onnx", ".tflite"]
 
     for file in files:
         file_abspath = os.path.join(os.path.dirname(execute_path), file)
@@ -23,6 +24,8 @@ def entrygen(execute_path):
             codegen = f"""def {file_name.replace("-","_")}():\n\t\
 file_name = f"{{os.getenv('TPUC_ROOT')}}/{os.path.join(execute_path,file)}"\n\t\
 run_subprocess_py(file_name)\n\n"""
+        elif ext_name in exclude_file_type:
+            continue
         else:
             codegen = f"""def {file_name.replace("-","_")}():\n\t\
 file_name = f"{{os.getenv('TPUC_ROOT')}}/{os.path.join(execute_path,file)}"\n\t\

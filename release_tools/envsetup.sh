@@ -23,9 +23,12 @@ export PATH=$PROJECT_ROOT/python/utils:$PATH
 export PATH=$PROJECT_ROOT/python/test:$PATH
 export PATH=$PROJECT_ROOT/python/samples:$PATH
 export PATH=$PROJECT_ROOT/customlayer/python:$PATH
+export PATH=$PROJECT_ROOT/customlayer/test:$PATH
 
 export LD_LIBRARY_PATH=$RELEASE_PATH/lib:$RELEASE_PATH/lib/third_party/:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
 
 export PYTHONPATH=$RELEASE_PATH/:$PYTHONPATH
 export PYTHONPATH=$RELEASE_PATH/python/:$PYTHONPATH
 export PYTHONPATH=$RELEASE_PATH/lib/:$PYTHONPATH
+export PYTHONPATH=$RELEASE_PATH/customlayer/python:$PYTHONPATH
+
