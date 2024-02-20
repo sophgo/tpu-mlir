@@ -2274,6 +2274,23 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_GatherNDOp: Tpu_Op<"GatherND", [
+  DeclareOpInterfaceMethods<TypeInterface>]>  {
+  let summary = "GatherND operator";
+  let description = [{
+    This operator is the inverse of ScatterND.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input_data,
+    AnyRankedTensor:$indices,
+    OptionalAttr<I64Attr>:$indice_dims,
+    DefaultValuedAttr<I64Attr, "0">:$batch_dims
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,

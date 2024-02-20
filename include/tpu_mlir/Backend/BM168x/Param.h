@@ -736,6 +736,11 @@ typedef struct gather_elements_global {
     uint64_t intermediate_buffer_global_addr;
 } gather_elements_global_param_t;
 
+typedef struct gather_nd_global {
+    int batch_dims;
+    int const_val; // fill_value if index not found in input
+} gather_nd_global_param_t;
+
 typedef struct scatter_elements_global_spec {
   int data_dims;
   int indices_dims;

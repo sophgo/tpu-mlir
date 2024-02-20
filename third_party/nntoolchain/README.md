@@ -12,9 +12,9 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/SG2260 2024-2-19
+## TPU1684X/1688/SG2260 2024-2-22
 ``` bash
-#bm1684x sha256: acf6deffefb7d91e4dba52ca93ff2eb2cd827240
+#bm1684x sha256: 82d9384da5105aaea7bf0f3781ba14e257c971b6
 
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: abb91412e02ba4a68763b33abec0a0a93083cf17
+#bm1688 sha256: 82d9384da5105aaea7bf0f3781ba14e257c971b6
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#sg2260 sha256: 96561f0a40e76c809a35f687be4bffcfde5add1c
+#sg2260 sha256: 82d9384da5105aaea7bf0f3781ba14e257c971b6
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**
@@ -47,15 +47,15 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 ```
 
 
-## tpu-runtime 2023-12-25
-build from tpu-runtime ea2ef0c38706056162f82bf0117f5d113445aaee
+## tpu-runtime 2023-2-22
+build from tpu-runtime ce72a0d4f2f8073df186cfddf7517c4e9219cdf8
 ``` bash
 pushd libsophon
 mkdir -p build && cd build
 cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=Debug ../
 ninja
-cp -P tpu-runtime/libbmrt.so* /workspace/third_party/nntoolchain/lib/
-cp -P bmlib/libbmlib.so* /workspace/third_party/nntoolchain/lib/
+cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```
 
