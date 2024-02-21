@@ -57,7 +57,8 @@ public:
       // 3 for fp8 th block from tpu-mlir
       // 4 for fp8 th block from mqbench
       if (std::regex_match(line, pattern)) {
-        if (std::string::npos != line.find("#weight_scale") || std::string::npos != line.find("#weight_scale_fp8"))
+        if (std::string::npos != line.find("#weight_scale") ||
+            std::string::npos != line.find("#weight_scale_fp8"))
           return 1;
         if (std::string::npos != line.find("#int4_th"))
           return 2;
@@ -141,6 +142,11 @@ public:
             if (type.getElementType().isIntOrIndex()) {
               continue;
             }
+            if (isa<CompareConstOp>(op)) {
+              if (dyn_cast<CompareConstOp>(op).getMode().str() != "And") {
+                continue;
+              }
+            }
 
             auto name = module::getName(value).str();
             cali_info info = {0, 0, 0};
@@ -171,8 +177,7 @@ public:
             }
             auto quant_type = quant::CalibratedQuantizedType::get(
                 type.getElementType(), min, max);
-            auto new_type =
-                RankedTensorType::get(type.getShape(), quant_type);
+            auto new_type = RankedTensorType::get(type.getShape(), quant_type);
             value.setType(new_type);
           }
         } else if (isa<WeightOp>(op)) {
@@ -270,8 +275,7 @@ public:
       min = info.min;
       max = info.max;
     }
-    if (!isa<top::SubOp>(op) &&
-        op->hasAttr("do_relu") &&
+    if (!isa<top::SubOp>(op) && op->hasAttr("do_relu") &&
         op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
       min = 0;
     }

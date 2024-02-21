@@ -357,16 +357,15 @@ Type getQuantInt4Type(Value v, bool asymmetric) {
 Type getQuantBoolType(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
-  auto cali_type = module::getCalibratedType(v);
-  int64_t qmin = -128, qmax = 127;
-  uint32_t flag = quant::QuantizationFlags::Signed;
-  if (cali_type.getMin() >= 0) {
-    qmin = 0;
-    qmax = 255;
-    flag = 0;
-  }
+  Type exp_type;
+  if (module::isCalibratedType(v))
+    exp_type = module::getCalibratedType(v).getExpressedType();
+  else
+    exp_type = Float32Type::get(ctx);
+  int64_t qmin = 0, qmax = 1;
+  uint32_t flag = 0;
   auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
-                                                cali_type.getExpressedType(),
+                                                exp_type,
                                                 1.0, 0, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);
 }

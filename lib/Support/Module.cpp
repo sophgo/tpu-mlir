@@ -1445,6 +1445,12 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
     scale = qtype.getScale();
     zeropoint = qtype.getZeroPoint();
     sign = qtype.isSigned();
+  } else if (auto ccop = dyn_cast<top::CompareConstOp>(v.getDefiningOp())) {
+    if (ccop.getMode().str() == "And")
+      llvm_unreachable("calibration info not set for compareconst And");
+    scale = 1.0;
+    zeropoint = 0;
+    sign = 0;
   } else {
     v.dump();
     llvm_unreachable("can't get scale and zeropoint");
