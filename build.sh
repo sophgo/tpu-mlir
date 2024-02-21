@@ -57,11 +57,12 @@ if [ "$1" != "DEBUG" ]; then
   if grep -i 'error' doc.log; then
       exit 1
   fi
+  rm doc.log
 
   # strip mlir tools
   pushd $INSTALL_PATH
   find ./ -name "*.so"  ! -name "*_kernel_module.so" ! -name "*_atomic_kernel.so" | xargs strip
   ls bin/* | xargs strip
-  find ./ -name "*.a" | xargs rm
+  find ./ -name "*.a" ! -name "*_kernel_module.a" | xargs rm
   popd
 fi

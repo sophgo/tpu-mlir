@@ -15,6 +15,9 @@ export REGRESSION_PATH=$PROJECT_ROOT/regression
 export NNMODELS_PATH=${PROJECT_ROOT}/../nnmodels
 export MODEL_ZOO_PATH=${PROJECT_ROOT}/../model-zoo
 
+# customlayer path
+export CUSTOM_LAYER_PATH=$PROJECT_ROOT/third_party/customlayer
+
 # run path
 export PATH=$INSTALL_PATH/bin:$PATH
 export PATH=$PROJECT_ROOT/python/tools:$PATH

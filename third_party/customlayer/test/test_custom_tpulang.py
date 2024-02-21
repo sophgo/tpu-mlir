@@ -259,7 +259,7 @@ if __name__ == "__main__":
         for case in tester.test_cases:
             print(case)
         exit(0)
-    dir = "tpulang_test_{}".format(args.chip)
+    dir = "custom_tpulang_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
