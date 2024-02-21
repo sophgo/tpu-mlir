@@ -118,7 +118,6 @@ class TPULANG_IR_TESTER(object):
             "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             # "Rsqrt": (self.test_Rsqrt,                  Y, Y),
-            "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
             "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
@@ -134,8 +133,9 @@ class TPULANG_IR_TESTER(object):
             "Tile": (self.test_Tile,                    Y, Y),
             #### model ####
             "HModel": (self.test_Model,                 N, N),
-            "Resnet50":(self.test_Resnet50,             N, N),
+            "Resnet50":(self.test_Resnet50,             Y, Y),
             "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
+            "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
             "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
         }
         # currently tpulang only supports fp quant mode
@@ -760,7 +760,7 @@ class TPULANG_IR_TESTER(object):
 
     def batch_norm_op(self, x, oc):
         mean = self.coeff_tensor([oc], "float32", scale=0.2)
-        var = self.coeff_tensor([oc], "float32", scale=2)
+        var = self.coeff_tensor([oc], "float32", data=np.clip(np.random.randn(oc), 0.5, 10).astype(np.float32))
         gamma = self.coeff_tensor([oc], "float32", data=np.ones((oc)).astype(np.float32))
         beta = self.coeff_tensor([oc], "float32", data=np.zeros((oc)).astype(np.float32))
         return tpul.batch_norm(x, mean, var, gamma, beta)
