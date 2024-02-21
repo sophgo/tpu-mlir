@@ -27,34 +27,34 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     s = "\n".join([line.__repr__() for line in sOrIt_])
     return _indent(s, numSpaces)
 
-def to_scalar(func):
 
-    def __to_scalar(data):
-        if isinstance(data, float):
-            return Scalar(data, "float32")
-        elif isinstance(data, int):
-            return Scalar(data, "int32")
-        return data
+def to_scalar(num):
+    def wrapper(func):
 
-    def wrapper(*args, **kwargs):
-        need_to_scalar = False
-        for idx, v in enumerate(args):
-            if isinstance(v, Union[int, float]):
-                need_to_scalar = True
-        for k, v in kwargs.items():
-            if isinstance(v, Union[int, float]):
-                kwargs[k] = __to_scalar(v)
-        if need_to_scalar:
-            new_args = []
+        def __to_scalar(data):
+            if isinstance(data, float):
+                return Scalar(data, "float32")
+            elif isinstance(data, int):
+                return Scalar(data, "int32")
+            return data
+
+        def decorate(*args, **kwargs):
+            need_to_scalar = False
             for idx, v in enumerate(args):
-                if isinstance(v, Union[int, float]):
-                    new_args.append(__to_scalar(v))
-                else:
-                    new_args.append(v)
-            return func(*new_args, **kwargs)
-        else:
-            return func(*args, **kwargs)
+                if isinstance(v, Union[int, float]) and idx < num:
+                    need_to_scalar = True
+            if need_to_scalar:
+                new_args = []
+                for idx, v in enumerate(args):
+                    if isinstance(v, Union[int, float]) and idx < num:
+                        new_args.append(__to_scalar(v))
+                    else:
+                        new_args.append(v)
+                return func(*new_args, **kwargs)
+            else:
+                return func(*args, **kwargs)
 
+        return decorate
     return wrapper
 
 def annotayion_check(func):
@@ -113,7 +113,9 @@ class Tensor:
                  name: str = None,
                  ttype="neuron",
                  data=None,
-                 dtype: str = "float32"):
+                 dtype: str = "float32",
+                 scale: float = None,
+                 zero_point: int = None):
         self.id = int(Tensor.ID)
         self.shape = shape if isinstance(shape, list) else [shape]
         self.name = "BMTensor" + str(self.id) if name is None else name
@@ -123,9 +125,11 @@ class Tensor:
             "float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"
         ]
         self.dtype = dtype.lower()
+        if data is not None:
+            assert data.dtype == self.dtype
         self.buffer = data
         self.is_quantized: bool = False
-        self.quantization()
+        self.quantization(scale=scale, zero_point=zero_point)
         Tensor.ID += 1
 
     def quantization(self,
@@ -223,12 +227,13 @@ class TpuLangConverter(BaseConverter):
         "dict": "DICT",
     }
 
-    def __init__(self, name: str, graph: Graph):
+    def __init__(self, name: str, graph: Graph, mode: str):
         super().__init__()
         self.model_name = name
         self.model = graph
         self.load_model()
-        self.init_MLIRImporter()
+        state = State.TOP_QUANTIZED if mode != 'f32' and mode != 'all' else State.TOP_F32
+        self.init_MLIRImporter(state)
         self.weight_file = self.mlir.weight_file
         self.constant = {}
         self.type_to_mlir = self.__type2mlir(self.mlir.ctx)
@@ -259,7 +264,7 @@ class TpuLangConverter(BaseConverter):
             self.output_names.append(tensor.name)
             self.addShape(tensor.name, tensor.shape)
 
-    def init_MLIRImporter(self):
+    def init_MLIRImporter(self, state:State):
         input_shapes = list()
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
@@ -269,12 +274,13 @@ class TpuLangConverter(BaseConverter):
                 output_shapes.append(self.getShape(_name))
             else:
                 output_shapes.append([])
+
         # init importer
         self.mlir = MLIRImporter(input_shapes,
                                  output_shapes,
                                  self.model_name,
                                  platform=Platform.TPULANG,
-                                 state=State.TOP_F32,
+                                 state=state,
                                  do_declare=False)
 
     def __create_weight_op(self, tensor: Tensor):
@@ -364,6 +370,8 @@ class TpuLangConverter(BaseConverter):
         else:
             type = self.type_to_mlir[tensor.dtype]
             output_shapes = tensor.shape
+        if tensor.is_quantized:
+            type = self.get_quantized_type(tensor)
         if output_shapes == []:
             return UnrankedTensorType.get(type)
         if output_shapes is None:

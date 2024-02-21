@@ -7,8 +7,11 @@
 
 from typing import List, Union, Tuple
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotayion_check
+from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
+from utils.auto_remove import file_mark
+from tools.npz_tool import npz_compare
 
 import numpy as np
 import uuid
@@ -17,14 +20,15 @@ import uuid
 class TpuLang:
     graph = None
     device = None
+    chip = None
 
     def __init__(
         self,
         device: str,
     ):
         device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
-        if device.lower in device_list:
-            self.chip = device
+        if device.lower() in device_list:
+            TpuLang.chip = device
         else:
             KeyError('TpuLang: unsupported device.')
         # self.model_name = model_name
@@ -41,15 +45,26 @@ def compile(name: str,
             outputs: List[Tensor],
             cmp=True,
             has_custom=False,
-            refs=None):
+            refs=None,
+            mode='f32'):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     # convert to mlir
-    converter = TpuLangConverter(name=name, graph=TpuLang.graph)
+    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode=mode)
     model_transform(name, converter)
-    model_inference(model_name=name, inputs=inputs, has_custom=has_custom)
-    if cmp and refs is not None:
-        model_validate(model_name=name, refs=refs)
+    is_inference = has_custom==False and mode=='f32'
+    model_top_inference(model_name=name, inputs=inputs, inference=is_inference)
+    if not has_custom:
+        if is_inference and cmp and refs is not None:
+            model_validate(model_name=name, refs=refs)
+        assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
+        if mode == 'all':
+            for m in ['f32', 'f16', 'bf16']:
+                model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=is_inference)
+                bmodel_generate_and_inference(model_name=name, quant_mode=m)
+        else:
+            model_lowering_and_inference(model_name=name, quant_mode=mode, chip=TpuLang.chip, cmp=is_inference)
+            bmodel_generate_and_inference(model_name=name, quant_mode=mode)
 
 
 def model_transform(model_name, converter: TpuLangConverter):
@@ -60,7 +75,7 @@ def model_transform(model_name, converter: TpuLangConverter):
     print("Mlir file generated:{}".format(mlir_file))
 
 
-def model_inference(model_name, inputs, has_custom=False):
+def model_top_inference(model_name, inputs, inference=False):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
     ref_inputs = dict()
@@ -68,9 +83,8 @@ def model_inference(model_name, inputs, has_custom=False):
         ref_inputs[tensor.name] = tensor.buffer
     np.savez(in_f32_npz, **ref_inputs)
     # inference of mlir model, no inference performed when there is custom op
-    if not has_custom:
+    if inference:
         res_npz = model_name + '_top_outputs.npz'
-        from tools.model_runner import mlir_inference, show_fake_cmd
         show_fake_cmd(in_f32_npz, mlir_file, res_npz)
         f32_outputs = mlir_inference(ref_inputs, mlir_file)
         np.savez(res_npz, **f32_outputs)
@@ -82,9 +96,45 @@ def model_validate(model_name, refs: dict):
         ref_outputs[tensor.name] = refs[tensor.name]
     ref_npz = model_name + '_ref_outputs.npz'
     np.savez(ref_npz, **ref_outputs)
-    res_npz = model_name + '_top_outputs.npz'
+    top_npz = model_name + '_top_outputs.npz'
     # compare all blobs layer by layers
-    f32_blobs_compare(res_npz, ref_npz, '0.99,0.99')
+    f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
+
+def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, isAsym: bool = False, cmp: bool = False):
+    top_mlir = "{}.mlir".format(model_name)
+    tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
+
+    mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=isAsym)
+
+    in_f32_npz = model_name + '_in_f32.npz'
+    tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+    input_data = np.load(in_f32_npz)
+    file_mark(tpu_npz)
+    show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
+    tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
+    np.savez(tpu_npz, **tpu_mlir_outs)
+    if cmp:
+        top_npz = model_name + '_top_outputs.npz'
+        npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
+
+def bmodel_generate_and_inference(model_name: str, quant_mode: str):
+
+    # generate bmodel
+    tpu_mlir = "{}_{}".format(model_name, quant_mode)
+    tpu_final = tpu_mlir + "_final.mlir"
+    bmodel = tpu_mlir + ".bmodel"
+    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+
+    #inference
+    in_f32_npz = model_name + '_in_f32.npz'
+    tpu_npz = tpu_mlir + "_tpu_out.npz"
+    input_data = np.load(in_f32_npz)
+    model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+    file_mark(model_npz)
+    show_fake_cmd(in_f32_npz, bmodel, model_npz)
+    model_outs = model_inference(input_data, bmodel)
+    np.savez(model_npz, **model_outs)
+    npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
 
 def init(device: str):
@@ -227,56 +277,21 @@ def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = Non
         assert in0_dtype == out_dtype
     return in0_dtype
 
-
 @annotayion_check
-@to_scalar
-def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float], out_dtype: str = None, out_name: str = None):
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor([], dtype=o_dtype, name=out_name)
-    if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
-        TpuLang.insert_op("top.Add", [tensor_i0, tensor_i1], [output])
-    else:
-        tensor = tensor_i0 if isinstance(tensor_i0, Tensor) else tensor_i1
-        scalar = tensor_i0 if isinstance(tensor_i1, Tensor) else tensor_i1
-
-        if tensor == scalar:
-            raise "input muat be have Tensor"
-        attr = {
-            "const_val": Attr(scalar.value, 'float64'),
-        }
-        TpuLang.insert_op("top.AddConst", [tensor], [output], params = attr)
-    return output
-
-@annotayion_check
-def conv_v2(input: Tensor,
-            weight: Tensor,
-            bias: Tensor = None,
-            stride: List[int] = None,
-            dilation: List[int] = None,
-            pad: List[int] = None,
-            group: int = 1,
-            input_zp: Union[int, List[int]] = None,
-            weight_zp: Union[int, List[int]] = None,
-            out_dtype: str = None,
-            out_name: str = None):
+def conv(input: Tensor,
+         weight: Tensor,
+         bias: Tensor = None,
+         stride: List[int] = None,
+         dilation: List[int] = None,
+         pad: List[int] = None,
+         group: int = 1,
+         out_dtype: str = None,
+         out_name: str = None):
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
-    o_dtype = "int32"
-    if out_dtype is not None:
-        o_dtype = out_dtype
-    elif input.dtype == "float32" or input.dtype == "float16":
-        o_dtype = input.dtype
-
-    assert(input.shape[1] == weight.shape[1] * group and "ic != kic * group")
-
-    def _shape_inference():
-        kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
-        kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
-        oh = (input.shape[2] + pad[0] + pad[2] - kh_ext) // stride[0] + 1
-        ow = (input.shape[3] + pad[1] + pad[3] - kw_ext) // stride[1] + 1
-        return [input.shape[0], weight.shape[0], oh, ow]
+    o_dtype = "float32" if out_dtype is None else out_dtype
+    assert input.dtype in ["float32", "float16"]
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -286,9 +301,72 @@ def conv_v2(input: Tensor,
         "do_relu": Attr(False, "bool"),
         "group": Attr(group)
     }
-    input.quantization(zero_point=input_zp)
-    weight.quantization(zero_point=weight_zp)
-    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+
+    output = Tensor(dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def conv_int(input: Tensor,
+             weight: Tensor,
+             bias: Tensor = None,
+             stride: List[int] = None,
+             dilation: List[int] = None,
+             pad: List[int] = None,
+             group: int = 1,
+             out_dtype: str = None,
+             out_name: str = None):
+    dilation = [1, 1] if dilation is None else dilation
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    o_dtype = "int32" if out_dtype is None else out_dtype
+    assert o_dtype in ["int32", "uint32"]
+    assert input.is_quantized is True
+    assert weight.is_quantized is True
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    output = Tensor(dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def conv_quant(input: Tensor,
+            weight: Tensor,
+            bias: Tensor = None,
+            stride: List[int] = None,
+            dilation: List[int] = None,
+            pad: List[int] = None,
+            group: int = 1,
+            output_scale: Union[float, List[float]] = None,
+            output_zp: Union[int, List[int]] = None,
+            out_dtype: str = None,
+            out_name: str = None):
+    dilation = [1, 1] if dilation is None else dilation
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    o_dtype = out_dtype if out_dtype is not None else input.dtype
+    assert o_dtype in ["int8", "uint8"]
+    assert input.is_quantized is True
+    assert weight.is_quantized is True
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    output = Tensor(dtype=o_dtype, name=out_name, scale=output_scale, zero_point=output_zp)
     inputs = [input, weight, bias]
     TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
     return output
@@ -326,6 +404,37 @@ def conv3d_v2(input: Tensor,
     }
     input.quantization(zero_point=input_zp)
     weight.quantization(zero_point=weight_zp)
+    output = Tensor([], dtype=o_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def conv3d_int(input: Tensor,
+               weight: Tensor,
+               bias: Tensor = None,
+               stride: List[int] = None,
+               dilation: List[int] = None,
+               pad: List[int] = None,
+               group=1,
+               out_dtype: str = None,
+               out_name: str = None):
+    dilation = [1, 1, 1] if dilation is None else dilation
+    stride = [1, 1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    o_dtype = "int32" if out_dtype is None else out_dtype
+    assert o_dtype in ["int32", "uint32"]
+    assert input.is_quantized is True
+    assert weight.is_quantized is True
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
     output = Tensor([], dtype=o_dtype, name=out_name)
     inputs = [input, weight, bias]
     TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
@@ -410,18 +519,16 @@ def deconv3d_v2(input: Tensor,
     TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
     return output
 
-@annotayion_check
-def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
-        out_dtype: str = None, out_name: str = None):
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, True)
-    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-    #     o_dtype = tensor_i0.dtype
-    # elif out_dtype is not None:
-    #     o_dtype = out_dtype
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor([], dtype=o_dtype, name=out_name)
+############## binary op ###############
+def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], op_type: str,
+        out_scale: float=None, is_reverse : bool = None, out_dtype: str = None, out_name: str = None):
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
+    if out_scale is not None:
+        assert isinstance(tensor_i0, Scalar) or tensor_i0.is_quantized == True
+        assert isinstance(tensor_i1, Scalar) or tensor_i1.is_quantized == True
+    output = Tensor(dtype=o_dtype, name=out_name, scale=out_scale)
     if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
-        TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
+        TpuLang.insert_op(op_type, [tensor_i0, tensor_i1], [output])
     else:
         tensor = tensor_i0 if isinstance(tensor_i0, Tensor) else tensor_i1
         scalar = tensor_i0 if isinstance(tensor_i1, Tensor) else tensor_i1
@@ -431,21 +538,28 @@ def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
         attr = {
             "const_val": Attr(scalar.value, 'float64'),
         }
-        TpuLang.insert_op("top.MulConst", [tensor], [output], params = attr)
-
+        if is_reverse is not None:
+            attr["is_reverse"] = Attr(is_reverse, 'bool')
+        TpuLang.insert_op(op_type+"Const", [tensor], [output], params = attr)
     return output
 
 @annotayion_check
-def sub(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, True)
-    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-    #     o_dtype = tensor_i0.dtype
-    # elif out_dtype is not None:
-    #     o_dtype = out_dtype
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor([], dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Sub", [tensor_i0, tensor_i1], [output])
-    return output
+@to_scalar(2)
+def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_scale: float=None, out_dtype: str = None, out_name: str = None):
+    return _base_binary(tensor_i0, tensor_i1, "top.Add", out_scale, out_dtype=out_dtype, out_name=out_name)
+
+@annotayion_check
+@to_scalar(2)
+def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_scale: float=None, out_dtype: str = None, out_name: str = None):
+    return _base_binary(tensor_i0, tensor_i1, "top.Mul", out_scale, out_dtype=out_dtype, out_name=out_name)
+
+@annotayion_check
+def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_scale: float=None, out_dtype: str = None, out_name: str = None):
+    is_reverse = None if isinstance(tensor_i0, Tensor) else True
+    return _base_binary(tensor_i0, tensor_i1, "top.Sub", out_scale, is_reverse=is_reverse, out_dtype=out_dtype, out_name=out_name)
 
 @annotayion_check
 def div(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
@@ -456,28 +570,14 @@ def div(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
     return output
 
 @annotayion_check
-def max(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
-    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-    #     o_dtype = tensor_i0.dtype
-    # elif out_dtype is not None:
-    #     o_dtype = out_dtype
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor([], dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Max", [tensor_i0, tensor_i1], [output])
-    return output
+def max(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_scale: float=None, out_dtype: str = None, out_name: str = None):
+    return _base_binary(tensor_i0, tensor_i1, "top.Max", out_scale, out_dtype=out_dtype, out_name=out_name)
 
 @annotayion_check
-def min(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
-    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
-    # if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16" or out_dtype is None:
-    #     o_dtype = tensor_i0.dtype
-    # elif out_dtype is not None:
-    #     o_dtype = out_dtype
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-    output = Tensor([], dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Min", [tensor_i0, tensor_i1], [output])
-    return output
+def min(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
+        out_scale: float=None, out_dtype: str = None, out_name: str = None):
+    return _base_binary(tensor_i0, tensor_i1, "top.Min", out_scale, out_dtype=out_dtype, out_name=out_name)
 
 # def add_shift(tensor_i0: Tensor,
 #               tensor_i1: Tensor,
@@ -540,27 +640,6 @@ def clamp(input: Tensor, min:float, max:float, out_name: str = None):
     TpuLang.insert_op("top.Clip", [input], [output], params=attr)
     return output
 
-# @deprecated(version=1.0, reason="This function will be removed soon")
-@annotayion_check
-def conv(input: Tensor,
-         weight: Tensor,
-         bias: Tensor = None,
-         kernel=None,
-         dilation: List[int] = None,
-         pad: List[int] = None,
-         stride: List[int] = None,
-         group: int = 1,
-         out_name: str = None):
-    return conv_v2(input=input,
-                   weight=weight,
-                   bias=bias,
-                   stride=stride,
-                   dilation=dilation,
-                   pad=pad,
-                   group=group,
-                   out_dtype=input.dtype,
-                   out_name=out_name)
-
 # @deprecated(version=1.0, reason="Th  is function will be removed soon")
 @annotayion_check
 def conv3d(input: Tensor,
@@ -611,11 +690,51 @@ def requant_fp_to_int(tensor_i: Tensor,
                       offset: Union[int, List[int], float, List[float]],
                       requant_mode: int,
                       out_dtype: str,
-                      out_name=None,
-                      round_mode='half_away_from_zero'):
-    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
-    output.quantization(scale=scale, zero_point=offset)
+                      out_name: str=None,
+                      round_mode: str='half_away_from_zero'):
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, scale=scale, zero_point=offset)
     TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
+    return output
+
+@annotayion_check
+def dequant_int_to_fp(tensor_i: Tensor,
+                      scale: Union[float, List[float]],
+                      offset: Union[int, List[int], float, List[float]],
+                      out_dtype: str="float32",
+                      out_name: str=None,
+                      round_mode: str='half_away_from_zero'):
+    assert out_dtype in ["float32", "float16"]
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
+    assert tensor_i.is_quantized == True
+    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
+    return output
+
+def round_mode_convert(rmode: str):
+    round_mode = "".join([r.capitalize() for r in rmode.split('_')])
+    assert round_mode in ["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]
+    return round_mode
+
+@annotayion_check
+def requant_int(tensor_i: Tensor,
+                mul: Union[int, List[int]],
+                shift: Union[int, List[int]],
+                offset: Union[int, List[int]],
+                requant_mode: int,
+                out_dtype: str="int8",
+                out_name=None,
+                round_mode='half_away_from_zero'):
+    assert requant_mode < 3
+    q_mode = ["TFLite_LShift", "TFLite", "MultiplierShift"]
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=offset)
+    mul = mul if isinstance(mul, List) else [mul]
+    shift = shift if isinstance(shift, List) else [shift]
+    attr = {
+        "multiplier": ArrayAttr(mul, "int64"),
+        "rshift": ArrayAttr(shift, "int64"),
+        "quant_mode": Attr(q_mode[requant_mode], "string"),
+        "round_mode": Attr(round_mode_convert(round_mode), "string")
+    }
+    TpuLang.insert_op("top.RequantInt", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
 @annotayion_check
@@ -627,9 +746,17 @@ def matmul(input: Tensor,
             output_transpose=False,
             hdim_is_batch=False,
             keep_dims=True,
+            input_zp: Union[int, List[int]] = None,
+            right_zp: Union[int, List[int]] = None,
+            out_dtype: str = None,
             out_name: str = None):
 
-    o_dtype = input.dtype
+    o_dtype = "int32"
+    if out_dtype is not None:
+        o_dtype = out_dtype
+    elif input.dtype == "float32" or input.dtype == "float16":
+        o_dtype = input.dtype
+
 
     attr = {
         "right_transpose": Attr(right_transpose, "bool"),
@@ -641,7 +768,67 @@ def matmul(input: Tensor,
         "relu_limit":  Attr(-1.0, "float64")
     }
 
-    output = Tensor([], dtype=o_dtype, name=out_name)
+    input.quantization(zero_point=input_zp)
+    right.quantization(zero_point=right_zp)
+    output = Tensor(dtype=o_dtype, name=out_name)
+    inputs = [input, right, bias]
+    TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def matmul_int(input: Tensor,
+               right: Tensor,
+               bias: Tensor = None,
+               right_transpose=False,
+               left_transpose=False,
+               output_transpose=False,
+               keep_dims=False,
+               out_dtype: str = None,
+               out_name: str = None):
+
+    o_dtype = "int32" if out_dtype is None else out_dtype
+    assert o_dtype in ["int32", "uint32"]
+    assert input.is_quantized is True
+    assert right.is_quantized is True
+
+    attr = {
+        "right_transpose": Attr(right_transpose, "bool"),
+        "left_transpose": Attr(left_transpose, "bool"),
+        "output_transpose": Attr(output_transpose, "bool"),
+        "hdim_is_batch": Attr(False, "bool"),
+        "keep_dims": Attr(keep_dims, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(dtype=o_dtype, name=out_name)
+    inputs = [input, right, bias]
+    TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+
+@annotayion_check
+def matmul_quant(input: Tensor,
+                 right: Tensor,
+                 bias: Tensor = None,
+                 right_transpose=False,
+                 keep_dims=False,
+                 output_scale: Union[float, List[float]] = None,
+                 output_zp: Union[int, List[int]] = None,
+                 out_dtype: str = 'int8',
+                 out_name: str = None):
+
+    attr = {
+        "right_transpose": Attr(right_transpose, "bool"),
+        "left_transpose": Attr(False, "bool"),
+        "output_transpose": Attr(False, "bool"),
+        "hdim_is_batch": Attr(False, "bool"),
+        "keep_dims": Attr(keep_dims, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(dtype=out_dtype, name=out_name, scale=output_scale, zero_point=output_zp)
     inputs = [input, right, bias]
     TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
@@ -661,26 +848,26 @@ def maxpool(input: Tensor,
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = input.dtype
 
-    def _shape_inference():
-        assert len(input.shape) > 2
-        spacial_rank = len(input.shape) - 2
-        assert spacial_rank == len(kernel)
-        assert len(pad) == spacial_rank * 2
-        out_shape = [input.shape[0], input.shape[1]]
-        input_spacial_shape = input.shape[2:]
-        for i in range(spacial_rank):
-            input_dim_expanded = input_spacial_shape[i] + pad[i] + pad[i + spacial_rank] - kernel[i]
-            out_dim = (input_dim_expanded // stride[i]) + 1
-            # move ceil_mode to padding
-            need_fix_pad = input_dim_expanded % stride[i]
-            if ceil_mode and ceil_mode.value and need_fix_pad:
-                new_pad = pad[i + spacial_rank] + stride[i] - need_fix_pad
-                if new_pad < kernel[i]:
-                    pad[i + spacial_rank] = new_pad
-                    out_dim += 1
-            out_shape.append(out_dim)
+    # def _shape_inference():
+    #     assert len(input.shape) > 2
+    #     spacial_rank = len(input.shape) - 2
+    #     assert spacial_rank == len(kernel)
+    #     assert len(pad) == spacial_rank * 2
+    #     out_shape = [input.shape[0], input.shape[1]]
+    #     input_spacial_shape = input.shape[2:]
+    #     for i in range(spacial_rank):
+    #         input_dim_expanded = input_spacial_shape[i] + pad[i] + pad[i + spacial_rank] - kernel[i]
+    #         out_dim = (input_dim_expanded // stride[i]) + 1
+    #         # move ceil_mode to padding
+    #         need_fix_pad = input_dim_expanded % stride[i]
+    #         if ceil_mode and ceil_mode.value and need_fix_pad:
+    #             new_pad = pad[i + spacial_rank] + stride[i] - need_fix_pad
+    #             if new_pad < kernel[i]:
+    #                 pad[i + spacial_rank] = new_pad
+    #                 out_dim += 1
+    #         out_shape.append(out_dim)
 
-        return out_shape
+    #     return out_shape
 
     attr = {
         "kernel_shape": ArrayAttr(kernel),
@@ -694,9 +881,42 @@ def maxpool(input: Tensor,
         "relu_limit":  Attr(-1.0, "float64")
     }
 
-    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+    output = Tensor(dtype=o_dtype, name=out_name)
 
     TpuLang.insert_op("top.MaxPool", inputs=[input], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def avgpool(input: Tensor,
+            kernel: List[int]=None,
+            stride: List[int] = None,
+            pad: List[int] = None,
+            ceil_mode: bool = False,
+            input_scale: float = None,
+            output_scale: float = None,
+            input_zp: int = None,
+            output_zp: int = None,
+            out_name: str = None):
+    kernel = [1, 1] if kernel is None else kernel
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    o_dtype = input.dtype
+
+    attr = {
+        "kernel_shape": ArrayAttr(kernel),
+        "strides": ArrayAttr(stride),
+        "pads": ArrayAttr(pad),
+        "ceil_mode": Attr(ceil_mode, "bool"),
+        "keepdims": Attr(True, "bool"),
+        "pad_value": Attr(0),
+        "count_include_pad": Attr(False, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(dtype=o_dtype, name=out_name, scale=output_scale, zero_point=output_zp)
+    input.quantization(scale=input_scale, zero_point=input_zp)
+    TpuLang.insert_op("top.AvgPool", inputs=[input], outputs=[output], params=attr)
     return output
 
 @annotayion_check
@@ -844,6 +1064,19 @@ def softmax(input: Tensor, axis: int, out_name: str = None):
     return output
 
 @annotayion_check
+def softmax_int(input: Tensor, axis: int, input_scale: float = None, output_scale: float = None,
+                input_zp: int = None, output_zp: int = None, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("softmax")
+    attr = {
+        "axis": Attr(axis, data_type="int32"),
+    }
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name, scale=output_scale, zero_point=output_zp)
+    input.quantization(scale=input_scale, zero_point=input_zp)
+    TpuLang.insert_op("top.Softmax", inputs=[input], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
 def mish(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("mish")
@@ -903,7 +1136,7 @@ def sign(input: Tensor, out_name: str = None):
 def gelu(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("gelu")
-    output = Tensor([], dtype=input.dtype, name=out_name)
+    output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.GELU", inputs=[input], outputs=[output])
     return output
 
@@ -938,8 +1171,8 @@ def arg(input: Tensor,
         "keepdims": Attr(keep_dims, "bool"),
         "mode": Attr(method, "string"),
     }
-    output1 = Tensor([], dtype=o_dtype, name=out_name)
-    output2 = Tensor([], dtype=o_dtype, name=out_name)
+    output1 = Tensor(dtype=o_dtype, name=out_name)
+    output2 = Tensor(dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Arg", inputs=[input], outputs=[output1, output2], params=attr)
     return output1, output2
 
@@ -950,7 +1183,7 @@ def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = 
     attr = {
         "order": ArrayAttr(order),
     }
-    output = Tensor([], dtype=input.dtype, name=out_name)
+    output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Permute", inputs=[input], outputs=[output], params=attr)
     return output
 
@@ -961,7 +1194,7 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
     attr = {
         "tile": ArrayAttr(reps),
     }
-    output = Tensor([], dtype=input.dtype, name=out_name)
+    output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
     return output
 
@@ -973,7 +1206,7 @@ def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
     attr = {
         "axis": Attr(axis, "int32"),
     }
-    output = Tensor([], dtype=inputs[0].dtype, name=out_name)
+    output = Tensor(dtype=inputs[0].dtype, name=out_name)
     TpuLang.insert_op("top.Concat", inputs=inputs, outputs=[output], params=attr)
     return output
 
@@ -1001,7 +1234,7 @@ def split(input: Tensor,
     }
     outputs = []
     for i in range(num):
-        outputs.append(Tensor([], dtype=input.dtype, name=f"{out_name}_{i}"))
+        outputs.append(Tensor(dtype=input.dtype, name=f"{out_name}_{i}"))
 
     TpuLang.insert_op("top.Split", inputs=[input], outputs=outputs, params=attr)
     return outputs
@@ -1032,7 +1265,7 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("repeat")
     # reps = Tensor(data = reps, shape = input.shape)
-    output = Tensor([], dtype=input.dtype, name=out_name)
+    output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Repeat", inputs=[input, reps], outputs=[output])
     return output
 
@@ -1048,7 +1281,7 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 #         "num": Attr(num),
 #         "split_size": ArrayAttr(size),
 #     }
-#     output = Tensor([], dtype=input.dtype, name=out_name)
+#     output = Tensor(dtype=input.dtype, name=out_name)
 #     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
 #     return output
 
@@ -1079,7 +1312,7 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 #         "mode": Attr(method, 'string'),
 #         "coord_mode": Attr(coord, 'string'),
 #     }
-#     output = Tensor([], dtype=tensor_i.dtype, name=out_name)
+#     output = Tensor(dtype=tensor_i.dtype, name=out_name)
 #     TpuLang.insert_op("top.Interp", inputs=[tensor_i, target_shape], outputs=[output], params=attr)
 #     return output
 
@@ -1090,7 +1323,7 @@ def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, out_name: str = N
     attr = {
         "mode": Attr(type, "string"),
     }
-    output = Tensor([], dtype=o_dtype, name=out_name)
+    output = Tensor(dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.Compare", inputs=[tensor_i0, tensor_i1], outputs=[output], params=attr)
     return output
 
@@ -1171,7 +1404,7 @@ def ne(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
     # return output
     return __compare(tensor_i0, tensor_i1, "NotEqual", out_name)
 
-@to_scalar
+@to_scalar(2)
 def __compare_const(tensor_i0: Tensor, scalar_i1: Scalar, type: str, out_name: str = None):
     if out_name is None:
         out_name = generate_name(type)
@@ -1186,86 +1419,26 @@ def __compare_const(tensor_i0: Tensor, scalar_i1: Scalar, type: str, out_name: s
 
 @annotayion_check
 def gts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("gts")
-    # attr = {
-    #     "mode": Attr("Greater", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "Greater", out_name)
 
 @annotayion_check
 def lts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("lts")
-    # attr = {
-    #     "mode": Attr("Less", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "Less", out_name)
 
 @annotayion_check
 def ges(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("ges")
-    # attr = {
-    #     "mode": Attr("GreaterOrEqual", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "GreaterOrEqual", out_name)
 
 @annotayion_check
 def les(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("les")
-    # attr = {
-    #     "mode": Attr("LessOrEqual", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "LessOrEqual", out_name)
 
 @annotayion_check
 def eqs(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("eqs")
-    # attr = {
-    #     "mode": Attr("Equal", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "Equal", out_name)
 
 @annotayion_check
 def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str = None):
-    # if out_name is None:
-    #     out_name = generate_name("nes")
-    # attr = {
-    #     "mode": Attr("NotEqual", "string"),
-    #     "const_val": Attr(scalar_i1, "float64"),
-    #     'inversed': Attr(False, "bool")
-    # }
-    # output = Tensor([], dtype=tensor_i0.dtype, name=out_name)
-    # TpuLang.insert_op("top.CompareConst", inputs=[tensor_i0], outputs=[output], params=attr)
-    # return output
     return __compare_const(tensor_i0, scalar_i1, "NotEqual", out_name)
 
 @annotayion_check
@@ -1304,4 +1477,22 @@ def shape_fetch(tensor_i: Tensor,
     }
     output = Tensor(dtype=tensor_i.dtype, name=out_name)
     TpuLang.insert_op("top.Shape", inputs=[tensor_i], outputs=[output], params=attr)
+    return output
+
+############## Normalization ###############
+@annotayion_check
+def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
+               gamma: Tensor = None, beta: Tensor = None,
+               epsilon: float = 1e-5, out_name: str = None):
+    output = Tensor(dtype=input.dtype, name=out_name)
+    attr = {"epsilon": Attr(epsilon, 'float64')}
+    TpuLang.insert_op("top.BatchNorm", inputs=[input, mean, variance, gamma, beta], outputs=[output], params=attr)
+    return output
+
+@annotayion_check
+def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
+               epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
+    output = Tensor(dtype=input.dtype, name=out_name)
+    attr = {"epsilon": Attr(epsilon, 'float64'), "axis":  Attr(epsilon, 'int32')}
+    TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output

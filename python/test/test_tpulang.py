@@ -11,6 +11,7 @@ import numpy as np
 import os, sys
 import transform.TpuLang as tpul
 from typing import List
+import math
 
 def is_int(dtype, width = None):
     if width == None:
@@ -34,9 +35,9 @@ def is_fp(dtype, width = None):
         return True
     return False
 
-def rand_data(shape, dtype):
-    if dtype == 'float32':
-        return np.random.randn(*shape).astype(np.float32)
+def rand_data(shape, dtype, min=-10, max=10):
+    if dtype in ['float32', 'float16']:
+        return np.clip(np.random.randn(*shape).astype(dtype), min, max)
     if dtype == 'int32' or 'uint32' or 'int16' or 'uint16' or 'int8' or 'uint8':
         return np.random.randint(0, 256, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
@@ -93,7 +94,6 @@ class TPULANG_IR_TESTER(object):
             "Ges": (self.test_Ges,                      Y, Y),
             "Gt": (self.test_Gt,                        Y, Y),
             "Gts": (self.test_Gts,                      Y, Y),
-            # "HModel": (self.test_Model,                 N, N),
             "Hsigmoid": (self.test_Hsigmoid,            Y, Y),
             "Hswish": (self.test_Hswish,                Y, Y),
             # "Interpolate": (self.test_Interpolate,      Y, Y),
@@ -110,8 +110,6 @@ class TPULANG_IR_TESTER(object):
             "Nes": (self.test_Nes,                      Y, Y),
             "Min": (self.test_Min,                      Y, Y),
             "Mish": (self.test_Mish,                    Y, Y),
-            "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
-            "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
@@ -134,6 +132,11 @@ class TPULANG_IR_TESTER(object):
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
+            #### model ####
+            "HModel": (self.test_Model,                 N, N),
+            "Resnet50":(self.test_Resnet50,             N, N),
+            "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
+            "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -191,11 +194,14 @@ class TPULANG_IR_TESTER(object):
             if case in Failed_Cases:
                 print(case)
 
-    def coeff_tensor(self, shape, dtype, data = None, scale=1.0):
+    def coeff_tensor(self, shape, dtype, data = None, scale=None, zero_point=None):
         if data is None:
             data = rand_data(shape, dtype)
-            data = data * scale if dtype == 'float32' else data
-        return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
+            data = data * scale if (dtype == 'float32' and scale is not None) else data
+        if dtype in ["int8", "uint8"]:
+            return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff", scale=scale, zero_point=zero_point)
+        else:
+            return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
     def deploy(self, model_name, compare_all=False):
         in_f32_npz = model_name + '_in_f32.npz'
@@ -214,9 +220,9 @@ class TPULANG_IR_TESTER(object):
             deploy_cmd += "--quantize {} " .format(mode.upper())
             assert(os.system(deploy_cmd) == 0)
 
-    def compile_and_check(self, model_name, inputs, outputs):
-        tpul.compile(model_name, inputs, outputs)
-        self.deploy(model_name)
+    def compile_and_check(self, model_name, inputs, outputs, mode=None):
+        tpul.compile(model_name, inputs, outputs, True, False, mode=(mode if mode is not None else self.mode))
+        # self.deploy(model_name, True)
 
     #######################################################################
     # Add
@@ -247,6 +253,7 @@ class TPULANG_IR_TESTER(object):
 
         _test_add([1, 3, 28, 28], [1, 3, 28, 28])
         # _test_add_const([1, 3, 28, 28], 3, False, "float16")
+        # _test_add([1, 3, 28, 28], [1, 3, 28, 28], "float16")
         # _test_add([1, 3, 28, 28], [1, 3, 28, 28], "int32")
         _test_add([1, 3, 32, 32], [1, 3, 32, 32])
         _test_add([1, 3, 32, 32], [1, 1, 32, 32])
@@ -426,51 +433,337 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def test_Model(self, case_name):
 
+        def conv_quant(x, kshape, has_bias=False, stride=None, pad=None, group=1,
+                       dilation=[1,1], scale=[1, 1], zp=[0, 0], dtype='int8'):
+            oc = kshape[0]
+            weight = self.coeff_tensor(kshape, dtype, scale=scale[0], zero_point=zp[0])
+            out_dtype = dtype
+            bias = self.coeff_tensor(oc, 'int32') if has_bias else None
+            conv = tpul.conv_quant(x,
+                                   weight,
+                                   bias=bias,
+                                   stride=stride,
+                                   pad=pad,
+                                   dilation=dilation,
+                                   group=group,
+                                   output_scale=scale[1],
+                                   output_zp=zp[1],
+                                   out_dtype=out_dtype)
+            return conv
+
+        def matmul_quant(left, right, has_bias=False, right_transpose=False, keep_dims=True,
+                         scale=1, zp=0, dtype='int8'):
+            bias = self.coeff_tensor(right.shape[-1], 'int32') if has_bias else None
+            conv = tpul.matmul_quant(left,
+                                     right=right,
+                                     bias=bias,
+                                     right_transpose=right_transpose,
+                                     keep_dims=keep_dims,
+                                     output_scale=scale,
+                                     output_zp=zp,
+                                     out_dtype=dtype)
+            return conv
+
+        def model_0(x):
+            rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
+            kshape = [64, 3, 7, 7]
+            data = rand_data(kshape, 'int8')
+            weight0 = tpul.Tensor(dtype='int8', shape=kshape, data=data, is_const=True)
+            data = rand_data(kshape[0], 'int32')
+            bias1 = tpul.Tensor(dtype='int32', shape=kshape[0], data=data, is_const=True)
+
+            conv1 = tpul.conv_v2(rq0, weight0, bias=bias1, stride=[2,2], pad=None, dilation=None,
+                        group=1, input_zp=0, weight_zp=0, out_dtype='int32')
+            # mul, shift = quantization(input_scale * weight_scale / output_scale)
+            # https://tpumlir.org/docs/developer_manual/06_quantization.html
+            rq1 = tpul.requant_int(conv1, 2030043136, -13, 0, 2, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
+            return rq1
+
+        def model_1(x):
+            rq0 = tpul.requant_fp_to_int(x, 0.078125, 0, 0, 'int8')
+            # mul, shift = affine_quantization(input_scale * weight_scale / output_scale)
+            # tensorflow/lite/kernels/internal/quantization_utils.cc:QuantizeMultiplier()
+            conv1 = conv_quant(rq0, [64,3,7,7], True, stride=[2,2], pad=[3,3,3,3], dilation=None,
+                        group=1, scale=[0.078125, 0.078125], zp=[0, 0], dtype='int8')
+            relu1 = tpul.relu(conv1)
+            pool1 = tpul.maxpool(relu1, [3,3], stride=[2,2], pad=[1,1,1,1])
+            conv2_1 = conv_quant(pool1, [64,64,1,1], True,
+                        scale=[0.078125, 0.078125], zp=[0, 0], dtype='int8')
+            relu2_1 = tpul.relu(conv2_1)
+            conv2_2 = conv_quant(relu2_1, [64,64,3,3], True, pad=[1,1,1,1],
+                        scale=[0.078125, 0.078125], zp=[0, 0], dtype='int8')
+            relu2_2 = tpul.relu(conv2_2)
+            conv2_3 = conv_quant(relu2_2, [256,64,1,1], True,
+                        scale=[0.078125, 0.078125], zp=[0, 0], dtype='int8')
+            conv2_0 = conv_quant(pool1, [256,64,1,1], True,
+                        scale=[0.078125, 0.078125], zp=[0, 0], dtype='int8')
+            add2 = tpul.add(conv2_3, conv2_0, out_scale=0.078125, out_dtype='int8')
+            # dq29 = tpul.dequant_int_to_fp(add2, 0.0625, 0)
+            return relu1
+
+        def model_2(x):
+            rq0 = tpul.requant_fp_to_int(x, 0.078125, 0, 0, 'int8')
+            weight0 = self.coeff_tensor([128, 512], 'int8', scale=0.078125, zero_point=0)
+            mat1 = matmul_quant(rq0, weight0, True, scale=0.078125, zp=0, dtype='int8')
+            return mat1
+
+        def model_3(x):
+            rq0 = tpul.requant_fp_to_int(x, 0.078125, 0, 0, 'int8')
+            weight0 = self.coeff_tensor([128, 512], 'int8')
+            mat1 = self.matmul_op(rq0, weight0, None, izp=0, rzp=0, dtype='int32')
+            rq2 = tpul.requant_int(mat1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
+            return rq2
+
         def model_def(x):
             rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
-            conv1 = self.conv_op(rq0, [64, 1, 7, 7], [2, 2], None, zp=[0, 0], dtype='int8')
-            # rq2 = tpul.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
-            # relu3 = tpul.relu(rq2)
-            # conv4 = conv_op(relu3, [96,64,3,3], [2,2], None, zp=[0,0], dtype='int8')
-            # rq5 = tpul.requant_int(conv4, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
-            # relu6 = tpul.relu(rq5)
-            # dq7 = tpul.dequant_int_to_fp(relu6, 0.25, 0)
-            # coeff8 = coeff_tensor([1,96,1,1], 'float32', 10.0)
-            # tpul.constdata(coeff8)
-            # mul9 = tpul.mul(dq7, coeff8)
-            # coeff10 = coeff_tensor([1,96,1,1], 'float32', -2.0)
-            # tpul.constdata(coeff10)
-            # add11 = tpul.add(mul9, coeff10)
-            # relu12 = tpul.relu(add11)
-            # rq13 = tpul.requant_fp_to_int(relu12, 4.0, 0, 0, 'int8')
-            # conv14 = conv_op(rq13, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
-            # rq15 = tpul.requant_int(conv14, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
-            # relu16 = tpul.relu(rq15)
-            # conv17 = conv_op(relu16, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
-            # rq18 = tpul.requant_int(conv17, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
-            # dq19 = tpul.dequant_int_to_fp(rq18, 0.0625, 0)
-            # add20 = tpul.add(dq19, dq7)
-            # coeff21 = coeff_tensor([1,96,1,1], 'float32', 2.0)
-            # tpul.constdata(coeff21)
-            # mul22 = tpul.mul(add20, coeff21)
-            # coeff23 = coeff_tensor([1,96,1,1], 'float32', -2.0)
-            # tpul.constdata(coeff23)
-            # add24 = tpul.add(mul22, coeff23)
-            # relu25 = tpul.relu(add24)
-            # rq26 = tpul.requant_fp_to_int(relu25, 8.0, 0, 0, 'int8')
-            # conv27 = conv_op(rq26, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
-            # rq28 = tpul.requant_int(conv27, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
-            # dq29 = tpul.dequant_int_to_fp(rq28, 0.0625, 0)
-            return conv1
+            conv1 = self.conv_op(rq0, [64, 3, 7, 7], [2, 2], None, zp=[0, 0], dtype='int8')
+            rq2 = tpul.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu3 = tpul.relu(rq2)
+            conv4 = self.conv_op(relu3, [96,64,3,3], [2,2], None, zp=[0,0], dtype='int8')
+            rq5 = tpul.requant_int(conv4, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu6 = tpul.relu(rq5)
+            dq7 = tpul.dequant_int_to_fp(relu6, 0.25, 0)
+            coeff8 = self.coeff_tensor([1,96,1,1], 'float32', scale=10.0)
+            mul9 = tpul.mul(dq7, coeff8)
+            coeff10 = self.coeff_tensor([1,96,1,1], 'float32', scale=-2.0)
+            add11 = tpul.add(mul9, coeff10)
+            relu12 = tpul.relu(add11)
+            rq13 = tpul.requant_fp_to_int(relu12, 4.0, 0, 0, 'int8')
+            conv14 = self.conv_op(rq13, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq15 = tpul.requant_int(conv14, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu16 = tpul.relu(rq15)
+            conv17 = self.conv_op(relu16, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq18 = tpul.requant_int(conv17, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            dq19 = tpul.dequant_int_to_fp(rq18, 0.0625, 0)
+            add20 = tpul.add(dq19, dq7)
+            coeff21 = self.coeff_tensor([1,96,1,1], 'float32', scale=2.0)
+            mul22 = tpul.mul(add20, coeff21)
+            coeff23 = self.coeff_tensor([1,96,1,1], 'float32', scale=-2.0)
+            add24 = tpul.add(mul22, coeff23)
+            relu25 = tpul.relu(add24)
+            rq26 = tpul.requant_fp_to_int(relu25, 8.0, 0, 0, 'int8')
+            conv27 = self.conv_op(rq26, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq28 = tpul.requant_int(conv27, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            dq29 = tpul.dequant_int_to_fp(rq28, 0.0625, 0)
+            return dq29
+
+        def model_def1(x):
+            rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
+            conv1 = self.conv_op(rq0, [64, 3, 7, 7], [2, 2], None, zp=[0, 0], dtype='int8')
+            rq2 = tpul.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu3 = tpul.relu(rq2)
+            conv4 = self.conv_op(relu3, [96,64,3,3], [2,2], None, zp=[0,0], dtype='int8')
+            rq5 = tpul.requant_int(conv4, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu6 = tpul.relu(rq5)
+            dq7 = tpul.dequant_int_to_fp(relu6, 0.25, 0)
+            coeff8 = self.coeff_tensor([1,96,1,1], 'float32', scale=10.0)
+            mul9 = tpul.mul(dq7, coeff8)
+            coeff10 = self.coeff_tensor([1,96,1,1], 'float32', scale=-2.0)
+            add11 = tpul.add(mul9, coeff10)
+            relu12 = tpul.relu(add11)
+            rq13 = tpul.requant_fp_to_int(relu12, 4.0, 0, 0, 'int8')
+            conv14 = self.conv_op(rq13, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq15 = tpul.requant_int(conv14, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
+            relu16 = tpul.relu(rq15)
+            conv17 = self.conv_op(relu16, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq18 = tpul.requant_int(conv17, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            dq19 = tpul.dequant_int_to_fp(rq18, 0.0625, 0)
+            add20 = tpul.add(dq19, dq7)
+            coeff21 = self.coeff_tensor([1,96,1,1], 'float32', scale=2.0)
+            mul22 = tpul.mul(add20, coeff21)
+            coeff23 = self.coeff_tensor([1,96,1,1], 'float32', scale=-2.0)
+            add24 = tpul.add(mul22, coeff23)
+            relu25 = tpul.relu(add24)
+            rq26 = tpul.requant_fp_to_int(relu25, 8.0, 0, 0, 'int8')
+            conv27 = self.conv_op(rq26, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], dtype='int8')
+            rq28 = tpul.requant_int(conv27, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            dq29 = tpul.dequant_int_to_fp(rq28, 0.0625, 0)
+            return dq29
 
         @tpulang(self.chip)
         def _test_model_def(in_shape):
-            x_data = (rand_data(in_shape, 'float32') - 0.5) * 256
+            x_data = rand_data(in_shape, 'float32', -10, 10)
             x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
-            out = model_def(x=x)
-            self.compile_and_check(case_name, [x], [out])
+            # out = model_def(x=x)
+            out = model_1(x=x)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], 'f32')
 
-        _test_model_def([1, 3, 28, 28])
+        _test_model_def([1, 3, 224, 224])
+
+        @tpulang(self.chip)
+        def _test_model2_def(in_shape):
+            x_data = rand_data(in_shape, 'float32', -10, 10)
+            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+            out = model_3(x=x)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], 'int8')
+
+        # _test_model2_def([12, 384, 128])
+
+    def test_Resnet50(self, case_name):
+        def conv_block(x, kshape, stride, pad):
+            conv = self.conv_op(x, kshape, stride, pad)
+            norm = self.batch_norm_op(conv, kshape[0])
+            relu = tpul.relu(norm)
+            return relu
+
+        def max_pool_block(x, oc, kshape, stride, pad):
+            pool = tpul.maxpool(x, kernel=kshape, stride=stride, pad=pad)
+            norm = self.batch_norm_op(pool, oc)
+            relu = tpul.relu(norm)
+            return relu
+
+        def resnet_block0(x, oc, ic, kc, stride):
+            conv0_0 = conv_block(x, [kc, ic, 1, 1], [1,1], [0,0,0,0])
+            conv0_1 = conv_block(conv0_0, [kc, kc, 3, 3], [stride,stride], [1,1,1,1])
+            conv0_2 = self.conv_op(conv0_1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
+            conv1 = self.conv_op(x, [oc, ic, 1, 1], [stride,stride], [0,0,0,0])
+            return self.add_op(conv0_2, conv1)
+
+        def resnet_block1(x, oc, kc):
+            norm = self.batch_norm_op(x, oc)
+            relu = tpul.relu(norm)
+            conv0 = conv_block(relu, [kc, oc, 1, 1], [1,1], [0,0,0,0])
+            conv1 = conv_block(conv0, [kc, kc, 3, 3], [1,1], [1,1,1,1])
+            conv2 = self.conv_op(conv1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
+            return self.add_op(conv2, x)
+
+        def resnet50(x):
+            norm0 = self.batch_norm_op(x, 3)
+            conv1 = conv_block(norm0, [64, 3, 7, 7], [2,2], [3,3,3,3])
+            pool1 = max_pool_block(conv1, 64, [3,3], [2,2], [1,1,1,1])
+
+            res2 = resnet_block0(pool1, 256, 64, 64, 1)
+            res3 = resnet_block1(res2, 256, 64)
+            res4 = resnet_block1(res3, 256, 64)
+            norm4 = self.batch_norm_op(res4, 256)
+            relu4 = tpul.relu(norm4)
+
+            res5 = resnet_block0(relu4, 512, 256, 128, 2)
+            res6 = resnet_block1(res5, 512, 128)
+            res7 = resnet_block1(res6, 512, 128)
+            res8 = resnet_block1(res7, 512, 128)
+            norm8 = self.batch_norm_op(res8, 512)
+            relu8 = tpul.relu(norm8)
+
+            res9 = resnet_block0(relu8, 1024, 512, 256, 2)
+            res10 = resnet_block1(res9, 1024, 256)
+            res11 = resnet_block1(res10, 1024, 256)
+            res12 = resnet_block1(res11, 1024, 256)
+            res13 = resnet_block1(res12, 1024, 256)
+            res14 = resnet_block1(res13, 1024, 256)
+            norm14 = self.batch_norm_op(res14, 1024)
+            relu14 = tpul.relu(norm14)
+
+            res15 = resnet_block0(relu14, 2048, 1024, 512, 2)
+            res16 = resnet_block1(res15, 2048, 512)
+            res17 = resnet_block1(res16, 2048, 512)
+            norm17 = self.batch_norm_op(res17, 2048)
+            relu17 = tpul.relu(norm17)
+            apool = tpul.avgpool(relu17, [7,7], [1,1], [0,0,0,0])
+            reshape = tpul.reshape(apool, [0, -1])
+            mat_weight = self.coeff_tensor([2048, 1000], "float32", scale=0.05)
+            mat_bias = self.coeff_tensor([1000], "float32", scale=0.03)
+            mat = self.matmul_op(reshape, mat_weight, mat_bias)
+            return mat
+
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape):
+            x_data = rand_data(in_shape, 'float32', -10, 10)
+            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+            out = resnet50(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], 'f32')
+
+        _test_model_def([1, 3, 224, 224])
+
+
+    # def test_Resnet50_quant(self, case_name):
+    #     def conv_block(x, kshape, stride, pad, zp):
+    #         conv = self.conv_op(x, kshape, stride, pad, zp=zp, dtype='int8')
+    #         rq = tpul.requant_int(conv, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
+    #         conv = self.conv_op(x, kshape, stride, pad)
+    #         # norm = self.batch_norm_op(conv, kshape[0])
+    #         relu = tpul.relu(conv)
+    #         return relu
+
+    #     def max_pool_block(x, oc, kshape, stride, pad):
+    #         pool = tpul.maxpool(x, kernel=kshape, stride=stride, pad=pad)
+    #         # norm = self.batch_norm_op(pool, oc)
+    #         relu = tpul.relu(pool)
+    #         return relu
+
+    #     def resnet_block0(x, oc, ic, kc, stride):
+    #         conv0_0 = conv_block(x, [kc, ic, 1, 1], [1,1], [0,0,0,0])
+    #         conv0_1 = conv_block(conv0_0, [kc, kc, 3, 3], [stride,stride], [1,1,1,1])
+    #         conv0_2 = self.conv_op(conv0_1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
+    #         conv1 = self.conv_op(x, [oc, ic, 1, 1], [stride,stride], [0,0,0,0])
+    #         return self.add_op(conv0_2, conv1)
+
+    #     def resnet_block1(x, oc, kc):
+    #         # norm = self.batch_norm_op(x, oc)
+    #         relu = tpul.relu(x)
+    #         conv0 = conv_block(relu, [kc, oc, 1, 1], [1,1], [0,0,0,0])
+    #         conv1 = conv_block(conv0, [kc, kc, 3, 3], [1,1], [1,1,1,1])
+    #         conv2 = self.conv_op(conv1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
+    #         return self.add_op(conv2, x)
+
+    #     def resnet50(x):
+    #         norm0 = self.batch_norm_op(x, 3)
+    #         conv1 = conv_block(norm0, [64, 3, 7, 7], [2,2], [3,3,3,3])
+    #         pool1 = max_pool_block(conv1, 64, [3,3], [2,2], [1,1,1,1])
+
+    #         res2 = resnet_block0(pool1, 256, 64, 64, 1)
+    #         res3 = resnet_block1(res2, 256, 64)
+    #         res4 = resnet_block1(res3, 256, 64)
+    #         # norm4 = self.batch_norm_op(res4, 256)
+    #         relu4 = tpul.relu(res4)
+
+    #         res5 = resnet_block0(relu4, 512, 256, 128, 2)
+    #         res6 = resnet_block1(res5, 512, 128)
+    #         res7 = resnet_block1(res6, 512, 128)
+    #         res8 = resnet_block1(res7, 512, 128)
+    #         # norm8 = self.batch_norm_op(res8, 512)
+    #         relu8 = tpul.relu(res8)
+
+    #         res9 = resnet_block0(relu8, 1024, 512, 256, 2)
+    #         res10 = resnet_block1(res9, 1024, 256)
+    #         res11 = resnet_block1(res10, 1024, 256)
+    #         res12 = resnet_block1(res11, 1024, 256)
+    #         res13 = resnet_block1(res12, 1024, 256)
+    #         res14 = resnet_block1(res13, 1024, 256)
+    #         # norm14 = self.batch_norm_op(res14, 1024)
+    #         relu14 = tpul.relu(res14)
+
+    #         res15 = resnet_block0(relu14, 2048, 1024, 512, 2)
+    #         res16 = resnet_block1(res15, 2048, 512)
+    #         res17 = resnet_block1(res16, 2048, 512)
+    #         # norm17 = self.batch_norm_op(res17, 2048)
+    #         relu17 = tpul.relu(res17)
+    #         apool = tpul.avgpool(relu17, [7,7], [1,1], [0,0,0,0])
+    #         reshape = tpul.reshape(apool, [0, -1])
+    #         mat_weight = self.coeff_tensor([2048, 1000], "float32", scale=0.05)
+    #         mat_bias = self.coeff_tensor([1000], "float32", scale=0.03)
+    #         mat = self.matmul_op(reshape, mat_weight, mat_bias)
+    #         return mat
+
+
+    #     @tpulang(self.chip)
+    #     def _test_model_def(in_shape):
+    #         x_data = rand_data(in_shape, 'float32', -10, 10)
+    #         x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+    #         out = resnet50(x)
+    #         self.compile_and_check(self.unique_name(case_name), [x], [out], 'f32')
+
+    #     _test_model_def([1, 3, 224, 224])
+
+
+
+    def batch_norm_op(self, x, oc):
+        mean = self.coeff_tensor([oc], "float32", scale=0.2)
+        var = self.coeff_tensor([oc], "float32", scale=2)
+        gamma = self.coeff_tensor([oc], "float32", data=np.ones((oc)).astype(np.float32))
+        beta = self.coeff_tensor([oc], "float32", data=np.zeros((oc)).astype(np.float32))
+        return tpul.batch_norm(x, mean, var, gamma, beta)
 
     #######################################################################
     # Convolution
@@ -482,23 +775,19 @@ class TPULANG_IR_TESTER(object):
                 pad=None,
                 group=1,
                 dilation=[1, 1],
-                zp=[None, None],
                 bias=False,
                 dtype="float32"):
         oc = kshape[0]
-        weight = self.coeff_tensor(kshape, dtype)
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
-        conv = tpul.conv_v2(x,
+        weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
+        bias = self.coeff_tensor(oc, dtype) if bias else None
+        conv = tpul.conv(x,
                             weight,
                             bias=bias,
                             stride=stride,
                             pad=pad,
                             dilation=dilation,
                             group=group,
-                            input_zp=zp[0],
-                            weight_zp=zp[1],
-                            out_dtype=out_dtype)
+                            out_dtype=dtype)
         return conv
 
     def test_Conv2d(self, case_name):
@@ -511,8 +800,7 @@ class TPULANG_IR_TESTER(object):
                               dilation: List[int] = [1, 1],
                               pad: List[int] = None,
                               group=1,
-                              dtype="float32",
-                              zp: List[int] = [None, None]):
+                              dtype="float32"):
             x_data = rand_data(input_shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
             conv = self.conv_op(x,
@@ -521,7 +809,6 @@ class TPULANG_IR_TESTER(object):
                                 pad,
                                 group=group,
                                 dilation=dilation,
-                                zp=zp,
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv])
 
@@ -559,7 +846,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def mul_op(self, input_0, input_1, dtype="float32"):
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        mul = tpul.mul(input_0, input_1, out_dtype)
+        mul = tpul.mul(input_0, input_1, out_dtype=out_dtype)
         return mul
 
     def test_Mul(self, case_name):
@@ -585,7 +872,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def sub_op(self, input_0, input_1, dtype="float32"):
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        sub = tpul.sub(input_0, input_1, out_dtype)
+        sub = tpul.sub(input_0, input_1, out_dtype=out_dtype)
         return sub
 
     def test_Sub(self, case_name):
@@ -636,7 +923,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def max_op(self, input_0, input_1, dtype="float32"):
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        max = tpul.max(input_0, input_1, out_dtype)
+        max = tpul.max(input_0, input_1, out_dtype=out_dtype)
         return max
 
     def test_Max(self, case_name):
@@ -662,7 +949,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def min_op(self, input_0, input_1, dtype="float32"):
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        min = tpul.min(input_0, input_1, out_dtype)
+        min = tpul.min(input_0, input_1, out_dtype=out_dtype)
         return min
 
     def test_Min(self, case_name):
@@ -746,8 +1033,8 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Matmul
     # ------------
-    def matmul_op(self, left, right, dtype="float32"):
-        matmul = tpul.matmul(left, right)
+    def matmul_op(self, left, right, bias=None, izp=None, rzp=None, dtype="float32"):
+        matmul = tpul.matmul(left, right, bias, input_zp=izp, right_zp=rzp, out_dtype=dtype)
         return matmul
 
     def test_MatMul(self, case_name):
@@ -1742,7 +2029,6 @@ class TPULANG_IR_TESTER(object):
                     pad=None,
                     group=1,
                     dilation=[1, 1],
-                    zp=[None, None],
                     bias=False,
                     dtype="float32"):
             oc = kshape[0]
@@ -1807,7 +2093,6 @@ class TPULANG_IR_TESTER(object):
                     pad=None,
                     group=1,
                     dilation=[1, 1],
-                    zp=[None, None],
                     bias=False,
                     dtype="float32"):
             oc = kshape[0]
