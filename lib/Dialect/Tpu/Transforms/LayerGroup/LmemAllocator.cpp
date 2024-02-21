@@ -230,6 +230,13 @@ static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start,
 static bool isInplaceOp(Operation *op) {
   if (module::isCV18xx())
     return false;
+  if(op->getNumOperands() > 0) {
+    auto parent = op->getOperand(0).getUsers();
+    int users_num = std::distance(parent.begin(), parent.end());
+    if(users_num > 1){
+      return false;
+    }
+  }
   bool flag = false;
   if (isa<tpu::ScaleOp>(op)) {
     flag = module::getStorageType(op->getOperand(0)).isF32();
