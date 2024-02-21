@@ -140,7 +140,20 @@ void top::MatMulOp::shape_inference() {
   int k_idx = in1_dims - (r_transpose ? 1 : 2);
   int n_idx = in1_dims - (r_transpose ? 2 : 1);
   auto n = in1_shape[n_idx];
-  std::vector<int64_t> out_shape = in0_shape;
+  std::vector<int64_t> out_shape;
+  if (in0_dims > in1_dims) {
+    out_shape = in0_shape;
+  } else if (in0_dims == in1_dims) {
+    out_shape = in0_shape;
+    for (int i = out_shape.size() - 3; i >= 0 ; i--) {
+      out_shape[i] = std::max(in0_shape[i], in1_shape[i]);
+    }
+  } else {
+    out_shape = in1_shape;
+    for (int i = 1; i <= 2; i++) {
+      out_shape[out_shape.size() - i] = in0_shape[in0_dims - i];
+    }
+  }
   if (in1_dims == 1) {
     assert(in1_shape[0] == k);
     out_shape.pop_back();
@@ -157,7 +170,7 @@ void top::MatMulOp::shape_inference() {
       }
       out_shape[out_shape.size() - 1] = n;
     } else {
-      out_shape[in0_dims - 1] = n;
+      out_shape[out_shape.size() - 1] = n;
     }
   } else if (in1_dims == 2) {
     auto sum = in1_shape[k_idx];
@@ -171,7 +184,7 @@ void top::MatMulOp::shape_inference() {
     }
     out_shape.push_back(n);
   } else {
-    out_shape[in0_dims - 1] = n;
+    out_shape[out_shape.size() - 1] = n;
   }
   if (!keep_dims_) {
     int64_t batch_size = std::accumulate(out_shape.begin(), out_shape.end() - 1,
@@ -179,11 +192,6 @@ void top::MatMulOp::shape_inference() {
     out_shape.resize(2);
     out_shape[0] = batch_size;
     out_shape[1] = n;
-  }
-  if (keep_dims_ && in0_shape.size() == in1_shape.size()) {
-    for (int i = out_shape.size() - 3; i >= 0 ; --i) {
-      out_shape[i] = std::max(in0_shape[i], in1_shape[i]);
-    }
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 }
