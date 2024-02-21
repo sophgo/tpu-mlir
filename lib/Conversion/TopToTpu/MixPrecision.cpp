@@ -512,16 +512,18 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
       }
       for (auto in : addop.getOperands()) {
         if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-          if (LoweringConfig::quantize_map.find(
-                  module::getName(mmop.getOperation()).str()) ==
-              LoweringConfig::quantize_map.end()) {
-            LoweringConfig::quantize_map.insert(
-                {module::getName(mmop.getOperation()).str(),
-                 module::Mode::F16});
+          if (mlp.size() < 24) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mmop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mmop.getOperation()).str(),
+                   module::Mode::F16});
+            }
           }
           if (auto geluop = dyn_cast<top::GELUOp>(
                   mmop.getOperands()[0].getDefiningOp())) {
-            if (cnt < 9)
+            if ((cnt < 9 && mlp.size() < 24) || (cnt < 18 && mlp.size() >= 24))
               break;
             if (LoweringConfig::quantize_map.find(
                     module::getName(geluop.getOperation()).str()) ==
