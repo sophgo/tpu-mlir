@@ -53,6 +53,7 @@ export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=${TPUC_ROOT}/customlayer/python:$PYTHONPATH
 export MODEL_ZOO_PATH=${TPUC_ROOT}/../model-zoo
 export REGRESSION_PATH=${TPUC_ROOT}/regression
+export CUSTOM_LAYER_PATH=${TPUC_ROOT}/customlayer
 //MY_CODE_STREAM
 # ------------------------------------------------------------------------------
 
