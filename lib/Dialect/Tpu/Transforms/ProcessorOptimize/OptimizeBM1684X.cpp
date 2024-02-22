@@ -1007,10 +1007,8 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     for (auto o : in1_order_fix) {
       result1_data.push_back(result0_data[o]);
     }
-    if (in0_order == in1_order) {
-      if (result1_data != origin_data) {
-        return failure();
-      }
+    if (result1_data != origin_data) {
+      return failure();
     }
     // bingo !
     if (out1_shape == in0_shape) {
@@ -1018,15 +1016,46 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
       rewriter.eraseOp(op);
       rewriter.eraseOp(permute_op);
     } else {
-      std::vector<int64_t> new_order;
-      for (auto o : in1_order_fix) {
-        new_order.push_back(in0_order_fix[o]);
-      }
-      permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
-      op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
-      rewriter.eraseOp(permute_op);
+      auto loc = module::getLocLike(permute_op.getInput(), "Reshape");
+      rewriter.setInsertionPoint(op);
+      auto rs_op = rewriter.create<tpu::ReshapeOp>(
+          loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});
+      op.getOutput().replaceAllUsesWith(rs_op.getOutput());
+      rewriter.eraseOp(op);
     }
     return success();
+  }
+};
+
+// permute1 + permute2
+// permute_order !=  permute2_order
+struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+    auto permute_op = dyn_cast<tpu::PermuteOp>(in.getDefiningOp());
+    if (!permute_op) {
+      return failure();
+    }
+    // op order
+    auto in0_order = module::getI64Array(permute_op.getOrder());
+    auto in1_order = module::getI64Array(op.getOrder());
+    if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
+      return failure();
+    }
+    std::vector<int64_t> new_order;
+    for (auto o : *in1_order) {
+      new_order.push_back((*in0_order)[o]);
+    }
+    permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
+    op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+    rewriter.eraseOp(permute_op);
+  return success();
   }
 };
 
@@ -2421,6 +2450,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermuteAddWeightReorderPattern,
                 MaskedFillPermuteMove,
                 PermuteFuse,
+                PermuteFuse2,
                 PermuteFuseAddSoftmax,
                 patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                 PermuteReshapeFuse,
