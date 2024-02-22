@@ -153,15 +153,8 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     auto new_b_type = RankedTensorType::get(new_filter_shape, out_type);
     auto new_biasOp = top::WeightOp::create(next_op.getBias().getDefiningOp(),
                                             "reorderd", *new_bias, new_b_type);
-    
     std::vector<Value> gn_opds = {input, new_weightOp, new_biasOp};
-    Value insertpoint = gn_opds[gn_opds.size() - 1];
-    for (int i = gn_opds.size() - 1; i >= 0; i--) {
-      insertpoint = gn_opds[i];
-      if (!module::isNone(insertpoint)) {
-        break;
-      }
-    }
+    Value insertpoint = next_op.getOutput();
     rewriter.setInsertionPointAfterValue(insertpoint);
     auto gn_op = rewriter.create<GroupNormOp>(
       loc, gn_out_type, gn_opds, attrs);
