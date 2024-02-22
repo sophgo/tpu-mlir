@@ -24,8 +24,6 @@ dma_index = RegIndex()
 
 
 def fix_cmd_id_dep(value):
-    if value is None:
-        raise RuntimeError("dep_id shouldn't be None type!!")
     return value & 0x0FFFFF
 
 
@@ -56,7 +54,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         self.eu_name = tiu_cls[reg.OP_NAME]["tsk_eu_typ"][reg.tsk_eu_typ]
         self.cmd_id = cmd_id
         # cmd_id_dep of SYS_TR_ACC_reg will be assigned in merge_instruction
-        self.cmd_id_dep = fix_cmd_id_dep(getattr(reg, "cmd_id_dep", None))
+        self.cmd_id_dep = fix_cmd_id_dep(getattr(reg, "cmd_id_dep", 0))
 
     def ops(self, *_):
         return 0
@@ -131,18 +129,19 @@ class TiuCmd(BaseTpuCmd, Tiu):
         op_info_list.append(self.op_name)
 
         id_info = f"%B{self.cmd_id}C{self.core_id}"
-        if self.cmd_id_dep is not None :
+        if self.cmd_id_dep is not None:
             id_info += f"->%D{self.cmd_id_dep}C{self.core_id}"
 
         op_info_list.append(id_info)
-        if len(self.results) > 0 :
+        if len(self.results) > 0:
             op_info_list.append(self.results[0])
-        else :
+        else:
             op_info_list.append("")
-        if len(self.operands) > 0 :
-            for i in range(len(self.operands)) :
+        if len(self.operands) > 0:
+            for i in range(len(self.operands)):
                 op_info_list.append(self.operands[i])
         return op_info_list
+
 
 class DmaCmd(BaseTpuCmd, Dma):
     opparam_converter = None  # assigned by SG2260Context instance
@@ -234,15 +233,15 @@ class DmaCmd(BaseTpuCmd, Dma):
         op_info_list = []
         op_info_list.append(self.op_name)
         id_info = f"%D{self.cmd_id}C{self.core_id}"
-        if self.cmd_id_dep is not None :
+        if self.cmd_id_dep is not None:
             id_info += f"->%B{self.cmd_id_dep}C{self.core_id}"
         op_info_list.append(id_info)
-        if len(self.results) > 0 :
+        if len(self.results) > 0:
             op_info_list.append(self.results[0])
-        else :
+        else:
             op_info_list.append("")
-        if len(self.operands) > 0 :
-            for i in range(len(self.operands)) :
+        if len(self.operands) > 0:
+            for i in range(len(self.operands)):
                 op_info_list.append(self.operands[i])
         return op_info_list
 
