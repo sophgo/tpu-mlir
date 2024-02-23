@@ -45,6 +45,7 @@ protected:
                                         int &sm_cnt, int &matmul_cnt,
                                         int &triple_matmul, int &triple_slice,
                                         int &six_slice);
+  template <typename opType>
   bool set_block_fp16(
       Operation *from,
       Operation *to); // must be a block with single input and single output

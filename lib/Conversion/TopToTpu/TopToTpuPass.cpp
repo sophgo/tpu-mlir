@@ -1612,7 +1612,10 @@ bool ConvertTopToTpu::convergence_with_sm_matmul_slice(
     if (isa<top::SoftmaxOp>(r))
       sm_cnt++;
     if (isa<top::MatMulOp>(r)) {
-      mm_cnt++;
+      if (std::distance(r->getUsers().begin(),r->getUsers().end()) > 0) {
+        mm_cnt++;
+        matmul_cnt++;
+      }
     }
     if (isa<top::SliceOp>(r)) {
       slice_cnt++;
@@ -2057,7 +2060,7 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
 
 void ConvertTopToTpu::spread_q_config() {
   mainFunc_.walk([&](Operation *op) {
-    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp>(op)) {
+    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp, top::SqueezeOp, top::UnsqueezeOp>(op)) {
       auto pre_op = op->getOperands()[0].getDefiningOp();
       if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
           LoweringConfig::quantize_map.end()) {
