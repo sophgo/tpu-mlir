@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
@@ -279,6 +280,29 @@ bool can_split_w(const LgInfo &lg_info, int64_t dhw_secs, int64_t height_min,
   return true;
 }
 
+// make sure group secs can be devided by num_core
+static void force_group_by_cores(shape_secs_t &shape_secs,
+                                 const shape_secs_t &max_shape_secs) {
+  auto num_cores = module::getCoreNum();
+  if (num_cores < 2) {
+    return;
+  }
+  auto pre_secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.dsecs;
+  if (pre_secs * shape_secs.hsecs % num_cores == 0) {
+    return;
+  }
+  for (int i = 1; i < num_cores; i++) {
+    if ((shape_secs.hsecs + i) > max_shape_secs.hsecs) {
+      return;
+    }
+    if (pre_secs * (shape_secs.hsecs + i) % num_cores == 0) {
+      shape_secs.hsecs += i;
+      return;
+    }
+  }
+  return;
+}
+
 void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
                     int64_t &dhw_secs, const shape_secs_t &max_shape_secs) {
   shape_secs.dsecs = 1;
@@ -354,7 +378,9 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
       shape_secs.hsecs = max_shape_secs.hsecs;
     }
   }
-
+  if (LgPass::OPTIONS.group_by_cores) {
+    force_group_by_cores(shape_secs, max_shape_secs);
+  }
   dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
 }
 

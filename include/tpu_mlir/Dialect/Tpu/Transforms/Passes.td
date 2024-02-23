@@ -47,6 +47,7 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let options = [
     Option<"opt", "opt", "int64_t", /*default=*/"2",
            "opt=1: group layers as many as possible. opt=2: dynamic programming layer group">,
+    Option<"group_by_cores", "group_by_cores", "std::string", /*default=*/"\"auto\"", "whether force group by cores">,
   ];
 }
 

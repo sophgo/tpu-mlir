@@ -26,22 +26,25 @@ class GroupOps {
 public:
   GroupOps(::mlir::func::FuncOp func);
   ~GroupOps() { delete lg_pass_ir_; }
-  void process(int64_t opt);
+  void process();
   ::mlir::func::FuncOp func_;
 
 protected:
   // create groups
-  void buildGroups(int64_t opt);
+  void buildGroups();
   //  void assign_timestep();
   //  bool assign_lmem_addr();
 
   // create MLIR GroupOp
   void buildMlir();
-  void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs, int64_t group_idx);
+  void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs,
+                    int64_t group_idx);
   void CreateLoadOp(GdmaElt &tensor, int64_t id,
-                    const std::vector<Operation *> &ops, group_type_t group_type);
+                    const std::vector<Operation *> &ops,
+                    group_type_t group_type);
 
-  tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type);
+  tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id,
+                             group_type_t group_type);
   void UpdateGroupOverlapInfo(Operation *op, int64_t group_idx);
   void UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos, int64_t id,
                        group_type_t group_type);
@@ -67,7 +70,7 @@ protected:
   // used for group overlap
   IntValueIntMap self_up_overlap_ops_;
   IntValueIntMap self_down_overlap_ops_;
-  std::vector<Operation*> groups_;
+  std::vector<Operation *> groups_;
 };
 
 } // namespace tpu

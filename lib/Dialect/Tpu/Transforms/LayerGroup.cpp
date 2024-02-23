@@ -16,10 +16,26 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace tpu {
 
+bool force_group_by_cores(const std::string &option) {
+  if (option == "true") {
+    return true;
+  } else if (option == "auto" || option == "false") {
+    // auto as false
+    return false;
+  }
+  llvm_unreachable("Unknown layer group options");
+  return true;
+}
+
 class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
+    // init global options
+    LgPass::OPTIONS.opt = opt;
+    LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
+
+    // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {
       for (auto f : s.getOps<FuncOp>()) {
@@ -27,7 +43,7 @@ public:
           continue;
         }
         GroupOps gOps(f);
-        gOps.process(opt);
+        gOps.process();
       }
     }
   }

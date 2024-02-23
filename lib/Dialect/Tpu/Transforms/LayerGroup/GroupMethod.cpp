@@ -76,7 +76,8 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
     } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
       auto ishape = module::getShape(op_.getInput());
       auto oshape = module::getShape(op_.getOutput());
-      if (!(ishape.size()>2 && oshape.size()>2 && ishape[0] == oshape[0] && ishape[1] == oshape[1])) {
+      if (!(ishape.size() > 2 && oshape.size() > 2 && ishape[0] == oshape[0] &&
+            ishape[1] == oshape[1])) {
         return false;
       }
     }
@@ -111,15 +112,16 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
       if (op_.getAxis() != shape.size() - 1) {
         return false;
       }
-//    } else if (isa<AddOp, MulOp>(op)) {
-//      auto shapeB = module::getShape(op->getOperand(1));
-//      if (shape != shapeB) {
-//        return false;
-//      }
+      //    } else if (isa<AddOp, MulOp>(op)) {
+      //      auto shapeB = module::getShape(op->getOperand(1));
+      //      if (shape != shapeB) {
+      //        return false;
+      //      }
     } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
       auto ishape = module::getShape(op_.getInput());
       auto oshape = module::getShape(op_.getOutput());
-      if (!(ishape.size()>2 && oshape.size()>2 && ishape[0] == oshape[0] && ishape[1] == oshape[1])) {
+      if (!(ishape.size() > 2 && oshape.size() > 2 && ishape[0] == oshape[0] &&
+            ishape[1] == oshape[1])) {
         return false;
       }
     } else if (auto op_ = dyn_cast<SoftmaxOp>(op)) {
@@ -181,7 +183,7 @@ static void get_layer_group(LgInfo &lg_info,
   set_group_type(lg_info);
 }
 
-GroupMethod::GroupMethod(int64_t opt) {
+GroupMethod::GroupMethod() {
   if (module::isCV18xx()) {
     Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
@@ -190,7 +192,6 @@ GroupMethod::GroupMethod(int64_t opt) {
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
   }
   MAX_COST = llvm::maxIntN(64);
-  opt_ = opt;
 }
 
 int64_t GroupMethod::get_max_cluster_size(int64_t layer_num) {
@@ -848,7 +849,7 @@ void GroupMethod::simple_layer_group(std::vector<LgInfo> &lg_infos,
 void GroupMethod::process(std::vector<LgInfo> &lg_infos,
                           const SetVector<Operation *> &subnet_ops) {
   runmode_ = getRunMode(subnet_ops[0]);
-  switch (opt_) {
+  switch (LgPass::OPTIONS.opt) {
   case 1:
     simple_layer_group(lg_infos, subnet_ops);
     break;
@@ -893,9 +894,9 @@ void GroupMethod::show_cut_results() {
 /// The pass of layer group searching
 class LayerGroupSearchPass : public LgPass {
 public:
-  LayerGroupSearchPass(const LgOptions &options) { options_ = options; }
+  LayerGroupSearchPass() {}
   virtual bool run(LgPassIR *pass_ir) override {
-    auto group_method = GroupMethod(options_.opt);
+    auto group_method = GroupMethod();
     group_method.process(pass_ir->lg_infos, pass_ir->subnet_ops);
     return true;
   }
@@ -903,13 +904,10 @@ public:
   virtual std::string brief() override {
     return "Searching the optimal layer groups";
   }
-
-private:
-  LgOptions options_;
 };
 
-std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options) {
-  return std::unique_ptr<LgPass>(new LayerGroupSearchPass(options));
+std::unique_ptr<LgPass> CreateLayerGroupSearchPass() {
+  return std::unique_ptr<LgPass>(new LayerGroupSearchPass());
 }
 
 } // namespace tpu

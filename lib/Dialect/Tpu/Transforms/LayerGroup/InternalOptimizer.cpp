@@ -19,14 +19,13 @@
 namespace tpu_mlir {
 namespace tpu {
 
-void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
-                                        const LgOptions &options) {
+void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm) {
   /*
    * Add internal pass pipeline to the pass manager.
    */
 
   // Firstly, group layers
-  pm->add_pass(CreateLayerGroupSearchPass(options));
+  pm->add_pass(CreateLayerGroupSearchPass());
 
   // Some transform after layer groups is determined
   pm->add_pass(CreateGroupPostTransformPass());
@@ -49,8 +48,8 @@ void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
   pm->add_pass(CreateTimeStepCombinePass());
 }
 
-void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
-                                             const LgOptions &options) {
+void InternalLgOptimizer::manage_post_passes(
+    std::shared_ptr<LgPassManager> pm) {
   pm->add_pass(CreateGroupDataMoveOverlapPass());
 }
 

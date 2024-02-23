@@ -14,19 +14,18 @@ namespace tpu_mlir {
 namespace tpu {
 
 class InternalLgOptimizer : public LgOptimizer {
- public:
+public:
   InternalLgOptimizer() {}
   virtual ~InternalLgOptimizer() {}
 
-  virtual void manage_passes(std::shared_ptr<LgPassManager> pm,
-                             const LgOptions& options) override;
+  virtual void manage_passes(std::shared_ptr<LgPassManager> pm) override;
 
   // Manage post passes after plugin
-  void manage_post_passes(std::shared_ptr<LgPassManager> pm,
-                          const LgOptions& options);
+  void manage_post_passes(std::shared_ptr<LgPassManager> pm);
 
-  virtual std::string brief() override
-    { return "This is the internal optimizer of layer group"; }
+  virtual std::string brief() override {
+    return "This is the internal optimizer of layer group";
+  }
 };
 
 } // namespace tpu

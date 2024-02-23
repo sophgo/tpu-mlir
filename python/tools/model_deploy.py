@@ -88,6 +88,7 @@ class DeployTool:
         self.ignore_f16_overflow = args.ignore_f16_overflow
         self.num_device = args.num_device
         self.num_core = args.num_core
+        self.group_by_cores = args.group_by_cores
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
@@ -236,7 +237,7 @@ class DeployTool:
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
-                          self.model_version)
+                          self.group_by_cores, self.model_version)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()
@@ -318,6 +319,9 @@ if __name__ == '__main__':
                         help="The number of devices to run for distributed computation.")
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
+    parser.add_argument("--group_by_cores", default="auto", type=str.lower,
+                        choices=['auto', 'true', 'false'],
+                        help="whether layer groups force group by cores")
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")

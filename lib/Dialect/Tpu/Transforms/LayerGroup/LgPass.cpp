@@ -13,6 +13,11 @@
 namespace tpu_mlir {
 namespace tpu {
 
+LgOptions LgPass::OPTIONS = {
+    /*dyn_compile*/ false,
+    /*opt*/ 0,
+    /*group_by_cores*/ false};
+
 void LgPassIR::clear() {
   lg_infos.clear();
   time_steps.clear();

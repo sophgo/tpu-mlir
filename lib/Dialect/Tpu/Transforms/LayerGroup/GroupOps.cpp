@@ -11,7 +11,6 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/InternalOptimizer.h"
 
-
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 
@@ -48,19 +47,16 @@ GroupOps::GroupOps(::mlir::func::FuncOp func) {
   });
 }
 
-void GroupOps::process(int64_t opt) {
-  buildGroups(opt);
+void GroupOps::process() {
+  buildGroups();
   buildMlir();
 }
 
-void GroupOps::buildGroups(int64_t opt) {
-  LgOptions options;
-  options.dyn_compile = false;
-  options.opt = opt;
+void GroupOps::buildGroups() {
   auto pm = std::make_shared<LgPassManager>();
   auto inner_optimizer = std::make_unique<InternalLgOptimizer>();
-  inner_optimizer->manage_passes(pm, options);
-  inner_optimizer->manage_post_passes(pm, options);
+  inner_optimizer->manage_passes(pm);
+  inner_optimizer->manage_post_passes(pm);
   pm->run(lg_pass_ir_);
 }
 
@@ -101,7 +97,8 @@ void GroupOps::buildMlir() {
 }
 
 void GroupOps::buildGroupOp(const LgInfo &lg_info,
-                            const shape_secs_t &shape_secs, const int64_t group_idx) {
+                            const shape_secs_t &shape_secs,
+                            const int64_t group_idx) {
   auto builder = OpBuilder(ctx_);
   llvm::SmallVector<Value, 8> operands;
   llvm::SmallVector<Value, 8> outputs;
@@ -281,7 +278,7 @@ void GroupOps::UpdateGroupOverlapInfo(Operation *op, int64_t group_idx) {
   for (auto &elt : other_down_overlap_ops) {
     other_down_overlap_op.push_back(-(elt.first + 1));
     for (auto v : elt.second) {
-      other_down_overlap_op.push_back(self_down_overlap_ops_[group_idx-1][v]);
+      other_down_overlap_op.push_back(self_down_overlap_ops_[group_idx - 1][v]);
     }
   }
   groupOp->setAttr("other_down_overlap_op",
@@ -291,7 +288,7 @@ void GroupOps::UpdateGroupOverlapInfo(Operation *op, int64_t group_idx) {
   for (auto &elt : other_up_overlap_ops) {
     other_up_overlap_op.push_back(-(elt.first + 1));
     for (auto v : elt.second) {
-      other_up_overlap_op.push_back(self_up_overlap_ops_[group_idx+1][v]);
+      other_up_overlap_op.push_back(self_up_overlap_ops_[group_idx + 1][v]);
     }
   }
   groupOp->setAttr("other_up_overlap_op",
@@ -327,7 +324,7 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   if (auto weightop = dyn_cast_or_null<top::WeightOp>(inputOp)) {
     bool allow_split = false;
     buffer_key.type = LMEM_WEIGHT;
-    if (weightop.getAllowSplitAttr() != nullptr){
+    if (weightop.getAllowSplitAttr() != nullptr) {
       allow_split = true;
     }
     if (allow_split == false) {
