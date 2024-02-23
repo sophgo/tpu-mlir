@@ -336,8 +336,8 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 需要如下文件:
 
-* cvitek_tpu_sdk_[cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
-* cvimodel_samples_[cv183x|cv182x|cv181x|cv180x].tar.gz
+* cvitek_tpu_sdk_[cv183x | cv182x | cv182x_uclibc | cv181x_glibc32 | cv181x_musl_riscv64_rvv | cv180x_musl_riscv64_rvv | cv181x_glibc_riscv64].tar.gz
+* cvimodel_samples_[cv183x | cv182x | cv181x | cv180x].tar.gz
 
 将根据处理器类型选择所需文件加载至EVB的文件系统,于evb上的linux console执行,以cv183x为例:
 
@@ -463,7 +463,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 本节需要如下文件:
 
-* cvitek_tpu_sdk_[cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
+* cvitek_tpu_sdk_[cv183x | cv182x | cv182x_uclibc | cv181x_glibc32 | cv181x_musl_riscv64_rvv | cv180x_musl_riscv64_rvv].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 aarch 64位  (如cv183x aarch64位平台)
@@ -836,7 +836,7 @@ FAQ
 支持多线程, 但是多个模型在深度学习处理器上推理时是串行进行的。
 
 5 填充input tensor相关接口区别
-```````````````````````````````
+``````````````````````````````
 
 ``CVI_NN_SetTensorPtr`` : 设置input tensor的虚拟地址，原本的tensor 内存不会释放。推理时从用户设置的虚拟地址 **拷贝数据** 到原本的tensor内存上。
 
@@ -844,7 +844,8 @@ FAQ
 
 ``CVI_NN_SetTensorWithVideoFrame`` : 通过VideoFrame结构体来填充Input Tensor。注意VideoFrame的地址为物理地址。如果转模型设置 ``--fuse_preprocess --aligned_input`` ，则等同于 ``CVI_NN_SetTensorPhysicalAddr`` ，否则会将VideoFrame的数据拷贝到Input Tensor。
 
-``CVI_NN_SetTensorWithAlignedFrames`` : 支持多batch，与 ``CVI_NN_SetTensorWithVideoFrame`` 类似。
+``CVI_NN_SetTensorWithAlignedFrames`` : 与 ``CVI_NN_SetTensorWithVideoFrame`` 类
+似, 支持多batch。
 
 ``CVI_NN_FeedTensorWithFrames`` : 与 ``CVI_NN_SetTensorWithVideoFrame`` 类似。
 

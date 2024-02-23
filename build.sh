@@ -29,6 +29,7 @@ function config_release()
     cmake -G Ninja \
           -B ${BUILD_PATH} \
           -DCMAKE_C_COMPILER=clang \
+          -DCMAKE_BUILD_TYPE="" \
           -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_CXX_FLAGS=-O2 \
           -DTPUMLIR_USE_LLD=ON \

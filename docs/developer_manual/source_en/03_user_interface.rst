@@ -592,13 +592,20 @@ Supported functions:
      - The input mlir file name (including path)
    * - img
      - N
-     - Used for CV tasks to generate random images, otherwise generate npz files. The default image value range is [0,255], the data type is 'uint8', and cannot be changed.
+     - Used for CV tasks to generate random images, otherwise generate npz
+       files. The default image value range is [0,255], the data type is
+       'uint8', and cannot be changed.
    * - ranges
      - N
-     - Set the value ranges of the model inputs, expressed in list form, such as [[0,300],[0,0]]. If you want to generate a picture, you do not need to specify the value range, the default is [0,255]. In other cases, value ranges need to be specified.
+     - Set the value ranges of the model inputs, expressed in list form, such as
+       [[0,300],[0,0]]. If you want to generate a picture, you do not need to
+       specify the value range, the default is [0,255]. In other cases, value ranges need to be specified.
    * - input_types
      - N
-     - Set the model input types, such as 'si32,f32'. 'si32' and 'f32' types are supported. False by default, and it will be read from mlir. If you generate an image, you do not need to specify the data type, the default is 'uint8'.
+     - Set the model input types, such as 'si32,f32'. 'si32' and 'f32' types are
+       supported. False by default, and it will be read from mlir. If you
+       generate an image, you do not need to specify the data type, the default
+       is 'uint8'.
    * - output
      - Y
      - The names of the output.
