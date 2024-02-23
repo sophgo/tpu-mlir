@@ -463,7 +463,7 @@ model_deploy.py
    * - core
      - 否
      - 当target选择为bm1688或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
-    * - asymmetric
+   * - asymmetric
      - 否
      - 指定做int8非对称量化
    * - dynamic

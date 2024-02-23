@@ -55,7 +55,7 @@ TFLite转MLIR
 转成mlir文件后, 会生成一个 ``mobilebert_tf_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
 
-MLIR转模型
+MLIR转INT8模型
 ------------------
 
 该模型是tflite int8模型, 可以按如下参数转成模型:
