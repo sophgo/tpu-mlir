@@ -99,6 +99,11 @@ do
         continue
     fi
 
+    if [[ $file = *.a ]]; then
+        echo Skip $file
+        continue
+    fi
+
     if [ -f "$file" ]
     then
         patchelf --set-rpath '$ORIGIN/:$ORIGIN/../lib/third_party/' $file
