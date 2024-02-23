@@ -42,6 +42,8 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   bool isInQuant = module::isUniformQuantized(getInput());
   bool isOutQuant = module::isUniformQuantized(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
   auto op = getOperation();
   bool is_cv18xx = module::isCV18xx();
   auto round_mode =
@@ -68,7 +70,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     for (int i = 0; i < num_elem; i++) {
       p.outputs[0][i] = p.inputs[0][i];
     }
-  } else if (isOutQuant && false == isInQuant) {
+  } else if (isOutQuant && fInput) {
     // FP32|BF16|F16|... => INT8|UINT8|...
     auto qtype = module::getUniformQuantizedType(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -81,7 +83,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       }
       p.outputs[0][i] = saturate(v, out_type, round_mode);
     }
-  } else if (isInQuant && false == isOutQuant) {
+  } else if (isInQuant && fOutput) {
     // INT8|UINT8|... ==> FP32|BF16|F16|...
     auto qtype = module::getUniformQuantizedType(getInput());
     if (is_cv18xx) {
