@@ -19,10 +19,14 @@ using namespace tpu_mlir::backend;
 void tpu::CastOp::codegen_global_bm1684x() {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   auto op = getOperation();
-  if (!qInput && !qOutput) {
+  if (!(fInput && qOutput) && !(qInput && fOutput)) {
     cast_global_spec_t spec = {0};
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
@@ -34,7 +38,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
                              input_spec->data(), output_spec->data());
 
   } else {
-    if (!qInput && qOutput) {
+    if (fInput && qOutput) {
       auto qtype = module::getUniformQuantizedType(getOutput());
       requant_fp_param_t param = {0};
       param.input_addr = module::getAddress(getInput());
@@ -51,7 +55,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.mode = 0;
       BM168x::call_global_func("backend_api_requant_float_global", &param,
                                sizeof(param));
-    } else if (qInput && !qOutput) {
+    } else if (qInput && fOutput) {
       auto qtype = module::getUniformQuantizedType(getInput());
       dequant_fp_param_t param = {0};
       param.input_addr = module::getAddress(getInput());
@@ -113,11 +117,15 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto op = getOperation();
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step, c_step);
 
-  if (!qInput && !qOutput) {
+  if (!(qInput && fOutput) && !(fInput && qOutput)) {
     cast_local_spec_t spec = {0};
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
@@ -128,7 +136,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
                             &sec_info, input_spec->data(), output_spec->data());
   } else {
-    if (!qInput && qOutput) {
+    if (fInput && qOutput) {
       auto qtype = module::getUniformQuantizedType(getOutput());
       uint32_t buffer_addr =
           getInput().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
@@ -174,11 +182,15 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  if (!qInput && !qOutput) {
+  if (!(fInput && qOutput) && !(qInput && fOutput)) {
     if (!buffer)
       return sizeof(cast_local_param_t);
     cast_local_param_t param;
@@ -189,7 +201,7 @@ int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
     param.spec.buffer_addr = -1;
     return BM168x::dynamic_spec_to_buffer(buffer, param);
   } else {
-    if (!qInput && qOutput) {
+    if (fInput && qOutput) {
       if (!buffer)
         return sizeof(dyn_requant_fp_local_param_t);
       auto qtype = module::getUniformQuantizedType(getOutput());
@@ -224,9 +236,13 @@ int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
-  if (!qInput && !qOutput) {
+  if (!(fInput && qOutput) && !(qInput && fOutput)) {
     if (!buffer)
       return sizeof(cast_global_spec_t);
     cast_global_spec_t spec;
@@ -236,7 +252,7 @@ int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.common.round_mode = ROUND_INF;
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
   } else {
-    if (!qInput && qOutput) {
+    if (fInput && qOutput) {
       if (!buffer)
         return sizeof(dyn_requant_fp_global_param_t);
       auto qtype = module::getUniformQuantizedType(getOutput());
@@ -265,10 +281,14 @@ int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
 int64_t tpu::CastOp::get_fw_type_bm1684x() {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
-  if (!qInput && !qOutput)
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
+  if (!(fInput && qOutput) && !(qInput && fOutput))
     return FW_BMNET_DTYPE_CONVERT;
   else {
-    if (!qInput && qOutput)
+    if (fInput && qOutput)
       return FW_BMNET_REQUANT_FP32;
     else
       return FW_BMNET_DEQUANT_FP32;

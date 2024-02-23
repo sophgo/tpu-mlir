@@ -666,8 +666,8 @@ def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scal
     o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
     if scale is not None:
         zero_point = zero_point if zero_point is not None else [0, 0, 0]
-        tensor0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=tensor_i0.value)
-        tensor1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=tensor_i1.value)
+        tensor0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype))
+        tensor1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=np.array([tensor_i1.value]).astype(tensor_i1.dtype))
         output = Tensor(dtype=o_dtype, name=out_name, scale=scale[2], zero_point=zero_point[2])
         tensor0.quantization(scale=scale[0], zero_point=zero_point[0])
         tensor1.quantization(scale=scale[1], zero_point=zero_point[1])

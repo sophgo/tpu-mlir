@@ -185,6 +185,10 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     }
     module::getScaleAndZeroPoint(input, scale, zeropoint, true);
     scale_mul *= scale;
+    // auto in_stype = module::getStorageType(input);
+    // auto in_new_type =
+    //     RankedTensorType::get(module::getShape(input), in_stype);
+    // input.setType(in_new_type);
     if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
       // do sub zp in here
       auto num_element = module::getNumElements(input);
@@ -192,6 +196,8 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
         is_const = true;
         auto constF32 = constOp.read_as_float();
         const_val = constF32->data()[0] - zeropoint;
+      } else if (zeropoint == 0) {
+        operands.push_back(input);
       } else {
         auto input_stype = module::getStorageType(input);
         auto input_sub_zp = std::make_shared<std::vector<int16_t>>(num_element);
@@ -211,10 +217,12 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
             top::WeightOp::create(op, "_int16", *input_sub_zp, new_type);
         operands.push_back(new_input);
       }
-    } else {
+    } else if (zeropoint != 0) {
       auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
           input, rewriter.getI16Type(), -zeropoint);
       operands.push_back(input_sub_zp);
+    } else {
+      operands.push_back(input);
     }
   }
   module::getScaleAndZeroPoint(op.getOutput(), scale, zeropoint, true);
@@ -240,7 +248,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // requant to int8
     auto v =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFLite);
+                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
     rewriter.replaceOp(op, {v});
   } else {
     attrs.push_back(rewriter.getNamedAttr("const_val",
@@ -250,7 +258,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // requant to int8
     auto v =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFLite);
+                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
     rewriter.replaceOp(op, {v});
   }
 }
