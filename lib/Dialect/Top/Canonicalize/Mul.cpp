@@ -182,6 +182,9 @@ struct MulToScale : public OpRewritePattern<MulOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
+    if (module::isUniformQuantized(op.getInputs()[0]) == true) {
+      return failure();
+    }
 
     // check shape
     auto left_shape =
