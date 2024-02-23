@@ -114,8 +114,8 @@ class Tensor:
                  ttype="neuron",
                  data=None,
                  dtype: str = "float32",
-                 scale: float = None,
-                 zero_point: int = None):
+                 scale: Union[float, List[float]] = None,
+                 zero_point: Union[int, List[int]] = None):
         self.id = int(Tensor.ID)
         self.shape = shape if isinstance(shape, list) else [shape]
         self.name = "BMTensor" + str(self.id) if name is None else name
@@ -135,6 +135,8 @@ class Tensor:
     def quantization(self,
                      scale: Union[float, List[float]] = None,
                      zero_point: Union[int, List[int]] = None):
+        if scale is not None:
+            scale = [abs(s) for s in scale] if isinstance(scale, List) else abs(scale)
         if self.is_quantized is False:
             self.is_quantized = scale is not None or zero_point is not None
             self.scale = scale
@@ -349,14 +351,16 @@ class TpuLangConverter(BaseConverter):
             is_signed, storage_type.width)
         flags = 1 if is_signed else 0
         scale = tensor.scale if tensor.scale is not None else 1.0
-        zero_point = tensor.zero_point if tensor.zero_point is not None else 0
+        # zero_point = tensor.zero_point if tensor.zero_point is not None else 0
+        zero_point = tensor.zero_point if tensor.zero_point == 0 else None
         is_perchannel = isinstance(scale, List) or isinstance(zero_point, List)
         if is_perchannel:
             length = len(scale) if isinstance(scale, List) else len(zero_point)
+            zero_point = zero_point if isinstance(zero_point, List) or zero_point == None else [zero_point] * length
             return quant.UniformQuantizedPerAxisType.get(  # type: ignore
                 flags, storage_type, self.type_to_mlir["float32"],
                 scale if isinstance(scale, List) else [scale] * length,
-                zero_point if isinstance(zero_point, List) else [zero_point] * length, 1,
+                zero_point, 1,
                 storage_min, storage_max)
         else:
             return quant.UniformQuantizedType.get(  # type: ignore
@@ -450,7 +454,16 @@ class TpuLangConverter(BaseConverter):
 
         return return_op
 
+    def quantized_type_assign(self, subgraph: Graph):
+        assign_ops = ["Permute", "Reshape", "Tile", "Concat", "Split", "Repeat", "Relu"]
+        for op in subgraph.operators:
+            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.inputs[0].is_quantized:
+                input = op.inputs[0]
+                output = op.outputs[0]
+                output.quantization(scale=input.scale, zero_point=input.zero_point)
+
     def generate_mlir(self, mlir_file: str):
+        # self.quantized_type_assign(self.model)
         return_op = self.convert_subgraph(self.model)
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()

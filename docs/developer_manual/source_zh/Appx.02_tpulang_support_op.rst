@@ -29,7 +29,9 @@ TpuLang中Tensor的定义如下：
                      name: str = None,
                      ttype="neuron",
                      data=None,
-                     dtype: str = "float32")
+                     dtype: str = "float32",
+                     scale: Union[float, List[float]] = None,
+                     zero_point: Union[int, List[int]] = None)
                #pass
 
 如上所示，TpuLang中Tensor有5个参数。
@@ -39,7 +41,8 @@ TpuLang中Tensor的定义如下：
 * ttype：Tensor的类型，可以是"neuron"或"coeff"或None，初始值为"neuron"；
 * data：Tensor的输入数据，为默认值None时则会根据shape产生全0数据，否则应该是一个ndarray；
 * dtype：Tensor的数据类型，默认值为"float32"，否则取值范围为"float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"；
-
+* scale：Tensor的量化参数，float或List[float]，默认值为None；
+* zero_point：Tensor的量化参数，int或List[int]，默认值为None；
 
 声明Tensor的示例：
 
@@ -99,7 +102,7 @@ Control Functions
       def init(device):
           #pass
 
-* device：string类型。取值范围"cpu"\|"bm1684x"。
+* device：string类型。取值范围"cpu"\|"bm1684x"\|"bm1688"\|"cv183x"。
 
 .. _compile:
 compile
@@ -115,7 +118,8 @@ compile
             outputs: List[Tensor],
             cmp=True,
             has_custom=False,
-            refs=None):
+            refs=None,
+            mode='f32'):
             #pass
 
 
@@ -134,6 +138,7 @@ compile
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
 * cmp：bool类型。True表示需要结果比对，False表示仅编译；
 * has_custom：bool型，即模型中是否包含自定义算子。值为True，则不对模型进行推理。
+* mode：string类型，表示模型的类型，支持“f32”，“int8”。
 
 .. _deinit:
 
@@ -177,15 +182,15 @@ conv
 
     .. code-block:: python
 
-      def conv(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            stride=None,
-            groups=1,
-            out_name=None):
+      def conv(input: Tensor,
+               weight: Tensor,
+               bias: Tensor = None,
+               stride: List[int] = None,
+               dilation: List[int] = None,
+               pad: List[int] = None,
+               group: int = 1,
+               out_dtype: str = None,
+               out_name: str = None):
           #pass
 
 功能描述
@@ -198,11 +203,11 @@ conv
 * input：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]，oc表示输出Channel数。
-* kernel：目前废弃该参数，不使用；
+* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * groups：int型，表示卷积层的组数。
+* out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -211,11 +216,11 @@ conv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
-conv_v2
+conv_int
 :::::::::::::::::
 
 接口定义
@@ -223,17 +228,17 @@ conv_v2
 
     .. code-block:: python
 
-      def conv_v2(tensor_i,
-                  weight,
-                  bias = None,
-                  stride = None,
-                  dilation = None,
-                  pad = None,
-                  group = 1,
-                  input_zp = None,
-                  weight_zp = None,
-                  out_dtype = None,
-                  out_name = None):
+      def conv_int(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
           # pass
 
 功能描述
@@ -243,8 +248,8 @@ conv_v2
 
   for c in channel
     izp = is_izp_const ? izp_val : izp_vec[c];
-    kzp = is_kzp_const ? kzp_val : kzp_vec[c];
-    output = (input - izp) Conv (weight - kzp) + bias[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    output = (input - izp) Conv (weight - wzp) + bias[c];
 
 该操作属于 **本地操作** 。
 
@@ -253,9 +258,9 @@ conv_v2
 * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。
+* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
@@ -280,16 +285,16 @@ deconv
 
     .. code-block:: python
 
-      def deconv(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            output_padding = None,
-            stride=None,
-            output_padding=None,
-            out_name=None):
+      def deconv(input: Tensor,
+                 weight: Tensor,
+                 bias: Tensor = None,
+                 stride: List[int] = None,
+                 dilation: List[int] = None,
+                 pad: List[int] = None,
+                 output_padding: List[int] = None,
+                 group: int = 1,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 功能描述
@@ -302,12 +307,12 @@ deconv
 * input：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]，oc表示输出Channel数。
-* kernel：目前废弃该参数，不使用；
+* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
 * output_padding：List[int]，表示输出的填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
-* output_padding：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
+* group：int类型，表示表示卷积层的组数。
+* out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -316,67 +321,8 @@ deconv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
-
-
-deconv_v2
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def deconv_v2(tensor_i,
-                    weight,
-                    bias = None,
-                    stride = None,
-                    dilation = None,
-                    pad = None,
-                    output_padding = None,
-                    group = 1,
-                    input_zp = None,
-                    weight_zp = None,
-                    out_dtype = None,
-                    out_name = None):
-
-
-功能描述
-"""""""""""
-二维转置卷积定点运算。可参考各框架下的二维转置卷积定义。
-::
-
-  for c in channel
-    izp = is_izp_const ? izp_val : izp_vec[c];
-    kzp = is_kzp_const ? kzp_val : kzp_vec[c];
-    output = (input - izp) DeConv (weight - kzp) + bias[c];
-
-该操作属于 **本地操作** 。
-
-参数说明
-"""""""""""
-* tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
-* weight：Tensor类型，表示卷积核Tensor，4维[ic, oc, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
-* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
-* output_padding：List[int]，表示输出的填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise deconv
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
-* weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype确定。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是INT8/UINT8。
-* BM1684X：输入数据类型可以是INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 conv3d
@@ -387,15 +333,15 @@ conv3d
 
     .. code-block:: python
 
-      def conv3d(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            stride=None,
-            groups=1,
-            out_name=None):
+      def conv3d(input: Tensor,
+                 weight: Tensor,
+                 bias: Tensor = None,
+                 stride: List[int] = None,
+                 dilation: List[int] = None,
+                 pad: List[int] = None,
+                 group: int = 1,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 功能描述
@@ -408,11 +354,11 @@ conv3d
 * input：Tensor类型，表示输入Tensor，5维NCDHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCDHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1, 1]或[oc]，oc表示输出Channel数。
-* kernel：目前废弃该参数，不使用；
+* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为1或3。
 * dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为1或3。
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为1或3或6。
-* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为1或3。
 * groups：int型，表示卷积层的组数。
+* out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -421,11 +367,11 @@ conv3d
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
-conv3d_v2
+conv3d_int
 :::::::::::::::::
 
 接口定义
@@ -433,17 +379,17 @@ conv3d_v2
 
     .. code-block:: python
 
-      def conv3d_v2(tensor_i,
-                    weight,
-                    bias = None,
-                    stride = None,
-                    dilation = None,
-                    pad = None,
-                    group = 1,
-                    input_zp = None,
-                    weight_zp = None,
-                    out_dtype = None,
-                    out_name = None):
+      def conv3d_int(input: Tensor,
+                     weight: Tensor,
+                     bias: Tensor = None,
+                     stride: List[int] = None,
+                     dilation: List[int] = None,
+                     pad: List[int] = None,
+                     group: int = 1,
+                     input_zp: Union[int, List[int]] = None,
+                     weight_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
 
 
 功能描述
@@ -466,9 +412,9 @@ conv3d_v2
 * tensor_i：Tensor类型，表示输入Tensor，5维NCTHW格式。
 * weight：Tensor类型，表示卷积核Tensor，5维[oc, ic, kt, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kt是kernel_t，kh是kernel_h，kw是kernel_w。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1, 1]。
+* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[stride_t, stride_h, stride_w]
 * dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
-* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[stride_t, stride_h, stride_w]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
@@ -484,7 +430,7 @@ conv3d_v2
 * BM1688：输入数据类型可以是INT8/UINT8。
 * BM1684X：输入数据类型可以是FINT8/UINT8。
 
-matrix_mul
+matmul
 :::::::::::::::::
 
 接口定义
@@ -492,8 +438,15 @@ matrix_mul
 
     .. code-block:: python
 
-      def matrix_mul(lhs, rhs, bias=None, left_zp=None, right_zp=None, \
-                     out_dtype=None, out_name=None):
+      def matmul(input: Tensor,
+                 right: Tensor,
+                 bias: Tensor = None,
+                 right_transpose: bool = False,
+                 left_transpose: bool = False,
+                 output_transpose: bool = False,
+                 keep_dims: bool = True,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 功能描述
@@ -503,15 +456,14 @@ matrix_mul
 
 参数说明
 """""""""""
-* lhs：Tensor类型，表示输入左操作数，大于或等于2维，设最后两维shape=[m,k]。
-* rhs：Tensor类型，表示输入右操作数，大于或等于2维，设最后两维shape=[k,n]。
+* input：Tensor类型，表示输入左操作数，大于或等于2维，设最后两维shape=[m,k]。
+* right：Tensor类型，表示输入右操作数，大于或等于2维，设最后两维shape=[k,n]。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[n]。
-* left_zp：List[int]型或int型，表示lhs的偏移。取None则表示0，取List时要求长度为k。
-  该参数仅在lhs的dtype为‘int8/uint8’时有用。暂时只支持0.
-* right_zp：List[int]型或int型，表示rhs的偏移。取None则表示0，取List时要求长度为k。
-  该参数仅在rhs的dtype为‘int8/uint8’时有用。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None则与lhs的dtype一致。
-  当lhs的dtype为‘int8/uint8’时，out_dtype取值范围：int32/uint32。
+* left_transpose：bool型，默认为False。表示计算时是否对左矩阵进行转置。
+* right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
+* output_transpose：bool型，默认为False。表示计算时是否对输出矩阵进行转置。
+* keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
+* out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 要求左右Tensor的维度长度一致。
@@ -524,8 +476,64 @@ matrix_mul
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+
+matmul_int
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def matmul_int(input: Tensor,
+                     right: Tensor,
+                     bias: Tensor = None,
+                     right_transpose: bool = False,
+                     left_transpose: bool = False,
+                     output_transpose: bool = False,
+                     hdim_is_batch: bool = False,
+                     keep_dims: bool = True,
+                     input_zp: Union[int, List[int]] = None,
+                     right_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+矩阵乘运算。可参考各框架下的矩阵乘定义。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入左操作数，大于或等于2维，设最后两维shape=[m,k]。
+* right：Tensor类型，表示输入右操作数，大于或等于2维，设最后两维shape=[k,n]。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[n]。
+* left_transpose：bool型，默认为False。表示计算时是否对左矩阵进行转置。
+* right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
+* output_transpose：bool型，默认为False。表示计算时是否对输出矩阵进行转置。
+* keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
+* input_zp：List[int]型或int型，表示input的偏移。取None则表示0，取List时要求长度为k。
+* right_zp：List[int]型或int型，表示right的偏移。取None则表示0，取List时要求长度为k。
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+要求左右Tensor的维度长度一致。
+当Tensor的维度长度为2时，表示矩阵和矩阵乘运算。
+当Tensor的维度长度大于2时，表示批矩阵乘运算。要求lhr.shape[-1] == rhs.shape[-2]，lhr.shape[:-2]和rhs.shape[:-2]需要满足广播规则。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由out_dtype指定。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是INT8/UINT8。
+* BM1684X：输入数据类型可以是INT8/UINT8。
+
 
 Base Element-wise Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -538,7 +546,7 @@ add
 
     .. code-block:: python
 
-      def add(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def add(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
           #pass
 
 功能描述
@@ -551,17 +559,19 @@ add
 """""""""""
 * tensor_i0：Tensor类型或Scalar、int、float，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。当输入为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'时，输出可以是任意整型类型。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
 
 sub
@@ -572,7 +582,7 @@ sub
 
     .. code-block:: python
 
-      def sub(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def sub(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
           #pass
 
 功能描述
@@ -585,17 +595,19 @@ sub
 """""""""""
 * tensor_i0：Tensor类型或Scalar、int、float，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'int16'/'int32'。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。当输入为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'时，输出数据类型为'int8'/'int16'/'int32'。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
 
 mul
@@ -606,7 +618,7 @@ mul
 
     .. code-block:: python
 
-      def mul(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def mul(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
           #pass
 
 功能描述
@@ -619,17 +631,19 @@ mul
 """""""""""
 * tensor_i0：Tensor类型或Scalar、int、float，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。当输入为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'时，输出可以是任意整型类型。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
 
 div
@@ -673,7 +687,7 @@ max
 
     .. code-block:: python
 
-      def max(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def max(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
           #pass
 
 功能描述
@@ -686,17 +700,19 @@ max
 """""""""""
 * tensor_i0：Tensor类型或Scalar、int、float，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。当输入为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'时，输出可以是任意整型类型。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
 
 min
@@ -707,7 +723,7 @@ min
 
     .. code-block:: python
 
-      def min(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def min(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
           #pass
 
 功能描述
@@ -720,17 +736,19 @@ min
 """""""""""
 * tensor_i0：Tensor类型或Scalar、int、float，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'/'uint8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。当输入为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'时，输出可以是任意整型类型。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
 
 clamp
@@ -1183,8 +1201,8 @@ relu激活函数，逐元素实现功能 :math:`y = max(0, x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 leaky_relu
@@ -1215,8 +1233,8 @@ leaky_relu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 abs
 :::::::::::::::::
@@ -1245,8 +1263,8 @@ abs绝对值激活函数，逐元素实现功能 :math:`y = \left | x \right |`�
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 ceil
 :::::::::::::::::
@@ -1275,8 +1293,8 @@ ceil向上取整激活函数，逐元素实现功能 :math:`y = \left \lfloor x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 floor
 :::::::::::::::::
@@ -1305,8 +1323,8 @@ floor向下取整激活函数，逐元素实现功能 :math:`y = \left \lceil x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 round
 :::::::::::::::::
@@ -1335,8 +1353,8 @@ round四舍五入整激活函数，逐元素实现功能 :math:`y = round(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 sin
@@ -1427,8 +1445,8 @@ exp指数激活函数，逐元素实现功能 :math:`y = e^{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 tanh
 :::::::::::::::::
@@ -1490,6 +1508,36 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+log_sigmoid
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def log_sigmoid(tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+log_sigmoid激活函数，逐元素实现功能 :math:`y = log(1 / (1 + e^{-x}))`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
 elu
 :::::::::::::::::
 
@@ -1519,6 +1567,36 @@ elu激活函数，逐元素实现功能 :math:`y =  \begin{cases}x\quad x>=0\\e^
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
+
+square
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def square(tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+sqrt平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 sqrt
 :::::::::::::::::
@@ -1577,8 +1655,8 @@ erf激活函数，对于输入输出Tensor对应位置的元素x和y，逐元素
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 tan
 :::::::::::::::::
@@ -1639,8 +1717,60 @@ softmax激活函数，实现功能 :math:`tensor\_o = exp(tensor\_i)/sum(exp(ten
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+
+softmax_int
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def softmax_int(input: Tensor,
+                      axis: int,
+                      scale: List[float],
+                      zero_point: List[int] = None,
+                      out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+softmax定点运算。可参考各框架下的softmax定义。
+
+    ::
+
+      for i in range(256)
+        table[i] = exp(scale[0] * i)
+
+      for n,h,w in N,H,W
+        max_val = max(input[n,c,h,w] for c in C)
+        sum_exp = sum(table[max_val - input[n,c,h,w]] for c in C)
+        for c in C
+          prob = table[max_val - input[n,c,h,w]] / sum_exp
+          output[n,c,h,w] = saturate(int(round(prob * scale[1])) + zero_point[1]),    其中saturate饱和到output数据类型
+
+
+其中table表示查表。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* axis：int型，表示进行运算的轴。
+* scale：List[float]型，表示输入和输出的量化系数。长度必须时2。
+* zero_point：List[int]型或None型，表示输入和输出偏移。如果为None，则取[0, 0]。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是INT8/UINT8。
+* BM1684X：输入数据类型可以是INT8/UINT8。
 
 
 mish
@@ -1702,8 +1832,8 @@ hswish激活函数，逐元素实现功能 :math:`y =\begin{cases}0\quad x<=-3\\
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 
@@ -1890,7 +2020,7 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32。
 
 
@@ -1956,8 +2086,8 @@ permute
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 tile
 :::::::::::::::::
@@ -1987,8 +2117,8 @@ tile
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 
 concat
@@ -2020,8 +2150,8 @@ concat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 split
 :::::::::::::::::
@@ -2054,8 +2184,8 @@ split
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 pad
 :::::::::::::::::
@@ -2088,8 +2218,8 @@ pad
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 repeat
 :::::::::::::::::
@@ -2119,8 +2249,8 @@ repeat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
 
 
@@ -2292,6 +2422,7 @@ requant_fp_to_int
         其中saturate为饱和到output的数据类型
 
     * BM1684X：input数据类型可以是FLOAT32, output数据类型可以是INT16/UINT16/INT8/UINT8
+    * BM1688：input数据类型可以是FLOAT32, output数据类型可以是INT16/UINT16/INT8/UINT8
 
 当requant_mode==1时，该操作对应的计算式为：
 
@@ -2301,6 +2432,7 @@ requant_fp_to_int
         其中saturate为饱和到output的数据类型
 
     * BM1684X：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
+    * BM1688：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
 
 该操作属于 **本地操作** 。
 
@@ -2320,5 +2452,301 @@ requant_fp_to_int
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT32/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/INT32/INT16/UINT16。
+
+
+requant_int
+:::::::::::::::::::
+
+对输入tensor进行量化处理。
+
+    .. code-block:: python
+
+        def requant_int(tensor_i,
+                        mul,
+                        shift,
+                        offset,
+                        requant_mode,
+                        out_dtype = None,
+                        out_name = None,
+                        round_mode='half_up'):
+
+功能描述
+"""""""""""
+对输入tensor进行量化处理。
+
+当requant_mode==0时，该操作对应的计算式为：
+
+    ::
+
+        output = shift > 0 ? (input << shift) : input
+        output = saturate((output * multiplier) >> 31),     其中 >> 为round_half_up, saturate饱和到INT32
+        output = shift < 0 ? (output >> -shift) : output,   其中 >> 的舍入模式由round_mode确定。
+        output = saturate(output + offset),                 其中saturate饱和到output数据类型
+
+    * BM1684X：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
+    * BM1688：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
+
+当requant_mode==1时，该操作对应的计算式为：
+
+    ::
+
+        output = saturate((input * multiplier) >> 31)，     其中 >> 为round_half_up, saturate饱和到INT32
+        output = saturate(output >> -shift + offset)，      其中 >> 的舍入模式由round_mode确定, saturate饱和到output数据类型
+
+    * BM1684X：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
+    * BM1688：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
+
+当requant_mode==2时，该操作对应的计算式为：
+
+    ::
+
+        output = input * multiplier
+        output = shift > 0 ? (output << shift) : (output >> -shift),    其中 >> 的舍入模式由round_mode确定
+        output = saturate(output + offset),                             其中 saturate饱和到output数据类型
+
+    * BM1684X：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
+    * BM1688：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，3-5维。
+* mul：List[int]型或int型，表示量化乘子系数。
+* shift:List[int]型或int型，表示量化移位系数。
+* offset：List[int]型或int型，表示输出偏移。
+* requant_mode：int型，表示量化模式。
+* round_mode：string型，表示舍入模式。默认为“half_up”。
+* out_dtype：string类型或None，表示输出Tensor的类型。None代表输出数据类型为“int8”
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。该Tensor的数据类型由out_dtype确定。
+
+芯片支持
+"""""""""""
+* BM1684X
+
+dequant_int_to_fp32
+:::::::::::::::::::
+
+    .. code-block:: python
+
+        def dequant_int_to_fp(tensor_i,
+                              scale,
+                              offset,
+                              out_dtype: str="float32",
+                              out_name = None):
+
+功能描述
+"""""""""""
+对输入tensor进行反量化处理。
+
+该操作对应的计算式为：
+
+    ::
+
+        output = (input - offset) * scale
+
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，3-5维。
+* scale：List[float]型或float型，表示量化系数。
+* offset：List[int]型或int型，表示输出偏移。
+* out_dtype：string类型，表示输出Tensor的类型。默认输出数据类型为“float32”。当输入数据类型为int8/uint8时，取值范围为“float16”，“float32”。当输入类型为int16/uint16时，输出类型只能为“float32”。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。该Tensor的数据类型由out_dtype指定。
+
+芯片支持
+"""""""""""
+* BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8。
+
+
+Up/Down Scaling Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+maxpool2d
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool2d(input: Tensor,
+                    kernel: List[int]=None,
+                    stride: List[int] = None,
+                    pad: List[int] = None,
+                    ceil_mode: bool = False,
+                    scale: List[float] = None,
+                    zero_point: List[int] = None,
+                    out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行Max池化处理。请参考各大框架下的池化操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入操作Tensor。
+* kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
+* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
+* stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
+* ceil：bool型，表示计算output shape时是否向上取整。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
+* zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+
+
+maxpool2d_with_mask
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool2d_with_mask(input: Tensor,
+                              kernel: List[int]=None,
+                              stride: List[int] = None,
+                              pad: List[int] = None,
+                              ceil_mode: bool = False,
+                              out_name: str = None,
+                              mask_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行Max池化处理，并输出其mask index。请参考各大框架下的池化操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入操作Tensor。
+* kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
+* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
+* stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
+* ceil：bool型，表示计算output shape时是否向上取整。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* mask_name：string类型或None，表示输出Mask的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，一个Tensor的数据类型与输入Tensor相同。另一个返回一个坐标Tensor，该Tensor是记录使用比较运算池化时所选择的坐标。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+avgpool2d
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool2d(input: Tensor,
+                    kernel: List[int]=None,
+                    stride: List[int] = None,
+                    pad: List[int] = None,
+                    ceil_mode: bool = False,
+                    scale: List[float] = None,
+                    zero_point: List[int] = None,
+                    out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行Avg池化处理。请参考各大框架下的池化操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入操作Tensor。
+* kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
+* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
+* stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
+* ceil：bool型，表示计算output shape时是否向上取整。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
+* zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+
+
+Normalization Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+batch_norm
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def batch_norm(input: Tensor,
+                     mean: Tensor,
+                     variance: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     out_name: str = None):
+          #pass
+
+
+功能描述
+"""""""""""
+该batch_norm算子先完成输入值的批归一化，完成归一化之后再进行缩放和平移。
+批归一化运算过程可参考各框架的batch_norm算子。
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+
+* input：Tensor类型，表示输入待归一化的Tensor，维度不限，如果x只有1维，c为1，否则c等于x的shape[1]。
+* mean：Tensor类型，表示输入的均值，shape为[c]。
+* variance：Tensor类型，表示输入的方差值，shape为[c]。
+* gamma：Tensor类型或None，表示批归一化之后进行的缩放，不为None时要求shape为[c]，取None时相当于shape为[c]的全1Tensor。
+* beta：Tensor类型或None，表示批归一化和缩放之后进行的平移，不为None时要求shape为[c]，取None时相当于shape为[c]的全0Tensor。
+* epsilon：FLOAT类型，表示为了除法运算数值稳定加在分母上的值。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回Tensor类型，表示输出待归一化的Tensor。
+
+芯片支持
+"""""""""""
+* BM1684：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
