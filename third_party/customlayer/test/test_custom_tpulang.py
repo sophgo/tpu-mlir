@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 
+import json
 import numpy as np
 import os
 import transform.TpuLang as tpul
@@ -187,7 +188,7 @@ def test_one_case_in_all(tester: CUSTOM_TPULANG_TESTER, case, error_cases, succe
         return
     success_cases.append(case)
 
-def test_all(tester: CUSTOM_TPULANG_TESTER):
+def test_all_base(tester: CUSTOM_TPULANG_TESTER):
     if tester.multithread:
         import multiprocessing
         from utils.misc import collect_process
@@ -222,8 +223,11 @@ def test_all(tester: CUSTOM_TPULANG_TESTER):
     else:
         print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
     clean_kmp_files()
-    return error_cases
+    return error_cases, success_cases
 
+def test_all(tester: CUSTOM_TPULANG_TESTER):
+    f, s = test_all_base(tester)
+    return f
 
 if __name__ == "__main__":
     import argparse
@@ -241,6 +245,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
+    parser.add_argument("--report", default="", type=str, help="report file name")
+
     # yapf: enable
     args = parser.parse_args()
     tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
@@ -254,8 +260,15 @@ if __name__ == "__main__":
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
-        test_all(tester)
+        if (args.report):
+            f, s = test_all_base(tester)
+        else:
+            test_all(tester)
     else:
         tester.test_single(args.case)
     if not args.debug:
         file_clean()
+    if args.report:
+        result = {'succsess': list(s), 'failure': list(f)}
+        with open(args.report, "w") as f:
+            json.dump(result, f)
