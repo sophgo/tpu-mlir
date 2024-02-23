@@ -177,7 +177,8 @@
      - 输入校准表
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台,
+       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -482,7 +483,8 @@ INT8对称量化模型：
      - 输入校准表
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台,
+       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -599,10 +601,12 @@ INT8对称量化模型：
     INFO:root:layer input3.1, layer type is top.Conv, best_th = 2.6186381997094728, best_method = KL, best_cos_loss = 0.008808857469573828
 
 
-日志文件记录了每个op在每种量化方法（MAX/Percentile9999/KL）得到的threshold下，设置为int8后，混精度模型与原始float模型输出的相似度的loss（1-余弦相似度）。
-同时也包含了屏幕端输出的每个op的loss信息以及最后的混精度模型与原始float模型的余弦相似度。
+日志文件记录了每个Op在不同量化方法（MAX/Percentile9999/KL）下得到的threshold，同
+时给出了在只对该Op使用对应threshold做int8计算后的混精度模型与原始float模型输出的相似度的loss（1-余弦相似度）。
+此外，日志还包含了屏幕端输出的每个op的loss信息以及最后的混精度模型与原始float模型的余弦相似度。
 用户可以使用程序输出的qtable，也可以根据loss信息对qtable进行修改，然后生成混精度模型。
-在敏感层搜索结束后，最优的threshold会被更新到一个新的量化表new_cali_table.txt，该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
+在敏感层搜索结束后，最优的threshold会被更新到一个新的量化表new_cali_table.txt，
+该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
 在本例中，根据输出的loss信息，观察到input3.1的loss比其他op高很多，可以在qtable中只设置input3.1为FP32。
 
 第二步: 生成混精度量化模型
@@ -742,7 +746,8 @@ INT8模型mAP为： 34.70%
      - 指定起点和终点之间的层不执行量化，起点和终点之间用:间隔，多个block之间用空格间隔
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台,
+       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择

@@ -123,9 +123,10 @@ This section requires additional installation of openssl-1.1.1o (ubuntu 22.04 pr
 
 Step 0: Install openssl-1.1.1o
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. code-block:: shell
    :linenos:
-   
+
    wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
    sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
 
@@ -184,4 +185,3 @@ Install the paddle2onnx tool through the following commands, and use this tool t
              --save_file squeezenet1_1.onnx
 
 After running all the above commands we will get an onnx model named squeezenet1_1.onnx.
-

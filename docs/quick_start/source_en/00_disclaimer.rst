@@ -34,6 +34,18 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.6.0
+     - 2024.02.23
+     - Added PyPI release form;
+       Supports user-defined Global operators;
+       Support for the CV186X processor platform
+   * - v1.5.0
+     - 2023.11.03
+     - Enhanced Global Layer support for multicore parallelism;
+   * - v1.4.0
+     - 2023.09.27
+     - System dependencies upgraded to Ubuntu 22.04;
+       Supported BM1684 Winograd
    * - v1.3.0
      - 2023.07.27
      - Add the function to manually specify operations computing with floating-point;
