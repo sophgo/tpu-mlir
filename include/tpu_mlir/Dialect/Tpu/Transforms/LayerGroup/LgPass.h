@@ -14,10 +14,11 @@
 namespace tpu_mlir {
 namespace tpu {
 
-struct LgOptions {
+typedef struct {
   bool dyn_compile;
   int64_t opt;
-};
+  bool group_by_cores;
+} LgOptions;
 
 struct LgPassIR {
   LgPassIR(){};
@@ -68,6 +69,7 @@ public:
   virtual bool run(LgPassIR *pass_ir) = 0;
   virtual std::string name() = 0;
   virtual std::string brief() { return ""; }
+  static LgOptions OPTIONS; // global options
 };
 
 /// Pass manager of layer group optimization
@@ -89,8 +91,7 @@ public:
   LgOptimizer() {}
   virtual ~LgOptimizer() {}
 
-  virtual void manage_passes(std::shared_ptr<LgPassManager> pm,
-                             const LgOptions &options) = 0;
+  virtual void manage_passes(std::shared_ptr<LgPassManager> pm) = 0;
   virtual std::string brief() = 0;
 };
 

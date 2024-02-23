@@ -32,7 +32,7 @@ typedef struct {
 
 class GroupMethod {
 public:
-  GroupMethod(int64_t opt);
+  GroupMethod();
   void process(std::vector<LgInfo> &lg_infos,
                const SetVector<Operation *> &subnet_ops);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
@@ -94,7 +94,7 @@ protected:
   RunMode runmode_;
 };
 
-std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options);
+std::unique_ptr<LgPass> CreateLayerGroupSearchPass();
 
 } // namespace tpu
 } // namespace tpu_mlir
