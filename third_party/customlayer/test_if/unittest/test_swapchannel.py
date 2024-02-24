@@ -6,7 +6,7 @@ import my_tpulang_layer
 
 class TestSwapChannel(TestTPULangCustom):
     def _test(self, dtype):
-        shape = [4, 32, 36, 36]
+        shape = [4, 3, 36, 36]
         self.data_in = np.random.random(shape).astype(dtype)
         x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
         y = my_tpulang_layer.swapChannel.tpulang(inputs=[x], dtype=dtype)[0]
