@@ -119,17 +119,16 @@ The interface definition
             inputs: List[Tensor],
             outputs: List[Tensor],
             cmp=True,
-            has_custom=False,
-            refs=None):
+            refs=None,
+            mode='f32',
+            dynamic=False):
             #pass
 
 
 Description of the function
 :::::::::::::::::::::::::::::
 
-In cases where result verification is required, this interface will sequentially retrieve Tensors from refs.
-For each Tensor, it compares the top-level computation result with the result from refs.
-If there are no errors during the compilation process and all result comparisons for Tensors pass, it will generate npz and mlir files.
+The function for comipling TpuLang model to bmodel.
 
 Explanation of parameters
 :::::::::::::::::::::::::::::
@@ -137,9 +136,10 @@ Explanation of parameters
 * name: A string. Model name.
 * inputs: List of Tensors, representing all input Tensors for compiling the network.
 * outputs: List of Tensors, representing all output Tensors for compiling the network.
-* refs: List of Tensors, representing all Tensors requiring verification in the compiled network.
 * cmp: A boolean. True indicates result verification is needed, False indicates compilation only.
-* has_custom: A boolean, indicating whether the model contains custom operators. If True, the model will not be inferred.
+* refs: List of Tensors, representing all Tensors requiring verification in the compiled network.
+* mode: A string. Indicates the type of model, supporting "f32" and "int8".
+* dynamic: A boolean. Whether to do dynamic compilation.
 
 .. _deinit:
 

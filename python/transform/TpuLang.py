@@ -53,7 +53,7 @@ def compile(name: str,
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode=mode)
     model_transform(name, converter)
     is_inference = mode =='f32'
-    model_top_inference(model_name=name, inputs=inputs, inference=is_inference)
+    model_top_inference(model_name=name, inference=is_inference)
     if is_inference and cmp and refs is not None:
         model_validate(model_name=name, refs=refs)
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
@@ -73,7 +73,7 @@ def model_transform(model_name, converter: TpuLangConverter):
     print("Mlir file generated:{}".format(mlir_file))
 
 
-def model_top_inference(model_name, inputs, inference=False):
+def model_top_inference(model_name, inference=False):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
     ref_inputs = dict()

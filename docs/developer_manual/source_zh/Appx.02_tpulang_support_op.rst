@@ -117,17 +117,16 @@ compile
             inputs: List[Tensor],
             outputs: List[Tensor],
             cmp=True,
-            has_custom=False,
             refs=None,
-            mode='f32'):
+            mode='f32',
+            dynamic=False):
             #pass
 
 
 功能描述
 :::::::::::::::::::::::
 
-该接口在需要进行结果比对时，会从refs中依次取出Tensor，每个Tensor中，top层的计算结果和refs的计算结果进行比对。
-如果编译过程中没有错误且所有Tensor的结果比对通过，则会产生npz和mlir。
+用于将TpuLang模型编译为bmodel。
 
 参数说明
 :::::::::::::::::::::::
@@ -135,10 +134,10 @@ compile
 * name：string类型。模型名称。
 * inputs：List[Tensor]，表示编译网络的所有输入Tensor；
 * outputs：List[Tensor]，表示编译网络的所有输出Tensor；
+* cmp：bool类型，True表示需要结果比对，False表示仅编译；
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
-* cmp：bool类型。True表示需要结果比对，False表示仅编译；
-* has_custom：bool型，即模型中是否包含自定义算子。值为True，则不对模型进行推理。
 * mode：string类型，表示模型的类型，支持“f32”，“int8”。
+* dynamic：bool类型，是否进行动态编译。
 
 .. _deinit:
 
