@@ -15,6 +15,11 @@ import transform.TpuLang as tpul
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 import my_tpulang_layer
 
+def coeff_tensor(shape, dtype, scale=1.0):
+    data = rand_data(shape, dtype)
+    data = data * scale if dtype == 'float32' else data
+    return tpul.Tensor(dtype=dtype, shape=shape, data=data)
+
 def rand_data(shape, dtype):
     if dtype == 'float32':
         return np.random.random(shape).astype(np.float32)
@@ -42,6 +47,7 @@ class CUSTOM_TPULANG_TESTER(object):
             "CeilAdd":         (self.test_CeilAdd,      Y, Y),
             "SwapChannel":     (self.test_SwapChannel,  Y, Y),
             "Crop":            (self.test_Crop,         Y, Y),
+            "SimpleBlock":     (self.test_SimpleBlock,  Y, Y),
         }
         # yapf: enable
 
@@ -179,6 +185,65 @@ class CUSTOM_TPULANG_TESTER(object):
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("crop", ins, outs, ref_data)
+
+    # test case for a simple model with customlayers
+    def test_SimpleBlock(self):
+        def conv_op(x,
+                    kshape,
+                    stride,
+                    pad=None,
+                    group=1,
+                    dilation=[1, 1],
+                    zp=[None, None],
+                    dtype="float32"):
+            oc = kshape[0]
+            weight = coeff_tensor(kshape, dtype)
+            out_dtype = dtype if dtype == 'float32' else 'int32'
+            bias = coeff_tensor(oc, out_dtype)
+            conv = tpul.conv(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            out_dtype=out_dtype)
+            return conv
+
+        def abs_add_op(x, b, dtype="float32"):
+            return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
+
+        def model_def(x, flag: int):
+            if flag & 0b1:
+                x = abs_add_op(x, 1.2)
+            conv1 = conv_op(x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
+            relu1 = tpul.relu(conv1)
+            conv2 = conv_op(relu1, [4, 4, 3, 3], [2, 2], [2, 2, 2, 2])
+            if flag & 0b10:
+                conv2 = abs_add_op(conv2, -1.5)
+            relu2 = tpul.relu(conv2)
+            conv3 = conv_op(relu2, [4, 4, 3, 3], [1, 1], [1, 1, 1, 1])
+            relu3 = tpul.relu(conv3)
+            if flag & 0b100:
+                relu3 = abs_add_op(relu3, 2.1)
+            return relu3
+
+        def gen_name(flag: int):
+            return "front" if flag == 0b1 else "middle" if flag == 0b10 else "back" if flag == 0b100 else "mix"
+
+        def compile_model(flag: int, dynamic: bool):
+            shape = [4, 32, 64, 48]
+            x_data = np.random.random(shape).astype(np.float32)
+            x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
+            y = model_def(x, flag)
+            postfix = "dyn" if dynamic else "static"
+            tpul.compile("model_def_{}_{}".format(gen_name(flag), postfix), [x], [y], dynamic=dynamic)
+
+        for flag in (0b1, 0b10, 0b100, 0b111):
+            tpul.init(self.chip.upper())
+            print("--- model_def_{} ---".format(gen_name(flag)))
+            compile_model(flag, self.dynamic)
+            tpul.deinit()
 
 def test_one_case_in_all(tester: CUSTOM_TPULANG_TESTER, case, error_cases, success_cases):
     try:
