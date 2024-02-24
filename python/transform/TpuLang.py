@@ -196,7 +196,6 @@ def Attr(data, data_type: str = 'int64'):
 
 
 def custom(tensors_in: list,
-           shape_func,
            op_name: str,
            out_dtypes: list,
            out_names: list = None,
@@ -205,9 +204,6 @@ def custom(tensors_in: list,
         The custom op
         Arguments:
             tensors_in: list of input tensors (including weight tensors).
-            shape_func: function for doing shape inference, taking shape of
-                        tensors_in as inputs, and returning a list of shape
-                        of output tensors.
             op_name: name of the custom operator.
             out_dtypes: list of data type of outputs.
             out_names: list of name of outputs.
@@ -217,12 +213,9 @@ def custom(tensors_in: list,
             tensors_out: list of output tensors
     '''
 
-    out_shapes = shape_func(tensors_in)
-
     tensors_out = []
     for i, out_dtype in enumerate(out_dtypes):
-        tensor_out = Tensor(out_shapes[i],
-                            dtype=out_dtype,
+        tensor_out = Tensor(dtype=out_dtype,
                             name=out_names[i] if out_names else None)
         tensors_out.append(tensor_out)
 

@@ -10,6 +10,7 @@ source build.sh RELEASE
 
 # build customlayer for regression test
 source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
+rebuild_custom_plugin
 rebuild_custom_backend
 rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
 
