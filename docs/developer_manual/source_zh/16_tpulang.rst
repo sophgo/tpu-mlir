@@ -212,7 +212,7 @@ Tpulang接口使用方式
 
 目前TpuLang只适用于推理框架的推理部分。
 类tensorflow等框架的静态图，使用TpuLang进行网络集成时，用户需要首先使用tpul.init('processor')初始化（processor可以是BM1684X或者BM1688），
-然后准备tensor，接着使用operator构建网络，最后调用tpul.compile接口编译生成top.mlir，后续请使用model_deploy.py完成模型部署。
+然后准备tensor，接着使用operator构建网络，最后调用tpul.compile接口编译生成bmodel。
 下面详细介绍一下每一步怎么做，以下使用到的各种接口（tpul.init, deinit, Tensor以及算子接口等）都可以在appx02(:ref:`附录02：TpuLang的基本元素`)中查看到详细介绍。
 
 以下步骤假定当前已经完成tpu-mlir发布包的加载。
@@ -287,11 +287,11 @@ Tpulang接口使用方式
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-调用tpul.compile函数(:ref:`compile`), 编译完成后会得到 `example.mlir` 以及 `example_top_f32_all_weight.npz` 用于后续的模型部署：
+调用tpul.compile函数(:ref:`compile`), 编译完成后会得到 `example_f32.bmodel` ：
 
    .. code-block:: python
 
-      tpul.compile("example", [x], [y])
+      tpul.compile("example", [x], [y], mode="f32")
 
 deinit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

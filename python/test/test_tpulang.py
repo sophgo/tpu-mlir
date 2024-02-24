@@ -222,7 +222,7 @@ class TPULANG_IR_TESTER(object):
             assert(os.system(deploy_cmd) == 0)
 
     def compile_and_check(self, model_name, inputs, outputs, mode=None):
-        tpul.compile(model_name, inputs, outputs, True, False, mode=(mode if mode is not None else self.mode))
+        tpul.compile(model_name, inputs, outputs, cmp=True, mode=(mode if mode is not None else self.mode))
         # self.deploy(model_name, True)
 
     #######################################################################
