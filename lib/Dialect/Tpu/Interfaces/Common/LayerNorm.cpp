@@ -146,3 +146,16 @@ LogicalResult tpu::LayerNormOp::AllowDataSplit(int64_t axis,
   }
   return axis < ax ? success() : failure();
 }
+
+ArrayAttr tpu::LayerNormOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  const int axis = getAxis();
+  auto inputMap = AffineMap::getMultiDimIdentityMap(axis, context);
+  auto empty = AffineMap::get(axis, 0, context);
+  SmallVector<AffineMap> indexingMaps{inputMap};
+  for (int i = 1, n = getNumOperands(); i < n; ++i) {
+    indexingMaps.push_back(empty);
+  }
+  indexingMaps.push_back(inputMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}

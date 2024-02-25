@@ -121,7 +121,7 @@ LogicalResult tpu::GroupNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::GroupNormOp::LocalGenSupport() { 
+LogicalResult tpu::GroupNormOp::LocalGenSupport() {
   if (module::isBM1684Family()) {
     auto input_shape = module::getShape(getInput());
     int num_dims = input_shape.size();
@@ -142,4 +142,27 @@ LogicalResult tpu::GroupNormOp::LocalGenSupport() {
 LogicalResult tpu::GroupNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {
   return axis < 1 ? success() : failure();
+}
+
+ArrayAttr tpu::GroupNormOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+
+  AffineExpr d0, d1;
+  bindDims(context, d0, d1);
+  auto c0 = mlir::getAffineConstantExpr(0, context);
+  auto inputMap = AffineMap::getMultiDimIdentityMap(2, context);
+  auto weightMap = AffineMap::get(2, 0, {c0, d1}, context);
+  auto outputMap = AffineMap::getMultiDimIdentityMap(2, context);
+  auto empty = AffineMap::get(2, 0, context);
+
+  SmallVector<AffineMap> indexingMaps{inputMap};
+
+  for (int i = 1, n = getNumOperands(); i < n; ++i) {
+    if (isa_and_nonnull<top::NoneOp>(getOperand(i).getDefiningOp()))
+      indexingMaps.push_back(empty);
+    else
+      indexingMaps.push_back(weightMap);
+  }
+  indexingMaps.push_back(outputMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }

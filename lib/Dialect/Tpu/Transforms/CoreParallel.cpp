@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "CoreParallel/CoreParallel.hpp"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
 
@@ -120,12 +119,13 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 
 // forAll will split the computation to multiple cores which in the range of
 // [offset, offset+num_core)
-bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
+tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
+                           int num_core = 1) {
   if (num_core < 2)
-    return false;
+    return nullptr;
   auto indexMap = op.getIndexingMaps();
   if (!indexMap || indexMap.empty())
-    return false;
+    return nullptr;
 
   // for each dim slice, we should create many operations for each of them.
   // treat [dim0, dim1, ..] as an integer dim0*dim1 and we can only decompose
@@ -141,7 +141,7 @@ bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
   // the same dimCount.
   auto resultMap = cast<AffineMapAttr>(resultsMap[0]).getValue();
   if (!resultMap.isIdentity())
-    return false;
+    return nullptr;
 
   // :load balance:
   // shape = [a, b]; other situations can be reduced to this formula.
@@ -150,11 +150,18 @@ bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
   // Find the largest n
   // This implement use the maxSlice as much as possible, but it does not take
   // the number of NPU into account. #please improve This
-  auto shapeParallel =
-      module::getShape(op->getResult(0)).slice(0, resultMap.getNumInputs());
+  auto shapeParallel = SmallVector<int64_t>(
+      module::getShape(op->getResult(0)).slice(0, resultMap.getNumInputs()));
 
   int splitDim = 0, splitMax = 1;
   SmallVector<int64_t, 4> iterationShape;
+
+  { // This is a temporary fix for GroupNorm support; Try to refactor this out.
+    if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(op.getOperation())) {
+      shapeParallel[1] = groupNormOp.getNumGroups();
+    }
+  }
+
   for (int64_t i = 0, n = shapeParallel.size(), iterSpace = 1; i < n; ++i) {
     if (iterSpace * shapeParallel[i] >= num_core) {
       splitDim = i;
@@ -170,7 +177,16 @@ bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
   }
 
   if (splitDim == 0 && iterationShape[0] == 1)
-    return false;
+    return nullptr;
+
+  { // This is a temporary fix for GroupNorm support; Try to refactor this out.
+    if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(op.getOperation())) {
+      auto channel = module::getShape(groupNormOp.getInput())[1];
+      shapeParallel[1] = channel;
+      if (splitDim == 1)
+        splitMax *= channel / groupNormOp.getNumGroups();
+    }
+  }
 
   auto rewriter = IRRewriter(op.getContext());
   rewriter.setInsertionPoint(op);
@@ -235,6 +251,15 @@ bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
     computeOps.push_back(rewriter.create(nameLoc, op->getName().getIdentifier(),
                                          operands, resultsType,
                                          op->getAttrs()));
+    { // This is a temporary fix for GroupNorm support; Try to refactor this
+      // out.
+      if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(computeOps.back())) {
+        auto numGroup = groupNormOp.getNumGroups();
+        auto itemPerGroup = module::getShape(op->getOperand(0))[1] / numGroup;
+        auto channel = module::getShape(groupNormOp.getInput())[1];
+        groupNormOp.setNumGroups(channel / itemPerGroup);
+      }
+    }
   };
   // unroll iteration space
   invokeInIterationSpace(ArrayRef(iterationShape), createComputeOp);
@@ -255,7 +280,7 @@ bool forAll(IndexingMapsInterface op, int offset = 0, int num_core = 1) {
   rewriter.create<tpu::YieldOp>(op->getLoc(), joinValues);
   // cleanup
   rewriter.eraseOp(op);
-  return true;
+  return parallelOp;
 };
 
 bool packOperation(IndexingMapsInterface op, int offset = 0, int num_core = 1) {

@@ -2466,6 +2466,7 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
 
 def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "LayerNorm operation";
@@ -2528,6 +2529,7 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
 
 def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "GroupNorm operation";
