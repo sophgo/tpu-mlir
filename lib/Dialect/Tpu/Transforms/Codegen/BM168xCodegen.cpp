@@ -842,6 +842,11 @@ void codegenMultiCoreOp(GlobalGenInterfaceDecorator parallelOp, BM168x *bm168x,
                             &codegenGlobalLayer) {
   auto multi_core = cast<MultiCoreInterface>(bm168x);
   auto core_num = module::getCoreNum();
+  if (core_num < 2) {
+    multi_core->useCore(0);
+    codegenGlobalLayer(parallelOp);
+    return;
+  }
   for (int i = 0; i < core_num; ++i) {
     multi_core->useCore(i);
     multi_core->syncAll(); // begin compute sync-all
