@@ -77,7 +77,7 @@ class TPULANG_IR_TESTER(object):
             "Concat": (self.test_Concat,                Y, Y),
             "Conv2d": (self.test_Conv2d,                Y, Y),
             "Conv3d": (self.test_Conv3d,                Y, Y),
-            # "Copy": (self.test_Copy,                    Y, Y), # only supports cv18xx
+            "Copy": (self.test_Copy,                    Y, Y),
             "Cos": (self.test_Cos,                      Y, Y),
             "Cosh": (self.test_Cosh,                    Y, Y),
             "Deconv2d": (self.test_Deconv2d,            Y, Y),
@@ -119,7 +119,7 @@ class TPULANG_IR_TESTER(object):
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
-            # "Rsqrt": (self.test_Rsqrt,                  Y, Y),
+            "Rsqrt": (self.test_Rsqrt,                  Y, Y),
             "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
@@ -134,6 +134,15 @@ class TPULANG_IR_TESTER(object):
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
             "TopK": (self.test_TopK,                    Y, Y),
+            "Ln": (self.test_Ln,                        Y, Y),
+            "Square": (self.test_Square,                Y, Y),
+            "Broadcast": (self.test_Broadcast,          Y, Y),
+            "Where": (self.test_Where,                  Y, Y),
+            "Upsample": (self.test_Upsample,            Y, Y),
+            "Reduce": (self.test_Reduce,                Y, Y),
+            "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
+            "Silu": (self.test_Silu,                    Y, Y),
+            "Group_norm": (self.test_Group_norm,        Y, Y),
             #### model ####
             "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
@@ -1397,23 +1406,42 @@ class TPULANG_IR_TESTER(object):
         _test_sqrt([1, 32, 28, 28])
 
     # #######################################################################
-    # # Rsqrt
-    # # ------------
-    # def rsqrt_op(self, input):
-    #     rsqrt = tpul.rsqrt(input)
-    #     return rsqrt
+    # Rsqrt
+    # ------------
+    def rsqrt_op(self, input):
+        rsqrt = tpul.rsqrt(input)
+        return rsqrt
 
-    # def test_Rsqrt(self, case_name):
-    #     """rsqrt"""
+    def test_Rsqrt(self, case_name):
+        """rsqrt"""
 
-    #     @tpulang(self.chip)
-    #     def _test_rsqrt(shape_x: List[int], dtype="float32"):
-    #         input = np.abs(rand_data(shape_x, dtype))
-    #         x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-    #         rsqrt = self.rsqrt_op(x)
-    #         self.compile_and_check(self.unique_name(case_name), [x], [rsqrt])
+        @tpulang(self.chip)
+        def _test_rsqrt(shape_x: List[int], dtype="float32"):
+            input = np.abs(rand_data(shape_x, dtype))
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            rsqrt = self.rsqrt_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [rsqrt])
 
-    #     _test_rsqrt([1, 32, 28, 28])
+        _test_rsqrt([1, 32, 28, 28])
+
+    # #######################################################################
+    # silu
+    # ------------
+    def silu_op(self, input):
+        silu = tpul.silu(input)
+        return silu
+
+    def test_Silu(self, case_name):
+        """silu"""
+
+        @tpulang(self.chip)
+        def _test_silu(shape_x: List[int], dtype="float32"):
+            input = np.abs(rand_data(shape_x, dtype))
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            silu = self.silu_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [silu])
+
+        _test_silu([1, 32, 28, 28])
 
     #######################################################################
     # Erf
@@ -1625,6 +1653,44 @@ class TPULANG_IR_TESTER(object):
         _test_gelu([1, 32, 28, 28])
 
     #######################################################################
+    # Ln
+    # ------------
+    def ln_op(self, input):
+        ln = tpul.ln(input)
+        return ln
+
+    def test_Ln(self, case_name):
+        """ln"""
+
+        @tpulang(self.chip)
+        def _test_ln(shape_x: List[int], dtype="float32"):
+            input = np.clip(np.random.randn(*shape_x).astype(dtype) * 10.0, 0.5, 8)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            ln = self.ln_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [ln])
+
+        _test_ln([1, 3, 32, 32])
+
+    #######################################################################
+    # square
+    # ------------
+    def square_op(self, input):
+        square = tpul.square(input)
+        return square
+
+    def test_Square(self, case_name):
+        """square"""
+
+        @tpulang(self.chip)
+        def _test_square(shape_x: List[int], dtype="float32"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            square = self.square_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [square])
+
+        _test_square([1, 32, 28, 28])
+
+    #######################################################################
     # Hsigmoid
     # ------------
     def hsigmoid_op(self, input):
@@ -1800,6 +1866,127 @@ class TPULANG_IR_TESTER(object):
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
 
     #######################################################################
+    # broadcast
+    # ------------
+    def broadcast_op(self, input_0, input_1):
+        broadcast = tpul.broadcast(input_0, input_1)
+        return broadcast
+
+    def test_Broadcast(self, case_name):
+        """broadcast"""
+
+        @tpulang(self.chip)
+        def _test_broadcast(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            input_x = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input_x)
+            broadcast = self.broadcast_op(x, shape_y)
+            self.compile_and_check(self.unique_name(case_name), [x], [broadcast])
+
+        _test_broadcast([3, 1], [1, 4])
+        _test_broadcast([1, 2, 1], [2, 1, 6])
+
+    #######################################################################
+    # where
+    # ------------
+    def where_op(self, input, dtype="float32"):
+        where = tpul.where(input, dtype = dtype)
+        return where
+
+    def test_Where(self, case_name):
+        """where"""
+
+        @tpulang(self.chip)
+        def _test_where(shape: List[int], dtype="float32"):
+            input_x = rand_data(shape[0], dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape[0], data=input_x)
+            input_y = rand_data(shape[1], dtype)
+            y = tpul.Tensor(dtype=dtype, shape=shape[1], data=input_y)
+            input_z = np.zeros(shape[2]).astype(dtype)
+            input_z[0][:, :100] = 1
+            input_z[1][1:, :] = 1
+            z = tpul.Tensor(dtype=dtype, shape=shape[2], data=input_z)
+            where = self.where_op([x, y, z], dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x,y,z], [where])
+
+        _test_where([[10, 40, 224], [10, 40, 224], [10, 40, 224]])
+
+    #######################################################################
+    # upsample
+    # ------------
+    def upsample_op(self, input):
+        upsample = tpul.upsample(input)
+        return upsample
+
+    def test_Upsample(self, case_name):
+        """upsample"""
+
+        @tpulang(self.chip)
+        def _test_upsample(shape: List[int], dtype="float32"):
+            input_x = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
+            upsample = self.upsample_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [upsample])
+
+        _test_upsample([1, 3, 28, 28])
+
+    #######################################################################
+    # reduce
+    # ------------
+    def reduce_op(self, input):
+        reduce = tpul.reduce(input)
+        return reduce
+
+    def test_Reduce(self, case_name):
+        """reduce"""
+
+        @tpulang(self.chip)
+        def _test_reduce(shape: List[int], dtype="float32"):
+            input_x = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
+            reduce = self.reduce_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [reduce])
+
+        _test_reduce([1, 3, 28, 28])
+
+    #######################################################################
+    # unsqueeze
+    # ------------
+    def unsqueeze_op(self, input):
+        unsqueeze = tpul.unsqueeze(input)
+        return unsqueeze
+
+    def test_Unsqueeze(self, case_name):
+        """unsqueeze"""
+
+        @tpulang(self.chip)
+        def _test_unsqueeze(shape: List[int], dtype="float32"):
+            input_x = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
+            unsqueeze = self.unsqueeze_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [unsqueeze])
+
+        _test_unsqueeze([1, 3, 28, 28])
+
+    #######################################################################
+    # groupnorm
+    # ------------
+    def group_norm_op(self, input):
+        group_norm = tpul.group_norm(input)
+        return group_norm
+
+    def test_Group_norm(self, case_name):
+        """group_norm"""
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, dtype='float32'):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            out = self.group_norm_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], mode="int8")
+
+        _test_model_def([1, 3, 224, 224])
+
+    ######################################################################
     # Split
     # ------------
     def split_op(self, input, axis=0, num=1, size=None):

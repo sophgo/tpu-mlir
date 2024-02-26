@@ -3223,9 +3223,9 @@ def Top_RsqrtOp:Top_Op<"Rsqrt">{
   let summary = "Rsqrt Operator";
   let description = [{Reverse square root}];
   let arguments = (ins
-  AnyTensor:$input,
-  I64Attr:$length);
+  AnyTensor:$input);
   let results = (outs
   AnyTensor:$output);
+  let hasCanonicalizer = 1;
   }
 #endif // Top_OPS

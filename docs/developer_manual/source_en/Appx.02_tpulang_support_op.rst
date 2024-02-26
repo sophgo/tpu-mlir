@@ -1270,6 +1270,66 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+ln
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def ln(tensor, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The ln activation function, implemented on an element-wise basis. :math:`y = log(x)`。
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+square
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def square(tensor, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The square function, implemented on an element-wise basis. :math:`y = x*x`。
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
 ceil
 :::::::::::::::::
 
@@ -1556,6 +1616,66 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""""
 The sqrt square root activation function, implemented on an element-wise basis. :math:`y = \sqrt{x}`。
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+rsqrt
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def rsqrt(tensor, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The rsqrt square root  takes the deactivation function, implemented on an element-wise basis. :math:`y = 1 / (sqrt{x})`。
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+silu
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def silu(tensor, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The silu activation function, implemented on an element-wise basis. :math:`y = x * (1 / (1 + e^{-x}))`。
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1917,6 +2037,35 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+copy
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def copy(tensor_i, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The Copy function is applied to copy the input data into the output Tensor。
+This operation belongs to **global operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
 
 hsigmoid
 :::::::::::::::::
@@ -2015,6 +2164,162 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+broadcast
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def broadcast(tensor_i, reps, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Repeat the data by copying it along the specified dimension(s).
+This operation is considered a **restricted local operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* `reps`: A `List[int]` or `Tuple[int]` indicating the number of copies for each dimension. The length of `reps` must match the number of dimensions of the tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+where
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def where(tensor_i, dtype = 'int32', out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Extract the corresponding shape information (n,c,h,w) when input Tensor data is true.
+This operation is considered a **global operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* dtype: The data type of the output tensor,with a default value of "int32."
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+upsample
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def upsample(tensor_i, scale = 1, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The output is scaled repeatedly on the input tensor data in h and w dimensions.
+This operation is considered a **local operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* scale: int type, representing the expansion multiple.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+reduce
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Perform reduce operations on the input tensor according to axis_list.
+This operation is considered a **restricted local operation**. This operation is considered a **local operation** only when the input data type is FLOAT32.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* method: string type, representing the reduce method.The method The can be mean, max, min, sum, product, L1, or l2.
+* axis: A List[int] or Tuple[int] type, indicating the specified axes.
+* keep_dims: A boolean, indicating whether to keep the specified axis after the operation.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+unsqueeze
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def unsqueeze(tensor_i, axis, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The operation adds dimensions by adding axes with a size of 1 from the shape of the input.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* axis: A List[int] or Tuple[int] type, indicating the specified axes.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
 
 concat
 :::::::::::::::::
@@ -2514,3 +2819,138 @@ Processor support
 """""""""""
 * BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 * BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
+
+
+Normalization Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+batch_norm
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def batch_norm(input: Tensor,
+                     mean: Tensor,
+                     variance: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     out_name: str = None):
+          #pass
+
+
+Description of the function
+"""""""""""
+The batch_norm op first completes batch normalization of the input values, and then scales and shifts them.
+The batch normalization operation can refer to the batch_norm operator of each framework.
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""
+
+* input: * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
+* mean: A Tensor type, representing the mean value of the input, shape is [c]。
+* variance: A Tensor type, representing the variance value of the input, shape is [c]。
+* gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
+* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""
+Returns the Tensor type, representing the output to be normalized.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+layer_norm
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def layer_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     axis: int,
+                     out_name: str = None):
+          #pass
+
+
+Description of the function
+"""""""""""
+The layer_norm op first completes layer normalization of the input values, and then scales and shifts them.
+The layer normalization operation can refer to the layer_norm operator of each framework.
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""
+
+* input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
+* gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
+* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
+* axis: int type, the first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""
+Returns the Tensor type, representing the output to be normalized.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+group_norm
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def group_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     num_groups: int,
+                     out_name: str = None):
+          #pass
+
+
+Description of the function
+"""""""""""
+The group_norm op first completes group normalization of the input values, and then scales and shifts them.
+The group normalization operation can refer to the group_norm operator of each framework.
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""
+
+* input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
+* gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
+* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
+* num_groups:int type, The number of groups of channels. It should be a divisor of the number of channels `C`.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""
+Returns the Tensor type, representing the output to be normalized.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.

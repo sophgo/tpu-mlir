@@ -1033,9 +1033,9 @@ def exp(input: Tensor, out_name: str = None):
     return output
 
 @annotation_check
-def log(input: Tensor, out_name: str = None):
+def ln(input: Tensor, out_name: str = None):
     if out_name is None:
-        out_name = generate_name("log")
+        out_name = generate_name("ln")
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Log", inputs=[input], outputs=[output])
     return output
@@ -1081,12 +1081,19 @@ def sqrt(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Sqrt", inputs=[input], outputs=[output])
     return output
 
-# def rsqrt(input: Tensor, out_name: str = None):
-#     if out_name is None:
-#         out_name = generate_name("rsqrt")
-#     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
-#     TpuLang.insert_op("top.Rsqrt", inputs=[input], outputs=[output])
-#     return output
+def rsqrt(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("rsqrt")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Rsqrt", inputs=[input], outputs=[output])
+    return output
+
+def silu(input: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("silu")
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.SiLU", inputs=[input], outputs=[output])
+    return output
 
 @annotation_check
 def erf(input: Tensor, out_name: str = None):
@@ -1273,6 +1280,67 @@ def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
     }
     output = Tensor(dtype=inputs[0].dtype, name=out_name)
     TpuLang.insert_op("top.Concat", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@annotation_check
+def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
+
+    if out_name is None:
+        out_name = generate_name("broadcast")
+    size = len(reps)
+    for i in range(size):
+        if reps[i] != 1:
+            assert(input.shape[i] == 1 and "only supported the shape dimension of input tensor is 1 ")
+        reps[i] = reps[i] * input.shape[i]
+    reps = Tensor(shape=[size], data = np.array(reps,dtype="float32"), dtype=input.dtype)
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Expand", inputs=[input, reps], outputs=[output])
+    return output
+
+@annotation_check
+def where(inputs: List[Tensor], dtype = "int32", out_name: str = None):
+    assert(len(inputs) == 3 and inputs[0].shape == inputs[1].shape and inputs[0].shape == inputs[2].shape)
+    if out_name is None:
+        out_name = generate_name("where")
+    output = Tensor(dtype=dtype, name=out_name)
+    TpuLang.insert_op("top.Where", inputs=inputs, outputs=[output])
+    return output
+
+@annotation_check
+def upsample(input: Tensor, scale: int = 2, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("upsample")
+    attr = {
+        "scale_h": Attr(scale, data_type="int64"),
+        "scale_w": Attr(scale, data_type="int64"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Upsample", inputs=[input], outputs=[output], params=attr)
+    return output
+
+@annotation_check
+def reduce(input: Tensor, method: str = "ReduceSum", axes: List[int] = [1,2], keep_dims: bool = True, out_name: str = None):
+    assert(method in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"])
+    if out_name is None:
+        out_name = generate_name("reduce")
+    attr = {
+        "axes": ArrayAttr(axes, "int64"),
+        "keepdims": Attr(keep_dims, "bool"),
+        "mode": Attr(method, "string"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Reduce", inputs=[input], outputs=[output], params=attr)
+    return output
+
+@annotation_check
+def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("upsample")
+    attr = {
+        "axes": ArrayAttr(axes, "int64"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Unsqueeze", inputs=[input], outputs=[output], params=attr)
     return output
 
 @annotation_check
@@ -1565,9 +1633,18 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
-    attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape": ArrayAttr([], "int64")}
+    attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape":  ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output
+
+@annotation_check
+def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
+               epsilon: float = 1e-5, num_groups: int = 1, out_name: str = None):
+    output = Tensor(dtype=input.dtype, name=out_name)
+    attr = {"eps": Attr(epsilon, 'float64'), "num_groups":  Attr(num_groups, 'int64')}
+    TpuLang.insert_op("top.GroupNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
+    return output
+
 
 ######### Shape-Related Operator ############
 
@@ -1578,3 +1655,4 @@ def lut(input: Tensor, table: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=table.dtype, name=out_name)
     TpuLang.insert_op("top.Lut", inputs=[input, table], outputs=[output])
     return output
+
