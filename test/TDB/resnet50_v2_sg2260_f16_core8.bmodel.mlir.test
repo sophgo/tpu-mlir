@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/resnet50_v2_sg2260_f16_core8.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "SG2260", version = 2.2} {
+CHECK:  module attributes {chip = "SG2260", version = 2.2,  addr_mode = 0} {
 CHECK:    func.func @resnet50_v2(%G2.0x0: memref<1x3x224x224xf32, strides: [150528, 50176, 224, 1]>) -> (memref<1x1000xf32, strides: [1000, 1]>) ({
 CHECK:      ^bb0(%G2.0x0: memref<1x3x224x224xf32, strides: [150528, 50176, 224, 1]>)    //  run_mode=TPU_STATIC
 CHECK:        %D1C0, %msg48 = "@core_0"(%D0C0) {

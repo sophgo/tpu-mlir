@@ -83,7 +83,7 @@ class CmdIdBreakpoint(Breakpoint):
         if self.match_type != cmd.cmd_type:
             return False
 
-        if cmd.reg.cmd_id != self.match_index:
+        if cmd.cmd_id != self.match_index:
             return False
 
         return True

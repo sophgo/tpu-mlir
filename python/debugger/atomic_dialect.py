@@ -340,7 +340,7 @@ class MlirModule(Node):
         self.chip = bmodel.chip
         self.version = bmodel.version
         self.type = bmodel.type
-
+        self.addr_mode = bmodel.addr_mode
         self.functions = [Function(x, 1) for x in self.bmodel.net]
 
     def create_cmdlist(self) -> List[BaseTpuCmd]:
@@ -352,7 +352,7 @@ class MlirModule(Node):
         return res
 
     def dump_head(self):
-        attrs = f'attributes {{chip = "{self.chip}", version = {self.version}}}'
+        attrs = f'attributes {{chip = "{self.chip}", version = {self.version}, addr_mode = {self.addr_mode}}}'
         return f"module {attrs} {{"
 
     def dump_tail(self):

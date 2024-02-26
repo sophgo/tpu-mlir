@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/yolov5s_sg2260_f16_core8.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "SG2260", version = 2.2} {
+CHECK:  module attributes {chip = "SG2260", version = 2.2,  addr_mode = 0} {
 CHECK:    func.func @yolov5s(%G2.0x63a000: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>) -> (memref<1x3x80x80x85xf32, strides: [1632000, 544000, 6800, 85, 1]>, memref<1x3x40x40x85xf32, strides: [408000, 136000, 3400, 85, 1]>, memref<1x3x20x20x85xf32, strides: [102000, 34000, 1700, 85, 1]>) ({
 CHECK:      ^bb0(%G2.0x63a000: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
 CHECK:        %D1C0, %msg48 = "@core_0"(%D0C0) {
@@ -45,4 +45,3 @@ CHECK-NEXT:         %R15.0x31c0, %D5C0 = "dma.tensor"(%G1.0x0, %B2C0) : (memref<
 CHECK-NEXT:         %R14.0x2200, %B4C0 = "conv.normal"(%R10, %R15.0x2580, %R15.0x31c0, %C0.0, %D5C0) {kernel = [6, 6], stride = [2, 2], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [2, 0, 2, 2], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x3x54x640xf16, strides: [34560, 34560, 640, 1]>, memref<32x3x6x6xf16>, memref<1x32x1x1xui32, strides: [1, 1, 1, 1]>, f16, none) -> (memref<1x32x26x320xf16, strides: [8320, 8320, 320, 1]>, none)
 CHECK-NEXT:         %R0, %D6C0 = "dma.tensor"(%G2.0x658000, %B3C0) : (memref<1x3x58x640xf32, strides: [1228800, 409600, 640, 1]>, none) -> (memref<1x3x58x640xf32, strides: [37120, 37120, 640, 1]>, none)
 CHECK-NEXT:         %R13.0x200, %B5C0 = "tsbc.s_bc"(%R0.0x580, %D6C0) : (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none) -> (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none)
-        

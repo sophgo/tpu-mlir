@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1684x_int8_sym.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "BM1684X", version = 2.2} {
+CHECK:  module attributes {chip = "BM1684X", version = 2.2,  addr_mode = 0} {
 CHECK:      ^bb-1(%G8146944: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
 CHECK-NEXT:        %R0, %D1 = "dma.tensor.broadcast"(%G8146944, %B0) {decompress = False} : (memref<1x1x130x640xi8, strides: [1228800, 0, 640, 1]>, none) -> (memref<1x6x130x640xi8, strides: [83200, 0, 640, 1]>, none)
 CHECK-NEXT:        %R0.L6, %D2 = "dma.tensor.broadcast"(%G8556544, %B0) {decompress = False} : (memref<1x1x130x640xi8, strides: [1228800, 0, 640, 1]>, none) -> (memref<1x6x130x640xi8, strides: [83200, 0, 640, 1]>, none)
