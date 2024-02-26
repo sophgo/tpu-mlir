@@ -407,7 +407,7 @@ class TpuLangConverter(BaseConverter):
 
             def __getitem__(self, tensor: Tensor):
                 if tensor.id not in self.symbol_table:
-                    if tensor.buffer is None:
+                    if tensor.buffer is None and tensor.ttype != 'coeff':
                         raise Exception("Tensor '{}' is not constant!".format(tensor.name))
                     if tuple(tensor.shape) != tuple(tensor.buffer.shape):
                         raise Exception("Tensor shape is ambiguous! '{t_s}' vs '{b_s}'".format(
