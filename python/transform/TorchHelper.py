@@ -64,6 +64,8 @@ def get_constant(node: torch.Node):
             tensor = node.t(attr_name)
             if tensor.is_cuda:
                 tensor = tensor.cpu()
+            if tensor.dtype == torch.bfloat16:
+                tensor = tensor.float()
             value = tensor.numpy()
         else:
             raise NotImplementedError("Unsupported type: %s" % type)

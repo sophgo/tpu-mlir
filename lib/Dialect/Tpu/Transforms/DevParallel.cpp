@@ -38,6 +38,12 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   if (isa<tpu::MatMulOp, tpu::A16MatMulOp>(ops_begin[0])) {
     int num_opds = ops_begin[0]->getNumOperands();
     opd = ops_begin[0]->getOperand(num_opds - 1);
+  } else if (isa<tpu::AddOp>(ops_begin[0])) {
+    auto op0 = ops_begin[0]->getOperand(0).getDefiningOp();
+    auto op1 = ops_begin[0]->getOperand(1).getDefiningOp();
+    if (op1->isBeforeInBlock(op0)) {
+      opd = ops_begin[0]->getOperand(1);
+    }
   }
   for (auto op : ops_begin) {
     auto input = op->getOperand(0);
