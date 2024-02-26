@@ -1265,6 +1265,36 @@ abs绝对值激活函数，逐元素实现功能 :math:`y = \left | x \right |`�
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
+ln
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def ln(tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+ln激活函数，逐元素实现功能 :math:`y = log(x)`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
 ceil
 :::::::::::::::::
 
@@ -1580,7 +1610,7 @@ square
 
 功能描述
 """""""""""
-sqrt平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
+square平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
 该操作属于 **本地操作** 。
 
 参数说明
@@ -1626,6 +1656,67 @@ sqrt平方根激活函数，逐元素实现功能 :math:`y = \sqrt{x}`。
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
+
+rsqrt
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def rsqrt(tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+rsqrt平方根取反激活函数，逐元素实现功能 :math:`y = 1 / (sqrt{x})`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+silu
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def silu(tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
 
 erf
 :::::::::::::::::
@@ -2022,6 +2113,35 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+copy
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def copy(tensor_i, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+copy，将输入数据复制到输出Tensor中.
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 hsigmoid
 :::::::::::::::::
@@ -2119,6 +2239,162 @@ tile
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
+broadcast
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def broadcast(tensor_i, reps, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+在指定的维度重复复制数据。
+该操作属于 **受限本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* reps：List[int]或Tuple[int]型，表示每个维度的复制份数。要求order长度和tensor维度一致。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+where
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def where(tensor_i, dtype = 'int32', out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+抽取输入Tensor data为true时对应的shape信息(n,c,h,w)。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* dtype：string型，表示输出数据类型，目前仅可使用默认值”int32”。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+upsample
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def upsample(tensor_i, scale = 1, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+在h和w维度对输入tensor数据进行scale倍重复扩展输出。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* scale：int型，表示扩展倍数。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+reduce
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+依据axis_list，对输入的tensor做reduce操作。
+该操作属于 **受限本地操作** ；仅当输入数据类型为FLOAT32时是 **本地操作**。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* method：string类型，表示reduce方法，目前可选”mean”,”max”,”min”,”sum”,”prod”,"L1","L2"。
+* axis：List[int]或Tuple[int]或int，表示需要reduce的轴。
+* keep_dims：bool型，表示是否要保留原先的维度。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+unsqueeze
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def unsqueeze(tensor_i, axis, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+增维操作。在axis指定的位置增加1。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* axis：int型，表示指定的轴，设tensor_i的维度长度是D，则axis范围[-D,D-1)。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 concat
 :::::::::::::::::
@@ -2750,6 +3026,91 @@ batch_norm
 * BM1684：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+layer_norm
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def layer_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     axis: int,
+                     out_name: str = None):
+          #pass
+
+
+功能描述
+"""""""""""
+该layer_norm算子先完成输入值的归一化，完成归一化之后再进行缩放和平移。
+批归一化运算过程可参考各框架的layer_norm算子。
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+
+* input：Tensor类型，表示输入待归一化的Tensor，维度不限，如果x只有1维，c为1，否则c等于x的shape[1]。
+* gamma：Tensor类型或None，表示批归一化之后进行的缩放，不为None时要求shape为[c]，取None时相当于shape为[c]的全 1 Tensor。
+* beta：Tensor类型或None，表示批归一化和缩放之后进行的平移，不为None时要求shape为[c]，取None时相当于shape为[c]的全 0 Tensor。
+* epsilon：FLOAT类型，表示为了除法运算数值稳定加在分母上的值。
+* axis：int型，第一个标准化的维度。 如果rank(X)为r，则axis的允许范围为[-r, r)。 负值表示从后面开始计算维度。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回Tensor类型，表示输出待归一化的Tensor。
+
+芯片支持
+"""""""""""
+* BM1684：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+group_norm
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def group_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     beta: Tensor = None,
+                     epsilon: float = 1e-5,
+                     num_groups: int,
+                     out_name: str = None):
+          #pass
+
+
+功能描述
+"""""""""""
+该group_norm算子先完成输入值的归一化，完成归一化之后再进行缩放和平移。
+批归一化运算过程可参考各框架的group_norm算子。
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+
+* input：Tensor类型，表示输入待归一化的Tensor，维度不限，如果x只有1维，c为1，否则c等于x的shape[1]。
+* gamma：Tensor类型或None，表示批归一化之后进行的缩放，不为None时要求shape为[c]，取None时相当于shape为[c]的全1Tensor。
+* beta：Tensor类型或None，表示批归一化和缩放之后进行的平移，不为None时要求shape为[c]，取None时相当于shape为[c]的全0Tensor。
+* epsilon：FLOAT类型，表示为了除法运算数值稳定加在分母上的值。
+* num_groups：int型，表示分组的数量。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回Tensor类型，表示输出待归一化的Tensor。
+
+芯片支持
+"""""""""""
+* BM1684：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 topk
 :::::::::::::::::

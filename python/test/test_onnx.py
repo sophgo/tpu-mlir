@@ -4760,7 +4760,7 @@ class ONNX_IR_TESTER(object):
                 """ % (i, input_shape["input1"], input_shape["input2"], output_shape, equation)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
-    
+
     def test_Einsum7(self, case_name):
         input_shape = [1, 26, 12, 26]
         filter_shape = [12, 26, 312]
@@ -4778,7 +4778,7 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
-    
+
     def test_Einsum8(self, case_name):
         input_shape = [12, 26, 13]
         filter_shape = [12, 13, 32, 16]
@@ -4796,7 +4796,7 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
-    
+
     def test_Einsum9(self, case_name):
         input_shape = [12, 26, 13]
         filter_shape = [12, 26, 32, 16]
