@@ -150,6 +150,14 @@ def str2list(v):
         vars.remove('')
     return vars
 
+def str2dict(v):
+    trimmed_str = v.strip("{}")
+    pattern_pairs = trimmed_str.split(",")
+    pattern_dict = {}
+    for pair in pattern_pairs:
+        key, value = pair.split(":")
+        pattern_dict[key] = int(value) if value.isdigit() else float(value)
+    return pattern_dict
 
 def str2bool(v):
     if isinstance(v, bool):

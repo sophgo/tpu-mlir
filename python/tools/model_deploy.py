@@ -13,6 +13,7 @@ import numpy as np
 import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
+from utils.misc import *
 from utils.preprocess import preprocess, supported_customization_format
 from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
@@ -108,6 +109,7 @@ class DeployTool:
         self.cache_tool = CacheTool(args.cache_skip)
         self.cache_skip = args.cache_skip
         self._prepare_input_npz()
+        self.patterns_count = args.patterns_count
 
     def cleanup(self):
         file_clean()
@@ -123,17 +125,20 @@ class DeployTool:
             with open(self.tosa_mlir, "w", encoding="utf-8") as file:
                 file.write(content)
             delete_file("tmp_tosa.mlir")
+            return {}
         else:
             self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
             self.final_mlir = "{}_final.mlir".format(self.prefix)
-            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device,
+            patterns = mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device,
                           self.num_core, self.cali_table, self.asymmetric, self.quantize_table,
                           self.customization_format, self.fuse_preprocess, self.aligned_input,
-                          self.ignore_f16_overflow, self.do_winograd, self.q_group_size)
+                          self.ignore_f16_overflow, self.do_winograd, self.q_group_size,
+                          True if self.patterns_count else False)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
+            return patterns
 
     def _prepare_input_npz(self):
         num_inputs = len(self.test_input)
@@ -232,15 +237,17 @@ class DeployTool:
     def build_model(self):
         if self.chip == 'cpu':
             tosa_to_llvm(self.tosa_mlir, self.model)
+            return {}
         else:
-            mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
+            patterns = mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
-                          self.group_by_cores, self.model_version)
+                          self.group_by_cores, self.model_version, True if self.patterns_count else False)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()
+            return patterns
 
     def validate_model(self):
 
@@ -343,6 +350,8 @@ if __name__ == '__main__':
                         help="do_winograd")
     # for tosa includeWeight
     parser.add_argument("--includeWeight", action='store_true', help="include weight in tosa.mlir")
+    parser.add_argument("--patterns_count", type=str2dict, default=dict(),
+                        help='used for regression test, check if patterns are successfully applied a specific number of times')
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")
@@ -357,8 +366,15 @@ if __name__ == '__main__':
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu/tosa
-    tool.lowering()
+    lowering_patterns = tool.lowering()
     # generate model
-    tool.build_model()
+    tpu_patterns = tool.build_model()
     if not args.debug:
         tool.cleanup()
+
+    total_patterns = {**lowering_patterns, **tpu_patterns}
+    if args.patterns_count:
+        for k, v in args.patterns_count.items():
+            assert k in total_patterns and v == total_patterns[k], \
+            "The number of times {} was applied does not meet the requirements. Expected {}, got {}" \
+            .format(k, v, total_patterns.get(k))

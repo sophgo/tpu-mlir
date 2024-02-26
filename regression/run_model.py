@@ -9,6 +9,7 @@
 from tools.npz_tool import npz_compare
 from utils.preprocess import supported_customization_format
 from utils.mlir_shell import _os_system
+from utils.misc import str2dict
 from chip import *
 import configparser
 
@@ -17,7 +18,7 @@ from utils.mlir_shell import *
 import os
 import threading
 import queue
-
+from utils.misc import *
 
 class MODEL_RUN(object):
 
@@ -64,6 +65,11 @@ class MODEL_RUN(object):
             self.ini_content["model_path"] = self.ini_content["model_path2"]
 
         self.do_cali = not self.ini_content["model_path"].endswith(".tflite")
+
+        self.top_patterns = str2dict(self.ini_content["top_patterns"]) \
+                                if "top_patterns" in self.ini_content else None
+        self.tpu_patterns = str2dict(self.ini_content["tpu_patterns"]) \
+                                if "tpu_patterns" in self.ini_content else None
         self.arch = chip
         if chip.startswith("cv18") and chip != "cv186x":
             self.arch = "cv18xx"
@@ -167,7 +173,8 @@ class MODEL_RUN(object):
             cmd += ["--pad_value {}".format(self.ini_content["pad_value"])]
         if "pad_type" in self.ini_content:
             cmd += ["--pad_type {}".format(self.ini_content["pad_type"])]
-
+        if "top_patterns" in self.ini_content:
+            cmd += ["--patterns_count {}".format(self.ini_content["top_patterns"])]
         # add others
         if "output_names" in self.ini_content:
             cmd += ["--output_names {}".format(self.ini_content["output_names"])]
@@ -336,6 +343,8 @@ class MODEL_RUN(object):
             cmd += ["--debug"]
         if self.num_core != 1:
             cmd += [f"--num_core {self.num_core}"]
+        if "tpu_patterns" in self.ini_content:
+            cmd += ["--patterns_count {}".format(self.ini_content["tpu_patterns"])]
 
         # add for quant modes which require calibration
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):

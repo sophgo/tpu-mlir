@@ -8,6 +8,7 @@ import shutil
 import os
 import subprocess
 import logging
+import utils.pattern_counter
 
 
 def _os_system_log(cmd_str):
@@ -51,13 +52,27 @@ def _os_system(cmd: list, save_log: bool = False):
     else:
         _os_system_log(cmd_str)
 
+def get_matched_patterns(log_file: str = ""):
+    if log_file:
+        matcher = utils.pattern_counter.PatternCounter(log_file)
+        matcher.count_matched_patterns()
+        return matcher.success_counter
+    return {}
 
-def mlir_opt_for_top(mlirfile, opt_mlirfile, add_postprocess=""):
+def mlir_opt_for_top(mlirfile: str,
+                     opt_mlirfile: str,
+                     add_postprocess: str = "",
+                     count_patterns: bool = False):
     cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
     if len(add_postprocess) > 0:
         cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
     cmd.extend(["--canonicalize", "--extra-optimize", "-o", opt_mlirfile])
+    log_file = ""
+    if count_patterns:
+        log_file = "top_patterns.log"
+        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
     _os_system(cmd)
+    return get_matched_patterns(log_file)
 
 
 def mlir_lowering(top_mlir: str,
@@ -74,7 +89,8 @@ def mlir_lowering(top_mlir: str,
                   aligned_input: bool = False,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
-                  q_group_size: int = 0):
+                  q_group_size: int = 0,
+                  count_patterns: bool = False):
     cmd = [
         "tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
             chip.lower(), num_device, num_core)
@@ -105,7 +121,12 @@ def mlir_lowering(top_mlir: str,
         "-o",
         tpu_mlir,
     ])
+    log_file = ""
+    if count_patterns:
+        log_file = "lowering_patterns.log"
+        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
     _os_system(cmd)
+    return get_matched_patterns(log_file)
 
 
 def mlir_to_model(tpu_mlir: str,
@@ -123,7 +144,8 @@ def mlir_to_model(tpu_mlir: str,
                   embed_debug_info: bool = False,
                   addr_mode: str = "auto",
                   group_by_cores: str = "auto",
-                  model_version: str = ""):
+                  model_version: str = "",
+                  count_patterns: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
@@ -157,7 +179,10 @@ def mlir_to_model(tpu_mlir: str,
         "-o",
         final_mlir,
     ]
-
+    log_file = ""
+    if count_patterns:
+        log_file = "tpu_patterns.log"
+        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
     _os_system(cmd)
 
     # codegen based on final mlir
@@ -183,6 +208,8 @@ def mlir_to_model(tpu_mlir: str,
             _os_system(["mv net_0.profile", model + ".net_0.profile"])
     except RuntimeError:
         pass
+
+    return get_matched_patterns(log_file)
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):

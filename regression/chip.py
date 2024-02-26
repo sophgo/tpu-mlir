@@ -57,6 +57,10 @@ basic_model_list = {
     "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
     "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
     "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      N),
+    "eva02_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
 }
 
 full_model_list = {
