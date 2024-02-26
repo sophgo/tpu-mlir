@@ -200,12 +200,30 @@ def __main():
             outs = {
                 _id: {
                     "tiu": [
-                        {"name": getattr(x, "op_name", x.name), "cmd": dict(x.reg)}
+                        {
+                            "name": getattr(x, "op_name", x.name),
+                            "cmd": dict(x.reg),
+                            "extra": {
+                                "cmd_id": x.cmd_id,
+                                "cmd_type": x.cmd_type.name,
+                                "core_id": x.core_id,
+                                "subnet_id": x.subnet_id,
+                            },
+                        }
                         for x in ops.tiu
                         if not_visited(getattr(x, "op_name", x.name))
                     ],
                     "dma": [
-                        {"name": getattr(x, "op_name", x.name), "cmd": dict(x.reg)}
+                        {
+                            "name": getattr(x, "op_name", x.name),
+                            "cmd": dict(x.reg),
+                            "extra": {
+                                "cmd_id": x.cmd_id,
+                                "cmd_type": x.cmd_type.name,
+                                "core_id": x.core_id,
+                                "subnet_id": x.subnet_id,
+                            },
+                        }
                         for x in ops.dma
                         if not_visited(getattr(x, "op_name", x.name))
                     ],

@@ -166,6 +166,7 @@ table Net {
     cascade:Cascade (id: 4);           // may run in multi devices or multi steps
     addr_mode:int32 (id: 5);           // 0: basic mode, io and neuron mem alloc together by runtime
                                        // 1: io alone mode, io mem and neuron mem alloc seperated by runtime
+                                       // 2: io tag mode, assign first 5 io mems by address tag (others in neuron mem)
 }
 
 table KernelModule {

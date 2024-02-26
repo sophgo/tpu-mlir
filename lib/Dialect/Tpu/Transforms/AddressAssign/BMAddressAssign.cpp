@@ -269,6 +269,20 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
+  // 1.5 set io address to GMEM_START_ADDR | IO_ADDR if using io_tag mode
+  if (module::isAddrMode(module::AddrMode::IO_TAG) && module::isBM1688()) {
+    int io_index = 0;
+    std::vector<Value> ios;
+    module::getInputsOutputs(m, ios, ios);
+    for (auto &io : ios) {
+      // io.dump();
+      module::setAddress(io, BM168x::IO_ADDR[io_index++]);
+      if (io_index > 4) {
+        break;
+      }
+    }
+  }
+
   // 2.set inplace_ops address
   // inplace_ops' order should be from input to output,thus reverse
   std::reverse(inplace_ops.begin(), inplace_ops.end());
@@ -430,7 +444,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
 
       if (isa<top::InputOp>(opd) ||
           (isa<ReturnOp>(op) &&
-           module::isAddrMode(module::AddrMode::IO_ALONE))) {
+           (module::isAddrMode(module::AddrMode::IO_ALONE) ||
+            module::isAddrMode(module::AddrMode::IO_TAG)))) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
       }

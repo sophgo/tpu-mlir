@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/resnet50-v2_bm1688_2_int8_sym.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "BM1688", version = 2.2} {
+CHECK:  module attributes {chip = "BM1688", version = 2.2,  addr_mode = 0} {
 CHECK:    func.func @resnet50-v2(%G2.0: memref<4x3x224x224xsi8, strides: [150528, 50176, 224, 1]>) -> (memref<4x1000xsi8, strides: [1000, 1]>) ({
 CHECK:      ^bb0(%G2.0: memref<4x3x224x224xsi8, strides: [150528, 50176, 224, 1]>)    //  run_mode=TPU_STATIC
 CHECK:        %D1C0, %msg30 = "@core_0"(%D0C0) {
@@ -18,4 +18,3 @@ CHECK-NEXT:         %R7, %D3C0 = "dma.tensor"(%G2.0, %B2C0) : (memref<1x3x224x22
 CHECK-NEXT:         %R6.2256, %D4C0 = "dma.tensor"(%G1.0, %B2C0) : (memref<1x3x1x48xi8, strides: [144, 48, 48, 1]>, none) -> (memref<1x3x1x48xi8, strides: [48, 48, 48, 1]>, none)
 CHECK-NEXT:         %B3C0 = "system_tr_wr.wr_imm"(%D4C0) {reg_idx0 = 5, reg_idx1 = 6, reg_idx2 = 127, des_imm0 = 0, des_imm1_h32 = 0, des_imm1_l32 = 51408}
 CHECK-NEXT:         %R0, %B4C0 = "conv.normal"(%R7, %R6.2272, %R6.2264, %C0, %R0, %D4C0) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = True, round_mode = 5, kzp = 0}: (memref<1x3x224x224xsi8, strides: [50176, 50176, 224, 1]>, memref<3x3x1x1xsi8>, memref<1x3x1x1xsi32, strides: [1, 1, 1, 1]>, si8, memref<1x3x1x2xsi32, strides: [2, 2, 2, 1]>, none) -> (memref<1x3x224x224xsi8, strides: [50176, 50176, 224, 1]>, none)
-        

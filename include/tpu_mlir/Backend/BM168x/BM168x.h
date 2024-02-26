@@ -185,6 +185,7 @@ public:
   static uint64_t L2_SRAM_START_ADDR;
   static uint64_t COEFF_START_ADDR;
   static uint64_t CTX_START_ADDR;
+  static uint64_t IO_ADDR[5];
   static const uint64_t CMODEL_GMEM_SIZE = 0x100000000ull;
   // GDMA Format
   static int GDMA_VALUE_FORMAT_UINT8;

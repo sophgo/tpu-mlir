@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1688_int8_sym.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "BM1688", version = 2.2} {
+CHECK:  module attributes {chip = "BM1688", version = 2.2,  addr_mode = 0} {
 CHECK:    func.func @yolov5s(%G2.0: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xsi8, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xsi8, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xsi8, strides: [102000, 400, 20, 1]>) ({
 CHECK:      ^bb-1(%G2.0: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
 CHECK-NEXT:       %R0, %D1C0 = "dma.tensor"(%G2.0, %B0C0) : (memref<1x3x130x640xi8, strides: [1228800, 409600, 640, 1]>, none) -> (memref<1x3x130x640xi8, strides: [83200, 83200, 640, 1]>, none)
@@ -26,4 +26,3 @@ CHECK-NEXT:       %R14.5728, %D10C0 = "dma.tensor"(%G1.81920, %B8C0) : (memref<1
 CHECK-NEXT:       %R15.1424, %B11C0 = "tsbc.l_bc"(%R15.1424, %D10C0) : (memref<1x1x1x256xi8, strides: [256, 256, 256, 1]>, none) -> (memref<1x32x1x256xi8, strides: [256, 256, 256, 1]>, none)
 CHECK-NEXT:       %R12, %B12C0 = "sg.pe_s_gather_d1coor"(%R15.1424, %R15.1424, %D10C0) {limit_enable = False, fill_const = False, const_value = 0}: (memref<1x32x1x256xi8, strides: [0, 0, 271.0, 1]>, memref<1x32x1x5120xui8, strides: [5120, 5120, 5120, 1]>, none) -> (memref<1x32x1x5120xi8, strides: [5120, 5120, 5120, 1]>, none)
 CHECK-NEXT:       %B13C0 = "system_tr_wr.wr_imm"(%D10C0) {reg_idx0 = 5, reg_idx1 = 6, reg_idx2 = 127, des_imm0 = 0, des_imm1_h32 = 0, des_imm1_l32 = 124560}
-      

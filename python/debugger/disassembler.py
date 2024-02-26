@@ -586,6 +586,12 @@ class Net:
 
         self.cascade = fbs.Cascade()
 
+        try:
+            self.addr_mode = fbs.AddrMode()
+        except AttributeError:
+            # catch for compatibility
+            self.addr_mode = 0
+
         # for old bmodel, not use any more
         # self.net_static = FBSArray(fbs, ("NetStatic", NetStatic))
         # self.net_dynamic = FBSArray(fbs, ("NetStatic", NetDynamic))
@@ -609,6 +615,7 @@ class Net:
 
         if self.cascade:
             module.AddCascade(builder, self.cascade)
+        module.AddAddrMode(builder, self.addr_mode)
         return module.End(builder)
 
     def __repr__(self) -> str:
@@ -653,6 +660,8 @@ class BModel:
 
             self.time = bmodel.Time().decode()
             self.net: List[Net] = FBSArray(bmodel, ("Net", Net), binary)
+            self.addr_mode = self.net[0].addr_mode
+
             self.device_num = bmodel.DeviceNum()
 
             self.core_num = self.net[0].parameter[0].core_num

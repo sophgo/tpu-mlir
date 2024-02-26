@@ -1,6 +1,6 @@
 RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1684_f32.bmodel | FileCheck %s
 
-CHECK:  module attributes {chip = "BM1684", version = 2.2} {
+CHECK:  module attributes {chip = "BM1684", version = 2.2,  addr_mode = 0} {
 CHECK:      ^bb-1(%G114053120: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
 CHECK-NEXT:        %D1 = DMA tensor(%B0)
 CHECK-NEXT:        %D2 = DMA tensor(%B0)
