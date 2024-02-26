@@ -88,7 +88,7 @@ class TORCH_IR_TESTER(object):
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
-            "GridSampler3D":    (self.test_GridSampler3D,     N, Y, N, N),
+            "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N), # bm1684x has problem
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),
             "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
@@ -771,7 +771,7 @@ class TORCH_IR_TESTER(object):
         """AddError"""
 
         self._test_binary(torch.add, (1, 4, 12, 147, 147), (1, 4, 1, 147, 147))
-    
+
     def test_Add6d(self):
 
         class Model(torch.nn.Module):

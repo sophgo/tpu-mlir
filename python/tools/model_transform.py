@@ -48,12 +48,18 @@ class ModelTransformer(object):
         trimmed_arr = repeated_arr[:batch_size]
         return trimmed_arr
 
-    def model_transform(self, mlir_file: str, add_postprocess=""):
+    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
         file_mark(mlir_origin)
         self.converter.generate_mlir(mlir_origin)
-        mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess)
+        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False)
+        if patterns_count:
+            for k, v in patterns_count.items():
+                assert k in patterns and v == patterns[k], \
+                "The number of times {} was applied does not meet the requirements. Expected {}, got {}" \
+                .format(k, v, patterns.get(k))
+
         logger.info("Mlir file generated:{}".format(mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
@@ -272,6 +278,9 @@ if __name__ == '__main__':
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
+    parser.add_argument("--patterns_count", type=str2dict, default=dict(),
+                        help='used for regression test, check if patterns are successfully applied a specific number of times')
+
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()
@@ -280,7 +289,7 @@ if __name__ == '__main__':
 
     cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
-    tool.model_transform(args.mlir, args.add_postprocess)
+    tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
     if args.test_input and cache_tool.do_top_validate(tool.mlir_file, tool.in_f32_npz, args.tolerance, args.debug):
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
