@@ -1971,8 +1971,8 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
-* order：List[int]或Tuple[int]型，表示置换参数。要求order长度和tensor维度一致。
+* tensor:Tensor type,表示输入操作Tensor。
+* order:List[int]或Tuple[int]型,表示置换参数。要求order长度和tensor维度一致。
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2105,7 +2105,7 @@ Explanation of parameters
 * tensor: A `Tensor` type, indicating the tensor that is to be padded.
 * padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used. For example, the padding of a hw 2D Tensor is [h_top, w_left, h_bottom, w_right]
 * value: A `Scalar`, `Variable` type, or `None`, representing the value to be filled. The data type is consistent with that of the tensor.
-* method：string类型，表示填充方法，可选方法"constant"，"reflect"，"symmetric"，"edge"。
+* method:string type,表示填充方法,可选方法"constant","reflect","symmetric","edge"。
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2314,7 +2314,7 @@ When `requant_mode` equals 0, the corresponding calculation for this operation i
 
     ::
 
-        output = saturate(int(round(input * scale)) + offset)，
+        output = saturate(int(round(input * scale)) + offset),
         Where `saturate` refers to saturation to the data type of the output.
 
     * For the BM1684X: The input data type can be `FLOAT32`, and the output data type can be `INT16`, `UINT16`, `INT8`, or `UINT8`.
@@ -2323,7 +2323,7 @@ When requant_mode equals 1, the corresponding calculation formula for this opera
 
     ::
 
-        output = saturate(int(round(float(input) * scale + offset)))，
+        output = saturate(int(round(float(input) * scale + offset))),
         Where `saturate` refers to saturation to the data type of the output.
 
     * For the BM1684X: The input data type can be `INT32`, `INT16`, or `UINT16`, and the output data type can be `INT16`, `UINT16`, `INT8`, or `UINT8`.
@@ -2348,3 +2348,169 @@ Processor support
 """"""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
+
+
+topk
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def topk(input: Tensor,
+                 axis: int,
+                 k: int,
+                 out_name: str = None):
+
+Description
+"""""""""""
+Find top k numbers after sorted
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input tensor.
+* axis: Int type, representing axis used in sorting.
+* k: Int type, representing the number of top values along axis.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: the first one represents the values, whose data type is the same as that of the input tensor while the second one represents the indices in input tensor after sorted along axis.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
+nms
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def nms(boxes: Tensor,
+                scores: Tensor,
+                format: str = 'PYTORCH',
+                max_box_num_per_class: int = 0,
+                out_name: str = None)
+
+Description
+"""""""""""
+Perform non-maximum-suppression upon input tensor.
+
+Parameters
+"""""""""""
+* boxes: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of box, the third dimension is 4 coordinates of boxes.
+* scores: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of classes, the third dimension is number of boxes.
+* format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height].
+* max_box_num_per_class: Int type, representing max number of boxes per class. The default value is 0.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns one Tensor, which is the selected indices from the boxes tensor of 2 dimensions:[num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index].
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
+
+
+interpolate
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def interpolate(input: Tensor,
+                        scale_h: float,
+                        scale_w: float,
+                        method: str = 'nearest',
+                        coord_mode: str = "pytorch_half_pixel",
+                        out_name: str = None)
+
+Description
+"""""""""""
+Perform interpolation upon input tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input Tensor.
+* scale_h: Float type, representing the resize scale along h-axis.
+* scale_w: Float type, representing the resize scale along w-axis.
+* method: String type, representing the interpolation method. Optional values are "nearest" or "linear".
+* coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric".
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the defintion of inverse map of coordinates is as follows:
+* `"half_pixel"`:
+
+    ::
+
+        x_in = (x_out + 0.5) / scale - 0.5
+
+* `"pytorch_half_pixel"`:
+
+    ::
+
+        x_in = len > 1 ? (x_out + 0.5) / scale - 0.5 : 0
+
+* `"align_corners"`:
+
+    ::
+
+        x_in = x_out * (l_in - 1) / (l_out - 1)
+
+* `"asymmetric"`:
+
+    ::
+
+        x_in = x_out / scale
+
+
+Returns
+"""""""""""
+Returns one Tensor, whose data type is the same as that of the input tensor.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16(TODO).
+* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO).
+
+
+lut
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def lut(input: Tensor,
+                table: Tensor,
+                out_name: str = None)
+
+Description
+"""""""""""
+Use look-up table to transform values of input tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input.
+* table: Tensor type, representing the look-up table.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns one Tensor, whose data type is the same as that of the `table` tensor.
+
+Processor support
+"""""""""""
+* BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
+* BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.

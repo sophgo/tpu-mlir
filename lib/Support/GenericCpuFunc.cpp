@@ -2049,7 +2049,7 @@ float NmsFunc::iou(const float *box, const int i, const int j) {
 int NmsFunc::invoke() {
   // boxes: [num_batches, spatial_dimension, 4]
   // scores: [num_batches, num_classes, spatial_dimension]
-  assert(5 == param_.inputs.size());
+  assert(2 == param_.inputs.size());
   float *box = param_.box;
   float *score = param_.score;
   const int num_boxes = param_.inputs[0].shape[1];
