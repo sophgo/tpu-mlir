@@ -246,7 +246,14 @@ public:
 
     bool isQuantized = LoweringConfig::isQuantized;
     if (isQuantized) {
-      LoweringQuantized(rewriter, opTy);
+      auto stype = module::getStorageType(opTy.getODSResults(0)[0]);
+      if (stype.isF32()) {
+        LoweringF32(rewriter, opTy);
+      } else if (stype.isF16()) {
+        LoweringF16(rewriter, opTy);
+      } else {
+        LoweringQuantized(rewriter, opTy);
+      }
       return success();
     }
     auto real_mode = module::getMode();
@@ -405,7 +412,11 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
                                  bool asymmetric = false,
                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
-  auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
+  Type newType;
+  if (module::isUniformQuantized(from->getResult(0)))
+    newType = from->getResult(0).getType();
+  else
+    newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 

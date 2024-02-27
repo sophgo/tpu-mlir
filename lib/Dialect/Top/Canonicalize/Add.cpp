@@ -68,7 +68,7 @@ struct AddToScale : public OpRewritePattern<AddOp> {
       }
     }
     auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32()) {
+    if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
     }
 
@@ -93,8 +93,11 @@ struct AddToScale : public OpRewritePattern<AddOp> {
     auto rtype = RankedTensorType::get(rhs_shape.vec(), rewriter.getF32Type());
     auto w_scale =
         WeightOp::create(op.getOperation(), "_scale_weight", weight_v, rtype);
+    Value w_scale_ = w_scale;
+    if (storage_type.isF16())
+      w_scale_ = dyn_cast<top::WeightOp>(w_scale.getDefiningOp()).clone_f16(op);
     operands.push_back(op.getInputs()[0]);
-    operands.push_back(w_scale);
+    operands.push_back(w_scale_);
     operands.push_back(op.getInputs()[1]);
     attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
     attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));

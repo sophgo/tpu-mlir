@@ -106,13 +106,10 @@ LogicalResult ConvertScaleOp::matchAndRewrite(top::ScaleOp op,
     return failure();
   }
   int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
-  auto cur_scale_f32 = cur_scale.read<float>();
-  auto cur_bias_f32 = cur_bias.read<float>();
+  auto cur_bias_f32 = cur_bias.read_as_float();
 
-  std::vector<float> new_scale_v(channel);
-  std::vector<float> new_bias_v(channel);
-  std::copy(cur_scale_f32->begin(), cur_scale_f32->end(), new_scale_v.begin());
-  std::copy(cur_bias_f32->begin(), cur_bias_f32->end(), new_bias_v.begin());
+  auto scale_new_type = module::getTypeLike(cur_scale, {channel, 1, 1, 1});
+  op.getScale().setType(scale_new_type);
 
   // scale to depthwise convolution
   NamedAttrList attrs;
@@ -124,16 +121,12 @@ LogicalResult ConvertScaleOp::matchAndRewrite(top::ScaleOp op,
   auto relu_limit = op.getReluLimit().convertToDouble();
   attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
-  auto filter_type =
-      RankedTensorType::get({channel, 1, 1, 1}, rewriter.getF32Type());
-  auto new_scale =
-      top::WeightOp::create(op, "to_weight", new_scale_v, filter_type);
   auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-  auto new_bias = top::WeightOp::create(op, "to_bias", new_bias_v, bias_type);
+  auto new_bias = top::WeightOp::create(op, "to_bias", *cur_bias_f32, bias_type);
 
   rewriter.replaceOpWithNewOp<top::ConvOp>(
       op, op.getResult().getType(),
-      ValueRange{op.getInput(), new_scale, new_bias}, attrs);
+      ValueRange{op.getInput(), cur_scale, new_bias}, attrs);
   return success();
 }
 

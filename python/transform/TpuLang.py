@@ -49,6 +49,7 @@ def compile(name: str,
             dynamic=False):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
+    TpuLang.graph.quantized_type_inference()
     # convert to mlir
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode=mode)
     model_transform(name, converter)

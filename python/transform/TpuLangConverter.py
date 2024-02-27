@@ -204,6 +204,14 @@ class Graph:
     def outputs(self, outputs: List[Tensor]):
         self._outputs = outputs
 
+    def quantized_type_inference(self):
+        assign_ops = ["Permute", "Reshape", "Tile", "Concat", "Split", "Repeat", "Relu"]
+        for op in self.operators:
+            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.inputs[0].is_quantized:
+                input = op.inputs[0]
+                output = op.outputs[0]
+                output.quantization(scale=input.scale, zero_point=input.zero_point)
+
     def __repr__(self) -> str:
         s = "{name} (\n{modstr}\n)"
         modstr = "\n".join(["inputs (\n{}\n)".format(_indent(self.inputs, 2))] +
@@ -453,14 +461,6 @@ class TpuLangConverter(BaseConverter):
                     return_op.append(symbol_table[out])
 
         return return_op
-
-    def quantized_type_assign(self, subgraph: Graph):
-        assign_ops = ["Permute", "Reshape", "Tile", "Concat", "Split", "Repeat", "Relu"]
-        for op in subgraph.operators:
-            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.inputs[0].is_quantized:
-                input = op.inputs[0]
-                output = op.outputs[0]
-                output.quantization(scale=input.scale, zero_point=input.zero_point)
 
     def generate_mlir(self, mlir_file: str):
         # self.quantized_type_assign(self.model)
