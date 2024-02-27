@@ -1323,52 +1323,76 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 
 
 ######### Vision Operator ############
-# def nms(boxes: Tensor,
-#         score: int = 0,
-#         num: int = 1,
-#         size: Union[Tuple[int], List[int]] = (),
-#         out_name: str = None):
-#     if out_name is None:
-#         out_name = generate_name("split")
-#     attr = {
-#         "axis": Attr(axis, "int32"),
-#         "num": Attr(num),
-#         "split_size": ArrayAttr(size),
-#     }
-#     output = Tensor(dtype=input.dtype, name=out_name)
-#     TpuLang.insert_op("top.Split", inputs=[input], outputs=[output], params=attr)
-#     return output
+def topk(input: Tensor,
+         axis: int,
+         k: int,
+         out_name: str = None):
+    dims = len(input.shape)
+    if axis < 0:
+        axis_ = axis + dims
+    else:
+        axis_ = axis
+    assert 0 <= axis_ and axis_ < dims, f"axis:{axis} is not supported"
+    assert k > 0, f"k:{k} is not valid"
+    if out_name is None:
+        out_name = generate_name("topk")
+    attr = {
+        "axis": Attr(axis_),
+        "K": Attr(k),
+    }
+    output1 = Tensor(dtype='int32', name=f'{out_name}_val')
+    output2 = Tensor(dtype=input.dtype, name=f'{out_name}_ind')
+    TpuLang.insert_op("top.TopK", inputs=[input], outputs=[output1, output2], params=attr)
+    return output1, output2
 
-# def interpolate(tensor_i: Tensor,
-#                 size: Union[Tuple[int], List[int]],
-#                 scale_factor: Union[Tuple[float], List[float]] = (),
-#                 platform: str = 'CAFFE',
-#                 method: str = 'NEAREST',
-#                 align_corners: bool = False,
-#                 half_pixel_centers: bool = False,
-#                 out_name: str = None):
-#     if out_name is None:
-#         out_name = generate_name("interpolate")
-#     target_shape = tensor_i.shape
-#     if size:
-#         target_shape[2:] = size[:]
-#     if align_corners:
-#         coord = "align_corners"
-#     elif half_pixel_centers:
-#         if platform == 'PYTORCH':
-#             coord = "pytorch_half_pixel"
-#         else:
-#             coord = "half_pixel"
-#     else:
-#         coord = "asymmetric"
-#     attr = {
-#         # "target_shape": ArrayAttr(target_shape),
-#         "mode": Attr(method, 'string'),
-#         "coord_mode": Attr(coord, 'string'),
-#     }
-#     output = Tensor(dtype=tensor_i.dtype, name=out_name)
-#     TpuLang.insert_op("top.Interp", inputs=[tensor_i, target_shape], outputs=[output], params=attr)
-#     return output
+def nms(boxes: Tensor,
+        scores: Tensor,
+        box_format: str = 'PYTORCH',
+        max_box_num_per_class: int = 0,
+        out_name: str = None):
+    boxes_dims = len(boxes.shape)
+    scores_dims = len(scores.shape)
+    assert boxes_dims == 3, f"dims of boxes expect 3 but get {boxes_dims}"
+    assert scores_dims == 3, f"dims of boxes expect 3 but get {scores_dims}"
+    assert box_format in ['TENSORFLOW', 'PYTORCH'], f"box_format:{box_format} is not supported"
+    assert max_box_num_per_class >= 0, f"max_box_num_per_class:{max_box_num_per_class} is not valid"
+    if out_name is None:
+        out_name = generate_name("nms")
+    if box_format == 'PYTORCH':
+        center_point_box = 1
+    else:
+        center_point_box = 0
+    attr = {
+        "center_point_box": Attr(center_point_box),
+        "max_output_size": Attr(max_box_num_per_class),
+    }
+    output = Tensor(dtype=boxes.dtype, name=out_name)
+    TpuLang.insert_op("top.Nms", inputs=[boxes, scores], outputs=[output], params=attr)
+    return output
+
+def interpolate(input: Tensor,
+                scale_h: float,
+                scale_w: float,
+                method: str = 'nearest',
+                coord_mode: str = "pytorch_half_pixel",
+                out_name: str = None):
+    input_dims = len(input.shape)
+    assert input_dims >= 2, f"input dims expect >=2 but get {input_dims}"
+    assert scale_h > 0, f"scale_h:{scale_h} is not valid"
+    assert scale_w > 0, f"scale_w:{scale_w} is not valid"
+    assert method in ['nearest', 'linear'], f"method:{method} is not supported"
+    assert coord_mode in ["align_corners", "pytorch_half_pixel", "half_pixel", "asymmetric"], f"coord_mode:{coord_mode} is not supported"
+    if out_name is None:
+        out_name = generate_name("interp")
+    attr = {
+        "scale_h": Attr(scale_h, 'float64'),
+        "scale_w": Attr(scale_w, 'float64'),
+        "mode": Attr(method, 'string'),
+        "coord_mode": Attr(coord_mode, 'string'),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Interp", inputs=[input, None], outputs=[output], params=attr)
+    return output
 
 
 ######### Element-wise Compare Operator ############
@@ -1445,7 +1469,7 @@ def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], out_name: str =
     return __compare_const(tensor_i0, scalar_i1, "NotEqual", out_name)
 
 
-######### Shape About Operator ############
+######### Shape-Related Operator ############
 @annotation_check
 def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
     if out_name is None:
@@ -1500,4 +1524,14 @@ def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"epsilon": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32')}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
+    return output
+
+######### Shape-Related Operator ############
+
+@annotation_check
+def lut(input: Tensor, table: Tensor, out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("lut")
+    output = Tensor(input.shape, dtype=table.dtype, name=out_name)
+    TpuLang.insert_op("top.Lut", inputs=[input, table], outputs=[output])
     return output

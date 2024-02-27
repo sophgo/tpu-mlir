@@ -427,7 +427,7 @@ conv3d_int
 处理器支持
 """""""""""
 * BM1688：输入数据类型可以是INT8/UINT8。
-* BM1684X：输入数据类型可以是FINT8/UINT8。
+* BM1684X：输入数据类型可以是INT8/UINT8。
 
 matmul
 :::::::::::::::::
@@ -2749,3 +2749,169 @@ batch_norm
 """""""""""
 * BM1684：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
+
+
+topk
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def topk(input: Tensor,
+                 axis: int,
+                 k: int,
+                 out_name: str = None):
+
+功能描述
+"""""""""""
+按某个轴排序后前K个数。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入Tensor。
+* axis：int型，表示排序所使用的轴。
+* k：int型，表示沿着轴排序靠前的数的个数。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个Tensor表示前几个数，其数据类型与输入类型相同，第二个Tensor表示前几个数在输入中的索引。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+
+nms
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def nms(boxes: Tensor,
+                scores: Tensor,
+                format: str = 'PYTORCH',
+                max_box_num_per_class: int = 0,
+                out_name: str = None)
+
+功能描述
+"""""""""""
+对输入tensor进行非极大值抑制处理。
+
+参数说明
+"""""""""""
+* boxes：Tensor类型，表示输入框的列表。必须是三维张量，第一维为批的个数，第二维为框的个数，第三维为框的4个坐标。
+* scores：Tensor类型，表示输入得分的列表。必须是三维张量，第一维为批的个数，第二维为类的个数，第三维为框的个数。
+* format：string类型，'TENSORFLOW'表示Tensorflow格式[y1, x1, y2, x2]，'PYTORCH'表示Pytorch格式[x_center, y_center, width, height]。
+* max_box_num_per_class：int型，表示每个类中的输出框的最大个数。默认为0。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，表示从框列表中选出的框的索引的列表，它是一个2维张量，格式为[num_selected_indices, 3], 其中每个索引的格式为[batch_index, class_index, box_index]。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+
+
+interpolate
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def interpolate(input: Tensor,
+                        scale_h: float,
+                        scale_w: float,
+                        method: str = 'nearest',
+                        coord_mode: str = "pytorch_half_pixel",
+                        out_name: str = None)
+
+功能描述
+"""""""""""
+对输入tensor进行插值。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入Tensor。
+* scale_h：float型，表示h方向的放缩系数。
+* scale_w：float型，表示w方向的放缩系数。
+* method: string类型，表示插值方法，可选项为"nearest"或"linear"。
+* coord_mode: string类型, 表示输出坐标的计算方法，可选项为"align_corners"/"pytorch_half_pixel"/ "half_pixel"/"asymmetric"等。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+其中， `coord_mode`的意义跟onnx的 `Resize`算子的参数 `coordinate_transformation_mode`的意义时一样的。若h/w方向的放缩因子为 `scale`，输入坐标为 `x_in`，输入尺寸为 `l_in`，输出坐标为 `x_out`，输出尺寸为 `l_out`，则逆映射定义如下：
+* `"half_pixel"`：
+
+    ::
+
+        x_in = (x_out + 0.5) / scale - 0.5
+
+* `"pytorch_half_pixel"`：
+
+    ::
+
+        x_in = len > 1 ? (x_out + 0.5) / scale - 0.5 : 0
+
+* `"align_corners"`：
+
+    ::
+
+        x_in = x_out * (l_in - 1) / (l_out - 1)
+
+* `"asymmetric"`：
+
+    ::
+
+        x_in = x_out / scale
+
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与输入类型相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+
+lut
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def lut(input: Tensor,
+                table: Tensor,
+                out_name: str = None)
+
+功能描述
+"""""""""""
+对输入tensor进行查找表查找操作。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入。
+* table：Tensor类型，表示查找表。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `table`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
+* BM1684X： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。

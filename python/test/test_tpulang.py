@@ -96,21 +96,23 @@ class TPULANG_IR_TESTER(object):
             "Gts": (self.test_Gts,                      Y, Y),
             "Hsigmoid": (self.test_Hsigmoid,            Y, Y),
             "Hswish": (self.test_Hswish,                Y, Y),
-            # "Interpolate": (self.test_Interpolate,      Y, Y),
+            "Interp": (self.test_Interp,                Y, Y),
             "Le": (self.test_Le,                        Y, Y),
             "Les": (self.test_Les,                      Y, Y),
             "LeakyRelu": (self.test_LeakyRelu,          Y, Y),
             # "Lenet": (self.test_Lenet,                  N, N),
             "Lt": (self.test_Lt,                        Y, Y),
             "Lts": (self.test_Lts,                      Y, Y),
+            "Lut": (self.test_Lut,                      Y, Y),
             "MatMul": (self.test_MatMul,                Y, Y),
             "Max": (self.test_Max,                      Y, Y),
             "Maxpool": (self.test_Maxpool,              Y, Y),
-            "Ne": (self.test_Ne,                        Y, Y),
-            "Nes": (self.test_Nes,                      Y, Y),
             "Min": (self.test_Min,                      Y, Y),
             "Mish": (self.test_Mish,                    Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
+            "Ne": (self.test_Ne,                        Y, Y),
+            "Nes": (self.test_Nes,                      Y, Y),
+            "NMS": (self.test_NMS,                      Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
@@ -131,6 +133,7 @@ class TPULANG_IR_TESTER(object):
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
+            "TopK": (self.test_TopK,                    Y, Y),
             #### model ####
             "HModel": (self.test_Model,                 Y, Y),
             "Resnet50":(self.test_Resnet50,             Y, Y),
@@ -2124,27 +2127,105 @@ class TPULANG_IR_TESTER(object):
 
         _test_mobilenet_block([1, 1, 28, 28])
 
-    # #######################################################################
-    # # Interpolate
-    # # ------------
-    # def interpolate_op(self, input):
-    #     interpolate = tpul.interpolate(input, [1,2])
-    #     return interpolate
+    #######################################################################
+    # TopK
+    # ------------
+    def test_TopK(self, case_name):
+        """TopK"""
 
-    # def test_Interpolate(self, case_name):
-    #     """interpolate"""
+        @tpulang(self.chip)
+        def _test_TopK(shape_x: List[int], k, dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y_ind, y_val = tpul.topk(x, 1, k)
+            self.compile_and_check(self.unique_name(case_name), [x], [y_ind, y_val])
 
-    #     @tpulang(self.chip)
-    #     def _test_interpolate(shape_x: List[int], dtype="float32"):
-    #         x_data = rand_data(shape_x, dtype)
-    #         # y_data = rand_data(shape_y, dtype)
-    #         x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-    #         # y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
-    #         interpolate = self.interpolate_op(x)
-    #         self.compile_and_check(self.unique_name(case_name), [x], [interpolate])
+        _test_TopK([2, 16], 2)
 
-    #     _test_interpolate([1, 3, 28, 28])
+    #######################################################################
+    # NMS
+    # ------------
+    def gen_rand_boxes(self, num_batch, num_box, H, W, box_format):
+        num = num_batch * num_box
+        roi_xl = np.random.rand(num).astype(np.float32) * (W - 1)
+        roi_xh = np.random.rand(num).astype(np.float32) * (W - 1)
+        roi_yl = np.random.rand(num).astype(np.float32) * (H - 1)
+        roi_yh = np.random.rand(num).astype(np.float32) * (H - 1)
+        for i in range(num):
+            if roi_xl[i] > roi_xh[i]:
+                roi_xl[i], roi_xh[i] = roi_xh[i], roi_xl[i]
+            elif roi_xl[i] == roi_xh[i]:
+                roi_xl[i] = 0
+                roi_xh[i] = W - 1
+                roi_yl[i] = 0
+                roi_yh[i] = H - 1
+            if roi_yl[i] > roi_yh[i]:
+                roi_yl[i], roi_yh[i] = roi_yh[i], roi_yl[i]
+        roi_xl = np.reshape(roi_xl, [num_batch, num_box, 1])
+        roi_xh = np.reshape(roi_xh, [num_batch, num_box, 1])
+        roi_yl = np.reshape(roi_yl, [num_batch, num_box, 1])
+        roi_yh = np.reshape(roi_yh, [num_batch, num_box, 1])
+        if box_format == 'TENSORFLOW':
+            boxes = np.concatenate((roi_yl, roi_xl, roi_yh, roi_xh), 2)
+        else:
+            center_x = (roi_xl + roi_xh) / 2
+            center_y = (roi_yl + roi_yh) / 2
+            width = roi_xh - roi_xl
+            height = roi_yh - roi_yl
+            boxes = np.concatenate((center_x, center_y, width, height), 2)
+        return boxes
 
+    def test_NMS(self, case_name):
+        """NMS"""
+
+        @tpulang(self.chip)
+        def _test_NMS(num_batch, num_boxes, num_classes, box_format, max_box_num, dtype="float32"):
+            box_data = self.gen_rand_boxes(num_batch, num_boxes, 256, 367, box_format)
+            score_data = np.random.rand(num_batch, num_classes, num_boxes).astype(np.float32)
+            boxes = tpul.Tensor(dtype=dtype, shape=list(box_data.shape), data=box_data)
+            scores = tpul.Tensor(dtype=dtype, shape=list(score_data.shape), data=score_data)
+            y = tpul.nms(boxes, scores, box_format=box_format, max_box_num_per_class=max_box_num)
+            self.compile_and_check(self.unique_name(case_name), [boxes, scores], [y])
+
+        _test_NMS(2, 6, 4, 'PYTORCH', 4)
+        _test_NMS(2, 6, 4, 'TENSORFLOW', 4)
+
+    #######################################################################
+    # Interp
+    # ------------
+    def test_Interp(self, case_name):
+        """interp"""
+
+        @tpulang(self.chip)
+        def _test_interp(shape_x: List[int], method, coord_mode, dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.interpolate(x, 2, 3, method=method, coord_mode=coord_mode)
+            self.compile_and_check(self.unique_name(case_name), [x], [y])
+
+        _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel')
+        _test_interp([2, 3, 24, 28], 'nearest', 'align_corners')
+        _test_interp([2, 3, 24, 28], 'linear', 'pytorch_half_pixel')
+        _test_interp([2, 3, 24, 28], 'linear', 'align_corners')
+
+    #######################################################################
+    # Lut
+    # ------------
+    def test_Lut(self, case_name):
+        """lut"""
+
+        @tpulang(self.chip)
+        def _test_lut(shape_x: List[int]):
+            x_dtype = 'int8'
+            t_dtype = 'uint8'
+            x_data = rand_data(shape_x, x_dtype)
+            t_data = rand_data([256], t_dtype)
+            x = tpul.Tensor(dtype=x_dtype, shape=shape_x, data=x_data)
+            t = tpul.Tensor(dtype=t_dtype, shape=list(t_data.shape), data=t_data)
+            y = tpul.lut(x, t)
+            self.compile_and_check(self.unique_name(case_name), [x], [y], 'int8')
+
+        _test_lut([2, 3, 28, 28])
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():

@@ -21,10 +21,10 @@ LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   param.max_output_boxes_per_class = getMaxOutputSize();
   param.center_point_box = 0;
   int input_size = getInputs().size();
-  std::vector<tensor_list_t> input_list(input_size);
-  for (int i = 0; i < getInputs().size(); ++i) {
+  std::vector<tensor_list_t> input_list(2);
+  for (int i = 0; i < 2; ++i) {
     tensor_list_t input;
-    input.ptr = p.inputs[0];
+    input.ptr = p.inputs[i];
     input.size = module::getNumElements(getInputs()[i]);
     input.shape = module::getShape(getInputs()[i]);
     input_list[i] = input;
@@ -32,12 +32,16 @@ LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   param.box = p.inputs[0];
   param.score = p.inputs[1];
   int output_size = module::getNumElements(getOutput());
-  ;
-std::vector<float> output_tensor_data(output_size, 0);
+  std::vector<float> output_tensor_data(output_size, 0);
   param.inputs = input_list;
   param.output = output_tensor_data.data();
-  param.iou_threshold = p.inputs[3][0];
-  param.score_threshold = p.inputs[4][0];
+  if (input_size >= 5) {
+    param.iou_threshold = p.inputs[3][0];
+    param.score_threshold = p.inputs[4][0];
+  } else {
+    param.iou_threshold = 0.5;
+    param.score_threshold = 0.5;
+  }
   NmsFunc func(param);
   auto true_num = func.invoke();
   auto tmp = (int *)output_tensor_data.data();

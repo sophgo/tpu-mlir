@@ -2367,6 +2367,21 @@ def Top_CscOp: Top_Op<"Csc"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_LutOp: Top_Op<"Lut">{
+  let summary = "Lut operator";
+
+  let description = [{
+    lookup table in index [0-255], y[i] = table(x[i])
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$table
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ScaleLutOp: Top_Op<"ScaleLut"> {
   let summary = "Scale by lut operator";
 
