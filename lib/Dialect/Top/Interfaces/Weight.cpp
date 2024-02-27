@@ -272,6 +272,8 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
 Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
+  if (dtype.isF16())
+    return getResult();
   assert(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();

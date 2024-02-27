@@ -28,18 +28,28 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
       return failure();
     }
 
+    auto cur_storage_type = module::getStorageType(op.getOutput());
+    if (!cur_storage_type.isF32() && !cur_storage_type.isF16()) {
+      return failure();
+    }
+
     auto next_scale_op = cast<ScaleOp>(nextOp);
+    auto next_storage_type = module::getStorageType(next_scale_op.getOutput());
+    if (cur_storage_type != next_storage_type) {
+      return failure();
+    }
+
     auto next_scale =
         dyn_cast<WeightOp>(next_scale_op.getScale().getDefiningOp());
     auto next_bias =
         dyn_cast<WeightOp>(next_scale_op.getBias().getDefiningOp());
-    auto next_scale_f32 = next_scale.read<float>();
-    auto next_bias_f32 = next_bias.read<float>();
+    auto next_scale_f32 = next_scale.read_as_float();
+    auto next_bias_f32 = next_bias.read_as_float();
 
     auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
-    auto cur_scale_f32 = cur_scale.read<float>();
-    auto cur_bias_f32 = cur_bias.read<float>();
+    auto cur_scale_f32 = cur_scale.read_as_float();
+    auto cur_bias_f32 = cur_bias.read_as_float();
 
     int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
     std::vector<float> scale_v(channel);
@@ -55,8 +65,15 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
         WeightOp::create(nextOp, "merged_scale", scale_v, scale_type);
     auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
     auto new_bias = WeightOp::create(nextOp, "merged_bias", bias_v, bias_type);
-    nextOp->setOperand(1, new_scale);
-    nextOp->setOperand(2, new_bias);
+    if (cur_storage_type.isF32()) {
+      nextOp->setOperand(1, new_scale);
+      nextOp->setOperand(2, new_bias);
+    } else {
+      auto new_scale_ = dyn_cast<top::WeightOp>(new_scale.getDefiningOp()).clone_f16(op);
+      auto new_bias_ = dyn_cast<top::WeightOp>(new_bias.getDefiningOp()).clone_f16(op);
+      nextOp->setOperand(1, new_scale_);
+      nextOp->setOperand(2, new_bias_);
+    }
 
     rewriter.replaceOp(op, {op.getInput()});
     return success();

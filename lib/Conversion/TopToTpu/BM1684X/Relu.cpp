@@ -47,7 +47,7 @@ void ReluLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::ReluOp op) const {
-  llvm_unreachable("Not Implemented");
+  lowering_common_int8<tpu::ReluOp>(rewriter, op, true);
 }
 
 } // namespace bm1684x

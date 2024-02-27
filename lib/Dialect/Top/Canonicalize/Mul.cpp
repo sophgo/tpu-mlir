@@ -215,19 +215,20 @@ struct MulToScale : public OpRewritePattern<MulOp> {
       assert(0);
     }
 
-    std::vector<float> scale(left_shape[1]);
-    if (auto scale_ = dyn_cast<WeightOp>(S.getDefiningOp()))
-      scale = *(scale_.read<float>());
-    else
+    // std::vector<float> scale(left_shape[1]);
+    if (!dyn_cast<WeightOp>(S.getDefiningOp()))
       return failure();
 
-    auto scale_type =
-        RankedTensorType::get({left_shape[1]}, rewriter.getF32Type());
-    auto S_ = WeightOp::create(op, "scale", scale, scale_type);
     std::vector<float> bias(left_shape[1], 0);
+    // module::gets
     auto bias_type =
-        RankedTensorType::get({left_shape[1]}, rewriter.getF32Type());
+        RankedTensorType::get(module::getShape(S).vec(), rewriter.getF32Type());
+    Value B_;
     auto B = WeightOp::create(op, "bias", bias, bias_type);
+    if (module::getStorageType(S).isF32())
+      B_ = B;
+    else
+      B_ = dyn_cast<top::WeightOp>(B.getDefiningOp()).clone_f16(op);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));
@@ -235,7 +236,7 @@ struct MulToScale : public OpRewritePattern<MulOp> {
         "relu_limit", op->getAttr("relu_limit").cast<FloatAttr>()));
 
     rewriter.replaceOpWithNewOp<ScaleOp>(op, op.getOutput().getType(),
-                                         ValueRange{X, S_, B}, attrs);
+                                         ValueRange{X, S, B_}, attrs);
     return success();
   }
 };
