@@ -206,7 +206,7 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
     module::getNCHW(getInput(), n, c, ih, iw, false);
     module::getNCHW(getOutput(), n, c, oh, ow, false);
 
-    // dynamic 
+    // dynamic
     if(p.inputs[1]){
         float* target_shape_ = p.inputs[1];
         std::vector<int64_t> out_shape;
@@ -228,6 +228,10 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
         coord = 1;
     else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
         coord = 2;
+    else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
+        coord = 3;
+    else
+        llvm_unreachable("Unsupport coord mode.");
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
     auto platform = module::getPlatform();
@@ -252,6 +256,8 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
         }
         align_corners = true;
         half_pixel = false;
+        if (coord == 3)
+            align_corners = false;
     } else if (getMode() == tpu::ResizeMode::linear) {
         switch (platform)
         {

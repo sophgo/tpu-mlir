@@ -36,6 +36,10 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     coord = 1;
   else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
+  else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
+    coord = 3;
+  else
+    llvm_unreachable("Unsupport coord mode.");
   if (getMode() == tpu::ResizeMode::nearest) {
     auto platform = module::getPlatform();
     switch (platform)
@@ -52,6 +56,8 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     }
     common.align_corners = true;
     common.half_pixel_centers = false;
+    if (coord == 3)
+        common.align_corners = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
     auto platform = module::getPlatform();
     switch (platform)
@@ -111,10 +117,16 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
     coord = 1;
   else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
+  else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
+    coord = 3;
+  else
+    llvm_unreachable("Unsupport coord mode.");
   if (getMode() == tpu::ResizeMode::nearest) {
     param.platform_sp = ONNX_NEAREST;
     param.align_corners = true;
     param.half_pixel_centers = false;
+    if (coord == 3)
+      param.align_corners = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
     param.platform_sp = PYTORCH_SUPPORT;
     param.align_corners = (coord == 2) ? 1: 0;
@@ -148,10 +160,16 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
     coord = 1;
   else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
+  else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
+    coord = 3;
+  else
+    llvm_unreachable("Unsupport coord mode.");
   if (getMode() == tpu::ResizeMode::nearest) {
     common.platform_sp = ONNX_NEAREST;
     common.align_corners = true;
     common.half_pixel_centers = false;
+    if (coord == 3)
+      common.align_corners = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
     common.platform_sp = PYTORCH_SUPPORT;
     common.align_corners = (coord == 2) ? 1 : 0;
