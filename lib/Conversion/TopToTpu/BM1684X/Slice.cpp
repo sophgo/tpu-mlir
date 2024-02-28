@@ -43,7 +43,7 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
     next_d2sOp.getOutput().replaceAllUsesWith(next_d2sOp.getInput());
     rewriter.eraseOp(next_d2sOp);
   }
-  
+
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs())  {
     attrs.push_back(attr);

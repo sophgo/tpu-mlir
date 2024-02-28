@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
@@ -500,6 +501,72 @@ struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
   }
 };
 
+// Permute0 + Matmul + Permute1 => Matmul
+struct PermuteMatMulPermute : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in0 = op.getInput();
+    auto in1 = op.getRight();
+    if (!module::isWeight(in0) || module::isWeight(in1)) {
+      return failure();
+    }
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    auto pre_op = in1.getDefiningOp();
+    auto next_op = *op->user_begin();
+    if (!isa<top::PermuteOp>(pre_op) || !isa<top::PermuteOp>(next_op)) {
+      return failure();
+    }
+    auto permute0 = cast<top::PermuteOp>(pre_op);
+    auto permute1 = cast<top::PermuteOp>(next_op);
+    auto order0 = module::getI64Array(permute0.getOrder());
+    auto order1 = module::getI64Array(permute1.getOrder());
+    // order = {0, 2, 1}
+    if (order0->size() != 3 || order1->size() != 3) {
+      return failure();
+    }
+    if (!(order0->at(0) == 0 && order0->at(1) == 2 && order0->at(2) == 1 &&
+        order1->at(0) == 0 && order1->at(1) == 2 && order1->at(2) == 1)) {
+      return failure();
+    }
+    // create new weight
+    auto weight = cast<top::WeightOp>(in0.getDefiningOp());
+    auto ori_data = weight.read_as_float();
+    std::vector<float> to_data(ori_data->size(), 0);
+    std::vector<int64_t> shape = module::getShape(in0);
+    std::vector<int64_t> order{1, 0};
+    function_permute(ori_data->data(), to_data.data(), shape, order);
+    auto new_type = RankedTensorType::get({1, shape[1], shape[0]},
+                                          module::getStorageType(in0));
+    auto new_weight =
+        top::WeightOp::create(weight, "reordered", to_data, new_type);
+    // update matmul output shape
+    op.getOutput().setType(permute1.getOutput().getType());
+
+    int64_t idx = 0;
+    Value out = permute1.getOutput();
+    auto next2_op = *permute1->user_begin();
+    for (; idx < next2_op->getNumOperands(); idx++) {
+      Value opd = next2_op->getOperand(idx);
+      if (out == opd) {
+        break;
+      }
+    }
+    next2_op->setOperand(idx, op.getOutput());
+    auto loc = module::getLoc(permute1.getOutput());
+
+    op.setOperand(0, permute0.getInput());
+    op.setOperand(1, new_weight);
+    rewriter.eraseOp(weight);
+    rewriter.eraseOp(permute0);
+    rewriter.eraseOp(permute1);
+    module::setLoc(op.getOutput(), loc);
+    return success();
+  }
+};
+
 // in eva02 and gpt2, there is matmul and slice to 3 branches. split matmul to
 // three branch for better cali. now, this one is for eva2 only matmul + reshape
 // + 3*(slice + squeeze) => 3*(matmul + reshape + squeeze) or 3*(matmul+reshape)
@@ -674,7 +741,13 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
 
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, NoKeepDimsAddReshape,
-                 MatmulWithPermuteAndSplit, MatMulWithSlice>(
-      context);
+  // clang-format off
+  results.insert<
+                MatMulWithBias,
+                NoKeepDimsAddReshape,
+                MatmulWithPermuteAndSplit,
+                MatMulWithSlice,
+                PermuteMatMulPermute
+                >(context);
+  // clang-format on
 }

@@ -20,5 +20,6 @@ LogicalResult tpu::Host2DeviceOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::Host2DeviceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
-  return do_nothing(mode);
+  auto op = getOperation();
+  return type_verify_case_same(op, 0, mode);
 }

@@ -17,16 +17,16 @@ int64_t top::AddOp::getFLOPs() {
 LogicalResult top::AddOp::init(InferenceParameter &p) {
   if (getInputs().size() == 2) {
     auto binary = new Binary();
-    auto lhs_shape = module::getShape(getInputs()[0]);
-    auto rhs_shape = module::getShape(getInputs()[1]);
+    // auto lhs_shape = module::getShape(getInputs()[0]);
+    // auto rhs_shape = module::getShape(getInputs()[1]);
 
-    (*binary)
-        .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
-        .dst(p.outputs[0], module::getShape(getOutput()))
-        .do_relu(getDoRelu())
-        .relu_limit(getReluLimit().convertToDouble())
-        .algorithem(algorithm::binary_add)
-        .setup();
+    // (*binary)
+    //     .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
+    //     .dst(p.outputs[0], module::getShape(getOutput()))
+    //     .do_relu(getDoRelu())
+    //     .relu_limit(getReluLimit().convertToDouble())
+    //     .algorithem(algorithm::binary_add)
+    //     .setup();
 
     p.handle = (void *)binary;
   } else {
@@ -47,7 +47,20 @@ LogicalResult top::AddOp::inference(InferenceParameter &p) {
     if (p.handle == nullptr) {
       return failure();
     }
+
     auto binary = (Binary *)p.handle;
+
+    auto lhs_shape = module::getShape(getInputs()[0]);
+    auto rhs_shape = module::getShape(getInputs()[1]);
+
+    (*binary)
+        .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
+        .dst(p.outputs[0], module::getShape(getOutput()))
+        .do_relu(getDoRelu())
+        .relu_limit(getReluLimit().convertToDouble())
+        .algorithem(algorithm::binary_add)
+        .setup();
+
     binary->run();
   } else {
     auto num_elem = module::getNumElements(getOutput());

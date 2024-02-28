@@ -18,6 +18,44 @@ LogicalResult tpu::AddOp::init(InferenceParameter &p) {
   if (module::isCV18xx() && getInputs().size() != 2) {
     p.handle = nullptr;
   } else {
+    p.handle = nullptr;
+    // auto in0_shape = module::getShape(getInputs()[0]);
+    // auto in1_shape = module::getShape(getInputs()[1]);
+    // auto binary = new Binary();
+    // // fix me. naive impletment.
+    // // It should be o = alpha * i0 + beta * i1
+    // auto coeff_ = module::getF64Array(getCoeff(), 2, 1);
+    // bool is_add = true;
+    // if (module::getStorageType(getOutput()).isa<FloatType>()) {
+    //   if (coeff_->at(0) == 1 && coeff_->at(1) == -1) {
+    //     is_add = false;
+    //   }
+    // }
+
+    // (*binary)
+    //     .hs(p.inputs[0], p.inputs[1], in0_shape, in1_shape)
+    //     .dst(p.outputs[0], module::getShape(getOutput()))
+    //     .do_relu(getDoRelu())
+    //     .relu_limit(getReluLimit().convertToDouble())
+    //     .algorithem(is_add ? algorithm::binary_add : algorithm::binary_sub)
+    //     .setup();
+    // p.handle = (void *)binary;
+  }
+  return success();
+}
+
+void tpu::AddOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto binary = (Binary *)p.handle;
+    delete binary;
+    p.handle = nullptr;
+  }
+}
+
+LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
+  if (module::isCV18xx() && getInputs().size() != 2) {
+    p.handle = nullptr;
+  } else {
     auto in0_shape = module::getShape(getInputs()[0]);
     auto in1_shape = module::getShape(getInputs()[1]);
     auto binary = new Binary();
@@ -40,18 +78,9 @@ LogicalResult tpu::AddOp::init(InferenceParameter &p) {
         .setup();
     p.handle = (void *)binary;
   }
-  return success();
-}
 
-void tpu::AddOp::deinit(InferenceParameter &p) {
-  if (p.handle != nullptr) {
-    auto binary = (Binary *)p.handle;
-    delete binary;
-    p.handle = nullptr;
-  }
-}
 
-LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
+
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
