@@ -124,7 +124,7 @@ static void update_multi_core_secs(const shape_secs_t max_shape_secs,
 
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs) {
   shape_secs = {1, 1, 1, 1, 1};
-  if (lg_info.group_ops.size() == 1) {
+  if (lg_info.group_ops.size() == 1 && false == LgPass::OPTIONS.group_by_cores) {
     return true;
   }
 
@@ -196,6 +196,9 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs) {
 
 static int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
   int64_t timestep_num = time_step->get_timestep_num();
+  if (timestep_num == 0) {
+    return 0;
+  }
   std::vector<int64_t> lmem_req(timestep_num, 0);
   const MemBuff &lmem_buffer = time_step->get_lmem_buffer();
 
@@ -404,6 +407,9 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
 
     // update nsecs
     int64_t total_secs = get_split_max_secs(time_step);
+    if (total_secs == 0) {
+      return false;
+    }
     shape_secs.nsecs =
         std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
     if (shape_secs.nsecs > nsec)
@@ -918,7 +924,7 @@ static bool backward_update_slice(
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos) {
-  if (lg_info.group_ops.size() == 1) {
+  if (lg_info.group_ops.size() == 1 && false == LgPass::OPTIONS.group_by_cores) {
     return true;
   }
   tensor_infos.clear();
@@ -981,7 +987,7 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos) {
-  if (lg_info.group_ops.size() == 1) {
+  if (lg_info.group_ops.size() == 1  && false == LgPass::OPTIONS.group_by_cores) {
     return true;
   }
   tensor_infos.clear();

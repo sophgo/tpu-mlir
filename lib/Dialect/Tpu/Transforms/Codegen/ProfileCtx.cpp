@@ -119,8 +119,12 @@ void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
     laddr = g_param.getOutAddr();
     auto n_slice_v = g_param.getNSlice();
     auto h_slice_v = g_param.getHSlice();
-    n_slice = n_slice_v.size() > n_step ? n_slice_v[n_step] : n_slice_v[0];
-    h_slice = h_slice_v.size() > h_step ? h_slice_v[h_step] : h_slice_v[0];
+    if (!n_slice_v.empty()) {
+      n_slice = n_slice_v.size() > n_step ? n_slice_v[n_step] : n_slice_v[0];
+    }
+    if (!h_slice_v.empty()) {
+      h_slice = h_slice_v.size() > h_step ? h_slice_v[h_step] : h_slice_v[0];
+    }
   } else {
     gaddr = module::getAddress(value);
   }
@@ -136,8 +140,8 @@ void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
 
   log_str("[bmprofile] tensor_id=%d is_in=%d shape=%s dtype=%d is_const=%d "
           "gaddr=%lld gsize=%d loffset=%d nslice=%d hslice=%d l2addr=%d\n",
-          tensor_id, is_in, shape_str.c_str(), dtype, isWeight(value),
-          gaddr, gsize, laddr, n_slice, h_slice, l2addr);
+          tensor_id, is_in, shape_str.c_str(), dtype, isWeight(value), gaddr,
+          gsize, laddr, n_slice, h_slice, l2addr);
 }
 
 void ProfileCtx::log_global_layer(Operation *op) {

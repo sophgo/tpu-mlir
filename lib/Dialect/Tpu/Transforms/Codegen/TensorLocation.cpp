@@ -83,6 +83,9 @@ group_info_t getGroupInfo(Operation *op, const slice_index &slice_i) {
 }
 
 inline int64_t modIndex(DenseI64ArrayAttr attr, int64_t index) {
+  if (attr.empty()) {
+    return 0;
+  }
   return attr[index % attr.size()];
 }
 group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
