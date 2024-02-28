@@ -81,7 +81,7 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
     auto ends_v = module::getI64Array(getEnds());
 
     if (!module::isNone(getOffsetT()))
-      offset_v->at(axis) = std::max((int64_t)(*p.inputs[1]), (int64_t)out_shape[axis]);
+      offset_v->at(axis) = *p.inputs[1]; // std::max((int64_t)(*p.inputs[1]), (int64_t)out_shape[axis]);
     if (!module::isNone(getEndsT()))
       ends_v->at(axis) = std::min((int64_t)(*p.inputs[2]), (int64_t)out_shape[axis]);
     if (!module::isNone(getStepsT()))
