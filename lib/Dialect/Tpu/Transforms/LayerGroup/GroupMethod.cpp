@@ -375,7 +375,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                                        int64_t *group_cost) {
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
-  if (status) {
+  if (status && LgPass::OPTIONS.group_by_cores == false) {
     return true;
   }
 
@@ -874,7 +874,9 @@ void GroupMethod::get_final_groups(
     for (size_t j = 0; j < cut_result.size(); ++j) {
       end_idx = cut_result[j];
       get_layer_group(lg_info, base_group, start_idx, end_idx);
-      lg_infos.push_back(lg_info);
+      if (lg_info.group_ops.size() > 1 || false == LgPass::OPTIONS.group_by_cores) {
+        lg_infos.push_back(lg_info);
+      }
       start_idx = end_idx + 1;
     }
   }

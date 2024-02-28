@@ -188,7 +188,9 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
         auto cur_ts_layers = time_step->getLayers(ts);
         for (auto op : cur_ts_layers) {
           UpdateOpLgParam(op, tensor_infos, id++, lg_info.type);
-          op->moveAfter(current_op_);
+          if (current_op_ !=nullptr) {
+            op->moveAfter(current_op_);
+          }
           current_op_ = op;
         }
       }

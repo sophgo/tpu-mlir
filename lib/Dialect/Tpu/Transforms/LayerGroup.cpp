@@ -17,6 +17,9 @@ namespace tpu_mlir {
 namespace tpu {
 
 bool force_group_by_cores(const std::string &option) {
+  if (module::getCoreNum() < 2) {
+    return false;
+  }
   if (option == "true") {
     return true;
   } else if (option == "auto" || option == "false") {
