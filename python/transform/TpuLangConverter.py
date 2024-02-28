@@ -469,5 +469,8 @@ class TpuLangConverter(BaseConverter):
         mlir_txt = self.mlir.print_module()
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
+        for k,v in self.constant.items():
+            if v.dtype == 'float16':
+                self.constant[k] = v.view('uint16')
         np.savez(self.weight_file, **self.constant)
         print("Save mlir file: {}".format(mlir_file))

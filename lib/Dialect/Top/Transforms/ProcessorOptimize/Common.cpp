@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
+#include "tpu_mlir/Support/Float16.h"
 
 namespace tpu_mlir {
 namespace top {
@@ -29,10 +30,19 @@ MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
   if (!sBias) {
     return failure();
   }
+  auto cur_storage_type = module::getStorageType(op.getOutput());
+  if (!cur_storage_type.isF32() && !cur_storage_type.isF16()) {
+    return failure();
+  }
+  auto pre_storage_type = module::getStorageType(convOp.getOutput());
+  if (cur_storage_type != pre_storage_type) {
+    return failure();
+  }
+
   std::vector<float_t> scaleVec(c, 1);
   if (scale) {
     auto scaleShape = module::getShape(scale);
-    auto scaleData = scale.read<float>();
+    auto scaleData = scale.read_as_float();
     scaleVec.assign(scaleData->begin(), scaleData->end());
     if (std::find(scaleShape.begin(), scaleShape.end(), c) ==
             scaleShape.end() &&
@@ -44,7 +54,7 @@ MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
       return failure();
     }
 
-    auto filterData = filterOp.read<float>();
+    auto filterData = filterOp.read_as_float();
     std::vector<float_t> newFilter(filterData->size(), 0);
     uint32_t innerSize = filterData->size() / c;
     for (uint32_t i = 0; i < c; ++i) {
@@ -53,12 +63,21 @@ MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
             filterData->at(i * innerSize + j) * scaleVec.at(i);
       }
     }
-    filterOp.update(newFilter, newFilter.size());
+    if (cur_storage_type.isF32()) {
+      filterOp.update(newFilter, newFilter.size());
+    } else {
+      std::vector<uint16_t> newFilterF16(filterData->size(), 0);
+#pragma omp parallel for schedule(static, omp_schedule(filterData->size()))
+      for (uint64_t i = 0; i < filterData->size(); ++i) {
+        newFilterF16.at(i) = f32_to_f16(filterData->at(i));
+      }
+      filterOp.update(newFilterF16, newFilterF16.size());
+    }
   }
   if (sBias) {
     // merge SBias into conv's bias
     auto sBiasShape = module::getShape(sBias);
-    auto sBiasData = sBias.read<float>();
+    auto sBiasData = sBias.read_as_float();
     if (std::find(sBiasShape.begin(), sBiasShape.end(), c) ==
             sBiasShape.end() &&
         sBiasData->size() != c) {
@@ -72,7 +91,7 @@ MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
       if (!cBiasOp) { // filter may be not WeightOp
         return failure();
       }
-      auto cBiasData = cBiasOp.read<float>();
+      auto cBiasData = cBiasOp.read_as_float();
       for (int i = 0; i < c; ++i) {
         newBiasVec[i] += cBiasData->at(i) * scaleVec[i];
       }

@@ -22,21 +22,21 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
 
     auto mean = cast<WeightOp>(op.getMean().getDefiningOp());
     auto variance = cast<WeightOp>(op.getVariance().getDefiningOp());
-    auto mean_f32 = mean.read<float>();
-    auto variance_f32 = variance.read<float>();
+    auto mean_f32 = mean.read_as_float();
+    auto variance_f32 = variance.read_as_float();
 
     auto shape = module::getShape(op.getInput());
     auto channel = shape.size() > 1 ? shape[1] : shape[0];
 
     std::shared_ptr<std::vector<float>> gamma_f32;
     if (auto gamma = dyn_cast<WeightOp>(op.getGamma().getDefiningOp())) {
-      gamma_f32 = gamma.read<float>();
+      gamma_f32 = gamma.read_as_float();
     } else {
       gamma_f32 = std::make_shared<std::vector<float>>(channel, 1.0f);
     }
     std::shared_ptr<std::vector<float>> beta_f32;
     if (auto beta = dyn_cast<WeightOp>(op.getBeta().getDefiningOp())) {
-      beta_f32 = beta.read<float>();
+      beta_f32 = beta.read_as_float();
     } else {
       beta_f32 = std::make_shared<std::vector<float>>(channel, 0.0f);
     }
@@ -55,10 +55,21 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
     auto scale_op = WeightOp::create(op, "scale", scale, scale_type);
     auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
     auto bias_op = WeightOp::create(op, "bias", bias, bias_type);
+    std::vector<Value> operands;
+    operands.push_back(op.getInput());
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (storage_type.isF32()) {
+      operands.push_back(scale_op);
+      operands.push_back(bias_op);
+    } else {
+      auto scale_op_ = dyn_cast<top::WeightOp>(scale_op.getDefiningOp()).clone_f16(op);
+      auto bias_op_ = dyn_cast<top::WeightOp>(bias_op.getDefiningOp()).clone_f16(op);
+      operands.push_back(scale_op_);
+      operands.push_back(bias_op_);
+    }
     // replace the BatchNorm Op
     rewriter.replaceOpWithNewOp<ScaleOp>(
-        op, op.getOutput().getType(),
-        ValueRange{op.getInput(), scale_op, bias_op});
+        op, op.getOutput().getType(), operands);
     return success();
   }
 };

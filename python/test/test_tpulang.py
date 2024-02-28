@@ -231,9 +231,8 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Add
     # ------------
-    def add_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if is_fp(dtype) else 'int32'
-        add = tpul.add(input_0, input_1, out_dtype = out_dtype)
+    def add_op(self, input_0, input_1, dtype=None):
+        add = tpul.add(input_0, input_1, out_dtype = dtype)
         return add
 
 
@@ -556,7 +555,7 @@ class TPULANG_IR_TESTER(object):
 
     def test_Resnet50(self, case_name):
         def conv_block(x, kshape, stride, pad):
-            conv = self.conv_op(x, kshape, stride, pad)
+            conv = self.conv_op(x, kshape, stride, pad, bias=True)
             norm = self.batch_norm_op(conv, kshape[0])
             relu = tpul.relu(norm)
             return relu
@@ -570,8 +569,8 @@ class TPULANG_IR_TESTER(object):
         def resnet_block0(x, oc, ic, kc, stride):
             conv0_0 = conv_block(x, [kc, ic, 1, 1], [1,1], [0,0,0,0])
             conv0_1 = conv_block(conv0_0, [kc, kc, 3, 3], [stride,stride], [1,1,1,1])
-            conv0_2 = self.conv_op(conv0_1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
-            conv1 = self.conv_op(x, [oc, ic, 1, 1], [stride,stride], [0,0,0,0])
+            conv0_2 = self.conv_op(conv0_1, [oc, kc, 1, 1], [1,1], [0,0,0,0], bias=True)
+            conv1 = self.conv_op(x, [oc, ic, 1, 1], [stride,stride], [0,0,0,0], bias=True)
             return self.add_op(conv0_2, conv1)
 
         def resnet_block1(x, oc, kc):
@@ -579,10 +578,10 @@ class TPULANG_IR_TESTER(object):
             relu = tpul.relu(norm)
             conv0 = conv_block(relu, [kc, oc, 1, 1], [1,1], [0,0,0,0])
             conv1 = conv_block(conv0, [kc, kc, 3, 3], [1,1], [1,1,1,1])
-            conv2 = self.conv_op(conv1, [oc, kc, 1, 1], [1,1], [0,0,0,0])
+            conv2 = self.conv_op(conv1, [oc, kc, 1, 1], [1,1], [0,0,0,0], bias=True)
             return self.add_op(conv2, x)
 
-        def resnet50(x):
+        def resnet50(x, dtype="float32"):
             norm0 = self.batch_norm_op(x, 3)
             conv1 = conv_block(norm0, [64, 3, 7, 7], [2,2], [3,3,3,3])
             pool1 = max_pool_block(conv1, 64, [3,3], [2,2], [1,1,1,1])
@@ -616,20 +615,21 @@ class TPULANG_IR_TESTER(object):
             relu17 = tpul.relu(norm17)
             apool = tpul.avgpool2d(relu17, None, [1,1], [0,0,0,0])
             reshape = tpul.reshape(apool, [0, -1])
-            mat_weight = self.coeff_tensor([2048, 1000], "float32", scale=0.05)
-            mat_bias = self.coeff_tensor([1000], "float32", scale=0.03)
+            mat_weight = self.coeff_tensor([2048, 1000], dtype, scale=0.05)
+            mat_bias = self.coeff_tensor([1000], dtype, scale=0.03)
             mat = self.matmul_op(reshape, mat_weight, mat_bias)
             return mat
 
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape):
-            x_data = rand_data(in_shape, 'float32', -10, 10)
-            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+        def _test_model_def(in_shape, dtype='float32'):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = resnet50(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [out])
+            self.compile_and_check(self.unique_name(case_name), [x], [out], mode="int8")
 
         _test_model_def([1, 3, 224, 224])
+        _test_model_def([1, 3, 224, 224], 'float16')
 
 
     def conv_int_op(self,
@@ -734,11 +734,11 @@ class TPULANG_IR_TESTER(object):
 
 
     def batch_norm_op(self, x, oc):
-        mean = self.coeff_tensor([oc], "float32", scale=0.2)
-        var = self.coeff_tensor([oc], "float32", data=np.clip(np.random.randn(oc), 0.5, 10).astype(np.float32))
-        gamma = self.coeff_tensor([oc], "float32", data=np.ones((oc)).astype(np.float32))
-        beta = self.coeff_tensor([oc], "float32", data=np.zeros((oc)).astype(np.float32))
-        return tpul.batch_norm(x, mean, var, gamma, beta)
+        mean = self.coeff_tensor([oc], x.dtype, scale=0.2)
+        var = self.coeff_tensor([oc], x.dtype, data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
+        gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
+        beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
+        return tpul.batch_norm(x, mean, var, epsilon=1e-5)
 
     #######################################################################
     # Convolution
@@ -751,10 +751,10 @@ class TPULANG_IR_TESTER(object):
                 group=1,
                 dilation=[1, 1],
                 bias=False,
-                dtype="float32"):
+                dtype=None):
         oc = kshape[0]
-        weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
-        bias = self.coeff_tensor(oc, dtype) if bias else None
+        weight = self.coeff_tensor(kshape, x.dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
+        bias = self.coeff_tensor([oc], "float32") if bias else None
         conv = tpul.conv(x,
                             weight,
                             bias=bias,
@@ -762,7 +762,7 @@ class TPULANG_IR_TESTER(object):
                             pad=pad,
                             dilation=dilation,
                             group=group,
-                            out_dtype=dtype)
+                            out_dtype=dtype if dtype is not None else x.dtype)
         return conv
 
     def test_Conv2d(self, case_name):
@@ -2011,7 +2011,7 @@ class TPULANG_IR_TESTER(object):
                     bias=False,
                     dtype="float32"):
             oc = kshape[0]
-            weight = self.coeff_tensor(kshape, dtype)
+            weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
             bias = self.coeff_tensor(oc, dtype) if bias else None
             conv = tpul.conv(x,
                             weight,
@@ -2075,7 +2075,7 @@ class TPULANG_IR_TESTER(object):
                     bias=False,
                     dtype="float32"):
             oc = kshape[0]
-            weight = self.coeff_tensor(kshape, dtype)
+            weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
             bias = self.coeff_tensor(oc, dtype) if bias else None
             conv = tpul.conv(x,
                             weight,
