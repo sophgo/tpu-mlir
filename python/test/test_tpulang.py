@@ -135,6 +135,7 @@ class TPULANG_IR_TESTER(object):
             "Tile": (self.test_Tile,                    Y, Y),
             "TopK": (self.test_TopK,                    Y, Y),
             #### model ####
+            "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
             "Resnet50":(self.test_Resnet50,             Y, Y),
             "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
@@ -271,7 +272,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             add = self.add_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [add])
 
@@ -668,9 +669,9 @@ class TPULANG_IR_TESTER(object):
             conv2 = self.conv_int_op(rq1, [96,64,3,3], [2,2], [1,1,1,1], zp=[0,0], out_dtype='int32')
             rq2 = tpul.requant_int(conv2, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
             coeff3 = self.coeff_tensor([1,96,1,1], 'int8', scale=10.0)
-            mul3 = tpul.mul(rq2, coeff3, scale=[0.25, 10, 2.5], out_dtype='int8')
+            mul3 = tpul.mul(rq2, coeff3, scale=[0.25, 10.0, 2.5], out_dtype='int8')
             coeff4 = self.coeff_tensor([1,96,1,1], 'int8', scale=2.0)
-            add4 = tpul.add(mul3, coeff4, scale=[2.5, 2, 4.0], out_dtype='int8')
+            add4 = tpul.add(mul3, coeff4, scale=[2.5, 2.0, 4.0], out_dtype='int8')
             conv5 = self.conv_int_op(add4, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
             rq5 = tpul.requant_int(conv5, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
             conv6 = self.conv_int_op(rq5, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
@@ -679,7 +680,7 @@ class TPULANG_IR_TESTER(object):
             coeff7 = self.coeff_tensor([1,96,1,1], 'int8', scale=2.0)
             mul7 = tpul.mul(add7, coeff7, scale=[0.4, 2.0, 4.0], out_dtype='int8')
             coeff8 = self.coeff_tensor([1,96,1,1], 'int8', scale=-2)
-            add8 = tpul.add(mul7, coeff8, scale=[4.0, 2, 8], out_dtype='int8')
+            add8 = tpul.add(mul7, coeff8, scale=[4.0, 2.0, 8.0], out_dtype='int8')
             conv9 = self.conv_int_op(add8, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
             rq9 = tpul.requant_int(conv9, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
             dq10 = tpul.dequant_int_to_fp(rq9, 0.0625, 0)
@@ -739,6 +740,96 @@ class TPULANG_IR_TESTER(object):
         gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
         beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
         return tpul.batch_norm(x, mean, var, epsilon=1e-5)
+
+    def layer_norm_op(self, x, oc, axis):
+        mean = self.coeff_tensor([oc], x.dtype, scale=0.2)
+        var = self.coeff_tensor([oc], x.dtype, data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
+        return tpul.layer_norm(x, mean, var, epsilon=1e-5, axis=axis)
+
+    #######################################################################
+    # bert
+    # ------------
+    def test_Bert(self, case_name):
+        def matmul_weight(x, shape, dtype):
+            weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
+            bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
+            return tpul.matmul(x, weight, bias, out_dtype=dtype)
+        def attention_block(x0, x1, x2, shape, d, head, musk, dtype="float32"):
+            B = shape[0]
+            S_q = shape[1]
+            H_q = shape[2]
+            S_k = shape[1]
+            H_k = shape[2]
+            S_v = shape[1]
+            H_v = shape[2]
+            q = matmul_weight(x0, [H_q, d*head], dtype)
+            q = tpul.reshape(q, [B, S_q, head, d])
+            q = tpul.permute(q, [0, 2, 1, 3])
+            k = matmul_weight(x1, [H_k, d*head], dtype)
+            k = tpul.reshape(k, [B, S_k, head, d])
+            k = tpul.permute(k, [0, 2, 1, 3])
+            k = tpul.permute(k, [0, 1, 3, 2])
+            v = matmul_weight(x2, [H_v, d*head], dtype)
+            v = tpul.reshape(v, [B, S_v, head, d])
+            v = tpul.permute(v, [0, 2, 1, 3])
+            m0 = tpul.matmul(q, k, out_dtype=dtype)
+            if dtype == "float32":
+                m0 = tpul.div(m0, np.sqrt(d))
+            else:
+                m0 = tpul.mul(m0, 1/np.sqrt(d))
+            m0 = tpul.add(m0, musk) if musk is not None else m0
+            m0 = tpul.softmax(m0, 3)
+            m1 = tpul.matmul(m0, v, out_dtype=dtype)
+            m1 = tpul.permute(m1, [0, 2, 1, 3])
+            m1 = tpul.reshape(m1, [B, S_q, -1])
+            out = matmul_weight(m1, [d*head, H_q], dtype=dtype)
+            return out
+
+        def mlp_block(x, shape, dtype):
+            H = shape[2]
+            norm = self.layer_norm_op(x, shape[2], 2)
+            mat0 = matmul_weight(norm, [H, 4*H], dtype=dtype)
+            gelu = tpul.gelu(mat0)
+            mat1 = matmul_weight(gelu, [4*H, H], dtype=dtype)
+            out = tpul.add(norm, mat1)
+            return out
+
+        def transformer_block(x, shape, d, head, musk, dtype="float32"):
+            norm = self.layer_norm_op(x, shape[2], 2)
+            self_atten = attention_block(norm, norm, norm, shape, d, head, musk, dtype=dtype)
+            add = tpul.add(norm, self_atten)
+            mlp = mlp_block(add, shape, dtype=dtype)
+            return mlp
+
+        def bert(x, mask, shape, d, head, num, dtype="float32"):
+            reshape0 = tpul.reshape(mask, [1, 1, 1, -1])
+            sub = tpul.sub(reshape0, 1)
+            mul = tpul.mul(sub, -100000000)
+            transformer = x
+            for i in range(num):
+                trans = transformer_block(transformer, shape, d, head, mul, dtype=dtype)
+                transformer = trans
+            norm2 = self.layer_norm_op(transformer, shape[2], 2)
+            mat2 = matmul_weight(norm2, [shape[2], 2], dtype=dtype)
+            slice = tpul.split(mat2, 2, 2)
+            out0 = tpul.reshape(slice[0], [1, -1])
+            out1 = tpul.reshape(slice[1], [1, -1])
+            return out0, out1
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, d, head, num, dtype='float32'):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            musk_num = np.random.randint(2, in_shape[1]+ 1)
+            musk_data = np.hstack((np.array([1] * musk_num), np.array([0] * (in_shape[1] - musk_num)))).astype(dtype)
+            musk = tpul.Tensor(dtype=dtype, shape=[in_shape[0], in_shape[1]], data=musk_data)
+            out0, out1 = bert(x, musk, in_shape, d, head, num, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x, musk], [out0, out1], mode="int8")
+
+        _test_model_def([1, 384, 1024], 64, 16, 2)
+        _test_model_def([1, 384, 1024], 64, 16, 2, 'float16')
+        _test_model_def([1, 224, 768], 64, 12, 2, 'float16')
+        _test_model_def([1, 384, 768], 64, 12, 2)
 
     #######################################################################
     # Convolution
@@ -832,7 +923,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             mul = self.mul_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [mul])
 
@@ -859,7 +950,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             sub = self.sub_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [sub])
 
@@ -885,7 +976,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, "float32")
             y_data = rand_data(shape_y, "float32")
             x = tpul.Tensor(dtype="float32", shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype="float32", shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype="float32", shape=shape_y, data=y_data, ttype="coeff")
             div = self.div_op(x, y)
             self.compile_and_check(self.unique_name(case_name), [x], [div])
 
@@ -911,7 +1002,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             max = self.max_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [max])
 
@@ -938,7 +1029,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             min = self.min_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [min])
 
@@ -1024,7 +1115,7 @@ class TPULANG_IR_TESTER(object):
             left = rand_data(shape_x, dtype)
             right = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right, ttype="coeff")
             matmul = self.matmul_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [matmul])
 
@@ -2221,7 +2312,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, x_dtype)
             t_data = rand_data([256], t_dtype)
             x = tpul.Tensor(dtype=x_dtype, shape=shape_x, data=x_data)
-            t = tpul.Tensor(dtype=t_dtype, shape=list(t_data.shape), data=t_data)
+            t = tpul.Tensor(dtype=t_dtype, shape=list(t_data.shape), data=t_data, ttype="coeff")
             y = tpul.lut(x, t)
             self.compile_and_check(self.unique_name(case_name), [x], [y], 'int8')
 

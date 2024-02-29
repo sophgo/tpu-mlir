@@ -105,19 +105,25 @@ class Scalar:
         else:
             self.dtype = dtype
 
+    def __repr__(self):
+        s = "scalar (\n{modstr}\n)"
+        modstr = [self.value, self.dtype]
+        return s.format(modstr=_indent(modstr, 2))
+
 class Tensor:
     ID = 0
 
     def __init__(self,
                  shape: list = [],
                  name: str = None,
-                 ttype="neuron",
+                 ttype: str ="neuron",
                  data=None,
                  dtype: str = "float32",
                  scale: Union[float, List[float]] = None,
                  zero_point: Union[int, List[int]] = None):
         self.id = int(Tensor.ID)
-        self.shape = shape if isinstance(shape, list) else [shape]
+        shape = shape if isinstance(shape, list) else [shape]
+        self.shape = shape
         self.name = "BMTensor" + str(self.id) if name is None else name
         assert ttype.lower() in ["neuron", "coeff"]
         self.ttype = ttype.lower()
@@ -127,6 +133,15 @@ class Tensor:
         self.dtype = dtype.lower()
         if data is not None:
             assert data.dtype == self.dtype
+        if data is not None and tuple(shape) != tuple(data.shape):
+            num = 1
+            for s in shape:
+                num *= s
+            if num == data.size:
+                data = data.reshape(shape)
+            else:
+                raise Exception("Tensor shape is ambiguous! '{t_s}' vs '{b_s}'".format(
+                                t_s=shape, b_s=data.shape))
         self.buffer = data
         self.is_quantized: bool = False
         self.quantization(scale=scale, zero_point=zero_point)
