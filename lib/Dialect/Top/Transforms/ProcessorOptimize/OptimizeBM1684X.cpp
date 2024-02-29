@@ -377,6 +377,13 @@ public:
     }
     auto len = module::getNumElements(matmul_queries.getInput());
     auto n = module::getShape(matmul_queries.getInput())[0];
+    auto shape = module::getShape(matmul1.getOutput());
+    int64_t head;
+    if (shape.size() == 3) {
+      head = shape[0] / n;
+    } else {
+      head = shape[1];
+    }
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
     auto len_weight1 = module::getNumElements(matmul_keys.getRight());
     auto len_weight2 = module::getNumElements(matmul_values.getRight());
@@ -389,7 +396,7 @@ public:
       }
     } else if (module::isBM1684X()) {
       if (len / n > 2048 * 320 * 4 ||
-          (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3 * 4) {
+          (len_weight0 * 2 + len_weight1 + len_weight2) / head > 1024 * 128 * 4) {
         return failure();
       }
     }
@@ -398,14 +405,6 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
-    auto batch = module::getShape(op.getOutput())[0];
-    auto shape = module::getShape(matmul1.getOutput());
-    int64_t head;
-    if (shape.size() == 3) {
-      head = shape[0] / batch;
-    } else {
-      head = shape[1];
-    }
     attrs.push_back(
         rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
     if (module::isCalibratedType(op.getOutput().getType())) {
@@ -875,8 +874,9 @@ public:
     Value right = op.getRight();
     Value bias = op.getBias();
     Value output = op.getOutput();
-    auto rightType = llvm::cast<ShapedType>(right.getType());
+    // auto rightType = llvm::cast<ShapedType>(right.getType());
     auto outputType = llvm::cast<ShapedType>(output.getType());
+    auto storage_type = module::getStorageType(right);
     bool with_bias = !module::isNone(bias);
     int32_t id = 0;
     auto loc_name = module::getName(op.getOperation()).str();
@@ -1024,10 +1024,16 @@ public:
       SmallVector<int64_t> new_right_shape(right_shape);
       new_right_shape[new_right_shape.size() - 1] = slice_width[idx];
       auto new_right_type =
-          RankedTensorType::get(new_right_shape, rightType.getElementType());
+          RankedTensorType::get(new_right_shape, rewriter.getF32Type()); // rightType.getElementType());
       auto new_filter = top::WeightOp::create(
           op, "_filter_" + std::to_string(id), *new_filter_f32, new_right_type);
-      operands.emplace_back(new_filter);
+
+      if (storage_type.isF16()) {
+        auto new_filter_ = dyn_cast<top::WeightOp>(new_filter.getDefiningOp()).clone_f16(op);
+         operands.emplace_back(new_filter_);
+      } else {
+        operands.emplace_back(new_filter);
+      }
 
       if (with_bias) {
         auto new_bias_f32 = std::make_shared<std::vector<float>>(

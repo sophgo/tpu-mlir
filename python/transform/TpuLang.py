@@ -563,7 +563,7 @@ def matmul(input: Tensor,
             out_dtype: str = None,
             out_name: str = None):
 
-    o_dtype = "float32" if out_dtype is None else out_dtype
+    o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype in ["float32", "float16"]
     assert input.is_quantized is False
     assert right.is_quantized is False
@@ -660,8 +660,8 @@ def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scal
     o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
     if scale is not None:
         zero_point = zero_point if zero_point is not None else [0, 0, 0]
-        tensor0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype))
-        tensor1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=np.array([tensor_i1.value]).astype(tensor_i1.dtype))
+        tensor0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype), ttype="coeff")
+        tensor1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=np.array([tensor_i1.value]).astype(tensor_i1.dtype), ttype="coeff")
         output = Tensor(dtype=o_dtype, name=out_name, scale=scale[2], zero_point=zero_point[2])
         tensor0.quantization(scale=scale[0], zero_point=zero_point[0])
         tensor1.quantization(scale=scale[1], zero_point=zero_point[1])
@@ -685,37 +685,50 @@ def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scal
             TpuLang.insert_op(op_type+"Const", [tensor], [output], params = attr)
         return output
 
-@annotation_check
 @to_scalar(2)
+@annotation_check
 def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Add", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
 
-@annotation_check
 @to_scalar(2)
+@annotation_check
 def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Mul", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
 
+@to_scalar(2)
 @annotation_check
 def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     is_reverse = None if isinstance(tensor_i0, Tensor) else True
     return _base_binary(tensor_i0, tensor_i1, "top.Sub", scale, zero_point, is_reverse=is_reverse, out_dtype=out_dtype, out_name=out_name)
 
+@to_scalar(2)
 @annotation_check
-def div(tensor_i0: Tensor, tensor_i1: Tensor, out_name: str = None):
+def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_name: str = None):
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype, "float32")
-    # shape = broadcast_shape_inference([tensor_i0, tensor_i1])
     output = Tensor([], dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
+    if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
+        TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
+    else:
+        if isinstance(tensor_i0, Tensor):
+            tensor_i1.value = 1 / tensor_i1.value
+            return _base_binary(tensor_i0, tensor_i1, "top.Mul", out_dtype=o_dtype, out_name=out_name)
+        else:
+            tensor_i0 = Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype), ttype="coeff")
+            TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
     return output
+    # is_reverse = None if isinstance(tensor_i0, Tensor) else True
+    # return _base_binary(tensor_i0, tensor_i1, "top.Div", is_reverse=is_reverse, out_dtype=o_dtype, out_name=out_name)
 
+@to_scalar(2)
 @annotation_check
 def max(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Max", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
 
+@to_scalar(2)
 @annotation_check
 def min(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
@@ -758,17 +771,17 @@ def copy(input: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Copy", [input], [output], params=attr)
     return output
 
-# def cast(tensor_i: Tensor,
-#          out_dtype: str = 'float32',
-#          out_name: str = None,
-#          round_mode: str = 'half_away_from_zero'):
-#     shape = tensor_i.shape
-#     if out_name is None:
-#         out_name = generate_name("cast")
-#     output = Tensor(shape, dtype=out_dtype, name=out_name)
-#     TpuLang.insert_op("top.Cast", [tensor_i], [output])
-
-#     return output
+@annotation_check
+def cast(tensor_i: Tensor,
+         out_dtype: str = 'float32',
+         out_name: str = None,
+         round_mode: str = 'half_away_from_zero'):
+    shape = tensor_i.shape
+    if out_name is None:
+        out_name = generate_name("cast")
+    output = Tensor(shape, dtype=out_dtype, name=out_name)
+    TpuLang.insert_op("top.Cast", [tensor_i], [output])
+    return output
 
 @annotation_check
 def clamp(input: Tensor, min:float, max:float, out_name: str = None):
@@ -1269,12 +1282,12 @@ def split(input: Tensor,
           size: Union[Tuple[int], List[int]] = (),
           out_name: str = None) -> List[Tensor]:
     assert(num > 1 and "number of split output should be more than 1")
-    if not size:
-        assert(input.shape[axis] % num == 0 and "invalid split size")
-        size = [int(input.shape[axis] / num)] * num
-    else:
-        assert(num == len(size) and "size should be the same as num")
-        assert(sum(size) == input.shape[axis] and "invalid size")
+    # if not size:
+    #     assert(input.shape[axis] % num == 0 and "invalid split size")
+    #     size = [int(input.shape[axis] / num)] * num
+    # else:
+    #     assert(num == len(size) and "size should be the same as num")
+    #     assert(sum(size) == input.shape[axis] and "invalid size")
 
     if out_name is None:
         out_name = generate_name("split")
@@ -1282,14 +1295,44 @@ def split(input: Tensor,
     attr = {
         "axis": Attr(axis, "int32"),
         "num": Attr(num),
-        "split_size": ArrayAttr(size),
     }
+    if len(size) != 0:
+        attr["split_size"] = ArrayAttr(size)
+
     outputs = []
     for i in range(num):
         outputs.append(Tensor(dtype=input.dtype, name=f"{out_name}_{i}"))
 
     TpuLang.insert_op("top.Split", inputs=[input], outputs=outputs, params=attr)
     return outputs
+
+@annotation_check
+def slice(input: Tensor,
+          starts: Union[int, List[int]],
+          ends: Union[int, List[int]],
+          steps: Union[int, List[int]] = None,
+          axes: Union[int, List[int]] = None,
+          out_name: str = None) -> Tensor:
+    starts = [starts] if isinstance(starts, int) else starts
+    ends = [ends] if isinstance(ends, int) else ends
+    length = len(starts)
+    if steps is None:
+        steps = [1] * length
+    steps = [steps] if isinstance(steps, int) else steps
+    if axes is not None:
+        axes = [axes] if isinstance(axes, int) else axes
+        assert length == len(axes)
+    assert length == len(ends) and length == steps
+    attr = {
+        "offset": ArrayAttr(starts, "int64"),
+        "steps": ArrayAttr(steps, "int64"),
+        "ends": ArrayAttr(ends, "int64"),
+    }
+    if axes is not None:
+        attr["axes"] = ArrayAttr(axes, "int64"),
+    output = Tensor(dtype="int64", name=out_name)
+    TpuLang.insert_op("top.Slice", inputs=[input], outputs=[output], params=attr)
+    return output
 
 @annotation_check
 def pad(input: Tensor,
@@ -1522,7 +1565,7 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
-    attr = {"epsilon": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32')}
+    attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape": ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output
 
