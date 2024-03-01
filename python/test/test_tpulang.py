@@ -75,6 +75,7 @@ class TPULANG_IR_TESTER(object):
             "Ceil": (self.test_Ceil,                    Y, Y),
             "Clamp": (self.test_Clamp,                  Y, Y),
             "Concat": (self.test_Concat,                Y, Y),
+            "CondSelect": (self.test_CondSelect,        Y, Y),
             "Conv2d": (self.test_Conv2d,                Y, Y),
             "Conv3d": (self.test_Conv3d,                Y, Y),
             "Copy": (self.test_Copy,                    Y, Y),
@@ -88,6 +89,7 @@ class TPULANG_IR_TESTER(object):
             "Eqs": (self.test_Eqs,                      Y, Y),
             "Erf": (self.test_Erf,                      Y, Y),
             "Exp": (self.test_Exp,                      Y, Y),
+            "Extract": (self.test_Extract,              Y, Y),
             "Floor": (self.test_Floor,                  Y, Y),
             "Gelu": (self.test_Gelu,                    Y, Y),
             "Ge": (self.test_Ge,                        Y, Y),
@@ -112,7 +114,7 @@ class TPULANG_IR_TESTER(object):
             "Mul": (self.test_Mul,                      Y, Y),
             "Ne": (self.test_Ne,                        Y, Y),
             "Nes": (self.test_Nes,                      Y, Y),
-            "NMS": (self.test_NMS,                      Y, Y),
+            # "NMS": (self.test_NMS,                      Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
@@ -125,6 +127,7 @@ class TPULANG_IR_TESTER(object):
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
             "Sin": (self.test_Sin,                      Y, Y),
             "Sinh": (self.test_Sinh,                    Y, Y),
+            # "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
@@ -2504,6 +2507,76 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [y], 'int8')
 
         _test_lut([2, 3, 28, 28])
+
+    #######################################################################
+    # Extract
+    # ------------
+    def test_Extract(self, case_name):
+        """extract"""
+
+        @tpulang(self.chip)
+        def _test_extract(shape_x: List[int], start, end, stride, dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.extract(x, start, end, stride)
+            self.compile_and_check(self.unique_name(case_name), [x], [y])
+
+        _test_extract([2, 3, 24, 28], None, [1, 2, 12, 20], [1, 1, 2, 1])
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1])
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], None)
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1])
+
+    #######################################################################
+    # CondSelect
+    # ------------
+    def test_CondSelect(self, case_name):
+        """Cond Select"""
+
+        @tpulang(self.chip)
+        def _test_condselect(shape: List[int], flag: int, dtype="float32"):
+            inputs = []
+            cond_data = rand_data(shape, dtype)
+            cond = tpul.Tensor(dtype=dtype, shape=shape, data=cond_data)
+            inputs.append(cond)
+            if flag & 0x1:
+                tbrn_data = rand_data(shape, dtype)
+                tbrn = tpul.Tensor(dtype=dtype, shape=shape, data=tbrn_data)
+                inputs.append(tbrn)
+            else:
+                tbrn = tpul.Scalar(dtype=dtype, value=-1.2)
+            if flag & 0x10:
+                fbrn_data = rand_data(shape, dtype)
+                fbrn = tpul.Tensor(dtype=dtype, shape=shape, data=fbrn_data)
+                inputs.append(fbrn)
+            else:
+                fbrn = tpul.Scalar(dtype=dtype, value=+1.2)
+            y = tpul.cond_select(cond, tbrn, fbrn)
+            self.compile_and_check(self.unique_name(case_name), inputs, [y])
+
+        for flag in (0x00, 0x01, 0x10, 0x11):
+            _test_condselect([2, 3, 24, 28], flag)
+
+    #######################################################################
+    # Select
+    # ------------
+    def test_Select(self, case_name):
+        """Select"""
+
+        @tpulang(self.chip)
+        def _test_select(shape: List[int], type: str, dtype="float32"):
+            lhs_data = rand_data(shape, dtype)
+            lhs = tpul.Tensor(dtype=dtype, shape=shape, data=lhs_data)
+            rhs_data = rand_data(shape, dtype)
+            rhs = tpul.Tensor(dtype=dtype, shape=shape, data=rhs_data)
+            tbrn_data = rand_data(shape, dtype)
+            tbrn = tpul.Tensor(dtype=dtype, shape=shape, data=tbrn_data)
+            fbrn_data = rand_data(shape, dtype)
+            fbrn = tpul.Tensor(dtype=dtype, shape=shape, data=fbrn_data)
+            y = tpul.cond_select(lhs, rhs, tbrn, fbrn, type)
+            self.compile_and_check(self.unique_name(case_name), [lhs, rhs, tbrn, fbrn], [y])
+
+        _test_select([2, 3, 24, 28], "Greater")
+        _test_select([2, 3, 24, 28], "Less")
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():

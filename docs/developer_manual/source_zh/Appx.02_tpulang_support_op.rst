@@ -3276,3 +3276,115 @@ lut
 """""""""""
 * BM1688： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
 * BM1684X： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
+
+
+extract
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def extract(input: Tensor,
+                    start: Union[List[int], Tuple[int]] = None,
+                    end: Union[List[int], Tuple[int]] = None,
+                    stride: Union[List[int], Tuple[int]] = None,
+                    out_name: str = None)
+
+功能描述
+"""""""""""
+对输入tensor进行切片提取操作。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* start：整数的列表或者元组或None，表示切片的起始位置，为None时表示全为0。
+* end：整数的列表或者元组或None，表示切片的终止位置，为None时表示输出张量的形状。
+* stride：整数的列表或者元组或None，表示切片的步长，为None时表示全为1。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `table`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+cond_select
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def cond_select(cond: Tensor,
+                        tbrn: Union[Tensor, Scalar, float, int],
+                        fbrn: Union[Tensor, Scalar, float, int],
+                        out_name = None)
+
+功能描述
+"""""""""""
+根据条件 `cond`来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
+
+参数说明
+"""""""""""
+* cond：Tensor类型，表示条件。
+* tbrn：Tensor类型或Scalar类型，表示条件为真时取的值。
+* fbrn：Tensor类型或Scalar类型，表示条件为假时取的值。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+约束条件：若 `tbrn`和 `fbrn`皆为张量，则要求 `tbrn`与 `fbrn`的形状和数据类型相同。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+select
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def select(lhs: Tensor,
+                   rhs: Tensor,
+                   tbrn: Tensor,
+                   fbrn: Tensor,
+                   type: str,
+                   out_name = None)
+
+功能描述
+"""""""""""
+根据 `lhs`与 `rhs`的数值比较结果来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
+
+参数说明
+"""""""""""
+* lhs：Tensor类型，表示左边的张量。
+* rhs：Tensor类型，表示右边的张量。
+* tbrn：Tensor类型，表示条件为真时取的值。
+* fbrn：Tensor类型，表示条件为假时取的值。
+* type: string类型，表示比较符。可选项为"Greater"/"Less"/"GreaterOrEqual"/"LessOrEqual"/"Equal"/"NotEqual"。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+约束条件：要求 `lhs`与 `rhs`的形状和数据类型相同， `tbrn`与 `fbrn`的形状和数据类型相同。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。

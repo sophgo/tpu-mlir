@@ -2839,7 +2839,8 @@ def Top_ShapeOp : Top_Op<"Shape"> {
   let arguments = (ins
     AnyTensor:$input,
     OptionalAttr<I64Attr>:$start,
-    OptionalAttr<I64Attr>:$end
+    OptionalAttr<I64Attr>:$end,
+    OptionalAttr<I64Attr>:$step
   );
   let results = (outs AnyTensor:$output);
 }

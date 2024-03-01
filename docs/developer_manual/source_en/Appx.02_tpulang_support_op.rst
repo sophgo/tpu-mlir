@@ -2120,8 +2120,8 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor:Tensor type,表示输入操作Tensor。
-* order:List[int]或Tuple[int]型,表示置换参数。要求order长度和tensor维度一致。
+* tensor: Tensor type, reprsenting input Tensor.
+* order: List[int] or Tuple[int] type, reprsenting permutation order. The length of `order` should be the same as the dimensions of input tensor.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2410,7 +2410,7 @@ Explanation of parameters
 * tensor: A `Tensor` type, indicating the tensor that is to be padded.
 * padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used. For example, the padding of a hw 2D Tensor is [h_top, w_left, h_bottom, w_right]
 * value: A `Scalar`, `Variable` type, or `None`, representing the value to be filled. The data type is consistent with that of the tensor.
-* method:string type,表示填充方法,可选方法"constant","reflect","symmetric","edge"。
+* method: string type, representing the padding method. Optional values are "constant", "reflect","symmetric" or "edge".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2819,6 +2819,118 @@ Processor support
 """""""""""
 * BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 * BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
+
+
+extract
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def extract(input: Tensor,
+                    start: Union[List[int], Tuple[int]] = None,
+                    end: Union[List[int], Tuple[int]] = None,
+                    stride: Union[List[int], Tuple[int]] = None,
+                    out_name: str = None)
+
+Description
+"""""""""""
+Extract slice of input tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input tensor.
+* start: A list or tuple of int, or None, representing the start of slice. If set to None, `start`` is filled all with 0.
+* end: A list or tuple of int, or None, representing the end of slice. If set to None, `end`` is given as shape of input.
+* stride: A list or tuple of int, or None, representing the stride of slice. If set to None, `stride` is filled all with 1.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns a Tensor, whose data type is same of that of `table`.
+
+Processor Support
+"""""""""""
+* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8。
+
+
+cond_select
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def cond_select(cond: Tensor,
+                        tbrn: Union[Tensor, Scalar, float, int],
+                        fbrn: Union[Tensor, Scalar, float, int],
+                        out_name = None)
+
+Description
+"""""""""""
+Select by condition representing by `cond`. If condition is True, select `tbrn`, otherwise select `fbrn`.
+
+Parameters
+"""""""""""
+* cond: Tensor type, representing condition.
+* tbrn: Tensor type or Scalar type, representing true branch.
+* fbrn: Tensor type or Scalar type, representing false branch.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Constraint: If `tbrn` and `fbrn` are all Tensors, then the shape and data type of `tbrn` and `fbrn` should be the same.
+
+Returns
+"""""""""""
+Returns a Tensor whose data type is the same that of `tbrn`.
+
+Processor Support
+"""""""""""
+* BM1688:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+
+
+select
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def select(lhs: Tensor,
+                   rhs: Tensor,
+                   tbrn: Tensor,
+                   fbrn: Tensor,
+                   type: str,
+                   out_name = None)
+
+Description
+"""""""""""
+Select by the comparison result of `lhs` and `rhs`. If condition is True, select `tbrn`, otherwise select `fbrn`.
+
+Parameters
+"""""""""""
+* lhs: Tensor type, representing the left-hand-side.
+* rhs: Tensor type, representing the right-hand-side.
+* tbrn: Tensor type, representing the true branch.
+* fbrn: Tensor type, representing the false branch.
+* type: String type, representing the comparison operator. Optional values are "Greater"/"Less"/"GreaterOrEqual"/"LessOrEqual"/"Equal"/"NotEqual".
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Constraint: The shape and data type of `lhs` and `rhs` should be the same. The shape and data type of `tbrn` and `fbrn` should be the same.
+
+Returns
+"""""""""""
+Returns a Tensor whose data type is the same that of `tbrn`.
+
+Processor Support
+"""""""""""
+* BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 Normalization Operator

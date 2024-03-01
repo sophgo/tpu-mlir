@@ -14,6 +14,8 @@ from utils.mlir_shell import *
 import numpy as np
 
 
+supported_dtypes = ["float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"]
+
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
     if sOrIt_ is None:
@@ -96,14 +98,15 @@ def annotation_check(func):
 
     return wrapper
 
+def check_dtype(dtype: str):
+    assert dtype.lower() in supported_dtypes
+
 class Scalar:
 
-    def __init__(self, value, dtype=None):
+    def __init__(self, value, dtype: str ='float32'):
+        check_dtype(dtype)
         self.value = value
-        if dtype is None:
-            self.dtype = 'float32'
-        else:
-            self.dtype = dtype
+        self.dtype = dtype
 
     def __repr__(self):
         s = "scalar (\n{modstr}\n)"
@@ -127,9 +130,7 @@ class Tensor:
         self.name = "BMTensor" + str(self.id) if name is None else name
         assert ttype.lower() in ["neuron", "coeff"]
         self.ttype = ttype.lower()
-        assert dtype.lower() in [
-            "float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"
-        ]
+        check_dtype(dtype)
         self.dtype = dtype.lower()
         if data is not None:
             assert data.dtype == self.dtype
