@@ -151,28 +151,6 @@ def ArrayAttr(data: list, data_type: str = 'int64'):
     return [data, data_type, False]
 
 
-def broadcast_shape_inference(ops: list):
-    assert len(ops) > 0
-    op: Tensor = ops[0]
-    out_shape = op.shape
-    for i in ops[1:]:
-        hs_shape = i.shape
-        tmp_shape = []
-        for idx in range(len(hs_shape) - 1 if len(hs_shape) > len(out_shape) else len(out_shape) - 1, -1, -1):
-            try:
-                if out_shape[idx] != 1:
-                    tmp_shape.append(out_shape[idx])
-                else:
-                    raise
-            except:
-                if idx < len(hs_shape):
-                    tmp_shape.append(hs_shape[idx])
-                else:
-                    tmp_shape.append(out_shape[idx])
-        out_shape = [i for i in reversed(tmp_shape)]
-    return out_shape
-
-
 # data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool", "string", "dict"]
 def Attr(data, data_type: str = 'int64'):
     assert data_type.find("int") >= 0 or data_type in [
@@ -181,25 +159,26 @@ def Attr(data, data_type: str = 'int64'):
     return [data, data_type, True]
 
 
+def generate_name(op):
+    unique_name = str(uuid.uuid4())
+    return f"{op}_{unique_name}"
+
 '''
-  def operand(in_tensor, **params):
-    def _shape_inference():
-      ...
-      return output_shape
+  def operand(inputs, **params):
     attr = {
       param_name : ArrayAttr(param, param_dtype) or Attr(param, param_dtype)
       ...
     }
-    output = Tensor(_shape_inference(), dtype, name)
-    TpuLang.insert_op(op_type, inputs=[in_tensor], outputs=[output], params=attr)
+    output = Tensor(shape, dtype, name)
+    TpuLang.insert_op(op_type, inputs=[inputs...], outputs=[output], params=attr)
     return output
 '''
 
 
-def custom(tensors_in: list,
+def custom(tensors_in: List[Tensor],
            op_name: str,
-           out_dtypes: list,
-           out_names: list = None,
+           out_dtypes: List[str],
+           out_names: List[str] = None,
            params: dict = None):
     '''
         The custom op
@@ -214,10 +193,17 @@ def custom(tensors_in: list,
             tensors_out: list of output tensors
     '''
 
+    out_num = len(out_dtypes)
+    if out_names:
+        assert out_num == len(out_names)
+    else:
+        out_names = [generate_name(f"custom_{op_name}_{i}")
+                     for i in range(out_num)]
+
     tensors_out = []
     for i, out_dtype in enumerate(out_dtypes):
         tensor_out = Tensor(dtype=out_dtype,
-                            name=out_names[i] if out_names else None)
+                            name=out_names[i])
         tensors_out.append(tensor_out)
 
     attrs = {}
@@ -230,9 +216,6 @@ def custom(tensors_in: list,
             value_new = Attr(value)
         elif isinstance(value, bool):
             value_new = Attr(value, "bool")
-        # not support string params for now
-        # elif isinstance(value, str):
-        #     value_new = Attr(value, "string")
         elif isinstance(value, list):
             if all(isinstance(x, int) for x in value):
                 value_new = ArrayAttr(value)
@@ -747,16 +730,11 @@ def min(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 #     else:
 #         o_dtype = out_dtype
 
-#     shape = broadcast_shape_inference([tensor_i0, tensor_i1])
-
 #     output = Tensor(shape, dtype=o_dtype, name=out_name)
 
 #     TpuLang.insert_op("top.Min", [tensor_i0, tensor_i1], [output])
 
 #     return output
-def generate_name(op):
-    unique_name = str(uuid.uuid4())
-    return f"{op}_{unique_name}"
 
 @annotation_check
 def copy(input: Tensor, out_name: str = None):
@@ -1432,6 +1410,32 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
     TpuLang.insert_op("top.Repeat", inputs=[input, reps], outputs=[output])
     return output
 
+@annotation_check
+def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Union[List[int], Tuple[int]] = None, stride: Union[List[int], Tuple[int]] = None, out_name: str = None):
+    dims = len(input.shape)
+    if start:
+        assert (dims == len(start)), f"length of `start` should be {dims}"
+    else:
+        start = [0] * dims
+    if end:
+        assert (end is None or dims == len(end)), f"length of `end` should be {dims}"
+    else:
+        end = input.shape
+    if stride:
+        assert (stride is None or dims == len(stride)), f"length of `stride` should be {dims}"
+    else:
+        stride = [1] * dims
+    if out_name is None:
+        out_name = generate_name("extract")
+    output = Tensor(dtype=input.dtype, name=out_name)
+    attr = {
+        "offset": ArrayAttr(start),
+        "ends": ArrayAttr(end),
+        "steps": ArrayAttr(stride),
+    }
+    TpuLang.insert_op("top.Slice", inputs=[input, None, None, None], outputs=[output], params=attr)
+    return output
+
 
 ######### Vision Operator ############
 def topk(input: Tensor,
@@ -1508,6 +1512,7 @@ def interpolate(input: Tensor,
 
 ######### Element-wise Compare Operator ############
 def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, out_name: str = None):
+    assert type in ["Greater", "Less", "GreaterOrEqual", "LessOrEqual", "Equal", "NotEqual"]
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     if out_name is None:
         out_name = generate_name(type)
@@ -1596,11 +1601,14 @@ def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str 
 def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out_name: str = None):
     if out_name is None:
         out_name = generate_name("reshape")
-    attr = {
-        "shape": ArrayAttr(new_shape),
-    }
     output = Tensor(dtype=tensor.dtype, name=out_name)
-    TpuLang.insert_op("top.Reshape", inputs=[tensor], outputs=[output], params=attr)
+    inputs = [tensor]
+    attr = {}
+    if not isinstance(new_shape, Tensor):
+        attr["shape"] = ArrayAttr(new_shape)
+    else:
+        inputs.append(new_shape)
+    TpuLang.insert_op("top.Reshape", inputs=inputs, outputs=[output], params=attr)
     return output
 
 @annotation_check
@@ -1614,6 +1622,7 @@ def shape_fetch(tensor_i: Tensor,
     attr = {
         "start": Attr(begin_axis),
         "end": Attr(end_axis),
+        "step": Attr(step),
     }
     output = Tensor(dtype=tensor_i.dtype, name=out_name)
     TpuLang.insert_op("top.Shape", inputs=[tensor_i], outputs=[output], params=attr)
@@ -1624,6 +1633,9 @@ def shape_fetch(tensor_i: Tensor,
 def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
                gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, out_name: str = None):
+    assert epsilon >= 0
+    if out_name is None:
+        out_name = generate_name("batch_norm")
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"epsilon": Attr(epsilon, 'float64')}
     TpuLang.insert_op("top.BatchNorm", inputs=[input, mean, variance, gamma, beta], outputs=[output], params=attr)
@@ -1632,6 +1644,9 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 @annotation_check
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
+    assert epsilon >= 0
+    if out_name is None:
+        out_name = generate_name("layer_norm")
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape":  ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
@@ -1645,14 +1660,47 @@ def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
     TpuLang.insert_op("top.GroupNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output
 
-
-######### Shape-Related Operator ############
+######### Select Operator ############
 
 @annotation_check
 def lut(input: Tensor, table: Tensor, out_name: str = None):
+    assert input.dtype == 'int8' or input.dtype == 'uint8'
+    assert table.dtype == 'int8' or table.dtype == 'uint8'
     if out_name is None:
         out_name = generate_name("lut")
     output = Tensor(input.shape, dtype=table.dtype, name=out_name)
     TpuLang.insert_op("top.Lut", inputs=[input, table], outputs=[output])
     return output
 
+@annotation_check
+def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, Scalar], out_name = None):
+    if out_name is None:
+        out_name = generate_name("cond_select")
+    assert tbrn.dtype == fbrn.dtype
+    out_dtype = tbrn.dtype
+    params = {}
+    if isinstance(tbrn, Tensor):
+        assert tbrn.shape == cond.shape, "shape of `tbrn` and `cond` should be the same"
+        params['y_is_const'] = Attr(False, 'bool')
+    else:
+        params['x_is_const'] = Attr(True, 'bool')
+        params['x_const_val'] = Attr(float(tbrn.value), 'float64')
+        tbrn = None
+    if isinstance(fbrn, Tensor):
+        assert fbrn.shape == cond.shape, "shape of `fbrn` and `cond` should be the same"
+        params['y_is_const'] = Attr(False, 'bool')
+    else:
+        params['y_is_const'] = Attr(True, 'bool')
+        params['y_const_val'] = Attr(float(fbrn.value), 'float64')
+        fbrn = None
+    output = Tensor(cond.shape, dtype=out_dtype, name=out_name)
+    TpuLang.insert_op("top.Where", inputs=[cond, tbrn, fbrn], outputs=[output], params=params)
+    return output
+
+@annotation_check
+def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name = None):
+    assert lhs.shape == rhs.shape
+    if out_name is None:
+        out_name = generate_name("select")
+    cond = __compare(lhs, rhs, type, f"{out_name}_compare")
+    return cond_select(cond, tbrn, fbrn, f"{out_name}_cond_select")

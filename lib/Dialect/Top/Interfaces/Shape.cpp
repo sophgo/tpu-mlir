@@ -31,13 +31,17 @@ void top::ShapeOp::shape_inference() {
   int64_t start = getStart().has_value() ? getStart().value() : 0;
   int64_t end = getEnd().has_value() ? getEnd().value() : input_dims;
   end = std::clamp(end, 0L, input_dims);
+  int64_t step = getStep().has_value() ? getStep().value() : 1;
   if (getStart().has_value()) {
     removeStartAttr();
   }
   if (getEnd().has_value()) {
     removeEndAttr();
   }
-  if (start != 0 || end != input_dims) {
+  if (getStep().has_value()) {
+    removeStepAttr();
+  }
+  if (start != 0 || end != input_dims || step != 1) {
     no_slice = false;
   }
   std::vector<int64_t> output_shape({(int64_t)input_shape.size()});
@@ -55,7 +59,7 @@ void top::ShapeOp::shape_inference() {
     attrs.emplace_back(
         builder.getNamedAttr("offset", builder.getI64ArrayAttr({start})));
     attrs.emplace_back(
-        builder.getNamedAttr("steps", builder.getI64ArrayAttr({1})));
+        builder.getNamedAttr("steps", builder.getI64ArrayAttr({step})));
     attrs.emplace_back(
         builder.getNamedAttr("ends", builder.getI64ArrayAttr({end})));
     attrs.emplace_back(
