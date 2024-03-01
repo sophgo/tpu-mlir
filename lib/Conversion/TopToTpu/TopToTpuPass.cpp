@@ -56,6 +56,20 @@ static void Forward(Value out) {
   }
 }
 
+static void ForwardSign(Value out) {
+  for (auto user : out.getUsers()) {
+    if (auto avpOp = dyn_cast<top::AvgPoolOp>(user)) {
+      ForwardOp(avpOp);
+    } else if (auto mxpOp = dyn_cast<top::MaxPoolOp>(user)) {
+      ForwardOp(mxpOp);
+    } else if (auto absOp = dyn_cast<top::AbsOp>(user)) {
+      ForwardOp(absOp);
+    } else {
+      Forward(out);
+    }
+  }
+}
+
 template <typename TyOp>
 struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -182,7 +196,7 @@ struct KeepSignPattern : public OpRewritePattern<TyOp> {
         quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
     auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
     out.setType(new_type);
-    Forward(out);
+    ForwardSign(out);
     return success();
   }
 };
@@ -326,6 +340,32 @@ struct SetSubConstSignPattern : public OpRewritePattern<top::SubConstOp> {
       }
     }
     return failure();
+  }
+};
+
+struct SetSubSignPattern : public OpRewritePattern<top::SubOp> {
+  using OpRewritePattern<top::SubOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::SubOp op,
+                                PatternRewriter &rewriter) const override {
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+    auto out_qtype = module::getCalibratedType(out);
+    auto out_type = out.getType().cast<RankedTensorType>();
+    if (out_qtype.getMin() >= 0) {
+      auto new_out_type = quant::CalibratedQuantizedType::get(
+          module::getStorageType(out), out_qtype.getMax() * (-0.1),
+          out_qtype.getMax());
+      auto new_type =
+          RankedTensorType::get(out_type.getShape(), new_out_type);
+      out.setType(new_type);
+      Forward(out);
+      return success();
+    } else {
+      return failure();
+    }
   }
 };
 
@@ -1080,12 +1120,14 @@ void ConvertTopToTpu::calibration_process() {
     // backend not support in out not the same sign
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+                 KeepSignPattern<top::AbsOp>,
                  SetSubConstSignPattern>(ctx_);
+
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
     if (!module::isCV18xx() && !module::isF8Modes()) {
       patterns.add<KeepMulSignPattern<top::MulOp>, /*KeepMulSignPattern,*/
-                 SetSubConstSignPattern>(ctx_);
+                 SetSubConstSignPattern, SetSubSignPattern>(ctx_);
       applyPatternsAndFoldGreedily(module_, std::move(patterns));
       patterns.clear();
     }
@@ -1166,6 +1208,7 @@ void ConvertTopToTpu::calibration_process() {
   patterns.clear();
   patterns.add<KeepSignPattern<top::AvgPoolOp>,
                KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+               KeepSignPattern<top::AbsOp>,
                SetSubConstSignPattern>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
