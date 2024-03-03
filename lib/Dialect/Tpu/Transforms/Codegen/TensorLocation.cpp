@@ -28,7 +28,7 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const slice &S) {
   return OS;
 }
 
-inline std::string fmt_slice(std::initializer_list<slice> slices) {
+inline std::string fmt_slice(ArrayRef<slice> slices) {
   std::string stride;
   llvm::raw_string_ostream os(stride);
   os << "[";
@@ -37,13 +37,17 @@ inline std::string fmt_slice(std::initializer_list<slice> slices) {
   return stride;
 }
 
+inline std::string fmt_slice(std::initializer_list<slice> slices) {
+  return fmt_slice(SmallVector<slice>(slices));
+}
+
 template <typename T>
 inline std::string fmt_shape(ArrayRef<T> shape, StringRef dtype = {}) {
   std::string shape_str;
   llvm::raw_string_ostream os(shape_str);
   os << "<";
   interleave(shape, os, "x");
-  if (dtype.size() > 0)
+  if (!dtype.empty())
     os << "x" << dtype;
   os << ">";
   return shape_str;
@@ -206,6 +210,16 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
       {"slice", slice}};
 }
 
+SmallVector<int64_t> ind2sub(int64_t index, ArrayRef<int64_t> shape) {
+  SmallVector<int64_t> sub(shape.size(), 0);
+  for (int dim = shape.size() - 1; dim >= 0; dim--) {
+    auto s = shape[dim];
+    sub[dim] = index % s;
+    index = index / s;
+  }
+  return sub;
+}
+
 json::Object record_tensor(Value v, const group_type_t group_type) {
 
   auto v_spc = BM168x::value_to_spec(v, group_type);
@@ -222,13 +236,42 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
   if (is_xn(v))
     layout += "_xn";
 
-  return json::Object{{"name", module::getName(v).str()},
-                      {"address", address},
-                      {"memory_type", memory_type},
-                      {"layout", layout},
-                      {"type", type},
-                      {"reshape", ""},
-                      {"slice", "[...]"}};
+  std::string sliceStr = "[...]";
+  std::string name = module::getName(v).str();
+
+  { // coreGroup slice
+    Value value;
+    if (auto splitOp = dyn_cast_if_present<tpu::SplitOp>(v.getDefiningOp())) {
+      value = splitOp.getOperand();
+    } else {
+      auto joinOp = llvm::find_if(v.getUsers(), [](Operation *op) {
+        return isa_and_present<tpu::JoinOp>(op);
+      });
+      if (joinOp != std::end(v.getUsers()))
+        value = joinOp->getResult(0);
+    }
+
+    if (value) {
+      auto baseAddr = module::getAddress(value);
+      auto orgShape = module::getShape(value);
+      auto shape = ArrayRef(v_spc.shape, v_spc.dims);
+      auto fmt_bytes = BM168x::getFmtBytes((DATA_TYPE_T)v_spc.dtype);
+      auto offset = ind2sub((address - baseAddr) / fmt_bytes, orgShape);
+      SmallVector<slice> _slice;
+      for (auto [offset, size] : llvm::zip(offset, shape))
+        _slice.push_back(slice{offset, size});
+      sliceStr = fmt_slice(_slice);
+      type.clear();
+      llvm::raw_string_ostream os(type);
+      value.getType().print(os);
+      name = module::getName(value).str();
+    }
+  }
+
+  return json::Object{
+      {"name", name},     {"address", address}, {"memory_type", memory_type},
+      {"layout", layout}, {"type", type},       {"reshape", ""},
+      {"slice", sliceStr}};
 }
 
 int getSubNetId(Operation *op) {

@@ -521,6 +521,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         desired = self.get_ref_data(value)
         if desired is None:
             value_res = ComparedResult(value_view, None)
+            name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
+            if self.dump_mode == DumpMode.ALL:
+                self.failed_tensor[f"{name}_actual"] = actual
         else:
             actual = actual.reshape(desired.shape)
             cmp_res, msg = list(self.tc.assert_allclose(actual, desired))
