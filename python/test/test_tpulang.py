@@ -1985,7 +1985,7 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = self.group_norm_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], mode="int8")
+            self.compile_and_check(self.unique_name(case_name), [x], [out])
 
         _test_model_def([1, 3, 224, 224])
 
