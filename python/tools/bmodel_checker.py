@@ -101,6 +101,7 @@ if __name__ == "__main__":
         extra_plugins=extra_plugins,
         extra_check=[],
         ddr_size=args.ddr_size,
+        checker=True,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     if args.fail_fast:
