@@ -941,6 +941,15 @@ void BMCodegen::codegen(FuncOp funcOp) {
         codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
         return WalkResult::skip();
       }
+    } else if (auto PermuteOp = dyn_cast<tpu::PermuteOp>(op)) {
+      auto order = *(module::getI64Array(PermuteOp.getOrder()));
+      auto in_shape = module::getShape(PermuteOp.getInput());
+      if (in_shape.size() == 4 && order[0] == 0 && order[1] == 3 &&
+          order[2] == 1 && order[3] == 2 && in_shape[3] == 3) {
+        setupMultiCoreCodegen();
+        codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
+        return WalkResult::skip();
+      }
     }
 
     if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {

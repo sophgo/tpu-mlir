@@ -959,6 +959,7 @@ typedef struct transpose_param {
   transpose_spec_t spec;
   int32_t if_getting_buffer_size;
   uint64_t *buffer_size_ptr;
+  int num_core;
 } transpose_param_t;
 
 typedef struct reshape_spec {
