@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -98,8 +99,14 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
     }
   }
-  BM168x::call_global_func("backend_api_fc_global", &spec, sizeof(spec),
-                           input_spec->data(), output_spec->data());
+
+  if (module::getCoreNum() > 1 && supports_multi_core())
+    return BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
+                                    sizeof(spec), input_spec->data(),
+                                    output_spec->data());
+
+  return BM168x::call_global_func("backend_api_fc_global", &spec, sizeof(spec),
+                                  input_spec->data(), output_spec->data());
 }
 
 // =========================================

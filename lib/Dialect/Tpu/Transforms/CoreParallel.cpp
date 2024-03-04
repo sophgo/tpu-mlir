@@ -365,6 +365,10 @@ public:
       m->walk<WalkOrder::PreOrder>([&](Operation *op) {
         if (isa<tpu::GroupOp>(op))
           return WalkResult::skip();
+        if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
+          if (matmulOp.supports_multi_core())
+            return WalkResult::skip();
+        }
         if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
           groupParallelDistribute(groupParallelOp, num_core);
           return WalkResult::skip();

@@ -457,3 +457,20 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
   indexingMaps.push_back(outMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
+
+bool tpu::MatMulOp::supports_multi_core() {
+  if (module::getCoreNum() < 2 || !module::isBM1690Family()) {
+    return false;
+  }
+  auto p = parseParam();
+  if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||
+      module::getMode() == module::Mode::F8E4M3 ||
+      module::getMode() == module::Mode::F8E5M2 ||
+      module::getMode() == module::Mode::F8 ||
+      module::getMode() == module::Mode::INT8)
+    return false;
+
+  if (module::isUniformQuantized(getInput()))
+    return false;
+  return true;
+}
