@@ -154,6 +154,9 @@ class TPULANG_IR_TESTER(object):
             "ResnetQuant": (self.test_ResnetQuant,      Y, Y),
             "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
             "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
+            "VitL": (self.test_Vit_L,                   Y, Y),
+            "VitL16": (self.test_Vit_L_f16,             Y, Y),
+            "VitB": (self.test_Vit_B,                   Y, Y),
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -214,7 +217,7 @@ class TPULANG_IR_TESTER(object):
     def coeff_tensor(self, shape, dtype, data = None, scale=None, zero_point=None):
         if data is None:
             data = rand_data(shape, dtype)
-            data = data * scale if (dtype == 'float32' and scale is not None) else data
+            data = data * scale if (dtype in ['float32', 'float16'] and scale is not None) else data
         if dtype in ["int8", "uint8"]:
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff", scale=scale, zero_point=zero_point)
         else:
@@ -842,6 +845,129 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([1, 384, 1024], 64, 16, 2, 'float16')
         _test_model_def([1, 224, 768], 64, 12, 2, 'float16')
         _test_model_def([1, 384, 768], 64, 12, 2)
+
+    #######################################################################
+    # vit
+    # ------------
+    def test_Vit(self, case_name, in_shape, d, head, num, dtype='float32'):
+        def matmul_weight(x, shape, dtype):
+            weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
+            bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
+            return tpul.matmul(x, weight, bias, out_dtype=dtype)
+        def attention_block(x0, x1, x2, shape, d, head, musk=None, dtype="float32"):
+            B = shape[0]
+            S_q = shape[1]
+            H_q = shape[2]
+            S_k = shape[1]
+            H_k = shape[2]
+            S_v = shape[1]
+            H_v = shape[2]
+            q = matmul_weight(x0, [H_q, d*head], dtype)
+            q = tpul.reshape(q, [B, S_q, head, d])
+            q = tpul.permute(q, [0, 2, 1, 3])
+            k = matmul_weight(x1, [H_k, d*head], dtype)
+            k = tpul.reshape(k, [B, S_k, head, d])
+            k = tpul.permute(k, [0, 2, 1, 3])
+            k = tpul.permute(k, [0, 1, 3, 2])
+            v = matmul_weight(x2, [H_v, d*head], dtype)
+            v = tpul.reshape(v, [B, S_v, head, d])
+            v = tpul.permute(v, [0, 2, 1, 3])
+            m0 = tpul.matmul(q, k, out_dtype=dtype)
+            if dtype == "float32":
+                m0 = tpul.div(m0, np.sqrt(d))
+            else:
+                m0 = tpul.mul(m0, 1/np.sqrt(d))
+            m0 = tpul.add(m0, musk) if musk is not None else m0
+            m0 = tpul.softmax(m0, 3)
+            m1 = tpul.matmul(m0, v, out_dtype=dtype)
+            m1 = tpul.permute(m1, [0, 2, 1, 3])
+            m1 = tpul.reshape(m1, [B, S_q, -1])
+            out = matmul_weight(m1, [d*head, H_q], dtype=dtype)
+            return out
+
+        def mlp_block(x, shape, dtype):
+            H = shape[2]
+            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
+            mat0 = matmul_weight(norm, [H, 4*H], dtype=dtype)
+            ge = gelu(mat0)
+            mat1 = matmul_weight(ge, [4*H, H], dtype=dtype)
+            out = tpul.add(norm, mat1)
+            return out
+
+        def transformer_block(x, shape, d, head, dtype="float32"):
+            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
+            self_atten = attention_block(norm, norm, norm, shape, d, head, dtype=dtype)
+            add = tpul.add(norm, self_atten)
+            mlp = mlp_block(add, shape, dtype=dtype)
+            return mlp
+
+        def gelu(x):
+            div = tpul.mul(x, 1/np.sqrt(2))
+            erf = tpul.erf(div)
+            add = tpul.add(erf, 1.0)
+            mul = tpul.mul(x, add)
+            mulc = tpul.mul(mul, 0.5)
+            return mulc
+
+        def layer_norm(x, oc, axis, eps, dtype):
+            mean = tpul.reduce(x, 'ReduceMean', axes=axis)
+            sub = tpul.sub(x, mean)
+            pow = tpul.square(sub)
+            pow_mean = tpul.reduce(pow, 'ReduceMean', axes=axis)
+            add = tpul.add(pow_mean, eps)
+            if dtype != "float32":
+                add = tpul.cast(add, "float32")
+            rsqrt = tpul.rsqrt(add)
+            if dtype != "float32":
+                rsqrt = tpul.cast(rsqrt, dtype)
+            mul = tpul.mul(sub, rsqrt)
+            gamma = self.coeff_tensor([oc], dtype=dtype, scale=1.0)
+            beta = self.coeff_tensor(shape=[oc], dtype=dtype, scale=0.05)
+            gam = tpul.mul(mul, gamma)
+            bet = tpul.add(gam, beta)
+            return bet
+
+        def vit(x, shape, d, head, num, dtype="float32"):
+            H = d * head
+            conv0 = self.conv_op(x, [H, 3, 16, 16], [16, 16], bias=True, dtype=dtype)
+            # fetch_shape0 = tpul.shape_fetch(conv0)
+            # slice0 = tpul.slice(fetch_shape0, 0, 2, axes=0)
+            # neg_one = tpul.Tensor([1], ttype="coeff", data=np.array([-1]).astype("int32"), dtype="int32")
+            # concat0 = tpul.concat([slice0, neg_one], 0)
+            reshape0 = tpul.reshape(conv0, [shape[0], shape[2], shape[1]-1])
+            permut1 = tpul.permute(reshape0, [0, 2, 1])
+            weight1 = self.coeff_tensor([shape[0], 1, H], dtype=dtype)
+            concat1 = tpul.concat([weight1, permut1], axis=1)
+            weight2 = self.coeff_tensor([1, 577, H], dtype=dtype)
+            add2 = tpul.add(concat1, weight2)
+            transformer = add2
+            for i in range(num):
+                trans = transformer_block(transformer, shape, d, head, dtype=dtype)
+                transformer = trans
+            norm3 = layer_norm(transformer, shape[2], -1, 1e-6, dtype=dtype)
+            slice3 = tpul.slice(norm3, [0, 0, 0], [-1, 1, -1])
+            reshape3 = tpul.squeeze(slice3, [1])
+            mat3 = matmul_weight(reshape3, [shape[2], 1000], dtype=dtype)
+            return mat3
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, d, head, num, dtype='float32'):
+            x_data = rand_data(in_shape, dtype, -2, 2)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            shape = [in_shape[0], 577, head*d]
+            out = vit(x, shape, d, head, num, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], mode="int8")
+
+        _test_model_def(in_shape, d, head, num, dtype)
+        # _test_model_def([2, 3, 384, 384], 64, 16, 2)
+
+    def test_Vit_L(self, case_name):
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float32')
+    def test_Vit_L_f16(self, case_name):
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float16')
+    def test_Vit_B(self, case_name):
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float32')
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float16')
 
     #######################################################################
     # Convolution

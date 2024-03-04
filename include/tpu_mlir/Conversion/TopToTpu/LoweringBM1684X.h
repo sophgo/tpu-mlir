@@ -183,5 +183,6 @@ LOWERING_BM1684X(ConvBwdWeight)
 LOWERING_BM1684X(RequantInt)
 LOWERING_BM1684X(DequantInt)
 LOWERING_BM1684X(Copy)
+LOWERING_BM1684X(Rsqrt)
 } // namespace bm1684x
 } // namespace tpu_mlir
