@@ -20,6 +20,7 @@ from copy import copy
 from ..target_common import *
 from .opdef import TiuCmd, DmaCmd
 from .memmap import *
+from ..plugins.common import FinalMlirIndexPlugin
 
 
 class BM1684XRunner(DeviceRunner):
@@ -46,6 +47,21 @@ class BM1684XRunner(DeviceRunner):
         ]
         self.init_memory(_)
         self.reserved_offset = self.memory.reserved_offset
+        self.is_pcie = True
+        self.fast_checker = False
+
+    def trans_cmds_to_buf(self, cmds, engine_type):
+        buf_list = []
+        for cmd in cmds:
+            reg = copy(cmd.reg)
+            if engine_type == 1:  # dma
+                u32_buf = (ctypes.c_uint32 * (len(cmd.buf) // 4)).from_buffer_copy(reg)
+                self.lib.convert_addr(u32_buf, self.reserved_offset)
+                buf = bytes(u32_buf)
+            else:
+                buf = bytes(reg)
+            buf_list.append(buf)
+        return b"".join(buf_list)
 
     def __del__(self):
         self.lib.deinit(self.runner)
@@ -78,6 +94,69 @@ class BM1684XRunner(DeviceRunner):
 
     def dma_compute(self, command: DmaCmd):
         return self._compute(command, 1)
+
+    def get_stack_cmds(self, cur_cmd_point, cmditer):
+        tiu = []
+        dma = []
+        df = FinalMlirIndexPlugin.data_frame
+        buf_cmds = 0
+
+        while cur_cmd_point + buf_cmds < len(cmditer):
+            if cmditer[cur_cmd_point + buf_cmds].cmd_type == CMDType.tiu:
+                tiu.append(cmditer[cur_cmd_point + buf_cmds])
+            else:
+                dma.append(cmditer[cur_cmd_point + buf_cmds])
+
+            result_not_empty = (
+                len(df.loc[df["executed_id"] == cur_cmd_point + 1 + buf_cmds, "results"].tolist()[0])> 0
+            )
+
+            if result_not_empty:
+                break
+            buf_cmds += 1
+
+        return tiu, dma
+
+    def checker_fast_compute(self, cur_cmd_point, cmditer):
+        tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
+        tiu_buf = self.trans_cmds_to_buf(tiu, 0)
+        dma_buf = self.trans_cmds_to_buf(dma, 1)
+
+        ret = self.lib.launch_cmds_in_pio(
+            self.runner,
+            ctypes.byref(ctypes.create_string_buffer(tiu_buf)),
+            ctypes.byref(ctypes.create_string_buffer(dma_buf)),
+            ctypes.c_size_t(len(tiu_buf)),
+            ctypes.c_size_t(len(dma_buf)),
+            ctypes.c_int(len(tiu)),
+            ctypes.c_int(len(dma)),
+        )
+        assert ret == 0
+        return len(tiu) + len(dma)
+
+    def fast_compute(self, cur_cmd_point, cmditer):
+        tiu = []
+        dma = []
+        if cmditer[cur_cmd_point].cmd_type == CMDType.tiu:
+            tiu.append(cmditer[cur_cmd_point])
+            tiu_buf = self.trans_cmds_to_buf(tiu, 0)
+            dma_buf = b""
+        else:
+            dma.append(cmditer[cur_cmd_point])
+            tiu_buf = b""
+            dma_buf = self.trans_cmds_to_buf(dma, 1)
+        assert len(tiu) + len(dma) == 1
+        ret = self.lib.launch_cmd_in_pio(
+            self.runner,
+            ctypes.byref(ctypes.create_string_buffer(tiu_buf)),
+            ctypes.byref(ctypes.create_string_buffer(dma_buf)),
+            ctypes.c_size_t(len(tiu_buf)),
+            ctypes.c_size_t(len(dma_buf)),
+            ctypes.c_int(len(tiu)),
+            ctypes.c_int(len(dma)),
+        )
+        assert ret == 0
+        return 1
 
 
 class PcieMemoryArray:
@@ -184,7 +263,7 @@ class Memory(DeviceMemory):
             r, c = memref.shape
             w = memref.layout.args[0]
             shape = (r, (c + w - 1) // w, 1, w)
-            _memref = copy.copy(memref)
+            _memref = copy(memref)
             _memref.shape = shape
             _memref.layout = Layout.alignEU
             stride = local_layout_to_stride(_memref)
@@ -193,7 +272,7 @@ class Memory(DeviceMemory):
         def get_matrix2_data():
             r, c = memref.shape
             shape = (1, r, 1, c)
-            _memref = copy.copy(memref)
+            _memref = copy(memref)
             _memref.shape = shape
             _memref.layout = Layout.alignEU
             stride = local_layout_to_stride(_memref)
@@ -230,7 +309,7 @@ class Memory(DeviceMemory):
             r, c = memref.shape
             w = memref.layout.args[1]
             shape = (r, (c + w - 1) // w, 1, w)
-            _memref = copy.copy(memref)
+            _memref = copy(memref)
             _memref.shape = shape
             return get_dma_stride_data(_memref).reshape(r, -1)[:r, :c]
 
@@ -267,10 +346,7 @@ class Memory(DeviceMemory):
         assert any(memref.stride)
 
         raw_data = np.zeros(memref.shape[0] * memref.stride[0], dtype=memref.np_dtype)
-        # raw_data = np.zeros(memref.shape, dtype=memref.np_dtype)
-
         address = memref.address + self.reserved_offset
-        # print(f"get from {address}")
         d2s_ret = self.lib.chip_d2s(
             self.runner_p,
             ctypes.c_uint64(address),

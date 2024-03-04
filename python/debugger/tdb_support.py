@@ -163,6 +163,7 @@ class TdbCmdBackend(cmd.Cmd):
         stdin=None,
         stdout=None,
         ddr_size=2**32,
+        checker=False,
     ):
         super().__init__(completekey, stdin, stdout)
         self.bmodel_file = bmodel_file
@@ -177,6 +178,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.ddr_size = ddr_size
         self.status = TdbStatus.UNINIT
         builtins.tdb = self
+        self.bmodel_checker_enable = checker
 
         # should be import locally to avoid circular import
         from .static_check import Checker
@@ -250,6 +252,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(f"static_mode = {self.static_mode}")
 
         self.runner = context.get_runner(self.ddr_size)
+        if self.bmodel_checker_enable and hasattr(self.runner, "fast_checker"):
+            self.runner.fast_checker = True
 
         self.context = context
         self.memory = context.memory
@@ -408,16 +412,28 @@ class TdbCmdBackend(cmd.Cmd):
         and stop to wait user interaction
         """
         cmd = self.get_cmd()
-
+        forward_cmds = 1
         try:
             if not self.static_mode:
                 cmd_type = cmd.cmd_type
                 if cmd_type.is_static():
                     if not self.context.is_sys(cmd):
-                        if cmd_type == CMDType.tiu:
-                            self.runner.tiu_compute(cmd)
-                        elif cmd_type == CMDType.dma:
-                            self.runner.dma_compute(cmd)
+                        if getattr(self.runner, "is_pcie", False):
+                            if getattr(self.runner, "fast_checker", False):
+                                forward_cmds = self.runner.checker_fast_compute(
+                                    self.cmd_point, self.cmditer
+                                )
+                                assert forward_cmds != 0
+                            else:
+                                forward_cmds = self.runner.fast_compute(
+                                    self.cmd_point, self.cmditer
+                                )
+                                assert forward_cmds == 1
+                        else:
+                            if cmd_type == CMDType.tiu:
+                                self.runner.tiu_compute(cmd)
+                            elif cmd_type == CMDType.dma:
+                                self.runner.dma_compute(cmd)
                 elif cmd_type == CMDType.cpu:
                     self.runner.cpu_compute(cmd)
                 elif cmd_type == CMDType.dyn_ir:
@@ -427,8 +443,7 @@ class TdbCmdBackend(cmd.Cmd):
         except ValueError as e:
             self.error(e)
             raise BreakpointStop()
-
-        self.cmd_point += 1
+        self.cmd_point += forward_cmds
 
     def set_inputs_dict(self, inputs):
         args = self.atomic_mlir.functions[0].signature[0]

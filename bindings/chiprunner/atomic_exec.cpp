@@ -9,10 +9,10 @@
 
 #include "bmlib_runtime.h"
 #include "tpu_kernel.h"
+#include <cassert>
 #include <iostream>
 #include <stdio.h>
-#include <string>
-#include <sys/time.h>
+#include <string.h>
 
 #ifndef WIN32
 #define WITH_PLATFORM(x) __attribute__((packed)) x
@@ -38,6 +38,22 @@ typedef struct {
   int command_length[MAX_CMD_NUM];
   char data[128 * MAX_CMD_NUM];
 } WITH_PLATFORM(sg_api_atomics_t);
+
+typedef struct {
+  u64 tiu_addr;
+  u64 dma_addr;
+  size_t tiu_buf_len;
+  size_t dma_buf_len;
+  int tiu_nums;
+  int dma_nums;
+} WITH_PLATFORM(sg_api_pios_buf);
+
+typedef struct {
+  size_t tiu_buf_len;
+  size_t dma_buf_len;
+  int tiu_nums;
+  int dma_nums;
+} WITH_PLATFORM(sg_api_pio_buf);
 
 typedef unsigned long long u64;
 typedef unsigned int u32;
@@ -75,7 +91,15 @@ public:
     u64 loc_addr = bm_mem_get_device_addr(device_loc_mem);
     set_reserved_mem(res_addr);
     set_loc_mem(loc_addr);
-    return (int)ret_device & (int)ret_local;
+
+    auto ret_tiu = bm_malloc_device_byte(bm_handle, &tiu_mem, 1024 * 1024);
+    auto ret_dma = bm_malloc_device_byte(bm_handle, &dma_mem, 1024 * 1024);
+    u64 tiu_addr = bm_mem_get_device_addr(tiu_mem);
+    u64 dma_addr = bm_mem_get_device_addr(dma_mem);
+    set_tiu_mem(tiu_addr);
+    set_dma_mem(dma_addr);
+
+    return (int)ret_device & (int)ret_local & (int)ret_tiu & (int)ret_dma;
   }
 
   ~ChipRunner() {
@@ -85,6 +109,9 @@ public:
     }
     if (bm_handle) {
       bm_free_device(bm_handle, device_mem);
+      // bm_free_device(bm_handle, device_loc_mem);
+      // bm_free_device(bm_handle, tiu_mem);
+      // bm_free_device(bm_handle, dma_mem);
       bm_dev_free(bm_handle);
     }
   }
@@ -96,6 +123,12 @@ public:
 
   void set_loc_mem(u64 _loc_offset) { loc_offset = _loc_offset; }
   u64 get_loc_mem() { return loc_offset; }
+
+  void set_tiu_mem(u64 _tiu_addr) { tiu_addr = _tiu_addr; }
+  u64 get_tiu_mem() { return tiu_addr; }
+
+  void set_dma_mem(u64 _dma_addr) { dma_addr = _dma_addr; }
+  u64 get_dma_mem() { return dma_addr; }
 
   int chip_s2d(u64 address, size_t size, void *data) {
     bm_device_mem_t device_mem = bm_mem_from_device(address, size);
@@ -115,14 +148,12 @@ public:
   // move all 16MB local mem
   int chip_l2s(void *data) {
     // auto func_id = tpu_kernel_get_function(bm_handle, tpu_module,
-                                          //  "tpu_kernel_mcu_cpy_l2s");
+    //                                        "tpu_kernel_mcu_cpy_l2s");
 
     auto func_id = tpu_kernel_get_function(bm_handle, tpu_module,
                                            "tpu_kernel_gdma_cpy_l2s");
-                                           
+
     u64 mid_data_addr = get_loc_mem();
-    // unsigned char *mid_data_ptr =
-    //     reinterpret_cast<unsigned char *>(mid_data_addr);
     sg_api_mcu_cpy_t params = {0};
     params.global_addr = mid_data_addr;
     auto ret_mcu_cpy =
@@ -144,7 +175,6 @@ public:
     func_id = tpu_kernel_get_function(bm_handle, tpu_module,
                                       "tpu_kernel_launch_atomic");
 
-    // std::cout << func_id << std::endl;
     auto ret = tpu_kernel_launch(bm_handle, func_id, &params, sizeof(params));
 
     return (int)ret;
@@ -204,14 +234,73 @@ public:
     std::cout << "launch" << lret << std::endl;
   }
 
+  int launch_cmds_in_pio(u64 *tiu_cmds, u64 *dma_cmds, size_t tiu_buf_len,
+                         size_t dma_buf_len, int tiu_nums, int dma_nums) {
+    tpu_kernel_function_t func_id = 0;
+
+    // Initialize sg_api_pio_buf within the buffer
+    sg_api_pios_buf params = {0};
+    params.tiu_addr = get_tiu_mem();
+    params.dma_addr = get_dma_mem();
+    params.tiu_buf_len = tiu_buf_len;
+    params.dma_buf_len = dma_buf_len;
+    params.tiu_nums = tiu_nums;
+    params.dma_nums = dma_nums;
+
+    auto ret_tiu = bm_memcpy_s2d_partial(bm_handle, tiu_mem, (void *)tiu_cmds,
+                                         (unsigned int)tiu_buf_len);
+    assert(ret_tiu == 0);
+    auto ret_dma = bm_memcpy_s2d_partial(bm_handle, dma_mem, (void *)dma_cmds,
+                                         (unsigned int)dma_buf_len);
+    assert(ret_dma == 0);
+
+    func_id = tpu_kernel_get_function(bm_handle, tpu_module, "tpu_kernel_pios");
+    auto ret = tpu_kernel_launch(bm_handle, func_id, &params, sizeof(params));
+    return (int)ret;
+  }
+
+  int launch_cmd_in_pio(u64 *tiu_cmds, u64 *dma_cmds, size_t tiu_buf_len,
+                        size_t dma_buf_len, int tiu_nums, int dma_nums) {
+    tpu_kernel_function_t func_id = 0;
+
+    // Calculate total size needed for sg_api_pio_buf
+    size_t total_size = sizeof(sg_api_pio_buf) + tiu_buf_len + dma_buf_len;
+
+    // Allocate memory for sg_api_pio_buf and dynamic arrays
+    char *buffer = (char *)malloc(total_size);
+
+    // Initialize sg_api_pio_buf within the buffer
+    sg_api_pio_buf *params = (sg_api_pio_buf *)buffer;
+    params->tiu_buf_len = tiu_buf_len;
+    params->dma_buf_len = dma_buf_len;
+    params->tiu_nums = tiu_nums;
+    params->dma_nums = dma_nums;
+
+    // Copy data from tiu_cmds and dma_cmds to the buffer
+    memcpy(buffer + sizeof(sg_api_pio_buf), tiu_cmds, tiu_buf_len);
+    memcpy(buffer + sizeof(sg_api_pio_buf) + tiu_buf_len, dma_cmds,
+           dma_buf_len);
+
+    func_id = tpu_kernel_get_function(bm_handle, tpu_module, "tpu_kernel_pio");
+
+    auto ret = tpu_kernel_launch(bm_handle, func_id, buffer, total_size);
+    // std::cout << func_id << buffer << total_size << std::endl;
+    free(buffer);
+    return (int)ret;
+  }
+
   // private:
   bm_handle_t bm_handle;
   tpu_kernel_function_t func_id;
   u64 reserved_offset;
   u64 loc_offset;
+  u64 tiu_addr;
+  u64 dma_addr;
   tpu_kernel_module_t tpu_module;
   bm_device_mem_t device_mem;
   bm_device_mem_t device_loc_mem;
+  bm_device_mem_t tiu_mem;
+  bm_device_mem_t dma_mem;
 };
 
 #ifdef __cplusplus
@@ -240,6 +329,20 @@ int chip_l2s(void *runner, void *data) {
 int launch_single_cmd(void *runner, void *command, int command_type,
                       size_t size) {
   return ((ChipRunner *)runner)->launch_single_cmd(command, command_type, size);
+}
+int launch_cmds_in_pio(void *runner, u64 *tiu_cmds, u64 *dma_cmds,
+                       size_t tiu_buf_len, size_t dma_buf_len, int tiu_nums,
+                       int dma_nums) {
+  return ((ChipRunner *)runner)
+      ->launch_cmds_in_pio(tiu_cmds, dma_cmds, tiu_buf_len, dma_buf_len,
+                           tiu_nums, dma_nums);
+}
+int launch_cmd_in_pio(void *runner, u64 *tiu_cmds, u64 *dma_cmds,
+                      size_t tiu_buf_len, size_t dma_buf_len, int tiu_nums,
+                      int dma_nums) {
+  return ((ChipRunner *)runner)
+      ->launch_cmd_in_pio(tiu_cmds, dma_cmds, tiu_buf_len, dma_buf_len,
+                          tiu_nums, dma_nums);
 }
 int launch_cmds(void *runner, void *command, void *_command_type,
                 void *command_length, int cmd_num) {

@@ -121,6 +121,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
     """
 
     name = "final-mlir"
+    data_frame = None
 
     def __init__(self, tdb: TdbCmdBackend) -> None:
         super().__init__(tdb)
@@ -274,6 +275,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
         tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
         # convert 'loc_index' column from float to integer
         tdb.index_df["loc_index"] = tdb.index_df["loc_index"].astype(int)
+        FinalMlirIndexPlugin.data_frame = tdb.index_df
 
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
