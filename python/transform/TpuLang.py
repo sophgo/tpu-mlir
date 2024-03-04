@@ -933,7 +933,6 @@ def avgpool2d(input: Tensor,
     TpuLang.insert_op("top.AvgPool", inputs=[input], outputs=[output], params=attr)
     return output
 
-
 ######### Activation Operator ###############
 @annotation_check
 def relu(input: Tensor, out_name: str = None):
@@ -1297,8 +1296,10 @@ def upsample(input: Tensor, scale: int = 2, out_name: str = None):
     return output
 
 @annotation_check
-def reduce(input: Tensor, method: str = "ReduceSum", axes: List[int] = [1,2], keep_dims: bool = True, out_name: str = None):
+def reduce(input: Tensor, method: str = "ReduceSum", axes: Union[List[int], int] = [1,2], keep_dims: bool = True, out_name: str = None):
     assert(method in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"])
+    if isinstance(axes, int):
+        axes = [axes]
     if out_name is None:
         out_name = generate_name("reduce")
     attr = {
@@ -1368,16 +1369,16 @@ def slice(input: Tensor,
     if axes is not None:
         axes = [axes] if isinstance(axes, int) else axes
         assert length == len(axes)
-    assert length == len(ends) and length == steps
+    assert length == len(ends) and length == len(steps)
     attr = {
         "offset": ArrayAttr(starts, "int64"),
         "steps": ArrayAttr(steps, "int64"),
         "ends": ArrayAttr(ends, "int64"),
     }
     if axes is not None:
-        attr["axes"] = ArrayAttr(axes, "int64"),
-    output = Tensor(dtype="int64", name=out_name)
-    TpuLang.insert_op("top.Slice", inputs=[input], outputs=[output], params=attr)
+        attr["axes"] = ArrayAttr(axes, "int64")
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Slice", inputs=[input, None, None, None], outputs=[output], params=attr)
     return output
 
 @annotation_check
@@ -1613,17 +1614,17 @@ def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out
 
 @annotation_check
 def shape_fetch(tensor_i: Tensor,
-                begin_axis: int = 0,
-                end_axis: int = 1,
+                begin_axis: int = None,
+                end_axis: int = None,
                 step: int = 1,
                 out_name: str = None):
     if out_name is None:
         out_name = generate_name("shape_fetch")
-    attr = {
-        "start": Attr(begin_axis),
-        "end": Attr(end_axis),
-        "step": Attr(step),
-    }
+    attr = {"step": Attr(step)}
+    if begin_axis is not None:
+        attr["start"] = Attr(begin_axis)
+    if end_axis is not None:
+        attr["end"] = Attr(end_axis)
     output = Tensor(dtype=tensor_i.dtype, name=out_name)
     TpuLang.insert_op("top.Shape", inputs=[tensor_i], outputs=[output], params=attr)
     return output

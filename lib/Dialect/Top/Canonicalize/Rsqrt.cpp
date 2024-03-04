@@ -17,6 +17,7 @@ struct RsqrtToSqrtRec : public OpRewritePattern<RsqrtOp> {
 
   LogicalResult matchAndRewrite(RsqrtOp op,
                                 PatternRewriter &rewriter) const override {
+    return failure();     // do not need rsqrt to sqrt
     auto name = module::getName(op.getOutput());
     auto sqrt_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_sqrt"));
     auto sqrt_op = rewriter.create<top::SqrtOp>(

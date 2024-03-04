@@ -77,6 +77,8 @@ switch (op.getMode()) {
     return [](double val) { return std::log2(val); };
   case tpu::ActiveMode::SQRT:
     return [](double val) { return std::sqrt(val); };
+  case tpu::ActiveMode::RSQRT:
+    return [](double val) { return 1.f / std::sqrt(val); };
   case tpu::ActiveMode::SQUARE:
     return [](double val) { return square(val); };
   case tpu::ActiveMode::SILU:
