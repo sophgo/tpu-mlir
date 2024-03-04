@@ -325,6 +325,10 @@ struct CommonMatch : public RewritePattern {
             top::WeightOp, tpu::Conv2DOp>(op)) {
       return failure();
     }
+    if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
+      if (matmulOp.supports_multi_core())
+      return failure();
+    }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
     if (num_users < 2) {
@@ -351,6 +355,10 @@ struct CommonMatch : public RewritePattern {
         if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::Conv2DOp>(
                 left_op)) {
           continue;
+        }
+        if (auto matmulOp = dyn_cast<tpu::MatMulOp>(left_op)) {
+          if (matmulOp.supports_multi_core())
+            continue;
         }
         if (find_f(same_ops, left_op)) {
           continue;

@@ -952,6 +952,14 @@ void BMCodegen::codegen(FuncOp funcOp) {
       }
     }
 
+    if (auto mamtulOp = dyn_cast<tpu::MatMulOp>(op)) {
+      if (mamtulOp.supports_multi_core()) {
+        setupMultiCoreCodegen();
+        codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
+        return WalkResult::skip();
+      }
+    }
+
     if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
       codegenGlobalLayer(globalOp);
     }
