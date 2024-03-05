@@ -2026,18 +2026,12 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang(self.chip)
         def _test_where(shape: List[int], dtype="float32"):
-            input_x = rand_data(shape[0], dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape[0], data=input_x)
-            input_y = rand_data(shape[1], dtype)
-            y = tpul.Tensor(dtype=dtype, shape=shape[1], data=input_y)
-            input_z = np.zeros(shape[2]).astype(dtype)
-            input_z[0][:, :100] = 1
-            input_z[1][1:, :] = 1
-            z = tpul.Tensor(dtype=dtype, shape=shape[2], data=input_z)
-            where = self.where_op([x, y, z], dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x,y,z], [where])
+            input_x = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
+            where = self.where_op(x, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [where])
 
-        _test_where([[10, 40, 224], [10, 40, 224], [10, 40, 224]])
+        _test_where([10, 40, 224])
 
     #######################################################################
     # upsample
