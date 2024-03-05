@@ -72,21 +72,13 @@ private:
       CAST_FUNCTION(set_gdma_bw_s2l);
       CAST_FUNCTION(set_gdma_bw_l2s);
       CAST_FUNCTION(set_gdma_bw_l2l);
-      if (frequency == A2_2::value) // cv186
-      {
-        dl_set_gdma_bw_s2s(6.0f);
-        dl_set_gdma_bw_s2l(12.0f);
-        dl_set_gdma_bw_l2s(12.0f);
-        dl_set_gdma_bw_l2l(10.0f);
-        dl_set_tiu_freq(static_cast<float>(A2_2::value));
-      } else {
-        dl_set_gdma_bw_s2s(12.0f);
-        dl_set_gdma_bw_s2l(24.0f);
-        dl_set_gdma_bw_l2s(24.0f);
-        dl_set_gdma_bw_l2l(12.0f);
-        dl_set_tiu_freq(static_cast<float>(A2_1::value));
-      }
-
+      // 64bit, for cv186x 32bit device, use (6.0f, 12.0f, 12.0f, 10.0f)
+      dl_set_gdma_bw_s2s(12.0f);
+      dl_set_gdma_bw_s2l(24.0f);
+      dl_set_gdma_bw_l2s(24.0f);
+      dl_set_gdma_bw_l2l(12.0f);
+      // frequency == A2_2::value || frequency == A2_1::value
+      dl_set_tiu_freq(static_cast<float>(frequency));
     } else {
       dl_set_tiu_freq(static_cast<float>(get_frequance()));
     }
