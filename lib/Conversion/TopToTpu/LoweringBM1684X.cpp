@@ -27,6 +27,18 @@ struct ShapeArithConvert : public OpRewritePattern<TyOp> {
       if (!def_op || !def_op->hasTrait<trait::ShapeProducer>())
         return failure();
     }
+    // Check whether the next op is d2s, if so, delete the next d2s
+    auto users = op->getUsers();
+    for(auto i = users.begin(); i != users.end(); ++ i){
+      auto user = *i;
+      if (!isa<tpu::Device2HostOp>(user)) {
+        continue;
+      }
+      auto next_d2sOp = dyn_cast<tpu::Device2HostOp>(user);
+      next_d2sOp.getOutput().replaceAllUsesWith(next_d2sOp.getInput());
+      rewriter.eraseOp(next_d2sOp);
+    }
+
     std::vector<NamedAttribute> attrs;
     std::string op_name = op.getOperationName().str();
     int pos = op_name.find("top.");
@@ -63,7 +75,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaxConstTryLowering,
       TileTryLowering,
       CompareConstTryLowering,
-      MulTryLowering
+      MulTryLowering,
+      SubConstTryLowering
       // clang-format on
       >(patterns->getContext());
   // TODO: GT LT GE LE MIN MAX SQRT ...
