@@ -2439,7 +2439,7 @@ Processor support
 * BM1684X: The input data type can be FLOAT32.
 
 
-sort (TODO)
+sort
 :::::::::::::::::
 
 Definition
@@ -2448,7 +2448,7 @@ Definition
     .. code-block:: python
 
         def sort(input: Tensor,
-                 axis: int = 0,
+                 axis: int = -1,
                  descending : bool = True,
                  out_name = None)
 
@@ -2459,7 +2459,7 @@ Sort input tensor along axis then return the sorted tensor and correspending ind
 Parameters
 """""""""""
 * input: Tensor type, representing input.
-* axis: Int type, representing the axis used in sorting.
+* axis: Int type, representing the axis used in sorting. (Recently, only support axis == -1)
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -2473,7 +2473,7 @@ Processor Support
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
-argsort (TODO)
+argsort
 :::::::::::::::::
 
 Definition
@@ -2482,7 +2482,7 @@ Definition
     .. code-block:: python
 
         def argsort(input: Tensor,
-                    axis: int = 0,
+                    axis: int = -1,
                     descending : bool = True,
                     out_name = None)
 
@@ -2493,7 +2493,7 @@ Sort input tensor along axis then return the correspending indices of sorted ten
 Parameters
 """""""""""
 * input: Tensor type, representing input.
-* axis: Int type, representing the axis used in sorting.
+* axis: Int type, representing the axis used in sorting. (Recently, only support axis == -1)
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 

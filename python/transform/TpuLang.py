@@ -1269,10 +1269,40 @@ def arg(input: Tensor,
         "mode": Attr(method, "string"),
     }
     output1 = Tensor(dtype=o_dtype, name=out_name)
-    output2 = Tensor(dtype=o_dtype, name=out_name)
+    output2 = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Arg", inputs=[input], outputs=[output1, output2], params=attr)
     return output1, output2
 
+@annotation_check
+def sort(input: Tensor,
+         axis: int = -1,
+         descending: bool = True,
+         out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("sort")
+    attr = {
+        "axis": Attr(axis),
+        "descending": Attr(descending, "bool"),
+    }
+    output1 = Tensor(dtype=input.dtype, name=f"{out_name}_val")
+    output2 = Tensor(dtype='int32', name=f"{out_name}_ind")
+    TpuLang.insert_op("top.Sort", inputs=[input], outputs=[output1, output2], params=attr)
+    return output1, output2
+
+@annotation_check
+def argsort(input: Tensor,
+            axis: int = -1,
+            descending: bool = True,
+            out_name: str = None):
+    if out_name is None:
+        out_name = generate_name("argsort")
+    attr = {
+        "axis": Attr(axis),
+        "descending": Attr(descending, "bool"),
+    }
+    output = Tensor(dtype='int32', name=out_name)
+    TpuLang.insert_op("top.Sort", inputs=[input], outputs=[None, output], params=attr)
+    return output
 
 ######### Data Arrange Operator ############
 @annotation_check
@@ -1495,17 +1525,11 @@ def topk(input: Tensor,
          axis: int,
          k: int,
          out_name: str = None):
-    dims = len(input.shape)
-    if axis < 0:
-        axis_ = axis + dims
-    else:
-        axis_ = axis
-    assert 0 <= axis_ and axis_ < dims, f"axis:{axis} is not supported"
     assert k > 0, f"k:{k} is not valid"
     if out_name is None:
         out_name = generate_name("topk")
     attr = {
-        "axis": Attr(axis_),
+        "axis": Attr(axis),
         "K": Attr(k),
     }
     output1 = Tensor(dtype=input.dtype, name=f'{out_name}_val')
@@ -1768,4 +1792,6 @@ def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_
     if out_name is None:
         out_name = generate_name("select")
     cond = __compare(lhs, rhs, type, f"{out_name}_compare")
+    cond.shape = lhs.shape
     return cond_select(cond, tbrn, fbrn, f"{out_name}_cond_select")
+

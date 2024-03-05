@@ -189,7 +189,7 @@ public:
   #include "tpu_mlir/Support/CustomLayer.h"
   static bool force_dynamic_run(Operation *op) {
     if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
-            NmsOp>(op)) {
+            NmsOp, SortOp>(op)) {
       return true;
     } else if (op->hasTrait<trait::ShapeProducer>()) {
       return true;

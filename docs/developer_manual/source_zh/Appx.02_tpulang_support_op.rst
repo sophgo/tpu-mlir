@@ -2572,7 +2572,7 @@ topk
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
-sort (TODO)
+sort
 :::::::::::::::::
 
 接口定义
@@ -2581,7 +2581,7 @@ sort (TODO)
     .. code-block:: python
 
         def sort(input: Tensor,
-                 axis: int = 0,
+                 axis: int = -1,
                  descending : bool = True,
                  out_name = None)
 
@@ -2592,7 +2592,7 @@ sort (TODO)
 参数说明
 """""""""""
 * input：Tensor类型，表示输入张量。
-* axis：int类型，表示指定的轴。
+* axis：int类型，表示指定的轴。(暂时只支持axis==-1)
 * descending：bool类型，表示是否按从大到小排列。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -2606,7 +2606,7 @@ sort (TODO)
 * BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
 
 
-argsort (TODO)
+argsort
 :::::::::::::::::
 
 接口定义
@@ -2626,7 +2626,7 @@ argsort (TODO)
 参数说明
 """""""""""
 * input：Tensor类型，表示输入张量。
-* axis：int类型，表示指定的轴。
+* axis：int类型，表示指定的轴。(暂时只支持axis==-1)
 * descending：bool类型，表示是否按从大到小排列。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 

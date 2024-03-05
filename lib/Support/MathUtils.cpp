@@ -1593,4 +1593,41 @@ void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
   }
 }
 
+void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices) {
+  using pair_t = std::pair<int, float>;
+  auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
+    return (item1.second > item2.second) ||
+           (item1.second == item2.second && item1.first < item2.first);
+  };
+  auto cmp_small = [](pair_t const &item1, pair_t const &item2) {
+    return (item1.second < item2.second) ||
+           (item1.second == item2.second && item1.first > item2.first);
+  };
+  int axis = param.axis;
+  int out_num = 1, in_num = 1;
+  for (int i = 0; i < axis; ++i) {
+    out_num *= shape[i];
+  }
+  for (int i = axis + 1; i < dims; ++i) {
+    in_num *= shape[i];
+  }
+  int batch = out_num * in_num;
+  int len = shape[axis];
+  for (int b = 0; b < batch; b++) {
+    int i = b / in_num;
+    int j = b % in_num;
+    std::vector<pair_t> pairs(len);
+    for (int k = 0; k < len; k++) {
+      pairs[k] = std::make_pair(k, input[(i * len + k) * in_num + j]);
+    }
+    std::stable_sort(pairs.begin(), pairs.end(), param.descending ? cmp_large : cmp_small);
+    for (int k = 0; k < len; k++) {
+      sorted_indices[(i * len + k) * in_num + j] = pairs[k].first;
+      if (sorted_values) {
+        sorted_values[(i * len + k) * in_num + j] = pairs[k].second;
+      }
+    }
+  }
+}
+
 } // namespace tpu_mlir
