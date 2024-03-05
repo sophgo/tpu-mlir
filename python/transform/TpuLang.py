@@ -45,25 +45,41 @@ def compile(name: str,
             outputs: List[Tensor],
             cmp=True,
             refs=None,
+            mode='f32',         # unused
+            dynamic=False):
+    TpuLang.graph.inputs = inputs
+    TpuLang.graph.outputs = outputs
+    TpuLang.graph.quantized_type_inference()
+    # convert to mlir
+    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized")
+    save_input_reference(model_name=name, refs=refs)
+    model_transform(name, converter)
+    model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=cmp and refs != None)
+    bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic)
+
+def compile_f32(name: str,
+            inputs: List[Tensor],
+            outputs: List[Tensor],
+            cmp=True,
+            refs=None,
             mode='f32',
             dynamic=False):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
     # convert to mlir
-    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode=mode)
+    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32")
+    save_input_reference(model_name=name, refs=refs)
     model_transform(name, converter)
-    is_inference = mode =='f32'
-    model_top_inference(model_name=name, inference=is_inference)
-    if is_inference and cmp and refs is not None:
-        model_validate(model_name=name, refs=refs)
+    compare = cmp and refs != None
+    model_top_inference(model_name=name, cmp=compare)
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
     if mode == 'all':
         for m in ['f32', 'f16', 'bf16']:
-            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=is_inference)
+            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
             bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic)
     else:
-        model_lowering_and_inference(model_name=name, quant_mode=mode, chip=TpuLang.chip, cmp=is_inference)
+        model_lowering_and_inference(model_name=name, quant_mode=mode, chip=TpuLang.chip, cmp=cmp)
         bmodel_generate_and_inference(model_name=name, quant_mode=mode, dynamic=dynamic)
 
 def model_transform(model_name, converter: TpuLangConverter):
@@ -73,31 +89,31 @@ def model_transform(model_name, converter: TpuLangConverter):
     mlir_opt_for_top(mlir_origin, mlir_file)
     print("Mlir file generated:{}".format(mlir_file))
 
+def save_input_reference(model_name, refs:dict):
+    in_f32_npz = model_name + '_in_f32.npz'
+    ref_inputs = dict()
+    if refs is not None:
+        ref_npz = model_name + '_ref_output.npz'
+        np.savez(ref_npz, **refs)
+    for tensor in TpuLang.graph.inputs:
+        if refs is not None and tensor.name in refs.keys():
+            ref_inputs[tensor.name] = refs[tensor.name]
+        else:
+            ref_inputs[tensor.name] = tensor.buffer
+    np.savez(in_f32_npz, **ref_inputs)
 
-def model_top_inference(model_name, inference=False):
+
+def model_top_inference(model_name, cmp=False):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
-    ref_inputs = dict()
-    for tensor in TpuLang.graph.inputs:
-        ref_inputs[tensor.name] = tensor.buffer
-    np.savez(in_f32_npz, **ref_inputs)
-    # inference of mlir model, no inference performed when there is custom op
-    if inference:
-        res_npz = model_name + '_top_outputs.npz'
-        show_fake_cmd(in_f32_npz, mlir_file, res_npz)
-        f32_outputs = mlir_inference(ref_inputs, mlir_file)
-        np.savez(res_npz, **f32_outputs)
-
-
-def model_validate(model_name, refs: dict):
-    ref_outputs = dict()
-    for tensor in TpuLang.graph.outputs:
-        ref_outputs[tensor.name] = refs[tensor.name]
-    ref_npz = model_name + '_ref_outputs.npz'
-    np.savez(ref_npz, **ref_outputs)
+    input_data = np.load(in_f32_npz)
     top_npz = model_name + '_top_outputs.npz'
-    # compare all blobs layer by layers
-    f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
+    show_fake_cmd(in_f32_npz, mlir_file, top_npz)
+    f32_outputs = mlir_inference(input_data, mlir_file)
+    np.savez(top_npz, **f32_outputs)
+    if cmp:
+        ref_npz = model_name + '_ref_output.npz'
+        f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, isAsym: bool = False, inference: bool = True, cmp: bool = False):
     top_mlir = "{}.mlir".format(model_name)
@@ -114,8 +130,12 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, is
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         np.savez(tpu_npz, **tpu_mlir_outs)
         if cmp:
-            top_npz = model_name + '_top_outputs.npz'
-            npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
+            if quant_mode == 'int8':
+                ref_npz = model_name + '_ref_output.npz'
+                npz_compare([ref_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
+            else:
+                top_npz = model_name + '_top_outputs.npz'
+                npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
 
 def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False):
 
@@ -1458,8 +1478,8 @@ def topk(input: Tensor,
         "axis": Attr(axis_),
         "K": Attr(k),
     }
-    output1 = Tensor(dtype='int32', name=f'{out_name}_val')
-    output2 = Tensor(dtype=input.dtype, name=f'{out_name}_ind')
+    output1 = Tensor(dtype=input.dtype, name=f'{out_name}_val')
+    output2 = Tensor(dtype='int32', name=f'{out_name}_ind')
     TpuLang.insert_op("top.TopK", inputs=[input], outputs=[output1, output2], params=attr)
     return output1, output2
 
