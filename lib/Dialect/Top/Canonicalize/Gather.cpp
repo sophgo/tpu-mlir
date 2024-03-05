@@ -106,7 +106,36 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
   }
 };
 
+struct TopGatherMulConst : public OpRewritePattern<GatherOp> {
+  using OpRewritePattern::OpRewritePattern;
+  TopGatherMulConst(MLIRContext *context)
+      : OpRewritePattern<GatherOp>(context) {}
+
+  LogicalResult matchAndRewrite(GatherOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op->hasOneUse() || !module::isWeight(op.getInput())) {
+      return failure();
+    }
+    auto next_op = *op->user_begin();
+    auto mulconst_op = dyn_cast<top::MulConstOp>(next_op);
+    if (!mulconst_op) {
+      return failure();
+    }
+    auto weight_op = cast<top::WeightOp>(op.getInput().getDefiningOp());
+    auto data = weight_op.read<float>();
+    auto data_new = std::make_shared<std::vector<float>>(data->size());
+    std::transform(data->begin(), data->end(), data_new->begin(),
+                   [&](const float d) {
+                     return d * mulconst_op.getConstVal().convertToDouble();
+                   });
+    weight_op.update(*data_new, data_new->size());
+    op->setLoc(mulconst_op->getLoc());
+    rewriter.replaceOp(mulconst_op, op);
+    return success();
+  }
+};
+
 void GatherOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<TopGatherToSlice>(context);
+  results.insert<TopGatherToSlice, TopGatherMulConst>(context);
 }

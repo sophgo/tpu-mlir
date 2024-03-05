@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void LoweringRMSNorm(PatternRewriter &rewriter, top::RMSNormOp op,
-                              Type type) {
+                            Type type) {
   rewriter.setInsertionPointAfter(op);
   const int nInputs = op->getNumOperands();
   std::vector<Value> opds;
@@ -52,41 +52,37 @@ static void LoweringRMSNorm(PatternRewriter &rewriter, top::RMSNormOp op,
 }
 
 void RMSNormLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::RMSNormOp op) const {
+                                  top::RMSNormOp op) const {
   LoweringRMSNorm(rewriter, op, rewriter.getF32Type());
 }
 
-void RMSNormLowering::LoweringINT8(PatternRewriter &rewriter,
-                                     top::RMSNormOp op,
-                                     bool asymmetric) const {
+void RMSNormLowering::LoweringINT8(PatternRewriter &rewriter, top::RMSNormOp op,
+                                   bool asymmetric) const {
   LoweringF16(rewriter, op);
 }
-void RMSNormLowering::LoweringINT4(PatternRewriter &rewriter,
-                                     top::RMSNormOp op,
-                                     bool asymmetric) const {
+
+void RMSNormLowering::LoweringINT4(PatternRewriter &rewriter, top::RMSNormOp op,
+                                   bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
+
 void RMSNormLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::RMSNormOp op) const {
-  if (module::isBM1688()) {
-    LoweringRMSNorm(rewriter, op, rewriter.getF32Type());
-  } else {
-    LoweringRMSNorm(rewriter, op, rewriter.getBF16Type());
-  }
+                                   top::RMSNormOp op) const {
+  LoweringRMSNorm(rewriter, op, rewriter.getBF16Type());
 }
 
 void RMSNormLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::RMSNormOp op) const {
+                                  top::RMSNormOp op) const {
   LoweringRMSNorm(rewriter, op, rewriter.getF16Type());
 }
 
 void RMSNormLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::RMSNormOp op) const {
+                                 top::RMSNormOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
 void RMSNormLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                          top::RMSNormOp op) const {
+                                        top::RMSNormOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
