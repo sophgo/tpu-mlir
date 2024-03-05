@@ -555,7 +555,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise addition operation between tensors. :math:`tensor\_o = tensor\_i0 + tensor\_i1`。
+Element-wise addition operation between tensors. :math:`tensor\_o = tensor\_i0 + tensor\_i1`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -590,7 +590,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise subtraction operation between tensors. :math:`tensor\_o = tensor\_i0 - tensor\_i1`。
+Element-wise subtraction operation between tensors. :math:`tensor\_o = tensor\_i0 - tensor\_i1`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -626,7 +626,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""""
 
-Element-wise multiplication operation between tensors. :math:`tensor\_o = tensor\_i0 * tensor\_i1`。
+Element-wise multiplication operation between tensors. :math:`tensor\_o = tensor\_i0 * tensor\_i1`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -662,7 +662,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""""
 
-Element-wise division operation between tensors. :math:`tensor\_o = tensor\_i0 / tensor\_i1`。
+Element-wise division operation between tensors. :math:`tensor\_o = tensor\_i0 / tensor\_i1`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -695,7 +695,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""
-Element-wise maximum operation between tensors. :math:`tensor\_o = max(tensor\_i0, tensor\_i1)`。
+Element-wise maximum operation between tensors. :math:`tensor\_o = max(tensor\_i0, tensor\_i1)`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -730,7 +730,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""
-Element-wise minimum operation between tensors. :math:`tensor\_o = min(tensor\_i0, tensor\_i1)`。
+Element-wise minimum operation between tensors. :math:`tensor\_o = min(tensor\_i0, tensor\_i1)`.
 This operation supports broadcasting.
 This operation belongs to **local operations**.
 
@@ -801,7 +801,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""
-Element-wise greater than comparison operation between tensors. :math:`tensor\_o = tensor\_i0 > tensor\_i1 ? 1 : 0`。
+Element-wise greater than comparison operation between tensors. :math:`tensor\_o = tensor\_i0 > tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -834,7 +834,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""
-Element-wise less than comparison operation between tensors. :math:`tensor\_o = tensor\_i0 < tensor\_i1 ? 1 : 0`。
+Element-wise less than comparison operation between tensors. :math:`tensor\_o = tensor\_i0 < tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -868,7 +868,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""
 
-Element-wise greater than or equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 >= tensor\_i1 ? 1 : 0`。
+Element-wise greater than or equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 >= tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -902,7 +902,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""
 
-Element-wise less than or equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 <= tensor\_i1 ? 1 : 0`。
+Element-wise less than or equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 <= tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -936,7 +936,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""
 
-Element-wise equality comparison operation between tensors. :math:`tensor\_o = tensor\_i0 == tensor\_i1 ? 1 : 0`。
+Element-wise equality comparison operation between tensors. :math:`tensor\_o = tensor\_i0 == tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -969,7 +969,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""
-Element-wise not equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 != tensor\_i1 ? 1 : 0`。
+Element-wise not equal to comparison operation between tensors. :math:`tensor\_o = tensor\_i0 != tensor\_i1 ? 1 : 0`.
 This operation supports broadcasting.
 tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
@@ -1002,7 +1002,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise greater-than comparison operation between tensors and scalars. :math:`tensor\_o = tensor\_i0 > scalar\_i1 ? 1 : 0`。
+Element-wise greater-than comparison operation between tensors and scalars. :math:`tensor\_o = tensor\_i0 > scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1033,7 +1033,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise less-than comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 < scalar\_i1 ? 1 : 0`。
+Element-wise less-than comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 < scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1064,7 +1064,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise greater-than-or-equal-to comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 >= scalar\_i1 ? 1 : 0`。
+Element-wise greater-than-or-equal-to comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 >= scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1095,7 +1095,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Element-wise less-than-or-equal-to comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 <= scalar\_i1 ? 1 : 0`。
+Element-wise less-than-or-equal-to comparison between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 <= scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1126,7 +1126,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The element-wise equality comparison operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 == scalar\_i1 ? 1 : 0`。
+The element-wise equality comparison operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 == scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1157,7 +1157,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The element-wise inequality comparison operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 != scalar\_i1 ? 1 : 0`。
+The element-wise inequality comparison operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 != scalar\_i1 ? 1 : 0`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1191,7 +1191,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The ReLU activation function, implemented on an element-wise basis. :math:`y = max(0, x)`。
+The ReLU activation function, implemented on an element-wise basis. :math:`y = max(0, x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1222,7 +1222,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The leaky ReLU activation function, implemented on an element-wise basis. :math:`y =\begin{cases}x\quad x>0\\x*params_[0] \quad x<=0\\\end{cases}`。
+The leaky ReLU activation function, implemented on an element-wise basis. :math:`y =\begin{cases}x\quad x>0\\x*params_[0] \quad x<=0\\\end{cases}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1253,7 +1253,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The abs absolute value activation function, implemented on an element-wise basis. :math:`y = \left | x \right |`。
+The abs absolute value activation function, implemented on an element-wise basis. :math:`y = \left | x \right |`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1283,7 +1283,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The ln activation function, implemented on an element-wise basis. :math:`y = log(x)`。
+The ln activation function, implemented on an element-wise basis. :math:`y = log(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1313,7 +1313,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The square function, implemented on an element-wise basis. :math:`y = x*x`。
+The square function, implemented on an element-wise basis. :math:`y = x*x`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1343,7 +1343,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The ceil rounding up activation function, implemented on an element-wise basis. :math:`y = \left \lfloor x \right \rfloor`。
+The ceil rounding up activation function, implemented on an element-wise basis. :math:`y = \left \lfloor x \right \rfloor`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1373,7 +1373,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The floor rounding down activation function, implemented on an element-wise basis. :math:`y = \left \lceil x \right \rceil`。
+The floor rounding down activation function, implemented on an element-wise basis. :math:`y = \left \lceil x \right \rceil`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1403,7 +1403,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The round activation function, which rounds to the nearest integer using the round half up (four-way tie-breaking) method, implemented on an element-wise basis. :math:`y = round(x)`。
+The round activation function, which rounds to the nearest integer using the round half up (four-way tie-breaking) method, implemented on an element-wise basis. :math:`y = round(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1434,7 +1434,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The sin sine activation function, implemented on an element-wise basis. :math:`y = sin(x)`。
+The sin sine activation function, implemented on an element-wise basis. :math:`y = sin(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1465,7 +1465,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The cos cosine activation function, implemented on an element-wise basis. :math:`y = cos(x)`。
+The cos cosine activation function, implemented on an element-wise basis. :math:`y = cos(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1495,7 +1495,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The exp exponential activation function, implemented on an element-wise basis. :math:`y = e^{x}`。
+The exp exponential activation function, implemented on an element-wise basis. :math:`y = e^{x}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1525,7 +1525,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The tanh hyperbolic tangent activation function, implemented on an element-wise basis. :math:`y=tanh(x)=\frac{e^{x}-e^{-x}}{e^{x}+e^{-x}}`。
+The tanh hyperbolic tangent activation function, implemented on an element-wise basis. :math:`y=tanh(x)=\frac{e^{x}-e^{-x}}{e^{x}+e^{-x}}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1555,7 +1555,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The sigmoid activation function, implemented on an element-wise basis. :math:`y = 1 / (1 + e^{-x})`。
+The sigmoid activation function, implemented on an element-wise basis. :math:`y = 1 / (1 + e^{-x})`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1585,7 +1585,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The ELU (Exponential Linear Unit) activation function, implemented on an element-wise basis. :math:`y =  \begin{cases}x\quad x>=0\\e^{x}-1\quad x<0\\\end{cases}`。
+The ELU (Exponential Linear Unit) activation function, implemented on an element-wise basis. :math:`y =  \begin{cases}x\quad x>=0\\e^{x}-1\quad x<0\\\end{cases}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1615,7 +1615,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The sqrt square root activation function, implemented on an element-wise basis. :math:`y = \sqrt{x}`。
+The sqrt square root activation function, implemented on an element-wise basis. :math:`y = \sqrt{x}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1645,7 +1645,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The rsqrt square root  takes the deactivation function, implemented on an element-wise basis. :math:`y = 1 / (sqrt{x})`。
+The rsqrt square root  takes the deactivation function, implemented on an element-wise basis. :math:`y = 1 / (sqrt{x})`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1675,7 +1675,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The silu activation function, implemented on an element-wise basis. :math:`y = x * (1 / (1 + e^{-x}))`。
+The silu activation function, implemented on an element-wise basis. :math:`y = x * (1 / (1 + e^{-x}))`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1706,7 +1706,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""""
 The erf activation function, for the corresponding elements x and y at the same positions in the input and output Tensors,
-is implemented on an element-wise basis. :math:`y = \frac{2}{\sqrt{\pi }}\int_{0}^{x}e^{-\eta ^{2}}d\eta`。
+is implemented on an element-wise basis. :math:`y = \frac{2}{\sqrt{\pi }}\int_{0}^{x}e^{-\eta ^{2}}d\eta`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1736,7 +1736,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The tan tangent activation function, implemented on an element-wise basis. :math:`y = tan(x)`。
+The tan tangent activation function, implemented on an element-wise basis. :math:`y = tan(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1768,7 +1768,7 @@ The interface definition
 Description of the function
 """""""""""""""""""""""""""""""""
 The softmax activation function, which normalizes an input vector into a probability distribution consisting of probabilities proportional
-to the exponentials of the input numbers. :math:`tensor\_o = exp(tensor\_i)/sum(exp(tensor\_i),axis)`。
+to the exponentials of the input numbers. :math:`tensor\_o = exp(tensor\_i)/sum(exp(tensor\_i),axis)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1800,7 +1800,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The Mish activation function, implemented on an element-wise basis.:math:`y = x * tanh(ln(1 + e^{x}))`。
+The Mish activation function, implemented on an element-wise basis.:math:`y = x * tanh(ln(1 + e^{x}))`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1832,7 +1832,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The h-swish activation function, implemented on an element-wise basis. :math:`y =\begin{cases}0\quad x<=-3\\x \quad x>=3\\x*((x+3)/6) \quad -3<x<3\\\end{cases}`。
+The h-swish activation function, implemented on an element-wise basis. :math:`y =\begin{cases}0\quad x<=-3\\x \quad x>=3\\x*((x+3)/6) \quad -3<x<3\\\end{cases}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1864,7 +1864,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The arccosine (inverse cosine) activation function, implemented on an element-wise basis. :math:`y = arccos(x)`。
+The arccosine (inverse cosine) activation function, implemented on an element-wise basis. :math:`y = arccos(x)`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1895,7 +1895,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The arctanh (inverse hyperbolic tangent) activation function, implemented on an element-wise basis. :math:`y = arctanh(x)=\frac{1}{2}ln(\frac{1+x}{1-x})`。
+The arctanh (inverse hyperbolic tangent) activation function, implemented on an element-wise basis. :math:`y = arctanh(x)=\frac{1}{2}ln(\frac{1+x}{1-x})`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1926,7 +1926,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The sinh (hyperbolic sine) activation function, implemented on an element-wise basis. :math:`y = sinh(x)=\frac{e^{x}-e^{-x}}{2}`。
+The sinh (hyperbolic sine) activation function, implemented on an element-wise basis. :math:`y = sinh(x)=\frac{e^{x}-e^{-x}}{2}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1958,7 +1958,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The cosh (hyperbolic cosine) activation function, implemented on an element-wise basis. :math:`y = cosh(x)=\frac{e^{x}+e^{-x}}{2}`。
+The cosh (hyperbolic cosine) activation function, implemented on an element-wise basis. :math:`y = cosh(x)=\frac{e^{x}+e^{-x}}{2}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1989,7 +1989,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The sign activation function, implemented on an element-wise basis. :math:`y =\begin{cases}1\quad x>0\\0\quad x=0\\-1\quad x<0\\\end{cases}`。
+The sign activation function, implemented on an element-wise basis. :math:`y =\begin{cases}1\quad x>0\\0\quad x=0\\-1\quad x<0\\\end{cases}`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -2020,7 +2020,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The GELU (Gaussian Error Linear Unit) activation function, implemented on an element-wise basis. :math:`y = x* 0.5 * (1+ erf(\frac{x}{\sqrt{2}}))`。
+The GELU (Gaussian Error Linear Unit) activation function, implemented on an element-wise basis. :math:`y = x* 0.5 * (1+ erf(\frac{x}{\sqrt{2}}))`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -2050,7 +2050,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The Copy function is applied to copy the input data into the output Tensor。
+The Copy function is applied to copy the input data into the output Tensor.
 This operation belongs to **global operations**.
 
 Explanation of parameters
@@ -2080,7 +2080,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The hsigmoid (hard sigmoid) activation function, implemented on an element-wise basis. :math:`y = min(1, max(0, \frac{x}{6} + 0.5))`。
+The hsigmoid (hard sigmoid) activation function, implemented on an element-wise basis. :math:`y = min(1, max(0, \frac{x}{6} + 0.5))`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -2853,8 +2853,8 @@ Returns a Tensor, whose data type is same of that of `table`.
 
 Processor Support
 """""""""""
-* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 cond_select
@@ -2965,8 +2965,8 @@ Explanation of parameters
 """""""""""
 
 * input: * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
-* mean: A Tensor type, representing the mean value of the input, shape is [c]。
-* variance: A Tensor type, representing the variance value of the input, shape is [c]。
+* mean: A Tensor type, representing the mean value of the input, shape is [c].
+* variance: A Tensor type, representing the variance value of the input, shape is [c].
 * gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
 * beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
@@ -3066,3 +3066,105 @@ Processor support
 """"""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
+
+
+sort
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def sort(input: Tensor,
+                 axis: int = 0,
+                 descending : bool = True,
+                 out_name = None)
+
+Description
+"""""""""""
+Sort input tensor along axis then return the sorted tensor and correspending indices.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* axis: Int type, representing the axis used in sorting.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: data type of the first is the same of that of input, and data type of the second is INT32.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
+
+argsort
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def argsort(input: Tensor,
+                    axis: int = 0,
+                    descending : bool = True,
+                    out_name = None)
+
+Description
+"""""""""""
+Sort input tensor along axis then return the correspending indices of sorted tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* axis: Int type, representing the axis used in sorting.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns one Tensor whose data type is INT32.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
+
+sort_by_key
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def sort_by_key(input: Tensor,
+                        key: Tensor,
+                        descending : bool = True,
+                        out_name = None)
+
+Description
+"""""""""""
+Sort input tensor by key then return the sorted tensor and correspending keys.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* key: Tensor type, representing key.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: data type of the first is the same of that of input, and data type of the second is is the same of that of key.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
