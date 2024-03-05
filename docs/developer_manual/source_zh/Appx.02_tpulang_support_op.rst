@@ -3388,3 +3388,141 @@ select
 """""""""""
 * BM1688： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1684X： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+cond_select
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def cond_select(cond: Tensor,
+                        tbrn: Union[Tensor, Scalar, float, int],
+                        fbrn: Union[Tensor, Scalar, float, int],
+                        out_name = None)
+
+功能描述
+"""""""""""
+根据条件 `cond`来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
+
+参数说明
+"""""""""""
+* cond：Tensor类型，表示条件。
+* tbrn：Tensor类型或Scalar类型，表示条件为真时取的值。
+* fbrn：Tensor类型或Scalar类型，表示条件为假时取的值。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+约束条件：若 `tbrn`和 `fbrn`皆为张量，则要求 `tbrn`与 `fbrn`的形状和数据类型相同。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+sort
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def sort(input: Tensor,
+                 axis: int = 0,
+                 descending : bool = True,
+                 out_name = None)
+
+功能描述
+"""""""""""
+沿某个轴的输入张量进行排序，输出排序后的张量以及该张量的数据在输入张量中的索引。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* axis：int类型，表示指定的轴。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个张量的数据类型与输入张量的数据类型相同，第二个张量的数据类型为INT32。
+
+处理器支持
+"""""""""""
+* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
+
+
+argsort
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def argsort(input: Tensor,
+                    axis: int = 0,
+                    descending : bool = True,
+                    out_name = None)
+
+功能描述
+"""""""""""
+沿某个轴的输入张量进行排序，输出排序后的张量的数据在输入张量中的索引。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* axis：int类型，表示指定的轴。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，其数据类型为INT32。
+
+处理器支持
+"""""""""""
+* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
+
+
+sort_by_key
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def sort_by_key(input: Tensor,
+                        key: Tensor,
+                        descending : bool = True,
+                        out_name = None)
+
+功能描述
+"""""""""""
+按键对输入张量进行排序，输出排序后的张量以及相应的键。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入。
+* key：Tensor类型，表示键。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个张量的数据类型与输入的数据类型相同，第二个张量的数据类型与键的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入和键的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入和键的数据类型可以是FLOAT32/FLOAT16。
