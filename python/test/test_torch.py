@@ -159,6 +159,7 @@ class TORCH_IR_TESTER(object):
             "InfError":         (self.test_InfError,          N, Y, Y, N),
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
             "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
+            "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
             ## Canonicalization
             "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N)
         }
@@ -1643,6 +1644,23 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in0_shape, in1_shape], Model(), [input_1, input_2])
 
         _test_gather((10, 349, 5538), (10, 349, 1))
+
+    #######################################################################
+    # GatherMulConst
+    # ------------
+    def test_GatherMulConst(self):
+        """Gather"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.embed = nn.Embedding(128, 64)
+
+            def forward(self, indice):
+                return self.embed(indice) * 1.25
+        self.trace_and_test([(4, 28)], Model(), [self.Desc("int64", 0, 64)])
+
 
     #######################################################################
     # GroupNorm
