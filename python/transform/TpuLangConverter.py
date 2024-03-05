@@ -258,7 +258,7 @@ class TpuLangConverter(BaseConverter):
         self.model_name = name
         self.model = graph
         self.load_model()
-        state = State.TOP_QUANTIZED if mode == "int8" else State.TOP_F32 # Currently only support int8 tpulang
+        state = State.TOP_QUANTIZED if mode == "quantized" else State.TOP_F32
         self.init_MLIRImporter(state)
         self.weight_file = self.mlir.weight_file
         self.constant = {}

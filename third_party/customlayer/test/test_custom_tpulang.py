@@ -112,7 +112,7 @@ class CUSTOM_TPULANG_TESTER(object):
         # compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz
         model_name = model_name + ("_dyn" if self.dynamic else "_static")
         for mode in self.quant_modes:
-            tpul.compile(model_name, graph_ins, graph_outs, mode=mode, refs=ref_data, dynamic=self.dynamic)
+            tpul.compile_f32(model_name, graph_ins, graph_outs, mode=mode, refs=ref_data, dynamic=self.dynamic)
 
     ##################################
     # adding your operators here
@@ -237,7 +237,7 @@ class CUSTOM_TPULANG_TESTER(object):
             x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
             y = model_def(x, flag)
             postfix = "dyn" if dynamic else "static"
-            tpul.compile("model_def_{}_{}".format(gen_name(flag), postfix), [x], [y], dynamic=dynamic)
+            tpul.compile_f32("model_def_{}_{}".format(gen_name(flag), postfix), [x], [y], dynamic=dynamic)
 
         for flag in (0b1, 0b10, 0b100, 0b111):
             tpul.init(self.chip.upper())
