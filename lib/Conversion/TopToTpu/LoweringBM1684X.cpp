@@ -149,6 +149,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SoftmaxLowering,
       SoftplusLowering,
       SoftsignLowering,
+      SortLowering,
       SwapChannelLowering,
       TileLowering,
       UnsqueezeLowering,

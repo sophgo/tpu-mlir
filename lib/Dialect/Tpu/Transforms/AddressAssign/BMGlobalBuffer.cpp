@@ -988,6 +988,42 @@ public:
   }
 };
 
+class SortGlobalBuffer : public OpRewritePattern<tpu::SortOp> {
+public:
+  using OpRewritePattern<tpu::SortOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::SortOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto _op = op.getOperation();
+    auto input_spec = BM168x::get_input_spec(_op);
+    auto output_spec = BM168x::get_output_spec(_op);
+    sort_per_dim_param_t param = {0};
+    param.buffer_addr = module::getAddress(op.getBuffer());
+    param.axis = op.getAxis();
+    param.descending = op.getDescending();
+    param.is_argsort = module::isNone(op.getValues());
+    int64_t buffer_size = BM168x::call_global_bfsz_func(
+      "backend_api_sort_per_dim_global_bfsz",
+      &param, sizeof(param),
+      input_spec->data(), output_spec->data());
+    if (buffer_size) {
+      std::vector<int64_t> buffer_shape = {buffer_size};
+      auto buffer_type = RankedTensorType::get(buffer_shape, rewriter.getI8Type());
+      OpBuilder builder(op->getContext());
+      builder.setInsertionPoint(op);
+      auto loc = module::getLocLike(op, "buffer");
+      auto buf_op = builder.create<tpu::BufferOp>(loc, buffer_type);
+      op.setOperand(op.getNumOperands() - 1, buf_op);
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
 #include "tpu_mlir/Support/CustomLayer.h"
 class CustomGlobalBuffer : public OpRewritePattern<tpu::CustomOp> {
 public:
@@ -1060,6 +1096,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       YoloDetectionGlobalBuffer,
       DetectionOutputGlobalBuffer,
       TopKGlobalBuffer,
+      SortGlobalBuffer,
       CustomGlobalBuffer
   >(patterns->getContext());
   // clang-format on

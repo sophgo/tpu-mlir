@@ -275,6 +275,7 @@ class TpuLangConverter(BaseConverter):
             else:
                 self.output_types.append(self.MLIRImporterTypeStr[tensor.dtype])
         self.mlir.declare_func(self.input_types, self.output_types)
+        self.ctx = Context()
 
     def __del__(self):
         if self.mlir != None:
@@ -395,12 +396,12 @@ class TpuLangConverter(BaseConverter):
     def __get_tensor_type(self, tensor: Tensor):
         if tensor is None:
             self.type_to_mlir["float32"]
-            output_shapes = []
+            return NoneType.get()
         else:
             type = self.type_to_mlir[tensor.dtype]
             output_shapes = tensor.shape
-        if tensor.is_quantized:
-            type = self.get_quantized_type(tensor)
+            if tensor.is_quantized:
+                type = self.get_quantized_type(tensor)
         if output_shapes == []:
             return UnrankedTensorType.get(type)
         if output_shapes is None:
@@ -422,6 +423,12 @@ class TpuLangConverter(BaseConverter):
                 out_types.append(RankedTensorType.get(tuple(s), type))
         return out_types
 
+    def __get_tensor_loc(self, tensor: Tensor):
+        if tensor is None:
+            return Location.unknown(self.ctx)
+        else:
+            return Location.name(tensor.name)
+
     def convert_subgraph(self, subgraph: Graph):
 
         class symbolTable:
@@ -431,6 +438,7 @@ class TpuLangConverter(BaseConverter):
                 self.gen_value_func = gen_value_func
 
             def __getitem__(self, tensor: Tensor):
+                if tensor is None: return self.symbol_table[-1]
                 if tensor.id not in self.symbol_table:
                     if tensor.buffer is None and tensor.ttype != 'coeff':
                         raise Exception("Tensor '{}' is not constant!".format(tensor.name))
@@ -459,7 +467,7 @@ class TpuLangConverter(BaseConverter):
             for tensor in operation.inputs:
                 operands.append(symbol_table[tensor] if tensor is not None else self.mlir.none_op)
             rst_type = [self.__get_tensor_type(x) for x in operation.outputs]
-            name_loc = Location.fused([Location.name(x.name) for x in operation.outputs])
+            name_loc = Location.fused([self.__get_tensor_loc(x) for x in operation.outputs])
             op = Operation.create(
                 operation.op_name,
                 results=rst_type,
@@ -468,12 +476,17 @@ class TpuLangConverter(BaseConverter):
                 loc=name_loc,
             )
             self.mlir.insert_point.insert(op)
-            symbol_table.update(dict(zip((x.id for x in operation.outputs), op.results)))
+            for x, res in zip(operation.outputs, op.results):
+                if x is not None:
+                    symbol_table.update({x.id : res})
+                else:
+                    symbol_table.update({-1 : res})
 
         return_op = []
         for op in subgraph.operators:
             add_operation(op)
             for out in op.outputs:
+                if out is None: continue
                 if out.name in self.output_names:
                     return_op.append(symbol_table[out])
 

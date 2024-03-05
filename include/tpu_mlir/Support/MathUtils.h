@@ -318,4 +318,12 @@ void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
                   const std::vector<int64_t> &kernel_shape,
                   const std::vector<int64_t> &strides,
                   std::vector<int64_t> &pads);
+
+typedef struct {
+  int axis;
+  int descending;
+} sort_param_t;
+
+void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices);
+
 } // namespace tpu_mlir

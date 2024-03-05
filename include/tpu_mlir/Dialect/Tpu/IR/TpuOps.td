@@ -3405,4 +3405,22 @@ def Tpu_TriluOp:Tpu_Op<"Trilu", [
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_SortOp:Tpu_Op<"Sort", [DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Sort operation";
+  let description = [{
+    Integrates some operations related to Sort.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$buffer,
+    I64Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$descending
+  );
+  let results = (outs
+    AnyTensorOrNone:$values,
+    AnyTensor:$indices
+  );
+}
+
 #endif // TPU_OPS

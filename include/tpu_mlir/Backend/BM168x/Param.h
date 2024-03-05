@@ -1901,4 +1901,13 @@ typedef struct
 {
   ConvBwdWeight_common_spec_t common;
 }ConvBwdWeight_global_spec_t;
+
+typedef struct {
+  uint64_t buffer_addr;
+  int      axis;
+  int      descending;
+  int      is_argsort;
+} sort_per_dim_param_t;
+
+
 #endif

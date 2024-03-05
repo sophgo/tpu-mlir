@@ -3232,9 +3232,26 @@ def Top_RsqrtOp:Top_Op<"Rsqrt">{
   let summary = "Rsqrt Operator";
   let description = [{Reverse square root}];
   let arguments = (ins
-  AnyTensor:$input);
+    AnyTensor:$input);
   let results = (outs
-  AnyTensor:$output);
+    AnyTensor:$output);
   let hasCanonicalizer = 1;
-  }
+}
+
+def Top_SortOp:Top_Op<"Sort"> {
+  let summary = "Sort operation";
+  let description = [{
+    Integrates some operations related to Sort.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$descending
+  );
+  let results = (outs
+    AnyTensorOrNone:$values,
+    AnyTensor:$indices
+  );
+}
+
 #endif // Top_OPS

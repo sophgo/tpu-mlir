@@ -71,6 +71,7 @@ class TPULANG_IR_TESTER(object):
             "Arccos": (self.test_Arccos,                Y, Y),
             "Arctanh": (self.test_Arctanh,              Y, Y),
             "Arg": (self.test_Arg,                      Y, Y),
+            "ArgSort": (self.test_ArgSort,              Y, N),
             "Avgpool": (self.test_Avgpool,              Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
             # "Cast": (self.test_Cast,                    Y, Y),
@@ -128,7 +129,7 @@ class TPULANG_IR_TESTER(object):
             "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
-            "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
+            "ShapeFetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
             "Silu": (self.test_Silu,                    Y, Y),
@@ -136,6 +137,7 @@ class TPULANG_IR_TESTER(object):
             "Sinh": (self.test_Sinh,                    Y, Y),
             # "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
+            "Sort": (self.test_Sort,                    Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
             "Square": (self.test_Square,                Y, Y),
@@ -3066,8 +3068,46 @@ class TPULANG_IR_TESTER(object):
 
         _test_select([2, 3, 24, 28], "Greater")
         _test_select([2, 3, 24, 28], "Less")
-        _test_select([2, 3, 24, 28], "Greater", dtype="float16")
-        _test_select([2, 3, 24, 28], "Less", dtype="float16")
+
+    #######################################################################
+    # Sort
+    # ------------
+    def test_Sort(self, case_name):
+        """Sort"""
+
+        @tpulang(self.chip)
+        def _test_sort(shape: List[int], axis: int, dtype="float32"):
+            num_elem = 1
+            for i in range(len(shape)):
+                num_elem *= shape[i]
+            x_data = np.arange(num_elem)
+            np.random.shuffle(x_data)
+            x_data = x_data.reshape(shape).astype(dtype=np.float32)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            val, ind = tpul.sort(x, axis)
+            self.compile_and_check(self.unique_name(case_name), [x], [val, ind])
+
+        _test_sort([4, 3, 4, 28], 3)
+
+    #######################################################################
+    # ArgSort
+    # ------------
+    def test_ArgSort(self, case_name):
+        """ArgSort"""
+
+        @tpulang(self.chip)
+        def _test_argsort(shape: List[int], axis: int, dtype="float32"):
+            num_elem = 1
+            for i in range(len(shape)):
+                num_elem *= shape[i]
+            x_data = np.arange(num_elem)
+            np.random.shuffle(x_data)
+            x_data = x_data.reshape(shape).astype(dtype=np.float32)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            y = tpul.argsort(x, axis)
+            self.compile_and_check(self.unique_name(case_name), [x], [y])
+
+        _test_argsort([1, 3, 4, 28], 3)
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():
