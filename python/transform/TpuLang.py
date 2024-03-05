@@ -1275,12 +1275,14 @@ def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str =
     return output
 
 @annotation_check
-def where(inputs: List[Tensor], dtype = "int32", out_name: str = None):
-    assert(len(inputs) == 3 and inputs[0].shape == inputs[1].shape and inputs[0].shape == inputs[2].shape)
+def where(inputs: Tensor, dtype = "int32", out_name: str = None):
     if out_name is None:
         out_name = generate_name("where")
+    attr = {
+        "order": Attr("ColMajor", "string"),
+        }
     output = Tensor(dtype=dtype, name=out_name)
-    TpuLang.insert_op("top.Where", inputs=inputs, outputs=[output])
+    TpuLang.insert_op("top.NonZero", inputs=[inputs], outputs=[output], params=attr)
     return output
 
 @annotation_check
