@@ -18,7 +18,7 @@ Work Process
 
     * The input parameters are converted to dict format;
 
-    * Inference output shape, and create output tensor;
+    * Create output tensor;
 
     * Set the quantization parameters of the tensor (scale, zero_point);
 
@@ -56,8 +56,6 @@ Supplementary Note:
 
       - The input tensor of the op (i.e., the output tensor of the previous operator or the graph input tensor and coeff);
 
-      - According to the parameters extracted by the interface, the output_shape is obtained by inference (i.e., shape_inference is required);
-
       - attrs extracted from the interface. Attrs will be set by MLIRImporter as attributes corresponding to the ones defined in TopOps.td;
 
       - If the interface includes quantization parameters (i.e., scale and zero_point), the tensor corresponding to this parameter needs to set (or check) the quantization parameters.
@@ -74,10 +72,22 @@ Operator Conversion Example
 
 This section takes the Conv operator as an example to convert a single Conv operator model to Top mlir. The original model definition is shown in the figure (:ref:`tpulang_conv_op`)
 
-.. _tpulang_conv_op:
-.. figure:: ../assets/tpulang_conv.jpeg
-   :align: center
-   :height: 7cm
+   .. code-block:: python
+
+      import numpy as np
+
+      def model_def(in_shape):
+         tpul.init("BM1684X")
+         in_shape = [1,3,173,141]
+         k_shape =[64,1,7,7]
+         x = tpul.Tensor(dtype='float32', shape=in_shape)
+         weight_data = np.random.random(k_shape).astype(np.float32)
+         weight = tpul.Tensor(dtype='float32', shape=k_shape, data=weight_data, is_const=True)
+         bias_data = np.random.random(k_shape[0]).astype(np.float32)
+         bias = tpul.Tensor(dtype='float32', shape=k_shape[0], data=bias_data, is_const=True)
+         conv = tpul.conv(x, weight, bias=bias, stride=[2,2], pad=[0,0,1,1], out_dtype="float32")
+         tpul.compile("model_def", inputs=[x],outputs=[conv], cmp=True)
+         tpul.deinit()
 
    Single Conv Model
 
@@ -86,35 +96,31 @@ The conversion process:
 
 1. Interface definition
 
-   The conv_v2 interface is defined as follows:
+   The conv interface is defined as follows:
 
       .. code-block:: python
 
-         def conv_v2(tensor_i,
-                     weight,
-                     bias = None,
-                     stride = None,
-                     dilation = None,
-                     pad = None,
-                     group = 1,
-                     input_zp = None,
-                     weight_zp = None,
-                     out_dtype = None,
-                     out_name = None):
+         def conv(input: Tensor,
+                  weight: Tensor,
+                  bias: Tensor = None,
+                  stride: List[int] = None,
+                  dilation: List[int] = None,
+                  pad: List[int] = None,
+                  group: int = 1,
+                  out_dtype: str = None,
+                  out_name: str = None):
             # pass
 
 
    Parameter Description
 
-   * tensor_i: Tensor type, indicating the input Tensor with 4-dimensional NCHW format.
+   * input: Tensor type, indicating the input Tensor with 4-dimensional NCHW format.
    * weight: Tensor type, representing the convolution kernel Tensor with 4-dimensional [oc, ic, kh, kw] format. oc indicates the number of output channels, ic indicates the number of input channels, kh is kernel_h, and kw is kernel_w.
    * bias: Tensor type, indicating the bias Tensor. There is no bias when it is None. Otherwise, the shape is required to be [1, oc, 1, 1].
    * dilation: List[int], indicating the size of holes. None means dilation equals [1,1]. Otherwise, the length is required to be 2 and the order of List is [length, width].
    * pad: List[int], indicating the padding size, if it is None, no padding is applied. Otherwise, the length is required to be 4. The order in the List is [Up, Down, Left, Right].
    * stride: List[int], indicating the step size, [1,1] when it is None. Otherwise, the length is required to be 2 and the order in the List is [length, width].
    * groups: int type, indicating the number of groups in the convolutional layer. If ic=oc=groups, the convolution is depthwise conv
-   * input_zp: List[int] type or int type, indicating the input offset. If None, input_zp equals 0. Otherwise, the length of List is required to be ic.
-   * weight_zp: List[int] type or int type, indicating the convolution kernel offset. If None, weight_zp equals 0. Otherwise, the length of list is required to be ic, where ic represents the number of input channels.
    * out_dtype: string type or None, indicating the type of the output Tensor. When the input tensor type is float16/float32, None indicates that the output tensor type is consistent with the input. Otherwise,  None means int32. Value range: /int32/uint32/float32/float16.
    * out_name: string type or None, indicating the name of the output Tensor. When it is None, the name will be automatically generated.
 
@@ -129,27 +135,15 @@ The conversion process:
    Conv Operator Definition
 
 
-1. Build Graph
+2. Build Graph
 
   * Initialize the model: create an empty Graph.
 
   * Model input: Create input tensor x given shape and data type. A tensor name can also be specified here.
 
-  * conv_v2 interface:
+  * conv interface:
 
-      - Call the conv_v2 interface with specified input tensor and input parameters.
-
-      - Inference output shape, and generate output tensor
-
-         .. code-block:: python
-
-            def _shape_inference():
-               kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
-               kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
-               oh = (input.shape[2] + pad[0] + pad[1] - kh_ext) // stride[0] + 1
-               ow = (input.shape[3] + pad[2] + pad[3] - kw_ext) // stride[1] + 1
-               return [input.shape[0], weight.shape[0], oh, ow]
-            output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
+      - Call the conv interface with specified input tensor and input parameters.
 
       - attributes, pack the input parameters into attributes defined by (:ref:`conv_top_def`)
 
@@ -163,6 +157,8 @@ The conversion process:
                "do_relu": Attr(False, "bool"),
                "group": Attr(group)
             }
+
+      - Define output tensor
 
       - Insert conv op. Insert Top.ConvOp into Graph.
 
@@ -181,7 +177,7 @@ The conversion process:
    Initial Mlir Text
 
 
-3. generate_mlir
+4. generate_mlir
 
    * Build input op, the generated Top.inputOp will be inserted into MLIRImporter.mlir_module.
 
@@ -204,7 +200,7 @@ The conversion process:
    Full Mlir Text
 
 
-4. Output
+5. Output
 
   Save the mlir text as Conv_origin.mlir and the weights in tensors as Conv_TOP_F32_all_weight.npz.
 

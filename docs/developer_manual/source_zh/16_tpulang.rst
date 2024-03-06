@@ -18,6 +18,8 @@ TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组�
 
    * 输入参数转为dict格式；
 
+   * 创建输出tensor；
+
    * 设置tensor的量化参数(scale, zero_point)；
 
    * 创建op(op_type, inputs, outputs, params)并insert到graph中。
@@ -69,10 +71,22 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
 本节以 Conv 算子为例, 将单 Conv 算子模型转换为 Top mlir, 原模型定义如图所示(:ref:`tpulang_conv_op`)
 
-.. _tpulang_conv_op:
-.. figure:: ../assets/tpulang_conv.jpeg
-   :align: center
-   :height: 7cm
+   .. code-block:: python
+
+      import numpy as np
+
+      def model_def(in_shape):
+         tpul.init("BM1684X")
+         in_shape = [1,3,173,141]
+         k_shape =[64,1,7,7]
+         x = tpul.Tensor(dtype='float32', shape=in_shape)
+         weight_data = np.random.random(k_shape).astype(np.float32)
+         weight = tpul.Tensor(dtype='float32', shape=k_shape, data=weight_data, is_const=True)
+         bias_data = np.random.random(k_shape[0]).astype(np.float32)
+         bias = tpul.Tensor(dtype='float32', shape=k_shape[0], data=bias_data, is_const=True)
+         conv = tpul.conv(x, weight, bias=bias, stride=[2,2], pad=[0,0,1,1], out_dtype="float32")
+         tpul.compile("model_def", inputs=[x],outputs=[conv], cmp=True)
+         tpul.deinit()
 
    单 Conv 模型
 
@@ -81,35 +95,31 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
 1. 接口定义
 
-   conv_v2 接口定义如下：
+   conv 接口定义如下：
 
       .. code-block:: python
 
-         def conv_v2(tensor_i,
-                     weight,
-                     bias = None,
-                     stride = None,
-                     dilation = None,
-                     pad = None,
-                     group = 1,
-                     input_zp = None,
-                     weight_zp = None,
-                     out_dtype = None,
-                     out_name = None):
+         def conv(input: Tensor,
+                  weight: Tensor,
+                  bias: Tensor = None,
+                  stride: List[int] = None,
+                  dilation: List[int] = None,
+                  pad: List[int] = None,
+                  group: int = 1,
+                  out_dtype: str = None,
+                  out_name: str = None):
             # pass
 
 
    参数说明
 
-   * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
+   * input：Tensor类型，表示输入Tensor，4维NCHW格式。
    * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
    * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。
    * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
    * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
    * stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
    * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
-   * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
-   * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
    * out_dtype：string类型或None，表示输出Tensor的类型。输入tensor类型为float16/float32时，取None表示输出tensor类型与输入一致，否则取None表示为int32。取值范围：/int32/uint32/float32/float16
    * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -130,9 +140,9 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
   * 模型输入：给定shape与data type 创建输入tensor x。此处也可以指定tensor name。
 
-  * conv_v2接口：
+  * conv接口：
 
-      - 调用conv_v2接口，指定输入tensor以及输入参数。
+      - 调用conv接口，指定输入tensor以及输入参数。
 
       - 生成输出tensor
 
@@ -153,6 +163,8 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
                "group": Attr(group)
             }
 
+      - 定义输出tensor
+
       - 插入conv op，将Top.ConvOp插入到Graph中。
 
       - 返回输出tensor
@@ -170,7 +182,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
    初始 mlir 文本
 
 
-3. generate_mlir
+4. generate_mlir
 
    * build input op, 生成的 Top.inputOp 会被插入到 MLIRImporter.mlir_module 中。
 
@@ -193,7 +205,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
    完整的 mlir 文本
 
 
-4. 输出
+5. 输出
 
   将 mlir 文本保存为 Conv_origin.mlir, tensors 中的权重保存为 Conv_TOP_F32_all_weight.npz。
 
