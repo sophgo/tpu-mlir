@@ -71,6 +71,7 @@ class TPULANG_IR_TESTER(object):
             "Arccos": (self.test_Arccos,                Y, Y),
             "Arctanh": (self.test_Arctanh,              Y, Y),
             "Arg": (self.test_Arg,                      Y, Y),
+            "Broadcast": (self.test_Broadcast,          Y, Y),
             # "Cast": (self.test_Cast,                    Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
             "Clamp": (self.test_Clamp,                  Y, Y),
@@ -94,6 +95,7 @@ class TPULANG_IR_TESTER(object):
             "Gelu": (self.test_Gelu,                    Y, Y),
             "Ge": (self.test_Ge,                        Y, Y),
             "Ges": (self.test_Ges,                      Y, Y),
+            "Group_norm": (self.test_Group_norm,        Y, Y),
             "Gt": (self.test_Gt,                        Y, Y),
             "Gts": (self.test_Gts,                      Y, Y),
             "Hsigmoid": (self.test_Hsigmoid,            Y, Y),
@@ -103,6 +105,7 @@ class TPULANG_IR_TESTER(object):
             "Les": (self.test_Les,                      Y, Y),
             "LeakyRelu": (self.test_LeakyRelu,          Y, Y),
             # "Lenet": (self.test_Lenet,                  N, N),
+            "Ln": (self.test_Ln,                        Y, Y),
             "Lt": (self.test_Lt,                        Y, Y),
             "Lts": (self.test_Lts,                      Y, Y),
             "Lut": (self.test_Lut,                      Y, Y),
@@ -115,8 +118,10 @@ class TPULANG_IR_TESTER(object):
             "Ne": (self.test_Ne,                        Y, Y),
             "Nes": (self.test_Nes,                      Y, Y),
             # "NMS": (self.test_NMS,                      Y, Y),
+            "Nonzero": (self.test_Nonzero,              Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
+            "Reduce": (self.test_Reduce,                Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
@@ -125,27 +130,22 @@ class TPULANG_IR_TESTER(object):
             "Shape_fetch": (self.test_Shape_fetch,      Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
+            "Silu": (self.test_Silu,                    Y, Y),
             "Sin": (self.test_Sin,                      Y, Y),
             "Sinh": (self.test_Sinh,                    Y, Y),
             # "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
+            "Square": (self.test_Square,                Y, Y),
             "Squeeze": (self.test_Squeeze,              Y, Y),
             "Sub": (self.test_Sub,                      Y, Y),
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
             "TopK": (self.test_TopK,                    Y, Y),
-            "Ln": (self.test_Ln,                        Y, Y),
-            "Square": (self.test_Square,                Y, Y),
-            "Broadcast": (self.test_Broadcast,          Y, Y),
-            "Where": (self.test_Where,                  Y, Y),
             "Upsample": (self.test_Upsample,            Y, Y),
-            "Reduce": (self.test_Reduce,                Y, Y),
             "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
-            "Silu": (self.test_Silu,                    Y, Y),
-            "Group_norm": (self.test_Group_norm,        Y, Y),
             #### model ####
             "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
@@ -2176,23 +2176,23 @@ class TPULANG_IR_TESTER(object):
         _test_broadcast([1, 2, 1], [2, 1, 6])
 
     #######################################################################
-    # where
+    # nonzero
     # ------------
-    def where_op(self, input, dtype="float32"):
-        where = tpul.where(input, dtype = dtype)
-        return where
+    def nonzero_op(self, input, dtype="float32"):
+        nonzero = tpul.nonzero(input, dtype = dtype)
+        return nonzero
 
-    def test_Where(self, case_name):
-        """where"""
+    def test_Nonzero(self, case_name):
+        """nonzero"""
 
         @tpulang(self.chip)
-        def _test_where(shape: List[int], dtype="float32"):
+        def _test_nonzero(shape: List[int], dtype="float32"):
             input_x = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
-            where = self.where_op(x, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [where])
+            nonzero = self.nonzero_op(x, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [nonzero])
 
-        _test_where([10, 40, 224])
+        _test_nonzero([10, 40, 224])
 
     #######################################################################
     # upsample

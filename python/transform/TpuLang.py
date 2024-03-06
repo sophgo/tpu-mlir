@@ -1295,9 +1295,9 @@ def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str =
     return output
 
 @annotation_check
-def where(inputs: Tensor, dtype = "int32", out_name: str = None):
+def nonzero(inputs: Tensor, dtype = "int32", out_name: str = None):
     if out_name is None:
-        out_name = generate_name("where")
+        out_name = generate_name("nonzero")
     attr = {
         "order": Attr("ColMajor", "string"),
         }

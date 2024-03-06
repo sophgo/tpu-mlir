@@ -752,6 +752,37 @@ Processor support
 * BM1684X: The input data type can be FLOAT32.
 
 
+copy
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def copy(tensor_i, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The Copy function is applied to copy the input data into the output Tensor.
+This operation belongs to **global operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
 clamp
 :::::::::::::::::
 
@@ -1175,7 +1206,7 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
-Element-wise Compare Operator
+Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 relu
@@ -2037,35 +2068,6 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
-copy
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def copy(tensor_i, out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-The Copy function is applied to copy the input data into the output Tensor.
-This operation belongs to **global operations**.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same shape and data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
 
 hsigmoid
 :::::::::::::::::
@@ -2195,131 +2197,6 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
-where
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def where(tensor_i, dtype = 'int32', out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-Extract the corresponding shape information (n,c,h,w) when input Tensor data is true.
-This operation is considered a **global operation**.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
-* dtype: The data type of the output tensor,with a default value of "int32."
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
-upsample
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def upsample(tensor_i, scale = 1, out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-The output is scaled repeatedly on the input tensor data in h and w dimensions.
-This operation is considered a **local operation**.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
-* scale: int type, representing the expansion multiple.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
-reduce
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-Perform reduce operations on the input tensor according to axis_list.
-This operation is considered a **restricted local operation**. This operation is considered a **local operation** only when the input data type is FLOAT32.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
-* method: string type, representing the reduce method.The method The can be mean, max, min, sum, product, L1, or l2.
-* axis: A List[int] or Tuple[int] type, indicating the specified axes.
-* keep_dims: A boolean, indicating whether to keep the specified axis after the operation.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
-unsqueeze
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def unsqueeze(tensor_i, axis, out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-The operation adds dimensions by adding axes with a size of 1 from the shape of the input.
-This operation belongs to **local operations**.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
-* axis: A List[int] or Tuple[int] type, indicating the specified axes.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
 
 concat
 :::::::::::::::::
@@ -2453,9 +2330,43 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+extract
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def extract(input: Tensor,
+                    start: Union[List[int], Tuple[int]] = None,
+                    end: Union[List[int], Tuple[int]] = None,
+                    stride: Union[List[int], Tuple[int]] = None,
+                    out_name: str = None)
+
+Description
+"""""""""""
+Extract slice of input tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input tensor.
+* start: A list or tuple of int, or None, representing the start of slice. If set to None, `start`` is filled all with 0.
+* end: A list or tuple of int, or None, representing the end of slice. If set to None, `end`` is given as shape of input.
+* stride: A list or tuple of int, or None, representing the stride of slice. If set to None, `stride` is filled all with 1.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns a Tensor, whose data type is same of that of `table`.
+
+Processor Support
+"""""""""""
+* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
-Element-wise Compare Operator
+Sort Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 arg
@@ -2493,6 +2404,142 @@ Processor support
 """"""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
+
+topk
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def topk(input: Tensor,
+                 axis: int,
+                 k: int,
+                 out_name: str = None):
+
+Description
+"""""""""""
+Find top k numbers after sorted
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input tensor.
+* axis: Int type, representing axis used in sorting.
+* k: Int type, representing the number of top values along axis.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: the first one represents the values, whose data type is the same as that of the input tensor while the second one represents the indices in input tensor after sorted along axis.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
+sort (TODO)
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def sort(input: Tensor,
+                 axis: int = 0,
+                 descending : bool = True,
+                 out_name = None)
+
+Description
+"""""""""""
+Sort input tensor along axis then return the sorted tensor and correspending indices.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* axis: Int type, representing the axis used in sorting.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: data type of the first is the same of that of input, and data type of the second is INT32.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
+
+argsort (TODO)
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def argsort(input: Tensor,
+                    axis: int = 0,
+                    descending : bool = True,
+                    out_name = None)
+
+Description
+"""""""""""
+Sort input tensor along axis then return the correspending indices of sorted tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* axis: Int type, representing the axis used in sorting.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns one Tensor whose data type is INT32.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
+
+sort_by_key (TODO)
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def sort_by_key(input: Tensor,
+                        key: Tensor,
+                        descending : bool = True,
+                        out_name = None)
+
+Description
+"""""""""""
+Sort input tensor by key then return the sorted tensor and correspending keys.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing input.
+* key: Tensor type, representing key.
+* descending: Bool type, representing whether it is sorted descending or not.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns two Tensors: data type of the first is the same of that of input, and data type of the second is is the same of that of key.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
 
 Shape About Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2592,6 +2639,38 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+unsqueeze
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def unsqueeze(tensor_i, axis, out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The operation adds dimensions by adding axes with a size of 1 from the shape of the input.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* axis: A List[int] or Tuple[int] type, indicating the specified axes.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
 Quant Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2655,283 +2734,72 @@ Processor support
 * BM1684X: The input data type can be FLOAT32.
 
 
-topk
+Up/Down Scaling Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+upsample
 :::::::::::::::::
 
-Definition
-"""""""""""
+The interface definition
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
-        def topk(input: Tensor,
-                 axis: int,
-                 k: int,
-                 out_name: str = None):
+      def upsample(tensor_i, scale = 1, out_name=None):
+          #pass
 
-Description
-"""""""""""
-Find top k numbers after sorted
+Description of the function
+"""""""""""""""""""""""""""""""""
+The output is scaled repeatedly on the input tensor data in h and w dimensions.
+This operation is considered a **local operation**.
 
-Parameters
-"""""""""""
-* input: Tensor type, representing the input tensor.
-* axis: Int type, representing axis used in sorting.
-* k: Int type, representing the number of top values along axis.
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* scale: int type, representing the expansion multiple.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
-Returns
-"""""""""""
-Returns two Tensors: the first one represents the values, whose data type is the same as that of the input tensor while the second one represents the indices in input tensor after sorted along axis.
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""
+""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
-
-nms
+reduce
 :::::::::::::::::
 
-Definition
-"""""""""""
+The interface definition
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
-        def nms(boxes: Tensor,
-                scores: Tensor,
-                format: str = 'PYTORCH',
-                max_box_num_per_class: int = 0,
-                out_name: str = None)
+      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+          #pass
 
-Description
-"""""""""""
-Perform non-maximum-suppression upon input tensor.
+Description of the function
+"""""""""""""""""""""""""""""""""
+Perform reduce operations on the input tensor according to axis_list.
+This operation is considered a **restricted local operation**. This operation is considered a **local operation** only when the input data type is FLOAT32.
 
-Parameters
-"""""""""""
-* boxes: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of box, the third dimension is 4 coordinates of boxes.
-* scores: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of classes, the third dimension is number of boxes.
-* format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height].
-* max_box_num_per_class: Int type, representing max number of boxes per class. The default value is 0.
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* method: string type, representing the reduce method.The method The can be mean, max, min, sum, product, L1, or l2.
+* axis: A List[int] or Tuple[int] type, indicating the specified axes.
+* keep_dims: A boolean, indicating whether to keep the specified axis after the operation.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
-Returns
-"""""""""""
-Returns one Tensor, which is the selected indices from the boxes tensor of 2 dimensions:[num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index].
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
-* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
-
-
-interpolate
-:::::::::::::::::
-
-Definition
-"""""""""""
-
-    .. code-block:: python
-
-        def interpolate(input: Tensor,
-                        scale_h: float,
-                        scale_w: float,
-                        method: str = 'nearest',
-                        coord_mode: str = "pytorch_half_pixel",
-                        out_name: str = None)
-
-Description
-"""""""""""
-Perform interpolation upon input tensor.
-
-Parameters
-"""""""""""
-* input: Tensor type, representing the input Tensor.
-* scale_h: Float type, representing the resize scale along h-axis.
-* scale_w: Float type, representing the resize scale along w-axis.
-* method: String type, representing the interpolation method. Optional values are "nearest" or "linear".
-* coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric".
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the defintion of inverse map of coordinates is as follows:
-* `"half_pixel"`:
-
-    ::
-
-        x_in = (x_out + 0.5) / scale - 0.5
-
-* `"pytorch_half_pixel"`:
-
-    ::
-
-        x_in = len > 1 ? (x_out + 0.5) / scale - 0.5 : 0
-
-* `"align_corners"`:
-
-    ::
-
-        x_in = x_out * (l_in - 1) / (l_out - 1)
-
-* `"asymmetric"`:
-
-    ::
-
-        x_in = x_out / scale
-
-
-Returns
-"""""""""""
-Returns one Tensor, whose data type is the same as that of the input tensor.
-
-Processor support
-"""""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16(TODO).
-* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO).
-
-
-lut
-:::::::::::::::::
-
-Definition
-"""""""""""
-
-    .. code-block:: python
-
-        def lut(input: Tensor,
-                table: Tensor,
-                out_name: str = None)
-
-Description
-"""""""""""
-Use look-up table to transform values of input tensor.
-
-Parameters
-"""""""""""
-* input: Tensor type, representing the input.
-* table: Tensor type, representing the look-up table.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Returns
-"""""""""""
-Returns one Tensor, whose data type is the same as that of the `table` tensor.
-
-Processor support
-"""""""""""
-* BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
-* BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
-
-
-extract
-:::::::::::::::::
-
-Definition
-"""""""""""
-
-    .. code-block:: python
-
-        def extract(input: Tensor,
-                    start: Union[List[int], Tuple[int]] = None,
-                    end: Union[List[int], Tuple[int]] = None,
-                    stride: Union[List[int], Tuple[int]] = None,
-                    out_name: str = None)
-
-Description
-"""""""""""
-Extract slice of input tensor.
-
-Parameters
-"""""""""""
-* input: Tensor type, representing input tensor.
-* start: A list or tuple of int, or None, representing the start of slice. If set to None, `start`` is filled all with 0.
-* end: A list or tuple of int, or None, representing the end of slice. If set to None, `end`` is given as shape of input.
-* stride: A list or tuple of int, or None, representing the stride of slice. If set to None, `stride` is filled all with 1.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Returns
-"""""""""""
-Returns a Tensor, whose data type is same of that of `table`.
-
-Processor Support
-"""""""""""
-* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8.
-* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8.
-
-
-cond_select
-:::::::::::::::::
-
-Definition
-"""""""""""
-
-    .. code-block:: python
-
-        def cond_select(cond: Tensor,
-                        tbrn: Union[Tensor, Scalar, float, int],
-                        fbrn: Union[Tensor, Scalar, float, int],
-                        out_name = None)
-
-Description
-"""""""""""
-Select by condition representing by `cond`. If condition is True, select `tbrn`, otherwise select `fbrn`.
-
-Parameters
-"""""""""""
-* cond: Tensor type, representing condition.
-* tbrn: Tensor type or Scalar type, representing true branch.
-* fbrn: Tensor type or Scalar type, representing false branch.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Constraint: If `tbrn` and `fbrn` are all Tensors, then the shape and data type of `tbrn` and `fbrn` should be the same.
-
-Returns
-"""""""""""
-Returns a Tensor whose data type is the same that of `tbrn`.
-
-Processor Support
-"""""""""""
-* BM1688:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
-* BM1684X:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
-
-
-select
-:::::::::::::::::
-
-Definition
-"""""""""""
-
-    .. code-block:: python
-
-        def select(lhs: Tensor,
-                   rhs: Tensor,
-                   tbrn: Tensor,
-                   fbrn: Tensor,
-                   type: str,
-                   out_name = None)
-
-Description
-"""""""""""
-Select by the comparison result of `lhs` and `rhs`. If condition is True, select `tbrn`, otherwise select `fbrn`.
-
-Parameters
-"""""""""""
-* lhs: Tensor type, representing the left-hand-side.
-* rhs: Tensor type, representing the right-hand-side.
-* tbrn: Tensor type, representing the true branch.
-* fbrn: Tensor type, representing the false branch.
-* type: String type, representing the comparison operator. Optional values are "Greater"/"Less"/"GreaterOrEqual"/"LessOrEqual"/"Equal"/"NotEqual".
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Constraint: The shape and data type of `lhs` and `rhs` should be the same. The shape and data type of `tbrn` and `fbrn` should be the same.
-
-Returns
-"""""""""""
-Returns a Tensor whose data type is the same that of `tbrn`.
-
-Processor Support
-"""""""""""
-* BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
-* BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
-
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
 
 Normalization Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3068,7 +2936,10 @@ Processor support
 * BM1684X: The input data type can be FLOAT32.
 
 
-sort
+Vision Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+nms
 :::::::::::::::::
 
 Definition
@@ -3076,33 +2947,35 @@ Definition
 
     .. code-block:: python
 
-        def sort(input: Tensor,
-                 axis: int = 0,
-                 descending : bool = True,
-                 out_name = None)
+        def nms(boxes: Tensor,
+                scores: Tensor,
+                format: str = 'PYTORCH',
+                max_box_num_per_class: int = 0,
+                out_name: str = None)
 
 Description
 """""""""""
-Sort input tensor along axis then return the sorted tensor and correspending indices.
+Perform non-maximum-suppression upon input tensor.
 
 Parameters
 """""""""""
-* input: Tensor type, representing input.
-* axis: Int type, representing the axis used in sorting.
-* descending: Bool type, representing whether it is sorted descending or not.
+* boxes: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of box, the third dimension is 4 coordinates of boxes.
+* scores: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of classes, the third dimension is number of boxes.
+* format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height].
+* max_box_num_per_class: Int type, representing max number of boxes per class. The default value is 0.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
 """""""""""
-Returns two Tensors: data type of the first is the same of that of input, and data type of the second is INT32.
+Returns one Tensor, which is the selected indices from the boxes tensor of 2 dimensions:[num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index].
 
-Processor Support
+Processor support
 """""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16.
-* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
 
 
-argsort
+interpolate
 :::::::::::::::::
 
 Definition
@@ -3110,33 +2983,129 @@ Definition
 
     .. code-block:: python
 
-        def argsort(input: Tensor,
-                    axis: int = 0,
-                    descending : bool = True,
-                    out_name = None)
+        def interpolate(input: Tensor,
+                        scale_h: float,
+                        scale_w: float,
+                        method: str = 'nearest',
+                        coord_mode: str = "pytorch_half_pixel",
+                        out_name: str = None)
 
 Description
 """""""""""
-Sort input tensor along axis then return the correspending indices of sorted tensor.
+Perform interpolation upon input tensor.
 
 Parameters
 """""""""""
-* input: Tensor type, representing input.
-* axis: Int type, representing the axis used in sorting.
-* descending: Bool type, representing whether it is sorted descending or not.
+* input: Tensor type, representing the input Tensor.
+* scale_h: Float type, representing the resize scale along h-axis.
+* scale_w: Float type, representing the resize scale along w-axis.
+* method: String type, representing the interpolation method. Optional values are "nearest" or "linear".
+* coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric".
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the defintion of inverse map of coordinates is as follows:
+* `"half_pixel"`:
+
+    ::
+
+        x_in = (x_out + 0.5) / scale - 0.5
+
+* `"pytorch_half_pixel"`:
+
+    ::
+
+        x_in = len > 1 ? (x_out + 0.5) / scale - 0.5 : 0
+
+* `"align_corners"`:
+
+    ::
+
+        x_in = x_out * (l_in - 1) / (l_out - 1)
+
+* `"asymmetric"`:
+
+    ::
+
+        x_in = x_out / scale
+
+
+Returns
+"""""""""""
+Returns one Tensor, whose data type is the same as that of the input tensor.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16(TODO).
+* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO).
+
+
+Select Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+nonzero
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def nonzero(tensor_i, dtype = 'int32', out_name=None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Extract the corresponding location information when input Tensor data is true.
+This operation is considered a **global operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor for the operation.
+* dtype: The data type of the output tensor, with a default value of "int32."
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
+lut
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def lut(input: Tensor,
+                table: Tensor,
+                out_name: str = None)
+
+Description
+"""""""""""
+Use look-up table to transform values of input tensor.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input.
+* table: Tensor type, representing the look-up table.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
 """""""""""
-Returns one Tensor whose data type is INT32.
+Returns one Tensor, whose data type is the same as that of the `table` tensor.
 
-Processor Support
+Processor support
 """""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16.
-* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
+* BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 
-
-sort_by_key
+select
 :::::::::::::::::
 
 Definition
@@ -3144,27 +3113,68 @@ Definition
 
     .. code-block:: python
 
-        def sort_by_key(input: Tensor,
-                        key: Tensor,
-                        descending : bool = True,
+        def select(lhs: Tensor,
+                   rhs: Tensor,
+                   tbrn: Tensor,
+                   fbrn: Tensor,
+                   type: str,
+                   out_name = None)
+
+Description
+"""""""""""
+Select by the comparison result of `lhs` and `rhs`. If condition is True, select `tbrn`, otherwise select `fbrn`.
+
+Parameters
+"""""""""""
+* lhs: Tensor type, representing the left-hand-side.
+* rhs: Tensor type, representing the right-hand-side.
+* tbrn: Tensor type, representing the true branch.
+* fbrn: Tensor type, representing the false branch.
+* type: String type, representing the comparison operator. Optional values are "Greater"/"Less"/"GreaterOrEqual"/"LessOrEqual"/"Equal"/"NotEqual".
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Constraint: The shape and data type of `lhs` and `rhs` should be the same. The shape and data type of `tbrn` and `fbrn` should be the same.
+
+Returns
+"""""""""""
+Returns a Tensor whose data type is the same that of `tbrn`.
+
+Processor Support
+"""""""""""
+* BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+
+cond_select
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def cond_select(cond: Tensor,
+                        tbrn: Union[Tensor, Scalar, float, int],
+                        fbrn: Union[Tensor, Scalar, float, int],
                         out_name = None)
 
 Description
 """""""""""
-Sort input tensor by key then return the sorted tensor and correspending keys.
+Select by condition representing by `cond`. If condition is True, select `tbrn`, otherwise select `fbrn`.
 
 Parameters
 """""""""""
-* input: Tensor type, representing input.
-* key: Tensor type, representing key.
-* descending: Bool type, representing whether it is sorted descending or not.
+* cond: Tensor type, representing condition.
+* tbrn: Tensor type or Scalar type, representing true branch.
+* fbrn: Tensor type or Scalar type, representing false branch.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Constraint: If `tbrn` and `fbrn` are all Tensors, then the shape and data type of `tbrn` and `fbrn` should be the same.
 
 Returns
 """""""""""
-Returns two Tensors: data type of the first is the same of that of input, and data type of the second is is the same of that of key.
+Returns a Tensor whose data type is the same that of `tbrn`.
 
 Processor Support
 """""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16.
-* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
