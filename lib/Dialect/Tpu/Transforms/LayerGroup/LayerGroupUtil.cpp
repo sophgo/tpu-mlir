@@ -435,7 +435,8 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     }
   }
 
-  if (status) {
+  extern bool opt_cost_all;
+  if (status && opt_cost_all) {
     // TODO: find out performance problem for mm_resnet50/inception_resnet_v2, ...
     update_multi_core_secs(max_shape_secs, shape_secs);
   }
