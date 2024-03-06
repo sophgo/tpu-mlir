@@ -674,7 +674,7 @@ div
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32。
 
 
@@ -749,6 +749,35 @@ min
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
+copy
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def copy(tensor_i, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+copy，将输入数据复制到输出Tensor中.
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 clamp
 :::::::::::::::::
@@ -780,8 +809,8 @@ clamp
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 Element-wise Compare Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -816,8 +845,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 lt
 :::::::::::::::::
@@ -849,8 +878,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 ge
 :::::::::::::::::
@@ -882,8 +911,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 le
 :::::::::::::::::
@@ -915,8 +944,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 eq
 :::::::::::::::::
@@ -948,8 +977,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 ne
 :::::::::::::::::
@@ -981,8 +1010,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 gts
 :::::::::::::::::
@@ -1012,8 +1041,8 @@ gts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 lts
 :::::::::::::::::
@@ -1043,8 +1072,8 @@ lts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 ges
 :::::::::::::::::
@@ -1074,8 +1103,8 @@ ges
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 les
 :::::::::::::::::
@@ -1105,8 +1134,8 @@ les
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 eqs
 :::::::::::::::::
@@ -1136,8 +1165,8 @@ eqs
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 nes
 :::::::::::::::::
@@ -1167,10 +1196,10 @@ nes
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
-Element-wise Compare Operator
+Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 relu
@@ -1292,8 +1321,8 @@ ln激活函数，逐元素实现功能 :math:`y = log(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 ceil
 :::::::::::::::::
@@ -2079,8 +2108,8 @@ sign激活函数，逐元素实现功能 :math:`y =\begin{cases}1\quad x>0\\0\qu
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 gelu
@@ -2113,35 +2142,6 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32。
 
-copy
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def copy(tensor_i, out_name=None):
-          #pass
-
-功能描述
-"""""""""""
-copy，将输入数据复制到输出Tensor中.
-该操作属于 **全局操作** 。
-
-参数说明
-"""""""""""
-* tensor：Tensor类型，表示输入Tensor。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
 
 hsigmoid
 :::::::::::::::::
@@ -2267,134 +2267,9 @@ broadcast
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
-where
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def where(tensor_i, dtype = 'int32', out_name=None):
-          #pass
-
-功能描述
-"""""""""""
-抽取输入Tensor data为true时对应的shape信息(n,c,h,w)。
-该操作属于 **全局操作** 。
-
-参数说明
-"""""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
-* dtype：string型，表示输出数据类型，目前仅可使用默认值”int32”。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
-
-upsample
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def upsample(tensor_i, scale = 1, out_name=None):
-          #pass
-
-功能描述
-"""""""""""
-在h和w维度对输入tensor数据进行scale倍重复扩展输出。
-该操作属于 **本地操作** 。
-
-参数说明
-"""""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
-* scale：int型，表示扩展倍数。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
-
-reduce
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
-          #pass
-
-功能描述
-"""""""""""
-依据axis_list，对输入的tensor做reduce操作。
-该操作属于 **受限本地操作** ；仅当输入数据类型为FLOAT32时是 **本地操作**。
-
-参数说明
-"""""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
-* method：string类型，表示reduce方法，目前可选”mean”,”max”,”min”,”sum”,”prod”,"L1","L2"。
-* axis：List[int]或Tuple[int]或int，表示需要reduce的轴。
-* keep_dims：bool型，表示是否要保留原先的维度。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
-
-unsqueeze
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-      def unsqueeze(tensor_i, axis, out_name=None):
-          #pass
-
-功能描述
-"""""""""""
-增维操作。在axis指定的位置增加1。
-该操作属于 **本地操作** 。
-
-参数说明
-"""""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
-* axis：int型，表示指定的轴，设tensor_i的维度长度是D，则axis范围[-D,D-1)。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
 
 concat
 :::::::::::::::::
@@ -2527,9 +2402,42 @@ repeat
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
 
+extract
+:::::::::::::::::
 
+接口定义
+"""""""""""
 
-Element-wise Compare Operator
+    .. code-block:: python
+
+        def extract(input: Tensor,
+                    start: Union[List[int], Tuple[int]] = None,
+                    end: Union[List[int], Tuple[int]] = None,
+                    stride: Union[List[int], Tuple[int]] = None,
+                    out_name: str = None)
+
+功能描述
+"""""""""""
+对输入tensor进行切片提取操作。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* start：整数的列表或者元组或None，表示切片的起始位置，为None时表示全为0。
+* end：整数的列表或者元组或None，表示切片的终止位置，为None时表示输出张量的形状。
+* stride：整数的列表或者元组或None，表示切片的步长，为None时表示全为1。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型与张量 `table`的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688： 输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+
+Sort Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 arg
@@ -2568,6 +2476,141 @@ tensor数据类型为INT8/UINT8时，tensor_o只能为INT32。
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+topk
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def topk(input: Tensor,
+                 axis: int,
+                 k: int,
+                 out_name: str = None):
+
+功能描述
+"""""""""""
+按某个轴排序后前K个数。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入Tensor。
+* axis：int型，表示排序所使用的轴。
+* k：int型，表示沿着轴排序靠前的数的个数。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个Tensor表示前几个数，其数据类型与输入类型相同，第二个Tensor表示前几个数在输入中的索引。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
+
+sort (TODO)
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def sort(input: Tensor,
+                 axis: int = 0,
+                 descending : bool = True,
+                 out_name = None)
+
+功能描述
+"""""""""""
+沿某个轴的输入张量进行排序，输出排序后的张量以及该张量的数据在输入张量中的索引。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* axis：int类型，表示指定的轴。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个张量的数据类型与输入张量的数据类型相同，第二个张量的数据类型为INT32。
+
+处理器支持
+"""""""""""
+* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
+
+
+argsort (TODO)
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def argsort(input: Tensor,
+                    axis: int = 0,
+                    descending : bool = True,
+                    out_name = None)
+
+功能描述
+"""""""""""
+沿某个轴的输入张量进行排序，输出排序后的张量的数据在输入张量中的索引。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入张量。
+* axis：int类型，表示指定的轴。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，其数据类型为INT32。
+
+处理器支持
+"""""""""""
+* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
+
+
+sort_by_key (TODO)
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def sort_by_key(input: Tensor,
+                        key: Tensor,
+                        descending : bool = True,
+                        out_name = None)
+
+功能描述
+"""""""""""
+按键对输入张量进行排序，输出排序后的张量以及相应的键。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入。
+* key：Tensor类型，表示键。
+* descending：bool类型，表示是否按从大到小排列。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回两个Tensor，第一个张量的数据类型与输入的数据类型相同，第二个张量的数据类型与键的数据类型相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入和键的数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入和键的数据类型可以是FLOAT32/FLOAT16。
+
+
 Shape About Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2599,8 +2642,8 @@ squeeze
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 reshape
 :::::::::::::::::
@@ -2631,7 +2674,7 @@ reshape
 处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 shape_fetch
 :::::::::::::::::
@@ -2665,6 +2708,38 @@ shape_fetch
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
+
+unsqueeze
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def unsqueeze(tensor_i, axis, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+增维操作。在axis指定的位置增加1。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* axis：int型，表示指定的轴，设tensor_i的维度长度是D，则axis范围[-D,D-1)。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
 
 Quant Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2977,6 +3052,70 @@ avgpool2d
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
 
+upsample
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def upsample(tensor_i, scale = 1, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+在h和w维度对输入tensor数据进行scale倍重复扩展输出。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* scale：int型，表示扩展倍数。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+reduce
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+依据axis_list，对输入的tensor做reduce操作。
+该操作属于 **受限本地操作** ；仅当输入数据类型为FLOAT32时是 **本地操作**。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* method：string类型，表示reduce方法，目前可选”mean”,”max”,”min”,”sum”,”prod”,"L1","L2"。
+* axis：List[int]或Tuple[int]或int，表示需要reduce的轴。
+* keep_dims：bool型，表示是否要保留原先的维度。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
 
 Normalization Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3023,8 +3162,8 @@ batch_norm
 
 芯片支持
 """""""""""
-* BM1684：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1684：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 layer_norm
 :::::::::::::::::::
@@ -3112,39 +3251,10 @@ group_norm
 * BM1684：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
-topk
-:::::::::::::::::
 
-接口定义
-"""""""""""
 
-    .. code-block:: python
-
-        def topk(input: Tensor,
-                 axis: int,
-                 k: int,
-                 out_name: str = None):
-
-功能描述
-"""""""""""
-按某个轴排序后前K个数。
-
-参数说明
-"""""""""""
-* input：Tensor类型，表示输入Tensor。
-* axis：int型，表示排序所使用的轴。
-* k：int型，表示沿着轴排序靠前的数的个数。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回两个Tensor，第一个Tensor表示前几个数，其数据类型与输入类型相同，第二个Tensor表示前几个数在输入中的索引。
-
-处理器支持
-"""""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
-
+Vision Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 nms
 :::::::::::::::::
@@ -3178,8 +3288,8 @@ nms
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 
 interpolate
@@ -3246,6 +3356,40 @@ interpolate
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
+Select Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+nonzero
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def nonzero(tensor_i, dtype = 'int32', out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+抽取输入Tensor data为true时对应的位置信息信息。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* dtype：string型，表示输出数据类型，目前仅可使用默认值”int32”。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
 lut
 :::::::::::::::::
 
@@ -3276,79 +3420,6 @@ lut
 """""""""""
 * BM1688： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
 * BM1684X： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
-
-
-extract
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-        def extract(input: Tensor,
-                    start: Union[List[int], Tuple[int]] = None,
-                    end: Union[List[int], Tuple[int]] = None,
-                    stride: Union[List[int], Tuple[int]] = None,
-                    out_name: str = None)
-
-功能描述
-"""""""""""
-对输入tensor进行切片提取操作。
-
-参数说明
-"""""""""""
-* input：Tensor类型，表示输入张量。
-* start：整数的列表或者元组或None，表示切片的起始位置，为None时表示全为0。
-* end：整数的列表或者元组或None，表示切片的终止位置，为None时表示输出张量的形状。
-* stride：整数的列表或者元组或None，表示切片的步长，为None时表示全为1。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，数据类型与张量 `table`的数据类型相同。
-
-处理器支持
-"""""""""""
-* BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-
-
-cond_select
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-        def cond_select(cond: Tensor,
-                        tbrn: Union[Tensor, Scalar, float, int],
-                        fbrn: Union[Tensor, Scalar, float, int],
-                        out_name = None)
-
-功能描述
-"""""""""""
-根据条件 `cond`来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
-
-参数说明
-"""""""""""
-* cond：Tensor类型，表示条件。
-* tbrn：Tensor类型或Scalar类型，表示条件为真时取的值。
-* fbrn：Tensor类型或Scalar类型，表示条件为假时取的值。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-约束条件：若 `tbrn`和 `fbrn`皆为张量，则要求 `tbrn`与 `fbrn`的形状和数据类型相同。
-
-返回值
-"""""""""""
-返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
-
-处理器支持
-"""""""""""
-* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-
 
 select
 :::::::::::::::::
@@ -3386,8 +3457,8 @@ select
 
 处理器支持
 """""""""""
-* BM1688： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 
 cond_select
@@ -3422,107 +3493,5 @@ cond_select
 
 处理器支持
 """""""""""
-* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-
-
-sort
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-        def sort(input: Tensor,
-                 axis: int = 0,
-                 descending : bool = True,
-                 out_name = None)
-
-功能描述
-"""""""""""
-沿某个轴的输入张量进行排序，输出排序后的张量以及该张量的数据在输入张量中的索引。
-
-参数说明
-"""""""""""
-* input：Tensor类型，表示输入张量。
-* axis：int类型，表示指定的轴。
-* descending：bool类型，表示是否按从大到小排列。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回两个Tensor，第一个张量的数据类型与输入张量的数据类型相同，第二个张量的数据类型为INT32。
-
-处理器支持
-"""""""""""
-* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
-* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
-
-
-argsort
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-        def argsort(input: Tensor,
-                    axis: int = 0,
-                    descending : bool = True,
-                    out_name = None)
-
-功能描述
-"""""""""""
-沿某个轴的输入张量进行排序，输出排序后的张量的数据在输入张量中的索引。
-
-参数说明
-"""""""""""
-* input：Tensor类型，表示输入张量。
-* axis：int类型，表示指定的轴。
-* descending：bool类型，表示是否按从大到小排列。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回一个Tensor，其数据类型为INT32。
-
-处理器支持
-"""""""""""
-* BM1688：输入张量的数据类型可以是FLOAT32/FLOAT16。
-* BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
-
-
-sort_by_key
-:::::::::::::::::
-
-接口定义
-"""""""""""
-
-    .. code-block:: python
-
-        def sort_by_key(input: Tensor,
-                        key: Tensor,
-                        descending : bool = True,
-                        out_name = None)
-
-功能描述
-"""""""""""
-按键对输入张量进行排序，输出排序后的张量以及相应的键。
-
-参数说明
-"""""""""""
-* input：Tensor类型，表示输入。
-* key：Tensor类型，表示键。
-* descending：bool类型，表示是否按从大到小排列。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-
-返回值
-"""""""""""
-返回两个Tensor，第一个张量的数据类型与输入的数据类型相同，第二个张量的数据类型与键的数据类型相同。
-
-处理器支持
-"""""""""""
-* BM1688：输入和键的数据类型可以是FLOAT32/FLOAT16。
-* BM1684X：输入和键的数据类型可以是FLOAT32/FLOAT16。
+* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
