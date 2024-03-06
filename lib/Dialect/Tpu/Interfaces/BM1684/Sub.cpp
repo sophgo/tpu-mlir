@@ -8,6 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
+
 
 using namespace tpu_mlir::backend;
 
@@ -74,21 +76,22 @@ int64_t tpu::SubOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
                                          int64_t in_nslice, int64_t in_hslice,
                                          int64_t out_nslice,
                                          int64_t out_hslice) {
+  auto b0_dsize = module::getDtypeSize(getInputs()[0]);
+  auto b1_dsize = module::getDtypeSize(getInputs()[1]);
+  auto top_dsize = module::getDtypeSize(getOutput());
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
   int64_t buffer_size = 0;
-  int input_num = getInputs().size();
-  auto dtype_A = BM168x::getDataType(getInputs()[0]);
-  auto dtype_O = BM168x::getDataType(getOutput());
-  auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
-  auto rshift_v = module::getI64Array(getRshifts(), input_num, 0);
-  if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
-    if ((int)multiplier_v->at(0) != 1 || (uint8_t)rshift_v->at(0) != 0) {
-      buffer_size = out_lmem_bytes * 2;
-    }
-  } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
-             (module::isSign(getInputs()[0]) ||
-              module::isSign(getInputs()[1])) &&
-             (!module::isSign(getOutput()))) {
-    buffer_size = out_lmem_bytes;
+  int64_t tensor_size =
+      ceiling_func(out_nslice, (int64_t)2) * ceiling_func(c, BM1684::NPU_NUM) *
+      align_up(out_hslice * w, BM1684::eu_num(sizeof(float))) * sizeof(float);
+  if (b0_dsize == 1 && b1_dsize == 1) {
+    buffer_size += tensor_size * 2;
+  } else if (b0_dsize + b1_dsize == 1) {
+    llvm_unreachable("SubOp buffer dtype error");
+  }
+  if (top_dsize == 1) {
+    buffer_size += tensor_size;
   }
   return buffer_size;
 }
