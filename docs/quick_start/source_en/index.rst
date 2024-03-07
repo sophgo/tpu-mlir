@@ -24,4 +24,5 @@ TPU-MLIR Quick Start
    Appx.03_bm168x_guide
    Appx.04_bm168x_test
    Appx.05_profile.rst
-   Appx.06_supported_ops
+   Appx.06_debugger
+   Appx.07_supported_ops
