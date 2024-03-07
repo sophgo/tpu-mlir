@@ -22,4 +22,5 @@ third_party/llvm/bin/clang-17
 *.xlsx
 bmodel_fbs.py
 .ipynb_checkpoints/
-third_party/customlayer/cross_toolchains/*
+cross_toolchains/
+dist/
