@@ -117,7 +117,7 @@ class TPULANG_IR_TESTER(object):
             "Mul": (self.test_Mul,                      Y, Y),
             "Ne": (self.test_Ne,                        Y, Y),
             "Nes": (self.test_Nes,                      Y, Y),
-            # "NMS": (self.test_NMS,                      Y, Y),
+            "NMS": (self.test_NMS,                      Y, Y),
             "Nonzero": (self.test_Nonzero,              Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
@@ -2743,7 +2743,7 @@ class TPULANG_IR_TESTER(object):
         @tpulang(self.chip)
         def _test_NMS(num_batch, num_boxes, num_classes, box_format, max_box_num, dtype="float32"):
             box_data = self.gen_rand_boxes(num_batch, num_boxes, 256, 367, box_format)
-            score_data = np.random.rand(num_batch, num_classes, num_boxes).astype(np.float32)
+            score_data = np.arange(num_batch * num_classes * num_boxes).reshape([num_batch, num_classes, num_boxes]).astype(np.float32)
             boxes = tpul.Tensor(dtype=dtype, shape=list(box_data.shape), data=box_data)
             scores = tpul.Tensor(dtype=dtype, shape=list(score_data.shape), data=score_data)
             y = tpul.nms(boxes, scores, box_format=box_format, max_box_num_per_class=max_box_num)

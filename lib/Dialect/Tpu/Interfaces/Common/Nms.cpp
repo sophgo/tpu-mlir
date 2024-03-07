@@ -9,18 +9,19 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-LogicalResult tpu::NmsOp::init(InferenceParameter &p) {
-  return success();
-}
-
-void tpu::NmsOp::deinit(InferenceParameter &p) {
-}
+LogicalResult tpu::NmsOp::init(InferenceParameter &p) { return success(); }
+void tpu::NmsOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
-  param.max_output_boxes_per_class = getMaxOutputSize();
-  param.center_point_box = 0;
   int input_size = getInputs().size();
+  assert(input_size >= 2);
+  if(input_size >= 3){
+    param.max_output_boxes_per_class = p.inputs[2][0];
+  } else{
+    param.max_output_boxes_per_class = getMaxOutputSize();
+  }
+  param.center_point_box = 0;
   std::vector<tensor_list_t> input_list(2);
   for (int i = 0; i < 2; ++i) {
     tensor_list_t input;
