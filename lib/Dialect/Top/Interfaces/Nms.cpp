@@ -17,10 +17,11 @@ void top::NmsOp::deinit(InferenceParameter &p) {}
 LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
   int input_size = getInputs().size();
-  if(input_size >= 3 && module::isWeight(getInputs()[2])){
-    param.max_output_boxes_per_class = getMaxOutputSize() ;
+  assert(input_size >= 2);
+  if(input_size >= 3){
+    param.max_output_boxes_per_class = p.inputs[2][0];
   } else{
-    param.max_output_boxes_per_class = (int64_t)p.inputs[2][0];
+    param.max_output_boxes_per_class = getMaxOutputSize();
   }
   param.center_point_box = 0;
   std::vector<tensor_list_t> input_list(2);
