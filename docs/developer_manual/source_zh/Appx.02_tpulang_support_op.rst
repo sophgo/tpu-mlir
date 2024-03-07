@@ -38,11 +38,11 @@ TpuLang中Tensor的定义如下：
 
 * shape：Tensor的形状，List[int]，对于Operator输出的Tensor，可以不指定shape，默认值为[]。
 * Name：Tensor的名称，string或None，该值推荐使用默认值None以免因为Name相同导致问题；
-* ttype：Tensor的类型，可以是"neuron"或"coeff"或None，初始值为"neuron"；
-* data：Tensor的输入数据，为默认值None时则会根据shape产生全0数据，否则应该是一个ndarray；
+* ttype：Tensor的类型，可以是"neuron"或"coeff"，初始值为"neuron"；
+* data：Tensor的数据，ndarray，为默认值None，当ttype为coeff时，不可以为None；为ndarray时，data的shape，dtype必须与输入shape，dtype一致。
 * dtype：Tensor的数据类型，默认值为"float32"，否则取值范围为"float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"；
 * scale：Tensor的量化参数，float或List[float]，默认值为None；
-* zero_point：Tensor的量化参数，int或List[int]，默认值为None；
+* zero_point：Tensor的偏移参数，int或List[int]，默认值为None；
 
 声明Tensor的示例：
 
@@ -118,7 +118,7 @@ compile
             outputs: List[Tensor],
             cmp=True,
             refs=None,
-            mode='f32',
+            mode='f32',       # unused
             dynamic=False):
             #pass
 
@@ -136,7 +136,7 @@ compile
 * outputs：List[Tensor]，表示编译网络的所有输出Tensor；
 * cmp：bool类型，True表示需要结果比对，False表示仅编译；
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
-* mode：string类型，表示模型的类型，支持“f32”，“int8”。
+* mode：string类型，废弃。
 * dynamic：bool类型，是否进行动态编译。
 
 .. _deinit:
@@ -215,8 +215,8 @@ conv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv_int
@@ -256,7 +256,7 @@ conv_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
-* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
 * stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
@@ -272,8 +272,8 @@ conv_int
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是INT8/UINT8。
-* BM1684X：输入数据类型可以是INT8/UINT8。
+* BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
 
 deconv
@@ -320,8 +320,8 @@ deconv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv3d
@@ -366,8 +366,8 @@ conv3d
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv3d_int
@@ -426,8 +426,8 @@ conv3d_int
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是INT8/UINT8。
-* BM1684X：输入数据类型可以是INT8/UINT8。
+* BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
 matmul
 :::::::::::::::::
@@ -475,8 +475,8 @@ matmul
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与right的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与right,bias的数据类型必须一致。
 
 
 matmul_int
@@ -530,8 +530,8 @@ matmul_int
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是INT8/UINT8。
-* BM1684X：输入数据类型可以是INT8/UINT8。
+* BM1688：输入数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
 
 Base Element-wise Operator
@@ -569,8 +569,8 @@ add
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 
 sub
@@ -596,7 +596,7 @@ sub
 * tensor_i1：Tensor类型或Scalar、int、float，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。
-* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float'/'float16'/'int8'。
+* out_dtype：string类型或None，表示输出Tensor的数据类型，为None时会与输入数据类型一致。可选参数为'float32'/'float16'/'int8'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -605,8 +605,8 @@ sub
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 
 mul
@@ -641,8 +641,8 @@ mul
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 
 div
@@ -710,8 +710,8 @@ max
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 
 min
@@ -746,8 +746,8 @@ min
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 copy
 :::::::::::::::::
@@ -776,8 +776,8 @@ copy，将输入数据复制到输出Tensor中.
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 clamp
 :::::::::::::::::
@@ -823,7 +823,7 @@ gt
 
     .. code-block:: python
 
-      def gt(tensor_i0, tensor_i1, out_name = None):
+      def gt(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -837,6 +837,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -845,8 +847,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 lt
 :::::::::::::::::
@@ -856,7 +858,7 @@ lt
 
     .. code-block:: python
 
-      def lt(tensor_i0, tensor_i1, out_name = None):
+      def lt(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -870,6 +872,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -878,8 +882,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 ge
 :::::::::::::::::
@@ -889,7 +893,7 @@ ge
 
     .. code-block:: python
 
-      def ge(tensor_i0, tensor_i1, out_name = None):
+      def ge(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -903,6 +907,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -911,8 +917,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 le
 :::::::::::::::::
@@ -922,7 +928,7 @@ le
 
     .. code-block:: python
 
-      def le(tensor_i0, tensor_i1, out_name = None):
+      def le(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -936,6 +942,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -944,8 +952,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 eq
 :::::::::::::::::
@@ -955,7 +963,7 @@ eq
 
     .. code-block:: python
 
-      def eq(tensor_i0, tensor_i1, out_name = None):
+      def eq(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -969,6 +977,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -977,8 +987,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 ne
 :::::::::::::::::
@@ -988,7 +998,7 @@ ne
 
     .. code-block:: python
 
-      def ne(tensor_i0, tensor_i1, out_name = None):
+      def ne(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1002,6 +1012,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作Tensor。
 * tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1010,8 +1022,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
 
 gts
 :::::::::::::::::
@@ -1021,7 +1033,7 @@ gts
 
     .. code-block:: python
 
-      def gts(tensor_i0, scalar_i1, out_name = None):
+      def gts(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1033,6 +1045,8 @@ gts
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1041,8 +1055,8 @@ gts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 
 lts
 :::::::::::::::::
@@ -1052,7 +1066,7 @@ lts
 
     .. code-block:: python
 
-      def lts(tensor_i0, scalar_i1, out_name = None):
+      def lts(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1064,6 +1078,8 @@ lts
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1072,8 +1088,8 @@ lts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 
 ges
 :::::::::::::::::
@@ -1083,7 +1099,7 @@ ges
 
     .. code-block:: python
 
-      def ges(tensor_i0, scalar_i1, out_name = None):
+      def ges(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1095,6 +1111,8 @@ ges
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1103,9 +1121,8 @@ ges
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 les
 :::::::::::::::::
 
@@ -1114,7 +1131,7 @@ les
 
     .. code-block:: python
 
-      def les(tensor_i0, scalar_i1, out_name = None):
+      def les(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1126,6 +1143,8 @@ les
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1134,8 +1153,8 @@ les
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 
 eqs
 :::::::::::::::::
@@ -1145,7 +1164,7 @@ eqs
 
     .. code-block:: python
 
-      def eqs(tensor_i0, scalar_i1, out_name = None):
+      def eqs(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1157,6 +1176,8 @@ eqs
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1165,8 +1186,8 @@ eqs
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 
 nes
 :::::::::::::::::
@@ -1176,7 +1197,7 @@ nes
 
     .. code-block:: python
 
-      def nes(tensor_i0, scalar_i1, out_name = None):
+      def nes(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
           #pass
 
 功能描述
@@ -1188,6 +1209,8 @@ nes
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
 * scalar_i1：Tensor类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1196,8 +1219,8 @@ nes
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
 
 Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1225,12 +1248,12 @@ relu激活函数，逐元素实现功能 :math:`y = max(0, x)`。
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。若输入是quantized类型，输出的scale与zero_point与输入一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 leaky_relu
@@ -1257,12 +1280,12 @@ leaky_relu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。若输入是quantized类型，输出的scale与zero_point与输入一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 abs
 :::::::::::::::::
@@ -1287,12 +1310,12 @@ abs绝对值激活函数，逐元素实现功能 :math:`y = \left | x \right |`�
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。若输入是quantized类型，输出的scale与zero_point与输入一致。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 ln
 :::::::::::::::::
@@ -1302,7 +1325,7 @@ ln
 
     .. code-block:: python
 
-      def ln(tensor, out_name=None):
+      def ln(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1313,6 +1336,8 @@ ln激活函数，逐元素实现功能 :math:`y = log(x)`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1321,8 +1346,8 @@ ln激活函数，逐元素实现功能 :math:`y = log(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 ceil
 :::::::::::::::::
@@ -1332,7 +1357,7 @@ ceil
 
     .. code-block:: python
 
-      def ceil(tensor, out_name=None):
+      def ceil(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1343,6 +1368,8 @@ ceil向上取整激活函数，逐元素实现功能 :math:`y = \left \lfloor x 
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1351,8 +1378,8 @@ ceil向上取整激活函数，逐元素实现功能 :math:`y = \left \lfloor x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 floor
 :::::::::::::::::
@@ -1362,7 +1389,7 @@ floor
 
     .. code-block:: python
 
-      def floor(tensor, out_name=None):
+      def floor(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1373,6 +1400,8 @@ floor向下取整激活函数，逐元素实现功能 :math:`y = \left \lceil x 
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1381,8 +1410,8 @@ floor向下取整激活函数，逐元素实现功能 :math:`y = \left \lceil x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 round
 :::::::::::::::::
@@ -1423,7 +1452,7 @@ sin
 
     .. code-block:: python
 
-      def sin(tensor, out_name=None):
+      def sin(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1434,6 +1463,8 @@ sin正弦激活函数，逐元素实现功能 :math:`y = sin(x)`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1442,8 +1473,8 @@ sin正弦激活函数，逐元素实现功能 :math:`y = sin(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 
 cos
@@ -1454,7 +1485,7 @@ cos
 
     .. code-block:: python
 
-      def cos(tensor, out_name=None):
+      def cos(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1465,6 +1496,8 @@ cos余弦激活函数，逐元素实现功能 :math:`y = cos(x)`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1473,8 +1506,8 @@ cos余弦激活函数，逐元素实现功能 :math:`y = cos(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 exp
 :::::::::::::::::
@@ -1484,7 +1517,7 @@ exp
 
     .. code-block:: python
 
-      def exp(tensor, out_name=None):
+      def exp(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1495,6 +1528,8 @@ exp指数激活函数，逐元素实现功能 :math:`y = e^{x}`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1503,8 +1538,8 @@ exp指数激活函数，逐元素实现功能 :math:`y = e^{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 tanh
 :::::::::::::::::
@@ -1514,7 +1549,7 @@ tanh
 
     .. code-block:: python
 
-      def tanh(tensor, out_name=None):
+      def tanh(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1525,6 +1560,8 @@ tanh双曲正切激活函数，逐元素实现功能 :math:`y=tanh(x)=\frac{e^{x
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1533,8 +1570,8 @@ tanh双曲正切激活函数，逐元素实现功能 :math:`y=tanh(x)=\frac{e^{x
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 sigmoid
 :::::::::::::::::
@@ -1544,7 +1581,7 @@ sigmoid
 
     .. code-block:: python
 
-      def sigmoid(tensor, out_name=None):
+      def sigmoid(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1555,6 +1592,8 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1563,8 +1602,8 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 log_sigmoid
 :::::::::::::::::
@@ -1574,7 +1613,7 @@ log_sigmoid
 
     .. code-block:: python
 
-      def log_sigmoid(tensor, out_name=None):
+      def log_sigmoid(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1585,6 +1624,8 @@ log_sigmoid激活函数，逐元素实现功能 :math:`y = log(1 / (1 + e^{-x}))
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1593,8 +1634,8 @@ log_sigmoid激活函数，逐元素实现功能 :math:`y = log(1 / (1 + e^{-x}))
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 elu
 :::::::::::::::::
@@ -1604,7 +1645,7 @@ elu
 
     .. code-block:: python
 
-      def elu(tensor, out_name=None):
+      def elu(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1615,6 +1656,8 @@ elu激活函数，逐元素实现功能 :math:`y =  \begin{cases}x\quad x>=0\\e^
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1623,8 +1666,8 @@ elu激活函数，逐元素实现功能 :math:`y =  \begin{cases}x\quad x>=0\\e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 square
 :::::::::::::::::
@@ -1634,7 +1677,7 @@ square
 
     .. code-block:: python
 
-      def square(tensor, out_name=None):
+      def square(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1645,6 +1688,8 @@ square平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1653,8 +1698,8 @@ square平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 sqrt
 :::::::::::::::::
@@ -1664,7 +1709,7 @@ sqrt
 
     .. code-block:: python
 
-      def sqrt(tensor, out_name=None):
+      def sqrt(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1675,6 +1720,8 @@ sqrt平方根激活函数，逐元素实现功能 :math:`y = \sqrt{x}`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1683,8 +1730,8 @@ sqrt平方根激活函数，逐元素实现功能 :math:`y = \sqrt{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 rsqrt
 :::::::::::::::::
@@ -1694,7 +1741,7 @@ rsqrt
 
     .. code-block:: python
 
-      def rsqrt(tensor, out_name=None):
+      def rsqrt(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1705,6 +1752,8 @@ rsqrt平方根取反激活函数，逐元素实现功能 :math:`y = 1 / (sqrt{x}
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1713,8 +1762,8 @@ rsqrt平方根取反激活函数，逐元素实现功能 :math:`y = 1 / (sqrt{x}
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 silu
 :::::::::::::::::
@@ -1724,7 +1773,7 @@ silu
 
     .. code-block:: python
 
-      def silu(tensor, out_name=None):
+      def silu(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1735,6 +1784,8 @@ silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1743,8 +1794,8 @@ silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 
 erf
@@ -1755,7 +1806,7 @@ erf
 
     .. code-block:: python
 
-      def erf(tensor, out_name=None):
+      def erf(tensor, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1766,6 +1817,8 @@ erf激活函数，对于输入输出Tensor对应位置的元素x和y，逐元素
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1774,8 +1827,8 @@ erf激活函数，对于输入输出Tensor对应位置的元素x和y，逐元素
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 tan
 :::::::::::::::::
@@ -1900,7 +1953,7 @@ mish
 
     .. code-block:: python
 
-      def mish(tensor_i,  out_name=None):
+      def mish(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1911,6 +1964,8 @@ mish激活函数，逐元素实现功能 :math:`y = x * tanh(ln(1 + e^{x}))`。
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1919,8 +1974,8 @@ mish激活函数，逐元素实现功能 :math:`y = x * tanh(ln(1 + e^{x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 
 
@@ -1932,7 +1987,7 @@ hswish
 
     .. code-block:: python
 
-      def hswish(tensor_i, out_name=None):
+      def hswish(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -1943,6 +1998,8 @@ hswish激活函数，逐元素实现功能 :math:`y =\begin{cases}0\quad x<=-3\\
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1951,8 +2008,8 @@ hswish激活函数，逐元素实现功能 :math:`y =\begin{cases}0\quad x<=-3\\
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 
 
@@ -2026,7 +2083,7 @@ sinh
 
     .. code-block:: python
 
-      def sinh(tensor_i, out_name=None):
+      def sinh(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -2037,6 +2094,8 @@ sinh双曲正弦激活函数，逐元素实现功能 :math:`y = sinh(x)=\frac{e^
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2045,8 +2104,8 @@ sinh双曲正弦激活函数，逐元素实现功能 :math:`y = sinh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 
 
@@ -2058,7 +2117,7 @@ cosh
 
     .. code-block:: python
 
-      def cosh(tensor_i,  out_name=None):
+      def cosh(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -2069,6 +2128,8 @@ cosh双曲余弦激活函数，逐元素实现功能 :math:`y = cosh(x)=\frac{e^
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2077,8 +2138,8 @@ cosh双曲余弦激活函数，逐元素实现功能 :math:`y = cosh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 
 sign
@@ -2089,7 +2150,7 @@ sign
 
     .. code-block:: python
 
-      def sign(tensor_i, out_name=None):
+      def sign(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -2100,6 +2161,8 @@ sign激活函数，逐元素实现功能 :math:`y =\begin{cases}1\quad x>0\\0\qu
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2108,8 +2171,8 @@ sign激活函数，逐元素实现功能 :math:`y =\begin{cases}1\quad x>0\\0\qu
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 
 gelu
@@ -2120,7 +2183,7 @@ gelu
 
     .. code-block:: python
 
-      def gelu(tensor_i, out_name=None):
+      def gelu(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -2131,6 +2194,8 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2142,7 +2207,6 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32。
 
-
 hsigmoid
 :::::::::::::::::
 
@@ -2151,7 +2215,7 @@ hsigmoid
 
     .. code-block:: python
 
-      def hsigmoid(tensor_i,  out_name=None):
+      def hsigmoid(tensor_i, scale = None, zero_point = None, out_name=None):
           #pass
 
 功能描述
@@ -2162,6 +2226,8 @@ hsigmoid激活函数，逐元素实现功能 :math:`y = min(1, max(0, \frac{x}{6
 参数说明
 """""""""""
 * tensor：Tensor类型，表示输入Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2170,8 +2236,8 @@ hsigmoid激活函数，逐元素实现功能 :math:`y = min(1, max(0, \frac{x}{6
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
 
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2267,8 +2333,8 @@ broadcast
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 
 concat
@@ -2290,7 +2356,7 @@ concat
 
 参数说明
 """""""""""
-* tensors：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。
+* tensors：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。若数据类型包含scale或zero_point，则scale，zero_point必须一致。
 * axis：int型，表示进行拼接运算的轴。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -2642,8 +2708,8 @@ squeeze
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 reshape
 :::::::::::::::::
@@ -2673,8 +2739,8 @@ reshape
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 shape_fetch
 :::::::::::::::::
@@ -2706,8 +2772,8 @@ shape_fetch
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 unsqueeze
 :::::::::::::::::
@@ -2737,8 +2803,8 @@ unsqueeze
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
 
 
 Quant Operator
@@ -2755,7 +2821,7 @@ requant_fp_to_int
         def requant_fp_to_int(tensor_i,
                               scale,
                               offset,
-                              requant_mode,
+                              requant_mode, #unused
                               out_dtype,
                               out_name = None,
                               round_mode='half_away_from_zero'):
@@ -2764,25 +2830,13 @@ requant_fp_to_int
 """""""""""
 对输入tensor进行量化处理。
 
-当requant_mode==0时，该操作对应的计算式为：
+该操作对应的计算式为
 
     ::
 
         output = saturate(int(round(input * scale)) + offset)，
         其中saturate为饱和到output的数据类型
 
-    * BM1684X：input数据类型可以是FLOAT32, output数据类型可以是INT16/UINT16/INT8/UINT8
-    * BM1688：input数据类型可以是FLOAT32, output数据类型可以是INT16/UINT16/INT8/UINT8
-
-当requant_mode==1时，该操作对应的计算式为：
-
-    ::
-
-        output = saturate(int(round(float(input) * scale + offset)))，
-        其中saturate为饱和到output的数据类型
-
-    * BM1684X：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
-    * BM1688：input数据类型可以是INT32/INT16/UINT16, output数据类型可以是INT16/UINT16/INT8/UINT8
 
 该操作属于 **本地操作** 。
 
@@ -2790,10 +2844,10 @@ requant_fp_to_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * scale：List[float]型或float型，表示量化系数。
-* offset：requant_mode==0时，List[int]型或int型；requant_mode==1时，List[float]型或float型。表示输出偏移。
-* requant_mode：int型，表示量化模式。
-* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
-* out_dtype：string类型，表示输入Tensor的类型.
+* offset：List[int]型或int型；表示输出偏移。
+* requant_mode：int型，表示量化模式。废弃。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。(TODO)
+* out_dtype：string类型，表示输入Tensor的类型.数据类型可以是"int16"/"uint16"/"int8"/"uint8"。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -2802,9 +2856,58 @@ requant_fp_to_int
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT32/INT16/UINT16。
-* BM1684X：输入数据类型可以是FLOAT32/INT32/INT16/UINT16。
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
+
+requant_fp(TODO)
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def requant_fp_to_int(tensor_i,
+                              scale,
+                              offset,
+                              requant_mode,   #unused
+                              out_dtype,
+                              out_name = None,
+                              round_mode='half_away_from_zero'):
+
+功能描述
+"""""""""""
+对输入tensor进行量化处理。
+
+该操作对应的计算式为：
+
+    ::
+
+        output = saturate(int(round(float(input) * scale + offset)))，
+        其中saturate为饱和到output的数据类型
+
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，3-5维。
+* scale：List[float]型或float型，表示量化系数。
+* offset：List[float]型或float型。表示输出偏移。
+* requant_mode：int型，表示量化模式。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
+* out_dtype：string类型，表示输入Tensor的类型。数据类型可以是"int16"/"uint16"/"int8"/"uint8"
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。该Tensor的数据类型由out_dtype确定。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是INT32/INT16/UINT16。
+* BM1684X：输入数据类型可以是INT32/INT16/UINT16。
 
 requant_int
 :::::::::::::::::::
@@ -2848,7 +2951,7 @@ requant_int
     * BM1684X：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
     * BM1688：input数据类型可以是INT32, output数据类型可以是INT32/INT16/INT8
 
-当requant_mode==2时，该操作对应的计算式为：
+当requant_mode==2时，该操作对应的计算式为(建议使用)：
 
     ::
 
@@ -2920,6 +3023,67 @@ dequant_int_to_fp32
 """""""""""
 * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8。
 
+dequant_int(TODO)
+:::::::::::::::::::
+
+    .. code-block:: python
+
+        def dequant_int(tensor_i,
+                        mul,
+                        shift,
+                        offset,
+                        lshift,
+                        quant_mode,
+                        out_dtype = None,
+                        out_name = None,
+                        round_mode='half_up'):
+
+
+功能描述
+"""""""""""
+对输入tensor进行反量化处理。
+
+当quant_mode==0时，该操作对应的计算式为：
+
+    ::
+
+        output = (intpu - offset) * multiplier
+        output = saturate(output >> -shift),                其中 >> 的舍入模式由round_mode确定, saturate饱和到INT32
+
+    * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8, output数据类型可以是INT32/INT16/UINT16
+
+当quant_mode==1时，该操作对应的计算式为：
+
+    ::
+
+        output = ((input - offset) * multiplier) << lshift
+        output = saturate(output >> 31)，                   其中 >> 为round_half_up, saturate饱和到INT32
+        output = saturate(output >> -shift)，               其中 >> 的舍入模式由round_mode确定, saturate饱和到output数据类型
+
+    * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8, output数据类型可以是INT32/INT16/INT8
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，3-5维。
+* mul：List[int]型或int型，表示量化乘子系数。
+* shift:List[int]型或int型，表示量化移位系数。
+* offset：List[int]
+* lshift：int型，表示移位系数。
+* requant_mode：int型，表示量化模式。
+* round_mode：string型，表示舍入模式。默认为“half_up”。
+* out_dtype：string类型，表示输入Tensor的类型.
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。该Tensor的数据类型由out_dtype确定。
+
+芯片支持
+"""""""""""
+* BM1684X
+* BM1688
 
 Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

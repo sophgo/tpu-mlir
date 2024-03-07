@@ -18,8 +18,6 @@ TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组�
 
    * 输入参数转为dict格式；
 
-   * 推理输出shape，并创建输出tensor；
-
    * 设置tensor的量化参数(scale, zero_point)；
 
    * 创建op(op_type, inputs, outputs, params)并insert到graph中。
@@ -54,8 +52,6 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
   * op 接口需要:
 
      - op的输入tensor(即前一个算子的输出tensor或graph输入tensor，coeff)；
-
-     - 根据接口提取的参数，推理获取 output_shape(即需要进行shape_inference)；
 
      - 从接口中提取的 attrs。Attrs 会通过 MLIRImporter 设定为与 TopOps.td 定义一一对应的属性
 
@@ -138,17 +134,11 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
       - 调用conv_v2接口，指定输入tensor以及输入参数。
 
-      - 推理输出shape，并生成输出tensor
+      - 生成输出tensor
 
          .. code-block:: python
 
-            def _shape_inference():
-               kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
-               kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
-               oh = (input.shape[2] + pad[0] + pad[1] - kh_ext) // stride[0] + 1
-               ow = (input.shape[3] + pad[2] + pad[3] - kw_ext) // stride[1] + 1
-               return [input.shape[0], weight.shape[0], oh, ow]
-            output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
+            output = Tensor(dtype=out_dtype, name=out_name)
 
       - attributes，将输入参数打包成 (:ref:`conv_top_def`) 定义的attributes
 
