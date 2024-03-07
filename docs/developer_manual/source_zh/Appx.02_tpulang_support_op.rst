@@ -2496,7 +2496,7 @@ extract
 
 返回值
 """""""""""
-返回一个Tensor，数据类型与张量 `table`的数据类型相同。
+返回一个Tensor，数据类型与输入Tensor的数据类型相同。
 
 处理器支持
 """""""""""
@@ -2532,10 +2532,7 @@ arg
 
 返回值
 """""""""""
-返回一个Tensor。
-
-tensor数据类型可以是FLOAT32/INT8/UINT8。tensor_o数据类型可以是INT32/FLOAT32。
-tensor数据类型为INT8/UINT8时，tensor_o只能为INT32。
+返回两个Tensor，INT32的indices和FLOAT32的values。
 
 处理器支持
 """""""""""
@@ -3484,7 +3481,8 @@ interpolate
 * coord_mode: string类型, 表示输出坐标的计算方法，可选项为"align_corners"/"pytorch_half_pixel"/ "half_pixel"/"asymmetric"等。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
-其中， `coord_mode`的意义跟onnx的 `Resize`算子的参数 `coordinate_transformation_mode`的意义时一样的。若h/w方向的放缩因子为 `scale`，输入坐标为 `x_in`，输入尺寸为 `l_in`，输出坐标为 `x_out`，输出尺寸为 `l_out`，则逆映射定义如下：
+其中， `coord_mode` 的意义跟onnx的 `Resize` 算子的参数 `coordinate_transformation_mode` 的意义时一样的。若h/w方向的放缩因子为 `scale` ，输入坐标为 `x_in` ，输入尺寸为 `l_in` ，输出坐标为 `x_out` ，输出尺寸为 `l_out` ，则逆映射定义如下：
+
 * `"half_pixel"`：
 
     ::
@@ -3542,12 +3540,12 @@ nonzero
 参数说明
 """""""""""
 * tensor_i：Tensor类型，表示输入操作Tensor。
-* dtype：string型，表示输出数据类型，目前仅可使用默认值”int32”。
+* dtype：string型，表示输出数据类型，目前仅可使用默认值"int32"。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
 """""""""""
-返回一个Tensor。
+返回一个Tensor，数据类型为INT32。
 
 处理器支持
 """""""""""
@@ -3578,12 +3576,12 @@ lut
 
 返回值
 """""""""""
-返回一个Tensor，数据类型与张量 `table`的数据类型相同。
+返回一个Tensor，数据类型与张量 `table` 的数据类型相同。
 
 处理器支持
 """""""""""
-* BM1688： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
-* BM1684X： `input`的数据类型可以是INT8/UINT8， `table`的数据类型可以是INT8/UINT8。
+* BM1688： `input` 的数据类型可以是INT8/UINT8， `table` 的数据类型可以是INT8/UINT8。
+* BM1684X： `input` 的数据类型可以是INT8/UINT8， `table` 的数据类型可以是INT8/UINT8。
 
 select
 :::::::::::::::::
@@ -3602,7 +3600,7 @@ select
 
 功能描述
 """""""""""
-根据 `lhs`与 `rhs`的数值比较结果来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
+根据 `lhs` 与 `rhs` 的数值比较结果来选择，条件为真时，选择 `tbrn` ，条件为假时，选择 `fbrn` 。
 
 参数说明
 """""""""""
@@ -3613,7 +3611,7 @@ select
 * type: string类型，表示比较符。可选项为"Greater"/"Less"/"GreaterOrEqual"/"LessOrEqual"/"Equal"/"NotEqual"。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
-约束条件：要求 `lhs`与 `rhs`的形状和数据类型相同， `tbrn`与 `fbrn`的形状和数据类型相同。
+约束条件：要求 `lhs` 与 `rhs` 的形状和数据类型相同， `tbrn` 与 `fbrn` 的形状和数据类型相同。
 
 返回值
 """""""""""
@@ -3621,8 +3619,8 @@ select
 
 处理器支持
 """""""""""
-* BM1688： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X： `lhs`/ `rhs`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688： `lhs` / `rhs` / `tbrn` / `fbrn` 的数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X： `lhs` / `rhs` / `tbrn` / `fbrn` 的数据类型可以是FLOAT32/FLOAT16(TODO)。
 
 
 cond_select
@@ -3640,7 +3638,7 @@ cond_select
 
 功能描述
 """""""""""
-根据条件 `cond`来选择，条件为真时，选择 `tbrn`，条件为假时，选择 `fbrn`。
+根据条件 `cond` 来选择，条件为真时，选择 `tbrn` ，条件为假时，选择 `fbrn` 。
 
 参数说明
 """""""""""
@@ -3649,13 +3647,13 @@ cond_select
 * fbrn：Tensor类型或Scalar类型，表示条件为假时取的值。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
-约束条件：若 `tbrn`和 `fbrn`皆为张量，则要求 `tbrn`与 `fbrn`的形状和数据类型相同。
+约束条件：若 `tbrn` 和 `fbrn` 皆为张量，则要求 `tbrn` 与 `fbrn` 的形状和数据类型相同。
 
 返回值
 """""""""""
-返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+返回一个Tensor，数据类型与张量 `tbrn` 的数据类型相同。
 
 处理器支持
 """""""""""
-* BM1688： `cond`/ `tbrn`/ `fbrn`的数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X： `cond`/ `tbrn`/ `fbrn`的输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688： `cond` / `tbrn` / `fbrn` 的数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684X： `cond` / `tbrn` / `fbrn` 的输入数据类型可以是FLOAT32/FLOAT16(TODO)。
