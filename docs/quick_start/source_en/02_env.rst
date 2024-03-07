@@ -5,6 +5,8 @@ First check whether the current system environment meets ubuntu 22.04 and python
 If not, please proceed to the next section *Basic Environment Configuration*;
 if satisfied, jump directly to *Install tpu_mlir*.
 
+.. _env setup:
+
 Basic Environment Configuration
 ---------------------------------
 Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_dev :
