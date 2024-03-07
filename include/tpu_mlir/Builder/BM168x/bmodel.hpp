@@ -77,6 +77,7 @@ public:
               int32_t addr_mode = 0);
   // firmware_core.so save into bmodel
   void AddKernelModule(std::string &filename, Binary &tpu_module);
+  void AddCpuModule(std::string &version, Binary &lib_cpu);
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -104,6 +105,11 @@ private:
     Binary binary;
   } KERNEL_MODULE_T;
 
+  typedef struct {
+    std::string file_name;
+    Binary binary;
+  } CPUOP_MODULE_T;
+
   std::string chip_;
   int num_device_;
   flatbuffers::FlatBufferBuilder builder_;
@@ -114,6 +120,7 @@ private:
   uint64_t max_neuron_size_;
   // Binary tpu_module_;
   KERNEL_MODULE_T kernel_module_;
+  CPUOP_MODULE_T cpuop_module_;
 };
 
 class ModelCtx {
@@ -136,7 +143,6 @@ public:
   const MODEL_HEADER_T &header() const;
 
   bmodel_mem_info_t get_bmodel_mem_info();
-
 protected:
   void update_bmodel();
 

@@ -9,6 +9,8 @@
 
 #include "tpu_mlir/Support/CustomLayer.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include <dlfcn.h>
+#include "cpu_layer.h"
 
 LogicalResult tpu::CustomOp::init(InferenceParameter &p) { return success(); }
 void tpu::CustomOp::deinit(InferenceParameter &p) {}
@@ -30,17 +32,56 @@ LogicalResult tpu::CustomOp::inference(InferenceParameter &p) {
   values.push_back({0});
   customOpProcessParam(params, values);
   std::string op_name = getName().str();
-  std::string api_name = "inference_" + op_name;
-  void* args[4] = {(void*)in_shapes_v.data(), (void*)in_dims_v.data(),
-                   (void*)p.inputs.data(), (void*)p.outputs.data()};
-  bool ret = false;
-  BM168x::call_custom_plugin_func(
-    kCustomPluginTypes::PLUGIN_INFERENCE, &ret,
-    api_name.c_str(), values.data(),
-    values.size() * sizeof(custom_param_t),
-    args);
-  if (ret) return success();
-  else return failure();
+  if (getName().starts_with("cpu.")) {
+    // Custom cpu layers
+    llvm::StringRef custom_lib_name = "libplugin_custom.so";
+    std::string Err;
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
+        custom_lib_name.data(), &Err);
+    typedef bmcpu::cpu_layer *(*CreateLayerInstanceFunc)(const char *);
+    void *factoryFuncPtr = custom_dl.getAddressOfSymbol("createLayerInstance");
+    CreateLayerInstanceFunc createLayerInstance =
+        reinterpret_cast<CreateLayerInstanceFunc>(factoryFuncPtr);
+
+    std::transform(
+        op_name.begin(), op_name.end(), op_name.begin(),
+        [](unsigned char c) -> unsigned char { return std::toupper(c); });
+    std::string to_replace = "CPU.";
+    size_t start_pos = op_name.find(to_replace);
+    if (start_pos != std::string::npos) {
+      op_name.replace(start_pos, to_replace.size(), "");
+    }
+    bmcpu::cpu_layer *cpu_layer_instance = createLayerInstance(op_name.c_str());
+
+    std::vector<std::vector<int>> input_shapes_;
+    input_shapes_.reserve(num_input);
+    vector<vector<int>> output_shapes_;
+    for (int i = 0; i < num_input; ++i) {
+      auto shape = module::getShape(getInputs()[i]);
+      input_shapes_.emplace_back(in_shapes_v[i], in_shapes_v[i] + shape.size());
+    }
+    cpu_layer_instance->shepe_infer((void *)values.data(),
+                                    values.size() * sizeof(custom_param_t),
+                                    input_shapes_, output_shapes_);
+    std::vector<float *> real_input(p.inputs.begin(),
+                                    p.inputs.begin() + num_input);
+    cpu_layer_instance->mlir_inference(
+        values.data(), values.size() * sizeof(custom_param_t), real_input,
+        p.outputs, input_shapes_, output_shapes_);
+    return success();
+  } else {
+    std::string api_name = "inference_" + op_name;
+    void *args[4] = {(void *)in_shapes_v.data(), (void *)in_dims_v.data(),
+                     (void *)p.inputs.data(), (void *)p.outputs.data()};
+    bool ret = false;
+    BM168x::call_custom_plugin_func(
+        kCustomPluginTypes::PLUGIN_INFERENCE, &ret, api_name.c_str(),
+        values.data(), values.size() * sizeof(custom_param_t), args);
+    if (ret)
+      return success();
+    else
+      return failure();
+  }
 }
 
 mlir::Type tpu::CustomOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {

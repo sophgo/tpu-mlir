@@ -98,6 +98,7 @@ include_directories(${PROGRESSBAR_PATH}/include)
 #-------------------------------------------------------------------------------
 set(CUSTOM_PATH ${PROJECT_SOURCE_DIR}/third_party/customlayer)
 include_directories(${CUSTOM_PATH}/include/kernel)
+include_directories(${CUSTOM_PATH}/include)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)
