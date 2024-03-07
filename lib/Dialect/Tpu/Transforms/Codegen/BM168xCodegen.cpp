@@ -1079,6 +1079,19 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
   return snb.Finish();
 }
 
+typedef union {
+  int int_t;
+  float float_t;
+  // max size of int and float array is set as 16
+  int int_arr_t[16];
+  float float_arr_t[16];
+} custom_param_t;
+
+struct custom_topk_param {
+  int axis;
+  int K;
+} custom_topk_param_t;
+
 Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
                                                   func::CallOp call) {
   bm168x->before_codegen();
@@ -1090,10 +1103,12 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
   inputs.clear();
-  func.walk([&](tpu::GenericCpuOp op) {
-    for (auto opd : op.getOperands()) {
-      if (!module::isNone(opd))
-        inputs.push_back(opd);
+  func.walk([&](Operation *op) {
+    if (isa<tpu::GenericCpuOp>(op) || isa<tpu::CustomOp>(op)) {
+      for (auto opd : op->getOperands()) {
+        if (!module::isNone(opd))
+          inputs.push_back(opd);
+      }
     }
   });
 
@@ -1132,21 +1147,76 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
   void *param = nullptr;
   int op_type;
   int param_size;
-  func.walk([&](tpu::GenericCpuOp op) {
-    BMCpuOp cpuOp(op);
-    param = malloc(cpuOp.param_size);
-    memcpy(param, cpuOp.param, cpuOp.param_size);
-    uint32_t io_size = 0;
-    for (int i = 0; i < op.getInputs().size(); ++i) {
-      io_size += module::getNumElements(op.getInputs()[i]) * sizeof(float);
+  int is_custom = 0;
+  func.walk([&](Operation *op) {
+    if (isa<tpu::GenericCpuOp>(op)) {
+      tpu::GenericCpuOp op_ = dyn_cast<tpu::GenericCpuOp>(op);
+      BMCpuOp cpuOp(op_);
+      param = malloc(cpuOp.param_size);
+      memcpy(param, cpuOp.param, cpuOp.param_size);
+      uint32_t io_size = 0;
+      for (int i = 0; i < op_.getInputs().size(); ++i) {
+        io_size += module::getNumElements(op_.getInputs()[i]) * sizeof(float);
+      }
+      for (int i = 0; i < op_.getOutputs().size(); ++i) {
+        io_size += module::getNumElements(op_.getOutputs()[i]) * sizeof(float);
+      }
+      op_type = cpuOp.op_type;
+      param_size = cpuOp.param_size;
+    } else if (isa<tpu::CustomOp>(op)) {
+      tpu::CustomOp op_ = dyn_cast<tpu::CustomOp>(op);
+      mlir::ArrayAttr params = op_.getParams();
+      std::vector<custom_param_t> values;
+      values.push_back({0});
+      param_size = sizeof(custom_param_t);
+      for (auto param_dict : params) {
+        DictionaryAttr dict = param_dict.dyn_cast<DictionaryAttr>();
+        for (auto it = dict.begin(); it != dict.end(); ++it) {
+          // here is the code of mlir dictionary to cpuop.so bin buffer
+          // llvm::outs() << "Key: " << it->getName().str() << "\n";
+          // llvm::outs() << "Value: " << it->getValue().cast<IntegerAttr>().getInt() << "\n";
+          custom_param_t value = {0};
+          Attribute value_param = it->getValue();
+          if (auto int_attr = value_param.dyn_cast<IntegerAttr>()) {
+            value.int_t = int_attr.getInt();
+          } else if (auto float_attr = value_param.dyn_cast<FloatAttr>()) {
+            value.float_t = float_attr.getValueAsDouble();
+          } else if (auto bool_attr = value_param.dyn_cast<BoolAttr>()) {
+            value.int_t = bool_attr.getValue();
+          } else if (auto array_attr = value_param.dyn_cast<ArrayAttr>()) {
+            int num = array_attr.size();
+            for (int i = 0; i < num; i++) {
+              if (auto tmp_value = array_attr[i].dyn_cast<IntegerAttr>()) {
+                value.int_arr_t[i] = tmp_value.getInt();
+              } else if (auto tmp_value = array_attr[i].dyn_cast<FloatAttr>()) {
+                value.float_arr_t[i] = tmp_value.getValueAsDouble();
+              } else {
+                llvm_unreachable("Only int and float vector supported now");
+              }
+            }
+          } else {
+            llvm_unreachable("Type of parameter unsupported");
+          }
+          values.push_back(value);
+          param_size += sizeof(custom_param_t);
+        }
+      }
+      param = malloc(param_size);
+      memcpy(param, values.data(), param_size);
+      is_custom = 1;
+      std::string op_name = op_.getName().str();
+      std::transform(op_name.begin(), op_name.end(), op_name.begin(),
+                   [](unsigned char c) -> unsigned char { return std::toupper(c); });
+      std::string to_replace = "CPU.";
+      size_t start_pos = op_name.find(to_replace);
+      if (start_pos != std::string::npos) {
+        op_name.replace(start_pos, to_replace.size(), "");
+      }
+      op_type = GetCustomLayerType(op_name.c_str());
     }
-    for (int i = 0; i < op.getOutputs().size(); ++i) {
-      io_size += module::getNumElements(op.getOutputs()[i]) * sizeof(float);
-    }
-    op_type = cpuOp.op_type;
-    param_size = cpuOp.param_size;
   });
   cpb.add_op_type(op_type);
+  cpb.add_is_custom(is_custom);
   bmodel::Binary binary_cpu_param =
       model_gen->WriteBinary(param_size, (u8 *)param);
   cpb.add_binary_param(&binary_cpu_param);

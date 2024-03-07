@@ -258,6 +258,11 @@ void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module) {
   kernel_module_.binary = tpu_module;
 }
 
+void ModelGen::AddCpuModule(std::string &file_name, Binary &cpu_module) {
+  cpuop_module_.file_name = file_name;
+  cpuop_module_.binary = cpu_module;
+}
+
 void ModelGen::Finish(const string &filename) {
   this->Finish();
   this->Save(filename);
@@ -310,7 +315,14 @@ size_t ModelGen::Finish() {
   kb.add_file_name(module_name);
   kb.add_binary(&kernel_module_.binary);
   auto kernel_module = kb.Finish();
+
+  bmodel::CpuopModuleBuilder cb(builder_);
+  cb.add_file_name(module_name);
+  cb.add_binary(&cpuop_module_.binary);
+  auto cpuop_module = cb.Finish();
+
   bmodel::ModelBuilder mb(builder_);
+
   mb.add_chip(chip);
   mb.add_type(type);
   mb.add_time(time);
@@ -319,6 +331,7 @@ size_t ModelGen::Finish() {
   mb.add_neuron_size(max_neuron_size_);
   mb.add_kernel_module(kernel_module);
   mb.add_device_num(num_device_);
+  mb.add_cpuop_module(cpuop_module);
 
   auto model = mb.Finish();
   builder_.Finish(model);

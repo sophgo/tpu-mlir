@@ -237,6 +237,10 @@ public:
       return RunMode::LOOP;
     } else if (dynamic || force_dynamic_run(op)) {
       return RunMode::TPU_DYNAMIC;
+    } else if (isa<CustomOp>(op)) {
+      if (dyn_cast<CustomOp>(op).getName().starts_with("cpu")) {
+        return RunMode::CPU;
+      }
     }
     return RunMode::TPU_STATIC;
   }

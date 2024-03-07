@@ -44,8 +44,8 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 ```
 
 
-## tpu-runtime 2023-2-27
-build from tpu-runtime a98a798d6c8ee61c9980a427596d965ad1f939f4
+## tpu-runtime 2023-3-08
+build from tpu-runtime 7c972ecba808e0bddccfbf37ae0098845d5ae521
 ``` bash
 pushd libsophon
 mkdir -p build && cd build

@@ -1,13 +1,32 @@
 function _rebuild_custom() {
   export CUSTOM_LAYER_DEV_MODE=$1
+  export BUILD_DIR=${2:-"build"}
   echo $CUSTOM_LAYER_PATH
   pushd ${CUSTOM_LAYER_PATH}
-  rm -rf build
-  mkdir build
-  cd build
+  rm -rf $BUILD_DIR
+  mkdir $BUILD_DIR
+  cd $BUILD_DIR
   cmake -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" ..
   make
   make install
+  cd ..
+  popd
+}
+
+C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc
+CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++
+function _rebuild_custom_aarch64() {
+  export CUSTOM_LAYER_DEV_MODE=$1
+  export BUILD_DIR=${2:-"build"}
+  echo $CUSTOM_LAYER_PATH
+  pushd ${CUSTOM_LAYER_PATH}
+  rm -rf $BUILD_DIR
+  mkdir $BUILD_DIR
+  cd $BUILD_DIR
+  cmake -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" .. -DCMAKE_C_COMPILER=$C_COMPILER  -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+  make
+  make install
+  cd ..
   popd
 }
 
@@ -24,6 +43,16 @@ function _run_custom_test() {
 function rebuild_custom_plugin() {
   export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
   _rebuild_custom plugin
+}
+
+function rebuild_custom_cpuop_x86() {
+  export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
+  _rebuild_custom customcpuop build_cpu
+}
+
+function rebuild_custom_cpuop_aarch64() {
+  export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
+  _rebuild_custom_aarch64 customcpuop build_cpu
 }
 
 function rebuild_custom_backend() {

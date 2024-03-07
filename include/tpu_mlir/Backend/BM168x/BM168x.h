@@ -78,6 +78,11 @@ typedef void (*bmcpu_process)(void *, int, void *, int,
                               const std::vector<std::vector<int>> &,
                               const std::vector<float *> &,
                               std::vector<std::vector<int>> &);
+typedef void (*customcpu_process)(void *, int, void *, int,
+                                  const std::vector<float *> &,
+                                  const std::vector<std::vector<int>> &,
+                                  const std::vector<float *> &,
+                                  std::vector<std::vector<int>> &);
 typedef int (*bmcpu_reshape)(void *, int, void *, int,
                              const std::vector<std::vector<int>> &,
                              std::vector<std::vector<int>> &);
