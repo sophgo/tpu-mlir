@@ -68,3 +68,24 @@ class crop:
             params=params,
             out_dtypes=[dtype])
         return outs
+
+class cpuTopk:
+    @staticmethod
+    def native(data, axis, k):
+        sorted_arr = np.sort(data, axis=axis)
+        arr_descending = np.flip(sorted_arr, axis=axis)
+        if axis == 1:
+            return arr_descending[:, :k]
+        elif axis == 0:
+            return arr_descending[:k, :]
+
+    @staticmethod
+    def tpulang(inputs, axis, k, dtype="float32"):
+        params = {"axis": axis, "K": k}
+        outs = tpul.custom(
+            tensors_in=inputs,
+            # op_name should be consistent with the backend
+            op_name="cpu.topk",
+            params=params,
+            out_dtypes=[dtype])
+        return outs
