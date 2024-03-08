@@ -13,31 +13,29 @@ During user training, model QAT quantization API is called to modify the trainin
 
 Features of the Scheme
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Feature 1:Based on pytorch;QAT is an additional finetune part of the training pipeline, and only deep integration with the training environment can facilitate users to use various scenarios. Considering pytorch has the most extensive usage rate, the current scheme is based on pytorch only. If qat supports other frameworks in the future, the scheme will be very different.Its trace and module replacement mechanisms are deeply dependent on the support of the native training platform.
+Feature 1: Based on pytorch;QAT is an additional finetune part of the training pipeline, and only deep integration with the training environment can facilitate users to use various scenarios. Considering pytorch has the most extensive usage rate, the current scheme is based on pytorch only. If qat supports other frameworks in the future, the scheme will be very different.Its trace and module replacement mechanisms are deeply dependent on the support of the native training platform.
 
-Feature 2:Users basically have no sense;Different from earlier schemes that require deep manual intervention in model transformation, this scheme based on pytorch fx can automatically complete model trace, pseudo-quantization node insertion, custom module replacement and other operations. In most cases, users can complete model transformation with one click using the default configuration.
+Feature 2: Users basically have no sense;Different from earlier schemes that require deep manual intervention in model transformation, this scheme based on pytorch fx can automatically complete model trace, pseudo-quantization node insertion, custom module replacement and other operations. In most cases, users can complete model transformation with one click using the default configuration.
 
-Feature 3:This scheme is based on Sensetime's open source mqbench qat training framework, which has a certain community foundation and is convenient for industry and academia to evaluate reasoning performance and accuracy on our tpu.
+Feature 3: Based on the sophgo-mq training framework, this framework is an improvement on the mqbench open-sourced by SenseTime.
 
 
 Installation Method
 ---------------------------------------------------
 Install from source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、Run the command to get the latest code on github:git clone https://github.com/sophgo/MQBench。
+1、Run the command to get the latest code on github: git clone https://github.com/sophgo/sophgo-mq.git
 
-2、Execute after entering the MQBench directory:
+2、Execute after entering the sophgo-mq directory:
 
 .. code-block:: shell
 
-       pip install -r requirements.txt  #Note: torch version 1.10.0 is currently required
+       pip install -r requirements.txt  #Note: torch version 2.0.1 is currently required
        python setup.py install
 
-3、If python -c 'import mqbench' does not return any error, the installation is correct. If the installation is incorrect, run pip uninstall mqbench and try again.
+3、Execute python -c 'import sophgo_mq' and if it does not return any errors, it indicates that the installation is correct. If there is an error with the installation, execute pip uninstall sophgo_mq to uninstall it and then try again.
 
-Installing the wheel file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Download the python whl package from https://MQBench-1.0.0-py3-none-any.whl and run pip3 install MQBench-1.0.0-py3-none-any.whl to install it directly.
+
 
 
 
@@ -48,26 +46,34 @@ Step 1: Interface import and model prepare
 
 Add the following python module import interface to the training file:
 
-.. code-block:: shell
+.. code-block:: python
 
-    #Initializing Interface
-    from mqbench.prepare_by_platform import prepare_by_platform, BackendType
-    #Calibrate and quantify switches
-    from mqbench.utils.state import enable_calibration, enable_quantization
-    #Transform Deployment interface
-    from mqbench.convert_deploy import convert_deploy
-    #Use the pre-trained resnet18 model in torchvision model zoo
-    model = torchvision.models.__dict__["resnet18"](pretrained=True)
-    Backend = BackendType.sophgo_tpu
-    #1.trace model and then add quantization nodes in a specific way based on the requirements of sophgo_tpu hardware
-    model_quantized = prepare_by_platform(model, Backend)
+    import torch
+    import torchvision.models as models
+    from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
+    from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
+    from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
+    
+    #Use the pre-trained ResNet18 model from the torchvision model zoo.
+    model = models.__dict__['resnet18'](pretrained=True)
+    
+    #1.Trace the model, using a dictionary to specify the chip type as SG2260 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
+    extra_prepare_dict = {
+    'quant_dict': {
+                    'chip': 'SG2260',
+                    'quantmode': 'weight_activation',
+                    'strategy': 'CNN',
+                    },
+    }
+    model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
-When sophgo_tpu backend is selected on the above interface, the third parameter prepare_custom_config_dict of this interface is not configured by default. In this case, the default quantization configuration is shown as the following figure:
+
+When the above interface selects the SG2260 chip, the default quantization configuration is as shown in the following figure:
 
 .. figure:: ../assets/sophgo_tpu_default_para.png
    :align: center
 
-In the above figure, items in the dict behind sophgo_tpu in order of top to bottom meaning are:
+The meanings of the quantization configuration items in the above figure, from top to bottom, are as follows:
 
 1、The weight quantization scheme is: per-chan symmetric 8bit quantization, the scale coefficient is not power-of-2, but arbitrary
 
@@ -81,7 +87,7 @@ In the above figure, items in the dict behind sophgo_tpu in order of top to bott
 Step 2: Calibration and quantization training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: shell
+.. code-block:: python
 
     #1.Turn on the calibration switch to allow the pytorch observer object to collect the activation distribution and calculate the initial scale and zp when reasoning on the model
     enable_calibration(model_quantized)
@@ -103,12 +109,15 @@ Step 2: Calibration and quantization training
 Step 3: Export tuned fp32 model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: shell
+.. code-block:: python
 
     #Here the batch-size can be adjusted according to the need, do not have to be consistent with the training batch-size
-    input_shape={‘data’: [4, 3, 224, 224]}
+    input_shape={'input': [4, 3, 224, 224]}
+    # Specify the exported model type as CNN.
+    net_type='CNN'
     #4. Before export, the conv+bn layer is fused (conv+bn is true fusion when train is used in the front), and the parameters in the pseudo-quantization node are saved to the parameter file, and then removed。
-    convert_deploy(model_quantized, backend, input_shape)
+    convert_deploy(model_quantized, net_type, input_shape)
+
 
 Step 4: Initiate the training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,23 +135,27 @@ The transformation deployment to sophg-tpu hardware was completed using the mode
 
 Use Examples-resnet18
 ------------------------------
-Run example/imagenet_example/main.py to qat train resent18 as follows:
+Run application/imagenet_example/main.py to qat train resent18 as follows:
 
 .. code-block:: shell
 
-    python3 imagenet_example/main.py
-        --arch=resnet18
-        --batch-size=192
-        --epochs=1
-        --lr=1e-4
-        --cuda=0
-        --pretrained
-        --backend=sophgo_tpu
-        --optim=sgd
-        --deploy_batch_size=10
-        --train_data=/data/imagenet/for_train_val/
-        --val_data=/data/imagenet/for_train_val/
-        --output_path=/workspace/classify_models
+    CUDA_VISIBLE_DEVICES=0 python application/imagenet_example/main.py \
+        --arch=resnet18 \
+        --batch-size=128 \
+        --lr=1e-4 \
+        --epochs=1 \
+        --optim=sgd \
+        --cuda=0 \
+        --pretrained \
+        --evaluate \
+        --train_data=/home/data/imagenet \
+        --val_data=/home/data/imagenet \
+        --chip=SG2260 \
+        --quantmode=weight_activation \
+        --deploy_batch_size=10 \
+        --pre_eval_and_export \
+        --output_path=./
+
 
 The command output log above contains the following(:ref:`ori_onnx_acc`) accuracy information of the original model (it can be compared with the accuracy on the official webpage to confirm the correct training environment, such as the official nominal name:Acc@1 69.76 Acc@5 89.08,The link is:https://pytorch.apachecn.org/#/docs/1.0/torchvision_models）:
 
@@ -168,7 +181,7 @@ The final output directory is as follows(:ref:`r18_qat_output_dir`):
 
    resnet18 qat training output model directory
 
-The one with _ori in the figure above is the original pt of pytorch model zoo and the transferred onnx file. This resnet18_ori.onnx is quantified by PTQ with the tpu-mlir tool chain, and its symmetry and asymmetry quantization accuracy are measured as the baseline and resnet18_mqmoble_cali_table_from_mqbench_sophgo_tpu is the exported quantization parameter file with the following contents(:ref:`r18_qat_cali_table`):
+The resnet18_ori.onnx in the figure above is the original pytorch model transferred onnx file. This resnet18_ori.onnx is quantified by PTQ with the tpu-mlir tool chain, and its symmetry and asymmetry quantization accuracy are measured as the baseline and resnet18_cali_table_from_sophgo_mq is the exported quantization parameter file with the following contents(:ref:`r18_qat_cali_table`):
 
 .. _r18_qat_cali_table:
 .. figure:: ../assets/r18_qat_cali_table.png
@@ -230,17 +243,25 @@ After or during the test, view the model_eval script output log file starting wi
 
 Use Examples-yolov5s
 ------------------------
-Similar to resnet18, run the following command in example/yolov5_example to start qat training:
+Execute the following command in application/yolov5_example to start QAT Training:
 
 .. code-block:: shell
 
-    python3 train.py
-        --cfg=yolov5s.yaml
-        --weights=yolov5s.pt
-        --data=coco.yaml
-        --epochs=5
-        --output_path=/workspace/yolov5/qat_models
-        --batch-size=8
-        --quantize
+    CUDA_VISIBLE_DEVICES=0 python train.py \
+        --cfg=yolov5s.yaml \
+        --weights=yolov5s.pt \
+        --data=coco.yaml \
+        --epochs=5 \
+        --output_path=./ \
+        --batch-size=8 \
+        --quantize \
 
 After the training is completed, the same test and transformation deployment process as resnet18 before can be adopted。
+
+Use Examples-bert
+-------------------------
+Execute the following command in application/nlp_example to start QAT Training:
+
+.. code-block:: shell
+
+    CUDA_VISIBLE_DEVICES=0 python qat_bertbase_questionanswer.py

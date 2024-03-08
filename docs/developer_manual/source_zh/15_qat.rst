@@ -17,27 +17,24 @@ tpu-mlir QAT实现方案及特点
 
 特点2：客户基本无感；区别于早期需人工深度介入模型转换的方案，本方案基于pytorch fx，能实现自动的完成模型trace、伪量化节点插入、自定义模块替换等操作，大多数情况下，客户使用默认配置即可一键式完成模型转换.
 
-特点3：基于商汤开源的mqbench qat训练框架，已有一定的社区基础，方便工业界和学术界在我司tpu上进行推理性能和精度评估；
+特点3：基于sophgo-mq训练框架，该框架由商汤开源的mqbench改进而来.
 
 
 安装方法
 -------------------------------------
 从源码安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、执行命令获取github上最新代码:git clone https://github.com/sophgo/MQBench
+1、执行命令获取github上最新代码:git clone https://github.com/sophgo/sophgo-mq.git
 
-2、进入MQBench目录后执行:
+2、进入sophgo-mq目录后执行:
 
 .. code-block:: shell
 
-    pip install -r requirements.txt #注:当前要求torch版本为1.10.0
+    pip install -r requirements.txt #注:当前要求torch版本为2.0.1
     python setup.py install
 
-3、执行python -c 'import mqbench'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall mqbench卸载后再尝试；
+3、执行python -c 'import sophgo_mq'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall sophgo_mq卸载后再尝试；
 
-安装wheel文件
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-从https://MQBench-1.0.0-py3-none-any.whl链接下载python whl包，执行pip3 install MQBench-1.0.0-py3-none-any.whl直接安装即可；
 
 
 
@@ -47,27 +44,39 @@ tpu-mlir QAT实现方案及特点
 步骤一:接口导入及模型prepare
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
 在训练文件中添加如下python模块import接口:
 
 .. code-block:: python
 
-   from mqbench.prepare_by_platform import prepare_by_platform, BackendType #初始化接口
-   from mqbench.utils.state import enable_calibration, enable_quantization    #校准和量化开关
-   from mqbench.convert_deploy import convert_deploy                          #转换部署接口
-   #使用torchvision model zoo里的预训练resnet18模型
-   model = torchvision.models.__dict__["resnet18"](pretrained=True)
-   Backend = BackendType.sophgo_tpu
-   #1.trace模型，然后基于sophgo_tpu硬件的要求添加特定方式的量化节点
-   model_quantized = prepare_by_platform(model, Backend)
+    import torch
+    import torchvision.models as models
+    from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
+    from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
+    from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
+    
+    #使用torchvision model zoo里的预训练resnet18模型
+    model = models.__dict__['resnet18'](pretrained=True)
+    
+    #1.trace模型，使用字典来指定芯片类型为SG2260，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
+    extra_prepare_dict = {
+    'quant_dict': {
+                    'chip': 'SG2260',
+                    'quantmode': 'weight_activation',
+                    'strategy': 'CNN',
+                    },
+    }
+    model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
-当上面接口选择sophgo_tpu后端时，该接口的第3个参数prepare_custom_config_dict默认不用配置，此时默认的量化配置如下图所示：
 
-.. figure:: ../assets/sophgo_tpu_default_para.png
+当上面接口选择芯片为SG2260时，此时默认的量化配置如下图所示：
+
+.. figure:: ../assets/sg2260_default_para.png
    :align: center
 
-上图sophgo_tpu后端的dict中各项从上到下依次意义为：
+上图量化配置中各项从上到下依次意义为：
 
-1、权重量化方案为： per-chan对称8bit量化，scale系数不是power-of-2，而是任意的
+1、权重量化方案为： per-channel对称8bit量化，scale系数不是power-of-2，而是任意的
 
 2、激活量化方案为：per-layer对称8bit量化
 
@@ -104,9 +113,11 @@ tpu-mlir QAT实现方案及特点
 .. code-block:: python
 
     #batch-size可根据需要调整，不必与训练batch-size一致
-    input_shape={'data': [4, 3, 224, 224]}
+    input_shape={'input': [4, 3, 224, 224]}
+    # 指定导出模型类型为CNN
+    net_type='CNN'
     #4.导出前先融合conv+bn层（前面train时未真正融合），将伪量化节点参数保存到参数文件，然后移除。
-    convert_deploy(model_quantized, backend, input_shape)
+    convert_deploy(model_quantized, net_type, input_shape)
 
 
 步骤4：启动训练
@@ -126,23 +137,26 @@ tpu-mlir QAT实现方案及特点
 
 使用样例-resnet18
 --------------------------
-执行example/imagenet_example/main.py对resent18进行qat训练，命令如下：
+执行application/imagenet_example/main.py对resent18进行qat训练，命令如下：
 
 .. code-block:: shell
 
-    python3 imagenet_example/main.py
-        --arch=resnet18
-        --batch-size=192
-        --epochs=1
-        --lr=1e-4
-        --cuda=0
-        --pretrained
-        --backend=sophgo_tpu
-        --optim=sgd
-        --deploy_batch_size=10
-        --train_data=/data/imagenet/for_train_val/
-        --val_data=/data/imagenet/for_train_val/
-        --output_path=/workspace/classify_models
+    CUDA_VISIBLE_DEVICES=0 python application/imagenet_example/main.py \
+        --arch=resnet18 \
+        --batch-size=128 \
+        --lr=1e-4 \
+        --epochs=1 \
+        --optim=sgd \
+        --cuda=0 \
+        --pretrained \
+        --evaluate \
+        --train_data=/home/data/imagenet \
+        --val_data=/home/data/imagenet \
+        --chip=SG2260 \
+        --quantmode=weight_activation \
+        --deploy_batch_size=10 \
+        --pre_eval_and_export \
+        --output_path=./
 
 
 在上面命令输出日志中有如下图(:ref:`ori_onnx_acc`)中原始模型的精度信息（可与官方网页上精度进行比对以确认训练环境无误，比如官方标称：Acc@1 69.76 Acc@5 89.08，链接为:https://pytorch.apachecn.org/#/docs/1.0/torchvision_models）:
@@ -169,7 +183,7 @@ tpu-mlir QAT实现方案及特点
 
    resnet18 qat训练输出模型目录
 
-上图中带_ori的为pytorch model zoo原始pt及所转的onnx文件，将这个resnet18_ori.onnx用tpu-mlir工具链进行PTQ量化，衡量其对称和非对称量化精度作为比较的baseline。其中的resnet18_mqmoble_cali_table_from_mqbench_sophgo_tpu为导出的量化参数文件，内容如下图(:ref:`r18_qat_cali_table`)：
+上图中resnet18_ori.onnx为pytorch原始模型所转的onnx文件，将这个resnet18_ori.onnx用tpu-mlir工具链进行PTQ量化，衡量其对称和非对称量化精度作为比较的baseline。其中的resnet18_cali_table_from_sophgo_mq为导出的量化参数文件，内容如下图(:ref:`r18_qat_cali_table`)：
 
 .. _r18_qat_cali_table:
 .. figure:: ../assets/r18_qat_cali_table.png
@@ -235,17 +249,25 @@ QAT测试环境
 
 使用样例-yolov5s
 -------------------------
-同前面resnet18类似，在example/yolov5_example中执行如下命令可启动qat训练:
+在application/yolov5_example中执行如下命令可启动qat训练:
 
 .. code-block:: shell
 
-    python3 train.py
-        --cfg=yolov5s.yaml
-        --weights=yolov5s.pt
-        --data=coco.yaml
-        --epochs=5
-        --output_path=/workspace/yolov5/qat_models
-        --batch-size=8
-        --quantize
+    CUDA_VISIBLE_DEVICES=0 python train.py \
+        --cfg=yolov5s.yaml \
+        --weights=yolov5s.pt \
+        --data=coco.yaml \
+        --epochs=5 \
+        --output_path=./ \
+        --batch-size=8 \
+        --quantize \
 
 完成训练后，采取和前面resnet18一样的测试、转换部署流程即可。
+
+使用样例-bert
+-------------------------
+在application/nlp_example中执行如下命令可启动qat训练
+
+.. code-block:: shell
+
+    CUDA_VISIBLE_DEVICES=0 python qat_bertbase_questionanswer.py
