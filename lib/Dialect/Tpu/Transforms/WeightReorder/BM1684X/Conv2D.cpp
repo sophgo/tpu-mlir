@@ -153,7 +153,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
   } else if (isINT4Conv ||
-             (module::isSG2260Family() &&
+             (module::isBM1690Family() &&
               (filter_stype.isFloat8E5M2() || filter_stype.isFloat8E4M3FN()))) {
     use_3ic_optimize = 0;
   }
@@ -248,7 +248,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isBM1688() || module::isSG2260Family()) {
+    if (module::isBM1688() || module::isBM1690Family()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -275,14 +275,14 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     auto scales = module::getF64Array(op.getOutF8Scales(), attr.oc, 1.0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isSG2260Family()) {
+    if (module::isBM1690Family()) {
       align = false;
       quant_w_size = 1;
       for (int i = 0; i < attr.oc; i++) {
         quant_data_fp8->at(i) = scales->at(i);
       }
     } else {
-      llvm_unreachable("fp8 for sg2260 only");
+      llvm_unreachable("fp8 for bm1690 only");
     }
     quant_shape = {1, attr.oc, 1, quant_w_size};
     tpu::reshape_coeff_for_broadcast_channel(quant_data_fp8, quant_shape, align,
@@ -293,14 +293,14 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     quant_data_fp8 = std::make_shared<std::vector<float>>(attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isSG2260Family()) {
+    if (module::isBM1690Family()) {
       align = false;
       quant_w_size = 1;
       for (int i = 0; i < attr.oc; i++) {
         quant_data_fp8->at(i) = 1.0;
       }
     } else {
-      llvm_unreachable("fp8 for sg2260 only");
+      llvm_unreachable("fp8 for bm1690 only");
     }
     quant_shape = {1, attr.oc, 1, quant_w_size};
     tpu::reshape_coeff_for_broadcast_channel(quant_data_fp8, quant_shape, align,
@@ -313,7 +313,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
-    if (!module::isBM1688() && !module::isSG2260Family()) {
+    if (!module::isBM1688() && !module::isBM1690Family()) {
       filter_align = 1;
     }
   }

@@ -52,7 +52,7 @@ mlir::Type tpu::IndexPutOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     }
     mode = TypeCastMode::DO_CAST;
     auto bitwidth = stype.getIntOrFloatBitWidth();
-    if (module::isBM1684XFamily() || module::isSG2260Family()) {
+    if (module::isBM1684XFamily() || module::isBM1690Family()) {
       // indices should be int32 in BM1684x
       bitwidth = 32;
     }

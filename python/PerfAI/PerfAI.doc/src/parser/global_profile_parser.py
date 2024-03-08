@@ -95,7 +95,7 @@ class GlobalProfileParser:
                     ginfo.set_arch(self.enum_val("arch", Arch))
                     if not ginfo.arch:
                         ginfo.arch = Arch.bm1684x
-                        # using bm1684x arch for sg2260 single core
+                        # using bm1684x arch for bm1690 single core
                     self.archlib = ginfo.archlib
                     # self.archlib.show_arch_info()
                 elif self.match(re_freq):

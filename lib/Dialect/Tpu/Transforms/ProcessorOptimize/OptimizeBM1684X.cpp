@@ -408,7 +408,7 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
-    if (!(module::isBM1684XFamily() || module::isSG2260Family()) ||
+    if (!(module::isBM1684XFamily() || module::isBM1690Family()) ||
         !module::isWeight(op.getFilter())) {
       return failure();
     }

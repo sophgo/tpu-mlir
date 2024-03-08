@@ -15,7 +15,7 @@ from dash import dcc
 
 
 app = dash.Dash(__name__,
-                title="Sophgo Calibration-Analysis-Tool",
+                title="TPU-MLIR Calibration-Analysis-Tool",
                 external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 

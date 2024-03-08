@@ -34,7 +34,7 @@ The workflow is as follows:
 
 The following introduces the data structures required in the CodeGen process:
 
-The instructions differ based on the processor's engine, e.g., 1684 has GDMA and TIU, while new architecture processors like sg2260 have sdma, cdma, etc. Using the most common engines, BDC (later renamed to TIU) and GDMA, as examples:
+The instructions differ based on the processor's engine, e.g., 1684 has GDMA and TIU, while new architecture processors like bm1690 have sdma, cdma, etc. Using the most common engines, BDC (later renamed to TIU) and GDMA, as examples:
 
 .. code-block:: shell
 

@@ -111,7 +111,7 @@ class MODEL_RUN(object):
                     self.quant_modes["f16"] = 1
                     self.quant_modes["bf16"] = 1
                     self.quant_modes["f32"] = 1
-                    if self.arch == 'sg2260':
+                    if self.arch == 'bm1690':
                         self.quant_modes["f8e4m3"] = 1
                         self.quant_modes["f8e5m2"] = 1
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
@@ -122,7 +122,7 @@ class MODEL_RUN(object):
                 assert (chip_support[self.chip][idx]
                         and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
-            if chip =='sg2260' and f"test_{quant_mode}" in self.ini_content:
+            if chip =='bm1690' and f"test_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"test_{quant_mode}"])
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
@@ -229,10 +229,10 @@ class MODEL_RUN(object):
             _os_system(cmd, self.save_log)
 
     def f8_tmp_test(self, quant_mode):
-        '''tmp test script for f8 mode, sg2260, in order to control bmodel tolerance'''
+        '''tmp test script for f8 mode, bm1690, in order to control bmodel tolerance'''
 
-        output_npz = f"{self.model_name}_sg2260_{quant_mode}_tpu_outputs.npz"
-        bmodel_file =  f"{self.model_name}_sg2260_{quant_mode}.bmodel"
+        output_npz = f"{self.model_name}_bm1690_{quant_mode}_tpu_outputs.npz"
+        bmodel_file =  f"{self.model_name}_bm1690_{quant_mode}.bmodel"
         # inference bmodel
         model_npz = bmodel_file.replace(".bmodel", "_model_outputs.npz")
         cmd = [
@@ -386,7 +386,7 @@ class MODEL_RUN(object):
                 "--test_reference {}".format(self.ini_content["test_reference"])
             ])
         if quant_mode.startswith("f8"):
-            # Skip checking the correctness of sg2260 f8 bmodel. Do the tolerance check at the last step.
+            # Skip checking the correctness of bm1690 f8 bmodel. Do the tolerance check at the last step.
             cmd.extend(["--skip_validation"])
             cmd += ["--debug"]
             if "excepts" in self.ini_content and "fp8_excepts" not in self.ini_content:

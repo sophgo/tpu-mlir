@@ -83,9 +83,9 @@ TEST(Benefit, Cycle) {
   auto out = s.solve(source);
   // out.dump();
   EXPECT_TRUE(out.size() > 0);
-  auto mm = sg2260::registerTraits(&context);
+  auto mm = bm1690::registerTraits(&context);
 
-  auto a = TransformBenefit(mm["sg2260.arithmetic.and"]);
+  auto a = TransformBenefit(mm["bm1690.arithmetic.and"]);
   a.getCycle(out, {128, 32, 15, 30});
   // llvm::errs() << out.size() << "/" << s.getAllPath() << "\n";
 }

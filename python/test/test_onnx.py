@@ -39,7 +39,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y),
             "And":          (self.test_And,           N, Y, Y, N, Y),
@@ -313,7 +313,7 @@ class ONNX_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
-        elif self.chip == "sg2260":
+        elif self.chip == "bm1690":
             self.support_quant_modes.append("f8e4m3")
             self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
@@ -324,7 +324,7 @@ class ONNX_IR_TESTER(object):
                 if "f8" in quant_mode:
                     self.quant_modes.remove(quant_mode)
         elif self.mode == "f8":
-            assert self.chip == "sg2260" and "only sg2260 support fp8"
+            assert self.chip == "bm1690" and "only bm1690 support fp8"
             self.quant_modes = ["f8e4m3", "f8e5m2"]
         else:
             if self.chip == "bm1688" or self.chip == "cv186x":
@@ -347,7 +347,7 @@ class ONNX_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support = self.test_cases[
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support = self.test_cases[
             case]
         if self.is_cv18xx and cv183x_support:
             return True
@@ -357,7 +357,7 @@ class ONNX_IR_TESTER(object):
             return True
         if self.chip == "bm1688" and bm1688_support:
             return True
-        if self.chip == "sg2260" and sg2260_support:
+        if self.chip == "bm1690" and bm1690_support:
             return True
         return False
 
@@ -2837,7 +2837,7 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(20, 6, 10, 10).float()
         self.torch_and_test(x, Model(x.shape[1], 3), case_name)
-        if self.chip in ["bm1684x", "sg2260", "bm1688"]:
+        if self.chip in ["bm1684x", "bm1690", "bm1688"]:
             x = torch.randn(2, 129, 4, 4).float()
             self.torch_and_test(x, Model(x.shape[1], 43), case_name)
 
@@ -4007,7 +4007,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        if self.chip in ['bm1684x', 'sg2260']:
+        if self.chip in ['bm1684x', 'bm1690']:
             # samples too large for regression is commented
             # but all samples following should be passed
             input_data = [
@@ -4072,7 +4072,7 @@ class ONNX_IR_TESTER(object):
                 indices_,
             )
 
-            if self.chip in ['bm1684x', 'sg2260']:
+            if self.chip in ['bm1684x', 'bm1690']:
                 graph_txt = """
                     %s (float%s data) => (float%s gather_output)
                     <int64%s indices>
@@ -5905,7 +5905,7 @@ def test_int4(tester: ONNX_IR_TESTER):
 
 
 def test_fp8(tester: ONNX_IR_TESTER):
-    tester.chip = "sg2260"
+    tester.chip = "bm1690"
     tester.mode = "f8"
     tester.dynamic = False
     tester.simple = False
@@ -5913,7 +5913,7 @@ def test_fp8(tester: ONNX_IR_TESTER):
     tester.support_asym = [False]
     Y, N = True, False
     tester.test_cases = {
-        # case: [test,     sg2260_support]
+        # case: [test,     bm1690_support]
         "Add": [tester.test_Add, Y],
         "AddBcast": [tester.test_AddBcast, N],
         "AddWeight": [tester.test_AddWeight, Y],
@@ -6017,7 +6017,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2260'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8', 'f8e4m3', 'f8e5m2'],

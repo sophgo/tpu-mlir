@@ -15,7 +15,7 @@ from pathlib import Path
 from calibration.mix_precision import MixPrecSearcher
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.module().version))
     # yapf: disable
     parser = argparse.ArgumentParser(description="Generate quantization table")
     parser.add_argument('mlir_file', help='fp32 mlir file')

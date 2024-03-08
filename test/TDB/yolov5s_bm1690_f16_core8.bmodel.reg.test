@@ -1,0 +1,60 @@
+RUN: bmodel_dis.py --format reg-set %p/bmodel/yolov5s_bm1690_f16_core8.bmodel | FileCheck %s
+
+CHECK:  {
+CHECK-NEXT:    "core(0).subnet(0).group(0)": {
+CHECK-NEXT:      "tiu": [
+CHECK-NEXT:        {
+CHECK-NEXT:          "name": "system.send_msg",
+CHECK-NEXT:          "cmd": {
+CHECK-NEXT:            "rsvd0": 0,
+CHECK-NEXT:            "rsvd1": 0,
+CHECK:            "dbg_mode": 0,
+CHECK:            "cmd_id_dep": 1,
+CHECK:            "op_code": 0,
+CHECK:            "short_opd0_str": 0,
+CHECK:            "opt_opd2_sign": 1,
+CHECK:            "opt_relu": 0,
+CHECK:            "opt_opd2_const": 0,
+CHECK:            "opd0_h": 54,
+CHECK:          "name": "tsbc.s_bc",
+CHECK:          "extra": {
+CHECK:            "opt_res0_sign": 0,
+CHECK:            "opd1_addr": 238080,
+CHECK:            "core_id": 0,
+CHECK:            "intr_en": 0,
+CHECK:            "res0_c_str": 0,
+CHECK:        },
+CHECK:            "opt_opd1_prec": 1,
+CHECK:            "opd1_c_str": 0,
+CHECK:            "cmd_short": 1,
+CHECK:            "short_res0_str": 0,
+CHECK:            "opd0_h_str": 0,
+CHECK:            "dbg_mode": 0,
+CHECK:            "opd2_n_str": 1,
+CHECK:            "opd0_w_str": 0,
+CHECK:            "rsvd0": 0,
+CHECK:          }
+CHECK:            "opt_opd0_prec": 1,
+CHECK:            "opd0_c_str": 0,
+CHECK:          "name": "arith.div",
+CHECK:            "opt_opd0_sign": 0,
+CHECK:            "res0_h_str": 0,
+CHECK:            "op_code": 0,
+CHECK:            "short_opd0_str": 3,
+CHECK:            "rsvd2": 0,
+CHECK:            "tsk_eu_typ": 2,
+CHECK:        },
+CHECK:            "pwr_step": 0,
+CHECK:            "res0_c": 32,
+CHECK:        },
+CHECK:          }
+CHECK:            "index": 0,
+CHECK:            "cmd_special_function": 4,
+CHECK:            "cmd_short": 0,
+CHECK:            "src_csize": 3,
+CHECK:        },
+CHECK:            "src_hstride": 32768,
+CHECK:          "extra": {
+CHECK:            "src_data_format": 0,
+CHECK:      "dma": []
+CHECK:  }

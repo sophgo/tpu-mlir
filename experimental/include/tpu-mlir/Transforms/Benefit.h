@@ -10,7 +10,7 @@
 #pragma once
 
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
-#include "tpu-mlir/Dialect/SG2260/IR/StructuredOpsInterfaces.h"
+#include "tpu-mlir/Dialect/BM1690/IR/StructuredOpsInterfaces.h"
 #include "tpu-mlir/Transforms/StructuredTransform.h"
 
 namespace tpu_mlir {
@@ -18,7 +18,7 @@ using namespace mlir;
 
 class TransformBenefit {
 private:
-  sg2260::TPUISATraits target;
+  bm1690::TPUISATraits target;
   // map (d0, d1...) -> shape(num...)
   // compute "cycle"
   // unroll -> shape(d?)
@@ -30,7 +30,7 @@ private:
   // source computation -> target TPUISATraits
   // getShape
 public:
-  TransformBenefit(sg2260::TPUISATraits target) : target(target) {}
+  TransformBenefit(bm1690::TPUISATraits target) : target(target) {}
 
   SmallVector<int64_t> getCycle(Transforms &transforms,
                                 SmallVector<int64_t> shape);

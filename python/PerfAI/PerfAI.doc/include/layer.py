@@ -376,7 +376,7 @@ class TotalLayerInfo:
     def write(self, chip_arch):
         network = chip_arch['network']
         platform = chip_arch['Chip Arch']
-        if platform.lower() == 'sg2260':
+        if platform.lower() == 'bm1690':
             int8_ops = 256
             fp32_ops = '--'
         elif platform.lower() == 'bm1684x':

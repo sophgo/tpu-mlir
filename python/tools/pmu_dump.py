@@ -361,7 +361,7 @@ def argparser():
     optparser.add_argument('-o',  '--out_file',
                          action='store', dest='out_file', required=True)
     optparser.add_argument('-c',  '--chip',
-                         action='store', dest='chip', default='SG2260', help='only support sg2260')
+                         action='store', dest='chip', default='BM1690', help='only support bm1690')
 
     return optparser.parse_args()
 

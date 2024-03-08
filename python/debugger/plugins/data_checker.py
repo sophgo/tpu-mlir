@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from .common import FinalMlirIndexPlugin, ValueView
 from enum import Enum
 from ..target_1688.context import BM1688Context
-from ..target_2260.context import SG2260Context
+from ..target_1690.context import BM1690Context
 
 
 class IncNpzFile:
@@ -512,7 +512,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 return value_res
 
         cmd = self.tdb.cmditer[point_index]
-        if isinstance(context, SG2260Context) or isinstance(context, BM1688Context):
+        if isinstance(context, BM1690Context) or isinstance(context, BM1688Context):
             raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
         else:
             raw_data = context.memory.get_data(memref)

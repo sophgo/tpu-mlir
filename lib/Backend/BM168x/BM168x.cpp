@@ -105,7 +105,7 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   case DTYPE_F8E4M3:
   case DTYPE_F8E5M2:
     return GDMA_VALUE_FORMAT_INT8;
-  /*case DTYPE_INT4:   // for SG2260
+  /*case DTYPE_INT4:   // for BM1690
   case DTYPE_UINT4:
     return GDMA_VALUE_FORMAT_INT4;*/
   case DTYPE_FP16:

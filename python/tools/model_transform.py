@@ -251,7 +251,7 @@ def get_model_transform(args):
 
 
 if __name__ == '__main__':
-    logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
+    logger.info("TPU-MLIR {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")

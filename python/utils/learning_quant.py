@@ -1756,7 +1756,7 @@ def get_fixed_float_layers(mlir, mode, chip, cali_table, q_table, ref_tensor):
 
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.module().version))
     # yapf: disable
     parser = argparse.ArgumentParser(
         description="Learning the scale for quantization, run after basic quant table")

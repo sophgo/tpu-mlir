@@ -64,7 +64,7 @@
         .tabs {
             margin: 10 auto;
         }
-        
+
         .tabs .tab {
             height: 32px;
             padding: 10px 20px;
@@ -83,32 +83,32 @@
             font-size: 14px;
             min-width: auto;
         }
-        
+
         .bg-r {
             background-color: red!important;
             color: #fff!important;
         }
-        
+
         .tabs div:hover {
             background-color: red;
             color: #fff;
         }
-        
+
         #comparison-content {
             margin: 20px;
             padding: 20px;
             border: 1px solid #ddd;
         }
-        
+
         #comparison-content label {
             margin-right: 10px;
         }
-        
+
         .chart-container {
             width: 100%;
             margin-top: 20px;
         }
-        
+
         #configsTable {
             margin: auto;
             margin-bottom: 50px;
@@ -116,14 +116,14 @@
             width: 80%;
             background-color: #f2f2f2;
         }
-        
+
         #configsTable td,
         #configsTable th {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
         }
-        
+
         #msg-container {
             width: 95%;
             height: 800px;
@@ -131,7 +131,7 @@
             border: 1px solid #ccc;
             padding: 1em 1em;
         }
-        
+
         #bw-chart {
             width: 85vw;
             height: 70vh;
@@ -139,7 +139,7 @@
             border: 1px solid #ccc;
             padding: 1em 1em;
         }
-        
+
         #time-container1,
         #time-container2,
         #time-container3,
@@ -150,28 +150,28 @@
         #time-container0 {
             display: none;
         }
-        
+
         #config-container {
             margin-left: 0;
             margin-top: 1em;
         }
-        
+
         .config-item {
             display: inline-block;
             padding-left: 2em;
         }
-        
+
         body {
             text-align: center;
         }
-        
+
         .mem-container {
             width: 80vw;
             /* 使用视口宽度的百分比 */
             height: 70vh;
             padding-left: 5vw;
         }
-        
+
         #data-list {
             display: none;
             height: 600px;
@@ -180,12 +180,12 @@
             width: 90%;
             margin-left: 5%;
         }
-        
+
         td,
         th {
             padding: 0;
         }
-        
+
         .data-table {
             border-collapse: collapse;
             border-spacing: 0;
@@ -194,7 +194,7 @@
             width: 90vw;
             margin-left: 2.5%;
         }
-        
+
         .data-table caption {
             color: #000;
             font: bold, arial, sans-serif;
@@ -202,28 +202,28 @@
             padding: 0.5em 0;
             text-align: center;
         }
-        
+
         .data-table thead td.asc:after {
             content: "↑"
         }
-        
+
         .data-table thead td.desc::after {
             content: "↓"
         }
-        
+
         .filter-label::after {
             content: ": "
         }
-        
+
         .filter-block {
             display: inline;
             margin-right: 1em;
         }
-        
+
         .data-table thead td:hover {
             cursor: pointer;
         }
-        
+
         .data-table td,
         .data-table th {
             border-left: 1px solid #cbcbcb;
@@ -233,11 +233,11 @@
             overflow: visible;
             padding: .5em 1em;
         }
-        
+
         .data-table tbody tr:hover {
             background-color: aliceblue;
         }
-        
+
         .data-table thead {
             position: sticky;
             top: 0;
@@ -247,16 +247,16 @@
             text-align: left;
             vertical-align: bottom;
         }
-        
+
         .table-wrapper {
             overflow-y: auto;
             max-height: 400px;
         }
-        
+
         .data-table-odd td {
             background-color: #f2f2f2;
         }
-        
+
         .explanation {
             font-size: 14px;
             margin-top: 20px;
@@ -264,12 +264,12 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-        
+
         hr {
             margin: 2em 0 2em 0;
             color: gray;
         }
-        
+
         #pie-chart-container {
             display: flex;
             flex-wrap: wrap;
@@ -278,13 +278,13 @@
             height: 800px;
             margin: 0 auto;
         }
-        
+
         .chart {
             flex: 0 1 calc(50% - 10px);
             height: 80%;
             margin-bottom: 20px;
         }
-        
+
         #rate-line-container {
             width: 80vw;
             height: 30vh;
@@ -566,7 +566,7 @@
             }
             console.log("data:", data)
 
-            const uniqueMsgIds = [...new Set(data.map(item => item[6]))].sort((a, b) => a - b); //find all msgIds 
+            const uniqueMsgIds = [...new Set(data.map(item => item[6]))].sort((a, b) => a - b); //find all msgIds
             const filterSelect = document.getElementById('msgIdFilter');
             uniqueMsgIds.forEach(msgId => {
                 const option = document.createElement('option');
@@ -3085,7 +3085,7 @@
                 manageMsgContainer(e.target.checked, cycleData, categories);
             });
 
-            if (platform.includes("sg2260")) {
+            if (platform.includes("bm1690")) {
                 document.getElementById('bw-chart').style.display = 'block';
                 createBwChart(ddr_ratios, l2m_ratios);
             } else {

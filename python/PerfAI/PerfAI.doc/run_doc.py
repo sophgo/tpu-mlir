@@ -81,7 +81,7 @@ if __name__ == "__main__":
         "cores",
         type=int,
         default=1,
-        help="The number of cores, if bm1684x set 1, set 2 for A2, set 8 for sg2260.",
+        help="The number of cores, if bm1684x set 1, set 2 for A2, set 8 for bm1690.",
     )
     parser.add_argument(
         "--output",

@@ -26,7 +26,7 @@ from .target_common import (
     BaseCmd,
     use_backend,
 )
-from .target_2260.opdef import DmaCmd
+from .target_1690.opdef import DmaCmd
 
 class EngineType(enum.Enum) :
     TPU  = 1

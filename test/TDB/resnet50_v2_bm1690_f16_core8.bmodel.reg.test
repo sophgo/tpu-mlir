@@ -1,0 +1,60 @@
+RUN: bmodel_dis.py --format reg-set %p/bmodel/resnet50_v2_bm1690_f16_core8.bmodel | FileCheck %s
+
+CHECK:  {
+CHECK-NEXT:    "core(0).subnet(0).group(0)": {
+CHECK-NEXT:      "tiu": [
+CHECK-NEXT:        {
+CHECK-NEXT:          "name": "system.send_msg",
+CHECK-NEXT:          "cmd": {
+CHECK-NEXT:            "rsvd0": 0,
+CHECK-NEXT:            "rsvd1": 0,
+CHECK:            "dbg_mode": 0,
+CHECK:        },
+CHECK:          "extra": {
+CHECK:            "tsk_eu_typ": 14,
+CHECK:            "short_res0_str": 0,
+CHECK:            "opd0_n_str": 0,
+CHECK:            "cmd_type": "tiu",
+CHECK:            "opt_opd1_prec": 1,
+CHECK:            "opt_opd0_prec": 1,
+CHECK:            "opd1_x_ins0": 0,
+CHECK:            "res1_addr": 0,
+CHECK:            "cmd_short": 1,
+CHECK:            "opt_opd2_prec": 0,
+CHECK:            "res_op_x_str": 2,
+CHECK:            "opd1_addr": 0,
+CHECK:          "cmd": {
+CHECK:            "opt_res0_sign": 0,
+CHECK:            "opd0_rt_pad": 0,
+CHECK:            "opd0_addr": 114688,
+CHECK:          "name": "arith.add",
+CHECK:            "intr_en": 0,
+CHECK:            "res0_w": 56,
+CHECK:            "opd0_w_str": 1,
+CHECK:            "cmd_short": 1,
+CHECK:            "opt_opd0_prec": 2,
+CHECK:            "opd0_addr": 0,
+CHECK:            "opd1_w_str": 0,
+CHECK:            "rsvd0": 0,
+CHECK:            "opt_opd1_const": 1,
+CHECK:            "opd2_n_str": 0,
+CHECK:            "res1_addr": 0,
+CHECK:            "sym_range": 0,
+CHECK:            "opt_res0_sign": 0,
+CHECK:            "opd0_c": 2,
+CHECK:        },
+CHECK:          },
+CHECK:            "cmd_short": 1,
+CHECK:            "cmd_id": 1,
+CHECK:            "Reserved": 0,
+CHECK:          }
+CHECK:            "src_data_format": 2,
+CHECK:            "src_wsize": 25088,
+CHECK:            "subnet_id": 0
+CHECK:            "cmd_special_function": 0,
+CHECK:            "src_hsize": 224,
+CHECK:            "cmd_id": 7,
+CHECK:            "Reserved": 0,
+CHECK:          }
+CHECK:    "core(4).subnet(0).group(0)": {
+CHECK:  }

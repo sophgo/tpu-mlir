@@ -16,7 +16,7 @@ def enable_dynamo_debug_info():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chip", default="bm1684x", choices=['bm1684x', 'sg2260'],
+    parser.add_argument("--chip", default="bm1684x", choices=['bm1684x', 'bm1690'],
                         help="chip name")
     parser.add_argument("--debug", default="",
                         help="debug")

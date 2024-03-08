@@ -128,7 +128,7 @@ LogicalResult tpu::Pool3DOp::LocalGenSupport() {
   if (attr.sd > 15 || attr.sh > 15 || attr.sw > 15) {
     return failure();
   }
-  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
     return success();
   } else if (module::isBM1684Family() &&
              !module::isUniformQuantized(getInput())) {

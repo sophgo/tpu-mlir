@@ -17,7 +17,7 @@ from calibration.data_selector import DataSelector
 
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.module().version))
     # yapf: disable
     parser = argparse.ArgumentParser()
     parser.add_argument('mlir_file', metavar='mlir_file', help='mlir file')

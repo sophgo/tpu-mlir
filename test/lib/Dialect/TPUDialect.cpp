@@ -1,4 +1,4 @@
-//===- sg2260Dailect.cpp - SG2260 dialect  --------------------------------===//
+//===- bm1690Dailect.cpp - BM1690 dialect  --------------------------------===//
 //
 // Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
 //

@@ -136,7 +136,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
   int dynamic_mode =
-      (module::isBM1684XFamily() || module::isSG2260Family()) ? 2 : 1;
+      (module::isBM1684XFamily() || module::isBM1690Family()) ? 2 : 1;
   bool first_dynamic = false;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
@@ -1019,7 +1019,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
       multi_core->useCore(i);
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
-      // for sg2260
+      // for bm1690
       auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
       auto hau_cmds_bin = CreateCmdVector("hau:0:0");
       auto sdma_cmds = builder.CreateVectorOfStructs(sdma_cmds_bin->data(),

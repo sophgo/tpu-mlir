@@ -21,7 +21,7 @@ from .atomic_dialect import BModel2MLIR
 from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd
 from .disassembler import BModel
 from .target_1688.context import BM1688Context
-from .target_2260.context import SG2260Context
+from .target_1690.context import BM1690Context
 import pandas as pd
 import builtins
 
@@ -266,7 +266,7 @@ class TdbCmdBackend(cmd.Cmd):
         if coeff:
             address = coeff.address
             if isinstance(self.context, BM1688Context) or isinstance(
-                self.context, SG2260Context
+                self.context, BM1690Context
             ):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]

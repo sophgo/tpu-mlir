@@ -23,13 +23,13 @@ chip_support = {
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
-    "sg2260":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
+    "bm1690":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
 }
 
 multi_core_info = {
     # chip_name : num_core
     "bm1688": 2,
-    "sg2260": 8,
+    "bm1690": 8,
 }
 
 '''
@@ -46,7 +46,7 @@ multi_core_info = {
 # Model Support
 ######################################
 basic_model_list = {
-    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690)
     "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N),
     "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y),
@@ -64,16 +64,16 @@ basic_model_list = {
 }
 
 full_model_list = {
-    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690)
     ######## onnx ###############
-    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 int8_sym has problem
+    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # bm1690 int8_sym has problem
     "blazeface":                  (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N),
     "densenet121-12":             (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
     "densenet201":                (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     "ecanet50":                   (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "efficientdet-d0":            (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "efficientnet":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # sg2260 f16, bf16 has problem
+    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # bm1690 f16, bf16 has problem
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
@@ -159,7 +159,7 @@ full_model_list = {
 }
 
 basic_multi_core_model_list = {
-    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690)
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
     "pp_yoloe":                   (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
@@ -168,10 +168,10 @@ basic_multi_core_model_list = {
 }
 
 full_multi_core_model_list = {
-    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690)
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
     "pp_yoloe":                   (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
-    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      N), # sg2260 f16, b16 has problem
+    "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      N), # bm1690 f16, b16 has problem
     "pp_ocr_cls":                 (N,      N,       Y,      N,      N,      N,      N,      N,      Y),
 }

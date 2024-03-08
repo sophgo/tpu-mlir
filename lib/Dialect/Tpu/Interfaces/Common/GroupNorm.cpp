@@ -133,7 +133,7 @@ LogicalResult tpu::GroupNormOp::LocalGenSupport() {
       return failure();
     }
   }
-  if (module::isSG2260Family()) {
+  if (module::isBM1690Family()) {
     return failure();
   }
   return success();

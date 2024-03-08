@@ -74,7 +74,7 @@ static int64_t getIOLimit(ModuleOp m) {
 
 std::map<ValueInfo, int64_t>
 L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
-  if (!module::isSG2260Family())
+  if (!module::isBM1690Family())
     return {};
   // assign tensor with access hot
   // mutableTensorUsage = uses + store
@@ -280,7 +280,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   module::setCoeffSize(m, addr - start_addr);
 
   // assign activation
-  if (module::isBM1688() || module::isSG2260Family()) {
+  if (module::isBM1688() || module::isBM1690Family()) {
     addr = BM168x::CTX_START_ADDR;
   }
   start_addr = addr;

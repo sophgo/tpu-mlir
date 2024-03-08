@@ -7,8 +7,8 @@ add_mlir_dialect_library(TPUMLIRCodegenPass
   Benefit.cpp
 
   DEPENDS
-  TPUMLIRSG2260Gen
-  TPUMLIRSG2260Dialect
+  TPUMLIRBM1690Gen
+  TPUMLIRBM1690Dialect
   TPUMLIRCodegenPassIncGen
   LINK_LIBS
   PUBLIC

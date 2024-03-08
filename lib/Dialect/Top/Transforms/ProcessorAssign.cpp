@@ -25,11 +25,11 @@ public:
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());
     module::setChip(chip.value());
-    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
+    if (!(module::isBM1684XFamily() || module::isBM1690Family())) {
       // only one device
       num_device = 1;
     }
-    if (!(module::isBM1688() || module::isSG2260Family())) {
+    if (!(module::isBM1688() || module::isBM1690Family())) {
       // only one core
       num_core = 1;
     }
