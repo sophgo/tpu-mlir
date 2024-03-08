@@ -77,8 +77,8 @@ Execute the following command in the workspace directory (note that ``model-zoo`
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
-   $ docker pull sophgo/tpuc_dev:v3.1
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
+   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
 After running the command, it will be in a Docker container.
 Install tpu_mlir python package in the docker environment:

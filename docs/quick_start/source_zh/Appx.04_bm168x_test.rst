@@ -194,8 +194,8 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 .. code :: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.1
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
+   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
 运行命令后会处于Docker的容器中。
 在Docker容器中安装tpu_mlir:
