@@ -48,6 +48,8 @@ class CUSTOM_TPULANG_TESTER(object):
             "SwapChannel":     (self.test_SwapChannel,  Y, Y),
             "Crop":            (self.test_Crop,         Y, Y),
             "SimpleBlock":     (self.test_SimpleBlock,  Y, Y),
+            "CpuTopk":         (self.test_CpuTopk,      Y, Y),
+            "CpuTopk2":        (self.test_CpuTopk2,     Y, Y),
         }
         # yapf: enable
 
@@ -185,6 +187,53 @@ class CUSTOM_TPULANG_TESTER(object):
         # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
         ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("crop", ins, outs, ref_data)
+
+    def test_CpuTopk(self):
+        self.quant_modes = ["f32"]
+        dtype = "float32"
+        input_shape = [1, 1000]
+        x_data = rand_data(input_shape, dtype)
+        x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
+        ins = [x]
+        axis, k = 1, 200
+        outs = my_tpulang_layer.cpuTopk.tpulang(inputs=[x], axis=axis, k=k, dtype=dtype)
+        out_data = my_tpulang_layer.cpuTopk.native(x_data, axis, k)
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+        self.compile_and_check("cpuTopk", ins, outs, ref_data)
+
+    def test_CpuTopk2(self):
+        self.quant_modes = ["f32"]
+        dtype = "float32"
+        axis, k = 1, 200
+        def relu_op(x):
+            x = tpul.relu(x[0])
+            return[x]
+        
+        def model_def(x, flag: int):           
+            if flag == 0:
+                x = my_tpulang_layer.cpuTopk.tpulang(inputs=x, axis=axis, k=k, dtype=dtype)
+                x = relu_op(x)
+            elif flag == 1:
+                x = relu_op(x)
+                x = my_tpulang_layer.cpuTopk.tpulang(inputs=x, axis=axis, k=k, dtype=dtype)
+            else:
+                x = relu_op(x)
+                x = my_tpulang_layer.cpuTopk.tpulang(inputs=x, axis=axis, k=k, dtype=dtype)
+                x = relu_op(x)
+            return x
+
+        input_shape = [1, 1000]
+        x_data = rand_data(input_shape, dtype)
+        x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
+        x = [x]
+        ins = x
+
+        for flag in [0, 1, 2]:
+            y = model_def(x, flag)
+            out_data = my_tpulang_layer.cpuTopk.native(x_data, axis, k)
+            out_data = np.maximum(0, out_data)
+            ref_data = {y[0].name: out_data, f"{y[0].name}_f32": out_data}
+            self.compile_and_check("cpuTopk2", ins, y, ref_data)
 
     # test case for a simple model with customlayers
     def test_SimpleBlock(self):
