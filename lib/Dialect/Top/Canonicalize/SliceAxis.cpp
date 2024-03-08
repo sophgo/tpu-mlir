@@ -25,13 +25,13 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
     operands.push_back(opd);
     auto none = module::getNoneOp(op);
     auto axis_op = op.getAxis().getDefiningOp<top::WeightOp>();
-    auto axis = axis_op.read<float>()->at(0);
+    auto axis = axis_op.read_as_float()->at(0);
     if (axis < 0)
       axis += dims;
     float start = 0, end = in_shape[axis], step = 1;
     if (module::isWeight(op.getStart())) {
       auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
-      start = start_op.read<float>()->at(0);
+      start = start_op.read_as_float()->at(0);
       if (start < 0)
         start += in_shape[axis];
       operands.push_back(none);
@@ -42,7 +42,7 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
 
     if (module::isWeight(op.getEnd())) {
       auto end_op = op.getEnd().getDefiningOp<top::WeightOp>();
-      end = end_op.read<float>()->at(0);
+      end = end_op.read_as_float()->at(0);
       if (end < 0)
         end += in_shape[axis];
       if (end > in_shape[axis])
@@ -55,7 +55,7 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
 
     if (module::isWeight(op.getStep())) {
       auto step_op = op.getStep().getDefiningOp<top::WeightOp>();
-      step = step_op.read<float>()->at(0);
+      step = step_op.read_as_float()->at(0);
       operands.push_back(none);
     } else {
       auto step_op = op.getStep();
@@ -77,7 +77,7 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
     attrs.push_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
-    if ((!module::isNone(op.getStart()) && !module::isWeight(op.getStart())) || 
+    if ((!module::isNone(op.getStart()) && !module::isWeight(op.getStart())) ||
         (!module::isNone(op.getEnd()) && !module::isWeight(op.getEnd())) ||
         (!module::isNone(op.getStep()) && !module::isWeight(op.getStep()))) {
       attrs.push_back(

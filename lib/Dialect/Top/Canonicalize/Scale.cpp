@@ -60,20 +60,12 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
           cur_bias_f32->at(i) * next_scale_f32->at(i) + next_bias_f32->at(i);
     }
 
-    auto scale_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto new_scale =
-        WeightOp::create(nextOp, "merged_scale", scale_v, scale_type);
-    auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto new_bias = WeightOp::create(nextOp, "merged_bias", bias_v, bias_type);
-    if (cur_storage_type.isF32()) {
-      nextOp->setOperand(1, new_scale);
-      nextOp->setOperand(2, new_bias);
-    } else {
-      auto new_scale_ = dyn_cast<top::WeightOp>(new_scale.getDefiningOp()).clone_f16(op);
-      auto new_bias_ = dyn_cast<top::WeightOp>(new_bias.getDefiningOp()).clone_f16(op);
-      nextOp->setOperand(1, new_scale_);
-      nextOp->setOperand(2, new_bias_);
-    }
+    auto new_scale = WeightOp::create_float(nextOp, "merged_scale", scale_v,
+                                            {channel}, cur_storage_type);
+    auto new_bias = WeightOp::create_float(nextOp, "merged_bias", bias_v,
+                                            {channel}, cur_storage_type);
+    nextOp->setOperand(1, new_scale);
+    nextOp->setOperand(2, new_bias);
 
     rewriter.replaceOp(op, {op.getInput()});
     return success();
@@ -96,11 +88,15 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
     if (!isa<MulConstOp, AddConstOp>(formerOp)) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
 
     auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
-    auto scale_f32 = scale.read<float>();
-    auto bias_f32 = bias.read<float>();
+    auto scale_f32 = scale.read_as_float();
+    auto bias_f32 = bias.read_as_float();
 
     int elem_num = scale.getType().cast<RankedTensorType>().getNumElements();
     std::vector<float> scale_v(elem_num);
@@ -112,10 +108,8 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
       for (int i = 0; i < elem_num; ++i) {
         scale_v[i] = scale_f32->at(i) * value;
       }
-      auto scale_type =
-          RankedTensorType::get({elem_num}, rewriter.getF32Type());
-      auto new_scale = WeightOp::create(op, "constbinary_merged_to_scale",
-                                        scale_v, scale_type);
+      auto new_scale = WeightOp::create_float(op, "constbinary_merged_to_scale",
+                                              scale_v, {elem_num}, storage_type);
       op->setOperand(0, mul_const_op.getInput());
       op->setOperand(1, new_scale);
       op->setOperand(2, bias);
@@ -157,17 +151,21 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     if (bn_op.getDoRelu()) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
 
     auto cur_scale_op = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto cur_bias_op = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
-    auto cur_scale_f32 = cur_scale_op.read<float>();
-    auto cur_bias_f32 = cur_bias_op.read<float>();
+    auto cur_scale_f32 = cur_scale_op.read_as_float();
+    auto cur_bias_f32 = cur_bias_op.read_as_float();
 
     auto bn_mean_op = dyn_cast<WeightOp>(bn_op.getMean().getDefiningOp());
     auto bn_variance_op =
         dyn_cast<WeightOp>(bn_op.getVariance().getDefiningOp());
-    auto bn_mean_f32 = bn_mean_op.read<float>();
-    auto bn_variance_f32 = bn_variance_op.read<float>();
+    auto bn_mean_f32 = bn_mean_op.read_as_float();
+    auto bn_variance_f32 = bn_variance_op.read_as_float();
 
     int channel =
         bn_mean_op.getType().cast<RankedTensorType>().getNumElements();
@@ -193,13 +191,10 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
       }
     }
 
-    auto mean_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto bn_mean =
-        WeightOp::create(bn_op, "merged_to_bn_mean", bn_mean_v, mean_type);
-    auto variance_type =
-        RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto bn_variance = WeightOp::create(bn_op, "merged_to_bn_variance",
-                                        bn_variance_v, variance_type);
+    auto bn_mean = WeightOp::create_float(bn_op, "merged_to_bn_mean",
+                                          bn_mean_v, {channel}, storage_type);
+    auto bn_variance = WeightOp::create_float(bn_op, "merged_to_bn_variance",
+                                          bn_variance_v, {channel}, storage_type);
     bn_op->setOperand(1, bn_mean);
     bn_op->setOperand(2, bn_variance);
 
@@ -250,6 +245,10 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
     if (!preOp->hasOneUse() || !isa<MatMulOp>(preOp)) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     auto matmulOp = cast<MatMulOp>(preOp);
     auto weight = dyn_cast<WeightOp>(matmulOp.getRight().getDefiningOp());
     auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
@@ -260,8 +259,8 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
     }
 
     // merge scale into matmul's right weight
-    auto weight_data = weight.read<float>();
-    auto scale_data = scale.read<float>();
+    auto weight_data = weight.read_as_float();
+    auto scale_data = scale.read_as_float();
     auto right_shape = module::getShape(matmulOp.getRight());
     auto N = scale.getType().cast<RankedTensorType>().getNumElements();
     assert(right_shape[1] == N);
@@ -270,20 +269,19 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
         weight_data->at(k * right_shape[1] + n) *= scale_data->at(n);
       }
     }
-    auto weight_type = RankedTensorType::get({right_shape[0], right_shape[1]},
-                                             rewriter.getF32Type());
-    auto new_weight = WeightOp::create(matmulOp, "merged_scale_to_matmul",
-                                       *weight_data, weight_type);
+    auto new_weight =
+        WeightOp::create_float(matmulOp, "merged_scale_to_matmul",
+            *weight_data, {right_shape[0], right_shape[1]}, storage_type);
     matmulOp.setOperand(1, new_weight);
 
     // merge bias into matmul's bias
-    auto bias_data = bias.read<float>();
+    auto bias_data = bias.read_as_float();
     std::vector<float> new_bias_v(N, 0);
     new_bias_v.assign(bias_data->begin(), bias_data->end());
     auto bias_type = RankedTensorType::get({N}, rewriter.getF32Type());
     if (!module::isNone(matmulOp.getBias())) {
       auto matmul_bias_data =
-          dyn_cast<WeightOp>(matmulOp.getBias().getDefiningOp()).read<float>();
+          dyn_cast<WeightOp>(matmulOp.getBias().getDefiningOp()).read_as_float();
       for (int n = 0; n < N; ++n) {
         new_bias_v[n] += matmul_bias_data->at(n) * scale_data->at(n);
       }
@@ -321,6 +319,10 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
     if (convOp.getDoRelu()) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     auto c = module::getShape(convOp.getOutput())[1];
     auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto sBias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
@@ -330,7 +332,7 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
     std::vector<float_t> scaleVec(c, 1);
     if (scale) {
       auto scaleShape = module::getShape(scale);
-      auto scaleData = scale.read<float>();
+      auto scaleData = scale.read_as_float();
       scaleVec.assign(scaleData->begin(), scaleData->end());
       if (std::find(scaleShape.begin(), scaleShape.end(), c) ==
               scaleShape.end() &&
@@ -342,7 +344,8 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
         return failure();
       }
 
-      auto filterData = filterOp.read<float>();
+      auto filterData = filterOp.read_as_float();
+      auto filterShape = module::getShape(convOp.getFilter());
       std::vector<float_t> newFilter(filterData->size(), 0);
       uint32_t innerSize = filterData->size() / c;
       for (uint32_t i = 0; i < c; ++i) {
@@ -351,7 +354,9 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
               filterData->at(i * innerSize + j) * scaleVec.at(i);
         }
       }
-      filterOp.update(newFilter, newFilter.size());
+      auto new_filter =
+          WeightOp::create_float(filterOp, "", newFilter, filterShape, storage_type);
+      convOp.setOperand(1, new_filter);
     }
     if (sBias) {
       // merge SBias into conv's bias

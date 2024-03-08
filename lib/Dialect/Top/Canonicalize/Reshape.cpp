@@ -375,17 +375,11 @@ OpFoldResult ReshapeOp::fold(FoldAdaptor adaptor) {
       return {};
     }
     auto data = weightOp.read_as_float();
-    // auto type = llvm::cast<RankedTensorType>(this->getOutput().getType());
-    // auto shape = module::getShape(this->getOutput());
+    auto shape = module::getShape(this->getOutput());
     auto storage_type = module::getStorageType(getOutput());
-    auto f32_type = Float32Type::get(op->getContext());
-    auto type =
-        RankedTensorType::get(module::getShape(getOutput()).vec(), f32_type);
-    auto new_op = WeightOp::create(weightOp.getOperation(), "folder", *data, type);
-    if (storage_type.isF16()) {
-      auto new_op_ = dyn_cast<top::WeightOp>(new_op.getDefiningOp()).clone_f16(op);
-      return new_op_;
-    }
+    auto new_op =
+        WeightOp::create_float(weightOp.getOperation(), "folder", *data,
+                               shape.vec(), storage_type);
     return new_op;
   } else {
     return {};

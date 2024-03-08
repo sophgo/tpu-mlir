@@ -114,6 +114,10 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
     if (!tp.getOutput().hasOneUse()) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     /* make sure the PermuteOp is between dim 1 and 2 */
     std::vector<int64_t> ps = {0, 2, 1, 3, 4};
     auto order = module::getI64Array(tp.getOrder());
@@ -122,7 +126,7 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
     }
     /* transpose the filter */
     auto filter_op = filter.getDefiningOp<top::WeightOp>();
-    auto filter_data = filter_op.read<float>();
+    auto filter_data = filter_op.read_as_float();
     auto filter_tp =
         std::make_shared<std::vector<float>>(filter_data->size(), 0);
     function_permute(filter_data->data(), filter_tp->data(), f_shape, ps);
@@ -134,15 +138,13 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
     rewriter.eraseOp(tp);
     /* create a new weight for the transposed filter */
     rewriter.setInsertionPointAfter(op);
-    auto type = RankedTensorType::get(f_shape_tp, rewriter.getF32Type());
-    auto weight =
-        WeightOp::create<float>(op, "transposed_weight", *filter_tp,
-                                type); // this is Weight itself, not WeightOp
+    auto weight = WeightOp::create_float(op, "transposed_weight", *filter_tp,
+                                            f_shape_tp, storage_type);
     /* change the attr of conv3d op */
     op.setOperand(
         1,
         weight); // op.setOperand vs op->setOperand: in this case both OK. This
-                 // replaces op.getFilter() with the transposed filter $weight.
+                // replaces op.getFilter() with the transposed filter $weight.
     rewriter.eraseOp(filter_op); // remove unused WeightOp manually, optional
     op.setKernelShapeAttr(rewriter.getI64ArrayAttr({p.ic, p.kh, p.kw}));
     return success();
@@ -159,6 +161,10 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
     }
     auto kernel = module::getI64Array(op.getKernelShape());
     if (kernel->size() != 2) {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
     }
 
@@ -198,11 +204,11 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       }
 
       auto Filterop = op.getFilter().getDefiningOp<top::WeightOp>();
-      auto Filterop_f32 = Filterop.read<float>();
+      auto Filterop_f32 = Filterop.read_as_float();
       std::vector<int64_t> filterShape = module::getShape(op.getFilter());
 
       auto preFilterop = prevConvOp.getFilter().getDefiningOp<top::WeightOp>();
-      auto preFilterop_f32 = preFilterop.read<float>();
+      auto preFilterop_f32 = preFilterop.read_as_float();
       std::vector<int64_t> prefilterShape =
           module::getShape(prevConvOp.getFilter());
 
@@ -228,7 +234,7 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       if ((float)eckk / (edkk + C * D) > 20 /* for this case */) {
         return failure();
       }
-     
+
 #pragma omp parallel for schedule(static, omp_schedule(eckk))
       for (int i = 0; i < eckk; ++i) {
         int e = i / ckk;
@@ -282,8 +288,8 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       op.getFilter().setType(mnew_type);
 
       // setup merige_filter_weight
-      auto mnew_op = top::WeightOp::create(op, "merge_filter_weight",
-                                           *filter_merge, mnew_type);
+      auto mnew_op = WeightOp::create_float(op, "merge_filter_weight", *filter_merge,
+                                            mfilterShape, storage_type);
       op->setOperand(1, mnew_op);
 
       // setup merige_bias_weight

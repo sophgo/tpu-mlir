@@ -40,6 +40,10 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
     if (!formerOp->getResult(0).hasOneUse()) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     if (auto convOp = dyn_cast_or_null<top::ConvOp>(formerOp)) {
       if (convOp.getKernelShape().size() != 2) {
         return failure();
@@ -53,8 +57,8 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
           dyn_cast_or_null<top::WeightOp>(convOp.getBias().getDefiningOp());
       // This judge is for fix youdao bert bf16 acc issue.
       if (weightOp && biasOp) {
-        auto weight_f32 = weightOp.read<float>();
-        auto bias_f32 = biasOp.read<float>();
+        auto weight_f32 = weightOp.read_as_float();
+        auto bias_f32 = biasOp.read_as_float();
         if (weight_f32->size() == bias_f32->size()) {
           bool flag = true;
           for (uint i = 0; i < weight_f32->size(); i++) {
@@ -82,17 +86,14 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
       if (!weightOp) {
         continue;
       }
-      auto weight_f32 = weightOp.read<float>();
+      auto weight_f32 = weightOp.read_as_float();
       // std::vector<float> new_weight_f32(weight_f32->size());
       for (auto &w : *weight_f32) {
         w *= const_val;
       }
-      std::string weight_name = module::getName(value).str();
       auto weight_type = value.getType().cast<RankedTensorType>();
-      auto newType =
-          RankedTensorType::get(weight_type.getShape(), rewriter.getF32Type());
-      auto new_weight = top::WeightOp::create(
-          formerOp, weight_name + "_mergeMulConst", *weight_f32, newType);
+      auto new_weight = WeightOp::create_float(
+          formerOp, "_mergeMulConst", *weight_f32, weight_type.getShape(), storage_type);
       formerOp->setOperand(i, new_weight);
     }
     formerOp->setLoc(op.getLoc());

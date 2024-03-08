@@ -642,19 +642,22 @@ struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
     auto new_permute_h_op = rewriter.create<PermuteOp>(
         permute_h_loc, permute_h_type, ValueRange{new_reshape_h_op.getOutput()},
         attrs);
+    auto storage_type = module::getStorageType(matmul_h_op.getRight());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     // rewrite h_weight: 300x14x14x64 => 25x(12)x(14)x14x64 =>
     // 25x(14)x(12)x14x64 => (25x14)x12x14x64
     auto h_weight_op = matmul_h_op.getRight().getDefiningOp<WeightOp>();
-    auto h_weight_data = h_weight_op.read<float>();
+    auto h_weight_data = h_weight_op.read_as_float();
     auto h_weight_trans =
         std::make_shared<std::vector<float>>(h_weight_data->size(), 0);
     function_permute(h_weight_data->data(), h_weight_trans->data(),
                      {batch, head_n, h, w, head_sz}, {0, 2, 1, 3, 4});
     std::vector<int64_t> h_weight_new_shape{batch * h, head_n, w, head_sz};
-    auto h_weight_type =
-        RankedTensorType::get(h_weight_new_shape, rewriter.getF32Type());
-    auto new_weight_h = WeightOp::create(matmul_h_op, "rewrited",
-                                         *h_weight_trans, h_weight_type);
+    auto new_weight_h =
+        WeightOp::create_float(matmul_h_op, "rewrited", *h_weight_trans,
+                               h_weight_new_shape, storage_type);
     matmul_h_op->setOperand(0, new_permute_h_op.getOutput());
     matmul_h_op->setOperand(1, new_weight_h);
     // matmul_h_out: (25x14)x12x14x14
@@ -718,16 +721,15 @@ struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
     // rewrite w_weight: 300x14x14x64 => 25x(12)x(14)x[14]x64 =>
     // 25x(14)x(12)x14x64 => 25x(14x12)x14x64
     auto w_weight_op = matmul_w_op.getRight().getDefiningOp<WeightOp>();
-    auto w_weight_data = w_weight_op.read<float>();
+    auto w_weight_data = w_weight_op.read_as_float();
     auto w_weight_trans =
         std::make_shared<std::vector<float>>(w_weight_data->size(), 0);
     function_permute(w_weight_data->data(), w_weight_trans->data(),
                      {batch, head_n, h, w, head_sz}, {0, 2, 1, 3, 4});
     std::vector<int64_t> w_weight_new_shape{batch, w * head_n, h, head_sz};
-    auto w_weight_type =
-        RankedTensorType::get(w_weight_new_shape, rewriter.getF32Type());
-    auto new_weight_w = WeightOp::create(matmul_w_op, "rewrited",
-                                         *w_weight_trans, w_weight_type);
+    auto new_weight_w =
+        WeightOp::create_float(matmul_w_op, "rewrited", *w_weight_trans,
+                               w_weight_new_shape, storage_type);
     matmul_w_op->setOperand(0, new_permute_w_op.getOutput());
     matmul_w_op->setOperand(1, new_weight_w);
     // matmul_w_out: 25x(14x12)x14x14

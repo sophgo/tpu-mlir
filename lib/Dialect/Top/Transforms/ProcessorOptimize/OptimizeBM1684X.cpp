@@ -1021,19 +1021,12 @@ public:
           new_filter_f32->at(i * slice_width[idx] + k) = filter_f32->at(
               i * right_shape[right_shape.size() - 1] + k + offset);
       }
-      SmallVector<int64_t> new_right_shape(right_shape);
+      std::vector<int64_t> new_right_shape(right_shape);
       new_right_shape[new_right_shape.size() - 1] = slice_width[idx];
-      auto new_right_type =
-          RankedTensorType::get(new_right_shape, rewriter.getF32Type()); // rightType.getElementType());
-      auto new_filter = top::WeightOp::create(
-          op, "_filter_" + std::to_string(id), *new_filter_f32, new_right_type);
-
-      if (storage_type.isF16()) {
-        auto new_filter_ = dyn_cast<top::WeightOp>(new_filter.getDefiningOp()).clone_f16(op);
-         operands.emplace_back(new_filter_);
-      } else {
-        operands.emplace_back(new_filter);
-      }
+      auto new_filter =
+          top::WeightOp::create_float(op, "_filter_" + std::to_string(id),
+                               *new_filter_f32, new_right_shape, storage_type);
+      operands.emplace_back(new_filter);
 
       if (with_bias) {
         auto new_bias_f32 = std::make_shared<std::vector<float>>(

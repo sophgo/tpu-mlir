@@ -22,7 +22,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
     std::shared_ptr<std::vector<float>> inds_f32;
 
     if (auto inds = dyn_cast<WeightOp>(op.getIndices().getDefiningOp()))
-      inds_f32 = inds.read<float>();
+      inds_f32 = inds.read_as_float();
     else
       return failure();
 
@@ -116,19 +116,26 @@ struct TopGatherMulConst : public OpRewritePattern<GatherOp> {
     if (!op->hasOneUse() || !module::isWeight(op.getInput())) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     auto next_op = *op->user_begin();
     auto mulconst_op = dyn_cast<top::MulConstOp>(next_op);
     if (!mulconst_op) {
       return failure();
     }
     auto weight_op = cast<top::WeightOp>(op.getInput().getDefiningOp());
-    auto data = weight_op.read<float>();
+    auto data = weight_op.read_as_float();
     auto data_new = std::make_shared<std::vector<float>>(data->size());
     std::transform(data->begin(), data->end(), data_new->begin(),
                    [&](const float d) {
                      return d * mulconst_op.getConstVal().convertToDouble();
                    });
-    weight_op.update(*data_new, data_new->size());
+    auto w_shape = module::getShape(op.getInput());
+    auto new_weight =
+        WeightOp::create_float(op, "merge_mulconst", *data_new, w_shape, storage_type);
+    op.setOperand(0, new_weight);
     op->setLoc(mulconst_op->getLoc());
     rewriter.replaceOp(mulconst_op, op);
     return success();

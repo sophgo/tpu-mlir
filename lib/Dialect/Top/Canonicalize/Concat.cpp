@@ -158,9 +158,13 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
       if (conv_op.getGroup() != 1) {
         return failure();
       }
+      auto storage_type = module::getStorageType(conv_op.getOutput());
+      if (!storage_type.isF32() && !storage_type.isF16()) {
+        return failure();
+      }
       auto filter_op = conv_op.getFilter().getDefiningOp<WeightOp>();
       // TODO: maybe filter is i8 in Top Dialect
-      auto filter_old = filter_op.read<float>();
+      auto filter_old = filter_op.read_as_float();
       auto filter_new =
           std::make_shared<std::vector<float>>(filter_old->size(), 0.0);
       int64_t oc, ic, kh, kw;
@@ -176,9 +180,9 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
           std::copy(begin, end, to);
         }
       }
-      auto new_type = filter_op.getOutput().getType().cast<RankedTensorType>();
-      auto new_filter_op =
-          WeightOp::create(use_op, "filter_S2D", *filter_new, new_type);
+      auto filter_shape = module::getShape(filter_op.getOutput());
+      auto new_filter_op = WeightOp::create_float(use_op, "filter_S2D", *filter_new,
+                                            filter_shape, storage_type);
       use_op->setOperand(1, new_filter_op);
       // change name of new op to avoid wrong comparison
       concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
@@ -364,6 +368,10 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
         return failure();
       }
     }
+    auto storage_type = module::getStorageType(concat_op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     uint32_t h, w;
     int tmp_w = 0;
 
@@ -375,7 +383,7 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
 
     for (uint32_t i = 0; i < input_num; ++i) {
       auto weight_op = cast<WeightOp>(concat_op.getOperand(i).getDefiningOp());
-      input_load_weight[i] = weight_op.read<float>();
+      input_load_weight[i] = weight_op.read_as_float();
     }
 
     for (uint32_t i = 0; i < input_num; ++i) {
@@ -395,9 +403,8 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
       tmp_w += w;
     }
     auto tensor_name = module::getName(concat_op, 0).str() + "loadweight";
-    auto weight_type = RankedTensorType::get(o_shape, rewriter.getF32Type());
-    auto weight_operand =
-        WeightOp::create(concat_op, tensor_name, resultT, weight_type);
+    auto weight_operand = WeightOp::create_float(concat_op, tensor_name, resultT,
+                                            o_shape, storage_type);
     rewriter.replaceOp(concat_op, weight_operand);
     return success();
   }

@@ -481,3 +481,21 @@ template LogicalResult WeightOp::update(const std::vector<uint32_t> &data,
                                         size_t cont);
 template LogicalResult WeightOp::update(const std::vector<float> &data,
                                         size_t cont);
+
+Value WeightOp::create_float(Operation *OwnerOp, llvm::StringRef suffix,
+                       const std::vector<float> &data, const std::vector<int64_t> &shape,
+                       Type storage_type) {
+  auto f32_type = Float32Type::get(OwnerOp->getContext());
+  auto w_type = RankedTensorType::get(shape, f32_type);
+  auto weight = WeightOp::create(OwnerOp, suffix, data, w_type);
+  if (storage_type.isF16()) {
+    auto weight_ = dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_f16(OwnerOp);
+    return weight_;
+  } else if (storage_type.isBF16()) {
+    auto weight_ = dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_bf16(OwnerOp);
+    return weight_;
+  } else {
+    return weight;
+  }
+}
+

@@ -41,8 +41,9 @@ struct ReplaceWithWeightInput : public OpRewritePattern<TileOp> {
                                 PatternRewriter &rewriter) const override {
 
     if (isa<WeightOp>(op.getInput().getDefiningOp())) {
+      auto storage_type = module::getStorageType(op.getOutput());
       auto weight = dyn_cast<WeightOp>(op.getInput().getDefiningOp());
-      auto w = weight.read<float>();
+      auto w = weight.read_as_float();
       auto shape0 = module::getShape(op.getInput());
       auto shape1 = module::getShape(op.getOutput());
       bool updated = false;
@@ -65,8 +66,8 @@ struct ReplaceWithWeightInput : public OpRewritePattern<TileOp> {
         updated = true;
       }
       if (updated) {
-        auto type = RankedTensorType::get(shape1, rewriter.getF32Type());
-        auto w_op = WeightOp::create<float>(op, module::getName(op.getOutput()).str(),*w, type);
+        auto w_op = WeightOp::create_float(op, module::getName(op.getOutput()).str(),
+                                           *w, shape1, storage_type);
         rewriter.replaceOp(op, w_op);
         return success();
       }

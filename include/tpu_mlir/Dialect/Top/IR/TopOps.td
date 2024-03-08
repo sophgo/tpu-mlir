@@ -144,6 +144,9 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::Value clone_f8e5m2(mlir::Operation *OwnerOp);
   mlir::Value clone(llvm::StringRef suffix);
   mlir::Value split(int begin, int end, int axis, mlir::Type to_type, std::string suffix);
+  static mlir::Value create_float(mlir::Operation *OwnerOp, llvm::StringRef suffix,
+                       const std::vector<float> &data, const std::vector<int64_t> &shape,
+                       mlir::Type storage_type);
   }];
 }
 
