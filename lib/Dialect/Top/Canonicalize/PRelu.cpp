@@ -25,7 +25,7 @@ struct PReluToLeakRelu : public OpRewritePattern<PReluOp> {
       return failure();
     }
     auto slope_op = op.getSlope().getDefiningOp<top::WeightOp>();
-    auto slope = slope_op.read<float>();
+    auto slope = slope_op.read_as_float();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("alpha", rewriter.getF64FloatAttr(slope->at(0))));

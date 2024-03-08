@@ -519,6 +519,10 @@ struct PermuteMatMulPermute : public OpRewritePattern<MatMulOp> {
     if (!isa<top::PermuteOp>(pre_op) || !isa<top::PermuteOp>(next_op)) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     auto permute0 = cast<top::PermuteOp>(pre_op);
     auto permute1 = cast<top::PermuteOp>(next_op);
     auto order0 = module::getI64Array(permute0.getOrder());
@@ -538,10 +542,8 @@ struct PermuteMatMulPermute : public OpRewritePattern<MatMulOp> {
     std::vector<int64_t> shape = module::getShape(in0);
     std::vector<int64_t> order{1, 0};
     function_permute(ori_data->data(), to_data.data(), shape, order);
-    auto new_type = RankedTensorType::get({1, shape[1], shape[0]},
-                                          module::getStorageType(in0));
     auto new_weight =
-        top::WeightOp::create(weight, "reordered", to_data, new_type);
+        WeightOp::create_float(weight, "reordered", to_data, {1, shape[1], shape[0]}, storage_type);
     // update matmul output shape
     op.getOutput().setType(permute1.getOutput().getType());
 
@@ -639,6 +641,10 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
         return failure();
       i++;
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
 
     if (i != 3 || slice_op[0] == NULL || slice_op[1] == NULL ||
         slice_op[2] == NULL)
@@ -668,7 +674,7 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
         weight_shape[1] % 3 != 0)
       return failure();
 
-    auto weight = weight_op.read<float>();
+    auto weight = weight_op.read_as_float();
     for (int i = 0; i < 3; i++) {
       auto w = std::make_shared<std::vector<float>>(weight_shape[0] *
                                                     weight_shape[1] / 3);
@@ -703,15 +709,12 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
       }
       mmout_shape.push_back(shape_last);
 
-      auto weight_type = RankedTensorType::get(
-          {weight_shape[0], weight_shape[1] / 3}, rewriter.getF32Type());
       auto mmout_type =
           RankedTensorType::get(mmout_shape, rewriter.getF32Type());
-      auto w_op = WeightOp::create<float>(
+      auto w_op = WeightOp::create_float(
           op,
-          module::getName(slice_op[i].getOutput()).str() + "_w" +
-              std::to_string(i),
-          *w, weight_type);
+          module::getName(slice_op[i].getOutput()).str() + "_w" + std::to_string(i),
+          *w, {weight_shape[0], weight_shape[1] / 3}, storage_type);
       if (bias_op != NULL) {
         auto bias_type =
             RankedTensorType::get({weight_shape[1] / 3}, rewriter.getF32Type());

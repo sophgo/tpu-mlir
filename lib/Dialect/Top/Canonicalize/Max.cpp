@@ -41,14 +41,14 @@ struct MaxToMaxConst : public OpRewritePattern<MaxOp> {
       if (auto left_op =
               dyn_cast<WeightOp>(op.getInputs()[0].getDefiningOp())) {
         weight_flag = true;
-        const_val = left_op.read<float>();
+        const_val = left_op.read_as_float();
       }
       new_input = op.getInputs()[1];
     } else if (right_elt_num == 1) {
       if (auto right_op =
               dyn_cast<WeightOp>(op.getInputs()[1].getDefiningOp())) {
         weight_flag = true;
-        const_val = right_op.read<float>();
+        const_val = right_op.read_as_float();
       }
       new_input = op.getInputs()[0];
     } else {

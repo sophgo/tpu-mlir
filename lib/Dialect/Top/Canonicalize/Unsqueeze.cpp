@@ -69,7 +69,7 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
     std::shared_ptr<std::vector<float>> inds_f32;
 
     if (auto inds = dyn_cast<WeightOp>(op.getIndices().getDefiningOp()))
-      inds_f32 = inds.read<float>();
+      inds_f32 = inds.read_as_float();
     else
       return failure();
 

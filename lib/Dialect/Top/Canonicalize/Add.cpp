@@ -90,14 +90,10 @@ struct AddToScale : public OpRewritePattern<AddOp> {
     std::vector<Value> operands;
     rewriter.setInsertionPoint(op);
     std::vector<float_t> weight_v(elt_num, 1.);
-    auto rtype = RankedTensorType::get(rhs_shape.vec(), rewriter.getF32Type());
-    auto w_scale =
-        WeightOp::create(op.getOperation(), "_scale_weight", weight_v, rtype);
-    Value w_scale_ = w_scale;
-    if (storage_type.isF16())
-      w_scale_ = dyn_cast<top::WeightOp>(w_scale.getDefiningOp()).clone_f16(op);
+    auto w_scale = WeightOp::create_float(op.getOperation(), "_scale_weight", weight_v,
+                                         rhs_shape, storage_type);
     operands.push_back(op.getInputs()[0]);
-    operands.push_back(w_scale_);
+    operands.push_back(w_scale);
     operands.push_back(op.getInputs()[1]);
     attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
     attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
@@ -128,13 +124,13 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
     std::shared_ptr<std::vector<float>> const_val;
     bool weight_flag = false;
     auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32())
+    if (!storage_type.isF32() && !storage_type.isF16())
       return failure();
     if (left_elt_num == 1) {
       if (auto left_op =
               dyn_cast_or_null<WeightOp>(op.getInputs()[0].getDefiningOp())) {
         weight_flag = true;
-        const_val = left_op.read<float>();
+        const_val = left_op.read_as_float();
       }
       new_input = op.getInputs()[1];
     }
@@ -142,7 +138,7 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
       if (auto right_op =
               dyn_cast<WeightOp>(op.getInputs()[1].getDefiningOp())) {
         weight_flag = true;
-        const_val = right_op.read<float>();
+        const_val = right_op.read_as_float();
       }
       new_input = op.getInputs()[0];
     } else {
@@ -180,6 +176,9 @@ struct AddMerge : public OpRewritePattern<AddOp> {
     if (module::isUniformQuantized(op.getOutput())) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16())
+      return failure();
     auto a = op.getInputs()[0];
     auto b = op.getInputs()[1];
     auto coeff0 = module::getF64Array(op.getCoeff(), 2, 1.0);
@@ -215,13 +214,13 @@ struct AddMerge : public OpRewritePattern<AddOp> {
     }
     auto b_op = b.getDefiningOp<WeightOp>();
     auto d_op = d.getDefiningOp<WeightOp>();
-    auto b_data = b_op.read<float>();
+    auto b_data = b_op.read_as_float();
     if (b_coeff != 1.0) {
       for (auto &b : *b_data) {
         b *= b_coeff;
       }
     }
-    auto d_data = d_op.read<float>();
+    auto d_data = d_op.read_as_float();
     if (d_coeff * a_coeff != 1.0) {
       for (auto &d : *d_data) {
         d *= d_coeff * a_coeff;
@@ -232,9 +231,9 @@ struct AddMerge : public OpRewritePattern<AddOp> {
     std::vector<int64_t> o_shape;
     auto output =
         binary_add(b_data->data(), d_data->data(), b_shape, d_shape, o_shape);
-    auto type = RankedTensorType::get(o_shape, rewriter.getF32Type());
     rewriter.setInsertionPointAfter(op);
-    auto weight = WeightOp::create<float>(op, "merged", *output, type);
+    auto weight = WeightOp::create_float(op, "merged", *output,
+                                         o_shape, storage_type);
     auto coeff = a_coeff * c_coeff;
     std::vector<NamedAttribute> attrs;
     if (coeff != 1.0) {

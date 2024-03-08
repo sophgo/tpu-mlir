@@ -1043,7 +1043,7 @@ class TPULANG_IR_TESTER(object):
             permute = tpul.permute(reshape, [0, 1, 3, 2, 4, 5])
             reshape2 = tpul.reshape(permute, [shape[0] * 64, 49, shape[2]])
             musk = self.coeff_tensor([1, head, 49, 49], dtype=dtype, scale=1.0)
-            musk1 = None if has_slice else self.coeff_tensor([64, 1, 49, 49], dtype=dtype, scale=1.0)
+            musk1 = None if has_slice else self.coeff_tensor([shape[0] * 64, 1, 49, 49], dtype=dtype, scale=1.0)
             self_atten = attention_block(reshape2, [shape[0]*64, 49, shape[2]], d, head, musk, musk1, dtype=dtype)
             reshape3 = tpul.reshape(self_atten, [shape[0], 8, 8, 7, 7, shape[2]])
             permute2 = tpul.permute(reshape3, [0, 1, 3, 2, 4, 5])

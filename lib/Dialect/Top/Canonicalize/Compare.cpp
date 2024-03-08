@@ -24,10 +24,14 @@ struct CompareToCompareConst : public OpRewritePattern<CompareOp> {
       right_elt_num *= right_shape[i];
     if (right_elt_num > 1)
       return failure();
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
 
     std::shared_ptr<std::vector<float>> const_val;
     if (auto right_op = dyn_cast_or_null<WeightOp>(op.getRhs().getDefiningOp())) {
-      const_val = right_op.read<float>();
+      const_val = right_op.read_as_float();
     } else {
       return failure();
     }

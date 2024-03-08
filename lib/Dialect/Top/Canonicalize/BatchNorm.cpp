@@ -50,26 +50,16 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
       scale[i] = 1 / std::sqrt(variance_f32->at(i) + eps) * gamma_f32->at(i);
       bias[i] = -mean_f32->at(i) * scale[i] + beta_f32->at(i);
     }
-
-    auto scale_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto scale_op = WeightOp::create(op, "scale", scale, scale_type);
-    auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto bias_op = WeightOp::create(op, "bias", bias, bias_type);
-    std::vector<Value> operands;
-    operands.push_back(op.getInput());
     auto storage_type = module::getStorageType(op.getOutput());
-    if (storage_type.isF32()) {
-      operands.push_back(scale_op);
-      operands.push_back(bias_op);
-    } else {
-      auto scale_op_ = dyn_cast<top::WeightOp>(scale_op.getDefiningOp()).clone_f16(op);
-      auto bias_op_ = dyn_cast<top::WeightOp>(bias_op.getDefiningOp()).clone_f16(op);
-      operands.push_back(scale_op_);
-      operands.push_back(bias_op_);
-    }
+
+    auto scale_op = WeightOp::create_float(op, "scale", scale,
+                                            {channel}, storage_type);
+    auto bias_op = WeightOp::create_float(op, "bias", bias,
+                                            {channel}, storage_type);
     // replace the BatchNorm Op
     rewriter.replaceOpWithNewOp<ScaleOp>(
-        op, op.getOutput().getType(), operands);
+        op, op.getOutput().getType(),
+        ValueRange{op.getInput(), scale_op, bias_op});
     return success();
   }
 };

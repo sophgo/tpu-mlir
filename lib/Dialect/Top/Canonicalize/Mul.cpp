@@ -80,7 +80,7 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
       }
       if (auto weight_op =
               dyn_cast<WeightOp>(op.getInputs()[i].getDefiningOp())) {
-        const_val = weight_op.read<float>();
+        const_val = weight_op.read_as_float();
         weight_index = i;
         new_input = op.getInputs()[1 - i]; // take another operand as new input
         break;
@@ -185,6 +185,10 @@ struct MulToScale : public OpRewritePattern<MulOp> {
     if (module::isUniformQuantized(op.getInputs()[0]) == true) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
 
     // check shape
     auto left_shape =
@@ -221,14 +225,7 @@ struct MulToScale : public OpRewritePattern<MulOp> {
 
     std::vector<float> bias(left_shape[1], 0);
     // module::gets
-    auto bias_type =
-        RankedTensorType::get(module::getShape(S).vec(), rewriter.getF32Type());
-    Value B_;
-    auto B = WeightOp::create(op, "bias", bias, bias_type);
-    if (module::getStorageType(S).isF32())
-      B_ = B;
-    else
-      B_ = dyn_cast<top::WeightOp>(B.getDefiningOp()).clone_f16(op);
+    auto B = WeightOp::create_float(op, "bias", bias, module::getShape(S).vec(), storage_type);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));
@@ -236,7 +233,7 @@ struct MulToScale : public OpRewritePattern<MulOp> {
         "relu_limit", op->getAttr("relu_limit").cast<FloatAttr>()));
 
     rewriter.replaceOpWithNewOp<ScaleOp>(op, op.getOutput().getType(),
-                                         ValueRange{X, S, B_}, attrs);
+                                         ValueRange{X, S, B}, attrs);
     return success();
   }
 };
@@ -251,7 +248,7 @@ struct MulMerge : public OpRewritePattern<MulOp> {
       return failure();
     }
     auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32())
+    if (!storage_type.isF32() && !storage_type.isF16())
       return failure();
     auto a = op.getInputs()[0];
     auto b = op.getInputs()[1];
@@ -277,16 +274,16 @@ struct MulMerge : public OpRewritePattern<MulOp> {
     }
     auto b_op = b.getDefiningOp<WeightOp>();
     auto d_op = d.getDefiningOp<WeightOp>();
-    auto b_data = b_op.read<float>();
-    auto d_data = d_op.read<float>();
+    auto b_data = b_op.read_as_float();
+    auto d_data = d_op.read_as_float();
     auto b_shape = module::getShape(b);
     auto d_shape = module::getShape(d);
     std::vector<int64_t> o_shape;
     auto output =
         binary_mul(b_data->data(), d_data->data(), b_shape, d_shape, o_shape);
-    auto type = RankedTensorType::get(o_shape, rewriter.getF32Type());
     rewriter.setInsertionPointAfter(op);
-    auto weight = WeightOp::create<float>(op, "merged", *output, type);
+    auto weight =
+        WeightOp::create_float(op, "divisor", *output, o_shape, storage_type);
     std::vector<NamedAttribute> attrs;
     if (op.getDoRelu()) {
       attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));

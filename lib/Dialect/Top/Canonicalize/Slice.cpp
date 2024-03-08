@@ -194,6 +194,10 @@ struct TopSliceToGather : public OpRewritePattern<SliceOp> {
       }
     }
 
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32()) {
+      return failure();
+    }
     if (gather_count != 1)
       return failure();
 
