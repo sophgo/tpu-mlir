@@ -1150,7 +1150,7 @@ bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
           chip == Chip::CV186X || chip == Chip::MARS3);
 }
-bool isSG2260Family() { return (chip == Chip::SG2260); }
+bool isBM1690Family() { return (chip == Chip::BM1690); }
 bool isBM1688() {
   return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3);
 }

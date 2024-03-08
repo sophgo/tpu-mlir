@@ -67,11 +67,11 @@ class Tiu(object):
         self.height = None
         self.width = len(self.columns)
         self.sheet_color = '008000'
-        # The architecture parameters of the SG2260 are set to the initial values
+        # The architecture parameters of the BM1690 are set to the initial values
         # It will be changed as the chip architecture parameters change
         self.detail_spec = {
                             'Platform': ['simulator'],
-                            'CHIP ARCH': ['sg2260'],
+                            'CHIP ARCH': ['bm1690'],
                             'Core Num': ['64'],
                             'NPU Num': ['64'],
                             'Cube IC Align(8bits)': ['32'],

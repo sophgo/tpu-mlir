@@ -30,7 +30,7 @@ CodeGen的大致工作流程可分为3个部分：指令生成、指令存储和
 
 下面对CodeGen过程中所需的数据结构进行介绍:
 
-指令依据硬件的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的硬件sg2260会存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
+指令依据硬件的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的硬件bm1690会存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
 
 .. code-block:: shell
 

@@ -16,7 +16,7 @@
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/IR/TensorTilingInterfaceImpl.h"
 #include "mlir/Pass/Pass.h"
-#include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
+#include "tpu-mlir/Dialect/BM1690/IR/BM1690.h"
 
 namespace tpu_mlir {
 using namespace mlir;
@@ -30,7 +30,7 @@ void registerDepencyDialect(DialectRegistry &registry) {
                   scf::SCFDialect,
                   tensor::TensorDialect,
                   arith::ArithDialect,
-                  sg2260::SG2260Dialect
+                  bm1690::BM1690Dialect
                   >();
   // clang-format on
 }

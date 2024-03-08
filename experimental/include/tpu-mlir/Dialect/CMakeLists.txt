@@ -1,1 +1,1 @@
-add_subdirectory(SG2260)
+add_subdirectory(BM1690)

@@ -74,7 +74,7 @@ def get_dma_trace(addr):
             return 'LMEM'
         else:
             return 'None'
-    elif CHIP_ARCH == "sg2260":
+    elif CHIP_ARCH == "bm1690":
         addr = int(addr)
         if (addr >> 5) & 0x4 == 0x4:
             return 'DDR'

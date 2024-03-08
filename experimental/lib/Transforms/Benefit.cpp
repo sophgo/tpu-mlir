@@ -9,7 +9,7 @@
 
 #include "tpu-mlir/Transforms/Benefit.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "tpu-mlir/Dialect/SG2260/IR/StructuredOpsInterfaces.h"
+#include "tpu-mlir/Dialect/BM1690/IR/StructuredOpsInterfaces.h"
 #include "tpu-mlir/Transforms/StructuredTransform.h"
 #include "llvm/ADT/TypeSwitch.h"
 #include <llvm/Support/Debug.h>

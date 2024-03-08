@@ -12,7 +12,7 @@ set(LIBS
   MLIRTransforms
   TPUMLIRTilingInterfaceTestPasses
   TPUMLIRCodegenPass
-  TPUMLIRSG2260Dialect
+  TPUMLIRBM1690Dialect
   MLIRMLProgramDialect
 )
 

@@ -106,10 +106,10 @@ class BM1688Runner(CModelRunner):
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
-               
+
             LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (32, 16, 1024 * 8)))
             SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
-        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)        
+        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         self.memory = Memory(LMEM, DDR, SMEM)
 
     def _compute(self, command: BaseTpuCmd, engine_type):
@@ -262,14 +262,14 @@ class BM1688Runner(CModelRunner):
             (0xBF52)|(0x3E2F<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16),
         ]
         LOG_FP16_COEFF = [
-            (0x0)|(0x3c00<<16), (0xb800)|(0x3555<<16), (0xb400)|(0x3266<<16), (0xb155)|(0x3092<<16), 
+            (0x0)|(0x3c00<<16), (0xb800)|(0x3555<<16), (0xb400)|(0x3266<<16), (0xb155)|(0x3092<<16),
             (0xb000)|(0x2f1c<<16), (0xae66)|(0x2dd1<<16), (0xad55)|(0x2cec<<16), (0xac92)|(0x2c44<<16)
         ]
         LOG_BF16_COEFF = [
-            (0x0)|(0x3f80<<16), (0xbf00)|(0x3eab<<16), (0xbe80)|(0x3e4d<<16), (0xbe2b)|(0x3e12<<16), 
+            (0x0)|(0x3f80<<16), (0xbf00)|(0x3eab<<16), (0xbe80)|(0x3e4d<<16), (0xbe2b)|(0x3e12<<16),
             (0xbe00)|(0x3de4<<16), (0xbdcd)|(0x3dba<<16), (0xbdab)|(0x3d9e<<16), (0xbd92)|(0x3d89<<16),
         ]
-        
+
         table = (
                 (EXP_COEFF, 32),
                 (LOG_COEFF, 64),

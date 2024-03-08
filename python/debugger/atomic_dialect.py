@@ -27,7 +27,7 @@ from .target_common import (
     use_backend,
 )
 from .target_1688.context import BM1688Context
-from .target_2260.context import SG2260Context
+from .target_1690.context import BM1690Context
 import functools
 import textwrap
 
@@ -184,8 +184,8 @@ class Block(Node):
                     for cmd in x.gdma_tiu_commands
                 ]
 
-                if isinstance(context, SG2260Context):
-                    from .target_2260.multi_core import MultiCore, MsgCore
+                if isinstance(context, BM1690Context):
+                    from .target_1690.multi_core import MultiCore, MsgCore
                 elif isinstance(context, BM1688Context):
                     from .target_1688.multi_core import MultiCore, MsgCore
 

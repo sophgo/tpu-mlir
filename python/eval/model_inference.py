@@ -111,8 +111,8 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_1688.so'
             elif chip == 'BM1684':
                 lib_so = 'libcmodel_1684.so'
-            elif chip == "SG2260":
-                lib_so = 'libcmodel_sg2260.so'
+            elif chip == "BM1690":
+                lib_so = 'libcmodel_bm1690.so'
             elif chip == "MARS3":
                 lib_so = 'libcmodel_mars3.so'
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)

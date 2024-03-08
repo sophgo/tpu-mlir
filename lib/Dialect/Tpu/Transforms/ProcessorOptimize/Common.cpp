@@ -16,7 +16,7 @@ LogicalResult
 LargePadConvPattern::matchAndRewrite(tpu::Conv2DOp op,
                                      PatternRewriter &rewriter) const {
   if (!(module::isBM1684Family() || module::isBM1684XFamily()
-        || module::isSG2260Family())) {
+        || module::isBM1690Family())) {
     return failure();
   }
 
@@ -32,7 +32,7 @@ LargePadConvPattern::matchAndRewrite(tpu::Conv2DOp op,
     return failure();
   }
 
-  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
     auto strides = module::getI64Array(op.getStrides());
     auto dilations = module::getI64Array(op.getDilations(), 2, 1);
     bool h_support_large_pad =

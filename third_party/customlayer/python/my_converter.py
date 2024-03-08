@@ -76,7 +76,7 @@ class MyCaffeConverter(CaffeConverter):
 
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")

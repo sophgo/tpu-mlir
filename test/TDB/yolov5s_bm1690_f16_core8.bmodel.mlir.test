@@ -1,0 +1,63 @@
+RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1690_f16_core8.bmodel | FileCheck %s
+
+CHECK:  module attributes {chip = "BM1690", version = 2.2+v1.6.364-gef6778402-20240312, addr_mode = 0} {
+CHECK:      ^bb0(%G2.0x0: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
+CHECK-NEXT:        %D1C0, %msg48 = "@core_0"(%D0C0) {
+CHECK-NEXT:          %B1C0, %msg48 = "system.send_msg"(%D0C0) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:          %D1C0, %msg48 = "dma.sys.sys_send"(%B1C0) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D1C1, %msg48 = "@core_1"(%D0C1) {
+CHECK:          %R0, %B192C2 = "conv.normal"(%R2, %R3.0x34c0, %R4.0x1ac0, %C0.0, %D31C2) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, memref<64x64x1x1xf16>, memref<1x64x1x1xui32, strides: [1, 1, 1, 1]>, f16, none) -> (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none)
+CHECK-NEXT:          %R3.0x3480, %B193C2 = "tsbc.s_bc"(%R0.0x580, %D31C2) : (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none) -> (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none)
+CHECK-NEXT:          %R3.0x1a40, %B194C2 = "arith.sub"(%C0.0, %R0, %D31C2) {round_mode = 0}: (f16, memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none) -> (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none)
+CHECK-NEXT:          %R3.0x1a40, %B195C2 = "arith.max"(%R3.0x1a40, %C-45408.0, %D31C2) {round_mode = 0}: (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, f16, none) -> (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none)
+CHECK-NEXT:          %R3.0x1a40, %B196C2 = "arith.min"(%R3.0x1a40, %C45408.0, %D31C2) {round_mode = 0}: (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, f16, none) -> (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none)
+CHECK-NEXT:          %R3, %B197C2 = "arith.mul"(%R3.0x1a40, %C1.4423828125, %D31C2) {round_mode = 0}: (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, f16, none) -> (memref<1x64x21x160xf16, strides: [3360, 3360, 160, 1]>, none)
+CHECK:          %R2.0xc80, %D61C3 = "dma.tensor"(%G1.0x82000, %B309C3) : (memref<1x64x1x1xf32, strides: [64, 1, 1, 1]>, none) -> (memref<1x64x1x1xf32, strides: [1, 1, 1, 1]>, none)
+CHECK-NEXT:          %R1, %B327C3 = "arith.add"(%R2, %R3.0x200, %D61C3) {round_mode = 0}: (memref<1x64x10x80xf16, strides: [0, 800, 80, 1]>, memref<1x64x10x80xf16, strides: [0, 800, 80, 1]>, none) -> (memref<1x64x10x80xf16, strides: [800, 800, 80, 1]>, none)
+CHECK-NEXT:          %R0.0x480, %D62C3 = "dma.tensor"(%L30.0x69803212c0, %B326C3) : (memref<1x128x10x80xi16, strides: [819200, 6400, 80, 1]>, none) -> (memref<1x128x10x80xi16, strides: [1600, 800, 80, 1]>, none)
+CHECK-NEXT:          %R4.0x1940, %D63C3 = "dma.tensor"(%G1.0x83000, %B326C3) : (memref<1x64x1x128xi16, strides: [8192, 128, 128, 1]>, none) -> (memref<1x64x1x128xi16, strides: [128, 128, 128, 1]>, none)
+CHECK-NEXT:          %R1.0x640, %B328C3 = "conv.normal"(%R0.0x480, %R4.0x1940, %R2.0xc80, %C0.0, %D63C3) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x128x10x80xf16, strides: [1600, 800, 80, 1]>, memref<64x128x1x1xf16>, memref<1x64x1x1xui32, strides: [1, 1, 1, 1]>, f16, none) -> (memref<1x64x10x80xf16, strides: [800, 800, 80, 1]>, none)
+CHECK-NEXT:          %R0.0x1100, %B329C3 = "tsbc.s_bc"(%R0.0x580, %D63C3) : (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none) -> (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none)
+CHECK:          %R0.0x380, %B318C7 = "sfu.taylor_4x"(%R0, %R0.0x700, %D81C7) : (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, memref<1x64x1x7xf16, strides: [0, 0, 7, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x200, %B319C7 = "arith.mul"(%R0.0x380, %R4.0x200, %D81C7) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R0, %B320C7 = "arith.add"(%R4.0x200, %C1.0, %D81C7) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, f16, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x200, %B321C7 = "arith.div"(%C1.0, %R0, %D81C7) {iter = 3}: (f16, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x200, %B322C7 = "arith.mul"(%R4.0x200, %R1, %D81C7) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %L30.0x698012caf0, %D82C7 = "dma.tensor"(%R4.0x200, %B322C7) : (memref<1x128x5x40xi16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xi16, strides: [204800, 1600, 40, 1]>, none)
+CHECK:          %R6, %B441C7 = "arith.add_satu"(%R2.0x1400, %C15, %C10, %D116C7) {round_mode = 1}: (memref<1x512x2x20xsi8, strides: [512, 64, 20, 1]>, si16, ui8, none) -> (memref<1x512x2x20xsi16, strides: [512, 64, 20, 1]>, none)
+CHECK-NEXT:          %R2.0x1400, %B442C7 = "sfu.taylor_4x"(%R2.0x1000, %R2.0x1800, %D116C7) : (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, memref<1x64x1x7xf16, strides: [0, 0, 7, 1]>, none) -> (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none)
+CHECK-NEXT:          %R6, %B443C7 = "arith.mul"(%R2.0x1400, %R6, %D116C7) {round_mode = 0}: (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none) -> (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none)
+CHECK-NEXT:          %R2.0x1000, %B444C7 = "arith.add"(%R6, %C1.0, %D116C7) {round_mode = 0}: (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, f16, none) -> (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none)
+CHECK-NEXT:          %R6, %B445C7 = "arith.div"(%C1.0, %R2.0x1000, %D116C7) {iter = 3}: (f16, memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none) -> (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none)
+CHECK-NEXT:          %R6, %B446C7 = "arith.mul"(%R6, %R5, %D116C7) {round_mode = 0}: (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none) -> (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, none)
+CHECK:          %D184C3, %msg49 = "dma.sys.sys_send"(%B731C3) {msg_id = 49, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D180C4, %msg49 = "@core_4"(%D176C4, %msg48) {
+CHECK-NEXT:          %B728C4 = "system.wait_msg"(%D176C4, %msg48) {msg_id = 48, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D177C4 = "dma.sys.sys_wait"(%B728C4, %msg48) {msg_id = 48, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:          %R0, %D178C4 = "dma.tensor"(%L30.0x698004b000, %B728C4) : (memref<1x32x20x20xf16, strides: [12800, 400, 20, 1]>, none) -> (memref<1x32x20x20xf16, strides: [416, 416, 20, 1]>, none)
+CHECK:          %R0.0x1d80, %B854C3 = "arith.add"(%R1.0xc00, %C1.0, %D223C3) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, f16, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R1.0xc00, %B855C3 = "arith.div"(%C1.0, %R0.0x1d80, %D223C3) {iter = 3}: (f16, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R1.0xc00, %B856C3 = "arith.mul"(%R1.0xc00, %R3, %D223C3) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0xd00, %D224C3 = "dma.tensor"(%G1.0x8f7000, %B839C3) : (memref<1x256x1x1xf32, strides: [256, 1, 1, 1]>, none) -> (memref<1x256x1x1xf32, strides: [4, 1, 1, 1]>, none)
+CHECK-NEXT:          %R4.0xcc0, %D225C3 = "dma.tensor"(%G1.0x918000, %B839C3) : (memref<1x128x1x1xf32, strides: [128, 1, 1, 1]>, none) -> (memref<1x128x1x1xf32, strides: [2, 1, 1, 1]>, none)
+CHECK-NEXT:          %R2, %B857C3 = "arith.copy"(%R0.0x1a00, %D225C3) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [896, 224, 40, 1]>, none)
+CHECK:          %R4.0x780, %B1039C2 = "tsbc.s_bc"(%R0.0x580, %D256C2) : (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none) -> (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none)
+CHECK-NEXT:          %R4.0x400, %B1040C2 = "arith.sub"(%C0.0, %R3, %D256C2) {round_mode = 0}: (f16, memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x400, %B1041C2 = "arith.max"(%R4.0x400, %C-45408.0, %D256C2) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, f16, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x400, %B1042C2 = "arith.min"(%R4.0x400, %C45408.0, %D256C2) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, f16, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R4.0x80, %B1043C2 = "arith.mul"(%R4.0x400, %C1.4423828125, %D256C2) {round_mode = 0}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, f16, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK-NEXT:          %R2.0x600, %B1044C2 = "arith.cast"(%R4.0x80, %D256C2) {round_mode = 3}: (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none) -> (memref<1x128x5x40xf16, strides: [448, 224, 40, 1]>, none)
+CHECK:          %R5.0x40, %D274C6 = "dma.tensor"(%G1.0xb9a000, %B1063C6) : (memref<1x256x1x1xf32, strides: [256, 1, 1, 1]>, none) -> (memref<1x256x1x1xf32, strides: [4, 1, 1, 1]>, none)
+CHECK-NEXT:          %R3, %B1066C6 = "conv.normal"(%R1.0x800, %R2, %R5, %C0.0, %D274C6) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x2x20xf16, strides: [512, 64, 20, 1]>, memref<256x512x1x1xf16>, memref<1x256x1x1xui32, strides: [4, 1, 1, 1]>, f16, none) -> (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, none)
+CHECK-NEXT:          %R3.0x600, %B1067C6 = "tsbc.s_bc"(%R0.0x580, %D274C6) : (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none) -> (memref<1x64x1x7xf16, strides: [32, 32, 7, 1]>, none)
+CHECK-NEXT:          %R3.0x400, %B1068C6 = "arith.sub"(%C0.0, %R3, %D274C6) {round_mode = 0}: (f16, memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, none) -> (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, none)
+CHECK-NEXT:          %R3.0x400, %B1069C6 = "arith.max"(%R3.0x400, %C-45408.0, %D274C6) {round_mode = 0}: (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, f16, none) -> (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, none)
+CHECK-NEXT:          %R3.0x400, %B1070C6 = "arith.min"(%R3.0x400, %C45408.0, %D274C6) {round_mode = 0}: (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, f16, none) -> (memref<1x256x2x20xf16, strides: [256, 64, 20, 1]>, none)
+CHECK:          %B1187C6 = "system.wait_msg"(%D314C6, %msg49) {msg_id = 49, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D315C6 = "dma.sys.sys_wait"(%B1187C6, %msg49) {msg_id = 49, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D303C7 = "@core_7"(%D302C7, %msg49) {
+CHECK-NEXT:          %B1114C7 = "system.wait_msg"(%D302C7, %msg49) {msg_id = 49, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D303C7 = "dma.sys.sys_wait"(%B1114C7, %msg49) {msg_id = 49, cnt = 32, status = Status.CONSUMED}

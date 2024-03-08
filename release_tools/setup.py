@@ -43,7 +43,7 @@ setup(
             "onnx==1.14.0",
             "onnxruntime==1.15.1",
             "onnxsim==0.4.17",
-            # caffe 
+            # caffe
             "six==1.16.0",
             # tensorflow
             "tensorflow-cpu==2.13.0",

@@ -1,0 +1,63 @@
+RUN: bmodel_dis.py %p/bmodel/resnet50_v2_bm1690_f16_core8.bmodel | FileCheck %s
+
+CHECK:  module attributes {chip = "BM1690", version = 2.2+v1.6.364-gef6778402-20240312, addr_mode = 0} {
+CHECK:      ^bb0(%G2.0x0: memref<1x3x224x224xf32, strides: [150528, 50176, 224, 1]>)    //  run_mode=TPU_STATIC
+CHECK-NEXT:        %D1C0, %msg48 = "@core_0"(%D0C0) {
+CHECK-NEXT:          %B1C0, %msg48 = "system.send_msg"(%D0C0) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:          %D1C0, %msg48 = "dma.sys.sys_send"(%B1C0) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D1C1, %msg48 = "@core_1"(%D0C1) {
+CHECK:          %R4, %D80C0 = "dma.tensor"(%G1.0xbd8000, %B47C0) : (memref<1x1024x1x256xi16, strides: [262144, 256, 256, 1]>, none) -> (memref<1x1024x1x256xi16, strides: [4096, 256, 256, 1]>, none)
+CHECK-NEXT:          %R3, %B49C0 = "conv.normal"(%R6.0x3200, %R15.0x2000, %C0, %C0.0, %D80C0) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x256x14x14xf16, strides: [896, 224, 14, 1]>, memref<1024x256x1x1xf16>, ui32, f16, none) -> (memref<1x1024x14x14xf16, strides: [3584, 224, 14, 1]>, none)
+CHECK-NEXT:          %R5.0x1a00, %D81C0 = "dma.tensor"(%G1.0x810000, %B48C0) : (memref<1x1024x1x1xi16, strides: [1024, 1, 1, 1]>, none) -> (memref<1x1024x1x1xi16, strides: [16, 1, 1, 1]>, none)
+CHECK-NEXT:          %R4.0x2000, %B50C0 = "conv.normal"(%R6, %R14, %C0, %C0.0, %D81C0) {kernel = [1, 1], stride = [2, 2], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x28x28xf16, strides: [6400, 800, 28, 1]>, memref<1024x512x1x1xf16>, ui32, f16, none) -> (memref<1x1024x14x14xf16, strides: [3584, 224, 14, 1]>, none)
+CHECK-NEXT:          %R7.0x80, %D82C0 = "dma.tensor"(%G1.0x811000, %B49C0) : (memref<1x1024x1x1xi16, strides: [1024, 1, 1, 1]>, none) -> (memref<1x1024x1x1xi16, strides: [16, 1, 1, 1]>, none)
+CHECK-NEXT:          %R5.0x2840, %D83C0 = "dma.tensor"(%G1.0xa34000, %B49C0) : (memref<1x1024x1x1xi16, strides: [1024, 1, 1, 1]>, none) -> (memref<1x1024x1x1xi16, strides: [16, 1, 1, 1]>, none)
+CHECK:          %R4, %B11C5 = "conv.normal"(%R2, %R1, %C0, %C0.0, %D15C5) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, memref<64x512x1x1xf16>, ui32, f16, none) -> (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x6980021b00, %D16C5 = "dma.tensor"(%R3, %B10C5) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x6980023380, %D17C5 = "dma.tensor"(%R4, %B11C5) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK-NEXT:          %B12C5, %msg49 = "system.send_msg"(%D17C5) {msg_id = 49, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:          %D18C5, %msg49 = "dma.sys.sys_send"(%B12C5) {msg_id = 49, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:        }
+CHECK:          %R1, %D26C6 = "dma.tensor"(%G1.0x1b84000, %B16C6) : (memref<1x64x32x32xf16, strides: [2097152, 1024, 32, 1]>, none) -> (memref<1x64x32x32xf16, strides: [1024, 1024, 32, 1]>, none)
+CHECK-NEXT:          %R4, %B18C6 = "conv.normal"(%R2, %R1, %C0, %C0.0, %D26C6) {kernel = [1, 1], stride = [2, 2], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x1024x13x13xf16, strides: [3072, 192, 13, 1]>, memref<64x1024x1x1xf16>, ui32, f16, none) -> (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x6980058d00, %D27C6 = "dma.tensor"(%R3, %B17C6) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x698005a580, %D28C6 = "dma.tensor"(%R4, %B18C6) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK-NEXT:          %B19C6, %msg49 = "system.send_msg"(%D28C6) {msg_id = 49, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:          %D29C6, %msg49 = "dma.sys.sys_send"(%B19C6) {msg_id = 49, cnt = 32, status = Status.PRODUCING}
+CHECK:        %D160C0, %msg49 = "@core_0"(%D154C0, %msg48) {
+CHECK-NEXT:          %B104C0 = "system.wait_msg"(%D154C0, %msg48) {msg_id = 48, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D155C0 = "dma.sys.sys_wait"(%B104C0, %msg48) {msg_id = 48, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:          %R0, %D156C0 = "dma.tensor"(%G1.0x1e28000, %B104C0) : (memref<1x64x144x32xf16, strides: [2359296, 4608, 32, 1]>, none) -> (memref<1x64x144x32xf16, strides: [4608, 4608, 32, 1]>, none)
+CHECK-NEXT:          %R0.0x2400, %D157C0 = "dma.tensor"(%G1.0x1e27000, %B104C0) : (memref<1x64x1x1xf32, strides: [64, 1, 1, 1]>, none) -> (memref<1x64x1x1xf32, strides: [1, 1, 1, 1]>, none)
+CHECK-NEXT:          %R1, %D158C0 = "dma.tensor"(%L30.0x6980000000, %B104C0) : (memref<1x512x7x7xf16, strides: [25088, 49, 7, 1]>, none) -> (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, none)
+CHECK:          %R1, %D53C4 = "dma.tensor"(%G1.0x23b8000, %B33C4) : (memref<1x64x16x32xf16, strides: [1048576, 512, 32, 1]>, none) -> (memref<1x64x16x32xf16, strides: [512, 512, 32, 1]>, none)
+CHECK-NEXT:          %R4, %B35C4 = "conv.normal"(%R2, %R1, %C0, %C0.0, %D53C4) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, memref<64x512x1x1xf16>, ui32, f16, none) -> (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x6980049800, %D54C4 = "dma.tensor"(%R3, %B34C4) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK-NEXT:          %R0, %D55C4 = "dma.tensor"(%G1.0x23c8000, %B34C4) : (memref<1x64x16x32xf16, strides: [1048576, 512, 32, 1]>, none) -> (memref<1x64x16x32xf16, strides: [512, 512, 32, 1]>, none)
+CHECK-NEXT:          %R3, %B36C4 = "conv.normal"(%R2, %R0, %C0, %C0.0, %D55C4) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, memref<64x512x1x1xf16>, ui32, f16, none) -> (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none)
+CHECK-NEXT:          %L30.0x698004b080, %D56C4 = "dma.tensor"(%R4, %B35C4) : (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none) -> (memref<1x64x7x7xf16, strides: [100352, 49, 7, 1]>, none)
+CHECK:          %D189C0, %msg48 = "dma.sys.sys_send"(%B123C0) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D70C1, %msg48 = "@core_1"(%D68C1, %msg49) {
+CHECK-NEXT:          %B44C1 = "system.wait_msg"(%D68C1, %msg49) {msg_id = 49, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D69C1 = "dma.sys.sys_wait"(%B44C1, %msg49) {msg_id = 49, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:          %B45C1, %msg48 = "system.send_msg"(%D69C1) {msg_id = 48, cnt = 32, status = Status.PRODUCING}
+CHECK:        %D89C2, %msg49 = "@core_2"(%D78C2, %msg48) {
+CHECK-NEXT:          %B51C2 = "system.wait_msg"(%D78C2, %msg48) {msg_id = 48, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D79C2 = "dma.sys.sys_wait"(%B51C2, %msg48) {msg_id = 48, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:          %R2, %D80C2 = "dma.tensor"(%L30.0x6980062000, %B51C2) : (memref<1x512x7x7xf16, strides: [25088, 49, 7, 1]>, none) -> (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, none)
+CHECK-NEXT:          %R0, %D81C2 = "dma.tensor"(%G1.0x2bac000, %B51C2) : (memref<1x64x16x32xf16, strides: [1048576, 512, 32, 1]>, none) -> (memref<1x64x16x32xf16, strides: [512, 512, 32, 1]>, none)
+CHECK-NEXT:          %R3, %B52C2 = "conv.normal"(%R2, %R0, %C0, %C0.0, %D81C2) {kernel = [1, 1], stride = [1, 1], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [0, 0, 0, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x512x7x7xf16, strides: [512, 64, 7, 1]>, memref<64x512x1x1xf16>, ui32, f16, none) -> (memref<1x64x7x7xf16, strides: [64, 64, 7, 1]>, none)
+CHECK:          %R14, %B196C0 = "arith.cast"(%R6, %D250C0) {round_mode = 0}: (memref<64x8x1x128xf16, strides: [128, 128, 128, 1]>, none) -> (memref<64x8x1x128xf32, strides: [128, 128, 128, 1]>, none)
+CHECK-NEXT:          %R10, %B197C0 = "mm.normal"(%R12, %R14, %C0.0, %D250C0) {l_trans = False, res_add = True, do_relu = False, sym_range = False, do_rq = False, round_mode = 0, multiplier = 0, shift = 0, yzp = 0}: (memref<1x64xf32>, memref<64x1024xf32>, f32, none) -> (memref<1x1024xf32>, none)
+CHECK-NEXT:          %R0, %D251C0 = "dma.matrix"(%L30.0x6980062900, %B194C0) : (memref<1x1x1x64xf16, strides: [0, 0, 2048, 1]>, none) -> (memref<1x64xf16, strides: [32, 32, 0, 1]>, none)
+CHECK-NEXT:          %R4, %D252C0 = "dma.matrix"(%G1.0x2f60800, %B194C0) : (memref<1x1x64x1000xf16, strides: [0, 0, 1000, 1]>, none) -> (memref<64x1000xf16, strides: [128, 128, 0, 1]>, none)
+CHECK-NEXT:          %R12, %B198C0 = "arith.cast"(%R0, %D252C0) {round_mode = 0}: (memref<1x2x1x32xf16, strides: [32, 32, 32, 1]>, none) -> (memref<1x2x1x32xf32, strides: [32, 32, 32, 1]>, none)
+CHECK-NEXT:          %R14, %B199C0 = "arith.cast"(%R4, %D252C0) {round_mode = 0}: (memref<64x8x1x128xf16, strides: [128, 128, 128, 1]>, none) -> (memref<64x8x1x128xf32, strides: [128, 128, 128, 1]>, none)
+CHECK:          %B61C6 = "system.wait_msg"(%D93C6, %msg49) {msg_id = 49, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D94C6 = "dma.sys.sys_wait"(%B61C6, %msg49) {msg_id = 49, cnt = 32, status = Status.CONSUMED}
+CHECK-NEXT:        }
+CHECK-NEXT:        %D94C7 = "@core_7"(%D93C7, %msg49) {
+CHECK-NEXT:          %B61C7 = "system.wait_msg"(%D93C7, %msg49) {msg_id = 49, cnt = 32, status = Status.RECIEVING}
+CHECK-NEXT:          %D94C7 = "dma.sys.sys_wait"(%B61C7, %msg49) {msg_id = 49, cnt = 32, status = Status.CONSUMED}

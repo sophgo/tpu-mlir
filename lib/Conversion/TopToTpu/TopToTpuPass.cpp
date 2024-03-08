@@ -1025,7 +1025,7 @@ void ConvertTopToTpu::runOnOperation() {
     calibration_process();
   }
 
-  if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+  if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
        module::getMode() == module::Mode::UINT8)) {
@@ -1034,7 +1034,7 @@ void ConvertTopToTpu::runOnOperation() {
   }
 
   // process shape related ops
-  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
     bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
   } else if (module::isBM1684Family()) {
     bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
@@ -1043,7 +1043,7 @@ void ConvertTopToTpu::runOnOperation() {
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
   patterns.clear();
-  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
     ConversionTarget target(*ctx_);
     ScfTypeConverter typeConverter;
     target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
@@ -1061,7 +1061,7 @@ void ConvertTopToTpu::runOnOperation() {
   host2device_convert_process();
 
   // process other ops
-  if (module::isBM1684XFamily() || module::isSG2260Family()) {
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
     bm1684x::populateTopToTpuConversionPatterns(&patterns);
   } else if (module::isBM1684Family()) {
     bm1684::populateTopToTpuConversionPatterns(&patterns);
@@ -1156,7 +1156,7 @@ void ConvertTopToTpu::calibration_process() {
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
 
-    if (module::isBM1684XFamily() || module::isSG2260Family()) {
+    if (module::isBM1684XFamily() || module::isBM1690Family()) {
       patterns.add<BackwardAddThToMuls<top::AddOp>>(ctx_);
       applyPatternsAndFoldGreedily(module_, std::move(patterns));
       patterns.clear();

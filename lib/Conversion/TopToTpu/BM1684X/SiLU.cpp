@@ -36,7 +36,7 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
-  if (module::isSG2260Family()) {
+  if (module::isBM1690Family()) {
     auto op_ = op.getOperation();
     op_->setAttr(
         "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
@@ -47,7 +47,7 @@ void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
 
 void SiLULowering::LoweringF16(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
-  if (module::isSG2260Family()) {
+  if (module::isBM1690Family()) {
     auto op_ = op.getOperation();
     op_->setAttr(
         "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));

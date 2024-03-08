@@ -1,14 +1,14 @@
-add_tpumlir_unittest(TPUMLIRIRSG2260Tests sg2260_test.cpp)
+add_tpumlir_unittest(TPUMLIRIRBM1690Tests bm1690_test.cpp)
 
 target_link_libraries(
-  TPUMLIRIRSG2260Tests #
+  TPUMLIRIRBM1690Tests #
   PRIVATE
   MLIRIR
-  TPUMLIRSG2260Dialect
+  TPUMLIRBM1690Dialect
   MLIRFuncDialect
 )
 
-target_include_directories(TPUMLIRIRSG2260Tests
+target_include_directories(TPUMLIRIRBM1690Tests
   PUBLIC
   ${PROJECT_SOURCE_DIR}/experimental/include/
   ${CMAKE_BINARY_DIR}/experimental/include/

@@ -59,7 +59,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
 
       // split d now only supports BM1684X and not int4, not dynamic
-      if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+      if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
           (!stype.isInteger(4)) && lg_info.type == GROUP_3D &&
           mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
@@ -74,7 +74,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
         max_hsecs = 1;
       }
       // split w now only supports BM1684X and not int4, not dynamic
-      if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+      if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
           (!stype.isInteger(4)) && mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0),
                                         lg_info.type))) {

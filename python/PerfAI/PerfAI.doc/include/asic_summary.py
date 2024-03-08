@@ -90,7 +90,7 @@ class AsicSummary(object):
             gdma_xact_sum += self.gdmas[core_id].ddr_xact_cnt
 
             sdma_cycles.append(self.sdmas[core_id].dma_cycle)
-            sdma_ddr_datasizes.append(self.sdmas[core_id].ddr_total_datasize)          
+            sdma_ddr_datasizes.append(self.sdmas[core_id].ddr_total_datasize)
             sdma_ddr_avg_bds.append(get_ratio_float_2f(self.sdmas[core_id].ddr_total_datasize,
                                                      get_time_by_cycle(self.sdmas[core_id].ddr_total_cycle, dma_frequency)))
             sdma_ddr_avg_bls.append(get_ratio_float_2f(self.sdmas[core_id].ddr_burst_length_sum, self.sdmas[core_id].ddr_xact_cnt))
@@ -101,7 +101,7 @@ class AsicSummary(object):
 
             cdma_cycles.append(self.cdmas[core_id].dma_cycle)
             cdma_ddr_datasizes.append(self.cdmas[core_id].ddr_total_datasize)
-            cdma_l2_datasizes.append(self.cdmas[core_id].l2_total_datasize) 
+            cdma_l2_datasizes.append(self.cdmas[core_id].l2_total_datasize)
             cdma_ddr_avg_bds.append(get_ratio_float_2f(self.cdmas[core_id].ddr_total_datasize,
                                                      get_time_by_cycle(self.cdmas[core_id].ddr_total_cycle, dma_frequency)))
             cdma_l2_avg_bds.append(get_ratio_float_2f(self.cdmas[core_id].l2_total_datasize,
@@ -272,7 +272,7 @@ class AsicSummary(object):
                 elif float(ws.cell(h, uRate_pos).value[:-1]) < 75:
                     ws.cell(h, uRate_pos).fill = DetailsStyle.yellow_light
             # parallelismPos
-            if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
+            if chip_arch['Chip Arch'].lower() in ["bm1690", 'a2']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 205:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.yellow_light
             elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
@@ -316,7 +316,7 @@ class AsicSummary(object):
                 if float(ws.cell(h, cdma_ddr_avg_bl_pos).value) < ddr_max_bl:
                     ws.cell(h, cdma_ddr_avg_bl_pos).fill = DetailsStyle.red_light
         content_end_rows = chart_len
-        if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
+        if chip_arch['Chip Arch'].lower() in ["bm1690", 'a2']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<205%'
         elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<105%'

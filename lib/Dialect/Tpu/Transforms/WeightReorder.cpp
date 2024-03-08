@@ -33,7 +33,7 @@ public:
       RewritePatternSet patterns(&getContext());
       if (module::isBM1684Family()) {
         populateWeightReorderBM1684Patterns(&patterns);
-      } else if (module::isBM1684XFamily() || module::isSG2260Family()) {
+      } else if (module::isBM1684XFamily() || module::isBM1690Family()) {
         populateWeightReorderBM1684XPatterns(&patterns);
       } else if (module::isCV18xx()) {
         populateWeightReorderCV18xxPatterns(&patterns);

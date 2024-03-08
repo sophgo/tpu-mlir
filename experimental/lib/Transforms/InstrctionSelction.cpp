@@ -14,14 +14,14 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
+#include "tpu-mlir/Dialect/BM1690/IR/BM1690.h"
 #include "tpu-mlir/Transforms/Passes.h"
 
 using namespace mlir;
 
-void printSG2260StructureOp(Operation *operation) {
+void printBM1690StructureOp(Operation *operation) {
   using namespace tpu_mlir;
-  using namespace tpu_mlir::sg2260;
+  using namespace tpu_mlir::bm1690;
 
   auto context = operation->getContext();
   auto mm = registerTraits(context);
@@ -38,10 +38,10 @@ class InstrctionSelctionqPass
     : public InstrctionSelctionBase<InstrctionSelctionqPass> {
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<linalg::LinalgDialect, tensor::TensorDialect,
-                    sg2260::SG2260Dialect>();
+                    bm1690::BM1690Dialect>();
   }
   void runOnOperation() override {
-    printSG2260StructureOp(getOperation());
+    printBM1690StructureOp(getOperation());
     getOperation().walk([](linalg::LinalgOp op) {
       op.getIndexingMaps().dump();
       llvm::outs() << "\n";

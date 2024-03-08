@@ -59,8 +59,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_1688.so'
         elif chip == 'BM1684':
             lib_so = 'libcmodel_1684.so'
-        elif chip == "SG2260":
-            lib_so = 'libcmodel_sg2260.so'
+        elif chip == "BM1690":
+            lib_so = 'libcmodel_bm1690.so'
         elif chip == "MARS3":
             lib_so = 'libcmodel_mars3.so'
         assert(os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
@@ -72,8 +72,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_custom_1688.so'
         # elif chip == 'BM1684':
         #     lib_so = 'libcmodel_custom_1684.so'
-        # elif chip == "SG2260":
-        #     lib_so = 'libcmodel_custom_sg2260.so'
+        # elif chip == "BM1690":
+        #     lib_so = 'libcmodel_custom_bm1690.so'
         # elif chip == "MARS3":
         #     lib_so = 'libcmodel_custom_mars3.so'
         if os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)):

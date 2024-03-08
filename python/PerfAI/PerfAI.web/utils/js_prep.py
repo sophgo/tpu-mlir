@@ -75,7 +75,7 @@ def generate_jsfile(dirpath, name, out_path):
     summarydf = summary.make_summary()
     summary_data =[[str(x) if isinstance(x,Decimal) else x for x in lst] for lst in summarydf.values.tolist()]
 
-    if CHIP_ARCH == 'sg2260':
+    if CHIP_ARCH == 'bm1690':
         ddr_ratios, l2m_ratios = calculate_ratios(cycle_data_dict)
     else:
         ddr_ratios, l2m_ratios = [], []

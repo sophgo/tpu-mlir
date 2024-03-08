@@ -10,7 +10,7 @@
 #map = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
 #map1 = affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>
 #map2 = affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, 0)>
-module @"0_main_mod_fwd" attributes {module.chip = "sg2260", module.platform = "TORCH", module.state = "TOSA_F32", module.train = "true", module.weight_file = "graph_for_jit_0_main_mod_fwd.npz"} {
+module @"0_main_mod_fwd" attributes {module.chip = "bm1690", module.platform = "TORCH", module.state = "TOSA_F32", module.train = "true", module.weight_file = "graph_for_jit_0_main_mod_fwd.npz"} {
   func.func @main(%arg0: tensor<30xf32> loc(unknown), %arg1: tensor<10x30xf32> loc(unknown), %arg2: tensor<10xf32> loc(unknown), %arg3: tensor<10x10xf32> loc(unknown), %arg4: tensor<40xf32> loc(unknown), %arg5: tensor<10x40xf32> loc(unknown), %arg6: tensor<10xf32> loc(unknown), %arg7: tensor<40x10xf32> loc(unknown), %arg8: tensor<10xf32> loc(unknown), %arg9: tensor<10xf32> loc(unknown), %arg10: tensor<10xf32> loc(unknown), %arg11: tensor<10xf32> loc(unknown), %arg12: tensor<1x4x10xf32> loc(unknown)) -> (tensor<f32>, tensor<2x5x4xf32>, tensor<10x30xf32>, tensor<1x4x1xf32>, tensor<1x2x4x4xf32>, tensor<4x40xf32>, tensor<2x4x5xf32>, tensor<40x10xf32>, tensor<4x10xf32>, tensor<1x4x1xf32>, tensor<1x4x1xf32>, tensor<1x4x10xf32>, tensor<1x4x10xf32>, tensor<2x4x4xf32>, tensor<2x4x5xf32>, tensor<4x10xf32>, tensor<1x4x1xf32>, tensor<10x10xf32>, tensor<4x10xf32>, tensor<10xf32>, tensor<10x40xf32>, tensor<1x4x40xf32>) {
     %cst = arith.constant 0.000000e+00 : f32 loc(#loc1)
     %c1 = arith.constant 1 : index loc(#loc2)

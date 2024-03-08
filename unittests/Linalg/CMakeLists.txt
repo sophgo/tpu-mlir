@@ -54,7 +54,7 @@ target_link_libraries(
   MLIRIR
   MLIRParser
   MLIRPass
-  TPUMLIRSG2260Dialect
+  TPUMLIRBM1690Dialect
 )
 
 target_include_directories(TPUMLIRBenefitTest

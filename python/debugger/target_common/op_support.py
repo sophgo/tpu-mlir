@@ -96,7 +96,7 @@ class Target(Enum):
     BM1684X = "BM1684X"
     BM1684 = "BM1684"
     BM1688 = "BM1688"
-    SG2260 = "SG2260"
+    BM1690 = "BM1690"
 
 
 class Engine(Enum):
