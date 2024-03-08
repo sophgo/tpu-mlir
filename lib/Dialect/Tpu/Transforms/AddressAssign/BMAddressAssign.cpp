@@ -81,6 +81,9 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   // only support L2 -> lmem, lmem  -> L2
   // TODO: DDR -> L2 -> Lmem (need to insert loadOp)
   int64_t l2memSize = 1 << 27;
+  auto core_num = module::getCoreNum();
+  const int MAX_CORES = 8;
+  l2memSize = (l2memSize / MAX_CORES) * core_num;
   struct valueDemand {
     int64_t size;
     int64_t hot;
