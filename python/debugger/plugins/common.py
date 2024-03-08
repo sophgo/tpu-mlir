@@ -207,6 +207,8 @@ class FinalMlirIndexPlugin(TdbPlugin):
                 dma_after,
                 core_id,
             ) = loc.tuple_key_after
+            if tiu_after > tdb.tiu_max[core_id] or dma_after > tdb.dma_max[core_id]:
+                continue
 
             tiu_point = dma_point = None
             if tiu_before > 0:

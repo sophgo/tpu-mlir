@@ -120,6 +120,7 @@ class Block(Node):
 
     def __init__(self, subnet: SubNet, indent=0, ctx_addr=0, ctx_size=0):
         super().__init__()
+        self.subnet = subnet
         self.subnet_id = subnet.id
         self.indent = indent
         self.operations: List[BaseCmd] = []

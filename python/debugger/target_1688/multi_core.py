@@ -46,7 +46,7 @@ from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
 from .opparam import SYS_converter, sDMA_sys_converter
 from .context import BM1688Context
 from ..atomic_dialect import INDENT_SPACE, Node
-from ..target_common import BaseTpuCmd
+from ..target_common import BaseTpuCmd, CMDType
 
 
 class CMD_TYPE(Enum):
@@ -89,6 +89,7 @@ class MsgCore(Node):
         self.msgcore_num = msgcore_num
         self.sys_cmds = sys_cmds
         self.no_sys_cmds = no_sys_cmds
+        self.total_cmds = no_sys_cmds + sys_cmds
 
         if self.sys_cmds:
             self.core_id = sys_cmds[0].core_id
@@ -104,6 +105,24 @@ class MsgCore(Node):
 
             # get in_msg and out_msg
             self.get_DAG()
+
+    def get_CmdId_boundary(self, cmd_type: CMDType):
+        boundary_type = None
+        start_id = None
+
+        for cmd_index, cmd in enumerate(self.no_sys_cmds + self.sys_cmds):
+            if cmd.cmd_type == cmd_type and start_id is None:
+                start_id = cmd.cmd_id
+                if cmd_index < len(self.no_sys_cmds):
+                    boundary_type = 0
+                else:
+                    boundary_type = 1
+
+            if cmd.cmd_type == cmd_type:
+                end_id = cmd.cmd_id
+
+        assert boundary_type is not None
+        return boundary_type, start_id, end_id
 
     def get_DAG(self):
         assert isinstance(self.in_msg.reg, (tiu_sys, dma_sys))
