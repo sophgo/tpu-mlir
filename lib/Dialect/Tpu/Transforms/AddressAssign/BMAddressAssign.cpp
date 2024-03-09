@@ -141,6 +141,99 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   return std::move(L2MemMap);
 }
 
+static void fix_addr_for_io_tag(mlir::ModuleOp &m, int64_t start, int64_t limit,
+                                int64_t offset) {
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (isa<top::NoneOp, top::WeightOp, func::ReturnOp>(op)) {
+        // do nothing
+      } else {
+        for (auto v : op->getResults()) {
+          auto addr = module::getAddress(v);
+          if (addr >= start && addr <= limit) {
+            module::setAddress(v, addr + offset);
+          }
+        }
+      }
+    });
+  }
+}
+
+static void fix_addr_for_io_alone(mlir::ModuleOp &m, int64_t start,
+                                  int64_t io_limit, int64_t limit,
+                                  int64_t io_offset, int64_t ctx_offset) {
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (isa<top::NoneOp, top::WeightOp, func::ReturnOp>(op)) {
+        // do nothing
+      } else {
+        for (auto v : op->getResults()) {
+          auto addr = module::getAddress(v);
+          if (addr >= start && addr < io_limit) {
+            module::setAddress(v, addr + io_offset);
+          } else if (addr >= io_limit && addr < limit) {
+            module::setAddress(v, addr + ctx_offset);
+          }
+        }
+      }
+    });
+  }
+}
+
+void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
+                                              int64_t start_addr,
+                                              int64_t addr_limit) {
+  if (module::isAddrMode(module::AddrMode::BASIC)) {
+    module::setNeuronAddr(m, start_addr);
+    module::setNeuronSize(m, addr_limit - start_addr);
+    return;
+  }
+  auto io_limit = getIOLimit(m);
+  if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+    std::vector<Value> ios;
+    module::getInputsOutputs(m, ios, ios);
+    if (ios.size() > 5) {
+      llvm_unreachable("io_tag only support input and output no more than 5");
+      return;
+    }
+    // fix input and output address to IO_ADDR
+    int io_index = 0;
+    for (auto &io : ios) {
+      module::setAddress(io, BM168x::IO_ADDR[io_index++]);
+    }
+    // fix other address
+    int64_t offset = start_addr - io_limit;
+    fix_addr_for_io_tag(m, io_limit, addr_limit, offset);
+    module::setNeuronAddr(m, start_addr);
+    module::setNeuronSize(m, addr_limit - io_limit);
+    module::updateModuleTypes();
+    return;
+  }
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    if (module::isBM1684X()) {
+      module::setIOAddr(m, start_addr);
+      module::setIOSize(m, io_limit - start_addr);
+      module::setNeuronAddr(m, io_limit);
+      module::setNeuronSize(m, addr_limit - io_limit);
+      return;
+    }
+    // move address to tag start
+    int64_t io_start = 0x100000000ull;
+    int64_t io_offset = io_start - start_addr;
+    int64_t ctx_offset = start_addr - io_limit;
+    fix_addr_for_io_alone(m, start_addr, io_limit, addr_limit, io_offset,
+                          ctx_offset);
+    module::setIOAddr(m, io_start);
+    module::setIOSize(m, io_limit - start_addr);
+    module::setNeuronAddr(m, start_addr);
+    module::setNeuronSize(m, addr_limit - io_limit);
+    module::updateModuleTypes();
+    return;
+  }
+  llvm_unreachable("unknown addr_mode");
+  return;
+}
+
 void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
@@ -269,20 +362,6 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
-  // 1.5 set io address to GMEM_START_ADDR | IO_ADDR if using io_tag mode
-  if (module::isAddrMode(module::AddrMode::IO_TAG) && module::isBM1688()) {
-    int io_index = 0;
-    std::vector<Value> ios;
-    module::getInputsOutputs(m, ios, ios);
-    for (auto &io : ios) {
-      // io.dump();
-      module::setAddress(io, BM168x::IO_ADDR[io_index++]);
-      if (io_index > 4) {
-        break;
-      }
-    }
-  }
-
   // 2.set inplace_ops address
   // inplace_ops' order should be from input to output,thus reverse
   std::reverse(inplace_ops.begin(), inplace_ops.end());
@@ -396,18 +475,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     });
   }
   module::updateModuleTypes();
-  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
-    auto limit = getIOLimit(m);
-    module::setIOAddr(m, start_addr);
-    module::setIOSize(m, limit - start_addr);
-    start_addr = limit;
-    if (module::isBM1688() || module::isSG2260Family()) {
-      start_addr = BM168x::CTX_START_ADDR;
-      addr = (addr - limit) + start_addr;
-    }
-  }
-  module::setNeuronAddr(m, start_addr);
-  module::setNeuronSize(m, addr - start_addr);
+  updateAddressByAddrMode(m, start_addr, addr);
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
