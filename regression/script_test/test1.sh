@@ -4,9 +4,9 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
-# convert by batch 4
+# convert by batch 4, check batch 4
 model_transform.py \
-  --model_name mobilenet_v2 \
+  --model_name mobilenet_v2_b4 \
   --model_def ${REGRESSION_PATH}/model/mobilenet_v2_deploy.prototxt \
   --model_data ${REGRESSION_PATH}/model/mobilenet_v2.caffemodel \
   --input_shapes=[[4,3,224,224]] \
@@ -16,21 +16,21 @@ model_transform.py \
   --pixel_format=bgr \
   --test_input=${REGRESSION_PATH}/image/cat.jpg \
   --test_result=mobilenet_v2_top_outputs.npz \
-  --mlir mobilenet_v2.mlir
+  --mlir mobilenet_v2_b4.mlir
 
 # input to npy
-npz_tool.py to_npy mobilenet_v2_in_f32.npz data
+npz_tool.py to_npy mobilenet_v2_b4_in_f32.npz data
 
 # cali with batch 4
-run_calibration.py mobilenet_v2.mlir \
+run_calibration.py mobilenet_v2_b4.mlir \
   --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012 \
   --input_num 6 \
   -o mobilenet_v2_cali_table
 
 # cali by npz
 mkdir -p npz_data
-cp mobilenet_v2_in_f32.npz npz_data
-run_calibration.py mobilenet_v2.mlir \
+cp mobilenet_v2_b4_in_f32.npz npz_data
+run_calibration.py mobilenet_v2_b4.mlir \
   --dataset npz_data \
   --input_num 1 \
   -o mobilenet_v2_cali_table_by_npz
@@ -38,18 +38,18 @@ run_calibration.py mobilenet_v2.mlir \
 # cali by npy
 mkdir -p npy_data
 cp data.npy npy_data
-run_calibration.py mobilenet_v2.mlir \
+run_calibration.py mobilenet_v2_b4.mlir \
   --dataset npy_data \
   --input_num 1 \
   -o mobilenet_v2_cali_table_by_npy
 
 # cali by list
 echo data.npy >data.list
-run_calibration.py mobilenet_v2.mlir \
+run_calibration.py mobilenet_v2_b4.mlir \
   --data_list data.list \
   -o mobilenet_v2_cali_table_by_list
 
-run_qtable.py mobilenet_v2.mlir \
+run_qtable.py mobilenet_v2_b4.mlir \
   --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012 \
   --calibration_table mobilenet_v2_cali_table \
   --chip bm1684x \
@@ -58,7 +58,7 @@ run_qtable.py mobilenet_v2.mlir \
 # do fuse preprocess
 # f32
 model_deploy.py \
-  --mlir mobilenet_v2.mlir \
+  --mlir mobilenet_v2_b4.mlir \
   --quantize F32 \
   --chip bm1684x \
   --fuse_preprocess \
@@ -68,7 +68,7 @@ model_deploy.py \
   --model mobilenet_v2_1684x_f32_fuse.bmodel
 # f16
 model_deploy.py \
-  --mlir mobilenet_v2.mlir \
+  --mlir mobilenet_v2_b4.mlir \
   --quantize F16 \
   --chip bm1684x \
   --fuse_preprocess \
@@ -78,7 +78,7 @@ model_deploy.py \
   --model mobilenet_v2_1684x_f16_fuse.bmodel
 # int8
 model_deploy.py \
-  --mlir mobilenet_v2.mlir \
+  --mlir mobilenet_v2_b4.mlir \
   --quantize INT8 \
   --chip bm1684x \
   --calibration_table mobilenet_v2_cali_table \
@@ -90,29 +90,20 @@ model_deploy.py \
 
 # no test_input
 model_deploy.py \
-  --mlir mobilenet_v2.mlir \
+  --mlir mobilenet_v2_b4.mlir \
   --quantize INT8 \
   --chip bm1684x \
   --calibration_table mobilenet_v2_cali_table \
   --fuse_preprocess \
   --model mobilenet_v2_1684x_int8_fuse2.bmodel
 
-# io alone
-model_deploy.py \
-  --mlir mobilenet_v2.mlir \
-  --quantize INT8 \
-  --chip bm1684x \
-  --calibration_table mobilenet_v2_cali_table \
-  --addr_mode io_alone \
-  --model mobilenet_v2_1684x_int8_io.bmodel
-
 # convert to tosa without weight
-# tpuc-opt mobilenet_v2.mlir \
+# tpuc-opt mobilenet_v2_b4.mlir \
 #   --processor-top-optimize \
 #   --convert-top-to-tosa="includeWeight=False" \
 #   -o mobilenet_v2_tosa_no_weight.mlir
 
-tpuc-opt mobilenet_v2.mlir \
+tpuc-opt mobilenet_v2_b4.mlir \
   --processor-top-optimize \
   --convert-top-to-tosa="includeWeight=True" \
   -o mobilenet_v2_tosa.mlir
