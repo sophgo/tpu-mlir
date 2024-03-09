@@ -37,3 +37,13 @@ model_deploy.py \
   --test_input  mobilenet_v2_b1_in_f32.npz \
   --test_reference mobilenet_v2_top_outputs.npz \
   --model mobilenet_v2_1688_io_tag.bmodel
+
+# 1688 io alone
+# model_deploy.py \
+#   --mlir mobilenet_v2_b1.mlir \
+#   --quantize F16 \
+#   --chip bm1688 \
+#   --addr_mode io_alone \
+#   --test_input  mobilenet_v2_b1_in_f32.npz \
+#   --test_reference mobilenet_v2_top_outputs.npz \
+#   --model mobilenet_v2_1688_io_tag.bmodel

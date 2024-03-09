@@ -35,6 +35,8 @@ protected:
   int getOutIndex(Operation *op, Value &out);
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
   bool is_next_subnet_input(Operation *op, int index);
+  void updateAddressByAddrMode(mlir::ModuleOp &m, int64_t start_addr,
+                               int64_t addr_limit);
   std::vector<uint32_t>
   getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
 
