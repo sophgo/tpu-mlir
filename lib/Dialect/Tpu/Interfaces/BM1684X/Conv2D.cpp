@@ -221,10 +221,10 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
   common.pad_w_l = (in_gi.w_idx == 0 ? attr.pwl : 0);
   common.pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
-  // common.pad_h_t = (sec_info.h_idx == 0 ? attr.pht : 0);
-  // common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
-  // common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
-  // common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
+  common.pad_h_t = (sec_info.h_idx == 0 ? attr.pht : 0);
+  common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
+  common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
+  common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
   common.round_mode = ROUNDING_HALF_UP;
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
