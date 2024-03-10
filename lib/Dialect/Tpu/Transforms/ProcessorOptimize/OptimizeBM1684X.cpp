@@ -615,15 +615,19 @@ public:
       op.replaceAllUsesWith(op.getInput());
       rewriter.setInsertionPointAfter(mulconst_or_mulshift_op);
       auto newType = module::getTypeLike(mulconst_or_mulshift_out, out_shape);
-      auto out_loc = mulconst_or_mulshift_op->getLoc(); // keep out location unchanged.
+      auto out_loc =
+          mulconst_or_mulshift_op->getLoc(); // keep out location unchanged.
       module::setLocSuffix(mulconst_or_mulshift_op, "trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
       auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType, ValueRange{mulconst_or_mulshift_out, module::getNoneOp(mulconst_or_mulshift_op)},
+          out_loc, newType,
+          ValueRange{mulconst_or_mulshift_out,
+                     module::getNoneOp(mulconst_or_mulshift_op)},
           attrs);
-      mulconst_or_mulshift_out.replaceAllUsesExcept(new_op.getOutput(), {new_op});
+      mulconst_or_mulshift_out.replaceAllUsesExcept(new_op.getOutput(),
+                                                    {new_op});
       rewriter.eraseOp(op);
       return success();
     }
@@ -1055,7 +1059,7 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
     permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
     op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
     rewriter.eraseOp(permute_op);
-  return success();
+    return success();
   }
 };
 
@@ -1535,7 +1539,8 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
         return failure();
       }
       // check forward
-      // slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) -- reshape(in_rs_op) -- reshape(r_reshape_op) -- matmul(op)
+      // slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) --
+      // reshape(in_rs_op) -- reshape(r_reshape_op) -- matmul(op)
       //                                                               |
       //                                                            conv2d ...
 
@@ -1597,18 +1602,20 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
       new_shape[2] = shape[1];
       new_shape[3] = shape[2];
 
-        /**
-         *                                                             conv2d ...
-         *                                                                |
-         * slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) -- reshape(in_rs_op) -- reshape(r_reshape_op) => matmul(op) <= permute(l_permute_op)
-         *
-         * transformed into:
-         *
-         * slice(slc) -- reshape(ori_rs_op) -- ...
-         *                   |                                            => matmul(op) <= permute(l_permute_op)
-         *                permute     --    reshape     --    permute   /
-         *          (new_permute_op_1)  (new_reshape_op)  (new_permute_op_2)
-         */
+      /**
+       *                                                             conv2d ...
+       *                                                                |
+       * slice(slc) -- reshape(ori_rs_op) -- permute(in_pm_op) --
+       * reshape(in_rs_op) -- reshape(r_reshape_op) => matmul(op) <=
+       * permute(l_permute_op)
+       *
+       * transformed into:
+       *
+       * slice(slc) -- reshape(ori_rs_op) -- ...
+       *                   |                                            =>
+       * matmul(op) <= permute(l_permute_op) permute     --    reshape     --
+       * permute   / (new_permute_op_1)  (new_reshape_op)  (new_permute_op_2)
+       */
       if (ori_shape[1] == 1) {
         rewriter.setInsertionPointAfter(ori_rs_op);
         std::vector<int64_t> first_permute_order = {0, 1, 3, 2, 4, 5};
@@ -2547,7 +2554,7 @@ public:
       return failure();
     }
 
-    tpu::Conv2DOp conv1, conv2, conv3;
+    tpu::Conv2DOp conv1 = nullptr, conv2 = nullptr, conv3 = nullptr;
     for (size_t i = 0; i < ins.size(); ++i) {
       if (!isa<tpu::Conv2DOp>(ins[i].getDefiningOp())) {
         return failure();
@@ -2575,6 +2582,9 @@ public:
       } else {
         return failure();
       }
+    }
+    if (conv1 == nullptr || conv2 == nullptr || conv3 == nullptr) {
+      return failure();
     }
     auto conv2_ishape = module::getShape(conv2->getOperand(0));
     auto conv2_wshape = module::getShape(conv2->getOperand(1));
@@ -2733,8 +2743,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermuteMulconstSwap,
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
-                ReshapeSliceSqueezePattern,
-                ConvMergePattern
+                ReshapeSliceSqueezePattern
+                // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
