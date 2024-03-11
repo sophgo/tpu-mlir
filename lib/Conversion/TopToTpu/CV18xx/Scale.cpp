@@ -23,6 +23,11 @@ static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
   auto cur_scale_f32 = cur_scale.read<float>();
   auto cur_bias_f32 = cur_bias.read<float>();
 
+  auto shape = module::getShape(op.getInput());
+  assert(channel = shape[1]);
+  int kernel_dim = shape.size() - 2;
+  kernel_dim = std::max(kernel_dim, 2);
+
   std::vector<float> new_scale_v(channel);
   std::vector<float> new_bias_v(channel);
   std::copy(cur_scale_f32->begin(), cur_scale_f32->end(),
@@ -31,9 +36,12 @@ static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
 
   // scale to depthwise convolution
   NamedAttrList attrs;
-  attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
-  attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
-  attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
+  auto kernel_shape = std::vector<int64_t>(kernel_dim, 1);
+  auto strides = std::vector<int64_t>(kernel_dim, 1);
+  auto pads = std::vector<int64_t>(kernel_dim * 2, 0);
+  attrs.set("kernel_shape", rewriter.getI64ArrayAttr(kernel_shape));
+  attrs.set("strides", rewriter.getI64ArrayAttr(strides));
+  attrs.set("pads", rewriter.getI64ArrayAttr(pads));
   attrs.set("group", rewriter.getI64IntegerAttr(channel));
   attrs.set("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
   auto relu_limit = op.getReluLimit().convertToDouble();
