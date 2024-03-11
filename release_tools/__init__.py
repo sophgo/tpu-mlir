@@ -27,7 +27,10 @@ new_path = [
 ]
 os.environ["PATH"] += "".join(new_path)
 os.environ["PYTHONPATH"] = (
-    f"{package_path}/:" + f"{package_path}/python/:" + f"{package_path}/regression/:"
+    f"{package_path}/:"
+    + f"{package_path}/python/:"
+    + f"{package_path}/regression/:"
+    + f"{package_path}/customlayer/python/:"
 )
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["TPUC_ROOT"] = f"{package_path}"
@@ -40,6 +43,7 @@ os.environ["TPUC_ROOT"] = f"{package_path}"
 sys.path.append(f"{package_path}/")
 sys.path.append(f"{package_path}/python/")
 sys.path.append(f"{package_path}/regression/")
+sys.path.append(f"{package_path}/customlayer/python/")
 
 
 def run_subprocess_py(file_name):

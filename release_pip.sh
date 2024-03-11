@@ -12,6 +12,11 @@ source build.sh RELEASE
 source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
 rebuild_custom_plugin
 rebuild_custom_backend
+rebuild_custom_firmware_cmodel bm1684x
+rebuild_custom_firmware_cmodel bm1688
+rebuild_custom_firmware_soc bm1684x
+rebuild_custom_firmware_soc bm1688
+rebuild_custom_firmware_pcie
 rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
 
 # set mlir_version
@@ -78,7 +83,7 @@ cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
 cp -rf ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/third_party/
 
 # automic entries gen for entry.py and set for setup.py
-python ${release_archive}/entryconfig.py bin/ python/tools/ python/samples/
+python ${release_archive}/entryconfig.py --execute_path bin/ python/tools/ python/samples/ python/test/ --execute_file customlayer/test/test_custom_tpulang.py
 
 # set tpu-mlir core shared object files rpath
 patchelf --set-rpath '$ORIGIN/../lib/:$ORIGIN/../lib/third_party/' ${release_archive}/bin/cvimodel_debug
