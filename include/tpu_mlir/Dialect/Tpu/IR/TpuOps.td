@@ -1849,6 +1849,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
 
 def Tpu_DivOp: Tpu_Op<"Div", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "div operator";
 

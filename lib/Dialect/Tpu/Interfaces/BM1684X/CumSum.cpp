@@ -20,6 +20,16 @@ typedef struct {
   int W;
   int dtype;
 } cumsum_global_param_t;
+
+typedef struct {
+  int dim;
+  int N;
+  int C;
+  int H;
+  int W;
+  int dtype;
+} dyn_cumsum_global_param_t;
+
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -56,13 +66,14 @@ void tpu::CumSumOp::codegen_global_bm1684x() {
                            sizeof(cumsum_global_param_t));
 }
 
+// =========================================
+// Dyn GlobalGenInterface
+// =========================================
 int64_t tpu::CumSumOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(cumsum_global_param_t);
-  cumsum_global_param_t p = {0};
+    return sizeof(dyn_cumsum_global_param_t);
+  dyn_cumsum_global_param_t p = {0};
   auto in_shape = module::getShape(getInput());
-  p.input_addr = module::getAddress(getInput());
-  p.output_addr = module::getAddress(getOutput());
   int64_t shape_size = in_shape.size();
   p.dim = getAxis();
   p.N = in_shape[0];

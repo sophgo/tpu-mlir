@@ -71,6 +71,28 @@ void tpu::DivOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
+// =========================================
+// Dynamic LocalGenInterface
+// =========================================
+int64_t tpu::DivOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(bcbinary_local_spec_t);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
+
+  bcbinary_local_spec_t param;
+  memset(&param, 0, sizeof(param));
+  param.common.binary_type = BINARY_DIV;
+  param.common.if_relu = getDoRelu();
+  param.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.common.rshift_A = getRshift();
+  param.common.rshift_B = 0;
+  param.common.scale_A = getMultiplier();
+  param.common.scale_B = 1;
+  param.buffer_addr = gi.buffer_addr;
+
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
