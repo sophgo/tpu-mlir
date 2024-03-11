@@ -5,6 +5,37 @@ entrygen_functions = []
 function_names = []
 
 
+def entrygen_single(execute_file_path):
+    entrygen_functions.append(f'# f"{{package_path}}/{execute_file_path}\n')
+    entrygen_count = 0
+
+    file_abspath = os.path.join(os.path.dirname(__file__), execute_file_path)
+    assert os.path.isdir(file_abspath) == False
+    file = os.path.basename(file_abspath)
+    file_name = os.path.splitext(file)[0]
+    ext_name = os.path.splitext(file)[-1]
+
+    if ext_name == ".py":
+        codegen = f"""def {file_name.replace("-","_")}():\n\t\
+file_name = f"{{os.getenv('TPUC_ROOT')}}/{execute_file_path}"\n\t\
+run_subprocess_py(file_name)\n\n"""
+    else:
+        codegen = f"""def {file_name.replace("-","_")}():\n\t\
+file_name = f"{{os.getenv('TPUC_ROOT')}}/{execute_file_path}"\n\t\
+run_subprocess_c(file_name)\n\n"""
+
+    function_names.append(file_name)
+    entrygen_functions.append(codegen)
+    entrygen_count += 1
+
+    if entrygen_count == 0:
+        entrygen_functions.pop()
+    else:
+        entrygen_functions.append(
+            f'### total {entrygen_count} entry generated for f"{{package_path}}/{execute_file_path}\n\n'
+        )
+
+
 def entrygen(execute_path):
     abspath = os.path.join(os.path.dirname(__file__), execute_path)
     files = os.listdir(abspath)
@@ -42,8 +73,6 @@ run_subprocess_c(file_name)\n\n"""
             f'### total {entrygen_count} entry generated for f"{{package_path}}/{execute_path}\n\n'
         )
 
-    # return entrygen_functions
-
 
 def entryset(project_path):
     with open(os.path.join(project_path, "setup.py"), "r") as f:
@@ -78,15 +107,25 @@ def entryset(project_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "execute_path",
+        "--execute_path",
         nargs="*",
         help="execute_path of files needed to codegen relative to the **tpu_mlir (copied) folder**",
+    )
+    parser.add_argument(
+        "--execute_file",
+        nargs="*",
+        help="execute_path of specific files needed to codegen relative to the **tpu_mlir (copied) folder**",
     )
     args = parser.parse_args()
 
     # entry gen
-    for path in args.execute_path:
-        entrygen(path)
+    if args.execute_path:
+        for r_path in args.execute_path:
+            entrygen(r_path)
+    if args.execute_file:
+        for r_file in args.execute_file:
+            entrygen_single(r_file)
+
     dirname, filename = os.path.split(os.path.abspath(__file__))
     with open(os.path.join(dirname, "entry.py"), "w+") as f:
         f.write(
