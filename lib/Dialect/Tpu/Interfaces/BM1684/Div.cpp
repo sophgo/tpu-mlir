@@ -117,6 +117,11 @@ uint32_t tpu::DivOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
   return sizeof(fw_broadcast_binary_layer_param_t);
 }
 
+int32_t tpu::DivOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
 int64_t tpu::DivOp::get_fw_type_bm1684() {
   return FW_BMNET_BROADCAST_BINARY;
 }
