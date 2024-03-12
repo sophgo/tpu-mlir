@@ -71,6 +71,7 @@ class TPULANG_IR_TESTER(object):
             "Arccos": (self.test_Arccos,                Y, Y),
             "Arctanh": (self.test_Arctanh,              Y, Y),
             "Arg": (self.test_Arg,                      Y, Y),
+            "Avgpool": (self.test_Avgpool,              Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
             # "Cast": (self.test_Cast,                    Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
@@ -333,8 +334,7 @@ class TPULANG_IR_TESTER(object):
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        bias = self.coeff_tensor(oc, 'float32') if bias else None
         deconv = tpul.conv3d(x,
                             weight,
                             bias=bias,
@@ -342,7 +342,7 @@ class TPULANG_IR_TESTER(object):
                             pad=pad,
                             dilation=dilation,
                             group=group,
-                            out_dtype=out_dtype)
+                            out_dtype=dtype)
         return deconv
 
     def test_Conv3d(self, case_name):
@@ -365,9 +365,10 @@ class TPULANG_IR_TESTER(object):
                                 group=group,
                                 dilation=dilation,
                                 dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [conv])
+            self.compile_and_check(self.unique_name(case_name), [x], [conv], dtype!="float32")
 
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
+        _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3, dtype="float16")
 
  #######################################################################
     # Deconvolution
@@ -384,8 +385,7 @@ class TPULANG_IR_TESTER(object):
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        bias = self.coeff_tensor(oc, 'flioat32') if bias else None
         deconv = tpul.deconv(x,
                             weight,
                             bias=bias,
@@ -394,7 +394,7 @@ class TPULANG_IR_TESTER(object):
                             output_padding=None,
                             dilation=dilation,
                             group=group,
-                            out_dtype=out_dtype)
+                            out_dtype=dtype)
         return deconv
 
     def deconv3d_op(self,
@@ -442,10 +442,12 @@ class TPULANG_IR_TESTER(object):
                                 group=group,
                                 dilation=dilation,
                                 dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [deconv])
+            self.compile_and_check(self.unique_name(case_name), [x], [deconv], dtype!="float32")
 
         _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
         _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
+        _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3, dtype="float16")
+        _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1], dtype="float16")
 
     def test_Deconv3d(self, case_name):
         """Deconv 3D"""
@@ -467,9 +469,10 @@ class TPULANG_IR_TESTER(object):
                                 group=group,
                                 dilation=dilation,
                                 dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [conv])
+            self.compile_and_check(self.unique_name(case_name), [x], [conv], dtype!="float32")
 
         _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
+        _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3, dtype="float16")
 
     #######################################################################
     # HModel
@@ -1473,6 +1476,43 @@ class TPULANG_IR_TESTER(object):
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
 
     #######################################################################
+    # Avgpool
+    # ------------
+    def avgpool_op(self,
+                input_0,
+                kshape,
+                stride,
+                pad=None,
+                ceil_mode=False,
+                scale=None,
+                zero_point=None):
+        scale = [scale, scale] if scale != None else scale
+        zero_point = [zero_point, zero_point] if zero_point != None else zero_point
+        maxpool = tpul.avgpool2d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
+        return maxpool
+
+    def test_Avgpool(self, case_name):
+        """Avgpool"""
+
+        @tpulang(self.chip)
+        def _test_avgpool(shape_x: List[int],
+                                kshape: List[int] = [1,1],
+                                stride: List[int] = [1, 1],
+                                pad: List[int] = None,
+                                scale=None,
+                                zero_point=None,
+                                dtype="float32",
+                                is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
+            avgpool = self.avgpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
+            self.compile_and_check(self.unique_name(case_name), [x], [avgpool], is_quantized=is_quantized)
+
+        _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
+        _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
+        _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
+
+    #######################################################################
     # Relu
     # ------------
     def relu_op(self, input):
@@ -1621,8 +1661,22 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [sin], is_quantized=is_quantized)
 
         _test_sin([1, 32, 28, 28])
-        _test_sin([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_sin([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+
+    def _test_quantized_active_op(self, shape, func, case_name, scale=None, zero_point=None, dtype="float32"):
+        def active_op(input, scale=None, zero_point=None):
+            scale = scale if scale == None else [scale, scale]
+            zero_point = zero_point if zero_point == None else [zero_point, zero_point]
+            out = func(input, scale=scale, zero_point=zero_point)
+            return out
+
+        @tpulang(self.chip)
+        def quantized_op(shape):
+            input = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input, scale=scale, zero_point=zero_point)
+            out = active_op(x, scale=scale, zero_point=zero_point)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+        quantized_op(shape)
 
     #######################################################################
     # Cos
@@ -1642,6 +1696,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [cos])
 
         _test_cos([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.cos, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Exp
@@ -1661,6 +1716,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [exp])
 
         _test_exp([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.exp, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.exp, case_name, dtype="float16")
 
     #######################################################################
     # Tanh
@@ -1680,6 +1737,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [tanh])
 
         _test_tanh([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.tanh, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.tanh, case_name, dtype="float16")
 
     #######################################################################
     # Sigmoid
@@ -1699,6 +1758,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [sigmoid])
 
         _test_sigmoid([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.sigmoid, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Elu
@@ -1718,6 +1778,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [elu])
 
         _test_elu([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.elu, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Sqrt
@@ -1737,6 +1798,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [sqrt])
 
         _test_sqrt([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.sqrt, case_name, scale=3.0, dtype="int8")
 
     # #######################################################################
     # Rsqrt
@@ -1756,6 +1818,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [rsqrt])
 
         _test_rsqrt([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.rsqrt, case_name, scale=3.0, dtype="int8")
 
     # #######################################################################
     # silu
@@ -1775,6 +1838,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [silu])
 
         _test_silu([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.silu, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Erf
@@ -1794,6 +1858,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [erf])
 
         _test_erf([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.erf, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.erf, case_name, dtype="float16")
 
     #######################################################################
     # Tan
@@ -1851,6 +1917,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [mish])
 
         _test_mish([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.mish, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Hswish
@@ -1870,6 +1937,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [hswish])
 
         _test_hswish([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.hswish, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.hswish, case_name, dtype="float16")
 
     #######################################################################
     # Arccos
@@ -1927,6 +1996,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [sinh])
 
         _test_sinh([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.sinh, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Cosh
@@ -1946,6 +2016,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [cosh])
 
         _test_cosh([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.cosh, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Sign
@@ -1965,6 +2036,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [sign])
 
         _test_sign([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.sign, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.sign, case_name, dtype="float16")
 
     #######################################################################
     # Gelu
@@ -1984,25 +2057,32 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [gelu])
 
         _test_gelu([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.gelu, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.gelu, case_name, dtype="float16")
 
     #######################################################################
     # Ln
     # ------------
-    def ln_op(self, input):
-        ln = tpul.ln(input)
+    def ln_op(self, input, scale=None, zero_point=None):
+        scale = scale if scale == None else [scale, scale]
+        zero_point = zero_point if zero_point == None else [zero_point, zero_point]
+        ln = tpul.ln(input, scale=scale, zero_point=zero_point)
         return ln
 
     def test_Ln(self, case_name):
         """ln"""
 
         @tpulang(self.chip)
-        def _test_ln(shape_x: List[int], dtype="float32"):
-            input = np.clip(np.random.randn(*shape_x).astype(dtype) * 10.0, 0.5, 8)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            ln = self.ln_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [ln])
+        def _test_ln(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
+            # input = np.clip(np.random.randn(*shape_x).astype(dtype) * 10.0, 0.5, 8)
+            input = rand_data(shape=shape_x, dtype=dtype, min=0.01, max=8)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
+            ln = self.ln_op(x, scale=scale, zero_point=zero_point)
+            self.compile_and_check(self.unique_name(case_name), [x], [ln], is_quantized=is_quantized)
 
         _test_ln([1, 3, 32, 32])
+        _test_ln([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_ln([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # square
@@ -2022,6 +2102,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [square])
 
         _test_square([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.square, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.square, case_name, dtype="float16")
 
     #######################################################################
     # Hsigmoid
@@ -2041,6 +2123,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [hsigmoid])
 
         _test_hsigmoid([1, 32, 28, 28])
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.hsigmoid, case_name, scale=3.0, dtype="int8")
 
     #######################################################################
     # Arg
@@ -2072,13 +2155,15 @@ class TPULANG_IR_TESTER(object):
         """permute"""
 
         @tpulang(self.chip)
-        def _test_permute(shape_x: List[int], dtype="float32"):
+        def _test_permute(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             permute = self.permute_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [permute])
+            self.compile_and_check(self.unique_name(case_name), [x], [permute], is_quantized=is_quantized)
 
         _test_permute([1, 1024, 10, 128])
+        _test_permute([1, 1024, 10, 128], scale=3.0, dtype="int8", is_quantized=True)
+        _test_permute([1, 1024, 10, 128], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Reshape
@@ -2091,13 +2176,15 @@ class TPULANG_IR_TESTER(object):
         """reshape"""
 
         @tpulang(self.chip)
-        def _test_reshape(shape_x: List[int], dtype="float32"):
+        def _test_reshape(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             reshape = self.reshape_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [reshape])
+            self.compile_and_check(self.unique_name(case_name), [x], [reshape], is_quantized=is_quantized)
 
         _test_reshape([1, 32, 28, 28])
+        _test_reshape([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_reshape([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Shape_fetch
@@ -2110,13 +2197,15 @@ class TPULANG_IR_TESTER(object):
         """Shape_fetch"""
 
         @tpulang(self.chip)
-        def _test_shape_fetch(shape_x: List[int], dtype="float32"):
+        def _test_shape_fetch(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             shape_fetch = self.shape_fetch_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [shape_fetch])
+            self.compile_and_check(self.unique_name(case_name), [x], [shape_fetch], is_quantized=is_quantized)
 
         _test_shape_fetch([1, 32, 28, 28])
+        _test_shape_fetch([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_shape_fetch([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Squeeze
@@ -2129,13 +2218,15 @@ class TPULANG_IR_TESTER(object):
         """squeeze"""
 
         @tpulang(self.chip)
-        def _test_squeeze(shape_x: List[int], dtype="float32"):
+        def _test_squeeze(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             squeeze = self.squeeze_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [squeeze])
+            self.compile_and_check(self.unique_name(case_name), [x], [squeeze], is_quantized=is_quantized)
 
         _test_squeeze([1, 32, 28, 28])
+        _test_squeeze([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_squeeze([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Pad
@@ -2149,13 +2240,15 @@ class TPULANG_IR_TESTER(object):
         """pad"""
 
         @tpulang(self.chip)
-        def _test_pad(shape_x: List[int], dtype="float32"):
+        def _test_pad(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             pad = self.pad_op(x, pad=[0, 0, 1, 2, 0, 0, 3, 4])
-            self.compile_and_check(self.unique_name(case_name), [x], [pad])
+            self.compile_and_check(self.unique_name(case_name), [x], [pad], is_quantized=is_quantized)
 
         _test_pad([1, 32, 28, 28])
+        _test_pad([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_pad([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Tile
@@ -2168,13 +2261,15 @@ class TPULANG_IR_TESTER(object):
         """tile"""
 
         @tpulang(self.chip)
-        def _test_tile(shape_x: List[int], dtype="float32"):
+        def _test_tile(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             tile = self.tile_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [tile])
+            self.compile_and_check(self.unique_name(case_name), [x], [tile], is_quantized=is_quantized)
 
         _test_tile([1, 32, 28, 28])
+        _test_tile([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_tile([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Concat
@@ -2187,16 +2282,18 @@ class TPULANG_IR_TESTER(object):
         """concat"""
 
         @tpulang(self.chip)
-        def _test_concat(shapes: List[List[int]], dtype="float32"):
+        def _test_concat(shapes: List[List[int]], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input0 = rand_data(shapes[0], dtype)
             input1 = rand_data(shapes[1], dtype)
 
-            x = tpul.Tensor(dtype=dtype, shape=shapes[0], data=input0)
-            y = tpul.Tensor(dtype=dtype, shape=shapes[1], data=input1)
+            x = tpul.Tensor(dtype=dtype, shape=shapes[0], data=input0, scale=scale, zero_point=zero_point)
+            y = tpul.Tensor(dtype=dtype, shape=shapes[1], data=input1, scale=scale, zero_point=zero_point)
             concat = self.concat_op([x, y], axis=1)
-            self.compile_and_check(self.unique_name(case_name), [x, y], [concat])
+            self.compile_and_check(self.unique_name(case_name), [x, y], [concat], is_quantized=is_quantized)
 
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
+        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], scale=3.0, dtype="int8", is_quantized=True)
+        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="float16", is_quantized=True)
 
     #######################################################################
     # broadcast
@@ -2209,14 +2306,16 @@ class TPULANG_IR_TESTER(object):
         """broadcast"""
 
         @tpulang(self.chip)
-        def _test_broadcast(shape_x: List[int], shape_y: List[int], dtype="float32"):
+        def _test_broadcast(shape_x: List[int], shape_y: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input_x = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input_x)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input_x, scale=scale, zero_point=zero_point)
             broadcast = self.broadcast_op(x, shape_y)
-            self.compile_and_check(self.unique_name(case_name), [x], [broadcast])
+            self.compile_and_check(self.unique_name(case_name), [x], [broadcast], is_quantized=is_quantized)
 
         _test_broadcast([3, 1], [1, 4])
         _test_broadcast([1, 2, 1], [2, 1, 6])
+        _test_broadcast([1, 2, 1], [2, 1, 6], scale=3.0, dtype="int8", is_quantized=True)
+        _test_broadcast([1, 2, 1], [2, 1, 6], dtype="float16", is_quantized=True)
 
     #######################################################################
     # nonzero
@@ -2229,13 +2328,14 @@ class TPULANG_IR_TESTER(object):
         """nonzero"""
 
         @tpulang(self.chip)
-        def _test_nonzero(shape: List[int], dtype="float32"):
+        def _test_nonzero(shape: List[int], dtype="float32", is_quantized=False):
             input_x = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
             nonzero = self.nonzero_op(x, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [nonzero])
+            self.compile_and_check(self.unique_name(case_name), [x], [nonzero], is_quantized=is_quantized)
 
         _test_nonzero([10, 40, 224])
+        _test_nonzero([10, 40, 224], dtype="float16", is_quantized=True)
 
     #######################################################################
     # upsample
@@ -2248,13 +2348,14 @@ class TPULANG_IR_TESTER(object):
         """upsample"""
 
         @tpulang(self.chip)
-        def _test_upsample(shape: List[int], dtype="float32"):
+        def _test_upsample(shape: List[int], dtype="float32", is_quantized=False):
             input_x = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
             upsample = self.upsample_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [upsample])
+            self.compile_and_check(self.unique_name(case_name), [x], [upsample], is_quantized=is_quantized)
 
         _test_upsample([1, 3, 28, 28])
+        _test_upsample([1, 3, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # reduce
@@ -2267,13 +2368,14 @@ class TPULANG_IR_TESTER(object):
         """reduce"""
 
         @tpulang(self.chip)
-        def _test_reduce(shape: List[int], dtype="float32"):
+        def _test_reduce(shape: List[int], dtype="float32", is_quantized=False):
             input_x = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
             reduce = self.reduce_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [reduce])
+            self.compile_and_check(self.unique_name(case_name), [x], [reduce], is_quantized=is_quantized)
 
         _test_reduce([1, 3, 28, 28])
+        _test_reduce([1, 3, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # unsqueeze
@@ -2286,13 +2388,14 @@ class TPULANG_IR_TESTER(object):
         """unsqueeze"""
 
         @tpulang(self.chip)
-        def _test_unsqueeze(shape: List[int], dtype="float32"):
+        def _test_unsqueeze(shape: List[int], dtype="float32", is_quantized=False):
             input_x = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
             unsqueeze = self.unsqueeze_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [unsqueeze])
+            self.compile_and_check(self.unique_name(case_name), [x], [unsqueeze], is_quantized=is_quantized)
 
         _test_unsqueeze([1, 3, 28, 28])
+        _test_unsqueeze([1, 3, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
     # groupnorm
@@ -2324,13 +2427,15 @@ class TPULANG_IR_TESTER(object):
         """split"""
 
         @tpulang(self.chip)
-        def _test_split(shape_x: List[int], axis=0, num=1, size=None, dtype="float32"):
+        def _test_split(shape_x: List[int], axis=0, num=1, size=None, scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
             splits = self.split_op(x, axis, num, size)
-            self.compile_and_check(self.unique_name(case_name), [x], splits)
+            self.compile_and_check(self.unique_name(case_name), [x], splits, is_quantized=is_quantized)
 
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22])
+        _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], scale=3.0, dtype="int8", is_quantized=True)
+        _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Repeat
@@ -2344,17 +2449,39 @@ class TPULANG_IR_TESTER(object):
         """repeat"""
 
         @tpulang(self.chip)
-        def _test_repeat(shape_x: List[int], dtype="float32"):
+        def _test_repeat(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             x_data = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data, scale=scale, zero_point=zero_point)
             repeat = self.repeat_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [repeat])
+            self.compile_and_check(self.unique_name(case_name), [x], [repeat], is_quantized=is_quantized)
 
         _test_repeat([1, 3, 28, 28])
+        _test_repeat([1, 3, 28, 28], dtype="float16", is_quantized=True)
+        _test_repeat([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
     #######################################################################
     # Gt
     # ------------
+    def test_base_compare_quant(self, case_name, func, shape_x: List[int], shape_y: List[int], scale=None, dtype="int8"):
+        @tpulang(self.chip)
+        def binary_coeff():
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = self.coeff_tensor(shape_y, dtype, scale=4.0)
+            out = func(y, x, scale=scale)
+            self.compile_and_check_quantized(self.unique_name(case_name), [x], [out])
+        @tpulang(self.chip)
+        def binary():
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            out = func(x, y, scale=scale)
+            self.compile_and_check_quantized(self.unique_name(case_name), [x, y], [out])
+
+        binary_coeff()
+        binary()
+
     def gt_op(self, input_0, input_1):
         gt = tpul.gt(input_0, input_1)
         return gt
@@ -2373,6 +2500,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_gt([1, 3, 28, 28], [1, 3, 28, 28])
         _test_gt([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.gt, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.gt, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Lt
@@ -2395,6 +2524,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_lt([1, 3, 28, 28], [1, 3, 28, 28])
         _test_lt([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.lt, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.lt, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Ge
@@ -2417,6 +2548,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_ge([1, 3, 28, 28], [1, 3, 28, 28])
         _test_ge([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.ge, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.ge, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Le
@@ -2439,6 +2572,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_le([1, 3, 28, 28], [1, 3, 28, 28])
         _test_le([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.lt, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.lt, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Eq
@@ -2461,6 +2596,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_eq([1, 3, 28, 28], [1, 3, 28, 28])
         _test_eq([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.eq, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.eq, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Ne
@@ -2483,10 +2620,22 @@ class TPULANG_IR_TESTER(object):
 
         _test_ne([1, 3, 28, 28], [1, 3, 28, 28])
         _test_ne([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.ne, [1, 3, 32, 32], [1, 3, 32, 32], [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name, tpul.ne, [1, 3, 32, 32], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Gts
     # ------------
+    def test_compare_scalar_quant(self, case_name, func, shape_x: List[int], scale=None, dtype="int8"):
+        @tpulang(self.chip)
+        def binary_scalar():
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            out = func(x, tpul.Scalar(2, "float32"), scale=scale)
+            self.compile_and_check_quantized(self.unique_name(case_name), [x], [out])
+
+        binary_scalar()
+
     def gts_op(self, input_0):
         gts = tpul.gts(input_0, 0)
         return gts
@@ -2502,6 +2651,8 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [gts])
 
         _test_gts([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.gts, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.gts, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Lts
@@ -2522,6 +2673,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_lts([1, 3, 28, 28])
         _test_lts([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.lts, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.lts, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Ges
@@ -2542,6 +2695,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_ges([1, 3, 28, 28])
         _test_ges([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.ges, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.ges, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Les
@@ -2562,6 +2717,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_les([1, 3, 28, 28])
         _test_les([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.les, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.les, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Eqs
@@ -2582,6 +2739,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_eqs([1, 3, 28, 28])
         _test_eqs([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.eqs, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.eqs, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Nes
@@ -2602,6 +2761,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_nes([1, 3, 28, 28])
         _test_nes([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.nes, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.nes, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Resnet50 like model case
@@ -2802,16 +2963,18 @@ class TPULANG_IR_TESTER(object):
         """interp"""
 
         @tpulang(self.chip)
-        def _test_interp(shape_x: List[int], method, coord_mode, dtype="float32"):
+        def _test_interp(shape_x: List[int], method, coord_mode, dtype="float32", is_quantized=False):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.interpolate(x, 2, 3, method=method, coord_mode=coord_mode)
-            self.compile_and_check(self.unique_name(case_name), [x], [y])
+            self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel')
         _test_interp([2, 3, 24, 28], 'nearest', 'align_corners')
         _test_interp([2, 3, 24, 28], 'linear', 'pytorch_half_pixel')
         _test_interp([2, 3, 24, 28], 'linear', 'align_corners')
+        _test_interp([2, 3, 24, 28], 'linear', 'align_corners', dtype="float16", is_quantized=True)
+        _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel', dtype="float16", is_quantized=True)
 
     #######################################################################
     # Lut
@@ -2839,16 +3002,18 @@ class TPULANG_IR_TESTER(object):
         """extract"""
 
         @tpulang(self.chip)
-        def _test_extract(shape_x: List[int], start, end, stride, dtype="float32"):
+        def _test_extract(shape_x: List[int], start, end, stride, scale=None, zero_point=None, dtype="float32", is_quantized=False):
             x_data = rand_data(shape_x, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data, scale=scale, zero_point=zero_point)
             y = tpul.extract(x, start, end, stride)
-            self.compile_and_check(self.unique_name(case_name), [x], [y])
+            self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_extract([2, 3, 24, 28], None, [1, 2, 12, 20], [1, 1, 2, 1])
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1])
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], None)
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1])
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1], dtype="float16", is_quantized=True)
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1], scale=3.0, dtype="int8", is_quantized=True)
 
     #######################################################################
     # CondSelect
@@ -2897,10 +3062,12 @@ class TPULANG_IR_TESTER(object):
             fbrn_data = rand_data(shape, dtype)
             fbrn = tpul.Tensor(dtype=dtype, shape=shape, data=fbrn_data)
             y = tpul.cond_select(lhs, rhs, tbrn, fbrn, type)
-            self.compile_and_check(self.unique_name(case_name), [lhs, rhs, tbrn, fbrn], [y])
+            self.compile_and_check(self.unique_name(case_name), [lhs, rhs, tbrn, fbrn], [y], dtype!="float32")
 
         _test_select([2, 3, 24, 28], "Greater")
         _test_select([2, 3, 24, 28], "Less")
+        _test_select([2, 3, 24, 28], "Greater", dtype="float16")
+        _test_select([2, 3, 24, 28], "Less", dtype="float16")
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():

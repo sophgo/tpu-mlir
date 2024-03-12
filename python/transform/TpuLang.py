@@ -1314,14 +1314,14 @@ def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str =
 
     if out_name is None:
         out_name = generate_name("broadcast")
-    size = len(reps)
-    for i in range(size):
-        if reps[i] != 1:
-            assert(input.shape[i] == 1 and "only supported the shape dimension of input tensor is 1 ")
-        reps[i] = reps[i] * input.shape[i]
-    reps = Tensor(shape=[size], data = np.array(reps,dtype="float32"), dtype=input.dtype)
+    # size = len(reps)
+    # for i in range(size):
+    #     if reps[i] != 1:
+    #         assert(input.shape[i] == 1 and "only supported the shape dimension of input tensor is 1 ")
+    #     reps[i] = reps[i] * input.shape[i]
+    # reps = Tensor(shape=[size], data = np.array(reps,dtype="float32"), dtype="float32")
     output = Tensor(dtype=input.dtype, name=out_name)
-    TpuLang.insert_op("top.Expand", inputs=[input, reps], outputs=[output])
+    TpuLang.insert_op("top.Expand", inputs=[input], outputs=[output], params={"shape": ArrayAttr(reps)})
     return output
 
 @annotation_check
