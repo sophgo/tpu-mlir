@@ -115,7 +115,8 @@ void PReluLowering::LoweringF8(PatternRewriter &rewriter,
 
 void PReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::PReluOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

@@ -62,7 +62,8 @@ void Pow2Lowering::LoweringF8(PatternRewriter &rewriter, top::Pow2Op op) const {
 
 void Pow2Lowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::Pow2Op op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -61,7 +61,8 @@ void ErfLowering::LoweringF8(PatternRewriter &rewriter, top::ErfOp op) const {
 
 void ErfLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ErfOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 
 } // namespace bm1684x

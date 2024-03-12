@@ -59,7 +59,18 @@ void LeakyReluLowering::LoweringF8(PatternRewriter &rewriter,
 
 void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::LeakyReluOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  int multiplier, rshift;
+  get_scale_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
+  attrs.push_back(
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
+
+  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, op.getOutput().getType(),
+                                                Value(op.getInput()), attrs);
 }
 
 } // namespace bm1684x

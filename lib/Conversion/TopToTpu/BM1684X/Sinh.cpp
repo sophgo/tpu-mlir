@@ -57,7 +57,8 @@ void SinhLowering::LoweringF8(PatternRewriter &rewriter,
 
 void SinhLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SinhOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

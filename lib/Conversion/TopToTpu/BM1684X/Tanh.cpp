@@ -52,7 +52,8 @@ void TanhLowering::LoweringF8(PatternRewriter &rewriter, top::TanhOp op) const {
 }
 
 void TanhLowering::LoweringQuantized(PatternRewriter &rewriter, top::TanhOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

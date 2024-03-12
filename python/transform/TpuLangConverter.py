@@ -84,13 +84,13 @@ def annotation_check(func):
                 if k in kwargs and kwargs[k] is None:
                     continue
                 if k in kwargs and not __type_instance(kwargs[k], v):
-                    print("function {} input type error, wish type: {}".format(func.__name__, func.__annotations__))
+                    print("code {} type error, {} wish type: {}".format(func.__code__, k, v))
                     raise
             else:
                 if args[idx] is None:
                     continue
                 if not __type_instance(args[idx], v):
-                    print("function {} input type error, wish type: {}".format(func.__name__, func.__annotations__))
+                    print("code {} type error, input {} wish type: {}".format(func.__code__, idx, v))
                     raise
             idx += 1
 
@@ -377,7 +377,7 @@ class TpuLangConverter(BaseConverter):
         flags = 1 if is_signed else 0
         scale = tensor.scale if tensor.scale is not None else 1.0
         # zero_point = tensor.zero_point if tensor.zero_point is not None else 0
-        zero_point = tensor.zero_point if tensor.zero_point == 0 else None
+        zero_point = tensor.zero_point if tensor.zero_point != None else 0
         is_perchannel = isinstance(scale, List) or isinstance(zero_point, List)
         if is_perchannel:
             length = len(scale) if isinstance(scale, List) else len(zero_point)

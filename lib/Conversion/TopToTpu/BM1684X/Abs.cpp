@@ -63,7 +63,8 @@ void AbsLowering::LoweringF8(PatternRewriter &rewriter,
 }
 void AbsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::AbsOp absOp) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, absOp, true);
 }
 
 } // namespace bm1684x

@@ -63,7 +63,8 @@ void SiLULowering::LoweringF8(PatternRewriter &rewriter,
 
 void SiLULowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SiLUOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

@@ -131,7 +131,8 @@ void PowLowering::LoweringF8(PatternRewriter &rewriter, top::PowOp op) const {
 
 void PowLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PowOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 
 } // namespace bm1684x

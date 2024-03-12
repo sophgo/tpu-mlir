@@ -51,7 +51,8 @@ void LogLowering::LoweringF8(PatternRewriter &rewriter, top::LogOp op) const {
 
 void LogLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LogOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

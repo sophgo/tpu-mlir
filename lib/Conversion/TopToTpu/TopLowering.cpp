@@ -287,6 +287,9 @@ Type getQuantInt8Type(Value v, bool asymmetric) {
   if (module::isNone(v)) {
     return v.getType();
   }
+  if (module::isUniformQuantized(v)) {
+    return v.getType();
+  }
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);
