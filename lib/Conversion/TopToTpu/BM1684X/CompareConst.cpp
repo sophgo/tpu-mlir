@@ -110,7 +110,8 @@ void CompareConstLowering::LoweringF8(PatternRewriter &rewriter,
 
 void CompareConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                              top::CompareConstOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 
 } // namespace bm1684x

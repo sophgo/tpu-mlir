@@ -57,7 +57,8 @@ void RoundLowering::LoweringF8(PatternRewriter &rewriter,
 
 void RoundLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::RoundOp roundOp) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, roundOp, false);
 }
 
 } // namespace bm1684x

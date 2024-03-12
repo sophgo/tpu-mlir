@@ -1002,6 +1002,7 @@ def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
     if out_name is None:
         out_name = generate_name("floor")
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Floor", inputs=[input], outputs=[output])
     return output
 

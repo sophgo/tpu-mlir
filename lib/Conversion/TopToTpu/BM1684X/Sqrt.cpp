@@ -49,7 +49,8 @@ void SqrtLowering::LoweringF8(PatternRewriter &rewriter,
 
 void SqrtLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SqrtOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

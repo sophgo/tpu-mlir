@@ -56,7 +56,8 @@ void ArctanhLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ArctanhLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::ArctanhOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 
 } // namespace bm1684x
