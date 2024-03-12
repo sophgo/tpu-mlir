@@ -283,8 +283,6 @@ class MemRef(MemRefBase):
         return self.stride
 
 
-
-
 # used for computing alg ops, arch ops and alg cycle.
 LANE_NUMBER = 32
 CubeOutputHeightWidthAlignNum = 4
@@ -302,7 +300,10 @@ TYPED_CUBE_NUM = {
     DType.si16: BASE_CUBE * 8,
     DType.i8: BASE_CUBE * 32,
     DType.ui8: BASE_CUBE * 32,
-    DType.si8: BASE_CUBE * 32
+    DType.si8: BASE_CUBE * 32,
+    DType.i4: BASE_CUBE * 64,
+    DType.ui4: BASE_CUBE * 64,
+    DType.si4: BASE_CUBE * 64,
 }
 
 
