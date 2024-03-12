@@ -80,7 +80,8 @@ void CompareLowering::LoweringF8(PatternRewriter &rewriter,
 void CompareLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::CompareOp compareOp) const {
   // llvm_unreachable("Not Implemented");
-  LoweringINT8(rewriter, compareOp, true);
+  // LoweringINT8(rewriter, compareOp, true);
+  lowering_common_int8<tpu::CompareOp>(rewriter, compareOp.getOperation());
 }
 
 } // namespace bm1684x
