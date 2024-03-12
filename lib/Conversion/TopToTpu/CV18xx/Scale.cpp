@@ -30,8 +30,7 @@ static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
 
   std::vector<float> new_scale_v(channel);
   std::vector<float> new_bias_v(channel);
-  std::copy(cur_scale_f32->begin(), cur_scale_f32->end(),
-            new_scale_v.begin());
+  std::copy(cur_scale_f32->begin(), cur_scale_f32->end(), new_scale_v.begin());
   std::copy(cur_bias_f32->begin(), cur_bias_f32->end(), new_bias_v.begin());
 
   // scale to depthwise convolution
@@ -47,13 +46,13 @@ static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
   auto relu_limit = op.getReluLimit().convertToDouble();
   attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
-  auto filter_type =
-      RankedTensorType::get({channel, 1, 1, 1}, rewriter.getF32Type());
+  std::vector<int64_t> filter_shape(kernel_dim + 2, 1);
+  filter_shape[0] = channel;
+  auto filter_type = RankedTensorType::get(filter_shape, rewriter.getF32Type());
   auto new_scale =
       top::WeightOp::create(op, "_to_weight", new_scale_v, filter_type);
   auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-  auto new_bias =
-      top::WeightOp::create(op, "_to_bias", new_bias_v, bias_type);
+  auto new_bias = top::WeightOp::create(op, "_to_bias", new_bias_v, bias_type);
 
   rewriter.replaceOpWithNewOp<top::ConvOp>(
       op, op.getResult().getType(),
@@ -61,13 +60,13 @@ static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
 }
 
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
-                                bool asymmetric) const {
+                                 bool asymmetric) const {
   assert(!asymmetric && "CV18xx not support asymmetric quantify");
   ConvertToDw(rewriter, op);
 }
 
 void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::ScaleOp op) const {
+                                 top::ScaleOp op) const {
   ConvertToDw(rewriter, op);
 }
 } // namespace cv18xx
