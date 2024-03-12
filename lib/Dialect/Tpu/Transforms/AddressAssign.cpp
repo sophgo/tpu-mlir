@@ -54,6 +54,16 @@ public:
             same_op_times++;
           }
         }
+
+        // if value is used by multiple ConcatOp, only one ConcatOp should be setOnlyMerge
+        for(auto user: in.getUsers()){
+            if (auto other_cat = dyn_cast<tpu::ConcatOp>(user)) {
+                if(other_cat.getOnlyMerge()){
+                  return failure();
+                }
+            }
+        }
+
         if (same_op_times > 1) {
           return failure();
         }
