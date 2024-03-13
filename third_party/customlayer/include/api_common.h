@@ -78,5 +78,5 @@ static inline int get_local_buffer_addr(const void* param) {
 }
 
 static inline int64_t get_global_buffer_addr(const void* param) {
-    return ((int*)param)[0];
+    return ((int64_t*)param)[0];
 }
