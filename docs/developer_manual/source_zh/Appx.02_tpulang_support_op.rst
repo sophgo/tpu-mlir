@@ -215,8 +215,8 @@ conv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv_int
@@ -320,8 +320,8 @@ deconv
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv3d
@@ -366,8 +366,8 @@ conv3d
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
 
 conv3d_int
@@ -475,8 +475,8 @@ matmul
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与right的数据类型必须一致。bias的数据类型必须是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。input与right,bias的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。input与right的数据类型必须一致。bias的数据类型必须是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。input与right,bias的数据类型必须一致。
 
 
 matmul_int
@@ -674,7 +674,7 @@ div
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32。
 
 
@@ -710,8 +710,8 @@ max
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 
 min
@@ -746,8 +746,8 @@ min
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
 copy
 :::::::::::::::::
@@ -776,8 +776,8 @@ copy，将输入数据复制到输出Tensor中.
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 clamp
 :::::::::::::::::
@@ -809,8 +809,8 @@ clamp
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 Element-wise Compare Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -847,8 +847,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 lt
 :::::::::::::::::
@@ -882,8 +882,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 ge
 :::::::::::::::::
@@ -917,8 +917,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 le
 :::::::::::::::::
@@ -952,8 +952,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 eq
 :::::::::::::::::
@@ -987,8 +987,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 ne
 :::::::::::::::::
@@ -1022,8 +1022,8 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
 gts
 :::::::::::::::::
@@ -1055,8 +1055,8 @@ gts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 
 lts
 :::::::::::::::::
@@ -1088,8 +1088,8 @@ lts
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 
 ges
 :::::::::::::::::
@@ -1121,8 +1121,8 @@ ges
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 les
 :::::::::::::::::
 
@@ -1153,8 +1153,8 @@ les
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 
 eqs
 :::::::::::::::::
@@ -1186,8 +1186,8 @@ eqs
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 
 nes
 :::::::::::::::::
@@ -1219,8 +1219,8 @@ nes
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。scalar_i1数据类型为FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 
 Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1284,8 +1284,8 @@ leaky_relu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 abs
 :::::::::::::::::
@@ -1314,8 +1314,8 @@ abs绝对值激活函数，逐元素实现功能 :math:`y = \left | x \right |`�
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 ln
 :::::::::::::::::
@@ -1346,8 +1346,8 @@ ln激活函数，逐元素实现功能 :math:`y = log(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 ceil
 :::::::::::::::::
@@ -1378,8 +1378,8 @@ ceil向上取整激活函数，逐元素实现功能 :math:`y = \left \lfloor x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 floor
 :::::::::::::::::
@@ -1410,8 +1410,8 @@ floor向下取整激活函数，逐元素实现功能 :math:`y = \left \lceil x 
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 round
 :::::::::::::::::
@@ -1440,8 +1440,8 @@ round四舍五入整激活函数，逐元素实现功能 :math:`y = round(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 
 sin
@@ -1473,8 +1473,8 @@ sin正弦激活函数，逐元素实现功能 :math:`y = sin(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 
 cos
@@ -1506,8 +1506,8 @@ cos余弦激活函数，逐元素实现功能 :math:`y = cos(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 exp
 :::::::::::::::::
@@ -1538,8 +1538,8 @@ exp指数激活函数，逐元素实现功能 :math:`y = e^{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 tanh
 :::::::::::::::::
@@ -1570,8 +1570,8 @@ tanh双曲正切激活函数，逐元素实现功能 :math:`y=tanh(x)=\frac{e^{x
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 sigmoid
 :::::::::::::::::
@@ -1602,8 +1602,8 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 log_sigmoid
 :::::::::::::::::
@@ -1634,8 +1634,8 @@ log_sigmoid激活函数，逐元素实现功能 :math:`y = log(1 / (1 + e^{-x}))
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 elu
 :::::::::::::::::
@@ -1666,8 +1666,8 @@ elu激活函数，逐元素实现功能 :math:`y =  \begin{cases}x\quad x>=0\\e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 square
 :::::::::::::::::
@@ -1698,8 +1698,8 @@ square平方激活函数，逐元素实现功能 :math:`y = \square{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 sqrt
 :::::::::::::::::
@@ -1730,8 +1730,8 @@ sqrt平方根激活函数，逐元素实现功能 :math:`y = \sqrt{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 rsqrt
 :::::::::::::::::
@@ -1762,8 +1762,8 @@ rsqrt平方根取反激活函数，逐元素实现功能 :math:`y = 1 / (sqrt{x}
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 silu
 :::::::::::::::::
@@ -1794,8 +1794,8 @@ silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 
 erf
@@ -1827,8 +1827,8 @@ erf激活函数，对于输入输出Tensor对应位置的元素x和y，逐元素
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 tan
 :::::::::::::::::
@@ -1889,8 +1889,8 @@ softmax激活函数，实现功能 :math:`tensor\_o = exp(tensor\_i)/sum(exp(ten
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 
 softmax_int
@@ -1974,8 +1974,8 @@ mish激活函数，逐元素实现功能 :math:`y = x * tanh(ln(1 + e^{x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 
 
@@ -2008,8 +2008,8 @@ hswish激活函数，逐元素实现功能 :math:`y =\begin{cases}0\quad x<=-3\\
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 
@@ -2104,8 +2104,8 @@ sinh双曲正弦激活函数，逐元素实现功能 :math:`y = sinh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 
 
@@ -2138,8 +2138,8 @@ cosh双曲余弦激活函数，逐元素实现功能 :math:`y = cosh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 
 sign
@@ -2171,8 +2171,8 @@ sign激活函数，逐元素实现功能 :math:`y =\begin{cases}1\quad x>0\\0\qu
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 gelu
@@ -2204,7 +2204,7 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32。
 
 hsigmoid
@@ -2236,8 +2236,8 @@ hsigmoid激活函数，逐元素实现功能 :math:`y = min(1, max(0, \frac{x}{6
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
 
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2271,8 +2271,8 @@ permute
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 tile
 :::::::::::::::::
@@ -2302,8 +2302,8 @@ tile
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 broadcast
 :::::::::::::::::
@@ -2333,8 +2333,8 @@ broadcast
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 concat
@@ -2366,8 +2366,8 @@ concat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 split
 :::::::::::::::::
@@ -2400,8 +2400,8 @@ split
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 pad
 :::::::::::::::::
@@ -2434,8 +2434,8 @@ pad
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 repeat
 :::::::::::::::::
@@ -2465,8 +2465,8 @@ repeat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 extract
 :::::::::::::::::
@@ -2500,8 +2500,8 @@ extract
 
 处理器支持
 """""""""""
-* BM1688： 输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 Sort Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2705,8 +2705,8 @@ squeeze
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 reshape
 :::::::::::::::::
@@ -2736,8 +2736,8 @@ reshape
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 shape_fetch
 :::::::::::::::::
@@ -2769,8 +2769,8 @@ shape_fetch
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 unsqueeze
 :::::::::::::::::
@@ -2800,8 +2800,8 @@ unsqueeze
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8(TODO)/UINT8(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 Quant Operator
@@ -2857,7 +2857,7 @@ requant_fp_to_int
 * BM1684X：输入数据类型可以是FLOAT32。
 
 
-requant_fp(TODO)
+requant_fp
 :::::::::::::::::::
 
 接口定义
@@ -2865,13 +2865,12 @@ requant_fp(TODO)
 
     .. code-block:: python
 
-        def requant_fp_to_int(tensor_i,
-                              scale,
-                              offset,
-                              requant_mode,   #unused
-                              out_dtype,
-                              out_name = None,
-                              round_mode='half_away_from_zero'):
+        def requant_fp(tensor_i,
+                       scale,
+                       offset,
+                       out_dtype,
+                       out_name = None,
+                       round_mode='half_away_from_zero'):
 
 功能描述
 """""""""""
@@ -2891,8 +2890,7 @@ requant_fp(TODO)
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * scale：List[float]型或float型，表示量化系数。
-* offset：List[float]型或float型。表示输出偏移。
-* requant_mode：int型，表示量化模式。
+* offset：List[int]型或int型。表示输出偏移。
 * round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * out_dtype：string类型，表示输入Tensor的类型。数据类型可以是"int16"/"uint16"/"int8"/"uint8"
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -3020,7 +3018,7 @@ dequant_int_to_fp32
 """""""""""
 * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8。
 
-dequant_int(TODO)
+dequant_int
 :::::::::::::::::::
 
     .. code-block:: python
@@ -3125,8 +3123,8 @@ maxpool2d
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
 maxpool2d_with_mask
@@ -3167,8 +3165,8 @@ maxpool2d_with_mask
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 avgpool2d
 :::::::::::::::::::
@@ -3210,8 +3208,8 @@ avgpool2d
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 upsample
 :::::::::::::::::
@@ -3241,8 +3239,8 @@ upsample
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 reduce
 :::::::::::::::::
@@ -3274,8 +3272,8 @@ reduce
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 
 Normalization Operator
@@ -3323,8 +3321,8 @@ batch_norm
 
 芯片支持
 """""""""""
-* BM1684：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1684：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 layer_norm
 :::::::::::::::::::
@@ -3549,8 +3547,8 @@ nonzero
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 lut
 :::::::::::::::::

@@ -710,7 +710,7 @@ def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @to_scalar(2)
 @annotation_check
 def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_name: str = None):
-    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype, "float32")
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     output = Tensor([], dtype=o_dtype, name=out_name)
     if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
         TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
@@ -798,7 +798,7 @@ def clamp(input: Tensor, min:float, max:float, out_name: str = None):
 @annotation_check
 def requant_fp_to_int(tensor_i: Tensor,
                       scale: Union[float, List[float]],
-                      offset: Union[int, List[int], float, List[float]],
+                      offset: Union[int, List[int]],
                       requant_mode: int,
                       out_dtype: str,
                       out_name: str=None,
@@ -847,6 +847,49 @@ def requant_int(tensor_i: Tensor,
     TpuLang.insert_op("top.RequantInt", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
+@annotation_check
+def dequant_int(tensor_i: Tensor,
+                mul: Union[int, List[int]],
+                shift: Union[int, List[int]],
+                offset: Union[int, List[int]],
+                lshift: int,
+                requant_mode: int,
+                out_dtype: str="int8",
+                out_name=None,
+                round_mode='half_up'):
+    assert requant_mode < 2
+    q_mode = ["Normal", "TFLite"]
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=offset)
+    mul = mul if isinstance(mul, List) else [mul]
+    shift = shift if isinstance(shift, List) else [shift]
+    attr = {
+        "multiplier": ArrayAttr(mul, "int64"),
+        "shift": ArrayAttr(shift, "int64"),
+        "lshift": Attr(lshift, "int64"),
+        "quant_mode": Attr(q_mode[requant_mode], "string"),
+        "round_mode": Attr(round_mode_convert(round_mode), "string")
+    }
+    TpuLang.insert_op("top.DequantInt", inputs=[tensor_i], outputs=[output], params=attr)
+    return output
+
+@annotation_check
+def requant_fp(tensor_i: Tensor,
+               scale: Union[float, List[float]],
+               offset: Union[float, List[float]],
+               out_dtype: str,
+               out_name: str=None,
+               round_mode: str='half_away_from_zero'):
+    scale = scale if isinstance(scale, List) else [scale]
+    offset = offset if isinstance(offset, List) else [offset]
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=(int)(offset[0]))
+    attr = {
+        "scale": ArrayAttr(scale, "float64"),
+        "offset": ArrayAttr(offset, "float64"),
+        "quant_mode": Attr("MultiplierShift", "string"),
+        "round_mode": Attr(round_mode_convert(round_mode), "string")
+    }
+    TpuLang.insert_op("top.RequantFp", inputs=[tensor_i], outputs=[output], params=attr)
+    return output
 
 ######## Up / Down Scaling Operator #########
 @annotation_check

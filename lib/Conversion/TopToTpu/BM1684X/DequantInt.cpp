@@ -42,6 +42,8 @@ void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
   //                             op.getOutput().getType());
   auto shift = module::getI64Array(op.getShift());
   auto multi = module::getI64Array(op.getMultiplier());
+  auto dequant_mode = op.getQuantModeAttr().str();
+  auto round_mode = op.getRoundModeAttr().str();
   auto raw_shift = *shift;
   auto raw_multi = *multi;
   assert(raw_multi.size() == raw_shift.size() &&
@@ -50,7 +52,8 @@ void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (raw_multi.size() == 1) {
     auto newValue =
         do_dequant(op->getLoc(), op.getInput(), op.getOutput().getType(),
-                   raw_multi[0], raw_shift[0], tpu::DequantMode::TFLite, op.getLshift());
+                   raw_multi[0], raw_shift[0], get_dequant_mode(dequant_mode),
+                   op.getLshift(), get_round_mode(round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
     llvm_unreachable("Not Implemented");

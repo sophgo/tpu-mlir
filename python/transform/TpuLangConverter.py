@@ -239,7 +239,7 @@ class Graph:
 
 class TpuLangConverter(BaseConverter):
     MLIRImporterTypeStr = {
-        "float64": "f64",
+        "float64": "F64",
         "float32": "F32",
         "float16": "F16",
         "int8": "INT8",

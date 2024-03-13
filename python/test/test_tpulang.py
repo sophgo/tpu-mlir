@@ -751,6 +751,16 @@ class TPULANG_IR_TESTER(object):
         def resnet_mix_f16(x):
             return resnet_mix(x, fdtype="float16")
 
+        def resnet_quant_fp(x):
+            rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
+            # conv1 = conv_block(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], [2030043136, -13, 0])
+            conv1 = self.conv_int_op(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], zp=[0, 0], out_dtype='int32')
+            rq1 = tpul.requant_fp(conv1, 0.078125, 0.0, 'int8', round_mode='half_away_from_zero')
+            # relu1 = tpul.relu(rq1)
+            conv2 = self.conv_int_op(rq1, [96,64,3,3], [2,2], [1,1,1,1], zp=[0,0], out_dtype='int32')
+            rq2 = tpul.requant_fp(conv2, 0.078125, 0.0, 'int8', round_mode='half_away_from_zero')
+            return rq1, rq2
+
         @tpulang(self.chip)
         def _test_model_def(in_shape, model):
             x_data = rand_data(in_shape, 'float32')
@@ -761,6 +771,7 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([1, 3, 224, 224], resnet_quant)
         _test_model_def([1, 3, 224, 224], resnet_mix)
         _test_model_def([1, 3, 224, 224], resnet_mix_f16)
+        _test_model_def([1, 3, 224, 224], resnet_quant_fp)
 
 
     def batch_norm_op(self, x, oc):
@@ -1281,19 +1292,21 @@ class TPULANG_IR_TESTER(object):
         """Div"""
 
         @tpulang(self.chip)
-        def _test_div(shape_x: List[int], shape_y: List[int]):
-            x_data = rand_data(shape_x, "float32")
-            y_data = rand_data(shape_y, "float32")
-            x = tpul.Tensor(dtype="float32", shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype="float32", shape=shape_y, data=y_data, ttype="coeff")
+        def _test_div(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
             div = self.div_op(x, y)
-            self.compile_and_check(self.unique_name(case_name), [x], [div])
+            self.compile_and_check(self.unique_name(case_name), [x], [div], is_quantized=dtype!="float32")
 
         _test_div([1, 3, 28, 28], [1, 3, 28, 28])
         _test_div([1, 3, 32, 32], [1, 3, 32, 32])
         # _test_div([1, 3, 32, 32], [1, 1, 32, 32]) prob to be checked
         _test_div([1, 3, 32, 32], [1])
         _test_div([1], [1, 3, 32, 32])
+        if self.chip == "bm1688":
+            _test_div([1], [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Max
@@ -1473,9 +1486,22 @@ class TPULANG_IR_TESTER(object):
             maxpool = self.maxpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [maxpool], is_quantized=is_quantized)
 
+        @tpulang(self.chip)
+        def _test_maxpool_mask(shape_x: List[int],
+                                kshape: List[int] = [1,1],
+                                stride: List[int] = [1, 1],
+                                pad: List[int] = None,
+                                dtype="float32",
+                                is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            maxpool, mask = tpul.maxpool2d_with_mask(x, kshape, stride, pad)
+            self.compile_and_check(self.unique_name(case_name), [x], [maxpool, mask], is_quantized=is_quantized)
+
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
+      #  _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
 
     #######################################################################
     # Avgpool
@@ -1897,9 +1923,10 @@ class TPULANG_IR_TESTER(object):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             softmax = self.softmax_op(x, axis)
-            self.compile_and_check(self.unique_name(case_name), [x], [softmax])
+            self.compile_and_check(self.unique_name(case_name), [x], [softmax], is_quantized=dtype!="float32")
 
         _test_softmax([1, 32, 28, 28], axis=1)
+        _test_softmax([1, 32, 28, 28], axis=1, dtype="float16")
 
     #######################################################################
     # Mish
@@ -2390,14 +2417,15 @@ class TPULANG_IR_TESTER(object):
         """unsqueeze"""
 
         @tpulang(self.chip)
-        def _test_unsqueeze(shape: List[int], dtype="float32", is_quantized=False):
+        def _test_unsqueeze(shape: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input_x = rand_data(shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=input_x, scale=scale, zero_point=zero_point)
             unsqueeze = self.unsqueeze_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [unsqueeze], is_quantized=is_quantized)
 
         _test_unsqueeze([1, 3, 28, 28])
         _test_unsqueeze([1, 3, 28, 28], dtype="float16", is_quantized=True)
+        _test_unsqueeze([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
     #######################################################################
     # groupnorm
