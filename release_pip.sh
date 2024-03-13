@@ -100,7 +100,7 @@ patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$O
 
 for file in ${release_archive}/lib/*
 do
-    if [[ $file = *kernel_module.so ]]; then
+    if [[ $file = *kernel_module*.so ]]; then
         echo Skip $file
         continue
     fi
