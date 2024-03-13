@@ -312,6 +312,21 @@ def Top_DequantIntOp:Top_Op<"DequantInt"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_RequantFpOp:Top_Op<"RequantFp"> {
+  let summary = "requant operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data, by scale
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$offset,
+    RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_PackOp: Top_Op<"Pack"> {
   let summary = "Pack operator";
 

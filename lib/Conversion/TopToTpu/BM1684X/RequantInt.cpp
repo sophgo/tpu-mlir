@@ -43,6 +43,8 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto o_qtype = module::getUniformQuantizedType(op.getOutput());
   auto shift = module::getI64Array(op.getRshift());
   auto multi = module::getI64Array(op.getMultiplier());
+  auto requant_mode = op.getQuantModeAttr().str();
+  auto round_mode = op.getRoundModeAttr().str();
   auto zero_point = o_qtype.getZeroPoint();
   auto raw_shift = *shift;
   auto raw_multi = *multi;
@@ -52,7 +54,8 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (raw_multi.size() == 1) {
     auto newValue =
         do_requant(op->getLoc(), op.getInput(), op.getOutput().getType(), true,
-                   raw_multi[0], raw_shift[0], tpu::RequantMode::TFLite_LShift);
+                   raw_multi[0], raw_shift[0], get_requant_mode(requant_mode),
+                   get_round_mode(round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
     std::vector<int32_t> quant;
@@ -81,7 +84,7 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue =
         do_requant(op->getLoc(), op.getInput(), quantValue, op.getOutput().getType(),
-                   true, tpu::RequantMode::TFLite_LShift);
+                   true, get_requant_mode(requant_mode), get_round_mode(round_mode));
     rewriter.replaceOp(op, {newValue});
   }
 }

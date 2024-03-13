@@ -118,7 +118,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
 
 Value do_dequant(Location name_loc, Value input, Type to_type,
                  int64_t multiplier, int64_t shift, tpu::DequantMode mode,
-                 int64_t lshift) {
+                 int64_t lshift, tpu::RoundMode rmode) {
   [[maybe_unused]]auto from_stype = module::getStorageType(input);
   [[maybe_unused]]auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -138,6 +138,8 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
   }
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::DequantModeAttr::get(ctx, mode)));
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
 
   auto newOp = builder.create<tpu::DequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
@@ -145,7 +147,8 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
 }
 
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
-                 int64_t multiplier, int64_t shift, tpu::RequantMode mode) {
+                 int64_t multiplier, int64_t shift, tpu::RequantMode mode,
+                 tpu::RoundMode rmode) {
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -162,6 +165,8 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
       builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(-shift)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
 
   auto newOp = builder.create<tpu::RequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
@@ -169,7 +174,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 }
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, tpu::RequantMode mode) {
+                 bool tensorType, tpu::RequantMode mode, tpu::RoundMode rmode) {
   [[maybe_unused]]auto from_stype = module::getStorageType(input);
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -185,14 +190,16 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
-
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
   auto newOp =
       builder.create<tpu::RequantIntAxisOp>(name_loc, newType, operands, attrs);
   return newOp.getOutput();
 }
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
-                   std::string &to_name, tpu::RequantMode mode) {
+                   std::string &to_name, tpu::RequantMode mode,
+                   tpu::RoundMode rmode) {
   [[maybe_unused]]auto from_stype = module::getStorageType(input);
   [[maybe_unused]]auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -206,10 +213,36 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 
   return rqOp.getOutput();
+}
+
+Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
+                   std::string &to_name, tpu::RequantMode mode,
+                   tpu::RoundMode rmode) {
+  auto to_stype = module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands = {input, quant};
+
+  auto newType = to_type;
+  if (tensorType == false) {
+    newType = RankedTensorType::get(module::getShape(input), to_stype);
+  }
+  auto name_loc = NameLoc::get(builder.getStringAttr(to_name));
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
+  auto newOp =
+      builder.create<tpu::RequantFpAxisOp>(name_loc, newType, operands, attrs);
+  return newOp.getOutput();
 }
 
 Value do_reshape(Value input, RankedTensorType to_type) {
@@ -448,6 +481,33 @@ void try_insert_device2host(Operation* op, uint32_t idx) {
     auto hdOp = insert_device2host(opd, opd.getType(), op);
     op->setOperand(idx, hdOp);
   }
+}
+
+tpu::RequantMode get_requant_mode(std::string mode) {
+  if (mode == "TFLite_LShift") return tpu::RequantMode::TFLite_LShift;
+  else if (mode == "TFLite") return tpu::RequantMode::TFLite;
+  else if (mode == "MultiplierShift") return tpu::RequantMode::MultiplierShift;
+  else if (mode == "OnlyShift") return tpu::RequantMode::OnlyShift;
+  else if (mode == "QDM") return tpu::RequantMode::QDM;
+  else if (mode == "OnlyScale") return tpu::RequantMode::OnlyScale;
+  else llvm_unreachable("Not Implemented");
+}
+tpu::DequantMode get_dequant_mode(std::string mode) {
+  if (mode == "Normal") return tpu::DequantMode::Normal;
+  else if (mode == "TFLite") return tpu::DequantMode::TFLite;
+  else llvm_unreachable("Not Implemented");
+}
+tpu::RoundMode get_round_mode(std::string mode) {
+  if (mode == "HalfAwayFromZero") return tpu::RoundMode::HalfAwayFromZero;
+  else if (mode == "HalfUp") return tpu::RoundMode::HalfUp;
+  else if (mode == "HalfDown") return tpu::RoundMode::HalfDown;
+  else if (mode == "HalfToEven") return tpu::RoundMode::HalfToEven;
+  else if (mode == "HalfToOdd") return tpu::RoundMode::HalfToOdd;
+  else if (mode == "HalfTowardsZero") return tpu::RoundMode::HalfTowardsZero;
+  else if (mode == "TowardsZero") return tpu::RoundMode::TowardsZero;
+  else if (mode == "Up") return tpu::RoundMode::Up;
+  else if (mode == "Down") return tpu::RoundMode::Down;
+  else llvm_unreachable("Not Implemented");
 }
 
 } // namespace tpu_mlir

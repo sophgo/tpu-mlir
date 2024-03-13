@@ -503,18 +503,29 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric);
 // from int8 to int32
 Value do_dequant(Location name_loc, Value input, Type to_type,
                  int64_t multiplier, int64_t rshift, tpu::DequantMode mode,
-                 int64_t lshift);
+                 int64_t lshift, tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
 
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
-                 int64_t multiplier, int64_t shift, tpu::RequantMode mode);
+                 int64_t multiplier, int64_t shift, tpu::RequantMode mode,
+                 tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, tpu::RequantMode mode);
+                 bool tensorType, tpu::RequantMode mode,
+                 tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name,
-                   tpu::RequantMode mode = tpu::RequantMode::MultiplierShift);
+                   tpu::RequantMode mode = tpu::RequantMode::MultiplierShift,
+                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+
+Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
+                   std::string &to_name, tpu::RequantMode mode,
+                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+
+tpu::RequantMode get_requant_mode(std::string mode);
+tpu::DequantMode get_dequant_mode(std::string mode);
+tpu::RoundMode get_round_mode(std::string mode);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
