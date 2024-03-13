@@ -673,7 +673,7 @@ TpuLang自定义CPU算子添加
   .. code-block:: c++
 
     REGISTER_CPULAYER_CLASS(CPU_CUSTOM, {op_name});
-  
+
   b. 并在./customlayer/include/customcpu_common.h中的枚举类型 `CPU_CUSTOM_LAYER_TYPE_T`中定义成员
       CPU_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
 
@@ -707,7 +707,7 @@ TpuLang自定义CPU算子添加
   支持以下补丁函数(在文件夹 ./plugin中定义)：
 
   a. （必选）需要自行实现算子参数解析函数，用于获取算子所需的关键参数，重写自定义layer的get_param()方法：
-    
+
     .. code-block:: c++
 
       int cpu_mylayer::get_param(void *param, int param_size);
@@ -790,12 +790,12 @@ TpuLang自定义CPU算子添加
 
 7. 上卡测试
 
-  当网络中存在自定义CPU算子时，bmodel需要包含算子信息，使用命令将libcpuop_custom.so写入bmodel文件，
+  当网络中存在自定义CPU算子时，bmodel需要包含算子信息，使用命令将libcustomcpuop.so写入bmodel文件，
   所有主机CPU架构均使用：
 
   .. code-block:: shell
 
-    tpu_model --custom_cpu_update xxx.bmodel libcpuop_custom.so
+    tpu_model --custom_cpu_update xxx.bmodel libcustomcpuop.so
 
   注：需要特别注意的是，编译自定义CPU算子的环境要与bmodel运行环境中的glic版本兼容。
 
@@ -865,7 +865,7 @@ TpuLang示例
   .. code-block:: c++
 
     REGISTER_CPULAYER_CLASS(CPU_CUSTOM_TOPK, cpu_topk);
-  
+
   b. 并在./customlayer/include/customcpu_common.h中的枚举类型 `CPU_CUSTOM_LAYER_TYPE_T`中定义成员
       CPU_CUSTOM_TOPK。
 

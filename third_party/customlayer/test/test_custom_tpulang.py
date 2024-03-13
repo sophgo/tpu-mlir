@@ -35,23 +35,33 @@ class CUSTOM_TPULANG_TESTER(object):
                  dynamic: bool = False,
                  simple: bool = False,
                  disable_thread: bool = False,
-                 num_core: int = 1):
+                 num_core: int = 1,
+                 op_type: str = "all"):
         Y, N = True, False
         # yapf: disable
-        self.test_cases = {
+        self.test_tpu_cases = {
             #########################################
             # CUSTOM TPULANG Test Case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1688_support)
             "AbsAdd":          (self.test_AbsAdd,       Y, Y),
             "CeilAdd":         (self.test_CeilAdd,      Y, Y),
-            "SwapChannel":     (self.test_SwapChannel,  Y, Y),
             "Crop":            (self.test_Crop,         Y, Y),
             "SimpleBlock":     (self.test_SimpleBlock,  Y, Y),
+            "SwapChannel":     (self.test_SwapChannel,  Y, Y),
+        }
+
+        self.test_cpu_cases = {
             "CpuTopk":         (self.test_CpuTopk,      Y, Y),
             "CpuTopk2":        (self.test_CpuTopk2,     Y, Y),
         }
         # yapf: enable
+        if op_type == "all":
+            self.test_cases = {**self.test_tpu_cases, **self.test_cpu_cases}
+        elif op_type == "tpu":
+            self.test_cases = self.test_tpu_cases
+        else:
+            self.test_cases = self.test_cpu_cases
 
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -208,8 +218,8 @@ class CUSTOM_TPULANG_TESTER(object):
         def relu_op(x):
             x = tpul.relu(x[0])
             return[x]
-        
-        def model_def(x, flag: int):           
+
+        def model_def(x, flag: int):
             if flag == 0:
                 x = my_tpulang_layer.cpuTopk.tpulang(inputs=x, axis=axis, k=k, dtype=dtype)
                 x = relu_op(x)
@@ -353,6 +363,7 @@ if __name__ == "__main__":
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16'],
                         help="quantize modes")
+    parser.add_argument("--op_type", default="all", type=str, choices=['all', 'tpu', 'cpu'], help='test tpu or cpu custom op')
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
@@ -364,7 +375,7 @@ if __name__ == "__main__":
     # yapf: enable
     args = parser.parse_args()
     tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
-                                   args.num_core)
+                                   args.num_core, args.op_type)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
