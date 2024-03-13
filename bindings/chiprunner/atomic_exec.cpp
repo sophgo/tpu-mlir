@@ -92,8 +92,8 @@ public:
     set_reserved_mem(res_addr);
     set_loc_mem(loc_addr);
 
-    auto ret_tiu = bm_malloc_device_byte(bm_handle, &tiu_mem, 1024 * 1024);
-    auto ret_dma = bm_malloc_device_byte(bm_handle, &dma_mem, 1024 * 1024);
+    auto ret_tiu = bm_malloc_device_byte(bm_handle, &tiu_mem, 16 * 1024 * 1024);
+    auto ret_dma = bm_malloc_device_byte(bm_handle, &dma_mem, 16 * 1024 * 1024);
     u64 tiu_addr = bm_mem_get_device_addr(tiu_mem);
     u64 dma_addr = bm_mem_get_device_addr(dma_mem);
     set_tiu_mem(tiu_addr);
@@ -109,9 +109,9 @@ public:
     }
     if (bm_handle) {
       bm_free_device(bm_handle, device_mem);
-      // bm_free_device(bm_handle, device_loc_mem);
-      // bm_free_device(bm_handle, tiu_mem);
-      // bm_free_device(bm_handle, dma_mem);
+      bm_free_device(bm_handle, device_loc_mem);
+      bm_free_device(bm_handle, tiu_mem);
+      bm_free_device(bm_handle, dma_mem);
       bm_dev_free(bm_handle);
     }
   }

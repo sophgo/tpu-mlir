@@ -345,7 +345,12 @@ class Memory(DeviceMemory):
         assert all(memref.shape)
         assert any(memref.stride)
 
-        raw_data = np.zeros(memref.shape[0] * memref.stride[0], dtype=memref.np_dtype)
+        for i in range(4):
+            if memref.shape[i] != 0 and memref.stride[i] != 0:
+                elements = memref.shape[i] * memref.stride[i]
+                break
+
+        raw_data = np.zeros(elements, dtype=memref.np_dtype)
         address = memref.address + self.reserved_offset
         d2s_ret = self.lib.chip_d2s(
             self.runner_p,
