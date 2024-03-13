@@ -71,7 +71,7 @@ class TPULANG_IR_TESTER(object):
             "Arccos": (self.test_Arccos,                Y, Y),
             "Arctanh": (self.test_Arctanh,              Y, Y),
             "Arg": (self.test_Arg,                      Y, Y),
-            "ArgSort": (self.test_ArgSort,              Y, N),
+            "ArgSort": (self.test_ArgSort,              Y, Y),
             "Avgpool": (self.test_Avgpool,              Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
             # "Cast": (self.test_Cast,                    Y, Y),
@@ -3135,7 +3135,7 @@ class TPULANG_IR_TESTER(object):
             y = tpul.argsort(x, axis)
             self.compile_and_check(self.unique_name(case_name), [x], [y])
 
-        _test_argsort([1, 3, 4, 28], 3)
+        _test_argsort([4, 3, 4, 28], 3)
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():
