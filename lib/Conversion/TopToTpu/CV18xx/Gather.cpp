@@ -27,7 +27,12 @@ void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
     llvm_unreachable("Not support now.\n");
   }
   //auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
-  operands.emplace_back(op.getIndices());
+  if (auto indiceOp = dyn_cast_or_null<top::WeightOp>( op.getIndices().getDefiningOp())) {
+    operands.emplace_back(indiceOp.clone_int(op));
+  } else {
+    operands.emplace_back(op.getIndices());
+  }
+  // operands.emplace_back(op.getIndices());
   //operands.emplace_back(inputOp.clone_bf16(op));
   if (auto inputOp = dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
     operands.emplace_back(inputOp.clone_bf16(op));
