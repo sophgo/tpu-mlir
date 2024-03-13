@@ -171,6 +171,62 @@ public:
   }
 };
 
+#define MAX_H_STRIDE 65536
+class RefineReducePattern : public OpRewritePattern<tpu::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
+                                PatternRewriter &rewriter) const override {
+    auto mode = reduceOp.getMode();
+    if (mode != "ReduceSum") {
+      return failure();
+    }
+    auto axes = module::getI64Array(reduceOp.getAxes());
+    if (axes->size() != 1)
+      return failure();
+
+    auto input_shape = module::getShape(reduceOp.getInput());
+    int dsize = 2;
+    if (module::isUniformQuantized(reduceOp.getOutput())) {
+      dsize = 1;
+    }
+    int target_axis = axes->at(0);
+    for (; target_axis < input_shape.size(); ++target_axis) {
+      int32_t inner_dims =
+          std::accumulate(input_shape.begin() + target_axis + 1,
+                          input_shape.end(), 1, std::multiplies<int64_t>());
+      if (inner_dims * dsize < MAX_H_STRIDE) {
+        break;
+      }
+    }
+    if (target_axis == axes->at(0)) {
+      return failure();
+    }
+    std::vector<int64_t> order;
+    for (int i = 0; i < input_shape.size(); ++i) {
+      order.emplace_back(i);
+    }
+    auto newShape = input_shape.vec();
+    std::swap(newShape[axes->at(0)], newShape[target_axis]);
+    std::swap(order[axes->at(0)], order[target_axis]);
+
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> opds;
+    opds.emplace_back(reduceOp.getInput());
+    opds.emplace_back(module::getNoneOp(reduceOp));
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    auto newType = RankedTensorType::get(
+        newShape, module::getElementType(reduceOp.getOutput()));
+    auto loc = module::getLocLike(reduceOp.getOperation(), "_tranpose");
+    auto newTransOp =
+        rewriter.create<tpu::PermuteOp>(loc, newType, opds, attrs);
+    reduceOp.setOperand(0, newTransOp);
+    reduceOp.setAxesAttr(rewriter.getI64ArrayAttr({target_axis}));
+    return success();
+  }
+};
+
 } // namespace cv18xx
 
 namespace tpu {
@@ -178,8 +234,8 @@ using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<FuseLeakReluPattern, MoveConvStrideToEltwiseOpPattern,
-                SplitReluLimitPattern, PermuteReorderPattern, PermutePadSwap>(
-      ctx);
+                SplitReluLimitPattern, PermuteReorderPattern, PermutePadSwap,
+                RefineReducePattern>(ctx);
 };
 } // namespace tpu
 

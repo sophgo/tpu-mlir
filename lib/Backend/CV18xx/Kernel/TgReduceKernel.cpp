@@ -11,9 +11,9 @@
 
 #define DEBUG_TYPE "cvi_backend_reduce_kernel"
 
-
 namespace tpu_mlir {
 namespace backend {
+#define MAX_H_STRIDE 0x10000
 void TgReduceKernel::reshape(std::vector<int64_t> shape,
                              std::vector<int32_t> axes) {
   int num_dims = shape.size();
@@ -43,6 +43,9 @@ void TgReduceKernel::reshape(std::vector<int64_t> shape,
     in_gstride = CV18xx::tg_default_stride(c, h, w, fmt);
     out_gstride = CV18xx::tg_default_stride(c, 1, 1, fmt);
   } else {
+    if (inner_dims >= MAX_H_STRIDE) {
+      assert(0 && "reduce inner_dims >= MAX_H_STRIDE\n");
+    }
     end_reduce = false;
     n = 1;
     c = outer_dims;
