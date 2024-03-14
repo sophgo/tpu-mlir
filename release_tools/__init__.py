@@ -34,12 +34,15 @@ os.environ["PYTHONPATH"] = (
 )
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["TPUC_ROOT"] = f"{package_path}"
+os.environ["LD_LIBRARY_PATH"] = (
+    f"{package_path}/lib:"
+    + f"{package_path}/lib/capi:"
+    + f"{package_path}/lib/third_party:"
+)
+os.environ["TPUKERNEL_CUSTOM_FIRMWARE_PATH"] = f"{package_path}/lib/libcmodel_custom.so"
+os.environ["CUSTOM_LAYER_UNITTEST_DIR"] = f"{package_path}/customlayer/test_if/unittest"
 
-# # This is no longer needer because the rpath of .so files have been changed by patchelf tool in release_pip.sh
-# os.environ["LD_LIBRARY_PATH"] = (
-#     f"{package_path}/lib/third_party:" + f"{package_path}/lib"
-# )
-
+# set python package searching path
 sys.path.append(f"{package_path}/")
 sys.path.append(f"{package_path}/python/")
 sys.path.append(f"{package_path}/regression/")

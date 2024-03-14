@@ -33,6 +33,8 @@ rm ${release_archive}/python/mlir/_mlir_libs/libTPUMLIRPythonCAPI.so
 # cp -rf ${PROJECT_ROOT}/regression ${release_archive}
 # rm -rf ${release_archive}/regression/model
 cp -rf ${PROJECT_ROOT}/third_party/customlayer ${release_archive}
+mkdir -p ${release_archive}/lib/capi/
+cp ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/capi/
 
 mkdir -p ${release_archive}/python/
 cp -rf /usr/local/python_packages/caffe/ ${release_archive}/python/caffe/
