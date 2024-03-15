@@ -33,6 +33,7 @@ setup(
         "pycocotools==2.0.6",
         "scikit-image==0.21.0",
         "transformers==4.31.0",
+        "pandas==2.0.3",
     ],
     extras_require={
         "all": [
