@@ -103,6 +103,7 @@ class TorchConverter(BaseConverter):
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
             "aten::contiguous": lambda node: self.convert_skip_op(node),
+            "aten::cumsum": lambda node: self.convert_cumsum_op(node),
             "aten::detach": lambda node: self.convert_detach_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::dot": lambda node: self.convert_dot_op(node),
@@ -2129,6 +2130,19 @@ class TorchConverter(BaseConverter):
                                    align_corners=align_corners,
                                    loc=self.get_loc(torch_node.name),
                                    ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_cumsum_op(self, torch_node: TorchNode):
+        if not self.isWeight(torch_node.inputs[1]):
+            raise ValueError("Currently, only constant axis is supported")
+        axis = self.getWeight(torch_node.inputs[1])
+        operands = list()
+        operands.append(self.getOperand(torch_node.inputs[0]))
+        operands.append(self.getWeightOp(torch_node.inputs[1]))
+        new_op = top.CumSumOp(self.unranked_type, *operands,
+                              axis=axis,
+                              loc=self.get_loc("{}_{}".format(torch_node.name, torch_node.op_type)),
+                              ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_deform_conv2d_op(self, torch_node: TorchNode):
