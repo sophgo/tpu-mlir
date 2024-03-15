@@ -29,8 +29,30 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     s = "\n".join([line.__repr__() for line in sOrIt_])
     return _indent(s, numSpaces)
 
+def generate_name(op_name):
+    import uuid
+    unique_name = str(uuid.uuid4())
+    return f"{op_name}_{unique_name}"
+
+def auto_name(kwarg_name='out_name'):
+    """
+        auto generate name
+    """
+
+    def wrapper(func):
+        def decorate(*args, **kwargs):
+            if kwarg_name in kwargs:
+                if kwargs[kwarg_name] is None:
+                    kwargs[kwarg_name] = generate_name(func.__name__)
+            return func(*args, **kwargs)
+
+        return decorate
+    return wrapper
 
 def to_scalar(num):
+    """
+        convert `int` or `float` to `Scalar` type
+    """
     def wrapper(func):
 
         def __to_scalar(data):
@@ -60,7 +82,9 @@ def to_scalar(num):
     return wrapper
 
 def annotation_check(func):
-
+    """
+        check python types of function arguments as annotations
+    """
     def __type_instance(type0, type1):
         if get_origin(type1) is Union:
             ret = False
@@ -70,10 +94,7 @@ def annotation_check(func):
         if get_origin(type1) is list or get_origin(type1) is tuple:
             if not isinstance(type0, list) and not isinstance(type0, tuple):
                 return False
-            ret = True
-            for i in range(len(type0)):
-                ret = ret and isinstance(type0[i], get_args(type1))
-            return ret
+            return all(isinstance(type, get_args(type1)) for type in type0)
         else:
             return isinstance(type0, type1)
 
@@ -84,13 +105,13 @@ def annotation_check(func):
                 if k in kwargs and kwargs[k] is None:
                     continue
                 if k in kwargs and not __type_instance(kwargs[k], v):
-                    print("code {} type error, {} wish type: {}".format(func.__code__, k, v))
+                    print("code {} type error, {} expected type: {}".format(func.__code__, k, v))
                     raise
             else:
                 if args[idx] is None:
                     continue
                 if not __type_instance(args[idx], v):
-                    print("code {} type error, input {} wish type: {}".format(func.__code__, idx, v))
+                    print("code {} type error, input {} expected type: {}".format(func.__code__, idx, v))
                     raise
             idx += 1
 
@@ -221,6 +242,7 @@ class Graph:
         self._outputs = outputs
 
     def quantized_type_inference(self):
+        # operators that needs no quantization
         assign_ops = ["Permute", "Reshape", "Tile", "Concat", "Split", "Repeat", "Relu", \
                       "Unsqueeze", "Unsqueeze", "Expand", "Slice", "Copy", "LeakyRelu", "Abs"]
         for op in self.operators:
