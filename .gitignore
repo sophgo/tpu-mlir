@@ -1,4 +1,5 @@
 build/
+build_cpu/
 build_en/
 build_zh/
 install/
