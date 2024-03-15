@@ -20,6 +20,8 @@ struct CompareToCompareConst : public OpRewritePattern<CompareOp> {
 
     auto right_shape = op.getRhs().getType().dyn_cast<TensorType>().getShape();
     int right_elt_num = 1;
+    if (right_shape.size() > 1)
+      return failure();
     for (int i = 0; i < right_shape.size(); ++i)
       right_elt_num *= right_shape[i];
     if (right_elt_num > 1)

@@ -2216,7 +2216,7 @@ class OnnxConverter(BaseConverter):
         assert (len(onnx_node.inputs) == 2)
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
-        if self.isScalar(lhs):
+        if self.isScalar(lhs) and len(self.getShape(lhs)) == 1:
             rhs_opd = self.getOp(rhs)
             cmp_op = top.CompareConstOp(self.unranked_type,
                                         rhs_opd,
@@ -2226,7 +2226,7 @@ class OnnxConverter(BaseConverter):
                                         loc=self.get_loc("{}_{}".format(
                                             onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
-        elif self.isScalar(rhs):
+        elif self.isScalar(rhs) and len(self.getShape(rhs)) == 1:
             lhs_opd = self.getOp(lhs)
             cmp_op = top.CompareConstOp(self.unranked_type,
                                         lhs_opd,
