@@ -2640,7 +2640,7 @@ argsort
 * BM1684X：输入张量的数据类型可以是FLOAT32/FLOAT16。
 
 
-sort_by_key (TODO)
+sort_by_key
 :::::::::::::::::
 
 接口定义
@@ -2650,17 +2650,19 @@ sort_by_key (TODO)
 
         def sort_by_key(input: Tensor,
                         key: Tensor,
+                        axis: int = -1,
                         descending : bool = True,
                         out_name = None)
 
 功能描述
 """""""""""
-按键对输入张量进行排序，输出排序后的张量以及相应的键。
+沿某个轴按键对输入张量进行排序，输出排序后的张量以及相应的键。
 
 参数说明
 """""""""""
 * input：Tensor类型，表示输入。
 * key：Tensor类型，表示键。
+* axis：int类型，表示指定的轴。
 * descending：bool类型，表示是否按从大到小排列。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 

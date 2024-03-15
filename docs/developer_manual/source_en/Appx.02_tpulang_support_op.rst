@@ -2517,17 +2517,19 @@ Definition
 
         def sort_by_key(input: Tensor,
                         key: Tensor,
+                        axis: int = -1,
                         descending : bool = True,
                         out_name = None)
 
 Description
 """""""""""
-Sort input tensor by key then return the sorted tensor and correspending keys.
+Sort input tensor by key along axis then return the sorted tensor and correspending keys.
 
 Parameters
 """""""""""
 * input: Tensor type, representing input.
 * key: Tensor type, representing key.
+* axis: Int type, representing the axis used in sorting. 
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 

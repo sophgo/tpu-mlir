@@ -42,6 +42,13 @@ def rand_data(shape, dtype, min=-10, max=10):
         return np.random.randint(0, 127, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
 
+def rand_indices(shape, dtype):
+    num_elem = 1
+    for i in range(len(shape)):
+        num_elem *= shape[i]
+    data = np.arange(num_elem)
+    np.random.shuffle(data)
+    return data.reshape(shape).astype(dtype=dtype)
 
 def tpulang(chip):
     def wrapper(func):
@@ -138,6 +145,7 @@ class TPULANG_IR_TESTER(object):
             # "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
             "Sort": (self.test_Sort,                    Y, Y),
+            "SortByKey": (self.test_SortByKey,          Y, Y),
             "Split": (self.test_Split,                  Y, Y),
             "Sqrt": (self.test_Sqrt,                    Y, Y),
             "Square": (self.test_Square,                Y, Y),
@@ -2996,7 +3004,7 @@ class TPULANG_IR_TESTER(object):
         def _test_interp(shape_x: List[int], method, coord_mode, dtype="float32", is_quantized=False):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.interpolate(x, 2, 3, method=method, coord_mode=coord_mode)
+            y = tpul.interpolate(x, 2., 3., method=method, coord_mode=coord_mode)
             self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel')
@@ -3105,12 +3113,7 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang(self.chip)
         def _test_sort(shape: List[int], axis: int, dtype="float32"):
-            num_elem = 1
-            for i in range(len(shape)):
-                num_elem *= shape[i]
-            x_data = np.arange(num_elem)
-            np.random.shuffle(x_data)
-            x_data = x_data.reshape(shape).astype(dtype=np.float32)
+            x_data = rand_indices(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
             val, ind = tpul.sort(x, axis)
             self.compile_and_check(self.unique_name(case_name), [x], [val, ind])
@@ -3125,17 +3128,30 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang(self.chip)
         def _test_argsort(shape: List[int], axis: int, dtype="float32"):
-            num_elem = 1
-            for i in range(len(shape)):
-                num_elem *= shape[i]
-            x_data = np.arange(num_elem)
-            np.random.shuffle(x_data)
-            x_data = x_data.reshape(shape).astype(dtype=np.float32)
+            x_data = rand_indices(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
             y = tpul.argsort(x, axis)
             self.compile_and_check(self.unique_name(case_name), [x], [y])
 
         _test_argsort([4, 3, 4, 28], 3)
+
+    #######################################################################
+    # SortByKey
+    # ------------
+    def test_SortByKey(self, case_name):
+        """SortByKey"""
+
+        @tpulang(self.chip)
+        def _test_sort_by_key(shape: List[int], axis: int, dtype="float32"):
+            key_data = rand_indices((shape[axis],), dtype)
+            key = tpul.Tensor(dtype=dtype, shape=list(key_data.shape), data=key_data)
+            x_data = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            y, sorted_key = tpul.sort_by_key(x, key, axis=axis)
+            self.compile_and_check(self.unique_name(case_name), [x, key], [y, sorted_key])
+
+        _test_sort_by_key([28, 4], 0)
+        _test_sort_by_key([4, 28], 1)
 
     def test_SelfAttnBlock(self, case_name):
         class SelfAttnBlock():
