@@ -131,7 +131,7 @@ def local_layout_to_stride(memref):
         return compact_stride()
     if memref.layout == Layout.offset:
         return offset_stride()
-    if memref.layout == Layout.stride:
+    if memref.layout == Layout.stride and not memref.stride:
         return vector_stride()
     if memref.layout == Layout.T3:
         return t3_stride()

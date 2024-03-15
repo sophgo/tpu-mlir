@@ -833,6 +833,9 @@ class BMProfileGenerator:
 
         _ = self.__summary_data(parsed_data)
         _, _, _, layer_info = self.__time_data(parsed_data)
+        if not layer_info:
+            print("No layer infos, cannot generate layer stat file! Please recompile bmodel with --debug option for model_deploy.py command")
+            return
 
         if bmlib_data:
             layer_info += self.__bmlib_layers(bmlib_data)

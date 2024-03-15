@@ -697,16 +697,34 @@ class BMProfileParser:
 
     def update_relation(self, item:IterRecord, global_data):
         # relation between static set node and static command
-        if item.command_info is not None and item.subnet_info is not None and item.subnet_info.command_info is None:
-            subnet_info = item.subnet_info
-            subnet_info.command_info = item.command_info
+        gdma_commands = []
+        bd_commands = []
+        if item.command_info is not None:
             command_data = self.__read_command_data(item.command_info)
-            assert len(subnet_info.gdma_nodes) == len(command_data[0]) or len(command_data[0]) == 0
-            assert len(subnet_info.bd_nodes) == len(command_data[1]) or len(command_data[1]) == 0
-            for i in range(len(command_data[0])):
-                subnet_info.gdma_nodes[i].command = command_data[0][i]
-            for i in range(len(command_data[1])):
-                subnet_info.bd_nodes[i].command = command_data[1][i]
+            if item.subnet_info is not None and item.subnet_info.command_info is None:
+                subnet_info = item.subnet_info
+                subnet_info.command_info = item.command_info
+                assert len(subnet_info.gdma_nodes) == len(command_data[0]) or len(command_data[0]) == 0
+                assert len(subnet_info.bd_nodes) == len(command_data[1]) or len(command_data[1]) == 0
+                for i in range(len(command_data[0])):
+                    subnet_info.gdma_nodes[i].command = command_data[0][i]
+                for i in range(len(command_data[1])):
+                    subnet_info.bd_nodes[i].command = command_data[1][i]
+            else:
+                gdma_commands, bd_commands = command_data
+                for c in gdma_commands:
+                    c.gdma_id = c.cmd_id
+                    c.bd_id = c.dep_id
+                    c.command = c
+                    c.layer = None
+                    c.gdma_func = self.archlib.GDMAFuncType(c.cmd_type)
+                    c.gdma_dir = self.archlib.GDMADirection(1)
+                for c in bd_commands:
+                    c.bd_id = c.cmd_id
+                    c.gdma_id = c.dep_id
+                    c.command = c
+                    c.layer = None
+
 
         # relation between dynamic set id node and dynamic command
         dyn_gdma = []
@@ -816,8 +834,8 @@ class BMProfileParser:
                             match_layer(layer, w)
 
         # relation set id node
-        static_gdma = item.subnet_info.gdma_nodes if item.subnet_info else []
-        static_bd = item.subnet_info.bd_nodes if item.subnet_info else []
+        static_gdma = item.subnet_info.gdma_nodes if item.subnet_info else gdma_commands
+        static_bd = item.subnet_info.bd_nodes if item.subnet_info else bd_commands
         self.match_node(item.monitor_gdma, dyn_gdma, static_gdma, lambda d: d.gdma_id)
         self.match_node(item.monitor_bd, dyn_bd, static_bd, lambda d: d.bd_id)
 
