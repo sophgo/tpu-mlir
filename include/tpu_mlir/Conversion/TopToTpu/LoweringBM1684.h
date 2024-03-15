@@ -23,6 +23,7 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
                   top::OP##Op op) const override;                              \
   };
 
+SHAPE_LOWERING_BM1684(ConstantFill)
 SHAPE_LOWERING_BM1684(Shape)
 SHAPE_LOWERING_BM1684(Slice)
 

@@ -15,6 +15,7 @@ namespace bm1684 {
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
+      ConstantFillTryLowering,
       ShapeTryLowering,
       SliceTryLowering
       // clang-format on

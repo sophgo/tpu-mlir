@@ -69,6 +69,7 @@ class ONNX_IR_TESTER(object):
             "Concat2":      (self.test_Concat2,       Y, Y, Y, Y, Y),
             "Concat3":      (self.test_Concat3,       N, Y, Y, N, Y),
             "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N, Y),
+            "ConstantFillDyn": (self.test_ConstantFillDyn, N, Y, Y, N, Y),
             "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y, Y),
             "Conv1dbigd":   (self.test_Conv1d_bigd,   Y, N, N, N, N),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y, Y),
@@ -4219,6 +4220,27 @@ class ONNX_IR_TESTER(object):
             'tile_input':
             np.array([[1.5, 1.2, 0, 0, 1.6], [2.1, 2.5, 0, 0, 2.6], [3.5, 3.2, 0, 0, 3.6]],
                      dtype=np.float32)
+        }
+        self.onnx_and_test_bmodel(graph_def,
+                                  static_shape=False,
+                                  input_data=input_data,
+                                  only_cmp_with_bmodel=True)
+    
+    def test_ConstantFillDyn(self, case_name):
+        tensor_input_shape = [2, 6]
+
+        graph_txt = """
+            %s (float%s tensor_input) => (float Y_Value)
+            <float constant>
+            {
+                shape = Shape(tensor_input)
+                Y_Value = ConstantOfShape(shape)
+            }
+            """ % (case_name, tensor_input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = {
+            'tensor_input':
+            np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
         }
         self.onnx_and_test_bmodel(graph_def,
                                   static_shape=False,

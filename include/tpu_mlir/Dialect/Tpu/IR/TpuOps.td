@@ -2912,6 +2912,9 @@ def Tpu_ConstantFillOp: Tpu_Op<"ConstantFill", [
   let results = (outs
     AnyTensor:$output
   );
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_Host2DeviceOp : Tpu_Op<"Host2Device", [
