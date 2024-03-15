@@ -631,3 +631,277 @@ This subsection provides application examples of custom operators absadd and cei
 4. Backend operator and interface implementation
 
   The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.
+
+Custom CPU Operator Addition Process
+-------------------------------------
+
+TpuLang Custom CPU Operator Addition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Load TPU-MLIR
+
+   The process is consistent with when loading tpu-mlir for TPU custom operators.
+
+2. Write CPU Operator Implementation
+
+  Assuming you are currently in the $TPUC_ROOT/customlayer path, declare a custom derived class
+  layer that inherits from the cpu_layer class in the header file 
+  ./include/custom_cpu/cpu_impl_{op_name}.h (where "forward()" declares the specific 
+  implementation method, "shape_infer()" declares the method for inferring tensor shape
+  changes before and after, "dtype_infer()" declares the method for inferring data type 
+  changes before and after, "get_param()" declares the parameter parsing method). Also, 
+  add cpu_impl_{op_name}.cpp in the ./cpu_src directory, where you implement the corresponding 
+  functions, define new member variables, and override the member functions.
+
+3. Register Custom Operator
+
+  a. Add the operator's name in cpu_impl_{op_name}.cpp to register the custom operator:
+
+  .. code-block:: c++
+  
+    REGISTER_CPULAYER_CLASS(CPU_CUSTOM, {op_name});
+
+  b. And define the member CPU_CUSTOM_{OP_NAME} in the enumeration type `CPU_CUSTOM_LAYER_TYPE_T` 
+    in ./customlayer/include/customcpu_common.h, where OP_NAME is uppercase.
+
+  .. code-block:: c++
+  
+    typedef enum {
+      CPU_CUSTOM                                 = 10001,
+      CPU_CUSTOM_TOPK                            = 10002,
+      CPU_CUSTOM_XXXX                            = 10003,
+      CPU_CUSTOM_LAYER_NUM                       ,
+      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
+    } CPU_CUSTOM_LAYER_TYPE_T;
+
+  c. Define the instantiation method in customlayer/cpu_src/cpu_layer.cpp
+
+  .. code-block:: c++
+
+    bmcpu::cpu_layer* create{OP_NAME}Layer() {
+      return new bmcpu::cpu_{op_name}layer();
+    }
+
+    void registerFactoryFunctions() {
+      getFactoryMap()[std::string("{OP_NAME}")] = createTopkLayer;
+      // Register other class creators
+      // ...
+    }
+
+4. Compiler Patch
+
+  Sometimes, it is necessary to modify the compiler to control the compilation behavior of
+  different custom operators under different parameters, and this requires adding some patches.
+  The following patch functions are currently supported (defined in the ./plugin folder):
+
+  a. [Required] You need to implement the operator parameter parsing function yourself,
+    which is used to obtain the key parameters required by the operator, and override the 
+    get_param() method of the custom layer:
+
+    .. code-block:: c++
+
+      int cpu_mylayer::get_param(void *param, int param_size);
+
+
+  b. [Required] Inference function, i.e., the C++ implementation of the operator. Override 
+    the custom layer's forward() method:
+
+    .. code-block:: c++
+
+      int cpu_mylayer::forward(void *raw_param, int param_size);
+
+  c. [Optional] Shape inference function. This patch function is used for compiler shape 
+    inference. If not implemented, by default, there is only one input and one output, and
+    the output shape is the same as the input shape. The patch function is as follows:
+
+    .. code-block:: c++
+
+      int cpu_mylayer::shepe_infer(void *param, int param_size,
+                                    const vector<vector<int>> &input_shapes,
+                                    vector<vector<int>> &output_shapes);
+
+  Where input_shapes/output_shapes are arrays of input/output tensor shapes, and 
+  input_dims/output_dims are arrays of input/output tensor dimensions.
+
+5. Compile and Install the Dynamic Library
+
+  First, initialize the environment:
+
+  .. code-block:: shell
+
+    source $TPUC_ROOT/customlayer/envsetup.sh
+
+  Then, complete the compilation of the patch (to obtain `libplugin_custom.so`):
+
+  .. code-block:: shell
+
+    rebuild_custom_plugin
+  
+  Compile the custom operator library file according to the CPU architecture
+  (to obtain `libcustomcpuop.so`). It is important to note that the environment for 
+  compiling the custom CPU operator must be compatible with the glibc version in the bmodel 
+  runtime environment. The commands are as follows:
+
+  a. x86 architecture
+
+  .. code-block:: shell
+
+    rebuild_custom_cpuop_x86
+
+  b. ARM architecture
+
+
+  .. code-block:: shell
+
+    rebuild_custom_cpuop_aarch64
+
+  With this, we have completed the backend part of the custom CPU operator.
+
+6. Build Custom CPU Operators with TpuLang
+
+  For how to use TpuLang, please refer to the TpuLang interface section.
+
+  TpuLang provides the `TpuLang.custom` interface which can also be used for custom CPU operators. 
+  The method of use is basically the same as that for custom TPU operators. The difference is that 
+  when defining the "TpuLang.custom" object, the "op_name" parameter must start with the "cpu."
+  prefix to distinguish it, for example, "cpu.topk":
+
+  .. code-block:: python
+
+    class xxx:
+      @staticmethod
+      def native(...):
+          ...
+          return ...
+      @staticmethod
+      def tpulang(inputs, ...):
+          def shape_func(tensors_in:list, ...):
+              ...
+              return ...
+          params = dict(...)
+          outputs = tpul.custom(
+              tensors_in=inputs,
+              shape_func=shape_func,
+              op_name="cpu.topk",
+              params=params,
+              out_dtypes=...)
+          return outputs
+
+7. On-Processor Testing
+
+  When the network contains custom CPU operators, the bmodel needs to include operator information.
+  Use the command to write libcustomcpuop.so into the bmodel file, which is used for all host 
+  CPU architectures:
+
+  .. code-block:: shell
+
+    tpu_model --custom_cpu_update xxx.bmodel libcustomcpuop.so
+
+  Note: It is especially important that the environment for compiling the custom CPU operator 
+  is compatible with the glibc version in the bmodel runtime environment.
+
+Custom CPU Operator Example
+----------------------------
+
+This section assumes that the tpu-mlir release package has been loaded.
+
+TpuLang Example
+~~~~~~~~~~~~~~~~
+
+This subsection provides an example of a swapchannel operator implementation and its application 
+through the TpuLang interface.
+
+1. Custom Operator Derived Class
+
+  Here, the field "order" corresponds to the "order" attribute on the frontend.
+
+  Define member variables in the custom class in {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+
+  .. code-block:: c++
+
+    private:
+      int axis_;
+      int K_;
+
+
+  Override the `get_param()` interface in the custom class in 
+  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp. It is worth noting that what is
+  passed from the compiler to the backend is an array A of custom_param_t, the first 
+  element of which is reserved, and from the second element onwards, each element
+  corresponds to an attribute on the frontend:
+
+  .. code-block:: c++
+
+    int cpu_topklayer::get_param(void *param, int param_size) {
+      axis_ = ((custom_param_t *)param)[1].int_t;
+      K_ = ((custom_param_t *)param)[2].int_t;
+      return 0;
+    }
+
+  Override the `shape_infer()` interface in the custom class in 
+  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+
+  .. code-block:: c++
+
+    int cpu_topklayer::shepe_infer(const vector<vector<int> > &input_shapes,
+                                      vector<vector<int> > &output_shapes) {
+      get_param(param, param_size);
+      for (const auto& array : input_shapes) {
+        output_shapes.emplace_back(array);
+      }
+      output_shapes[0][axis_] = std::min(K_, input_shapes[0][axis_]);
+      return 0;
+    }
+
+2. CPU Operator Implementation
+
+  Override the `forward()` interface in the custom class in
+  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+
+  .. code-block:: c++
+
+    int cpu_topklayer::forward(void *raw_param, int param_size) {
+      // implementation code right here
+      return 0;
+    }
+
+3. CPU Operator Registration
+
+  a. Add the operator's name in cpu_impl_{op_name}.cpp to register the custom operator:
+
+  .. code-block:: c++
+
+    REGISTER_CPULAYER_CLASS(CPU_CUSTOM_TOPK, cpu_topk);
+
+  b. And define the member CPU_CUSTOM_TOPK in the enumeration type `CPU_CUSTOM_LAYER_TYPE_T`
+    in ./customlayer/include/customcpu_common.h.
+
+  .. code-block:: c++
+
+    typedef enum {
+      CPU_CUSTOM                                 = 10001,
+      CPU_CUSTOM_TOPK                            = 10002,
+      CPU_CUSTOM_LAYER_NUM                          ,
+      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
+    } CPU_CUSTOM_LAYER_TYPE_T;
+
+  c. Define the instantiation method in customlayer/cpu_src/cpu_layer.cpp
+
+  .. code-block:: c++
+
+    bmcpu::cpu_layer* createTopkLayer() {
+      return new bmcpu::cpu_topklayer();
+    }
+
+    void registerFactoryFunctions() {
+      getFactoryMap()[std::string("TOPK")] = createTopkLayer;
+      // Register other class creators
+      // ...
+    }
+
+4. Frontend Preparation
+
+  The process of building a custom CPU operator using the TpuLang interface is basically 
+  the same as for a TPU custom operator. The difference is that when defining the 
+  "TpuLang.custom" object, the "op_name" parameter must start with the "cpu." prefix to 
+  distinguish it, for example, "cpu.topk"
