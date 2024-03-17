@@ -142,8 +142,8 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     for (int half = 0; half < 2; half++) {
       auto offset_half = offset + half * N_half;
       auto suffix_half = suffix + "_" + std::to_string(half);
-      auto newFilter0 = module::opSliceAxis(mm0.getOperand(1), num_dims - 1,
-                                            offset_half, length);
+      auto newFilter0 = module::opSliceAxis(rewriter, mm0.getOperand(1),
+                                            num_dims - 1, offset_half, length);
       std::vector<Value> operands;
       operands.push_back(mm0.getInput());
       operands.push_back(newFilter0);
@@ -152,8 +152,8 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
         operands.push_back(scale.clone(suffix_half));
       }
       if (has_bias) {
-        auto new_bias = module::opSliceAxis(mm0.getBias(), num_dims - 1,
-                                            offset_half, length);
+        auto new_bias = module::opSliceAxis(rewriter, mm0.getBias(),
+                                            num_dims - 1, offset_half, length);
         operands.push_back(new_bias);
       } else {
         operands.push_back(mm0.getBias());
@@ -195,12 +195,12 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     auto new_loc = module::getLocLike(next_op, suffix);
     std::vector<Value> operands;
     operands.push_back(cur_output);
-    auto newFilter1 = module::opSliceAxis(mm1_weight_value, num_dims - 2,
-                                          (mm0_wbits == 4 ? 2 : 1) * offset,
-                                          (mm0_wbits == 4 ? 2 : 1) * length);
+    auto newFilter1 = module::opSliceAxis(
+        rewriter, mm1_weight_value, num_dims - 2,
+        (mm0_wbits == 4 ? 2 : 1) * offset, (mm0_wbits == 4 ? 2 : 1) * length);
     operands.push_back(newFilter1);
     if (a16_mm1) {
-      auto new_scale = module::opSliceAxis(a16_mm1.getOperand(2), 0,
+      auto new_scale = module::opSliceAxis(rewriter, a16_mm1.getOperand(2), 0,
                                            (mm0_wbits == 4 ? 2 : 1) * offset,
                                            (mm0_wbits == 4 ? 2 : 1) * length);
       operands.push_back(new_scale);

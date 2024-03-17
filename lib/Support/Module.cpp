@@ -1505,8 +1505,8 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
 //-----------------------------------------------------------------
 // Helper Functions for op translate
 //-----------------------------------------------------------------
-mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
-                        int64_t length) {
+mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
+                        int64_t offset, int64_t length) {
   auto stype = module::getStorageType(v);
   auto shape = module::getShape(v);
   std::vector<int64_t> new_shape(shape);
@@ -1540,19 +1540,20 @@ mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
     op.dump();
     llvm_unreachable("Not Implemented");
   } else {
-    auto ctx = v.getContext();
-    OpBuilder builder(ctx);
     std::string name = getName(v).str() + "_" + suffix;
-    auto loc = NameLoc::get(builder.getStringAttr(name));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name));
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> offsets(shape.size(), 0);
     offsets[axis] = offset;
     attrs.emplace_back(
-        builder.getNamedAttr("offset", builder.getI64ArrayAttr(offset)));
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offsets)));
+    std::vector<int64_t> steps(shape.size(), 1);
     attrs.emplace_back(
-        builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1, 1})));
-    attrs.emplace_back(builder.getNamedAttr(
-        "ends", builder.getI64ArrayAttr({-1, -1, -1, -1})));
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
+    std::vector<int64_t> ends(shape.size(), -1);
+    attrs.emplace_back(
+        rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
+    rewriter.setInsertionPointAfterValue(v);
     std::vector<Value> operands;
     operands.emplace_back(v);
     auto none = module::getNoneOp(v.getDefiningOp());
@@ -1560,8 +1561,8 @@ mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
     operands.emplace_back(none);
     operands.emplace_back(none);
     operands.emplace_back(none);
-    builder.setInsertionPointAfterValue(v);
-    auto sliceOp = builder.create<tpu::SliceOp>(loc, new_type, operands, attrs);
+    auto sliceOp =
+        rewriter.create<tpu::SliceOp>(loc, new_type, operands, attrs);
     return sliceOp.getOutput();
   }
 }

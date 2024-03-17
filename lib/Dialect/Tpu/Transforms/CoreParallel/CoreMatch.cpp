@@ -8,12 +8,23 @@
 //===----------------------------------------------------------------------===//
 
 #include "CoreParallel.hpp"
-#include "mlir/Transforms/TopologicalSortUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "mlir/Transforms/TopologicalSortUtils.h"
 #include <llvm/ADT/DenseSet.h>
 
 namespace tpu_mlir {
 namespace tpu {
+static bool isOpInBlock(Operation *op) {
+  if (op == nullptr) {
+    return false;
+  }
+  auto parent = op->getParentOp();
+  if (isa<func::FuncOp>(parent)) {
+    return false;
+  }
+  return true;
+}
 
 static bool isOpSameCalc(Operation *op0, Operation *op1) {
   auto compare = [&](mlir::ValueRange left, mlir::ValueRange right) -> bool {
@@ -57,6 +68,18 @@ static bool isOpSameCalc(const std::vector<Operation *> &ops) {
     }
   }
   return true;
+}
+
+static Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
+                          llvm::ArrayRef<int64_t> new_shape,
+                          llvm::StringRef suffix) {
+  rewriter.setInsertionPointAfter(op);
+  auto new_op = rewriter.clone(*op);
+  for (auto r : new_op->getResults()) {
+    module::setShape(r, new_shape);
+  }
+  module::setLocSuffix(new_op, suffix);
+  return new_op;
 }
 
 static void core_match(PatternRewriter &rewriter,
@@ -325,7 +348,8 @@ struct CommonMatch : public RewritePattern {
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
         // inPlace op
-        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::Conv2DOp>(left_op)) {
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::Conv2DOp>(
+                left_op)) {
           continue;
         }
         if (find_f(same_ops, left_op)) {
@@ -367,9 +391,181 @@ struct CommonMatch : public RewritePattern {
   }
 };
 
+class A16MatMulMatch : public OpRewritePattern<tpu::A16MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::A16MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto num_cores = module::getCoreNum();
+    if (num_cores < 2) {
+      return failure();
+    }
+    if (isOpInBlock(op)) {
+      return failure();
+    }
+    if (!op.getWTranspose() || !module::isNone(op.getBias())) {
+      llvm_unreachable("Not Implemented");
+    }
+    auto w = op.getWeight();
+    auto s = op.getScale();
+    auto zp = op.getZp();
+    auto out = op.getOutput();
+    auto w_shape = module::getShape(w);
+    auto s_shape = module::getShape(s);
+    auto o_shape = module::getShape(out);
+    auto N = w_shape[0];
+    auto G = s_shape[1];
+    if (N % num_cores != 0 || G % num_cores != 0) {
+      llvm_unreachable("Not Implemented");
+    }
+    auto N_slice = N / num_cores;
+    auto G_slice = G / num_cores;
+    std::vector<Operation *> ops_begin;
+    std::vector<Operation *> ops_end;
+    std::vector<Value> concat_operands;
+    for (int i = 0; i < num_cores; i++) {
+      auto suffix = std::to_string(i);
+      auto new_w = module::opSliceAxis(rewriter, w, 0, i * N_slice, N_slice);
+      auto new_s = module::opSliceAxis(rewriter, s, 1, i * G_slice, G_slice);
+      auto new_zp = module::opSliceAxis(rewriter, zp, 1, i * G_slice, G_slice);
+      std::vector<int64_t> shape = o_shape;
+      shape.back() = N_slice;
+      auto new_op = cloneOp(rewriter, op, shape, suffix);
+      new_op->setOperand(1, new_w);
+      new_op->setOperand(2, new_s);
+      new_op->setOperand(3, new_zp);
+      concat_operands.push_back(new_op->getResult(0));
+      ops_begin.push_back(new_op);
+      ops_end.push_back(new_op);
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axis", rewriter.getSI32IntegerAttr(o_shape.size() - 1)));
+    rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, out.getType(),
+                                               concat_operands, attrs);
+    group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
+    return success();
+  }
+};
+
+#if 0
+// test case: Gemma-2B block
+// RMSNorm --->A16MatMul------------> Mul -> A16MatMul
+//         --->A16MatMul--->Active /
+class MlpA16Match : public OpRewritePattern<tpu::A16MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  bool is_support(tpu::A16MatMulOp op) {
+    if (isOpInBlock(op)) {
+      return false;
+    }
+    if (!module::isWeight(op.getRight())) {
+      // TODO: support bias weight
+      return false;
+    }
+    auto p = op.parseParam();
+    if (p.batch != 1 || p.M != 1 || p.do_relu || p.with_bias) {
+      // TODO: if do_relu or with_bias, need do relu after add bias
+      return false;
+    }
+    return true;
+  }
+
+  LogicalResult matchAndRewrite(tpu::A16MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto num_cores = module::getCoreNum();
+    if (num_cores < 2) {
+      return failure();
+    }
+    if (!is_support(op)) {
+      return failure();
+    }
+
+    auto in_op = op.getInput().getDefiningOp();
+    if (!in_op) {
+      return failure();
+    }
+    if (!isa<tpu::MulOp, tpu::AddOp>(in_op)) {
+      return failure();
+    }
+    if (in_op->getNumOperands() != 2) {
+      return failure();
+    }
+    auto left_op = in_op->getOperands(0).getDefiningOp();
+    auto right_op = in_op->getOperands(1).getDefiningOp();
+    if (!isa<tpu::ActiveOp>(left_op) || !is_support(right_op)) {
+      return failure();
+    }
+    auto left_in_op = left_op->getOperands(0);
+    if (!is_support(left_in_op)) {
+      return failure();
+    }
+    if (left_in_op->getOperands(0) != right_op->getOperands(0)) {
+      return failure();
+    }
+    auto norm_op = left_in_op->getOperands(0).getDefiningOp();
+    if (!isa<tpu::RMSNormOp, tpu::LayerNormOp>(norm_op)) {
+      return failure();
+    }
+    // bingo !!!
+    std::vector<Operation *> ops_begin;
+    std::vector<Operation *> ops_end;
+    for (int i = 0; i < num_cores; i++) {
+      auto suffix = std::to_string(i);
+      auto norm_shape = module::getShape(norm_shape);
+      auto new_norm = cloneOp(rewriter, norm_op, norm_shape, suffix);
+      new_norm.setOperands(norm_op.getOperands());
+      ops_begin.push_back(new_norm);
+      auto l_mm = cast<MMTy>(left_in_op);
+      auto l_p = left_mm.parseParam();
+      auto l_N_slice = ceiling_func(l_p.N, num_cores);
+      auto l_offset = i * l_N_slice;
+      auto l_slice = std::min(l_N_slice, l_p.N - l_offset);
+      auto l_filter_shape = module::getShape(l_p.getRight());
+      auto l_filter_dims = l_filter_sape.size();
+      auto l_filter = module::opSliceAxis(l_p.getOperand(1), l_filter_dims - 1,
+                                          l_offset, l_slice);
+      if (is_a16) {
+
+      } else {
+      }
+    }
+    auto out = op.getOutput();
+    auto in_shape = module::getShape(op.getInput());
+    auto in_dims = in_shape.size();
+    auto r_shape = module::getShape(op.getRight());
+    auto r_dims = r_shape.size();
+    auto new_K = p.K / num_cores;
+    std::vector<Value> add_operands;
+    for (int i = 0; i < num_cores; i++) {
+      std::vector<Value> operands;
+      auto newInput = module::opSliceAxis(rewriter, op.getInput(), in_dims - 1,
+                                          i * new_K, new_K, true);
+      operands.push_back(newInput);
+      auto newRight = module::opSliceAxis(rewriter, op.getRight(), r_dims - 2,
+                                          i * new_K, new_K, true);
+      operands.push_back(newRight);
+      operands.push_back(op.getBias());
+      auto suffix = std::to_string(i);
+      auto new_loc = module::getLocLike(out, suffix);
+      rewriter.setInsertionPointAfterValue(newRight);
+      auto newMM = rewriter.create<top::MatMulOp>(new_loc, out.getType(),
+                                                  operands, op->getAttrs());
+      add_operands.push_back(newMM.getOutput());
+    }
+    rewriter.replaceOpWithNewOp<top::AddOp>(op, out.getType(), add_operands);
+    return success();
+  }
+};
+#endif
+
 void doCoreParallelPattern(ModuleOp m) {
   // first match pattern
   module::applyPatternOnce<CommonMatch>(m);
+  // then split different pattern to multi cores
+  module::applyPatternOnce<A16MatMulMatch>(m);
+  //....
   for (auto op : m.getOps<FuncOp>()) {
     for (auto &block : op.getBlocks()) {
       if (!mlir::sortTopologically(&block)) {
@@ -380,8 +576,6 @@ void doCoreParallelPattern(ModuleOp m) {
       };
     }
   }
-  // then split different pattern to multi cores
-  //....
 }
 
 } // namespace tpu

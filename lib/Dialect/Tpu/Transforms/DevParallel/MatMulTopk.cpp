@@ -17,8 +17,7 @@ template <typename MatMulTy>
 LogicalResult
 MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
                                       PatternRewriter &rewriter) const {
-  if (!isLargeMatMul(op) || module::isOpInDevParallel(op) ||
-      !op->hasOneUse()) {
+  if (!isLargeMatMul(op) || module::isOpInDevParallel(op) || !op->hasOneUse()) {
     return failure();
   }
   auto next_op = *op->user_begin();
@@ -44,8 +43,8 @@ MatMulTopK<tpu::A16MatMulOp>::matchAndRewrite(tpu::A16MatMulOp op,
                                               PatternRewriter &rewriter) const;
 
 template <typename MatMulTy>
-void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
-               tpu::DevBeginOp op, int64_t num_devices) {
+void topKSplit(MatMulTy mm, PatternRewriter &rewriter, tpu::DevBeginOp op,
+               int64_t num_devices) {
   if (!mm) {
     return;
   }
@@ -75,18 +74,20 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
     auto length = get_splited_size(N, num_devices, i, 0, q_group_size);
     auto suffix = std::to_string(i);
 
-    // next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices, i, 0);
+    // next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
+    // i, 0);
 
-    auto newFilter = module::opSliceAxis(
-        mm.getOperand(1), num_dims - 1 - a16_mm_w_trans, offset, length);
+    auto newFilter =
+        module::opSliceAxis(rewriter, mm.getOperand(1),
+                            num_dims - 1 - a16_mm_w_trans, offset, length);
 
     std::vector<Value> operands;
     operands.push_back(mm.getInput());
     operands.push_back(newFilter);
     if (a16_mm) {
       auto scale_op = mm.getOperand(2).template getDefiningOp<top::WeightOp>();
-      auto sliced_scale =
-          module::opSliceAxis(scale_op, !a16_mm_w_trans, offset, length);
+      auto sliced_scale = module::opSliceAxis(rewriter, scale_op,
+                                              !a16_mm_w_trans, offset, length);
       operands.push_back(sliced_scale);
       auto zp_op = mm.getOperand(3);
       if (zp_op.getType().template dyn_cast<NoneType>()) {
@@ -95,14 +96,14 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
       } else {
         auto zp_weight = zp_op.template getDefiningOp<top::WeightOp>();
         auto sliced_zp =
-            module::opSliceAxis(zp_weight, !a16_mm_w_trans, offset, length);
+            module::opSliceAxis(rewriter, zp_weight, !a16_mm_w_trans, offset, length);
         operands.push_back(sliced_zp);
       }
     }
 
     if (has_bias) {
       auto new_bias =
-          module::opSliceAxis(mm.getBias(), num_dims - 1, offset, length);
+          module::opSliceAxis(rewriter, mm.getBias(), num_dims - 1, offset, length);
       operands.push_back(new_bias);
     } else {
       operands.push_back(mm.getBias());
@@ -138,9 +139,8 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
       auto new_loc = NameLoc::get(
           rewriter.getStringAttr(new_name.str() + suffix + "_add"));
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(rewriter.getNamedAttr(
-          "const_val",
-          rewriter.getF64FloatAttr(offset)));
+      attrs.push_back(
+          rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(offset)));
       rewriter.setInsertionPointAfter(new_op);
       auto new_add = rewriter.create<tpu::AddConstOp>(
           new_loc, indices.getType(), ValueRange{indices}, attrs);

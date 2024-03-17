@@ -428,7 +428,14 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
       std::min(std::max((int)rightShape.size() - 2, 0), maxParallelDims);
 
   // batch broadcast case: (B, M, K) x (1, K, N), 1 can not be sliced
-  if (rightParalleDims == 1 && rightShape[0] == 1) {
+  bool all_one = true;
+  for (int i = 0; i < rightParalleDims; i++) {
+    if (rightShape[i] > 1) {
+      all_one = false;
+      break;
+    }
+  }
+  if (all_one) {
     rightParalleDims = 0;
   }
 
