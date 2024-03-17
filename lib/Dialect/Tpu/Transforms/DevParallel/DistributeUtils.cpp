@@ -34,8 +34,8 @@ int64_t get_splited_size(int64_t size, int64_t num_devices, int64_t cur_device,
     sz *= 2;
   }
 
-//  std::cout << "cur_dievce = " << cur_device << ", size = " << size
-//            << ", length = " << sz << std::endl;
+  //  std::cout << "cur_dievce = " << cur_device << ", size = " << size
+  //            << ", length = " << sz << std::endl;
   return sz;
 }
 
@@ -1120,8 +1120,8 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   auto new_loc = module::getLocLike(out, suffix);
 
   // slice and clone the weight
-  auto new_filter =
-      module::opSliceAxis(filterOp, num_dims - 1 - w_trans, offset, length);
+  auto new_filter = module::opSliceAxis(rewriter, filterOp,
+                                        num_dims - 1 - w_trans, offset, length);
   std::vector<Value> operands{cur_out, new_filter};
 
   // slice and clone the bias
@@ -1132,7 +1132,8 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   Value new_bias = bias;
   if (auto biasOp = dyn_cast<top::WeightOp>(bias.getDefiningOp())) {
     int bias_num_dims = module::getShape(bias).size();
-    new_bias = module::opSliceAxis(bias, bias_num_dims - 1, offset, length);
+    new_bias =
+        module::opSliceAxis(rewriter, bias, bias_num_dims - 1, offset, length);
   }
 
   Operation *new_op;
@@ -1150,14 +1151,16 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     }
 
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
-      auto new_scale = module::opSliceAxis(mm0.getScale(), 0, offset, length);
+      auto new_scale =
+          module::opSliceAxis(rewriter, mm0.getScale(), 0, offset, length);
       operands.push_back(new_scale);
     } else {
       operands.push_back(module::getNoneOp(next_op));
     }
     // clone the zp
     if (isa<top::WeightOp>(mm0.getZp().getDefiningOp())) {
-      auto new_zp = module::opSliceAxis(mm0.getZp(), 0, offset, length);
+      auto new_zp =
+          module::opSliceAxis(rewriter, mm0.getZp(), 0, offset, length);
       operands.push_back(new_zp);
     } else {
       operands.push_back(module::getNoneOp(next_op));
@@ -1222,8 +1225,8 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   auto new_type = out.getType();
 
   // slice and clone the weight
-  auto new_filter =
-      module::opSliceAxis(filterOp, num_dims - 2 + w_trans, offset, length);
+  auto new_filter = module::opSliceAxis(rewriter, filterOp,
+                                        num_dims - 2 + w_trans, offset, length);
   std::vector<Value> operands{cur_out, new_filter};
 
   // clone the bias
@@ -1255,13 +1258,13 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
       assert(module::getShape(mm0.getScale()).size() == 2 &&
              "scale and zp weight reorder should not happen before distribute");
       assert(2 * length % q_group_size == 0);
-      scale_length = 2*length/q_group_size;
-      scale_offset = 2*offset / q_group_size;
+      scale_length = 2 * length / q_group_size;
+      scale_offset = 2 * offset / q_group_size;
     }
 
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
       auto new_scale = q_group_size
-                           ? module::opSliceAxis(mm0.getScale(), 1,
+                           ? module::opSliceAxis(rewriter, mm0.getScale(), 1,
                                                  scale_offset, scale_length)
                            : cast<top::WeightOp>(mm0.getScale().getDefiningOp())
                                  .clone(suffix);
@@ -1269,10 +1272,10 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     }
     // clone the zp
     if (isa<top::WeightOp>(mm0.getZp().getDefiningOp())) {
-      auto new_zp =
-          q_group_size
-              ? module::opSliceAxis(mm0.getZp(), 1, scale_offset, scale_length)
-              : cast<top::WeightOp>(mm0.getZp().getDefiningOp());
+      auto new_zp = q_group_size
+                        ? module::opSliceAxis(rewriter, mm0.getZp(), 1,
+                                              scale_offset, scale_length)
+                        : cast<top::WeightOp>(mm0.getZp().getDefiningOp());
       operands.push_back(new_zp);
     } else {
       operands.push_back(module::getNoneOp(next_op));
@@ -1301,8 +1304,8 @@ void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
   rewriter.setInsertionPointAfterValue(cur_out);
   std::vector<NamedAttribute> attrs;
   float const_val = cur_device == 0 ? 1.0 : 0;
-  attrs.push_back(rewriter.getNamedAttr(
-      "const_val", rewriter.getF64FloatAttr(const_val)));
+  attrs.push_back(
+      rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
   auto new_type = cur_out.getType();
   auto new_op = rewriter.create<tpu::MulConstOp>(new_loc, new_type,
                                                  ValueRange{cur_out}, attrs);
