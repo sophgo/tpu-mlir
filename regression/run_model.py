@@ -19,6 +19,25 @@ import os
 import threading
 import queue
 from utils.misc import *
+import re
+
+def extract_profile_info(file_path):
+    with open(file_path, 'rb') as f:
+        f.seek(0, 2)
+        fsize = f.tell()
+        f.seek(max(fsize-1024, 0), 0)
+        lines = f.readlines()[-20:]
+
+    text = ''.join(line.decode('utf-8') for line in lines)
+
+    runtime_match = re.search(r'runtime:\s*([0-9.]+)ms', text)
+    computation_ability_match = re.search(r'ComputationAbility:\s*([0-9.]+)T', text)
+
+    runtime = float(runtime_match.group(1)) if runtime_match else None
+
+    computation_ability = float(computation_ability_match.group(1)) if computation_ability_match else None
+
+    return runtime, computation_ability
 
 class MODEL_RUN(object):
 
@@ -68,13 +87,20 @@ class MODEL_RUN(object):
 
         self.top_patterns = str2dict(self.ini_content["top_patterns"]) \
                                 if "top_patterns" in self.ini_content else None
-        self.tpu_patterns = str2dict(self.ini_content["tpu_patterns"]) \
-                                if "tpu_patterns" in self.ini_content else None
         self.arch = chip
+        self.time_record = {}
+
         if chip.startswith("cv18") and chip != "cv186x":
             self.arch = "cv18xx"
         elif chip == "bm1688" or chip == "cv186x":
             self.arch = "bm1684x"
+        self.arch_content = {}
+        self.tpu_patterns = {}
+        if config.has_section(self.arch):
+            self.arch_content = dict(config.items(self.arch))
+            if f"{chip}_tpu_patterns" in self.arch_content:
+                self.tpu_patterns = str2dict(self.arch_content[f"{chip}_tpu_patterns"])
+
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
             "f16": config.get(self.arch, "f16_tolerance", fallback="0.95,0.85"),
@@ -125,6 +151,9 @@ class MODEL_RUN(object):
             if chip =='bm1690' and f"test_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"test_{quant_mode}"])
 
+            if f"{chip}_{quant_mode}_time" in self.arch_content.keys():
+                self.time_record[quant_mode] = eval(self.arch_content[f"{chip}_{quant_mode}_time"])
+
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
             self.ini_content["do_dynamic"])) and chip_support[self.chip][-2]
         self.compress_mode = config.get(self.arch, "compress_mode", fallback="none") if chip == 'bm1688' else "none"
@@ -174,7 +203,7 @@ class MODEL_RUN(object):
             cmd += ["--pad_value {}".format(self.ini_content["pad_value"])]
         if "pad_type" in self.ini_content:
             cmd += ["--pad_type {}".format(self.ini_content["pad_type"])]
-        if "top_patterns" in self.ini_content:
+        if self.top_patterns:
             cmd += ["--patterns_count {}".format(self.ini_content["top_patterns"])]
         # add others
         if "output_names" in self.ini_content:
@@ -344,8 +373,8 @@ class MODEL_RUN(object):
             cmd += ["--debug"]
         if self.num_core != 1:
             cmd += [f"--num_core {self.num_core}"]
-        if "tpu_patterns" in self.ini_content:
-            cmd += ["--patterns_count {}".format(self.ini_content["tpu_patterns"])]
+        if self.tpu_patterns:
+            cmd += ["--patterns_count {}".format(self.arch_content[f"{self.chip}_tpu_patterns"])]
         cmd += [f"--compress_mode {self.compress_mode}"]
 
         # add for quant modes which require calibration
@@ -411,6 +440,7 @@ class MODEL_RUN(object):
         if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
             output_file = self.model_name + f"_{quant_mode}.jpg"
             self.run_sample(model_file, self.ini_content["test_input"], output_file)
+
 
     def run_dynamic(self, quant_mode: str):
         '''do dynamic regression
@@ -554,3 +584,10 @@ if __name__ == "__main__":
                        args.fuse_preprocess, args.customization_format, args.aligned_input,
                        args.save_log, args.disable_thread, args.debug, args.num_core)
     runner.run_full()
+
+    for quant_mode in runner.time_record.keys():
+        profile_path = f"{args.model_name}_{args.chip}_{quant_mode}.bmodel.compiler_profile_0.txt"
+        if os.path.exists(profile_path):
+            runtime, _ = extract_profile_info(profile_path)
+            assert runtime <= (1.05 * runner.time_record[quant_mode]), \
+                f"{args.model_name} runtime is much longer than baseline {runner.time_record[quant_mode]}"

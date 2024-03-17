@@ -278,6 +278,7 @@ if __name__ == '__main__':
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
+    # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                         help='used for regression test, check if patterns are successfully applied a specific number of times')
 

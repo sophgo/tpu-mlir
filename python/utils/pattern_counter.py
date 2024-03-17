@@ -24,7 +24,7 @@ class PatternCounter():
             for line in file:
                 match = pattern_name_regex.search(line)
                 if match:
-                    last_pattern = match.group(1).split("::")[-1]
+                    last_pattern = re.split(r'::(?![^<]*>)', match.group(1))[-1]
                 elif '-> success' in line and last_pattern:
                     if last_pattern not in self.success_counter:
                         self.success_counter[last_pattern] = 1

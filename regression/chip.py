@@ -58,9 +58,9 @@ basic_model_list = {
     "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N),
     "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      N),
     "eva02_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N),
-    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
-    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
-    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "swint_block":                (N,      Y,       Y,      N,      N,      N,      N,     N,      N),
+    "sam_block":                  (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "cswin_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N),
 }
 
 full_model_list = {
