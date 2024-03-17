@@ -351,12 +351,13 @@ if __name__ == '__main__':
                         help="do_winograd")
     # for tosa includeWeight
     parser.add_argument("--includeWeight", action='store_true', help="include weight in tosa.mlir")
-    parser.add_argument("--patterns_count", type=str2dict, default=dict(),
-                        help='used for regression test, check if patterns are successfully applied a specific number of times')
     # for bm1688
     parser.add_argument("--compress_mode", default="none", type=str.lower,
                         choices=["none", "weight", "activation", "all"],
                         help="set compress mode")
+    # regression test only, not for users
+    parser.add_argument("--patterns_count", type=str2dict, default=dict(),
+                    help='used for regression test, check if patterns are successfully applied a specific number of times')
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")
