@@ -16,7 +16,19 @@ static void LoweringGridSampler(PatternRewriter &rewriter,
                                 top::GridSamplerOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  operands.push_back(op.getInput());
+  if (module::isWeight(op.getInput())) {
+    auto wOp = op.getInput().getDefiningOp<top::WeightOp>();
+    auto stype = module::getStorageType(type);
+    if (stype.isF16()) {
+      operands.push_back(wOp.clone_f16(op));
+    } else if (stype.isBF16()) {
+      operands.push_back(wOp.clone_bf16(op));
+    } else {
+      operands.push_back(op.getInput());
+    }
+  } else {
+    operands.push_back(op.getInput());
+  }
   operands.push_back(op.getGrid());
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp); // buffer
@@ -29,7 +41,7 @@ void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
   int mode = op.getMode();
   auto dims = module::getShape(op.getInput()).size();
-  if (mode == 0 || dims > 4) {
+  if (dims > 4 && mode == 1) {
     std::vector<NamedAttribute> attrs;
     std::vector<NamedAttribute> cpu_param;
     attrs.emplace_back(rewriter.getNamedAttr(
@@ -67,24 +79,13 @@ void GridSamplerLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GridSamplerLowering::LoweringF16(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
-  auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
-  auto eu_num = 32;
-  auto type_len = 2;
-  auto in_shape = module::getShape(op.getInput());
-  auto dims = in_shape.size();
   auto mode = op.getMode();
-  auto paddign_mode = op.getPaddingMode();
-  auto align_corners = op.getAlignCorners();
-  // grid_sample f16 for tpu only support (input_h + 2) * ALIGN(input_w + 2, tpu_eu_num(dtype)) <= 3 * 16KB (3 banks)
-  if ((in_shape[2] + 2) * align_up(in_shape[3] + 2, eu_num) * type_len <=  3 * 16 * 1024
-        && mode == 0
-        && paddign_mode == 0
-        && align_corners == 0
-        && dims == 4) {
+  if (mode == 0) {
+    auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
     LoweringGridSampler(rewriter, op, new_type);
-    return;
+  } else {
+    LoweringF32(rewriter, op);
   }
-  LoweringF32(rewriter, op);
 }
 
 void GridSamplerLowering::LoweringF8(PatternRewriter &rewriter,

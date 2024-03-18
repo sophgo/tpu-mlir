@@ -481,7 +481,18 @@ public:
       return failure();
     }
     auto type = ::mlir::Builder(getContext()).getIntegerType(8);
-    int64_t buffer_size = 4 * 16 * 1024 * 64; // 4 banks
+    auto output_shape = module::getShape(gridSamplerOp.getOutput());
+    auto coeff_dtype_size = module::getDtypeSize(gridSamplerOp.getOutput());
+    auto dim = output_shape.size();
+    int f32_size = 4;
+    int64_t buffer_size;
+    if (dim == 4) {
+      buffer_size = output_shape[0] * align_up(output_shape[2] * output_shape[3], Arch::NPU_NUM) * (2 * f32_size + 4 * coeff_dtype_size);
+    } else if (dim == 5) {
+      buffer_size = output_shape[0] * align_up(output_shape[2] * output_shape[3] * output_shape[4], Arch::NPU_NUM) * (3 * f32_size + 8 * coeff_dtype_size);
+    } else {
+      return failure();
+    }
     auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
     auto buffer = tpu::BufferOp::create(gridSamplerOp, buffer_type);
     gridSamplerOp.setOperand(gridSamplerOp.getNumOperands() - 1, buffer);
