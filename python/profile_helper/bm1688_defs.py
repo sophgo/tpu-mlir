@@ -137,6 +137,7 @@ TIU_ARCH = DMA_ARCH
 
 
 def get_dma_info(monitor_info, reg_info):
+    is_sys = reg_info.name == 'sDMA_sys'
     _reg_info = reg_info
     reg_info = reg_info.reg
     dma_info = dict()
@@ -152,10 +153,16 @@ def get_dma_info(monitor_info, reg_info):
         dma_info[trans_key] = value
     dma_info["mask_start_addr_h8"] = dma_info.get("mask_start_addr_h8", 0)
     dma_info["mask_start_addr_l32"] = dma_info.get("mask_start_addr_l32", 0)
-    dma_info["dst_start_addr"] = (
-        int(dma_info["dst_start_addr_h8"]) << 32) + int(dma_info["dst_start_addr_l32"])
-    dma_info["src_start_addr"] = (
-        int(dma_info["src_start_addr_h8"]) << 32) + int(dma_info["src_start_addr_l32"])
+    if is_sys:
+        dma_info["dst_start_addr"] = 0
+        dma_info["src_start_addr"] = 0
+        dma_info["src_start_addr_h8"] = 0
+        dma_info["dst_start_addr_h8"] = 0
+    else:
+        dma_info["dst_start_addr"] = (
+            int(dma_info["dst_start_addr_h8"]) << 32) + int(dma_info["dst_start_addr_l32"])
+        dma_info["src_start_addr"] = (
+            int(dma_info["src_start_addr_h8"]) << 32) + int(dma_info["src_start_addr_l32"])
 
     # step2: get custom information
     src_type = MEMTYPE(dma_info['src_start_addr_h8'] >> 7).name
@@ -181,16 +188,16 @@ def get_dma_info(monitor_info, reg_info):
         monitor_info.d1_aw_bytes + monitor_info.d0_ar_bytes + monitor_info.d1_ar_bytes
     dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
                                        dma_info["Asic Cycle"] * 0.75, 4)
-    dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * reg_info.src_hsize * reg_info.src_wsize,
-                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
+    dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
+                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     dma_info["gmem_xact_cnt"] = (monitor_info.d0_ar_bytes + monitor_info.d0_aw_bytes +
                                  monitor_info.d1_ar_bytes + monitor_info.d1_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
     dma_info["lmem_xfer_bytes"] = monitor_info.fmem_aw_bytes + \
         monitor_info.fmem_ar_bytes
     dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] /
                                        dma_info["Asic Cycle"] * 0.75, 4)
-    dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * reg_info.src_hsize * reg_info.src_wsize,
-                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * reg_info.dst_hsize * reg_info.src_wsize) * data_type.prec()
+    dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
+                                            (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     dma_info["lmem_xact_cnt"] = (
         monitor_info.fmem_ar_bytes + monitor_info.fmem_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
     dma_info["DMA data size(B)"] = max(
