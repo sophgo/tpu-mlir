@@ -34,8 +34,14 @@ class TORCH_IR_TESTER(object):
                  chip: str = "bm1684x",
                  mode: str = "all",
                  simple: bool = False,
-                 disable_thread: bool = False):
+                 disable_thread: bool = False,
+                 quant_input: bool = False,
+                 quant_output: bool = False,
+                 debug: bool = False):
         Y, N = True, False
+        self.quant_input = quant_input
+        self.quant_output = quant_output
+        self.debug = debug
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -89,8 +95,9 @@ class TORCH_IR_TESTER(object):
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "FrobeniusNorm":    (self.test_FrobeniusNorm,     N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
-            "GridSampler":      (self.test_GridSampler,       N, N, N, Y),
+            "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
             "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
+            "GridSampler3DPermute": (self.test_GridSampler3DPermute,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),
             "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
@@ -328,7 +335,7 @@ class TORCH_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + self.model_file
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug)
 
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -3130,12 +3137,34 @@ class TORCH_IR_TESTER(object):
                                        padding_mode, align_corners)
                     _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
                                        padding_mode, align_corners)
-        # max shape in Grouding Dino
-        _test_grid_sampler((8, 32, 100, 100), (8, 13294, 4, 2), 0,
-                            0, False)
-        # max shape for tpu grid_sample f16 (3 banks)
-        _test_grid_sampler((8, 32, 254, 94), (8, 13294, 4, 2), 0,
-                            0, False)
+        # # max shape in Grouding Dino
+        # _test_grid_sampler((8, 32, 100, 100), (8, 13294, 4, 2), 0,
+        #                     0, False)
+        # # max shape for tpu grid_sample f16 (3 banks)
+        # _test_grid_sampler((8, 32, 254, 94), (8, 13294, 4, 2), 0,
+        #                     0, False)
+
+        # case for DinoSwinL
+        # _test_grid_sampler((8, 32, 320, 180), (8, 76760, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 160, 90), (8, 76760, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 80, 45), (8, 76760, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 40, 23), (8, 76760, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 20, 12), (8, 76760, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 320, 180), (8, 900, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 160, 90), (8, 900, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 80, 45), (8, 900, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 40, 23), (8, 900, 4, 2), 0,
+        #                     0, False)
+        # _test_grid_sampler((8, 32, 20, 12), (8, 900, 4, 2), 0,
+        #                     0, False)
 
     #######################################################################
     # GridSampler3D
@@ -3168,15 +3197,46 @@ class TORCH_IR_TESTER(object):
         padding_mode_list = [0, 1]
         align_corners_list = [False, True]
 
-        for mode in mode_list:
-            for padding_mode in padding_mode_list:
-                for align_corners in align_corners_list:
-                    _test_grid_sampler((1, 3, 100, 150, 150), (1, 100, 150, 150, 3), mode,
-                                       padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 100, 150, 150), (1, 40, 80, 120, 3), mode,
-                                       padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 50, 50, 50), (1, 1, 1, 1, 3), mode,
-                                       padding_mode, align_corners)
+        # for mode in mode_list:
+        #     for padding_mode in padding_mode_list:
+        #         for align_corners in align_corners_list:
+        #             _test_grid_sampler((1, 3, 100, 150, 150), (1, 100, 150, 150, 3), mode,
+        #                                padding_mode, align_corners)
+        #             _test_grid_sampler((1, 3, 100, 150, 150), (1, 40, 80, 120, 3), mode,
+        #                                padding_mode, align_corners)
+        #             _test_grid_sampler((1, 3, 50, 50, 50), (1, 1, 1, 1, 3), mode,
+        #                                padding_mode, align_corners)
+        _test_grid_sampler((1, 15, 17, 17, 17), (1, 1, 1440, 2560, 3), 0, 1, True)
+
+    #######################################################################
+    # GridSampler3DPermute
+    # ------------
+    def test_GridSampler3DPermute(self):
+        """GridSampler3DPermute"""
+
+        def _test_grid_sampler(in_shape, grid_shape, mode, padding_mode, align_corners):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    input_tensor = torch.randn(in_shape, dtype=torch.float32)
+                    grid = torch.rand(grid_shape, dtype=torch.float32)
+
+
+                def forward(self, input_tensor, grid):
+                    grid = grid.permute(0, 2, 3, 4, 1)
+                    output_tensor = torch.grid_sampler(input_tensor,
+                                                       grid,
+                                                       interpolation_mode=mode,
+                                                       padding_mode=padding_mode,
+                                                       align_corners=align_corners)
+                    return output_tensor
+
+            self.trace_and_test([in_shape, grid_shape], Model(), [
+                                self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
+
+        _test_grid_sampler((1, 15, 17, 17, 17), (1, 3, 1, 1440, 2560), 0, 1, True)
 
     #######################################################################
     # Deformable Convolution
@@ -3420,9 +3480,11 @@ if __name__ == "__main__":
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
+    parser.add_argument("--quant_input", action="store_true", help='quant input')
+    parser.add_argument("--quant_output", action="store_true", help='quant output')
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread)
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

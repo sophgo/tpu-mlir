@@ -2606,8 +2606,9 @@ def Tpu_GridSamplerOp : Tpu_Op<"GridSampler"> {
     I64Attr:$mode,
     I64Attr:$padding_mode,
     BoolAttr:$align_corners,
-    DefaultValuedAttr<F64Attr, "-1">:$scale_min,
-    DefaultValuedAttr<F64Attr, "1">:$scale_max,
+    DefaultValuedAttr<F64Attr, "0">:$mean,
+    DefaultValuedAttr<F64Attr, "1">:$scale,
+    DefaultValuedAttr<BoolAttr, "false">:$need_permute,
     AnyTensorOrNone:$buffer
   );
 

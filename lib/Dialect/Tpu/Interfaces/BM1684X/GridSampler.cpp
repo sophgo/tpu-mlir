@@ -55,19 +55,35 @@ void tpu::GridSamplerOp::codegen_global_bm1684x() {
   }
   param.interp_mode = interp_mode;
   param.padding_mode = padding_mode;
-  param.scale_min = getScaleMin().convertToDouble();
-  param.scale_max = getScaleMax().convertToDouble();
+  param.mean = getMean().convertToDouble();
+  param.scale = getScale().convertToDouble();
+  param.need_permute = getNeedPermute();
 
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
-
-  param.input_n = n;
-  param.input_c = c;
-  param.input_h = h;
-  param.input_w = w;
+  auto in_shape = module::getShape(getInput());
   auto out_shape = module::getShape(getOutput());
-  param.output_h = out_shape[2];
-  param.output_w = out_shape[3];
+  auto dims = in_shape.size();
+  param.dims = dims;
+
+  if (dims == 4) {
+    param.input_n = in_shape[0];
+    param.input_c = in_shape[1];
+    param.input_h = in_shape[2];
+    param.input_w = in_shape[3];
+    param.output_h = out_shape[2];
+    param.output_w = out_shape[3];
+  } else if (dims == 5) {
+    param.input_n = in_shape[0];
+    param.input_c = in_shape[1];
+    param.input_d = in_shape[2];
+    param.input_h = in_shape[3];
+    param.input_w = in_shape[4];
+    param.output_d = out_shape[2];
+    param.output_h = out_shape[3];
+    param.output_w = out_shape[4];
+  } else {
+    llvm_unreachable("Not implemented.");
+  }
+
   param.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_grid_sample_global", &param,
                            sizeof(grid_sample_global_param_t));
