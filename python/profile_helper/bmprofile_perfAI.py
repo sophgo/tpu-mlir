@@ -184,6 +184,13 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     def __parse_monitor_tiu(self, monitor_tiu: List, raw_data):
         tmp = parse_monitor_bd(raw_data, self.archlib)
+        delta_id = 0
+        last_id = 0
+        for c in tmp:
+            if last_id > 65000 and c.inst_id < 1000:
+                    delta_id += 65536
+            last_id = c.inst_id
+            c.inst_id += delta_id
         self.bd_monitor.append(tmp)
         monitor_tiu.append(tmp)
 
@@ -265,5 +272,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
     bmProfile = BMProfileParserPerfAI()
-    bmProfile.parse("/workspace/easytools/a2profile_yjz/yolov5s/bmprofile_data-1")
+    bmProfile.parse("/workspace/tpu-mlir/tmp/bmprofile_data-1_v2")
     bmProfile.to_txt('tmp')
