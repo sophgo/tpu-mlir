@@ -1068,8 +1068,6 @@ def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
 @auto_name()
 @annotation_check
 def round(input: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("round")
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Round", inputs=[input], outputs=[output])
     return output
@@ -1857,3 +1855,12 @@ def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_
     cond.shape = lhs.shape
     return cond_select(cond, tbrn, fbrn, f"{out_name}_cond_select")
 
+@auto_name()
+@annotation_check
+def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name = None):
+    attr = {
+        "axis": Attr(axis, "int32"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Gather", inputs=[input, index], outputs=[output], params=attr)
+    return output

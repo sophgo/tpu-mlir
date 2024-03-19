@@ -102,17 +102,14 @@ def annotation_check(func):
         idx = 0
         for k, v in func.__annotations__.items():
             if idx >= len(args):
-                if k in kwargs and kwargs[k] is None:
-                    continue
-                if k in kwargs and not __type_instance(kwargs[k], v):
-                    print("code {} type error, {} expected type: {}".format(func.__code__, k, v))
-                    raise
+                if k in kwargs:
+                    if kwargs[k] is None:
+                        continue
+                    assert __type_instance(kwargs[k], v), "code {} type error, {} expected type: {}".format(func.__code__, k, v)
             else:
                 if args[idx] is None:
                     continue
-                if not __type_instance(args[idx], v):
-                    print("code {} type error, input {} expected type: {}".format(func.__code__, idx, v))
-                    raise
+                assert __type_instance(args[idx], v), "code {} type error, input #{} expected type: {}".format(func.__code__, idx, v)
             idx += 1
 
         return func(*args, **kwargs)
@@ -141,7 +138,7 @@ class Tensor:
                  shape: list = [],
                  name: str = None,
                  ttype: str ="neuron",
-                 data=None,
+                 data: np.ndarray = None,
                  dtype: str = "float32",
                  scale: Union[float, List[float]] = None,
                  zero_point: Union[int, List[int]] = None):
