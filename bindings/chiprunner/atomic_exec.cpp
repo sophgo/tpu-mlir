@@ -83,8 +83,7 @@ public:
   }
 
   int init_reserved_memory() {
-    auto ret_device =
-        bm_malloc_device_byte(bm_handle, &device_mem, 1024 * 1024 * 1024);
+    auto ret_device = bm_malloc_device_byte(bm_handle, &device_mem, 4294967295);
     auto ret_local =
         bm_malloc_device_byte(bm_handle, &device_loc_mem, 16 * 1024 * 1024);
     u64 res_addr = bm_mem_get_device_addr(device_mem);
