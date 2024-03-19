@@ -360,11 +360,120 @@ struct InValidReshapeMergePattern : public OpRewritePattern<ReshapeOp> {
   }
 };
 
+//  Do:
+//     A                                          A + Reshape
+//       + Add + Reshape + LayerNorm/Matmul -->>              + Add + LayerNorm/Matmul
+//     B                                          B + Reshape
+// swint
+struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
+    auto in = op.getInput();
+    auto add_op = dyn_cast<AddOp>(in.getDefiningOp());
+    if (!add_op) {
+      return failure();
+    }
+    bool add_can_merge = false;
+    for (auto nextOp : op.getOutput().getUsers()) {
+      if (isa<LayerNormOp, MatMulOp>(nextOp)) {
+        add_can_merge = true;
+        break;
+      }
+    }
+    if (!add_can_merge) {return failure();}
+    auto add_out_elements = module::getNumElements(add_op.getOutput());
+    for (auto add_in : add_op.getInputs()) {
+      if (add_in.hasOneUse() && isa<LayerNormOp, MatMulOp>(add_in.getDefiningOp())) {
+        return failure();
+      }
+      auto add_in_elements = module::getNumElements(add_in);
+      if (add_in_elements != add_out_elements) {
+        return failure();
+      }
+    }
+    std::vector<Value> operands;
+    for (auto add_in : add_op.getInputs()) {
+      std::string in_name = module::getName(add_in).str() + "_reshape";
+      auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
+      rewriter.setInsertionPoint(add_op);
+      auto reshape_op = rewriter.create<ReshapeOp>(loc, op.getOutput().getType(), ValueRange{add_in});
+      operands.push_back(reshape_op);
+    }
+    rewriter.replaceOpWithNewOp<AddOp>(op, op.getType(), operands,
+                                       add_op->getAttrs());
+    rewriter.eraseOp(add_op);
+    return success();
+  }
+};
+
+// Reshape + Reshape -->> Reshape
+// swint
+struct TopReshapeFuse : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto in = op.getInput();
+    auto pre_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
+    if (!pre_op) {
+      return failure();
+    }
+    if (!in.hasOneUse()) {
+      return failure();
+    }
+    op.setOperand(0, pre_op.getInput());
+    rewriter.eraseOp(pre_op);
+    return success();
+  }
+};
+
+//           OP            Reshape + Op
+// Reshape + Reshape  -->> Reshape + Reshape
+struct TopReshapeFuse2 : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto in = op.getInput();
+    auto pre_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
+    if (!pre_op) {
+      return failure();
+    }
+    if (in.hasOneUse()) {
+      return failure();
+    }
+    auto shape0 = module::getShape(op.getOutput());
+    auto shape1 = module::getShape(pre_op.getInput());
+    if (shape0 != shape1) {
+      return failure();
+    }
+    int32_t index = 0;
+    for (auto nextOp : pre_op.getResult().getUsers()) {
+      std::string in_name = module::getName(in).str() + "_" + std::to_string(index++);
+      auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
+      rewriter.setInsertionPoint(pre_op);
+      auto reshape_op = rewriter.create<ReshapeOp>(loc, pre_op.getOutput().getType(), ValueRange{pre_op.getInput()});
+      nextOp->setOperand(0, reshape_op.getOutput());
+    }
+    // rewriter.eraseOp(pre_op);
+    return success();
+  }
+};
+
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<patterns::FuseRepeatPattern<top::ReshapeOp>, TopFuseReshape2,
                  TopFuseReshape3, ReshapeInstanceNormPattern, MergeGeluPattern,
-                 ReshapeMovePattern, InValidReshapeMergePattern>(context);
+                 ReshapeMovePattern, InValidReshapeMergePattern,
+                 TopAddReshapeSwap, TopReshapeFuse, TopReshapeFuse2>(context);
 }
 
 OpFoldResult ReshapeOp::fold(FoldAdaptor adaptor) {
