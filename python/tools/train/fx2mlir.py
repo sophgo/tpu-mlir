@@ -74,6 +74,9 @@ class fx2mlir(object):
         self.weights_data = dict()
         self.load_weight = dict()
         self.const_val = dict()
+        self.num_core = 1
+        if self.args.chip =="sg2260":
+            self.num_core = 8
 
         self.op_factory = {
             #############################
@@ -131,12 +134,49 @@ class fx2mlir(object):
             "_softmax":lambda node:self.convert_softmax_op(node,log = False),
             "_log_softmax":lambda node: self.convert_softmax_op(node, log=True),
             "nll_loss_forward":lambda node:self.convert_nllloss_op(node),
+            "le":lambda node:self.convert_compare_op(node,"LessOrEqual"),
+            "sigmoid":lambda node:self.convert_sigmoid_op(node),
+            "silu":lambda node:self.convert_silu_op(node),
+            "pow":lambda node:self.convert_pow_op(node),
+            "_mseloss":lambda node:self.convert_mse_op(node),
+            "max_pool2d_with_indices_backward":lambda node:self.convert_maxpool2d_backward_op(node),
+            "hardswish":lambda node:self.convert_hardswish_op(node),
+            "leaky_relu":lambda node:self.convert_leaky_relu_op(node),
+            "gt":lambda node:self.convert_compare_op(node,"Greater"),
+            "lt":lambda node:self.convert_compare_op(node,"Less"),
+            "new_zeros":lambda node:self.convert_zero_op(node),
+            "rsub":lambda node:self.convert_sub_op(node,is_reverse = True),
+            "clamp":lambda node:self.convert_clamp_op(node),
+            "masked_fill":lambda node:self.convert_masked_fill_op(node),
+            "index":lambda node:self.convert_index_op(node),
+            "select_scatter":lambda node:self.convert_select_scatter_op(node),
+            "slice_scatter":lambda node:self.convert_slice_scatter_op(node),
+            "index_put":lambda node:self.convert_index_put_op(node),
+            "tanh":lambda node:self.convert_math_op(node,"tanh"),
+            "sin":lambda node:self.convert_math_op(node,"sin"),
+            "cos":lambda node:self.convert_math_op(node,"cos"),
+            "native_group_norm":lambda node:self.convert_group_norm_op(node),
+            "gelu":lambda node:self.convert_gelu_op(node),
+            "empty_like":lambda node:self.convert_zero_op(node),
+            "fill":lambda node:self.convert_full_op(node),
+            "constant_pad_nd":lambda node:self.convert_pad_op(node,'constant'),
+            "argmax":lambda node:self.convert_argmax_op(node),
+            "zeros_like":lambda node:self.convert_zero_op(node),
+            "scatter":lambda node:self.convert_scatter_op(node),
+            "logical_and":lambda node:self.convert_logical_and_op(node),
+            "zeros":lambda node:self.convert_zero_op(node),
+            "bernoulli":lambda node:self.convert_bernoulli_op(node),
             ####################################################
             "constant":lambda node:self.convert_constant(node),
-            "broadcast_in_dim":lambda node:self.convert_broadcast_op(node), #op4
             'threshold_backward':lambda node:self.convert_threshold_backward_op(node),
             '_softmax_backward_data':lambda node:self.convert_softmax_backward_data_op(node),
             'embedding_dense_backward':lambda node:self.convert_embedding_dense_backward_op(node),
+            ######### prims op ##############################
+            "ge":lambda node:self.convert_compare_op(node,"GreaterOrEqual"),
+            "eq":lambda node:self.convert_compare_op(node,"Equal"),
+            "trunc":lambda node:self.convert_trunc_op(node),
+            "broadcast_in_dim":lambda node:self.convert_broadcast_op(node),
+
         }
 
         self.mlir_type = {
@@ -313,7 +353,7 @@ class fx2mlir(object):
             gc.collect()
             f32_blobs_compare('tpu_ir_out_data.npz', 'ref_data.npz', '0.99,0.99')
 
-        mlir_to_model(tpu_ir, self.bmodel_path, 'final_'+mlir_file)
+        mlir_to_model(tpu_ir, self.bmodel_path, 'final_'+mlir_file,num_core=self.num_core)
         if self.args.cmp:
             tensors = bmodel_inference(self.bmodel_path, in_ref_data)
             np.savez('bmodel_out_data.npz', **tensors)
@@ -395,8 +435,10 @@ class fx2mlir(object):
             raise RuntimeError("Unknown names:{}".format(names))
 
     def convert_scalar_param(self, scalar):
-        assert isinstance(scalar, (int, float))
-        return np.atleast_1d(scalar).astype(np.float32)
+        if not isinstance(scalar, (int, float)):
+            return np.atleast_2d(scalar).astype(np.float32)
+        else:
+            return np.atleast_1d(scalar).astype(np.float32)
 
     # shape: [] => [* x f32]; None => NoneType; [None, None] => [NoneType, NoneType]
     # type: None => f32; or type
@@ -521,7 +563,37 @@ class fx2mlir(object):
 
     def convert_full_op(self, node):
         if node.args[0] == []:
-            self.operands[node] = self.create_weight_op(f'fullOp_{node.name}', node.args[1])
+            self.operands[node] = self.create_weight_op(f'fullOp_{node.name}_c', node.args[1])
+            # value = self.convert_scalar_param(node.args[1])
+            # dtype = self.get_output_dtypes(node)
+            # new_op = top.WeightOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+            #                 scale = value,
+            #                 loc=self.get_loc(node),
+            #                 ip=self.insert_point).output
+        elif node.args[0] not in self.operands:
+            name = f'fullOp_{node.name}_c'
+            data_type = "F32"
+            tensor_type = RankedTensorType.get(list(node.args[0]), self.mlir_type[data_type])
+            op = Operation.create("top.Weight",
+                              results=[tensor_type],
+                              loc=Location.fused([Location.name(name)]))
+            self.insert_point.insert(op)
+            result = op.results[0]
+            self.load_weight[name] = (result, node.args[0], data_type)
+            shape = tuple(node.args[0])
+            self.weights_data[name] = np.full(shape,node.args[1],dtype = np.float32)
+            # dtype = self.get_output_dtypes(node)
+            # new_op = top.ConstantFillOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+            #                             op,
+            #                             value=node.args[1],
+            #                             loc=self.get_loc(node),
+            #                             ip=self.insert_point).output
+            if name in self.load_weight:
+                _op, _shape, _type = self.load_weight[name]
+                self.operands[node] = _op
+            else:
+                self.operands[node] = result
+            # self.operands[node] = new_op
         else:
             dtype = self.get_output_dtypes(node)
             op0 = self.operands[node.args[0]]
@@ -539,6 +611,7 @@ class fx2mlir(object):
 
     def convert_div_op(self, node):
         if node.args[0] in self.operands:
+
             in1 = self.operands[node.args[0]]
         else:
             in1 = self.create_weight_op(f'divOp_{node.name}_input1', node.args[0])
@@ -552,19 +625,6 @@ class fx2mlir(object):
         new_op = top.DivOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
                            [in1, in2],
                            loc=self.get_loc(node.name),
-                            ip=self.insert_point).output
-        self.operands[node] = new_op
-
-    def convert_broadcast_op(self,node):
-        op0 = self.operands[node.args[0]]
-        dtype = self.get_output_dtypes(node)
-        shape_input = node.args[1]
-        dimension = node.args[2]
-        new_op = top.BroadcastOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
-                            op0,
-                            shape_input,
-                            dimension,
-                            loc=self.get_loc(node.name),
                             ip=self.insert_point).output
         self.operands[node] = new_op
 
@@ -786,13 +846,22 @@ class fx2mlir(object):
         shape1 = [] if node.meta['val'][1]==None else list(node.meta['val'][1].size())
         shape2 = [] if node.meta['val'][2]==None else list(node.meta['val'][2].size())
         dtype = self.get_output_dtypes(node)
+        if dtype[0] is None:
+            dtype.pop(0)
         bias_op = self.none_op
         if output_mask[1]:
             shape = list(node.args[0].meta['val'].size())
+            shape[0],shape[1] = shape[1],shape[0]
+            transposed_gradout = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+	                                 grad_out,
+	                                 0,
+	                                 1,
+	                                 loc=self.get_loc(node.name+'_transposed_gradout'),
+	                                 ip=self.insert_point).output
             if shape[2]>56:
                 input_shape = list(node.args[1].meta['val'].size())
                 grad_out_shape = list(node.args[0].meta['val'].size())
-                transposed_grad_weight = top.ConvBwdWeightOp(*self.get_tensor_type([shape1], [dtype[1]]),
+                transposed_grad_weight = top.ConvBwdWeightOp(*self.get_tensor_type([shape1], dtype),
                                                            input,
                                                            grad_out,
                                                            group,
@@ -806,16 +875,9 @@ class fx2mlir(object):
                                                            loc=self.get_loc(node.name+'_grad_weight'),
                                                            ip=self.insert_point).output
             else:
-	            shape[0],shape[1] = shape[1],shape[0]
-	            transposed_gradout = top.TransposeOp(*self.get_tensor_type([shape], dtype),
-	                                 grad_out,
-	                                 0,
-	                                 1,
-	                                 loc=self.get_loc(node.name+'_transposed_gradout'),
-	                                 ip=self.insert_point).output
-	            shape = list(node.args[1].meta['val'].size())
-	            shape[0],shape[1] = shape[1],shape[0]
-	            transposed_input = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+                shape = list(node.args[1].meta['val'].size())
+                shape[0],shape[1] = shape[1],shape[0]
+                transposed_input = top.TransposeOp(*self.get_tensor_type([shape], dtype),
 	                                 input,
 	                                 0,
 	                                 1,
@@ -844,14 +906,20 @@ class fx2mlir(object):
 	                                    do_relu=False,
 	                                    loc=self.get_loc(node.name+'_grad_weight'),
 	                                    ip=self.insert_point).output
-	            else:
-	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+                else:
+                    input_shape = list(node.args[1].meta['val'].size())
+                    dilations_grad_weight = strides
+                    if input_shape[-1] % 2!=0: #!=
+                        strides = [1,1]
+                    grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
 	                                    transposed_input,
 	                                    transposed_gradout,
 	                                    bias_op,
 	                                    kernel_shape=grad_weight_kernel_shape,
 	                                    strides=strides,
-	                                    dilations=strides,
+                                        #strides = [1,1],
+	                                    #dilations=strides,
+                                        dilations = dilations_grad_weight,
 	                                    pads = pads,
 	                                    group=group,
 	                                    do_relu=False,
@@ -892,7 +960,15 @@ class fx2mlir(object):
                                   do_relu = False,
                                   loc=self.get_loc(node.name+'_grad_input'),
                                   ip=self.insert_point).output
-        self.operands[node] = [grad_input,transposed_grad_weight,None]
+        if output_mask[2]:
+            grad_bias = top.ReduceOp(*self.get_tensor_type([bias_sizes], dtype),
+                                grad_out,
+                                axes = [0,2,3],
+                                keepdims = False,
+                                mode = StringAttr.get("ReduceSum"),
+                                loc=self.get_loc(node.name+"_grad_bias"),
+                                ip=self.insert_point).output
+        self.operands[node] = [grad_input,transposed_grad_weight,grad_bias]
 
     def convert_sum_op(self, node): #aten.sum.default                (getitem_6,)
         op0 = self.operands[node.args[0]]
@@ -900,10 +976,17 @@ class fx2mlir(object):
         # assert method in ("ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1",
         #                     "ReduceSum", "ReduceProd")
         in_shape = list(node.args[0].meta['val'].size())
+        if len(node.args)>=3:
+            keepdims = node.args[2]
+        elif len(list(node.args[0].meta['val'].size())) ==1:
+            keepdims = True
+        else:
+            keepdims = False
         new_op = top.ReduceOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
                                 op0,
-                                axes = node.args[1] if len(node.args) > 1 else tuple(range(len(in_shape))),
-                                keepdims = node.args[2] if len(node.args) > 2 else False,
+                                axes = sorted(node.args[1]) if len(node.args) > 1 else tuple(range(len(in_shape))),
+                                # keepdims = node.args[2] if len(node.args) > 2 else False,
+                                keepdims = keepdims,
                                 mode = StringAttr.get("ReduceSum"),
                                 loc=self.get_loc(node),
                                 ip=self.insert_point).output
@@ -959,6 +1042,24 @@ class fx2mlir(object):
         result = op.results[0]
         self.load_weight[name] = (result, arg_shape, data_type)
         self.weights_data[name] = arg_t
+        return result
+
+    def create_constant_weight_op(self,name,shape,val,data_type = 'F32'):
+        name = f'{name}_c'
+        tensor_type = RankedTensorType.get(list(shape), self.mlir_type[data_type])
+        op = Operation.create("top.Weight",
+                            results=[tensor_type],
+                            loc=Location.fused([Location.name(name)]))
+        shape = tuple(shape)
+        if name in self.load_weight:
+            _op, _shape, _type = self.load_weight[name]
+            if _shape != shape or _type != data_type:
+                raise RuntimeError("{} weight conflict".format(name))
+            return _op
+        self.insert_point.insert(op)
+        result = op.results[0]
+        self.load_weight[name] = (result, shape, data_type)
+        self.weights_data[name] = np.full(shape,val,dtype = np.float32)
         return result
 
     def convert_arange_op(self, node):
@@ -1091,12 +1192,8 @@ class fx2mlir(object):
         dtype = self.get_output_dtypes(node)
         op0 = self.operands[node.args[0]]
         shape = self.get_output_shapes(node)
-        length = 1
-        for n in shape[0]:
-            length*=n
         new_op = top.RsqrtOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
                             op0,
-                            length,
                             loc=self.get_loc(node.name),
                             ip=self.insert_point).output
         self.operands[node] = new_op
@@ -1170,33 +1267,6 @@ class fx2mlir(object):
         self.operands[node] = output.outputs
 
     def convert_expand_op(self,node):
-        dtype = self.get_output_dtypes(node)
-        shape = self.get_output_shapes(node)
-        opI = self.operands[node.args[0]]
-        if isinstance(node.args[1], torch.fx.Node) and node.args[1] in self.operands:
-            opS = self.operands[node.args[1]]
-        else:
-            opS = self.create_weight_op(f'expandOp_{node.name}_input1', node.args[1])
-        new_cf = top.ConstantFillOp(*self.get_tensor_type(shape, dtype),
-                                    opS,
-                                    value=1.0,
-                                    loc=self.get_loc(node.name+'_size'),
-                                    ip=self.insert_point).output
-        # if  len(list(node.args[0].meta['val'].size())) == 0:
-        #     new_exp = top.MulConstOp(*self.get_tensor_type(shape, dtype),
-        #                             new_cf,
-        #                             opI,
-        #                             loc=self.get_loc(node),
-        #                             ip=self.insert_point).output
-        # else:
-        new_exp = top.MulOp(*self.get_tensor_type(shape, dtype),
-                            [opI, new_cf],
-                        do_relu=False,
-                        loc=self.get_loc(node.name),
-                        ip=self.insert_point).output
-        self.operands[node] = new_exp
-
-    def convert_expand_op2(self,node):
         dtype = self.get_output_dtypes(node)
         opI = self.operands[node.args[0]]
         new_exp = top.ExpandOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
@@ -1457,30 +1527,29 @@ class fx2mlir(object):
         self.operands[node] = new_op
 
     def convert_select_op(self, node): #aten.select.int           (view, 0, 0)
-        # step_name = torch_node.inputs[0] + '_tpu_step'
-        # end_name = torch_node.inputs[0] + torch_node.inputs[2] + '_tpu_end'
-        # self.addWeight(step_name, np.array([1], dtype=np.float32))
-        # assert torch_node.inputs[2] in self.const_val.keys()
-        # end = self.const_val[torch_node.inputs[2]] + 1
-        # self.addWeight(end_name, np.array([end], dtype=np.float32))
-        # slice_op = top.SliceAxisOp(self.unranked_type,
-        #                            self.getOp(torch_node.inputs[0]),
-        #                            self.getOp(torch_node.inputs[1]),
-        #                            self.getOp(torch_node.inputs[2]),
-        #                            self.getOp(step_name),
-        #                            self.getOp(end_name),
-        #                            loc=self.get_loc(
-        #                                "{}_SliceAxis".format(torch_node.name)),
-        #                            ip=self.mlir.insert_point).output
-        # axis = self.const_val[torch_node.inputs[1]]
-        # new_op = top.SqueezeOp(self.unranked_type,
-        #                        slice_op,
-        #                        axes=[axis],
-        #                        loc=self.get_loc(torch_node.name),
-        #                        ip=self.mlir.insert_point).output
-        # self.addOperand(torch_node.name, new_op)
-        pass
 
+        op0 = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        shape.insert(node.args[1],1)
+        axis = self.create_weight_op(f'sliceOp_{node.name}_axis', node.args[1])
+        start = self.create_weight_op(f'sliceOp_{node.name}_start', node.args[2])
+        step = self.create_weight_op(f'sliceOp_{node.name}_step', 1)
+        end = self.create_weight_op(f'sliceOp_{node.name}_end', node.args[2]+1)
+        slice_op = top.SliceAxisOp(*self.get_tensor_type([shape], dtype),
+                                 op0,
+                                 axis,
+                                 start,
+                                 step,
+                                 end,
+                                 loc=self.get_loc(node.name+"_slice"),
+                                ip=self.insert_point).output
+        new_op = top.SqueezeOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                slice_op,
+                                axes=[node.args[1]],
+                                loc=self.get_loc(node),
+                                ip=self.insert_point).output
+        self.operands[node] = new_op
 
     def convert_math_op(self, node, mode):
         assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp","erf","log"]
@@ -1506,6 +1575,487 @@ class fx2mlir(object):
                                     loc=self.get_loc(node),
                                     ip=self.insert_point).output
         self.operands[node] = new_op
+
+    def convert_sigmoid_op(self,node):
+        op = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        new_op = top.SigmoidOp(*self.get_tensor_type([shape], dtype),
+                                    op,
+                                    loc=self.get_loc(node),
+                                    ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_silu_op(self,node):
+        op = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        new_op = top.SiLUOp(*self.get_tensor_type([shape], dtype),
+                                    op,
+                                    loc=self.get_loc(node),
+                                    ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_pow_op(self,node):
+        op = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        if not isinstance(node.args[1], torch.fx.Node):
+            power = node.args[1]
+            new_op = top.PowOp(*self.get_tensor_type([shape], dtype),
+                                        op,
+                                        power,
+                                        loc=self.get_loc(node),
+                                        ip=self.insert_point).output
+        else:
+            power = self.operands[node.args[1]]
+            new_op = top.PowTensorOp(*self.get_tensor_type([shape], dtype),
+                                        # op,
+                                        # power,
+                                        [op,power],
+                                        loc=self.get_loc(node),
+                                        ip=self.insert_point).output
+        self.operands[node] = new_op
+    def convert_mse_op(self,node):
+        op0 = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        op1 = self.operands[node.args[1]]
+        new_op = top.MSELossOp(*self.get_tensor_type([shape], dtype),
+                                    op0,
+                                    op1,
+                                    loc=self.get_loc(node),
+                                    ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_maxpool2d_backward_op(self,node):
+        # Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices
+        grad_out = self.operands[node.args[0]]
+        input = self.operands[node.args[1]]
+        kernel_size = node.args[2]
+        stride = node.args[3]
+        padding = node.args[4]
+        padding = padding+padding
+        dilation = node.args[5]
+        ceil_mode = node.args[6]
+        indices = self.operands[node.args[-1]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        shape_input = list(node.args[1].meta['val'].size())
+        shape_grad = list(node.args[0].meta['val'].size())
+
+        # condition = top.ReluOp(*get_tensor_type([shape_grad], dtype),
+        #                     self_,
+        #                     loc=self.get_loc(node.name+'_condition'),
+        #                     ip=self.insert_point).output
+        x_is_const = False
+        y_is_const = True
+        x_const_val = y_const_val = 0
+        new_op = top.WhereOp(*self.get_tensor_type([shape_grad], dtype),
+                                indices,
+                                grad_out,
+                                self.none_op,
+                                x_is_const = x_is_const,
+                                y_is_const = y_is_const,
+                                x_const_val = x_const_val,
+                                y_const_val = y_const_val,
+                                loc=self.get_loc(node.name+'_before_padding'),
+                                ip=self.insert_point).output
+        pad_num = (shape_input[-1]-shape_grad[-1])//2
+        padding = [pad_num]*4
+        mode = 'constant'
+        new_op_pad = top.PadOp(
+            *self.get_tensor_type([shape], dtype),
+            new_op,
+            paddings = padding,
+            mode = StringAttr.get(mode),
+            # val = 0.0,
+            loc=self.get_loc(node.name),
+            ip=self.insert_point).output
+
+        self.operands[node] = new_op_pad
+
+    def convert_trunc_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op0 = self.operands[node.args[0]]
+        shape = self.get_output_shapes(node)
+        new_op = top.TruncOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                            op0,
+                            loc=self.get_loc(node.name),
+                            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_hardswish_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op0 = self.operands[node.args[0]]
+        new_op = top.HardSwishOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                            op0,
+                            loc=self.get_loc(node.name),
+                            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_leaky_relu_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op0 = self.operands[node.args[0]]
+        alpha = 0.5
+        new_op = top.LeakyReluOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                            op0,
+                            alpha,
+                            loc=self.get_loc(node.name),
+                            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_zero_op(self,node):
+        if node.args[0] in self.operands:
+            dtype = self.get_output_dtypes(node)
+            op0 = self.operands[node.args[0]]
+            new_op = top.ConstantFillOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                        op0,
+                                        value=0,
+                                        loc=self.get_loc(node),
+                                        ip=self.insert_point).output
+            self.operands[node] = new_op
+        else:
+            shape = node.args[0]
+            new_op = self.create_constant_weight_op(f'{node.name}_c',shape,0)
+
+            self.operands[node] = new_op
+
+    def convert_clamp_op(self,node):
+        input = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        if node.args[1]!=None:
+            min_val = node.args[1]
+            if node.args[1] in self.operands:
+                op1 = self.operands[node.args[1]]
+            else:
+                op1 = self.create_weight_op(f'{node.name}_minval', node.args[1])
+            condition = top.CompareOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                    input,
+                                    op1,
+                                    mode=StringAttr.get('GreaterOrEqual'),
+                                    loc=self.get_loc(node.name+"min_cond"),
+                                        ip=self.insert_point).output
+            x_is_const = False
+            y_is_const = True
+            x_const_val = y_const_val = min_val
+            new_op = top.WhereOp(*self.get_tensor_type([shape], dtype),
+                                    condition,
+                                    input,
+                                    self.none_op,
+                                    x_is_const = x_is_const,
+                                    y_is_const = y_is_const,
+                                    x_const_val = x_const_val,
+                                    y_const_val = y_const_val,
+                                    loc=self.get_loc(node.name),
+                                    ip=self.insert_point).output
+        if len(node.args)>2:
+            max_val = node.args[2]
+            if node.args[1] in self.operands:
+                op1 = self.operands[node.args[1]]
+            else:
+                op1 = self.create_weight_op(f'{node.name}_maxval', node.args[2])
+            condition = top.CompareOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                    input,
+                                    op1,
+                                    mode=StringAttr.get('LessOrEqual'),
+                                    loc=self.get_loc(node.name+"max_cond"),
+                                        ip=self.insert_point).output
+            x_is_const = False
+            y_is_const = True
+            x_const_val = y_const_val = max_val
+            new_op = top.WhereOp(*self.get_tensor_type([shape], dtype),
+                                    condition,
+                                    input,
+                                    self.none_op,
+                                    x_is_const = x_is_const,
+                                    y_is_const = y_is_const,
+                                    x_const_val = x_const_val,
+                                    y_const_val = y_const_val,
+                                    loc=self.get_loc(node.name),
+                                    ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_masked_fill_op(self,node):
+
+        input = self.operands[node.args[0]]
+        mask = self.operands[node.args[1]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        const_val = node.args[2]
+        new_op = top.MaskedFillOp(*self.get_tensor_type([shape], dtype),
+                                  mask,
+                                  input,
+                                  inversed=True,
+                                  const_val=const_val,
+                                  loc=self.get_loc(node.name),
+                                  ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_index_op(self,node): #(slice_12, [None, None, unsqueeze, _to_copy_1]) 每个tensor对应一个dim gather的输出再作为下一个gather输入
+        op0 = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        idx_store = []
+        for k,idx in enumerate(node.args[1]):
+            if idx is not None:
+                indices = [k,idx]
+                idx_store.append(indices)
+        # shape process
+        for i in range(len(idx_store)):
+            nd = idx_store[i]
+            if len(list(nd[1].meta['val'].size()))!= 1:
+                target_shape = list(nd[1].meta['val'].size())
+                squeeze_axis = target_shape.index(1)
+                target_shape.pop(squeeze_axis)
+                tmp_op = self.operands[nd[1]]
+                out = top.SqueezeOp(*self.get_tensor_type([target_shape], dtype),
+                                    tmp_op,
+                                    axes=[squeeze_axis],
+                                    loc=self.get_loc(node.name+"_shape_update_"+str(i)),
+                                    ip=self.insert_point).output
+                idx_store[i][1] = out
+            else:
+                target_shape = list(nd[1].meta['val'].size())
+                idx_store[i][1] = self.operands[nd[1]]
+            idx_store[i].append(target_shape[0])
+        origin_shape = list(node.args[0].meta['val'].size())
+        while idx_store:
+            info = idx_store[0]
+            axis = info[0]
+            indices = info[1]
+            gather_shape = origin_shape
+            gather_shape[axis] = info[2]
+            new_op = top.GatherOp(*self.get_tensor_type([gather_shape], dtype),
+                              op0,
+                              indices,
+                              axis=axis,
+                              loc=self.get_loc(node.name+"_"+str(axis)),
+                              ip=self.insert_point).output
+            op0 = new_op
+            idx_store.pop(0)
+
+        if len(node.args[1])< len(origin_shape):
+            output_shape = self.get_output_shapes(node)[0]
+            if len(origin_shape)>len(output_shape):
+                new_op = top.SqueezeOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                        new_op,
+                                        axes=[0],
+                                        loc=self.get_loc(node.name+"_squeeze"),
+                                        ip=self.insert_point).output
+            else:
+                new_op = top.UnsqueezeOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                                        new_op,
+                                        axes=[0],
+                                        loc=self.get_loc(node.name+"_unsqueeze"),
+                                        ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_select_scatter_op(self,node): #(new_zeros, mm_73, 1, 0)
+        op0 = self.operands[node.args[0]]
+        op1 = self.operands[node.args[1]]
+        dtype = self.get_output_dtypes(node)
+        shape = list(node.meta['val'].size())
+        axis = node.args[2]
+        update_shape = list(node.args[1].meta['val'].size())
+        update_shape.insert(axis,1)
+        update = top.UnsqueezeOp(*self.get_tensor_type([update_shape], dtype),
+                                    op1,
+                                    axes=[axis],
+                                    loc=self.get_loc(node.name+"update"),
+                                    ip=self.insert_point).output
+        index = np.array([[node.args[3]]])
+        indices = self.create_weight_op(f'{node.name}_indices', index)
+        new_op = top.ScatterNDOp(*self.get_tensor_type([shape], dtype),
+                                        op0,
+                                        indices,
+                                        update,
+                                        loc=self.get_loc(node.name),
+                                        ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_slice_scatter_op(self,node):
+        input = self.operands[node.args[0]]
+        update = self.operands[node.args[1]]
+        dtype = self.get_output_dtypes(node)
+        start = node.args[3]
+        end = node.args[4]
+        shape = list(node.meta['val'].size())
+        update_shape = list(node.args[1].meta['val'].size())
+        axis = node.args[2]
+        if end > shape[axis]:
+            end = shape[axis]
+        step = node.args[5] if len(node.args)>=6 else 1
+        expand_shape = tuple(-1 if i == axis else 1 for i in range(len(shape)))
+        indices = np.arange(start,end,step)
+        indices = indices.reshape(expand_shape)
+        broadcast_indices = np.ones(tuple(update_shape))*indices
+        index = self.create_constant_weight_op(f'{node.name}_index',update_shape,broadcast_indices)
+        new_op = top.ScatterElementsOp(
+            *self.get_tensor_type(self.get_output_shapes(node), dtype),
+            input,
+            index,
+            update,
+            axis,
+            loc=self.get_loc(node.name),
+            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+
+
+    def convert_index_put_op(self, node):
+
+
+        op0 = self.operands[node.args[0]]
+        value = self.operands[node.args[2]]
+        accumulate = node.args[3]
+        dtype = self.get_output_dtypes(node)
+        idx_store = []
+        for k,idx in enumerate(node.args[1]):
+            if idx is not None:
+                indices = [k,idx]
+                idx_store.append(indices)
+        # shape process
+        for i in range(len(idx_store)):
+            nd = idx_store[i]
+            if len(list(nd[1].meta['val'].size()))!= 1:
+                target_shape = list(nd[1].meta['val'].size())
+                pop_idx = target_shape.index(1)
+                target_shape.pop(pop_idx)
+                tmp_op = self.operands[nd[1]]
+                out = top.SqueezeOp(*self.get_tensor_type([target_shape], dtype),
+                                    tmp_op,
+                                    axes=[pop_idx],
+                                    loc=self.get_loc(node.name+"_shape_update_"+str(i)),
+                                    ip=self.insert_point).output
+                idx_store[i][1] = out
+            else:
+                target_shape = list(nd[1].meta['val'].size())
+                idx_store[i][1] = self.operands[nd[1]]
+            idx_store[i].append(target_shape[0])
+        while idx_store:
+            info = idx_store[0]
+            axis = info[0]
+            indices = info[1]
+            new_op = top.IndexPutOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                              op0,
+                              indices,
+                              value,
+                              accumulate = accumulate,
+                              loc=self.get_loc(node.name+"_"+str(axis)),
+                              ip=self.insert_point).output
+            op0 = new_op
+            idx_store.pop(0)
+        self.operands[node] = new_op
+
+    def convert_group_norm_op(self,node):#(Tensor input, Tensor? weight, Tensor? bias, SymInt N, SymInt C, SymInt HxW, int group, float eps)
+        dtype = self.get_output_dtypes(node)
+        input = self.operands[node.args[0]]
+        weight = self.operands[node.args[1]]
+        bias = self.operands[node.args[2]]
+        group = node.args[-2]
+        eps = node.args[-1]
+        new_op = top.GroupNormTrainOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                              input,
+                              weight,
+                              bias,
+                              group,
+                              eps,
+                              loc=self.get_loc(node.name),
+                              ip=self.insert_point)
+        self.operands[node] = [new_op.output,new_op.mean,new_op.rstd]
+
+    def convert_gelu_op(self,node):
+        op = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        new_op = top.GELUOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                            op,
+                            loc=self.get_loc(node),
+                            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_pad_op(self,node,mode):
+        op = self.operands[node.args[0]]
+        dtype = self.get_output_dtypes(node)
+        padding = node.args[1]
+        if len(node.args) >= 3:
+            val = node.args[2]
+        else:
+            val = 0
+        new_op = top.PadOp(
+            *self.get_tensor_type(self.get_output_shapes(node), dtype),
+            op,
+            paddings = padding,
+            val = val,
+            mode = StringAttr.get(mode),
+            loc=self.get_loc(node.name),
+            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_argmax_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op0 = self.operands[node.args[0]]
+        dim = node.args[1]
+        if len(node.args)>2:
+            keepdims = node.args[2]
+        else:
+            keepdims = False
+        select_last_index = True   # select_last_index = False
+        new_op = top.ArgOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                           *self.get_tensor_type(self.get_output_shapes(node), dtype),
+                           input = op0,
+                           axis=dim,
+                           keepdims=keepdims,
+                           mode=StringAttr.get("ArgMax"),
+                           select_last_index=select_last_index,
+                           loc=self.get_loc(node.name),
+                           ip=self.insert_point)
+        out_ops = new_op.indices
+        self.operands[node] = out_ops
+
+    def convert_scatter_op(self,node): #(zeros_like, 1, where, -1.0)
+        dtype = self.get_output_dtypes(node)
+        input = self.operands[node.args[0]]
+        axis = node.args[1]
+        index = self.operands[node.args[2]]
+        if isinstance(node.args[3], torch.fx.Node):
+            update = self.operands[node.args[3]]
+        else:
+            update = self.create_weight_op(f'{node.name}_update', node.args[3])
+        new_op = top.ScatterElementsOp(
+            *self.get_tensor_type(self.get_output_shapes(node), dtype),
+            input,
+            index,
+            update,
+            axis,
+            loc=self.get_loc(node.name),
+            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_logical_and_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op0 = self.operands[node.args[0]]
+        op1 = self.operands[node.args[1]]
+        new_op  = top.LogicalAndOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                            [op0,op1],
+                            loc=self.get_loc(node.name),
+                            ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_bernoulli_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        if len(node.args)>1:
+            p = node.args[1]
+        op0 = self.operands[node.args[0]]
+        shape = list(node.meta['val'].size())
+        ## create random number
+        result = np.zeros(shape)
+        # np.random.seed(0)
+        for i in range(result.size):
+            random_num = np.random.random()
+            result.flat[i] = 1 if random_num<=p else 0
+        op = self.create_constant_weight_op(f'{node.name}_random',shape,result)
+        self.operands[node] = op
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])
