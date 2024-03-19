@@ -28,6 +28,8 @@ static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
   spec.relu_limit = attr.relu_limit;
   spec.ceil_mode = 0;
   spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+  if(attr.kh == attr.ih && attr.kw == attr.iw && attr.sh >= 16 || attr.sw >= 16)
+    spec.stride_h = spec.stride_w = 1;
   /// TODO: may be need support pad value for pooling2D and pooling 3D
   /// spec.pad_value = attr.pad_value;
 }
