@@ -510,45 +510,47 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
         LoweringConfig::quantize_map.insert(
             {module::getName(addop.getOperation()).str(), module::Mode::F16});
       }
-      for (auto in : addop.getOperands()) {
-        if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-          if (mlp.size() < 24) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(mmop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(mmop.getOperation()).str(),
-                   module::Mode::F16});
-            }
-          }
-          if (auto geluop = dyn_cast<top::GELUOp>(
-                  mmop.getOperands()[0].getDefiningOp())) {
-            if ((cnt < 9 && mlp.size() < 24) || (cnt < 18 && mlp.size() >= 24))
-              break;
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(geluop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end())
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(geluop.getOperation()).str(),
-                   module::Mode::F16});
-
-            if (auto mmop = dyn_cast<top::MatMulOp>(
-                    geluop.getInput().getDefiningOp())) {
+      if (!module::isBM1688()){
+        for (auto in : addop.getOperands()) {
+          if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+            if (mlp.size() < 24) {
               if (LoweringConfig::quantize_map.find(
                       module::getName(mmop.getOperation()).str()) ==
                   LoweringConfig::quantize_map.end()) {
                 LoweringConfig::quantize_map.insert(
                     {module::getName(mmop.getOperation()).str(),
-                     module::Mode::F16});
+                    module::Mode::F16});
               }
             }
-          } else if (auto rsop = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
-            if (LoweringConfig::quantize_map.find(
-                    module::getName(rsop.getOperation()).str()) ==
-                LoweringConfig::quantize_map.end()) {
-              LoweringConfig::quantize_map.insert(
-                  {module::getName(rsop.getOperation()).str(),
-                   module::Mode::F16});
+            if (auto geluop = dyn_cast<top::GELUOp>(
+                    mmop.getOperands()[0].getDefiningOp())) {
+              if ((cnt < 9 && mlp.size() < 24) || (cnt < 18 && mlp.size() >= 24))
+                break;
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(geluop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end())
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(geluop.getOperation()).str(),
+                    module::Mode::F16});
+
+              if (auto mmop = dyn_cast<top::MatMulOp>(
+                      geluop.getInput().getDefiningOp())) {
+                if (LoweringConfig::quantize_map.find(
+                        module::getName(mmop.getOperation()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(mmop.getOperation()).str(),
+                      module::Mode::F16});
+                }
+              }
+            } else if (auto rsop = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(rsop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end()) {
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(rsop.getOperation()).str(),
+                    module::Mode::F16});
+              }
             }
           }
         }
