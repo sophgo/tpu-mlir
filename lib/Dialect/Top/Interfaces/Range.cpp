@@ -26,6 +26,8 @@ LogicalResult top::RangeOp::inference(InferenceParameter &p) {
 
 // RangeOp is special, will convert to WeightOp
 void top::RangeOp::shape_inference() {
+  if (!module::isUnranked(getOutput()))
+    return;
   int64_t start = 0, delta = 1, limit = 0;
   if (!module::isNone(getStart())) {
     if (auto start_w = dyn_cast<top::WeightOp>(getStart().getDefiningOp())) {
@@ -62,7 +64,7 @@ void top::RangeOp::shape_inference() {
     assert(limit_v.size() == 1);
     limit = limit_v[0];
   } else {
-    llvm_unreachable("delta must be a weight or a shape");
+    llvm_unreachable("limit must be a weight or a shape");
   }
   auto out_size = (limit - start) / delta;
   module::setShapeOrVerify(getOutput(), {out_size});

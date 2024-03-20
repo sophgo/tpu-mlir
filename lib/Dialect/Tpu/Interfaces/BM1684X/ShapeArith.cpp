@@ -52,8 +52,3 @@ int64_t tpu::ShapeArithOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::ShapeArithOp::get_fw_type_bm1684x() { return FW_BMNET_SHAPE_OP; }
-
-mlir::Type tpu::ShapeArithOp::type_verify(uint64_t opd_idx,
-                                          TypeCastMode &mode) {
-  return do_nothing(mode);
-}

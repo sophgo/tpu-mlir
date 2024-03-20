@@ -137,7 +137,9 @@ class OnnxTransformer(ModelTransformer):
                  test_input='',
                  preprocessor: dict = {},
                  static_shape=True,
-                 onnx_sim=''):
+                 onnx_sim='',
+                 dynamic_inputs: list = [],
+                 dynamic=False):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -147,7 +149,9 @@ class OnnxTransformer(ModelTransformer):
                                        test_input,
                                        preprocessor,
                                        static_shape,
-                                       onnx_sim=onnx_sim)
+                                       onnx_sim=onnx_sim,
+                                       dynamic_inputs=dynamic_inputs,
+                                       dynamic=dynamic)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -234,7 +238,8 @@ def get_model_transform(args):
                                args.output_names,
                                args.test_input,
                                preprocessor.to_dict(),
-                               onnx_sim=args.onnx_sim)
+                               onnx_sim=args.onnx_sim,
+                               dynamic_inputs=args.dynamic_inputs)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict())
@@ -281,6 +286,8 @@ if __name__ == '__main__':
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                         help='used for regression test, check if patterns are successfully applied a specific number of times')
+    parser.add_argument("--dynamic_inputs", type=str2list, default=list(),
+                        help="list of dynamic input names, like:input1,input2")
 
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)

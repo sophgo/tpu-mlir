@@ -22,6 +22,7 @@ import mlir.dialects.top as top
 from mlir.ir import *
 from typing import List
 import onnxsim.onnx_simplifier as onnxsim
+import onnxruntime as rt
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -103,9 +104,16 @@ class OnnxConverter(BaseConverter):
                  test_input,
                  preprocess_args: dict = {},
                  static_shape=True,
-                 onnx_sim=""):
+                 onnx_sim="",
+                 dynamic_inputs=[],
+                 dynamic=False):
         super().__init__()
 
+        self.dynamic_inputs = dynamic_inputs
+        self.dynamic = dynamic
+        if self.dynamic_inputs:
+            self.dynamic = True
+        self.dynamic_shapes = dict()
         self.test_input = test_input
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
@@ -386,10 +394,10 @@ class OnnxConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
-    def model_simplify(self):
+    def model_simplify(self, input_shapes=[]):
         # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
         try:
-            self.model = ConstantFolding(self.model, self.test_input).run()
+            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
         except:
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
@@ -404,9 +412,12 @@ class OnnxConverter(BaseConverter):
         except:
             print("WARNING: onnxsim opt failed.")
         print("Onnxsim opt finished")
+        if self.dynamic_inputs:
+            self.input_shape_assign(input_shapes)
+            print("Input_shape assigned")
         # Do constantFolding after onnxsim to avoid onnxsim bug (such as run ppyolo_tiny)
         try:
-            self.model = ConstantFolding(self.model, self.test_input).run()
+            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
         except:
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
@@ -435,10 +446,13 @@ class OnnxConverter(BaseConverter):
             self.select_output(output_names)
         self.input_names = self.get_input_names(self.model)
         self.num_input = len(self.input_names)
-        self.input_shape_assign(input_shapes)
-        print("Input_shape assigned")
-        if static_shape:
-            self.model_simplify()
+        if not self.dynamic_inputs:
+            self.input_shape_assign(input_shapes)
+            print("Input_shape assigned")
+            if static_shape:
+                self.model_simplify()
+        else:
+            self.model_simplify(input_shapes)
 
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
@@ -450,6 +464,9 @@ class OnnxConverter(BaseConverter):
             self.addWeight(name, data)
             # TODO: for quantized onnx, keep the same type
         self.get_output_name(self.model.graph)
+        # self.add_shape_info(self.model.graph)
+        if self.dynamic:
+            self.get_dynamic_op_shape(self.model)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
         try:
@@ -477,6 +494,78 @@ class OnnxConverter(BaseConverter):
         for output in graph.output:
             if not self.isWeight(output.name):
                 self.output_names.append(output.name)
+
+    def addDynamicShape(self, name, shape):
+        if len(shape) == 0:
+            shape = [1]
+        if isinstance(shape, tuple):
+            shape = list(shape)
+        elif not isinstance(shape, list):
+            raise KeyError("{}:{} unknown shape".format(name, shape))
+        if name in self.shapes:
+            if self.shapes[name] != shape:
+                raise KeyError("shape {} conflict {} vs {}".format(name, self.shapes[name], shape))
+        self.dynamic_shapes[name] = shape
+
+    def getDynamicShape(self, name):
+        if name not in self.dynamic_shapes:
+            print("DYNAMIC WARNING: shape {} not found in dynamic_shapes".format(name))
+            return None
+        return self.dynamic_shapes[name]
+
+    def get_dynamic_op_shape(self, model):
+        dynamic_op = ["Range"]
+        ori_outputs = []
+        ori_outputs.extend(model.graph.output)
+        del self.model.graph.output[:]
+        for node in model.graph.node:
+            if node.op_type in dynamic_op:
+                for output in node.output:
+                    if not self.isWeight(output):
+                        model.graph.output.extend([onnx.ValueInfoProto(name=output)])
+        ort_inputs = {}
+        test_file = ''
+        if isinstance(self.test_input, list):
+            assert self.test_input[0].endswith('.npz')
+            test_file = self.test_input[0]
+        elif isinstance(self.test_input, str):
+            assert self.test_input.endswith('.npz')
+            test_file = self.test_input
+        else:
+            raise ValueError("test_input npz file is necessary when transform dynamic shape model")
+        test_data = np.load(test_file)
+        for i in test_data.files:
+            ort_inputs[i] = test_data[i]
+        try:
+            try:
+                ort_session = rt.InferenceSession(model.SerializeToString())
+            except Exception as E:
+                if "Message onnx.ModelProto exceeds maximum protobuf size of 2GB" in str(E):
+                    print("LOG: Try to convert through a temporary file when Constant Folding.")
+                    # large models try to convert through a temporary file
+                    import os
+                    import tempfile
+                    with tempfile.TemporaryDirectory() as tmpdirname:
+                        model_path = os.path.join(tmpdirname, 'dynamic_model.onnx')
+                        onnx.save(model,
+                                  model_path,
+                                  save_as_external_data=True,
+                                  location="temp_external_data",
+                                  convert_attribute=True)
+                        ort_session = rt.InferenceSession(model.SerializeToString())
+                else:
+                    raise E
+        except ValueError:
+            print("WARNING: onnxruntime.InferenceSession error when getting dynamic output shape.")
+
+        # ort_session = rt.InferenceSession(model.SerializeToString())
+        outputs = [x.name for x in ort_session.get_outputs()]
+        ort_outs = ort_session.run(outputs, ort_inputs)
+        ort_outs_shape = [x.shape for x in ort_outs]
+        for i, output in enumerate(outputs):
+            self.addDynamicShape(output, ort_outs_shape[i])
+        del self.model.graph.output[:]
+        model.graph.output.extend(ori_outputs)
 
     def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
@@ -528,6 +617,9 @@ class OnnxConverter(BaseConverter):
             input_shapes.append(self.getShape(_name))
         output_shapes = list()
         output_shapes = len(self.output_names) * [[]]
+        for i, o in enumerate(self.output_names):
+            if o in self.dynamic_shapes:
+                output_shapes[i] = self.getDynamicShape(o)
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, Platform.ONNX,
                                  self.input_types)
@@ -1138,15 +1230,24 @@ class OnnxConverter(BaseConverter):
 
     def convert_range_op(self, onnx_node):
         assert (onnx_node.op_type == "Range")
+        output_shape = self.getDynamicShape(onnx_node.name)
         start = self.getOp(onnx_node.inputs[0])
         limit = self.getOp(onnx_node.inputs[1])
         delta = self.getOp(onnx_node.inputs[2])
-        range_op = top.RangeOp(self.unranked_type,
-                             start,
-                             limit,
-                             delta,
-                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                             ip=self.mlir.insert_point).output
+        if output_shape is None:
+            range_op = top.RangeOp(self.unranked_type,
+                                start,
+                                limit,
+                                delta,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        else:
+            range_op = top.RangeOp(self.mlir.get_tensor_type(output_shape),
+                                start,
+                                limit,
+                                delta,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, range_op)
 
     def convert_sigmoid_op(self, onnx_node):

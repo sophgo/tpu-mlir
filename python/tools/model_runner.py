@@ -107,13 +107,14 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             overflow = np.prod(i.data.shape) - np.prod(input.shape)
             assert (overflow >= 0)
             if overflow > 0:
-                input = np.concatenate([input.flatten(),
-                                        np.zeros([overflow]).astype(input.dtype)
-                                        ]).reshape(i.data.shape)
+                # input = np.concatenate([input.flatten(),
+                #                         np.zeros([overflow]).astype(input.dtype)
+                #                         ]).reshape(i.data.shape)
                 input_shapes.append(input.shape)
             else:
                 input_shapes.append(i.data.shape)
-        i.data[:] = lowering(input, pdtype=i.dtype, pshape=i.data.shape,pzero_point=i.qzero_point, pscale=i.qscale)
+        # i.data[:] = lowering(input, pdtype=i.dtype, pshape=i.data.shape,pzero_point=i.qzero_point, pscale=i.qscale)
+        i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype, pshape=input.shape, pzero_point=i.qzero_point, pscale=i.qscale).flatten()
 
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(

@@ -1569,7 +1569,8 @@ def Top_SqueezeOp: Top_Op<"Squeeze"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$axes
+    I64ArrayAttr:$axes,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);

@@ -28,16 +28,24 @@ void top::UnsqueezeOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
   auto axes = module::getI64Array(getAxesAttr());
   std::vector<int64_t> out_shape(in_shape);
-  std::vector<int64_t> axes_(*axes);
-  int64_t out_dims = in_shape.size() + axes_.size();
-  for (int i = 0; i < axes_.size(); ++i) {
-    if (axes_[i] < 0) {
-      axes_[i] += out_dims;
-    }
+  bool is_scalar = false;
+  auto pre_op = getInput().getDefiningOp();
+  if (isa<top::SqueezeOp>(pre_op)) {
+    auto squeeze_op = dyn_cast<top::SqueezeOp>(pre_op);
+    is_scalar = squeeze_op.getIsScalar();
   }
-  std::sort(axes_.begin(), axes_.end());
-  for (auto axis : axes_) {
-    out_shape.insert(out_shape.begin() + axis, 1);
+  if (!is_scalar) {
+    std::vector<int64_t> axes_(*axes);
+    int64_t out_dims = in_shape.size() + axes_.size();
+    for (int i = 0; i < axes_.size(); ++i) {
+      if (axes_[i] < 0) {
+        axes_[i] += out_dims;
+      }
+    }
+    std::sort(axes_.begin(), axes_.end());
+    for (auto axis : axes_) {
+      out_shape.insert(out_shape.begin() + axis, 1);
+    }
   }
   module::setShapeOrVerify(getOutput(), out_shape);
   if (module::isShape(getInput())) {
