@@ -59,7 +59,8 @@ void top::NmsOp::shape_inference() {
   assert(input_size >= 2);
   int num_batch = module::getShape(getInputs()[1])[0];
   int num_class = module::getShape(getInputs()[1])[1];
-  int max_output_size_per_class = 0;
+  int spatial_dimension = module::getShape(getInputs()[1])[2];
+  int64_t max_output_size_per_class = 0;
   if (input_size >= 3 && module::isShape(getInputs()[2])) {
     auto vec = module::getShapeTensorValue(getInputs()[2]);
     assert(vec.size() == 1);
@@ -67,6 +68,9 @@ void top::NmsOp::shape_inference() {
   } else {
     max_output_size_per_class = getMaxOutputSize();
   }
+  // update max_output_size_per_class, such as 2**31 -1
+  if(max_output_size_per_class > spatial_dimension)
+    max_output_size_per_class = spatial_dimension;
   std::vector<int64_t> output_shape{0, 3};
   output_shape[0] = num_batch * num_class * max_output_size_per_class;
   module::setShapeOrVerify(getOutput(), output_shape);
