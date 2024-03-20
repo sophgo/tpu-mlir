@@ -1949,13 +1949,20 @@ class OnnxConverter(BaseConverter):
                 self.addWeight(x, data)
                 operands.append(self.getWeightOp(x))
                 if i == 2:
-                    max_output_size = data.astype(np.int64)
+                    # not strictly equal to 2**63 -1, (case:9.223372e+18) still can be cast to negative because of overflow
+                    if(data > 2**63 -1000):
+                        max_output_size = 2**63 -1
+                    else:
+                        max_output_size = data.astype(np.int64)
             else:
                 operands.append(self.getOperand(x))
         max_output_size = 0
         if (len(onnx_node.inputs) > 3):
             if self.isWeight(onnx_node.inputs[2]):
-                max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+                if(self.getWeight(onnx_node.inputs[2]) > 2**63 -1000):
+                    max_output_size = 2**63 -1
+                else:
+                    max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
         nms_op = top.NmsOp(self.unranked_type,
                            operands,
                            center_point_box=0,
