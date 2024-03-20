@@ -1306,8 +1306,8 @@ def arg(input: Tensor,
         "keepdims": Attr(keep_dims, "bool"),
         "mode": Attr(method, "string"),
     }
-    output1 = Tensor(dtype=o_dtype, name=out_name)
-    output2 = Tensor(dtype=input.dtype, name=out_name)
+    output1 = Tensor(dtype=o_dtype, name=f"{out_name}_ind")
+    output2 = Tensor(dtype=input.dtype, name=f"{out_name}_val")
     TpuLang.insert_op("top.Arg", inputs=[input], outputs=[output1, output2], params=attr)
     return output1, output2
 

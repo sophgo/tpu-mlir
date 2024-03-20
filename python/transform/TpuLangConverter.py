@@ -42,8 +42,11 @@ def auto_name(kwarg_name='out_name'):
     def wrapper(func):
         def decorate(*args, **kwargs):
             if kwarg_name in kwargs:
-                if kwargs[kwarg_name] is None:
-                    kwargs[kwarg_name] = generate_name(func.__name__)
+                need_gen_name = kwargs[kwarg_name] is None
+            else:
+                need_gen_name = True
+            if need_gen_name:
+                kwargs[kwarg_name] = generate_name(func.__name__)
             return func(*args, **kwargs)
 
         return decorate
@@ -78,6 +81,7 @@ def to_scalar(num):
             else:
                 return func(*args, **kwargs)
 
+        decorate.__name__ = func.__name__
         return decorate
     return wrapper
 
@@ -98,7 +102,7 @@ def annotation_check(func):
         else:
             return isinstance(type0, type1)
 
-    def wrapper(*args, **kwargs):
+    def decorate(*args, **kwargs):
         idx = 0
         for k, v in func.__annotations__.items():
             if idx >= len(args):
@@ -114,7 +118,8 @@ def annotation_check(func):
 
         return func(*args, **kwargs)
 
-    return wrapper
+    decorate.__name__ = func.__name__
+    return decorate
 
 def check_dtype(dtype: str):
     assert dtype.lower() in supported_dtypes

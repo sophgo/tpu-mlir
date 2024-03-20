@@ -250,7 +250,6 @@ class TPULANG_IR_TESTER(object):
         add = tpul.add(input_0, input_1, out_dtype = dtype)
         return add
 
-
     def test_base_binary_quant(self, case_name, func, shape_x: List[int], shape_y: List[int], scale=None, dtype="int8"):
         @tpulang(self.chip)
         def binary_coeff():
@@ -2146,9 +2145,6 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Arg
     # ------------
-    def arg_op(self, input):
-        arg = tpul.arg(input)
-        return arg
 
     def test_Arg(self, case_name):
         """arg"""
@@ -2157,7 +2153,7 @@ class TPULANG_IR_TESTER(object):
         def _test_arg(shape_x: List[int], dtype="float32"):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
-            arg1, arg2 = self.arg_op(x)
+            arg1, arg2 = tpul.arg(x)
             self.compile_and_check(self.unique_name(case_name), [x], [arg1, arg2])
 
         _test_arg([1, 32, 28, 28])
@@ -3159,8 +3155,8 @@ class TPULANG_IR_TESTER(object):
             key = tpul.Tensor(dtype=dtype, shape=list(key_data.shape), data=key_data)
             x_data = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
-            y, sorted_key, ind = tpul.sort_by_key(x, key, axis=axis)
-            self.compile_and_check(self.unique_name(case_name), [x, key], [y, sorted_key, ind])
+            y, sorted_key = tpul.sort_by_key(x, key, axis=axis)
+            self.compile_and_check(self.unique_name(case_name), [x, key], [y, sorted_key])
 
         # _test_sort_by_key([28, 4], 0)
         _test_sort_by_key([4, 11], 1)
