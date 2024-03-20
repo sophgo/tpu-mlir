@@ -675,28 +675,30 @@ bool ConvertTopToTpu::cswin_mix_precision() {
         }
       }
     }
-    for (auto op : mlp) {
-      auto addop = dyn_cast_or_null<top::AddOp>(op);
-      if (addop == NULL)
-        return false;
-      if (LoweringConfig::quantize_map.find(
-              module::getName(addop.getOperation()).str()) ==
-          LoweringConfig::quantize_map.end()) {
-        LoweringConfig::quantize_map.insert(
-            {module::getName(addop.getOperation()).str(), module::Mode::F16});
-      }
-      for (auto in : addop.getOperands()) {
-        if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
-          auto geop =
-              dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
-          if (geop == NULL)
-            return false;
-          if (LoweringConfig::quantize_map.find(
-                  module::getName(mmop.getOperation()).str()) ==
-              LoweringConfig::quantize_map.end()) {
-            LoweringConfig::quantize_map.insert(
-                {module::getName(mmop.getOperation()).str(),
-                 module::Mode::F16});
+    if (!module::isBM1688()){
+      for (auto op : mlp) {
+        auto addop = dyn_cast_or_null<top::AddOp>(op);
+        if (addop == NULL)
+          return false;
+        if (LoweringConfig::quantize_map.find(
+                module::getName(addop.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(addop.getOperation()).str(), module::Mode::F16});
+        }
+        for (auto in : addop.getOperands()) {
+          if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+            auto geop =
+                dyn_cast_or_null<top::GELUOp>(mmop.getInput().getDefiningOp());
+            if (geop == NULL)
+              return false;
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mmop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mmop.getOperation()).str(),
+                  module::Mode::F16});
+            }
           }
         }
       }
