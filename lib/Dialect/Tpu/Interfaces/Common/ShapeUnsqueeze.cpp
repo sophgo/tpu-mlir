@@ -23,7 +23,3 @@ LogicalResult tpu::ShapeUnsqueezeOp::inference(InferenceParameter &p) {
   }
   return success();
 }
-
-mlir::Type tpu::ShapeUnsqueezeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
-  return do_nothing(mode);
-}

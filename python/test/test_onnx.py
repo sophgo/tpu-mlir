@@ -380,17 +380,12 @@ class ONNX_IR_TESTER(object):
                      model_name: str,
                      quant_modes: list,
                      static_shape=True,
-                     version=14):
+                     version=14,
+                     dynamic=False):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
         model_def.opset_import[0].version = version
-        onnx.checker.check_model(model_def)
-        tool = OnnxTransformer(model_name, model_def, static_shape=static_shape)
-        node_name_mapping = tool.converter.node_name_mapping
-        tool.model_transform(fp32_mlir)
-
-        onnx_model = "{}_opt.onnx".format(model_name)
         input_npz = "{}_in_fp32.npz".format(model_name)
         file_mark(input_npz)
         for name in input_data:
@@ -399,6 +394,12 @@ class ONNX_IR_TESTER(object):
             else:
                 input_data[name] = input_data[name].astype(np.float32)
         np.savez(input_npz, **input_data)
+        onnx.checker.check_model(model_def)
+        tool = OnnxTransformer(model_name, model_def, test_input=input_npz, static_shape=static_shape, dynamic=dynamic)
+        node_name_mapping = tool.converter.node_name_mapping
+        tool.model_transform(fp32_mlir)
+
+        onnx_model = "{}_opt.onnx".format(model_name)
         # top mlir outputs will be inferenced first in case the quant mode is int8
         show_fake_cmd(input_npz, onnx_model, "onnx_out.npz")
         onnx_outs = onnx_inference(input_data, onnx_model, True)
@@ -596,7 +597,7 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True, dynamic=False):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -626,7 +627,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(onnx_model.graph,
                            name=model_name,
                            input_data=in_data,
-                           static_shape=static_shape)
+                           static_shape=static_shape,
+                           dynamic=dynamic)
 
     def onnx_and_test(self,
                       graph_def,
@@ -635,7 +637,8 @@ class ONNX_IR_TESTER(object):
                       static_shape=True,
                       check_last: bool = False,
                       quant_modes=None,
-                      version=14):
+                      version=14,
+                      dynamic=False):
         if quant_modes is None:
             quant_modes = self.quant_modes
         if input_data is None:
@@ -647,7 +650,8 @@ class ONNX_IR_TESTER(object):
             model_name,
             quant_modes,
             static_shape=static_shape,
-            version=version)
+            version=version,
+            dynamic=dynamic)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -5814,7 +5818,7 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(4, 8, 32, 32).float()
-        self.torch_and_test(x, Model(), case_name, static_shape=False)
+        self.torch_and_test(x, Model(), case_name, static_shape=False, dynamic=True)
 
     def test_PermuteBinary(self, case_name):
 

@@ -22,9 +22,7 @@ void ConcatTryLowering::Lowering(PatternRewriter &rewriter,
     return;
   assert(!op.getDoRelu());
   for (int idx = 0; idx < op.getNumOperands(); ++idx) {
-
       try_insert_device2host(op.getOperation(), idx);
-    
   }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(

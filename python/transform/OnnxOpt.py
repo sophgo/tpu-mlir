@@ -59,9 +59,10 @@ def get_node_attrs(node) -> dict:
 
 
 class ConstantFolding(object):
-    def __init__(self, model, test_input):
+    def __init__(self, model, test_input, dynamic_inputs):
         self.test_input = test_input
         self.model = copy.deepcopy(model)
+        self.dynamic_inputs = dynamic_inputs
         if self.model.graph.value_info:
             n = len(self.model.graph.value_info)
             for _ in range(n):
@@ -146,6 +147,9 @@ class ConstantFolding(object):
         return vinfo.type.tensor_type.elem_type
 
     def is_dynamic(self, node):
+        # for i in node.input:
+        #     if i in self.dynamic_inputs:
+        #         return True
         if node.op_type in ["NonMaxSuppression", "NonZero", "Unique"] \
                 and node.input[0] not in self.const_tensors:
             return True
@@ -179,6 +183,7 @@ class ConstantFolding(object):
     def get_constant_nodes(self):
         const_nodes = []
         dynamic_tensors = []
+        dynamic_tensors.extend(self.dynamic_inputs)
         self.const_tensors = [x.name for x in self.model.graph.initializer]
         self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
         self.const_tensors.extend([''])

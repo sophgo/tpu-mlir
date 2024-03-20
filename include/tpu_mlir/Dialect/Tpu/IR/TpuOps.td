@@ -1910,8 +1910,7 @@ def Tpu_ShapeSliceOp: Tpu_Op<"ShapeSlice", [
 }
 
 def Tpu_ShapeUnsqueezeOp: Tpu_Op<"ShapeUnsqueeze", [
-    ShapeProducer, ShapeConsumer,
-    DeclareOpInterfaceMethods<TypeInterface>]> {
+    ShapeProducer, ShapeConsumer]> {
   let summary = "Onnx-Style ShapeUnsqueeze operator";
 
   let description = [{
@@ -3207,8 +3206,7 @@ def Tpu_D2DOp: Tpu_Op<"D2D"> {
 }
 
 def Tpu_ShapeArithOp: Tpu_Op<"ShapeArith", [
-    ShapeProducer, ShapeConsumer,
-    DeclareOpInterfaceMethods<TypeInterface>]> {
+    ShapeProducer, ShapeConsumer]> {
   let summary = "Cpu data operation";
 
   let description = [{
