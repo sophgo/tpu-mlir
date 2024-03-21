@@ -205,13 +205,13 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
             shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
             int64_t meta_gaddr = g_addr +
                                 (gi.n_idx * meta_stride.n +
-                                 gi.c_idx * meta_stride.c +
+                                 div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
                                  gi.h_idx * meta_stride.h +
                                  gi.w_idx * meta_stride.w) * 4;
             int64_t racu_gaddr = g_addr +
                                  align_up(max_meta_bytes, Arch::EU_BYTES) +
                                 (gi.n_idx * racu_stride.n +
-                                 gi.c_idx * racu_stride.c +
+                                 div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
                                  gi.h_idx * racu_stride.h +
                                  gi.w_idx * racu_stride.w);
 

@@ -122,11 +122,11 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
 
           int64_t racu_cur_global_offset = gi.n_idx * racu_stride.n +
-                                           gi.c_idx * racu_stride.c +
+                                           div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
                                            gi.h_idx * racu_stride.h +
                                            gi.w_idx * racu_stride.w ;
           int64_t meta_cur_global_offset = (gi.n_idx * meta_stride.n +
-                                            gi.c_idx * meta_stride.c +
+                                            div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
                                             gi.h_idx * meta_stride.h +
                                             gi.w_idx * meta_stride.w) * 4;
           BM168x::instance()->dl_tensor_racu_compress_gen_cmd(
