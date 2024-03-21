@@ -299,10 +299,10 @@ class CUSTOM_TPULANG_TESTER(object):
             tpul.compile_f32("model_def_{}_{}".format(gen_name(flag), postfix), [x], [y], dynamic=dynamic)
 
         for flag in (0b1, 0b10, 0b100, 0b111):
-            tpul.init(self.chip.upper())
+            # tpul.init(self.chip.upper())
             print("--- model_def_{} ---".format(gen_name(flag)))
             compile_model(flag, self.dynamic)
-            tpul.deinit()
+            # tpul.deinit()
 
 def test_one_case_in_all(tester: CUSTOM_TPULANG_TESTER, case, error_cases, success_cases):
     try:
