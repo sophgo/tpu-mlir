@@ -14,6 +14,17 @@ model_transform.py \
   --test_result=test7_top_outputs.npz \
   --mlir test7.mlir
 
+# test one core
+model_deploy.py \
+  --mlir test7.mlir \
+  --quantize F16 \
+  --chip bm1688 \
+  --num_core 1 \
+  --test_input test7_input.npz \
+  --test_reference test7_top_outputs.npz \
+  --model test7_f16_core1.bmodel
+
+# test two core
 model_deploy.py \
   --mlir test7.mlir \
   --quantize F16 \
@@ -21,7 +32,5 @@ model_deploy.py \
   --num_core 2 \
   --test_input test7_input.npz \
   --test_reference test7_top_outputs.npz \
-  --disable_layer_group \
-  --debug \
-  --model test7_f16.bmodel
+  --model test7_f16_core2.bmodel
 
