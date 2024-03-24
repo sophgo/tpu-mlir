@@ -13,11 +13,13 @@ $DIR/test1.sh
 $DIR/test2.sh
 $DIR/test5.sh
 $DIR/test6.sh
+$DIR/test7.sh
+$DIR/test8.sh
+$DIR/test9.sh
 
 if [ $IS_BASIC == 'all' ]; then
   $DIR/test3.sh
   $DIR/test4.sh
 fi
-$DIR/test8.sh
-$DIR/test9.sh
+
 popd
