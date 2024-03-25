@@ -17,6 +17,16 @@ using namespace tpu_mlir::tpu;
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOpsDialect.cpp.inc"
 
+// template <>
+// struct FieldParser<AffineExpr> {
+//   static FailureOr<AffineExpr> parse(AsmParser &parser) {
+//     AffineExpr expr;
+//     if (failed(parser.parseAffineExpr({}, expr)))
+//       return failure();
+//     return expr;
+//   }
+// };
+
 void TpuDialect::initialize() {
   addOperations<
 #define GET_OP_LIST

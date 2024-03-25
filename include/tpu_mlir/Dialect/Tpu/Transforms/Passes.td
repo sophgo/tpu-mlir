@@ -64,6 +64,16 @@ def CoreParallel : Pass<"core-parallel", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def DDRInterleave : Pass<"ddr-interleave", "ModuleOp"> {
+  let summary = "DDR interleave mode";
+  let constructor = "createDDRInterleavePass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"interleave_region", "interleave-region", "int64_t", /*default=*/"1",
+           "interleave_region:1 The DDRC is configured to balance performance across most use cases.">,
+  ];
+}
+
 def AddressAssign : Pass<"address-assign", "ModuleOp"> {
   let summary = "assign address in tpu by tpuc-opt";
   let constructor = "createAddressAssignPass()";
