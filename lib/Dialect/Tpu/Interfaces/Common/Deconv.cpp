@@ -130,6 +130,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (module::isUniformQuantized(getOutput())) {
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto qmode = getQuantMode();
     bool is_tf = qmode == tpu::RequantMode::QDM ||
                  qmode == tpu::RequantMode::TFLite ||
@@ -156,7 +157,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
           int offset = (on * c + oc) * h * w + hw;
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
-                                       qmode, rmode);
+                                       qmode, rmode) + o_qtype.getZeroPoint();
           p.outputs[0][offset] = to_int8(v);
         }
       }
