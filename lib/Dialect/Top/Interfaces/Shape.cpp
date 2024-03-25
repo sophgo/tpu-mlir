@@ -38,10 +38,11 @@ void top::ShapeOp::shape_inference() {
   if (getEnd().has_value()) {
     removeEndAttr();
   }
-  if (getStep().has_value()) {
-    removeStepAttr();
+  if(start < 0 && end - start == 1){
+    start = start + input_dims;
+    end = start + 1;
   }
-  if (start != 0 || end != input_dims || step != 1) {
+  if (start != 0 || end != input_dims) {
     no_slice = false;
   }
   std::vector<int64_t> output_shape({(int64_t)input_shape.size()});
