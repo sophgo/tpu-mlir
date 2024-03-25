@@ -16,16 +16,17 @@ namespace impl {
 
 static LogicalResult check_type(Value v) {
   auto type = v.getType();
-  if (type.isa<NoneType>()) {
+  if (isa<NoneType>(type)) {
     return success();
   }
+
   if (auto tensor_type = type.dyn_cast<RankedTensorType>()) {
     auto etype = tensor_type.getElementType();
     if (etype.isIntOrFloat()) {
       return success();
     }
-    if (etype.isa<quant::UniformQuantizedType,
-                  quant::CalibratedQuantizedType>()) {
+    if (isa<quant::UniformQuantizedType, quant::CalibratedQuantizedType>(
+            etype)) {
       return success();
     }
   }
