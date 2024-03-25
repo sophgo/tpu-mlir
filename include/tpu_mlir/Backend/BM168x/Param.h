@@ -996,11 +996,13 @@ typedef struct {
   uint64_t input_addr;
   uint64_t output_addr;
   uint64_t dequant_addr;
+  uint64_t buffer_addr;
   int n;
   int c;
   int h;
   int w;
   bool is_perchannel;
+  bool has_buffer;
   float scale_value;
   int offset_value;
   int input_dtype;

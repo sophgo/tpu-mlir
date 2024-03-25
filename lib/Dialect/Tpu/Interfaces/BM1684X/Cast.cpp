@@ -97,15 +97,31 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  if (getInput().hasOneUse()) {
-    return 0;
-  }
+  // if (getInput().hasOneUse()) {
+  //   return 0;
+  // }
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
-  if (qInput || (!qInput && !qOutput)) {
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool fInput = in_type.isIntOrIndex() == false;
+  bool fOutput = out_type.isIntOrIndex() == false;
+  if (!(qInput && fOutput) && !(fInput && qOutput)) {
     return 0;
+  } else {
+    if (fInput && qOutput) {
+      if (getInput().hasOneUse()) {
+        return 0;
+      }
+      return in_lmem_bytes;
+    } else {
+      if (out_type.isF16() || out_type.isBF16()) {
+        return out_lmem_bytes;
+      }
+      return 0;
+    }
   }
-  return in_lmem_bytes;
+
 }
 
 void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
@@ -154,7 +170,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(getInput());
       param.output_dtype = BM168x::getDataType(getOutput());
-      param.mode = ROUND_INF;
+      param.mode = 0;
+      param.round_mode = ROUND_INF;
       BM168x::call_local_func("backend_api_requant_float_local", &param,
                               sizeof(param));
     } else {
@@ -163,11 +180,13 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       param.input_addr = in_gi.out_addr;
       param.output_addr = gi.out_addr;
       param.dequant_addr = 0;
+      param.buffer_addr = gi.buffer_addr;
       param.n = sec_info.out_n_slice * in_gi.d_slice;
       param.c = sec_info.c_slice;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
       param.is_perchannel = false;
+      param.has_buffer = (out_type.isF16() || out_type.isBF16());
       param.scale_value = qtype.getScale();
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(getInput());
