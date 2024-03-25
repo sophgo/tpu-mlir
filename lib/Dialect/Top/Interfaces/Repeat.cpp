@@ -56,16 +56,34 @@ LogicalResult top::RepeatOp::inference(InferenceParameter &p) {
 }
 
 void top::RepeatOp::shape_inference() {
-  assert(module::isWeight(getRepeats()));
-  auto repeat_op = getRepeats().getDefiningOp<top::WeightOp>();
-  auto repeats = repeat_op.read<float>();
+  std::vector<int64_t> repeats;
+  if (auto tile_w = dyn_cast<top::WeightOp>(getRepeats().getDefiningOp())){
+      auto tile_v = tile_w.read_as_float();
+      std::transform(tile_v->begin(), tile_v->end(),
+        std::back_inserter(repeats),
+        [](auto &v) { return static_cast<int64_t>(v); });
+  } else if (module::isShape(getRepeats())) {
+      repeats = module::getShapeTensorValue(getRepeats());
+  } else{
+    llvm_unreachable("repeats is illegal");
+  }
   auto in_shape = module::getShape(getInput());
-  int64_t dim = std::max(in_shape.size(), (*repeats).size());
+  int64_t dim = std::max(in_shape.size(), repeats.size());
   auto in_shape_ = shape_expand_dim(in_shape, dim);
-  auto repeats_ = shape_expand_dim(*repeats, dim);
-  auto out_shape = llvm::SmallVector<int64_t>();
+  auto repeats_ = shape_expand_dim(repeats, dim);
+  std::vector<int64_t> out_shape;
   for (int i = 0; i < dim; ++i) {
     out_shape.push_back(in_shape_[i] * repeats_[i]);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    input_shapes_v.push_back(input_shape_v);
+    input_shapes_v.push_back(repeats_);
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
+
 }

@@ -75,4 +75,14 @@ void top::TileOp::shape_inference() {
   std::transform(tile_vec.begin(), tile_vec.end(), in0_shape.begin(), out_shape.begin(),
         [](int a, int b){return a * b;});
   module::setShapeOrVerify(getOutput(), out_shape);
+
+  if (module::isShape(getInput())) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    input_shapes_v.push_back(input_shape_v);
+    input_shapes_v.push_back(tile_vec);
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }
