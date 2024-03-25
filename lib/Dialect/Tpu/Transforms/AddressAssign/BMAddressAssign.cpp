@@ -206,10 +206,8 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
       module::setAddress(io, BM168x::IO_ADDR[io_index++]);
     }
     // fix other address
-    int64_t offset = start_addr - io_limit;
-    fix_addr_for_io_tag(m, io_limit, addr_limit, offset);
     module::setNeuronAddr(m, start_addr);
-    module::setNeuronSize(m, addr_limit - io_limit);
+    module::setNeuronSize(m, addr_limit - start_addr);
     module::updateModuleTypes();
     return;
   }
