@@ -83,6 +83,7 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     }
   } else if (module::isUniformQuantized(getOutput())) {
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     if (asym == false) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
@@ -97,9 +98,9 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
-        double sum = p.outputs[0][i];
-        if (getDoRelu() && sum < 0) {
-          sum = 0;
+        double sum = p.outputs[0][i] + o_qtype.getZeroPoint();
+        if (getDoRelu() && sum < o_qtype.getZeroPoint()) {
+          sum = o_qtype.getZeroPoint();
         }
         p.outputs[0][i] = saturate(sum, out_type);
       }

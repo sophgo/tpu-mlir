@@ -80,7 +80,36 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = saturate(sum, out_type);
     }
   } else {
-    llvm_unreachable("MulOp asymmetric use FP32");
+    auto qmode = getQuantMode();
+    auto num_elem = module::getNumElements(getOutput());
+    auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+    auto rhs_num_elem = module::getNumElements(getInputs()[1]);
+    std::vector<float> lhs_tmp(lhs_num_elem);
+    std::vector<float> rhs_tmp(rhs_num_elem);
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
+    auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
+    auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+    for (int i = 0; i < lhs_num_elem; i++) {
+      lhs_tmp[i] = p.inputs[0][i] - l_qtype.getZeroPoint();
+    }
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+    for (int i = 0; i < rhs_num_elem; i++) {
+      rhs_tmp[i] = p.inputs[1][i] - r_qtype.getZeroPoint();
+    }
+
+    auto binary = (Binary *)p.handle;
+    (*binary)
+        .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+        .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
+        .run();
+
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int i = 0; i < num_elem; i++) {
+      float sum = p.outputs[0][i];
+      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode) + o_qtype.getZeroPoint();
+      p.outputs[0][i] = saturate(sum, out_type);
+    }
   }
   return success();
 }

@@ -205,21 +205,24 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       }
     }
   } else {
+    auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
+    auto rshift_v = module::getI64Array(getRshifts(), 2, 0);
+    auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
+    auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto lhs_num_elem = module::getNumElements(getInputs()[0]);
     auto rhs_num_elem = module::getNumElements(getInputs()[1]);
     std::vector<float> lhs_tmp(lhs_num_elem);
     std::vector<float> rhs_tmp(rhs_num_elem);
-    auto qtype = module::getUniformQuantizedType(getInputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
     for (int i = 0; i < lhs_num_elem; i++) {
-      lhs_tmp[i] = (p.inputs[0][i] - (float)qtype.getZeroPoint()) *
-                   (float)qtype.getScale();
+      lhs_tmp[i] = applyMultiplierAndRShift(
+          p.inputs[0][i] - l_qtype.getZeroPoint(), multiplier_v->at(0), rshift_v->at(0));
     }
-    qtype = module::getUniformQuantizedType(getInputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
     for (int i = 0; i < rhs_num_elem; i++) {
-      rhs_tmp[i] = (p.inputs[1][i] - (float)qtype.getZeroPoint()) *
-                   (float)qtype.getScale();
+      rhs_tmp[i] = applyMultiplierAndRShift(
+          p.inputs[1][i] - r_qtype.getZeroPoint(), multiplier_v->at(1), rshift_v->at(1));
     }
     auto binary = (Binary *)p.handle;
     (*binary)
@@ -227,15 +230,10 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
         .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
         .run();
 
-    auto o_qtype = module::getUniformQuantizedType(getOutput());
-    auto zp = o_qtype.getZeroPoint();
-    auto scale = o_qtype.getScale();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = p.outputs[0][i] * (float)(1.0 / scale) + zp;
-      p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+      p.outputs[0][i] = saturate(p.outputs[0][i] + o_qtype.getZeroPoint(), out_type);
     }
-    return success();
   }
 
   return success();

@@ -325,8 +325,8 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           int64_t tmp = p.outputs[0][offset] + bias;
           v = applyMultiplierAndRShift(tmp, multi, shift, qmode, rmode) +
               o_qtype.getZeroPoint();
-          if (do_relu && (v < 0)) {
-            v = 0;
+          if (do_relu && (v < o_qtype.getZeroPoint())) {
+            v = o_qtype.getZeroPoint();
           }
           p.outputs[0][offset] = saturate(v, out_type);
         }

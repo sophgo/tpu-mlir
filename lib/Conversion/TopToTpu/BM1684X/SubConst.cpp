@@ -47,9 +47,6 @@ void SubConstLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SubConstOp op, bool asymmetric) const {
-  if (asymmetric)
-    return LoweringF16(rewriter, op);
-
   auto in = op.getInput();
   auto out = op.getOutput();
   double in_scale, out_scale;
@@ -61,7 +58,11 @@ void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
   get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
 
   double const_b = op.getConstVal().convertToDouble();
-  const_b = static_cast<int>(round(const_b / out_scale)) << rshift;
+  if (asymmetric) {
+    const_b = (static_cast<int>(round(const_b / out_scale)) << rshift) + in_zp * multiplier;
+  } else {
+    const_b = static_cast<int>(round(const_b / out_scale)) << rshift;
+  }
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {

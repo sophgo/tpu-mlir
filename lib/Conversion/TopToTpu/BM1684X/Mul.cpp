@@ -37,10 +37,6 @@ void MulLowering::LoweringINT4(PatternRewriter &rewriter, top::MulOp op,
 }
 void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
-  if (asymmetric) {
-    LoweringF32(rewriter, op);
-    return;
-  }
   const int nInputs = op->getNumOperands();
   std::vector<Value> operands;
   double scale = 1;
