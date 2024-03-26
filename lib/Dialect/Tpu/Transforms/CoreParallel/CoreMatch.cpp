@@ -404,12 +404,16 @@ public:
     if (isOpInBlock(op)) {
       return failure();
     }
-    if (!op.getWTranspose() || !module::isNone(op.getBias())) {
+    if (!op.getWTranspose()) {
       llvm_unreachable("Not Implemented");
     }
     auto w = op.getWeight();
     auto s = op.getScale();
     auto zp = op.getZp();
+    auto bias = op.getBias();
+    if (module::isActive(bias)) {
+      llvm_unreachable("Not Implemented");
+    }
     auto out = op.getOutput();
     auto w_shape = module::getShape(w);
     auto s_shape = module::getShape(s);
@@ -435,6 +439,12 @@ public:
       new_op->setOperand(1, new_w);
       new_op->setOperand(2, new_s);
       new_op->setOperand(3, new_zp);
+      if (module::isWeight(bias)) {
+        auto b_shape = module::getShape(bias);
+        auto new_b = module::opSliceAxis(rewriter, bias, b_shape.size() - 1,
+                                         i * N_slice, N_slice);
+        new_op->setOperand(4, new_b);
+      }
       concat_operands.push_back(new_op->getResult(0));
       ops_begin.push_back(new_op);
       ops_end.push_back(new_op);
