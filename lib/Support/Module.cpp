@@ -781,6 +781,13 @@ bool isWeight(Value v) {
   return false;
 }
 
+bool isActive(Value v) {
+  if (module::isNone(v) || module::isWeight(v)) {
+    return false;
+  }
+  return true;
+}
+
 bool isDynWeight(Value v) {
   auto op = v.getDefiningOp();
   if (op == nullptr) {
