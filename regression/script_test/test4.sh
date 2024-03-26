@@ -88,6 +88,7 @@ run_calibration.py yolov5s_3o.mlir \
   --tune_num 20 \
   -o yolov5s_3o_cali_table
 
+# test bm1684x
 model_deploy.py \
   --mlir yolov5s_3o.mlir \
   --quantize INT8 \
@@ -99,14 +100,35 @@ model_deploy.py \
   --compare_all \
   --except "yolo_post" \
   --debug \
-  --model yolov5s_3o_int8.bmodel
+  --model yolov5s_3o_int8_bm1684x.bmodel
 
 detect_yolov5.py \
   --input ${REGRESSION_PATH}/image/dog.jpg \
-  --model yolov5s_3o_int8.bmodel \
+  --model yolov5s_3o_int8_bm1684x.bmodel \
   --net_input_dims 192,1024 \
   --fuse_postprocess \
-  --out dog_out.jpg
+  --out dog_out_bm1684x.jpg
+
+# test bm1688
+model_deploy.py \
+  --mlir yolov5s_3o.mlir \
+  --quantize INT8 \
+  --chip bm1688 \
+  --calibration_table yolov5s_3o_cali_table \
+  --fuse_preprocess \
+  --test_input ${REGRESSION_PATH}/image/dog.jpg \
+  --test_reference yolov5s_3o_top_outputs.npz \
+  --compare_all \
+  --except "yolo_post" \
+  --debug \
+  --model yolov5s_3o_int8_bm1688.bmodel
+
+detect_yolov5.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov5s_3o_int8_bm1688.bmodel \
+  --net_input_dims 192,1024 \
+  --fuse_postprocess \
+  --out dog_out_bm1688.jpg
 
 popd
 
