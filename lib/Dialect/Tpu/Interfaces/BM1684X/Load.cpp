@@ -160,13 +160,16 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       llvm_unreachable("compress only support bm1688");
     }
     // nnvlc1.0
-    auto filter_shape = in.getDefiningOp<top::WeightOp>().getType().getShape();
-    N = filter_shape[0];
-    C = filter_shape[1];
-    H = filter_shape[2];
-    W = filter_shape[3];
+    auto ishape = in.getDefiningOp<top::WeightOp>().getType().getShape();
+    N = ishape[0];
+    C = ishape[1];
+    H = ishape[2];
+    W = (ishape.size() == 3) ? 1 : ishape[3];
     int stride_h = W;
     int stride_c = W * H;
+    if (gi.eu_align) {
+      stride_c = align_up(W * H, Arch::eu_num(fmt_bytes));
+    }
     int stride_n = ceiling_func(C, Arch::NPU_NUM) * stride_c;
     BM168x::instance()->dl_tensor_normal_decompress_gen_cmd(
         gi.out_addr, g_addr, N, C, H, W, stride_n, stride_c, stride_h, bias0,
