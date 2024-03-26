@@ -1,16 +1,118 @@
 User Interface
 ==============
 
-This chapter introduces the user interface.
+This chapter introduces the user interface, including the basic process of converting models and the usage methods of various tools.
 
-Introduction
---------------------
+Model Conversion Process
+--------------------------
 
 The basic procedure is transforming the model into a mlir file with ``model_transform.py``, and then transforming the mlir into the corresponding model with ``model_deploy.py``.
 Calibration is required if you need to get the INT8 model.
-The general process is shown in the figure (:ref:`ui_0`).
 
-Other complex cases such as image input with preprocessing and multiple inputs are also supported, as shown in the figure (:ref:`ui_1`).
+.. code-block:: shell
+
+    # To MLIR
+    $ model_transform.py \
+        --model_name resnet \
+        --model_def  resnet.onnx \
+        --test_input resnet_in.npz \
+        --test_result resnet_top_outputs.npz \
+        --mlir resnet.mlir
+
+    # To Float Model
+    $ model_deploy.py \
+       --mlir resnet.mlir \
+       --quantize F32 \ # F16/BF16
+       --processor bm1684x \
+       --test_input resnet_in_f32.npz \
+       --test_reference resnet_top_outputs.npz \
+       --model resnet50_f32.bmodel
+
+Support for Image Input
+~~~~~~~~~~~~~~~
+
+When using images as input, preprocessing information needs to be specified, as follows:
+
+.. code-block:: shell
+
+    $ model_transform.py \
+        --model_name resnet \
+        --model_def resnet.onnx \
+        --input_shapes [[1,3,224,224]] \
+        --mean 103.939,116.779,123.68 \
+        --scale 1.0,1.0,1.0 \
+        --pixel_format bgr \
+        --test_input cat.jpg \
+        --test_result resnet_top_outputs.npz \
+        --mlir resnet.mlir
+
+Support for Multiple Inputs
+~~~~~~~~~~~~~~~~
+
+When the model has multiple inputs, you can pass in a single npz file or sequentially pass in multiple npz files separated by commas, as follows:
+
+.. code-block:: shell
+
+    $ model_transform.py \
+        --model_name somenet \
+        --model_def  somenet.onnx \
+        --test_input somenet_in.npz \ # a.npy,b.npy,c.npy
+        --test_result somenet_top_outputs.npz \
+        --mlir somenet.mlir
+
+Support for INT8 Symmetric and Asymmetric
+~~~~~~~~~~~~~~~~~~~~
+
+Calibration is required if you need to get the INT8 model.
+
+.. code-block:: shell
+
+  $ run_calibration.py somenet.mlir \
+      --dataset dataset \
+      --input_num 100 \
+      -o somenet_cali_table
+
+Generating Model with Calibration Table Input.
+
+.. code-block:: shell
+
+    $ model_deploy.py \
+       --mlir resnet.mlir \
+       --quantize INT8 \
+       --calibration_table somenet_cali_table \
+       --processor bm1684x \
+       --test_input somenet_in_f32.npz \
+       --test_reference somenet_top_outputs.npz \
+       --tolerance 0.9,0.7 \
+       --model somenet_int8.bmodel
+
+Support for Mixed Precision
+~~~~~~~~~~~~~~
+
+When the precision of the INT8 model does not meet business requirements, you can try using mixed precision. First, generate the quantization table, as follows:
+
+.. code-block:: shell
+
+   $ run_qtable.py somenet.mlir \
+       --dataset dataset \
+       --calibration_table somenet_cali_table \
+       --processor bm1684x \
+       -o somenet_qtable
+
+Then pass the quantization table to generate the model
+
+.. code-block:: shell
+
+    $ model_deploy.py \
+       --mlir resnet.mlir \
+       --quantize INT8 \
+       --calibration_table somenet_cali_table \
+       --quantize_table somenet_qtable \
+       --processor bm1684x \
+       --model somenet_mix.bmodel
+
+Support for Quantized TFLite Models
+~~~~~~~~~~~~~~~~~~~
 
 TFLite model conversion is also supported, with the following command:
 
@@ -27,6 +129,7 @@ TFLite model conversion is also supported, with the following command:
         --test_input ../image/dog.jpg \
         --test_result resnet50_tf_top_outputs.npz \
         --mlir resnet50_tf.mlir
+
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
@@ -36,7 +139,8 @@ TFLite model conversion is also supported, with the following command:
        --tolerance 0.95,0.85 \
        --model resnet50_tf_1684x.bmodel
 
-Supporting the conversion of Caffe models, the commands are as follows:
+Support for Caffe Models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
@@ -52,27 +156,13 @@ Supporting the conversion of Caffe models, the commands are as follows:
         --test_input ../image/dog.jpg \
         --test_result resnet50_cf_top_outputs.npz \
         --mlir resnet50_cf.mlir
-    # The call of model_deploy is consistent with onnx
-    # ......
 
-.. _ui_0:
-.. figure:: ../assets/ui_0.png
-   :height: 9.5cm
-   :align: center
 
-   User interface 1
-
-.. _ui_1:
-.. figure:: ../assets/ui_1.png
-   :height: 9.5cm
-   :align: center
-
-   User interface 2
-
-.. _model_transform:
+Introduction to Tool Parameters
+-------------
 
 model_transform.py
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Used to convert various neural network models into MLIR files, the supported parameters are shown below:
 
@@ -141,14 +231,18 @@ Used to convert various neural network models into MLIR files, the supported par
    * - tolerance
      - N
      - Minimum similarity tolerance to model transform
+   * - disable_layer_group
+     - N
+     - Whether to Perform Layer Group Operation
+   * - opt
+     - N
+     - Optimization Level, Default 2
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
 
-.. _run_calibration:
-
 run_calibration.py
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use a small number of samples for calibration to get the quantization table of the network (i.e., the threshold/min/max of each layer of op).
 
@@ -211,15 +305,10 @@ A sample calibration table is as follows:
 It is divided into 4 columns: the first column is the name of the Tensor; the second column is the threshold (for symmetric quantization);
 The third and fourth columns are min/max, used for asymmetric quantization.
 
-
-.. _run_qtable:
-
 run_qtable.py
---------------------
+~~~~~~~~~~~~~~~~
 
 Use ``run_qtable.py`` to generate a mixed precision quantization table. The relevant parameters are described as follows:
-
-Supported parameters:
 
 .. list-table:: Function of run_qtable.py parameters
    :widths: 20 12 50
@@ -308,11 +397,10 @@ At the same time, a loss table will be generated, the default is ``full_loss_tab
 
 It represents the loss of the output obtained after the corresponding Layer is changed to floating point calculation.
 
-
 .. _model_deploy:
 
 model_deploy.py
---------------------
+~~~~~~~~~~~~~~~~~
 
 Convert the mlir file into the corresponding model, the parameters are as follows:
 
@@ -327,24 +415,30 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - mlir
      - Y
      - Mlir file
+   * - processor
+     - Y
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
    * - quant_input
      - N
      - Strip input type cast in bmodel, need outside type conversion
-   * - quant_input_list
-     - N
-     - choose index to strip cast, such as 1,3 means first & third input`s cast
    * - quant_output
      - N
      - Strip output type cast in bmodel, need outside type conversion
+   * - quant_input_list
+     - N
+     - choose index to strip cast, such as 1,3 means first & third input`s cast
    * - quant_output_list
      - N
      - Choose index to strip cast, such as 1,3 means first & third output`s cast
-   * - processor
-     - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+   * - quantize_table
+     - N
+     - Specify the path to the mixed precision quantization table. If not specified, quantization is performed according to the quantize type; otherwise, quantization is prioritized according to the quantization table
+   * - fuse_preprocess
+     - N
+     - Specify whether to fuse preprocessing into the model. If this parameter is specified, the model input will be of type uint8, and the resized original image can be directly input
    * - calibration_table
      - N
      - The quantization table path. Required when it is INT8 quantization
@@ -408,11 +502,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - q_group_size
      - N
      - Group size for per-group quant, only used in W4A16 quant mode
-
-.. _tools:
-
-Other Tools
---------------------
+   * - compress_mode
+     - N
+     - Specify the compression mode of the model: "none", "weight", "activation", "all". Supported on BM1688. Default is "none", no compression.
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
