@@ -111,7 +111,6 @@
        --processor bm1684x \
        --model somenet_mix.bmodel
 
-
 支持量化模型TFLite
 ~~~~~~~~~~~~~~~~~~~
 
@@ -139,7 +138,6 @@
        --test_reference resnet50_tf_top_outputs.npz \
        --tolerance 0.95,0.85 \
        --model resnet50_tf_1684x.bmodel
-
 
 支持Caffe模型
 ~~~~~~~~~~~~~~~~
@@ -281,6 +279,9 @@ run_calibration.py
    * - o
      - 是
      - 输出calibration table文件
+   * - debug_cmd
+     - 否
+     - debug cmd
 
 校准表的样板如下:
 
@@ -360,7 +361,7 @@ run_qtable.py
     # genetated time: 2022-11-09 21:35:47.981562
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # platform: bm1684x  mix_mode: F32
+    # processor: bm1684x  mix_mode: F32
     ###
     # op_name   quantize_mode
     conv2_1/linear/bn F32
@@ -376,7 +377,7 @@ run_qtable.py
     # genetated time: 2022-11-09 22:30:31.912270
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # platform: bm1684x  mix_mode: F32
+    # processor: bm1684x  mix_mode: F32
     ###
     No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
     No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
@@ -429,6 +430,9 @@ model_deploy.py
    * - quant_input_list
      - 否
      - 选择要转换的索引，例如 1,3 表示第一个和第三个输入的强制转换
+   * - quant_output_list
+     - 否
+     - 选择要转换的索引，例如 1,3 表示第一个和第三个输出的强制转换
    * - quantize_table
      - 否
      - 指定混精度量化表路径, 如果没有指定则按quantize类型量化; 否则优先按量化表量化
@@ -482,10 +486,10 @@ model_deploy.py
      - 指定对比模型所有的张量
    * - num_device
      - 否
-     - 用于并行计算的设备数量，默认1
+     - 用于并行计算的设备数量,默认1
    * - num_core
      - 否
-     - 用于并行计算的智能视觉深度学习处理器核心数量，默认1
+     - 用于并行计算的智能视觉深度学习处理器核心数量,默认1
    * - skip_validation
      - 否
      - 跳过检查 bmodel 的正确性
@@ -494,10 +498,13 @@ model_deploy.py
      - 将权重与之前生成的 cvimodel 合并为一个权重二进制文件，默认否
    * - model_version
      - 否
-     - 如果需要旧版本的cvimodel，请设置版本，例如1.2，默认latest
+     - 如果需要旧版本的cvimodel,请设置版本,例如1.2,默认latest
    * - q_group_size
      - 否
-     - 每组定量的组大小，仅用于 W4A16 定量模式，默认0
+     - 每组定量的组大小，仅用于 W4A16 定量模式,默认0
+   * - compress_mode
+     - 否
+     - 指定模型的压缩模式："none","weight","activation","all"。支持bm1688, 默认为"none",不进行压缩
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~
