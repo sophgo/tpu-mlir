@@ -397,6 +397,15 @@ struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
         return failure();
       }
     }
+
+    // fix bug for qwen
+    auto in_shape = module::getShape(op.getInput());
+    auto out_shape = module::getShape(op.getOutput());
+    if (in_shape.size() == 4 && out_shape.size() == 4 && in_shape[0] == 1 &&
+        in_shape[1] == 1 && out_shape[0] == 1 && out_shape[2] == 1) {
+      return failure();
+    }
+
     std::vector<Value> operands;
     for (auto add_in : add_op.getInputs()) {
       std::string in_name = module::getName(add_in).str() + "_reshape";
