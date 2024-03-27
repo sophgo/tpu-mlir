@@ -608,6 +608,20 @@ public:
     if (nextOp->hasOneUse() == false) {
       return failure();
     }
+
+    auto next_nextOp = *nextOp->getResult(0).getUsers().begin();
+    auto matmul_op =
+        dyn_cast_or_null<tpu::MatMulOp>(next_nextOp);
+    if(matmul_op){
+      auto matmul_op = dyn_cast<tpu::MatMulOp>(next_nextOp);
+      auto left =  matmul_op.getInput();
+      if(!isa<tpu::PermuteOp>(left.getDefiningOp())){
+        return failure();
+      }
+    }else {
+      return failure();
+    }
+
     if (isa<tpu::MulShiftOp, tpu::MulConstOp>(nextOp)) {
       auto mulconst_or_mulshift_op = nextOp;
       Value mulconst_or_mulshift_out = nextOp->getOpResult(0);
@@ -1032,7 +1046,7 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
 };
 
 // permute1 + permute2
-// permute_order !=  permute2_order
+// permute_order[0,2,1,3]!=  permute2_order[0,1,3,2]
 struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -1049,7 +1063,12 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
     // op order
     auto in0_order = module::getI64Array(permute_op.getOrder());
     auto in1_order = module::getI64Array(op.getOrder());
-    if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
+    // if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
+    //   return failure();
+    // }
+    //strict restrictions
+    if (false == (in1_order->size() == 4 && in1_order->at(0) == 0 && in1_order->at(1) == 1 && in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
+      false == (in0_order->size() == 4 && in0_order->at(0) == 0 && in0_order->at(1) == 2 && in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
       return failure();
     }
     std::vector<int64_t> new_order;
