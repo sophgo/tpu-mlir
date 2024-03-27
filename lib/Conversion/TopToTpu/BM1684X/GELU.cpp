@@ -36,25 +36,25 @@ void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
 
 void GELULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::GELUOp op) const {
-  if (module::isBM1688()) {
+  if (module::isBM1684X()) {
+    LoweringF32(rewriter, op);
+  } else {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::GELU));
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
-  } else {
-    LoweringF32(rewriter, op);
   }
 }
 
 void GELULowering::LoweringF16(PatternRewriter &rewriter,
                                top::GELUOp op) const {
-  if (module::isBM1688()) {
+  if (module::isBM1684X()) {
+    LoweringF32(rewriter, op);
+  } else {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::GELU));
     lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
-  } else {
-    LoweringF32(rewriter, op);
   }
 }
 
