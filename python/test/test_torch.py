@@ -37,7 +37,8 @@ class TORCH_IR_TESTER(object):
                  disable_thread: bool = False,
                  quant_input: bool = False,
                  quant_output: bool = False,
-                 debug: bool = False):
+                 debug: bool = False,
+                 num_core : int = 1):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
@@ -180,6 +181,7 @@ class TORCH_IR_TESTER(object):
         self.is_cv18xx = False
         self.chip = chip.lower()
         self.simple = simple
+        self.num_core = num_core
         self.multithread = not disable_thread
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
@@ -328,6 +330,7 @@ class TORCH_IR_TESTER(object):
         mlir_lowering(top_mlir,
                       tpu_mlir + ".mlir",
                       mode=quant_mode,
+                      num_core=self.num_core,
                       chip=self.chip,
                       cali_table=table,
                       asymmetric=isAsym)
@@ -3472,10 +3475,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")
+    parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
@@ -3484,7 +3488,7 @@ if __name__ == "__main__":
     parser.add_argument("--quant_output", action="store_true", help='quant output')
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug)
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug, args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
