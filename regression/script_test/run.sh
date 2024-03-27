@@ -20,6 +20,7 @@ $DIR/test9.sh
 if [ $IS_BASIC == 'all' ]; then
   $DIR/test3.sh
   $DIR/test4.sh
+  $DIR/test_llm.sh
 fi
 
 popd
