@@ -1449,16 +1449,24 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
 
     def test_Mul(self, case_name):
-        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
-        output_shape = [1, 3, 27, 27]
-        graph_txt = """
-            %s (float[1, 3, 27, 27] input1, float[1, 3, 27, 27] input2) => (float%s output)
-            {
-                output = Mul(input1, input2)
-            }
-            """ % (case_name, output_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shape = [
+            {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]},
+            {"input1": [1, 4420, 2], "input2": [1, 4420, 2]}
+        ]
+        output_shape = [[1, 3, 27, 27], [1, 4420, 2]]
+
+        for i in range(len(input_shape)):
+            input1 = input_shape[i]["input1"]
+            input2 = input_shape[i]["input2"]
+            output = output_shape[i]
+            graph_txt = """
+                %s (float%s input1, float%s input2) => (float%s output)
+                {
+                    output = Mul(input1, input2)
+                }
+                """ % (case_name, input1, input2, output)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
 
     def test_MulBcast(self, case_name):
         shapes = ([7, 9, 44, 38], )
@@ -4239,7 +4247,7 @@ class ONNX_IR_TESTER(object):
                                   static_shape=False,
                                   input_data=input_data,
                                   only_cmp_with_bmodel=True)
-    
+
     def test_ConstantFillDyn(self, case_name):
         tensor_input_shape = [2, 6]
 
