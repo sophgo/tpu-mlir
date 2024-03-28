@@ -8,6 +8,7 @@
 from .TorchHelper import *
 import numpy as np
 
+
 class TorchInterpreter():
 
     def __init__(self, torch_model):
@@ -88,6 +89,7 @@ class TorchInterpreter():
             raise RuntimeError("{} not suppose".format(node.op_type))
 
     def run_aten(self, node: TorchNode):
+        # yapf: disable
         ParamMap = {
             "aten::ones": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::ones_like": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
@@ -101,15 +103,17 @@ class TorchInterpreter():
             "aten::expand": ['implicit'],
             "aten::arange": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::addmm": ['beta', 'alpha'],
-            "aten::to":
-            ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
+            "aten::to": ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
             "aten::new_zeros": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::new_ones": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::new_full": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::meshgrid": ['indexing'],
-            "aten::empty": ['dtype', 'layout', 'device', 'pin_memory','memory_format'],
-            "aten::baddbmm": ['beta','alpha'],
+            "aten::empty": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
+            "aten::baddbmm": ['beta', 'alpha'],
+            "aten::linalg_norm": ['ord', 'dim', 'keepdim', 'dtype'],
+            "aten::frobenius_norm": ['dim', 'keepdim'],
         }
+        # yapf: enable
         assert node.op_type.split('::')[0] == 'aten'
         # get input list
         input_list = [self.get_input(name) for name in node.inputs]
