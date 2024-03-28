@@ -86,6 +86,7 @@ class TORCH_IR_TESTER(object):
             "Flip":             (self.test_Flip,              N, Y, Y, N),
             "Floor":            (self.test_Floor,             N, Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
+            "FrobeniusNorm":    (self.test_FrobeniusNorm,     N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
             "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
@@ -236,13 +237,16 @@ class TORCH_IR_TESTER(object):
         denominator = self.square_rooted(x) * self.square_rooted(y)
         return round(numerator / float(denominator), 3)
 
-    def compare(self, ref_out, targe_out):
+    def compare(self, ref_out, target_out):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
-            cos = self.cosine_similarity(ref_out, targe_out)
+            cos = self.cosine_similarity(ref_out, target_out)
             assert (cos > 0.997 or (np.linalg.norm(ref_out) == 0
-                                    and np.linalg.norm(targe_out) == 0))
+                                    and np.linalg.norm(target_out) == 0))
+        elif len(target_out) == 1 and len(ref_out) == 1 and ref_out[0] != 0:
+            ratio = target_out[0] / ref_out[0]
+            assert(ratio > 0.9 and ratio < 1.1)
         else:
-            np.testing.assert_allclose(ref_out, targe_out, rtol=1e-5, atol=1e-01)
+            np.testing.assert_allclose(ref_out, target_out, rtol=1e-5, atol=1e-01)
 
     def make_test_calibration_table(self, tensors, table_name):
         # simple calibration table
@@ -2597,6 +2601,24 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(4, 3, 32, 32), (4, 3, 32, 32)], Model())
         self.trace_and_test([(4, 3, 32, 32)], Model2())
+
+    #######################################################################
+    # Frobenius Norm
+    # ------------
+    def test_FrobeniusNorm(self):
+        """FloorDiv"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.linalg.norm(x, ord='fro')
+                z = x / y
+                return z
+
+        self.trace_and_test([(32,64)], Model(), [self.Desc('float32', -1.0, 1.0)])
 
     #######################################################################
     # Unary
