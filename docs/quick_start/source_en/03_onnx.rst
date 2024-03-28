@@ -211,7 +211,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Name of output model file (including path)
    * - num_core
      - N
-     - When the target is selected as bm1688 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
+     - When the target is selected as bm1688, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
    * - skip_validation
      - N
      - Skip bmodel correctness verification to boost deployment efficiency; bmodel verification is on by default.
