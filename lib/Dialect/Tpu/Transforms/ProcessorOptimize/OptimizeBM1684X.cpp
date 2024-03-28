@@ -2764,6 +2764,210 @@ public:
   }
 };
 
+class SplitReduceL2Pattern : public OpRewritePattern<tpu::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    /* ReduceL2(1x6x8x65536)->Reshape(1x48x256x256)+ReduceL2(1x48x256x1)+ReduceL2(1x48x1x1)+Reshape(1x6x8x1)
+    */
+    // TODO : support quant type; consider the divisor of the reduced dim;
+    auto mode = op.getMode();
+    auto input = op.getInput();
+    auto output = op.getOutput();
+    auto input_shape = module::getShape(input);
+    if (mode != "ReduceL2" || input_shape.size() != 4) {
+      return failure();
+    }
+    auto axes = module::getI64Array(op.getAxes());
+    int split_dim = input_shape[3];
+    if (axes->size() != 1 || axes->at(0) != 3 || split_dim != 65536)
+      return failure();
+
+    auto name = module::getName(input);
+    std::vector<Value> operands;
+
+    std::vector<int64_t> reshape0_shape = {input_shape[0], input_shape[1]*input_shape[2],
+                                            256, 256};
+    auto reshape0_type = module::getTypeLike(output, reshape0_shape);
+    auto loc_reshape0 = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape0"));
+    rewriter.setInsertionPointAfterValue(input);
+    auto reshape_op0 = rewriter.create<tpu::ReshapeOp>(
+          loc_reshape0, reshape0_type, ValueRange{input});
+
+    std::vector<int64_t>  reducel2_0_shape= {input_shape[0], input_shape[1]*input_shape[2],
+                                            256, 1};
+    auto reducel2_type0 = module::getTypeLike(output,reducel2_0_shape);
+    auto loc_reduce0 = NameLoc::get(rewriter.getStringAttr(name.str() + "_reduce0"));
+    rewriter.setInsertionPointAfter(reshape_op0);
+    operands.push_back(reshape_op0.getOutput());
+    auto noneOp = module::getNoneOp(op);
+    for (int i = operands.size(); i < 3; i++) {
+      operands.push_back(noneOp);
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceL2")));
+    attrs.push_back(rewriter.getNamedAttr("axes", op.getAxes()));
+    attrs.push_back(rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    auto reducel2_op0 = rewriter.create<tpu::ReduceOp>(
+        loc_reduce0, reducel2_type0, operands, attrs);
+
+    operands.clear();
+    attrs.clear();
+    std::vector<int64_t>  reducel2_1_shape= {input_shape[0], input_shape[1],
+                                            input_shape[2], 1};
+    auto reducel2_type1 = module::getTypeLike(output,reducel2_1_shape);
+    auto loc_reduce1 = NameLoc::get(rewriter.getStringAttr(name.str() + "_reduce1"));
+    rewriter.setInsertionPointAfter(reducel2_op0);
+    operands.push_back(reducel2_op0.getOutput());
+    for (int i = operands.size(); i < 3; i++) {
+      operands.push_back(noneOp);
+    }
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceL2")));
+    op.setAxesAttr(rewriter.getI64ArrayAttr({axes->at(0) - 1}));
+    attrs.push_back(rewriter.getNamedAttr("axes", op.getAxes()));
+    attrs.push_back(rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    auto reducel2_op1 = rewriter.create<tpu::ReduceOp>(
+        loc_reduce1, reducel2_type1, operands, attrs);
+
+    std::vector<int64_t> reshape1_shape = {input_shape[0], input_shape[1],
+                                            input_shape[2], 1};
+    auto reshape1_type = module::getTypeLike(output, reshape1_shape);
+    auto loc_reshape1 = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape1"));
+    rewriter.setInsertionPointAfter(reducel2_op1);
+    auto reshape_op1 = rewriter.create<tpu::ReshapeOp>(
+          loc_reshape1, reshape1_type, ValueRange{reducel2_op1.getOutput()});
+    rewriter.replaceAllUsesWith(op.getOutput(), reshape_op1.getOutput());
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+/**
+ *                 Slice
+ *  \                   \
+ *    MatMul   ->         MatMul => Add
+ *  /                   /
+ *                 Slice
+ */
+class SplitMatmulPattern : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    /*
+    * MatMul(1x1x48x65536,1x1x65536x48) -> Slice => MatMul(1x1x48x16384,1x1x16384x48) => Add
+    */
+    // TODO : judge whether K is splited; what if other shape > 65535
+    if (module::isBM1690Family()) {
+      return failure();
+    }
+    auto left = op.getInput();
+    auto right = op.getRight();
+    auto left_shape = module::getShape(left);
+    auto right_shape = module::getShape(right);
+    auto output_shape = module::getShape(op.getOutput());
+    int left_dim = left_shape.size();
+    int right_dim = right_shape.size();
+    auto l_trans = op.getLeftTranspose();
+    auto r_trans = op.getRightTranspose();
+
+    if (left_dim != 4 || left_shape[3] < 16384 || l_trans || !r_trans) {
+      return failure();
+    }
+    int left_K_size = left_shape[3];
+    std::vector<int64_t> left_offset(left_dim, 0);
+    std::vector<int64_t> left_steps(left_dim, 1);
+    std::vector<int64_t> left_ends(left_dim, -1);
+    std::vector<int64_t> right_offset(right_dim, 0);
+    std::vector<int64_t> right_steps(right_dim, 1);
+    std::vector<int64_t> right_ends(right_dim, -1);
+    auto left_name = module::getName(left);
+    auto right_name = module::getName(right);
+
+    auto name = module::getName(op.getOutput());
+    std::vector<Value> operands;
+
+    int secs = 8;
+    std::vector<int64_t> new_left_shapes = {
+      left_shape[0], left_shape[1], left_shape[2], left_shape[3] / secs
+    };
+    std::vector<int64_t> new_right_shapes = {
+      right_shape[0], right_shape[1], right_shape[2], right_shape[3] / secs
+    };
+    std::vector<NamedAttribute> attrs;
+    for(int i=0;i<secs;i++){
+      left_offset[3] = left_K_size * i / secs;
+      left_ends[3] = left_K_size * (i+1) / secs;
+      attrs.push_back(rewriter.getNamedAttr(
+          "axes", rewriter.getI64ArrayAttr(3)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "offset", rewriter.getI64ArrayAttr(left_offset)));
+      attrs.push_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(left_steps)));
+      attrs.push_back(
+          rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(left_ends)));
+
+      auto loc = NameLoc::get(rewriter.getStringAttr(left_name.str() + "_slice" + std::to_string(i)));
+      auto left_type = module::getTypeLike(left, new_left_shapes);
+      rewriter.setInsertionPointAfterValue(left);
+      auto none = module::getNoneOp(left.getDefiningOp());
+      auto left_op = rewriter.create<tpu::SliceOp>(
+      loc, left_type, ValueRange{left, none, none, none, none}, attrs);
+
+      attrs.clear();
+      right_offset[3] = left_K_size * i / secs;
+      right_ends[3]= left_K_size * (i+1) / secs;
+      attrs.push_back(rewriter.getNamedAttr(
+          "axes", rewriter.getI64ArrayAttr(3)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "offset", rewriter.getI64ArrayAttr(right_offset)));
+      attrs.push_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(right_steps)));
+      attrs.push_back(
+          rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(right_ends)));
+      loc = NameLoc::get(rewriter.getStringAttr(right_name.str() + "_slice" + std::to_string(i)));
+      auto right_type = module::getTypeLike(right, new_right_shapes);
+      rewriter.setInsertionPointAfterValue(right);
+      auto right_op = rewriter.create<tpu::SliceOp>(
+      loc, right_type, ValueRange{right, none, none, none, none}, attrs);
+
+      attrs.clear();
+      rewriter.setInsertionPointAfter(right_op);
+      auto new_matmul_op = rewriter.clone(*op);
+      module::setLocSuffix(new_matmul_op, std::to_string(i));
+      new_matmul_op->setOperand(0, left_op->getResult(0));
+      new_matmul_op->setOperand(1, right_op->getResult(0));
+      module::setShape(new_matmul_op->getResult(0), output_shape);
+
+      operands.push_back(new_matmul_op->getResult(0));
+    }
+
+    // Value insertpoint = operands[0];
+    // if(operands[1].getDefiningOp()->getLoc() > operands[0].getDefiningOp()->getLoc())
+    //   insertpoint = operands[1];
+    rewriter.setInsertionPointAfterValue(operands[0]);
+    auto loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_add" + std::to_string(0)));
+    auto add_op = rewriter.create<tpu::AddOp>(
+          loc, operands[0].getType(), mlir::ValueRange{operands[0], operands[1]});
+    for(int i = 1;i < operands.size()-1;i++){
+      // if(operands[i+1].getDefiningOp()->getLoc() > add_op->getLoc())
+      //   insertpoint = operands[1];
+      rewriter.setInsertionPointAfterValue(add_op);
+      loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_add" + std::to_string(i)));
+      add_op = rewriter.create<tpu::AddOp>(
+          loc, operands[i].getType(), mlir::ValueRange{add_op.getOutput(), operands[i+1]});
+    }
+
+    rewriter.replaceAllUsesWith(op.getOutput(), add_op.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -2799,7 +3003,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
                 ReshapeSliceSqueezePattern,
-                NoneZeroFixRowMajor
+                NoneZeroFixRowMajor,
+                SplitReduceL2Pattern,
+                SplitMatmulPattern
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
