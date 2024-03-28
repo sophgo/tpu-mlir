@@ -276,6 +276,72 @@ conv_int
 * BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
 
+conv_quant
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def conv_quant(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_scale: Union[float, List[float]] = None,
+                   weight_scale: Union[float, List[float]] = None,
+                   output_scale: Union[float, List[float]] = None,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   output_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
+
+功能描述
+"""""""""""
+二维卷积定点运算。可参考各框架下的二维卷积定义。
+::
+
+  for c in channel
+    izp = is_izp_const ? izp_val : izp_vec[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    conv_i32 = (input - izp) Conv (weight - wzp) + bias[c];
+    output = requant_int(conv_i32, mul, shift) + ozp
+    其中mul，shift由iscale，wscale，oscale得到
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
+* weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
+* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
+* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
+* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
+* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
+* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。
+* weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
+* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由out_dtype确定。
+
+处理器支持
+"""""""""""
+* BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+
 deconv
 :::::::::::::::::
 
@@ -429,6 +495,74 @@ conv3d_int
 * BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 * BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
+
+conv3d_quant
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def conv_quant(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_scale: Union[float, List[float]] = None,
+                   weight_scale: Union[float, List[float]] = None,
+                   output_scale: Union[float, List[float]] = None,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   output_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
+
+功能描述
+"""""""""""
+二维卷积定点运算。可参考各框架下的二维卷积定义。
+::
+
+  for c in channel
+    izp = is_izp_const ? izp_val : izp_vec[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    conv_i32 = (input - izp) Conv (weight - wzp) + bias[c];
+    output = requant_int(conv_i32, mul, shift) + ozp
+    其中mul，shift由iscale，wscale，oscale得到
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，5维NCTHW格式。
+* weight：Tensor类型，表示卷积核Tensor，5维[oc, ic, kt, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kt是kernel_t，kh是kernel_h，kw是kernel_w。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1， 1]。bias的数据类型为int32
+* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[stride_t, stride_h, stride_w]
+* dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
+* pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
+* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
+* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。
+* weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
+* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由out_dtype确定。
+
+处理器支持
+"""""""""""
+* BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+
+
 matmul
 :::::::::::::::::
 
@@ -493,7 +627,6 @@ matmul_int
                      right_transpose: bool = False,
                      left_transpose: bool = False,
                      output_transpose: bool = False,
-                     hdim_is_batch: bool = False,
                      keep_dims: bool = True,
                      input_zp: Union[int, List[int]] = None,
                      right_zp: Union[int, List[int]] = None,
@@ -518,6 +651,63 @@ matmul_int
 * input_zp：List[int]型或int型，表示input的偏移。取None则表示0，取List时要求长度为k。
 * right_zp：List[int]型或int型，表示right的偏移。取None则表示0，取List时要求长度为k。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+要求左右Tensor的维度长度一致。
+当Tensor的维度长度为2时，表示矩阵和矩阵乘运算。
+当Tensor的维度长度大于2时，表示批矩阵乘运算。要求lhr.shape[-1] == rhs.shape[-2]，lhr.shape[:-2]和rhs.shape[:-2]需要满足广播规则。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由out_dtype指定。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+
+matmul_quant
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def matmul_quant(input: Tensor,
+                     right: Tensor,
+                     bias: Tensor = None,
+                     right_transpose: bool = False,
+                     keep_dims: bool = True,
+                     input_scale: Union[float, List[float]] = None,
+                     right_scale: Union[float, List[float]] = None,
+                     output_scale: Union[float, List[float]] = None,
+                     input_zp: Union[int, List[int]] = None,
+                     right_zp: Union[int, List[int]] = None,
+                     output_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+量化的矩阵乘运算。可参考各框架下的矩阵乘定义。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入左操作数，大于或等于2维，设最后两维shape=[m,k]。
+* right：Tensor类型，表示输入右操作数，大于或等于2维，设最后两维shape=[k,n]。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[n]。
+* right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
+* keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
+* input_scale：List[float]型或float型，表示input的量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为k。
+* right_scale：List[float]型或float型，表示right的量化参数。取None则使用right Tensor中的量化参数，取List时要求长度为k。
+* output_scale：List[float]型或float型，表示output的量化参数。不可以取None，取List时要求长度为k。
+* input_zp：List[int]型或int型，表示input的偏移。取None则表示0，取List时要求长度为k。
+* right_zp：List[int]型或int型，表示right的偏移。取None则表示0，取List时要求长度为k。
+* output_zp：List[int]型或int型，表示output的偏移。取None则表示0，取List时要求长度为k。
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 要求左右Tensor的维度长度一致。
