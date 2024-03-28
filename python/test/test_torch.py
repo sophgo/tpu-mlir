@@ -54,6 +54,7 @@ class TORCH_IR_TESTER(object):
             "Arctan":           (self.test_Arctan,            N, Y, Y, N),
             "Arctanh":          (self.test_Arctanh,           Y, Y, Y, N),
             "Arccos":           (self.test_Arccos,            Y, Y, Y, N),
+            "Arg":              (self.test_Arg,               Y, Y, Y, N),
             "Attention":        (self.test_Attention,         N, Y, Y, Y),
             "AttentionNew":     (self.test_AttentionNew,      N, Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y, Y),
@@ -1871,6 +1872,30 @@ class TORCH_IR_TESTER(object):
         for f in [torch.arccos]:
             # The value range of arctanh is (-1,1)
             _test_arccos(f)
+
+    #######################################################################
+    # arg
+    # ------------
+    def test_Arg(self):
+        """Arg"""
+
+        def _test_arg(func, axis, keepdim):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x, axis, keepdim=keepdim)
+                    return y
+
+            self.trace_and_test([(4, 3, 16, 16)], Model())
+
+        for f in [torch.argmin, torch.argmax]:
+            for axis in [0, 1, 2, 3]:
+                for keepdim in [True, False]:
+                    _test_arg(f, axis, keepdim)
 
     #######################################################################
     # Tile

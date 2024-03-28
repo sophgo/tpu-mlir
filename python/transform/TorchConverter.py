@@ -224,6 +224,8 @@ class TorchConverter(BaseConverter):
             "aten::zeros": lambda node: self.convert_constant_fill_op(node, 0),
             "aten::zeros_like": lambda node: self.convert_constant_like_op(node, 0),
             "aten::unbind": lambda node: self.convert_unbind_unpack(node),
+            "aten::argmax": lambda node: self.convert_arg_op(node),
+            "aten::argmin": lambda node: self.convert_arg_op(node),
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
             "prim::DictConstruct": lambda node: self.convert_dict_construct(node),
@@ -2378,3 +2380,23 @@ class TorchConverter(BaseConverter):
         for i in range(num):
             self.addOperand(output_names[i], new_op[i])
         self.tensor_list[torch_node.outputs[0]] = output_names
+
+    def convert_arg_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        keepdims = self.const_val[torch_node.inputs[2]]
+        assert (torch_node.op_type in ["aten::argmax", "aten::argmin"])
+        if torch_node.op_type == 'aten::argmax':
+            arg_type = 'ArgMax'
+        else:
+            arg_type = 'ArgMin'
+        loc_names = ["{}_{}".format(torch_node.outputs[0], arg_type)]
+        out_op = top.ArgOp(*self.mlir.get_tensor_type([[], None]),
+                           op,
+                           axis=axis,
+                           keepdims=keepdims,
+                           mode=StringAttr.get(arg_type),
+                           select_last_index=False,
+                           loc=self.get_loc(loc_names),
+                           ip=self.mlir.insert_point)
+        self.addOperand(torch_node.outputs[0], out_op.indices)
