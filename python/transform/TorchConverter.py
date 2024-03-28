@@ -118,6 +118,7 @@ class TorchConverter(BaseConverter):
             "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
             "aten::flatten": lambda node: self.convert_flatten_op(node),
+            "aten::frobenius_norm": lambda node: self.convert_frobenius_norm_op(node),
             "aten::gather": lambda node: self.convert_gather_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
@@ -140,6 +141,7 @@ class TorchConverter(BaseConverter):
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
+            "aten::linalg_norm": lambda node: self.convert_linalg_norm_op(node),
             "aten::linear": lambda node: self.convert_linear_op(node),
             "aten::log_sigmoid": lambda node: self.convert_sigmoid_op(node, log=True),
             "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
@@ -240,6 +242,7 @@ class TorchConverter(BaseConverter):
             "torchvision::deform_conv2d": lambda node: self.convert_deform_conv2d_op(node),
             "torchvision::roi_align": lambda node: self.convert_roi_align_op(node),
         }
+
         # yapf: enable
         self.check_op_types()
 
@@ -1887,6 +1890,40 @@ class TorchConverter(BaseConverter):
                                  loc=self.get_loc(torch_node.name),
                                  ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_linalg_norm_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        ord = self.const_val[torch_node.inputs[1]]
+        if ord != 'fro':
+            raise ValueError("Not Implemented")
+        axes = []
+        if torch_node.inputs[2] in self.const_val:
+            axes = self.const_val[torch_node.inputs[2]]
+        keepdims = self.const_val[torch_node.inputs[3]]
+        new_op = top.ReduceOp(self.unranked_type,
+                              op,
+                              axes,
+                              keepdims,
+                              StringAttr.get("ReduceL2"),
+                              loc=self.get_loc(torch_node.name),
+                              ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_frobenius_norm_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        axes = []
+        if torch_node.inputs[1] in self.const_val:
+            axes = self.const_val[torch_node.inputs[1]]
+        keepdims = self.const_val[torch_node.inputs[2]]
+        new_op = top.ReduceOp(self.unranked_type,
+                              op,
+                              axes,
+                              keepdims,
+                              StringAttr.get("ReduceL2"),
+                              loc=self.get_loc(torch_node.name),
+                              ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
 
     def convert_silu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
