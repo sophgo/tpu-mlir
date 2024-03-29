@@ -58,6 +58,9 @@ public:
 
       auto l_output_shape = module::getShape(l_op->getResult(0));
       auto r_output_shape = module::getShape(r_op->getResult(0));
+      if (l_output_shape.size() < 3 || r_output_shape.size() < 3) {
+        return failure();
+      }
       // Swap Left and Right
       if (isa<tpu::PermuteOp>(l_op) && !isa<tpu::PermuteOp>(r_op) &&
           l_output_shape[2] == r_output_shape[2]) {
@@ -610,15 +613,14 @@ public:
     }
 
     auto next_nextOp = *nextOp->getResult(0).getUsers().begin();
-    auto matmul_op =
-        dyn_cast_or_null<tpu::MatMulOp>(next_nextOp);
-    if(matmul_op){
+    auto matmul_op = dyn_cast_or_null<tpu::MatMulOp>(next_nextOp);
+    if (matmul_op) {
       auto matmul_op = dyn_cast<tpu::MatMulOp>(next_nextOp);
-      auto left =  matmul_op.getInput();
-      if(!isa<tpu::PermuteOp>(left.getDefiningOp())){
+      auto left = matmul_op.getInput();
+      if (!isa<tpu::PermuteOp>(left.getDefiningOp())) {
         return failure();
       }
-    }else {
+    } else {
       return failure();
     }
 
@@ -1066,9 +1068,13 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
     // if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
     //   return failure();
     // }
-    //strict restrictions
-    if (false == (in1_order->size() == 4 && in1_order->at(0) == 0 && in1_order->at(1) == 1 && in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
-      false == (in0_order->size() == 4 && in0_order->at(0) == 0 && in0_order->at(1) == 2 && in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
+    // strict restrictions
+    if (false == (in1_order->size() == 4 && in1_order->at(0) == 0 &&
+                  in1_order->at(1) == 1 && in1_order->at(2) == 3 &&
+                  in1_order->at(3) == 2) ||
+        false == (in0_order->size() == 4 && in0_order->at(0) == 0 &&
+                  in0_order->at(1) == 2 && in0_order->at(2) == 1 &&
+                  in0_order->at(3) == 3)) {
       return failure();
     }
     std::vector<int64_t> new_order;
@@ -2734,7 +2740,7 @@ public:
   LogicalResult matchAndRewrite(tpu::NonZeroOp op,
                                 PatternRewriter &rewriter) const override {
     const int order = op.getOrder().str() == "ColMajor" ? 0 : 1;
-    if (order == 0){
+    if (order == 0) {
       return failure();
     }
     auto type = op.getResult().getType();
@@ -2744,16 +2750,15 @@ public:
     module::setShape(op.getOutput(), new_out_shape);
 
     rewriter.setInsertionPointAfter(op);
-    auto permute_out = NameLoc::get(
-      rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_permute")
-      );
+    auto permute_out = NameLoc::get(rewriter.getStringAttr(
+        module::getName(op.getOutput()).str() + "_permute"));
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> Porder = {1, 0};
-    attrs.push_back(rewriter.getNamedAttr(
-      "order", rewriter.getI64ArrayAttr(Porder)));
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(Porder)));
     auto permute_op = rewriter.create<tpu::PermuteOp>(
-      permute_out, type, ValueRange{op.getOutput(), module::getNoneOp(op)}, attrs
-      );
+        permute_out, type, ValueRange{op.getOutput(), module::getNoneOp(op)},
+        attrs);
     op.getOutput().replaceAllUsesExcept(permute_op.getOutput(), permute_op);
     return success();
   }
