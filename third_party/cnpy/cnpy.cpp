@@ -730,6 +730,55 @@ npz_t npz_load(std::string fname) {
     return arrays;
 }
 
+npz_t npz_load(FILE* fp) {
+    npz_t arrays;
+    arrays.clear();
+
+    if(!fp) {
+        //throw std::runtime_error("npz_load: Error! Unable to open file "+fname+"!");
+        return arrays;
+    }
+
+    while(1) {
+        std::vector<char> local_header(30);
+        size_t headerres = fread(&local_header[0],sizeof(char),30,fp);
+        if(headerres != 30)
+            break;
+
+        //if we've reached the global header, stop reading
+        if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
+
+        //read in the variable name
+        uint16_t name_len = *(uint16_t*) &local_header[26];
+        std::string varname(name_len,' ');
+        size_t vname_res = fread(&varname[0],sizeof(char),name_len,fp);
+        if(vname_res != name_len)
+            throw std::runtime_error("npz_load: failed fread");
+
+        //erase the lagging .npy
+        varname.erase(varname.end()-4,varname.end());
+
+        //read in the extra field
+        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
+        if(extra_field_len > 0) {
+            std::vector<char> buff(extra_field_len);
+            size_t efield_res = fread(&buff[0],sizeof(char),extra_field_len,fp);
+            if(efield_res != extra_field_len)
+                throw std::runtime_error("npz_load: failed fread");
+        }
+
+        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
+        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
+        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
+
+        if(compr_method == 0) {arrays[varname] = load_the_npy_file(fp);}
+        else {arrays[varname] = load_the_npz_array(fp,compr_bytes,uncompr_bytes);}
+    }
+
+    fclose(fp);
+    return arrays;
+}
+
 NpyArray npz_load(std::string fname, std::string varname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 

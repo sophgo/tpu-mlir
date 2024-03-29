@@ -16,13 +16,15 @@ from transform.BaseConverter import BaseConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from utils.misc import *
-from utils.auto_remove import file_mark, file_clean
+from utils.auto_remove import file_mark, file_clean, shm_record, shm_cleanup
 from utils.preprocess import get_preprocess_parser, preprocess
 from utils.cache_tool import CacheTool
 from utils.log_setting import setup_logger
 import pymlir
+import atexit
 
 logger = setup_logger("transform")
+shm_path = "/dev/shm/"
 
 class ModelTransformer(object):
 
@@ -48,12 +50,12 @@ class ModelTransformer(object):
         trimmed_arr = repeated_arr[:batch_size]
         return trimmed_arr
 
-    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
-        self.mlir_file = mlir_file
-        mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
+    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}, weight_in_mem: bool=False):
+        self.mlir_file = shm_path + mlir_file if weight_in_mem else mlir_file
+        mlir_origin = self.mlir_file.replace(".mlir", "_origin.mlir", 1)
         file_mark(mlir_origin)
-        self.converter.generate_mlir(mlir_origin)
-        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False)
+        self.converter.generate_mlir(mlir_origin, weight_in_mem)
+        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False, weight_in_mem)
         if patterns_count:
             for k, v in patterns_count.items():
                 assert k in patterns and v == patterns[k], \

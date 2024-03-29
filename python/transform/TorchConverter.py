@@ -12,6 +12,9 @@ from mlir.ir import *
 import mlir.dialects.top as top
 import numpy as np
 import torchvision
+import logging
+
+logger = logging.getLogger("root")
 
 
 class TorchConverter(BaseConverter):
@@ -268,7 +271,7 @@ class TorchConverter(BaseConverter):
         known_ops = list(self.op_factory.keys())
         unknown_ops = []
         for op_type in op_types:
-            print(op_type)
+            logger.info(op_type)
             if op_type not in known_ops:
                 if not (op_type.endswith("_") and op_type[:-1] in known_ops):
                     unknown_ops.append(op_type)
@@ -345,7 +348,7 @@ class TorchConverter(BaseConverter):
             if node.op_type == "prim::ListUnpack":
                 self.list_map[node.inputs[0]] = node.outputs
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, save_in_mem=False):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
@@ -380,10 +383,14 @@ class TorchConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
+        if save_in_mem:
+            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
+            self.WeightToNpzInMem(self.weight_file)
+        else:
+            self.WeightToNpz(self.weight_file)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        self.WeightToNpz(self.weight_file)
-        print("Save mlir file: {}".format(mlir_file))
+        logger.info("Save mlir file: {}".format(mlir_file))
 
     def get_input_by_name(self, input):
         return self.const_val[input] if input in self.const_val.keys() else self.getOp(input)
@@ -596,7 +603,7 @@ class TorchConverter(BaseConverter):
                            loc=self.get_loc(torch_node.outputs),
                            ip=self.mlir.insert_point)
         out_ops = [new_op.values, new_op.indices]
-        # print(out_needs)
+        # logger.info(out_needs)
         for idx, need in enumerate(out_needs):
             if not need:
                 continue
@@ -781,7 +788,7 @@ class TorchConverter(BaseConverter):
         if torch_node.inputs[2] in self.const_val:
             implict = self.const_val[torch_node.inputs[2]]
         if implict:
-            print('not handled')
+            logger.info('not handled')
         opI = self.getOp(torch_node.inputs[0])
         opS = self.getOp(torch_node.inputs[1])
         new_cf = top.ConstantFillOp(self.unranked_type,

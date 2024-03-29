@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <pybind11/iostream.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
@@ -334,4 +335,6 @@ PYBIND11_MODULE(pyruntime_bm, m) {
            py::arg("input_shapes").noconvert(),
            py::arg("output_tensors").noconvert(),
            py::arg("output_shapes").noconvert());
+  py::scoped_ostream_redirect output{std::cerr,
+                                     py::module::import("sys").attr("stderr")};
 }

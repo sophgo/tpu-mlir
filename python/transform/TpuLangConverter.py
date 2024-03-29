@@ -12,6 +12,9 @@ from mlir.ir import *
 import mlir.dialects.quant as quant
 from utils.mlir_shell import *
 import numpy as np
+import logging
+
+logger = logging.getLogger("root")
 
 
 supported_dtypes = ["float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"]
@@ -516,15 +519,19 @@ class TpuLangConverter(BaseConverter):
 
         return return_op
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, save_in_mem):
         # self.quantized_type_assign(self.model)
         return_op = self.convert_subgraph(self.model)
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
+        for k, v in self.constant.items():
+            if v.dtype == "float16":
+                self.constant[k] = v.view("uint16")
+        if save_in_mem:
+            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
+            self.saveForCpp(self.weight_file, self.constant)
+        else:
+            np.savez(self.weight_file, **self.constant)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        for k,v in self.constant.items():
-            if v.dtype == 'float16':
-                self.constant[k] = v.view('uint16')
-        np.savez(self.weight_file, **self.constant)
-        print("Save mlir file: {}".format(mlir_file))
+        logger.info("Save mlir file: {}".format(mlir_file))

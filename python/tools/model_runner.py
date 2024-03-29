@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import importlib
+import sys
 import numpy as np
 import argparse
 import os
@@ -47,7 +48,20 @@ def pack_bmodel_context_generator(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
+def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False) -> dict:
+    if mute:
+        with open(os.devnull, "w") as devnull:
+            os.dup2(devnull.fileno(), sys.stdout.fileno())
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
+    try:
+        return _model_inference(inputs, model_file, dump_all)
+    finally:
+        if mute:
+            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
+            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+
+
+def _model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
@@ -171,7 +185,20 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
 g_mlir_module = None
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False) -> dict:
+    if mute:
+        with open(os.devnull, "w") as devnull:
+            os.dup2(devnull.fileno(), sys.stdout.fileno())
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
+    try:
+        return _mlir_inference(inputs, mlir_file, dump_all)
+    finally:
+        if mute:
+            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
+            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+
+
+def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     import pymlir
     pymlir.set_mem_mode("value_mem")
     from utils.mlir_parser import MlirParser

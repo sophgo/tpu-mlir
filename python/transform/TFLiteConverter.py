@@ -12,6 +12,9 @@ from mlir.ir import *
 import mlir.dialects.quant as quant
 import numpy as np
 from .tflite.TensorType import TensorType
+import logging
+
+logger = logging.getLogger("root")
 
 
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
@@ -971,11 +974,15 @@ class TFLiteConverter(BaseConverter):
 
         return return_op
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, save_in_mem=False):
         return_op = self.convert_subgraph(self.graph)
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
+        if save_in_mem:
+            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
+            self.saveForCpp(self.weight_file, self.constant)
+        else:
+            np.savez(self.weight_file, **self.constant)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        np.savez(self.weight_file, **self.constant)
-        print("Save mlir file: {}".format(mlir_file))
+        logger.info("Save mlir file: {}".format(mlir_file))

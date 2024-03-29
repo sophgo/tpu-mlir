@@ -23,7 +23,7 @@ from utils.cache_tool import CacheTool
 from utils.log_setting import setup_logger
 
 logger = setup_logger("deploy")
-
+shm_path = "/dev/shm/"
 
 def str2list(v):
     files = v.split(',')
@@ -115,11 +115,11 @@ class DeployTool:
     def cleanup(self):
         file_clean()
 
-    def lowering(self):
+    def lowering(self, weight_in_mem=False):
         if self.chip == 'cpu':
-            top_to_tosa(self.mlir_file, "tmp_tosa.mlir", self.includeWeight)
+            top_to_tosa(self.mlir_file, "tmp_tosa.mlir", self.includeWeight, weight_in_mem)
             # replace func name from "main" to "model"
-            self.tosa_mlir = "{}_tosa.mlir".format(self.prefix)
+            self.tosa_mlir = shm_path + "{}_tosa.mlir".format(self.prefix) if weight_in_mem else "{}_tosa.mlir".format(self.prefix)
             with open("tmp_tosa.mlir", "r", encoding="utf-8") as file:
                 content = file.read()
             content = content.replace("main", "model")
@@ -128,14 +128,14 @@ class DeployTool:
             delete_file("tmp_tosa.mlir")
             return {}
         else:
-            self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+            self.tpu_mlir = shm_path + "{}_tpu.mlir".format(self.prefix) if weight_in_mem else "{}_tpu.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
-            self.final_mlir = "{}_final.mlir".format(self.prefix)
+            self.final_mlir = shm_path + "{}_final.mlir".format(self.prefix) if weight_in_mem else "{}_final.mlir".format(self.prefix)
             patterns = mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device,
                           self.num_core, self.cali_table, self.asymmetric, self.quantize_table,
                           self.customization_format, self.fuse_preprocess, self.aligned_input,
                           self.ignore_f16_overflow, self.do_winograd, self.q_group_size,
-                          True if self.patterns_count else False)
+                          True if self.patterns_count else False, weight_in_mem)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
@@ -174,7 +174,7 @@ class DeployTool:
                     input_shape = [Operation.shape(input_op)]
                     ppa.load_config(input_op)
                     if self.fuse_preprocess:
-                        #fuse_preprocess should input origin image format
+                        # fuse_preprocess should input origin image format
                         if self.customization_format == '':
                             self.customization_format = getCustomFormat(
                                 ppa.pixel_format, ppa.channel_format)
@@ -235,8 +235,8 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
         self.cache_tool.mark_tpu_success()
 
-    def build_model(self):
-        if self.chip == 'cpu':
+    def build_model(self, weight_in_mem=False):
+        if self.chip == "cpu":
             tosa_to_llvm(self.tosa_mlir, self.model)
             return {}
         else:
@@ -244,7 +244,7 @@ class DeployTool:
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
-                          self.group_by_cores, self.model_version, True if self.patterns_count else False, self.compress_mode)
+                          self.group_by_cores, self.model_version, True if self.patterns_count else False, self.compress_mode, weight_in_mem)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()

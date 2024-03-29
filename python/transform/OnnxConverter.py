@@ -23,6 +23,9 @@ from mlir.ir import *
 from typing import List
 import onnxsim.onnx_simplifier as onnxsim
 import onnxruntime as rt
+import logging
+
+logger = logging.getLogger("root")
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -399,28 +402,28 @@ class OnnxConverter(BaseConverter):
         try:
             self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
         except:
-            print("WARNING: ConstantFolding failed.")
-        print("ConstantFolding finished")
+            logger.info("WARNING: ConstantFolding failed.")
+        logger.info("ConstantFolding finished")
         try:
             onnx_sim = self.onnx_sim.split(',')
             skip_fuse_bn = "skip_fuse_bn" in onnx_sim
-            print('skip_fuse_bn:',skip_fuse_bn)
+            logger.info(f'skip_fuse_bn:{skip_fuse_bn}')
             self.model, _ = onnxsim.simplify(self.model,
                                              skip_fuse_bn=skip_fuse_bn,
                                              skip_constant_folding=True,
                                              skip_shape_inference=True)
         except:
-            print("WARNING: onnxsim opt failed.")
-        print("Onnxsim opt finished")
+            logger.info("WARNING: onnxsim opt failed.")
+        logger.info("Onnxsim opt finished")
         if self.dynamic_inputs:
             self.input_shape_assign(input_shapes)
-            print("Input_shape assigned")
+            logger.info("Input_shape assigned")
         # Do constantFolding after onnxsim to avoid onnxsim bug (such as run ppyolo_tiny)
         try:
             self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
         except:
-            print("WARNING: ConstantFolding failed.")
-        print("ConstantFolding finished")
+            logger.info("WARNING: ConstantFolding failed.")
+        logger.info("ConstantFolding finished")
 
     def find_named_tensor(self, name):
         for tensor in self.model.graph.initializer:
@@ -448,7 +451,7 @@ class OnnxConverter(BaseConverter):
         self.num_input = len(self.input_names)
         if not self.dynamic_inputs:
             self.input_shape_assign(input_shapes)
-            print("Input_shape assigned")
+            logger.info("Input_shape assigned")
             if static_shape:
                 self.model_simplify()
         else:
@@ -473,7 +476,7 @@ class OnnxConverter(BaseConverter):
             onnx.save(self.model, self.onnx_file)
         except Exception as E:
             if "The proto size is larger than the 2 GB limit." in str(E):
-                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(self.onnx_file))
+                logger.info("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(self.onnx_file))
                 onnx.save(self.model,
                           self.onnx_file,
                           save_as_external_data=True,
@@ -636,7 +639,7 @@ class OnnxConverter(BaseConverter):
             if i.name == name:
                 return i.type.tensor_type.shape.dim
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, save_in_mem=False):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
@@ -678,10 +681,14 @@ class OnnxConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
+        if save_in_mem:
+            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
+            self.WeightToNpzInMem(self.weight_file)
+        else:
+            self.WeightToNpz(self.weight_file)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        self.WeightToNpz(self.weight_file)
-        print("Save mlir file: {}".format(mlir_file))
+        logger.info("Save mlir file: {}".format(mlir_file))
 
     def convert_skip_op(self, onnx_node):
         op = self.getOperand(onnx_node.inputs[0])

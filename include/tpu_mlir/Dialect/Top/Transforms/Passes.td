@@ -23,6 +23,8 @@ def Init : Pass<"init", "ModuleOp"> {
   let options = [
     Option<"freq", "freq", "uint64_t", /*default=*/"",
            "chip frequance">,
+    Option<"weight_in_mem", "weight_in_mem", "bool", /*default=*/"false",
+           "whether to save weight in shared mem instead of hard disk.">,
   ];
 }
 

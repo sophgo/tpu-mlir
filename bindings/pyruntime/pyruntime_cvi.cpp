@@ -1,8 +1,9 @@
+#include "cviruntime.h"
+#include <pybind11/iostream.h>
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-#include "cviruntime.h"
 
 namespace py = pybind11;
 
@@ -21,7 +22,7 @@ struct PythonTensor {
     aligned = tensor->aligned;
     size = tensor->mem_size / dsize;
     if (aligned) {
-      //for model_runner reference
+      // for model_runner reference
       shape = {1, 1, 1, size};
     }
     data = py::array(pytype, shape, (void *)CVI_NN_TensorPtr(tensor),
@@ -165,4 +166,6 @@ PYBIND11_MODULE(pyruntime_cvi, m) {
       .def("forward", &PythonCviModel::forward)
       .def_readwrite("inputs", &PythonCviModel::inputs)
       .def_readwrite("outputs", &PythonCviModel::outputs);
+  py::scoped_ostream_redirect output{std::cerr,
+                                     py::module::import("sys").attr("stderr")};
 }

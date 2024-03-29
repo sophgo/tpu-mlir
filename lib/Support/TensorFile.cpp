@@ -8,6 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/TensorFile.h"
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace mlir {
 
@@ -58,8 +62,8 @@ template <typename T> static bool check_type(Type eltType) {
   return same;
 }
 
-TensorFile::TensorFile(llvm::StringRef filename, bool readOnly, bool newCreate)
-    : filename(filename), readOnly(readOnly) {
+TensorFile::TensorFile(llvm::StringRef filename, bool readOnly, bool weight_in_mem, bool newCreate)
+    : filename(filename), readOnly(readOnly), use_weight_in_mem(weight_in_mem) {
   if (!newCreate) {
     std::ifstream f(filename.str());
     if (!f.good()) {
@@ -67,6 +71,9 @@ TensorFile::TensorFile(llvm::StringRef filename, bool readOnly, bool newCreate)
                    << " doesn't exist, please check\n";
     }
     auto ret = load();
+    if (filename.str().find("/dev/shm") != std::string::npos && use_weight_in_mem) {
+      unlink(filename.str().c_str());
+    }
     if (!succeeded(ret)) {
       if (readOnly) {
         llvm::errs() << filename << " not exist, failed to read for read\n";
@@ -451,6 +458,7 @@ LogicalResult TensorFile::load(void) {
 
 std::string filename;
 bool readOnly;
+bool use_weight_in_mem;
 cnpy::npz_t map;
 std::atomic<int> cnt_del = {0};
 std::atomic<int> cnt_add = {0};

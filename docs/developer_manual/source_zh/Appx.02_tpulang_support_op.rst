@@ -118,9 +118,9 @@ compile
             outputs: List[Tensor],
             cmp=True,
             refs=None,
-            mode='f32',       # unused
-            dynamic=False):
-            #pass
+            mode='f32',         # unused
+            dynamic=False,
+            save_in_mem=False)
 
 
 功能描述
@@ -138,6 +138,7 @@ compile
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
 * mode：string类型，废弃。
 * dynamic：bool类型，是否进行动态编译。
+* save_in_mem：bool类型，是否将中间文件暂存到共享内存并随进程释放，启用该项时Compile会返回生成的bmodel文件的bytes-like object，用户需要自行接收和处理，如使用f.write(bmodel_bin)保存。
 
 .. _deinit:
 

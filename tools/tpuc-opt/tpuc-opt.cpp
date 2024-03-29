@@ -15,7 +15,7 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 using namespace mlir;
 
-const std::string PluginPrePass[] = {"--init"};
+std::string PluginPrePass[] = {"--init"};
 
 const std::string PluginPostPass[] = {"--deinit", "--mlir-print-debuginfo"};
 
@@ -24,6 +24,15 @@ int main(int argc, char **argv) {
 
   DialectRegistry registry;
   tpu_mlir::registerAllDialects(registry);
+
+  // Check if --init option is explicitly provided
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]).find("--init") != std::string(argv[i]).npos) {
+      PluginPrePass[0] = "";
+      break;
+    }
+  }
+
   if (argc <= 2) {
     return asMainReturnCode(MlirOptMain(
         argc, argv, "TPU MLIR module optimizer driver\n", registry));
