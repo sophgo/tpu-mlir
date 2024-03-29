@@ -53,7 +53,7 @@ def lowering(input, pdtype, pshape, pzero_point=0, pscale=1):
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, 0, 15).astype(np.uint8).reshape(pshape)
     elif pdtype == "f32":
-        res = input.astype(np.float32)
+        res = input.astype(np.float32).reshape(pshape)
     else:
         raise ValueError(f"unknown type: form {input.dtype} to {pdtype}")
     return res
