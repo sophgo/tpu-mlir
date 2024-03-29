@@ -489,7 +489,24 @@ std::vector<float> output_tensor_data(output_size, 0);
     param.output = output;
     DeformGatherFunc func(param);
     func.invoke();
-  } else {
+  } else if (func_name == "cumsum") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    CumSumParam param;
+    param.axis = dic_param.get("axis").cast<IntegerAttr>().getInt();
+    tensor_list_t input;
+    input.ptr = p.inputs[0];
+    input.shape = module::getShape(getInputs()[0]);
+    input.size = module::getNumElements(getInputs()[0]);
+    param.inputs.push_back(input);
+    tensor_list_t output;
+    output.ptr = p.outputs[0];
+    output.shape = module::getShape(getOutputs()[0]);
+    output.size = module::getNumElements(getOutputs()[0]);
+    param.output = output;
+    CumSumFunc func(param);
+    func.invoke();
+  }
+  else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
   return success();

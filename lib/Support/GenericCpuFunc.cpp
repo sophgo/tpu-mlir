@@ -3478,4 +3478,36 @@ void DeformGatherFunc::invoke() {
   processDeformGather(p, attr, param_.output.ptr, false);
 }
 
+CumSumFunc::CumSumFunc(CumSumParam &param) : param_(param) {}
+
+void CumSumFunc::invoke() {
+  std::vector<int64_t> in_shape = param_.inputs[0].shape;
+  int64_t dim = param_.axis;
+  int64_t num_dims = in_shape.size();
+  assert(dim < in_shape.size());
+
+  int64_t length = in_shape[dim];
+  // stride
+  int64_t stride = 1;
+  for (int64_t i = dim + 1; i < num_dims; i++) {
+    stride *= in_shape[i];
+  }
+  int64_t num_elements = param_.output.size;
+  int64_t cur_index = 0;
+  while (cur_index < num_elements) {
+    for (int64_t l = 0; l < length; l++) {
+      int64_t start = cur_index + l * stride;
+      for (int64_t s = 0; s < stride; s++) {
+        if (l == 0) {
+          param_.output.ptr[start + s] = param_.inputs[0].ptr[start + s];
+        }
+        else {
+          param_.output.ptr[start + s] = param_.inputs[0].ptr[start + s] + param_.output.ptr[start + s - stride];
+        }
+      }
+    }
+    cur_index += length * stride;
+  }
+}
+
 } // namespace tpu_mlir

@@ -106,6 +106,89 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   return;
 }
 void AddLowering::LoweringBF16(PatternRewriter &rewriter, top::AddOp op) const {
+  const int nInputs = op->getNumOperands();
+  bool hasConst = false;
+  int const_idx = -1;
+  for (int i = 0; i < nInputs; ++i) {
+    if (module::isWeight(op->getOperand(i))) {
+      hasConst = true;
+      const_idx = i;
+      break;
+    }
+  }
+  if (hasConst) {
+    //Begin: here is special for sherpa
+    int active_idx = 1 - const_idx;
+    auto weightOp = op.getOperand(const_idx);
+    auto activeOp = op.getOperand(active_idx);
+    auto weight_shape = module::getShape(weightOp);
+    auto active_shape = module::getShape(activeOp);
+    int ndims = weight_shape.size();
+    int active_ndims = active_shape.size();
+    bool bcast_weight = false;
+    bool bcast_active = false;
+    if (ndims == active_ndims) {
+      for (int i = 0; i < ndims; i++) {
+        if (weight_shape[i] != active_shape[i]) {
+          if (weight_shape[i] == 1) {
+            bcast_weight = true;
+          }
+          if (active_shape[i] == 1) {
+            bcast_active = true;
+          }
+        }
+      }
+    }
+    bool need_bcast = bcast_weight && bcast_active;
+    if (need_bcast && weightOp.hasOneUse()) {
+      //broadcast operand0
+      int bcast_dim = -1, dst_len = -1;
+      for (int i = 0; i < ndims; i++) {
+        if (weight_shape[i] != active_shape[i]) {
+          if (weight_shape[i] == 1) {
+            bcast_dim = i;
+            dst_len = active_shape[i];
+            break;
+          }
+        }
+      }
+      if (bcast_dim != -1) {
+        llvm::errs()<<"========BroadCast AddOp's Weight Operand==========\n";
+        // llvm::errs()<<"active_dims="<<active_ndims<<",weight_ndims="<<ndims<<"\n";
+        // op.dump();
+          //broadcast weight
+        auto weightOp = cast<top::WeightOp>(op->getOperand(const_idx).getDefiningOp());
+        auto const_f32 = weightOp.read<float>();
+        auto const_size = const_f32->size();
+        std::vector<float> bcast_weight_const(const_size * dst_len);
+        int once_bcast_len = 1;
+        for (int i = bcast_dim + 1; i < ndims; i++) {
+          once_bcast_len *= weight_shape[i];
+        }
+        int outer_dim = 1;
+        for (int i = 0; i < bcast_dim; i++) {
+          outer_dim *= weight_shape[i];
+        }
+        for (int i = 0; i < outer_dim; i++) {
+          int src_idx = i * once_bcast_len;
+          for (int j = 0; j < dst_len; j++) {
+            int dst_idx = i * dst_len * once_bcast_len + j * once_bcast_len;
+            memcpy(bcast_weight_const.data() + dst_idx, const_f32->data() + src_idx, once_bcast_len * sizeof(float));
+          }
+        }
+        auto new_weight_op_name = module::getName(weightOp.getResult()).str() + "_bcast";
+        auto elt_type = weightOp.getType().cast<RankedTensorType>().getElementType();
+        std::vector<int64_t> new_shape(ndims);
+        for (int i = 0; i < ndims; i++) {
+          new_shape[i] = (i == bcast_dim) ? dst_len : weight_shape[i];
+        }
+        auto new_weight_type = RankedTensorType::get(new_shape, elt_type);
+        auto new_weight_operand = top::WeightOp::create(op, new_weight_op_name , bcast_weight_const, new_weight_type);
+        op->setOperand(const_idx, new_weight_operand);
+        // op->setOperand(1, activeOp);
+      }
+    }
+  }
   lowering_common_bf16<tpu::AddOp>(rewriter, op);
 }
 

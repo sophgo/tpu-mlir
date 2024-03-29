@@ -166,7 +166,7 @@ class Yolov8DetectionFunc {
 public:
   Yolov8DetectionFunc(YoloDetParam &param);
   void invoke();
-  
+
 private:
   YoloDetParam param_;
 };
@@ -749,6 +749,20 @@ public:
 
 private:
   DeformGatherParam param_;
+};
+
+struct CumSumParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int axis;
+};
+class CumSumFunc {
+public:
+  CumSumFunc(CumSumParam &param);
+  void invoke();
+
+private:
+  CumSumParam param_;
 };
 
 } // namespace tpu_mlir
