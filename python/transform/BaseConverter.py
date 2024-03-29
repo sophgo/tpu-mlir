@@ -5,8 +5,10 @@
 #
 # ==============================================================================
 
+import os
+import re
 import numpy as np
-
+from utils.auto_remove import file_mark
 
 class BaseConverter(object):
 
@@ -130,3 +132,29 @@ class BaseConverter(object):
             if name in self.operands:
                 tensor_npz[name] = self.tensors[name]
         np.savez(weight_file, **tensor_npz)
+
+    def saveForCpp(self, shm_file, tensor_npz):
+        shm_path = "/dev/shm"
+        np.savez(os.path.join(shm_path, shm_file), **tensor_npz)  # generate the npz files that c++ can read in shared mem
+
+    def saveForPython(self, shm_file, tensor_npz):
+        shm_path = "/dev/shm"
+        np.savez_compressed(os.path.join(shm_path, shm_file), **tensor_npz) # generate the npz files that python can read in shared mem
+
+    def WeightToNpzInMem(self, weight_file, forCpp=True):
+        tensor_npz = {}
+        for name in self.tensors:
+            if name in self.operands:
+                tensor_npz[name] = self.tensors[name]
+
+        if forCpp:
+            self.saveForCpp(weight_file, tensor_npz)
+        else:
+            self.saveForPython(weight_file, tensor_npz)
+
+    def MlirModify(self, mlir_txt, weight_file):
+        pattern = r"module\.weight_file\s*=\s*\"([^\"]*)\""
+        replacement = f'module.weight_file = "/dev/shm/{weight_file}"'
+        file_mark(f"/dev/shm/{weight_file}")
+        mlir_txt = re.sub(pattern, replacement, mlir_txt)
+        return mlir_txt

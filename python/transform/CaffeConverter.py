@@ -17,7 +17,9 @@ from google.protobuf import text_format
 from utils.pad_setting import set_caffe_pad
 import mlir.dialects.top as top
 from mlir.ir import *
+import logging
 
+logger = logging.getLogger("root")
 
 class CaffeConverter(BaseConverter):
 
@@ -194,7 +196,7 @@ class CaffeConverter(BaseConverter):
         else:
             return layer.type
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, save_in_mem=False):
         # add input op
         for idx, _name in enumerate(self.input_names):
             input_ = self.mlir.create_input_op(self.get_loc(_name), idx, self.preprocess_args)
@@ -230,10 +232,14 @@ class CaffeConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
+        if save_in_mem:
+            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
+            self.WeightToNpzInMem(self.weight_file)
+        else:
+            self.WeightToNpz(self.weight_file)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        self.WeightToNpz(self.weight_file)
-        print("Save mlir file: {}".format(mlir_file))
+        logger.info("Save mlir file: {}".format(mlir_file))
 
     def blob_to_weight_op(self, layer, index, shape: list = [], permute_order=[]):
         name = layer.name + "_weight_{}".format(index)
@@ -922,7 +928,7 @@ class CaffeConverter(BaseConverter):
             after_h, after_w = shrink(after_h, after_w, p)
             after_h, after_w = zoom(after_h, after_w, p)
         else:
-            print("param is ", p)
+            logger.info(f"param is {p}")
             assert (0 and "not support interp type")
 
         output_shape[2] = after_h

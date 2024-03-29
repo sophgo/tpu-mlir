@@ -4,11 +4,13 @@
 # third-party components.
 #
 # ==============================================================================
+import re
 import shutil
 import os
 import subprocess
 import logging
 import utils.pattern_counter
+from .mlir_parser import MlirParser
 
 
 def _os_system_log(cmd_str):
@@ -38,10 +40,14 @@ def _os_system_log(cmd_str):
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 
-def _os_system(cmd: list, save_log: bool = False):
-    cmd_str = ""
-    for s in cmd:
-        cmd_str += str(s) + " "
+def _os_system(cmd: list, save_log: bool = False, mute: bool = False):
+    cmd_str = " ".join(cmd)
+    if mute:
+        ret = subprocess.call(
+            cmd_str, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        assert ret == 0
+        return
     if not save_log:
         print("[Running]: {}".format(cmd_str))
         ret = os.system(cmd_str)
@@ -51,6 +57,12 @@ def _os_system(cmd: list, save_log: bool = False):
             raise RuntimeError("[!Error]: {}".format(cmd_str))
     else:
         _os_system_log(cmd_str)
+
+
+def _remove_used_file(mlirfile):
+    if os.path.exists(mlirfile):
+        os.remove(mlirfile)
+
 
 def get_matched_patterns(log_file: str = ""):
     if log_file:
@@ -62,8 +74,9 @@ def get_matched_patterns(log_file: str = ""):
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
-                     count_patterns: bool = False):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
+                     count_patterns: bool = False,
+                     weight_in_mem: bool = False):
+    cmd = ["tpuc-opt", mlirfile, f"--init=\"weight_in_mem={str(weight_in_mem)}\"", "--shape-infer"]
     if len(add_postprocess) > 0:
         cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
     cmd.extend(["--canonicalize", "--extra-optimize", "-o", opt_mlirfile])
@@ -71,7 +84,12 @@ def mlir_opt_for_top(mlirfile: str,
     if count_patterns:
         log_file = "top_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+
+    if weight_in_mem:
+        _os_system(cmd, False, True)
+        _remove_used_file(mlirfile)
+    else:
+        _os_system(cmd)
     return get_matched_patterns(log_file)
 
 
@@ -90,9 +108,10 @@ def mlir_lowering(top_mlir: str,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
-                  count_patterns: bool = False):
+                  count_patterns: bool = False,
+                  weight_in_mem: bool = False):
     cmd = [
-        "tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
+        "tpuc-opt", top_mlir, f"--init=\"weight_in_mem={str(weight_in_mem)}\"", "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
             chip.lower(), num_device, num_core)
     ]
     mode = mode.upper()
@@ -125,7 +144,11 @@ def mlir_lowering(top_mlir: str,
     if count_patterns:
         log_file = "lowering_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+    if weight_in_mem:
+        _os_system(cmd, False, True)
+        _remove_used_file(top_mlir)
+    else:
+        _os_system(cmd)
     return get_matched_patterns(log_file)
 
 
@@ -146,7 +169,8 @@ def mlir_to_model(tpu_mlir: str,
                   group_by_cores: str = "auto",
                   model_version: str = "",
                   count_patterns: bool = False,
-                  compress_mode: str = "none"):
+                  compress_mode: str = "none",
+                  weight_in_mem: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
@@ -166,6 +190,7 @@ def mlir_to_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
+        f"--init=\"weight_in_mem={str(weight_in_mem)}\"",
         "--mlir-disable-threading",
         strip_io_quant_param,
         "--processor-tpu-optimize",
@@ -184,7 +209,11 @@ def mlir_to_model(tpu_mlir: str,
     if count_patterns:
         log_file = "tpu_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+    if weight_in_mem:
+        _os_system(cmd, False, True)
+        _remove_used_file(tpu_mlir)
+    else:
+        _os_system(cmd)
 
     # codegen based on final mlir
     codegen_param = (
@@ -192,11 +221,17 @@ def mlir_to_model(tpu_mlir: str,
     )
     cmd = [
         "tpuc-opt",
+        f"--init=\"weight_in_mem={str(weight_in_mem)}\"",
         final_mlir,
         codegen_param,
         "-o /dev/null",
     ]
-    _os_system(cmd)
+    if weight_in_mem:
+        _os_system(cmd, False, True)
+        _remove_used_file(final_mlir)
+        return get_matched_patterns(log_file)
+    else:
+        _os_system(cmd)
 
     out_dir = model.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
@@ -223,15 +258,19 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
 
 
 # TOPTOTOSA
-def top_to_tosa(top_mlir: str, tosa_mlir: str, includeWeight: bool = False):
-    cmd = ["tpuc-opt", top_mlir]
+def top_to_tosa(top_mlir: str, tosa_mlir: str, includeWeight: bool = False, weight_in_mem = False):
+    cmd = ["tpuc-opt", top_mlir, f"--init=\"weight_in_mem={str(weight_in_mem)}\""]
     lower_param = "--convert-top-to-tosa=\"includeWeight="
     if includeWeight:
         lower_param += "True\""
     else:
         lower_param += "False\""
-    cmd.extend([lower_param, "--canonicalize", "-o", tosa_mlir])
-    _os_system(cmd)
+    cmd.extend([lower_param, "--canonicalize", f"--deinit=\"weight_in_mem={str(weight_in_mem)}\"", "-o", tosa_mlir])
+    if weight_in_mem:
+        _os_system(cmd, False, True)
+        _remove_used_file(top_mlir)
+    else:
+        _os_system(cmd)
 
 
 # TOSATOObj

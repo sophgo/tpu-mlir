@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Backend/Arch.h"
-
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace top {
@@ -22,7 +20,7 @@ public:
   InitPass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
-    module::init(mOp);
+    module::init(mOp, weight_in_mem);
     backend::Arch::init(freq);
   }
 };

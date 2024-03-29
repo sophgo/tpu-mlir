@@ -6,12 +6,14 @@
 #
 # ==============================================================================
 
+import atexit
 import json
 import numpy as np
 import os, sys
 import transform.TpuLang as tpul
 from typing import List
 import math
+from utils.auto_remove import shm_record, shm_cleanup
 
 def is_int(dtype, width = None):
     if width == None:
@@ -66,7 +68,7 @@ class TPULANG_IR_TESTER(object):
     ID = 0
 
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all", simple: bool = False):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all", simple: bool = False, save_in_mem: bool = False):
         Y, N = True, False
         self.test_function = {
             #############################
@@ -177,6 +179,7 @@ class TPULANG_IR_TESTER(object):
         self.mode = mode.lower()
         self.simple = simple
         self.chip = chip.lower()
+        self.save_in_mem = save_in_mem
         if self.simple:
             self.support_quant_modes = ["f16"]
         if self.mode == "" or self.mode == "all":
@@ -241,7 +244,7 @@ class TPULANG_IR_TESTER(object):
         if is_quantized == False:
             tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
         else:
-            tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric)
+            tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, save_in_mem=self.save_in_mem)
 
     #######################################################################
     # Add
@@ -3267,9 +3270,10 @@ if __name__ == "__main__":
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--report", default="", type=str, help="report file name")
+    parser.add_argument("--save_in_mem", action="store_true", help="whether to save mlir/weight in mem instead of hard disk.")
     # yapf: enable
     args = parser.parse_args()
-    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple)
+    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.save_in_mem)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:

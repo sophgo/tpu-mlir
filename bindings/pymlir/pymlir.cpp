@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <pybind11/iostream.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -292,5 +293,5 @@ PYBIND11_MODULE(pymlir, m) {
       .def_readonly("all_weight_names", &py_module::all_weight_names)
       .def_readonly_static("version", &py_module::version);
 
-  // clang-format on
+  py::scoped_ostream_redirect output{std::cerr, py::module::import("sys").attr("stderr")};
 }
