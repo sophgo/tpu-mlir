@@ -32,13 +32,7 @@ except subprocess.TimeoutExpired as time_e:
     print(time_e)
 except subprocess.CalledProcessError as call_e:
     print(call_e.output.decode(encoding="utf-8"))
-tag_find = re.findall("(\d+)\.(\d+)\-(\d+)", tag_str)
-if not tag_find:
-    tag_find = re.findall("(\d+)\.(\d+)", tag_str)
-release = "unknown"
-if tag_find:
-    release =  ".".join(tag_find[0])
-
+release = tag_str.lstrip('v')
 
 # -- General configuration ---------------------------------------------------
 
