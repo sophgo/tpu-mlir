@@ -45,6 +45,7 @@ jobs:
           ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
   pypi-publish:
+      if: "!contains(github.ref, 'beta')"
       needs: build
       name: Upload release to PyPI
       runs-on: ubuntu-latest
