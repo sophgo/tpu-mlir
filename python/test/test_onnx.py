@@ -269,6 +269,7 @@ class ONNX_IR_TESTER(object):
             "PadPool3d":        (self.test_PadPool3d,       N, N, N, Y, N),
             "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N, Y),
             "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N, Y),
+            "PenaltySample":    (self.test_PenaltySample,   N, N, Y, N, N),
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y),
             "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y, Y),
             "PermutePad":       (self.test_PermutePad,      N, Y, Y, N, Y),
@@ -609,7 +610,16 @@ class ONNX_IR_TESTER(object):
             for idx, input in enumerate(inputs):
                 name = "in_{}".format(idx)
                 in_names.append(name)
-                in_data[name] = input.data.numpy().astype(np.float32)
+                if input.data.dtype == torch.float64:
+                    in_data[name] = input.data.numpy().astype(np.float64)
+                elif input.data.dtype == torch.float32:
+                    in_data[name] = input.data.numpy().astype(np.float32)
+                elif input.data.dtype == torch.int64:
+                    in_data[name] = input.data.numpy().astype(np.int64)
+                elif input.data.dtype == torch.int32:
+                    in_data[name] = input.data.numpy().astype(np.int32)
+                else:
+                    in_data[name] = input.data.numpy().astype(np.float32)
         else:
             in_names.append('in_0')
             in_data['in_0'] = inputs.data.numpy().astype(np.float32)
@@ -5819,6 +5829,43 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(4, 8, 32, 32).float()
         self.torch_and_test(x, Model(), case_name, static_shape=False, dynamic=True)
+
+    def test_PenaltySample(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.top_k = 50
+                self.min_tokens_to_keep = 5
+                self.keep_matrix = torch.zeros((1, self.top_k), dtype=torch.float)
+                self.keep_matrix[0, :self.min_tokens_to_keep] = -1
+
+            def forward(self, m_logits, input_ids, top_p, temperature, penalty):
+                # repeat penalty
+                logits = torch.gather(m_logits, 1, input_ids)
+                logits = torch.where(logits < 0, logits * penalty, logits / penalty)
+                m_logits.scatter_(1, input_ids, logits)
+
+                # top_k
+                logits, token = torch.topk(m_logits.float(), self.top_k)
+
+                # temperature
+                logits = logits / temperature
+
+                # top_p
+                cumulative_probs = logits.softmax(dim=1).cumsum(dim=1)
+                cumulative_probs = cumulative_probs + self.keep_matrix
+                filtered_logits = torch.where(cumulative_probs < top_p, logits, torch.FloatTensor([-1.]))
+                probs = filtered_logits.softmax(dim=1)
+                return probs
+
+        m_logits = torch.randn(1, 512).float()
+        input_ids = torch.tensor([range(10)]).long()
+        top_p = torch.tensor([0.8]).float()
+        temperature = torch.tensor([0.98]).float()
+        penalty = torch.tensor([0.98]).float()
+        self.torch_and_test((m_logits, input_ids, top_p, temperature, penalty), Model(), case_name)
 
     def test_PermuteBinary(self, case_name):
 
