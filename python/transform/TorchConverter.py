@@ -1153,8 +1153,8 @@ class TorchConverter(BaseConverter):
     def convert_transpose_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         no_dims = len(torch_node.inputs) == 1
-        dim0 = self.const_val[torch_node.inputs[1]] if not no_dims else 0
-        dim1 = self.const_val[torch_node.inputs[2]] if not no_dims else 1
+        dim0 = self.const_val[torch_node.inputs[1]] if not no_dims else -1
+        dim1 = self.const_val[torch_node.inputs[2]] if not no_dims else -2
         new_op = top.TransposeOp(self.unranked_type,
                                  op,
                                  dim0,

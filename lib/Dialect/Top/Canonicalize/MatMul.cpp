@@ -532,7 +532,7 @@ struct PermuteMatMulPermute : public OpRewritePattern<MatMulOp> {
       return failure();
     }
     if (!(order0->at(0) == 0 && order0->at(1) == 2 && order0->at(2) == 1 &&
-        order1->at(0) == 0 && order1->at(1) == 2 && order1->at(2) == 1)) {
+          order1->at(0) == 0 && order1->at(1) == 2 && order1->at(2) == 1)) {
       return failure();
     }
     // create new weight
@@ -542,8 +542,8 @@ struct PermuteMatMulPermute : public OpRewritePattern<MatMulOp> {
     std::vector<int64_t> shape = module::getShape(in0);
     std::vector<int64_t> order{1, 0};
     function_permute(ori_data->data(), to_data.data(), shape, order);
-    auto new_weight =
-        WeightOp::create_float(weight, "reordered", to_data, {1, shape[1], shape[0]}, storage_type);
+    auto new_weight = WeightOp::create_float(
+        weight, "reordered", to_data, {1, shape[1], shape[0]}, storage_type);
     // update matmul output shape
     op.getOutput().setType(permute1.getOutput().getType());
 
@@ -713,7 +713,8 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
           RankedTensorType::get(mmout_shape, rewriter.getF32Type());
       auto w_op = WeightOp::create_float(
           op,
-          module::getName(slice_op[i].getOutput()).str() + "_w" + std::to_string(i),
+          module::getName(slice_op[i].getOutput()).str() + "_w" +
+              std::to_string(i),
           *w, {weight_shape[0], weight_shape[1] / 3}, storage_type);
       if (bias_op != NULL) {
         auto bias_type =
@@ -742,6 +743,63 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
   }
 };
 
+// test case: [5, 128]x[7, 128, 64] => [7, 5, 64]
+struct MatMulReverse : public OpRewritePattern<MatMulOp> {
+  MatMulReverse(MLIRContext *context, PatternBenefit benefit = 9)
+      : OpRewritePattern<MatMulOp>(context, benefit) {}
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in0 = op.getInput();
+    auto in1 = op.getRight();
+    auto out = op.getOutput();
+    if (!module::isActive(in0) || !module::isActive(in1) ||
+        !module::isNone(op.getBias())) {
+      return failure();
+    }
+    auto in0_shape = module::getShape(in0);
+    auto in1_shape = module::getShape(in1);
+    int in1_ndims = in1_shape.size();
+    auto out_type = out.getType();
+    auto out_loc = out.getLoc();
+    if (!(in0_shape.size() == 2 && in1_ndims > 2)) {
+      return failure();
+    }
+    if (op.getLeftTranspose() || op.getRightTranspose() ||
+        op.getOutputTranspose()) {
+      return failure();
+    }
+    rewriter.setInsertionPointAfterValue(in1);
+    std::vector<Value> operands;
+    std::vector<NamedAttribute> attrs;
+    operands.emplace_back(in1);
+    std::vector<int64_t> order1(in1_ndims);
+    std::iota(order1.begin(), order1.end(), 0);
+    std::swap(order1[in1_ndims - 1], order1[in1_ndims - 2]);
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order1)));
+    std::vector<int64_t> new_in1_shape = in1_shape;
+    std::swap(new_in1_shape[in1_ndims - 1], new_in1_shape[in1_ndims - 2]);
+    auto outType = module::getTypeLike(out, new_in1_shape);
+    auto newLoc = module::getLocLike(in1, "order");
+    auto p1_op =
+        rewriter.create<top::PermuteOp>(newLoc, outType, operands, attrs);
+    op.setOperand(0, p1_op.getOutput());
+    op.setOperand(1, in0);
+    op.setRightTranspose(true);
+    std::vector<int64_t> new_out_shape = module::getShape(out);
+    std::swap(new_out_shape[in1_ndims - 1], new_out_shape[in1_ndims - 2]);
+    module::setShape(out, new_out_shape);
+    auto fix_loc = module::getLocLike(out, "order");
+    out.setLoc(fix_loc);
+    rewriter.setInsertionPointAfterValue(out);
+    auto p2_op = rewriter.create<top::PermuteOp>(out_loc, out_type,
+                                                 ValueRange{out}, attrs);
+    rewriter.replaceAllUsesExcept(out, p2_op.getOutput(), p2_op);
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   // clang-format off
@@ -750,7 +808,8 @@ void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                 NoKeepDimsAddReshape,
                 MatmulWithPermuteAndSplit,
                 MatMulWithSlice,
-                PermuteMatMulPermute
+                PermuteMatMulPermute,
+                MatMulReverse
                 >(context);
   // clang-format on
 }

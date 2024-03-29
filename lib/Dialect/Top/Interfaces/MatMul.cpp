@@ -29,6 +29,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
   p.right_transpose = getRightTranspose();
+  p.output_transpose = getOutputTranspose();
   if (b_dims == 1) {
     assert(p.right_transpose == false);
     b_s.push_back(1);
@@ -50,7 +51,9 @@ matmul_attr_t top::MatMulOp::parseParam() {
     o_dims += 1;
   }
   p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
-  assert(p.N == o_s[o_dims - 1]);
+  if (!p.output_transpose) {
+    assert(p.N == o_s[o_dims - 1]);
+  }
   p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   p.batch = 1;
   for (int i = 0; i < b_dims - 2; i++) {
