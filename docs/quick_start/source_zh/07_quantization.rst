@@ -5,15 +5,17 @@
 ===================
 
 神经网络在大规模部署时候，往往对吞吐量也就是推理时间有较高要求，硬件也专门对低比特计算进行了优化，其算力更加突出。所以以尽量高的精度进行低比特量化就显得尤为重要。
-但是要保持高精度和高吞吐率，网络往往需要以混合精度方式运行，即大部分算子以低比特定点计算，少部分以浮点进行计算。如何决定哪些算子使用浮点往往与网络和网络权重有直接关系，
-需要根据网络特点来选择。本章节主要以yolo系列的两个模型为例，说明了混合精度网络的工作原理和设置方法，并介绍了敏感层搜索和局部不量化两个工具的使用方法。
+但是要保持高精度和高吞吐率，网络往往需要以混合精度方式运行，即大部分算子以低比特定点计算，少部分以浮点进行计算。如何决定哪些算子使用浮点往往与网络和网络权重有直接关系，需要根据网络特点来选择。
+
+本章节主要以yolo系列的两个模型为例，说明了混合精度网络的工作原理和设置方法，并介绍了敏感层搜索和局部不量化两个工具的使用方法。
 
 
 混精度使用方法
 ==================
 
 本章以检测网络 ``yolov3 tiny`` 网络模型为例, 介绍如何使用混精度。
-该模型来自https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3。
+
+.. 该模型来自https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3。
 
 本章需要安装tpu_mlir。
 
@@ -24,12 +26,16 @@
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+
 
 准备工作目录
 ------------------
 
-建立 ``yolov3_tiny`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
-放入 ``yolov3_tiny`` 目录中。
+.. include:: get_resource.rst
+
+建立 ``yolov3_tiny`` 目录, 并把模型文件和图片文件都放入 ``yolov3_tiny`` 目录中。
 
 操作如下:
 
@@ -37,13 +43,12 @@
   :linenos:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
-   $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
+   $ wget https://media.githubusercontent.com/media/onnx/models/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
    $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
-
 注意如果 ``tiny-yolov3-11.onnx`` 用wget下载失败, 请用其他方式下载后放到 ``yolov3_tiny`` 目录。
+
 
 验证原始模型
 ----------------
@@ -64,7 +69,7 @@
     person:60.7%
     orange:77.5%
 
-并得到图片 ``yolov3_onnx.jpg``, 如下( :ref:`yolov3_onnx_result` ):
+并得到图片 ``yolov3_onnx.jpg``, 如下 ( :ref:`yolov3_onnx_result` ):
 
 .. _yolov3_onnx_result:
 .. figure:: ../assets/yolov3_onnx.jpg
@@ -134,7 +139,7 @@
     orange:72.9%
 
 
-得到图片 ``yolov3_int8.jpg``, 如下( :ref:`yolov3_int8_result` ):
+得到图片 ``yolov3_int8.jpg``, 如下 ( :ref:`yolov3_int8_result` ):
 
 .. _yolov3_int8_result:
 .. figure:: ../assets/yolov3_int8.jpg
@@ -199,13 +204,13 @@
      - 输出混精度量化表
    * - global_compare_layers
      - 否
-     - 指定用于替换最终输出层的层，并用于全局比较,例如：\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'
+     - 指定用于替换最终输出层的层，并用于全局比较,例如： ``layer1,layer2`` 或 ``layer1:0.3,layer2:0.7``
    * - fp_type
      - 否
      - 指定混合精度的浮点类型
    * - loss_table
      - 否
-     - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为full_loss_table.txt
+     - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为 ``full_loss_table.txt``
 
 本例中采用默认10张图片校准, 需要首先安装 Graphviz 工具：
 
@@ -222,11 +227,11 @@
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --processor bm1684x \
-       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜索
+       --min_layer_cos 0.999 \
        --expected_cos 0.9999 \
        -o yolov3_qtable
 
-执行完后最后输出如下打印:
+若 ``--min_layer_cos`` 使用默认的0.99，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜索。执行完后最后输出如下打印:
 
 .. code-block:: shell
 
@@ -307,7 +312,7 @@
     orange:72.9%
 
 
-得到图片yolov3_mix.jpg, 如下( :ref:`yolov3_mix_result` ):
+得到图片yolov3_mix.jpg, 如下 ( :ref:`yolov3_mix_result` ):
 
 .. _yolov3_mix_result:
 .. figure:: ../assets/yolov3_mix.jpg
@@ -325,7 +330,8 @@
 ==================
 
 本章以检测网络 ``mobilenet-v2`` 网络模型为例, 介绍如何使用敏感层搜索。
-该模型来自nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt。
+
+.. 该模型来自nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt。
 
 本章需要安装tpu_mlir。
 
@@ -336,11 +342,15 @@
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 准备工作目录
 ------------------
 
-建立 ``mobilenet-v2`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。
+.. include:: get_resource.rst
+
+建立 ``mobilenet-v2`` 目录, 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。
 
 操作如下:
 
@@ -348,11 +358,10 @@
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
+   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
 
 测试Float和INT8对称量化模型分类效果
 -----------------------------------
@@ -520,10 +529,18 @@ INT8对称量化模型：
      - 输出混精度量化表
    * - global_compare_layers
      - 否
-     - 指定用于替换最终输出层的层，并用于全局比较,例如：\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'
+     - 指定用于替换最终输出层的层，并用于全局比较,例如： ``layer1,layer2`` 或 ``layer1:0.3,layer2:0.7``
    * - fp_type
      - 否
      - 指定混合精度的浮点类型
+
+敏感层搜索支持用户自定义的后处理方法 ``post_process_func.py`` ，可以放在当前工程目录下，也可以放在其他位置，如果放在其他位置需要在 ``post_process`` 中指明文件的完整路径。后处理方法函数名称需要定义为 ``PostProcess`` ，输入数据为网络的输出，输出数据为后处理结果。创建 ``post_process_func.py`` 文件，其示例内容如下：
+
+.. code-block:: python
+
+   def PostProcess(data):
+       print("in post process")
+       return data
 
 本例中采用100张图片做量化, 30张图片做推理，执行命令如下:
 
@@ -537,15 +554,6 @@ INT8对称量化模型：
        --processor bm1684 \
        --post_process post_process_func.py \
        -o mobilenet_v2_qtable
-
-敏感层搜索支持用户自定义的后处理方法post_process_func.py，可以放在当前工程目录下，也可以放在其他位置，如果放在其他位置需要在post_process中指明文件的完整路径。
-后处理方法函数名称需要定义为PostProcess，输入数据为网络的输出，输出数据为后处理结果：
-
-.. code-block:: shell
-
-   $ def PostProcess(data):
-       print("in post process")
-       return data
 
 执行完后最后输出如下打印:
 
@@ -735,6 +743,9 @@ INT8模型mAP为： 34.70%
    * - 无
      - 是
      - 指定mlir文件
+   * - processor
+     - 是
+     - 指定模型将要用到的平台，支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fpfwd_inputs
      - 否
      - 指定层（包含本层）之前不执行量化，多输入用,间隔
@@ -743,11 +754,7 @@ INT8模型mAP为： 34.70%
      - 指定层（包含本层）之后不执行量化，多输入用,间隔
    * - fpfwd_blocks
      - 否
-     - 指定起点和终点之间的层不执行量化，起点和终点之间用:间隔，多个block之间用空格间隔
-   * - processor
-     - 是
-     - 指定模型将要用到的平台,
-       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+     - 指定起点和终点之间的层不执行量化，起点和终点之间用 ``:`` 间隔，多个block之间用空格间隔
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择

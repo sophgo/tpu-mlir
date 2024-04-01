@@ -10,17 +10,21 @@
 安装tpu-mlir
 ------------------
 
+进入Docker容器，并执行以下命令安装tpu_mlir：
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[onnx]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 准备工作目录
 ------------------
 
-建立 ``model_yolov5s`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
-放入 ``model_yolov5s`` 目录中。
+.. include:: get_resource.rst
 
+建立 ``model_yolov5s`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s`` 目录中。
 
 操作如下:
 
@@ -33,8 +37,6 @@
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 ONNX转MLIR
 --------------------
@@ -77,9 +79,8 @@ ONNX转MLIR
 其中坐标是相对模型输入长宽的坐标, 比如本例中640x640, 数值参考如下：
 
 .. code-block:: text
-    :linenos:
 
-    [0., 16., 0.924488, 184.21094, 401.21973, 149.66412, 268.50336 ]
+   [0., 16., 0.924488, 184.21094, 401.21973, 149.66412, 268.50336 ]
 
 
 MLIR转换成BModel
@@ -127,6 +128,7 @@ MLIR转换成BModel
     host mem size: 0 (coeff: 0, runtime: 0)
 
 这里的 ``[1, 1, 200, 7]`` 是最大shape, 实际输出根据检测的框数有所不同。
+
 
 模型验证
 -------------

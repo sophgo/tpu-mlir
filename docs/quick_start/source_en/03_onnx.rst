@@ -28,17 +28,21 @@ This chapter requires the tpu_mlir python package.
 Install tpu_mlir
 ------------------
 
+Go to the Docker container and execute the following command to install tpu_mlir:
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[onnx]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 Prepare working directory
 -------------------------
 
-Create a ``model_yolov5s`` directory, note that it is the same level directory as tpu-mlir; and put both model files and image files
-into the ``model_yolov5s`` directory.
+.. include:: get_resource.rst
 
+Create a ``model_yolov5s`` directory, and put both model files and image files into the ``model_yolov5s`` directory.
 
 The operation is as follows:
 
@@ -51,8 +55,6 @@ The operation is as follows:
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 ONNX to MLIR
 ------------------
@@ -86,6 +88,7 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+
 .. _model_transform param:
 
 The main parameters of ``model_transform`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
@@ -103,10 +106,10 @@ The main parameters of ``model_transform`` are described as follows (for a compl
      - Model name
    * - model_def
      - Y
-     - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
+     - Model definition file (e.g., ``.onnx`` , ``.tflite`` or ``.prototxt`` files)
    * - input_shapes
      - N
-     - Shape of the inputs, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
+     - Shape of the inputs, such as ``[[1,3,640,640]]`` (a two-dimensional array), which can support multiple inputs
    * - input_types
      - N
      - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
@@ -214,7 +217,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - When the target is selected as bm1688, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
    * - skip_validation
      - N
-     - Skip bmodel correctness verification to boost deployment efficiency; bmodel verification is on by default.
+     - Skip bmodel correctness verification to boost deployment efficiency; bmodel verification is on by default
 
 
 After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
@@ -268,8 +271,11 @@ Effect comparison
 ----------------------
 
 In tpu_mlir package, there are yolov5 use cases written in python, using the ``detect_yolov5`` command to detect objects in images.
+
 This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py``.
+
 It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
+
 Use the following codes to validate the inference results of onnx/f16/int8 respectively.
 
 

@@ -10,17 +10,22 @@ This chapter requires the tpu_mlir python package.
 Install tpu_mlir
 ------------------
 
+Go to the Docker container and execute the following command to install tpu_mlir:
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[torch]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
 
 Prepare working directory
 -------------------------
 
-Create a ``model_yolov5s_pt`` directory, note that it is the same level directory as tpu-mlir; and put both model files and image files
-into the ``model_yolov5s_pt`` directory.
+.. include:: get_resource.rst
 
+Create a ``model_yolov5s_pt`` directory, and put both model files and image files
+into the ``model_yolov5s_pt`` directory.
 
 The operation is as follows:
 
@@ -33,7 +38,6 @@ The operation is as follows:
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
 
 TORCH to MLIR
 ------------------
@@ -59,7 +63,7 @@ The model conversion command:
        --mlir yolov5s_pt.mlir
 
 
-After converting to mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file of the model. It is worth noting that we only support static models, and the model needs to call torch.jit.trace() to generate a static model before compilation.
+After converting to mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file of the model. It is worth noting that we only support static models, and the model needs to call ``torch.jit.trace()`` to generate a static model before compilation.
 
 
 MLIR to F16 bmodel
@@ -125,6 +129,7 @@ Effect comparison
 ------------------
 
 Use the command ``detect_yolov5`` path to perform object detection on the image.
+
 Use the following codes to verify the execution results of pytorch/ f16/ int8 respectively.
 
 

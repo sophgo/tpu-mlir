@@ -9,13 +9,19 @@ This chapter requires the tpu_mlir python package.
 Install tpu_mlir
 ------------------
 
+Go to the Docker container and execute the following command to install tpu_mlir:
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[tensorflow]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[tensorflow]
 
 
 Prepare working directory
 -------------------------
+
+.. include:: get_resource.rst
 
 Create a ``mobilebert_tf`` directory, note that it is the same level as tpu-mlir, and put the test image file into the ``mobilebert_tf`` directory.
 
@@ -30,7 +36,6 @@ The operation is as follows:
    $ cp -rf tpu_mlir_resource/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
 
 TFLite to MLIR
 ------------------

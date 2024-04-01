@@ -21,7 +21,7 @@ Create and enter the torch_model directory using the command line.
 Step 1: Build and save the model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a script named simple_net.py in this directory and run it. The specific content of the script is as follows:
+Create a script named ``simple_net.py`` in this directory and run it. The specific content of the script is as follows:
 
 .. code-block:: python3
    :linenos:
@@ -47,12 +47,18 @@ Create a script named simple_net.py in this directory and run it. The specific c
    model = SimpleModel()
    torch.save(model.state_dict(), "weight.pth")
 
-After running the script, we will get a weight.pth weight file in the current directory.
+The run command as follows:
+
+.. code-block:: shell
+
+   $ python simple_net.py
+
+After running the script, we will get a ``weight.pth`` weight file in the current directory.
 
 Step 2: Export ONNX model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create another script named export_onnx.py in the same directory and run it. The specific content of the script is as follows:
+Create another script named ``export_onnx.py`` in the same directory and run it. The specific content of the script is as follows:
 
 .. code-block:: python3
    :linenos:
@@ -78,12 +84,12 @@ Create another script named export_onnx.py in the same directory and run it. The
                      export_params=True,
                      do_constant_folding=True)
 
-After running the script, we can get the onnx model named model.onnx in the current directory.
+After running the script, we can get the onnx model named ``model.onnx`` in the current directory.
 
 TensorFlow model to ONNX
 -------------------------
 
-In this section, we use the mobilenet_v1_0.25_224 model provided in the TensorFlow official repository as a conversion example.
+In this section, we use the ``mobilenet_v1_0.25_224`` model provided in the TensorFlow official repository as a conversion example.
 
 Step 0: Create a working directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,7 +105,7 @@ Create and enter the tf_model directory using the command line.
 Step 1: Prepare and convert the model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Download the model with the following commands and use the tf2onnx tool to export it as an ONNX model:
+Download the model with the following commands and use the ``tf2onnx`` tool to export it as an ONNX model:
 
 .. code-block:: shell
    :linenos:
@@ -113,7 +119,7 @@ Download the model with the following commands and use the tf2onnx tool to expor
        --outputs MobilenetV1/Predictions/Reshape_1:0
 
 
-After running all commands, we can get the onnx model named mnet_25.onnx in the current directory.
+After running all commands, we can get the onnx model named ``mnet_25.onnx`` in the current directory.
 
 PaddlePaddle model to ONNX
 ---------------------------
@@ -155,24 +161,24 @@ Download the model with the following commands:
    $ tar xzf SqueezeNet1_1_infer.tgz
    $ cd SqueezeNet1_1_infer
 
-In addition, use the paddle_infer_shape.py script from the PaddlePaddle project to perform shape inference on the model. The input shape is set to [1,3,224,224] in NCHW format here:
+In addition, use the ``paddle_infer_shape.py`` script from the PaddlePaddle project to perform shape inference on the model. The input shape is set to ``[1,3,224,224]`` in NCHW format here:
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://raw.githubusercontent.com/PaddlePaddle/Paddle2ONNX/develop/tools/paddle/paddle_infer_shape.py
+   $ wget wget https://raw.githubusercontent.com/jiangjiajun/PaddleUtils/main/paddle/paddle_infer_shape.py
    $ python paddle_infer_shape.py  --model_dir . \
                              --model_filename inference.pdmodel \
                              --params_filename inference.pdiparams \
                              --save_dir new_model \
                              --input_shape_dict="{'inputs':[1,3,224,224]}"
 
-After running all commands, we will be in the SqueezeNet1_1_infer directory, and there will be a new_model directory under this directory.
+After running all commands, we will be in the ``SqueezeNet1_1_infer`` directory, and the ``new_model`` directory will be generated in that directory.
 
 Step 3: Convert the model
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Install the paddle2onnx tool through the following commands, and use this tool to convert the PaddlePaddle model to the ONNX format:
+Install the ``paddle2onnx`` tool through the following commands, and use this tool to convert the PaddlePaddle model to the ONNX format:
 
 .. code-block:: shell
    :linenos:
@@ -184,4 +190,4 @@ Install the paddle2onnx tool through the following commands, and use this tool t
              --opset_version 13 \
              --save_file squeezenet1_1.onnx
 
-After running all the above commands we will get an onnx model named squeezenet1_1.onnx.
+After running all the above commands we will get an onnx model named ``squeezenet1_1.onnx`` .

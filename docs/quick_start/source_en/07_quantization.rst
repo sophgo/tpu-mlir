@@ -4,15 +4,17 @@
 Quantization and optimization
 =================================
 
-In deploying neuron network, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision
-inference is essential. In this chapter, with yolo as examples, method of setting mix precision inference is demonstrated, and two useful
-tools 'sensitive layer search' and 'local non-quantization' are illustrated.
+In deploying neuron network, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision inference is essential.
+
+In this chapter, with yolo as examples, method of setting mix precision inference is demonstrated, and two useful tools 'sensitive layer search' and 'local non-quantization' are illustrated.
+
 
 Mix Precision
 ==================
 
 This chapter takes ``yolov3 tiny`` as examples to introduce how to use mix precision。
-This model is from <https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3>。
+
+.. This model is from <https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3>。
 
 This chapter requires the tpu_mlir python package.
 
@@ -23,11 +25,16 @@ Install tpu_mlir
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+
 
 Prepare working directory
 ---------------------------
 
-Create a ``yolov3_tiny`` directory, note that it is the same level as tpu-mlir, and put both model files and image files into the ``yolov3_tiny`` directory.
+.. include:: get_resource.rst
+
+Create a ``yolov3_tiny`` directory, and put both model files and image files into the ``yolov3_tiny`` directory.
 
 The operation is as follows:
 
@@ -35,13 +42,14 @@ The operation is as follows:
   :linenos:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
-   $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
+   $ wget https://media.githubusercontent.com/media/onnx/models/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
    $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
+Note that if ``tiny-yolov3-11.onnx`` fails to download with wget, please download it by other means and put it into ``yolov3_tiny`` directory.
 
-Sample for onnx
+
+Verify onnx
 -------------------
 
 ``detect_yolov3`` is a python program, to run ``yolov3_tiny`` model.
@@ -62,7 +70,7 @@ The print result as follows:
     person:60.7%
     orange:77.5%
 
-And get result image ``yolov3_onnx.jpg``, as below( :ref:`yolov3_onnx_result` ):
+And get result image ``yolov3_onnx.jpg``, as below ( :ref:`yolov3_onnx_result` ):
 
 .. _yolov3_onnx_result:
 .. figure:: ../assets/yolov3_onnx.jpg
@@ -129,7 +137,7 @@ The print result as follows, indicates that one target is detected:
 
     orange:72.9.0%
 
-And get image ``yolov3_int8.jpg``, as below( :ref:`yolov3_int8_result` ):
+And get image ``yolov3_int8.jpg``, as below ( :ref:`yolov3_int8_result` ):
 
 .. _yolov3_int8_result:
 .. figure:: ../assets/yolov3_int8.jpg
@@ -171,7 +179,7 @@ Use ``run_qtable`` to gen qtable, parameters as below:
      - Name of calibration table file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -192,15 +200,15 @@ Use ``run_qtable`` to gen qtable, parameters as below:
      - output quantization table
    * - global_compare_layers
      - N
-     - global compare layers, for example:\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'
+     - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
    * - fp_type
      - N
      - float type of mix precision
    * - loss_table
      - N
-     - output all loss of layers if each layer is quantized to f16
+     - Specify the name of the file that holds the loss values for all layers quantized to floating point type, default is ``full_loss_table.txt``
 
-Install Graphviz first:
+In this example, the default calibration of 10 images is used, you need install Graphviz first:
 
 .. code-block:: shell
 
@@ -214,12 +222,12 @@ Then use following command:
    $ run_qtable yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
-       --min_layer_cos 0.999 \ #If the default 0.99 is used here, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching
+       --min_layer_cos 0.999 \
        --expected_cos 0.9999 \
        --processor bm1684x \
        -o yolov3_qtable
 
-The final output after execution is printed as follows:
+If the default 0.99 is used in ``--min_layer_cos``, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching. The final output after execution is printed as follows:
 
 .. code-block:: shell
 
@@ -229,7 +237,7 @@ The final output after execution is printed as follows:
     total time:44 second
 
 Above, int8 outputs_cos represents the cos similarity between original network output of int8 model and fp32; mix model outputs_cos represents the cos similarity of network output after mixing precision is used in some layers; total time represents the search time of 44 seconds.
-In addition，get quantization table ``yolov3_qtable``, context as below:
+In addition, get quantization table ``yolov3_qtable``, context as below:
 
 .. code-block:: shell
 
@@ -305,7 +313,7 @@ The print result as follows:
     person:63.9%
     orange:72.9%
 
-And get image ``yolov3_mix.jpg`` , as below( :ref:`yolov3_mix_result` ):
+And get image ``yolov3_mix.jpg`` , as below ( :ref:`yolov3_mix_result` ):
 
 .. _yolov3_mix_result:
 .. figure:: ../assets/yolov3_mix.jpg
@@ -321,7 +329,8 @@ Sensitive Layer Search
 ========================
 
 This chapter takes ``mobilenet-v2`` as example to introduce how to use sensitive layer search.
-This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>.
+
+.. This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>.
 
 This chapter requires the tpu_mlir python package.
 
@@ -332,11 +341,15 @@ Install tpu_mlir
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 Prepare working directory
 ---------------------------
 
-Create a ``mobilenet-v2`` directory, note that it is the same level as tpu-mlir, and put both model files and image files into the ``mobilenet-v2`` directory.
+.. include:: get_resource.rst
+
+Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory.
 
 The operation is as follows:
 
@@ -344,11 +357,10 @@ The operation is as follows:
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
+   $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 
-.. include:: get_resource.rst
 
 Accuracy test of float anf int8 models
 ---------------------------------------
@@ -479,7 +491,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - Name of calibration table file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -515,10 +527,18 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - output quantization table
    * - global_compare_layers
      - N
-     - global compare layers, for example:\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'
+     - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
    * - fp_type
      - N
      - float type of mix precision
+
+Sensitive layer program supports user defined post process programs ``post_process_func.py``. It can be placed in the current project directory or in another location, if it is placed in another location, you need to specify the full path of the file in the ``post_process`` . The post process function must be named ``PostProcess`` , the input data is the output of the network and the output data is the post-processing result. Create the ``post_process_func.py`` file with the following sample contents:
+
+.. code-block:: python
+
+   def PostProcess(data):
+       print("in post process")
+       return data
 
 In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows:
 
@@ -534,14 +554,6 @@ The operation is as follows:
        --processor bm1684 \
        --post_process post_process_func.py \
        -o mobilenet_v2_qtable
-
-Sensitive layer program supports user defined post process programs ``post_process_func.py``. The post process function must be named ``PostProcess``.
-
-.. code-block:: shell
-
-   $ def PostProcess(data):
-       print("in post process")
-       return data
 
 The final output after execution is printed as follows:
 
@@ -737,7 +749,7 @@ Parameter Description
      - mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.
@@ -746,7 +758,7 @@ Parameter Description
      - Specify layers (including this layer) to skip quantization after them. Multiple inputs are separated by commas.
    * - fpfwd_blocks
      - N
-     - Specify the start and end layers between which quantization will be skipped. Start and end layers are separated by space, and multiple blocks are separated by spaces.
+     - Specify the start and end layers between which quantization will be skipped. Start and end layers are separated by colon, and multiple blocks are separated by space.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program

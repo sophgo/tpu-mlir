@@ -12,15 +12,21 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
 安装tpu-mlir
 ~~~~~~~~~~~~~~~~~~~~
 
+进入Docker容器，并执行以下命令安装tpu_mlir：
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+
 
 准备工作目录
 ~~~~~~~~~~~~~~~~~~~~
 
-建立 ``model_yolov5s`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
-放入 ``model_yolov5s`` 目录中。
+.. include:: get_resource.rst
+
+建立 ``model_yolov5s`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s`` 目录中。
 
 
 操作如下:
@@ -34,8 +40,6 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 ONNX转MLIR
 ~~~~~~~~~~~~~~~~~~~~
