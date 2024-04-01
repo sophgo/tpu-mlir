@@ -21,7 +21,7 @@ PyTorch模型转ONNX
 步骤1：搭建并保存模型
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-在该目录下创建名为simple_net.py的脚本并运行，脚本的具体内容如下：
+在该目录下创建名为 ``simple_net.py`` 的脚本并运行，脚本的具体内容如下：
 
 .. code-block:: python3
    :linenos:
@@ -47,12 +47,18 @@ PyTorch模型转ONNX
    model = SimpleModel()
    torch.save(model.state_dict(), "weight.pth")
 
-运行完后我们会在当前目录下获得一个weight.pth的权重文件。
+运行命令如下：
+
+.. code-block:: shell
+
+   $ python simple_net.py
+
+运行完后我们会在当前目录下获得一个 ``weight.pth`` 的权重文件。
 
 步骤2：导出ONNX模型
 ~~~~~~~~~~~~~~~~~~~~~~
 
-在该目录下创建另一个名为export_onnx.py的脚本并运行，脚本的具体内容如下：
+在该目录下创建另一个名为 ``export_onnx.py`` 的脚本并运行，脚本的具体内容如下：
 
 .. code-block:: python3
    :linenos:
@@ -78,12 +84,12 @@ PyTorch模型转ONNX
                      export_params=True,
                      do_constant_folding=True)
 
-运行完脚本后，我们即可在当前目录下得到名为model.onnx的onnx模型。
+运行完脚本后，我们即可在当前目录下得到名为 ``model.onnx`` 的onnx模型。
 
 TensorFlow模型转ONNX
 -----------------------
 
-本节以TensorFlow官方仓库中提供的mobilenet_v1_0.25_224模型作为转换样例。
+本节以TensorFlow官方仓库中提供的 ``mobilenet_v1_0.25_224`` 模型作为转换样例。
 
 步骤0：创建工作目录
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,7 +105,7 @@ TensorFlow模型转ONNX
 步骤1：准备并转换模型
 ~~~~~~~~~~~~~~~~~~~~~~
 
-命令行中通过以下命令下载模型并利用tf2onnx工具将其导出为ONNX模型：
+命令行中通过以下命令下载模型并利用 ``tf2onnx`` 工具将其导出为ONNX模型：
 
 .. code-block:: shell
    :linenos:
@@ -112,7 +118,7 @@ TensorFlow模型转ONNX
        --inputs-as-nchw input:0 \
        --outputs MobilenetV1/Predictions/Reshape_1:0
 
-运行以上所有命令后我们即可在当前目录下得到名为mnet_25.onnx的onnx模型。
+运行以上所有命令后我们即可在当前目录下得到名为 ``mnet_25.onnx`` 的onnx模型。
 
 
 PaddlePaddle模型转ONNX
@@ -156,24 +162,24 @@ PaddlePaddle模型转ONNX
    $ tar xzf SqueezeNet1_1_infer.tgz
    $ cd SqueezeNet1_1_infer
 
-并用PaddlePaddle项目中的paddle_infer_shape.py脚本对模型进行shape推理,此处将输入shape以NCHW的格式设置为[1,3,224,224]：
+并用PaddlePaddle项目中的 ``paddle_infer_shape.py`` 脚本对模型进行shape推理，此处将输入shape以NCHW的格式设置为 ``[1,3,224,224]`` ：
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://raw.githubusercontent.com/PaddlePaddle/Paddle2ONNX/develop/tools/paddle/paddle_infer_shape.py
+   $ wget https://raw.githubusercontent.com/jiangjiajun/PaddleUtils/main/paddle/paddle_infer_shape.py
    $ python paddle_infer_shape.py  --model_dir . \
                              --model_filename inference.pdmodel \
                              --params_filename inference.pdiparams \
                              --save_dir new_model \
                              --input_shape_dict="{'inputs':[1,3,224,224]}"
 
-运行完以上所有命令后我们将处于SqueezeNet1_1_infer目录下，并在该目录下有一个new_model的目录。
+运行完以上所有命令后我们将处于 ``SqueezeNet1_1_infer`` 目录下，并在该目录下生成 ``new_model`` 的目录。
 
 步骤3：转换模型
 ~~~~~~~~~~~~~~~~~~~~~
 
-在命令行中通过以下命令安装paddle2onnx工具，并利用该工具将PaddlePaddle模型转为ONNX模型：
+在命令行中通过以下命令安装 ``paddle2onnx`` 工具，并利用该工具将PaddlePaddle模型转为ONNX模型：
 
 .. code-block:: shell
    :linenos:
@@ -185,4 +191,4 @@ PaddlePaddle模型转ONNX
              --opset_version 13 \
              --save_file squeezenet1_1.onnx
 
-运行完以上所有命令后我们将获得一个名为squeezenet1_1.onnx的onnx模型。
+运行完以上所有命令后我们将获得一个名为 ``squeezenet1_1.onnx`` 的onnx模型。

@@ -23,20 +23,24 @@
 
 .. _onnx to bmodel:
 
-安装tpu-mlir
+安装tpu_mlir
 ------------------
+
+进入Docker容器，并执行以下命令安装tpu_mlir：
 
 .. code-block:: shell
 
    $ pip install tpu_mlir[onnx]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 准备工作目录
 ------------------
 
-建立 ``model_yolov5s`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
-放入 ``model_yolov5s`` 目录中。
+.. include:: get_resource.rst
 
+建立 ``model_yolov5s`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s`` 目录中。
 
 操作如下:
 
@@ -50,14 +54,11 @@
    $ mkdir workspace && cd workspace
 
 
-.. include:: get_resource.rst
-
-
-
 ONNX转MLIR
 ------------------
 
 如果模型是图片输入, 在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入, 则不需要考虑预处理。
+
 预处理过程用公式表达如下( :math:`x` 代表输入):
 
 .. math::
@@ -86,6 +87,7 @@ ONNX转MLIR
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+
 .. _model_transform param:
 
 ``model_transform`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
@@ -103,10 +105,10 @@ ONNX转MLIR
      - 指定模型名称
    * - model_def
      - 是
-     - 指定模型定义文件, 比如`.onnx`或`.tflite`或`.prototxt`文件
+     - 指定模型定义文件, 比如 ``.onnx`` 或 ``.tflite`` 或 ``.prototxt`` 文件
    * - input_shapes
      - 否
-     - 指定输入的shape, 例如[[1,3,640,640]]; 二维数组, 可以支持多输入情况
+     - 指定输入的shape, 例如 ``[[1,3,640,640]]`` ; 二维数组, 可以支持多输入情况
    * - input_types
      - 否
      - 指定输入的类型, 例如int32; 多输入用,隔开; 不指定情况下默认处理为float32
@@ -139,7 +141,7 @@ ONNX转MLIR
      - 指定验证后的输出文件
    * - excepts
      - 否
-     - 指定需要排除验证的网络层的名称, 多个用,隔开
+     - 指定需要排除验证的网络层的名称, 多个用 , 隔开
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
@@ -214,7 +216,7 @@ MLIR转F16模型
      - 当target选择为bm1688时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
    * - skip_validation
      - 否
-     - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证。
+     - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证
 
 
 编译完成后, 会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。
@@ -241,8 +243,7 @@ MLIR转INT8模型
        --input_num 100 \
        -o yolov5s_cali_table
 
-运行完成后会生成名为 ``yolov5s_cali_table`` 的文件, 该文件用于后续编译INT8
-模型的输入文件。
+运行完成后会生成名为 ``yolov5s_cali_table`` 的文件, 该文件用于后续编译INT8模型的输入文件。
 
 
 编译为INT8对称量化模型
@@ -269,8 +270,11 @@ MLIR转INT8模型
 ------------------
 
 在本发布包中有用python写好的yolov5用例, 使用 ``detect_yolov5`` 命令, 用于对图片进行目标检测。
+
 该命令对应源码路径 ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py`` 。
+
 阅读该代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
+
 用以下代码分别来验证onnx/f16/int8的执行结果。
 
 
@@ -328,8 +332,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 检查 ``BModel`` 的性能
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-安装好 ``libsophon`` 后, 可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
-性及性能。可以根据 ``bmrt_test`` 输出的性能结果, 来估算模型最大的fps, 来选择合适的模型。
+安装好 ``libsophon`` 后, 可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确性及性能。可以根据 ``bmrt_test`` 输出的性能结果, 来估算模型最大的fps, 来选择合适的模型。
 
 .. code-block:: shell
 

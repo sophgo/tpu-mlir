@@ -5,10 +5,9 @@
 ~~~~~~~~~~~~
 
 如果是首次使用Docker, 那么请使用 :ref:`开发环境配置 <docker configuration>` 中的方法安装
-并配置Docker。同时, 本章中会使用到 ``git-lfs`` , 如果首次使用 ``git-lfs`` 可执行下述命
-令进行安装和配置(仅首次执行, 同时该配置是在用户自己系统中, 并非Docker container中):
+并配置Docker。同时, 本章中会使用到 ``git-lfs`` , 如果首次使用 ``git-lfs`` ，用户需要在自己系统中（并非Docker容器中）执行下述命令进行安装和配置：
 
-.. code :: shell
+.. code-block:: shell
 
    $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
    $ sudo apt-get install git-lfs
@@ -16,97 +15,98 @@
 获取 ``model-zoo`` 模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-在欲使用的工作目录下, 使用以下命令克隆 ``model-zoo`` 工程:
+在工作目录下，使用以下命令克隆 ``model-zoo`` 并拉取文件:
 
-.. code :: shell
+.. code-block:: shell
 
-   $ git clone --depth=1 https://github.com/sophgo/model-zoo
+   $ git clone http://172.28.142.50:8090/nntoolchain/model-zoo.git
    $ cd model-zoo
+   # 拉取模型文件
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
-   $ cd ../
-
-model-zoo的目录结构如下：
-
-.. code ::
-
-    ├── config.yaml
-    ├── requirements.txt
-    ├── data
-    ├── dataset
-    ├── harness
-    ├── output
-    └── ...
-
-* config.yaml 中包含通用的配置：数据集的目录、模型的根目录等，以及一些复用的参数和命令
-* requirements.txt 为 model-zoo 的 python 依赖
-* dataset 目录中包含模型的 imagenet 数据集预处理，将作为 plugin 被 tpu_perf 调用
-* data 目录将用于存放 lmdb 数据集
-* output 目录将用于存放编译输出的 bmodel 和一些中间数据
-* 其他目录包含各个模型的信息和配置。每个模型对应的目录都有一个 config.yaml 文件，该配置文件中配置了模型的名称、路径和 FLOPs、数据集制作参数，以及模型的量化编译命令。
+   # 拉取指定文件，以ImageNet2012数据集的ground_truth为例
+   $ git lfs pull --include "dataset/ILSVRC2012/caffe_val.txt" --exclude=""
 
 如果已经克隆过 ``model-zoo`` 可以执行以下命令同步模型到最新状态:
 
-.. code :: shell
+.. code-block:: shell
 
    $ cd model-zoo
    $ git pull
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
-   $ cd ../
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异, 此过程可能耗时较长。
 
 注意：如果您获得了SOPHGO提供的 ``model-zoo`` 测试包, 可以执行以下操作创建并
 设置好 ``model-zoo``，完成此步骤后直接进入下一节。
 
-.. code :: console
+.. code-block:: shell
 
-    $ mkdir -p model-zoo
+    $ mkdir model-zoo
     $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
+
+model-zoo的目录结构如下：
+
+.. code-block:: shell
+
+    ├── config.yaml
+    ├── requirements.txt
+    ├── dataset
+    ├── harness
+    ├── output
+    └── ...
+
+* config.yaml：包含通用的配置：数据集的目录、模型的根目录等，以及一些复用的参数和命令
+* requirements.txt：model-zoo 的 python 依赖
+* dataset：目录中包含modelzoo中模型的数据集，将作为 plugin 被 tpu_perf 调用
+* output：目录将用于存放编译输出的 bmodel 和一些中间数据
+* 其他目录包含各个模型的信息和配置。每个模型对应的目录都有一个 config.yaml 文件，该配置文件中配置了模型的名称、路径和 FLOPs、数据集制作参数，以及模型的量化编译命令。
+
 
 准备运行环境
 ~~~~~~~~~~~~
 
-安装运行 ``model-zoo`` 所需的依赖:
+在系统中（Docker容器外）安装运行 ``model-zoo`` 所需的依赖:
 
-.. code ::
+.. code-block:: shell
 
    # for ubuntu 操作系统
-   sudo apt-get install build-essential
+   sudo apt install build-essential
    sudo apt install python3-dev
-   sudo apt-get install -y libgl1 # For OpenCV
+   sudo apt install -y libgl1
    # for centos 操作系统
    sudo yum install make automake gcc gcc-c++ kernel-devel
    sudo yum install python-devel
    sudo yum install mesa-libGL
-   # 精度测试需要执行以下操作，性能测试不执行（推荐使用Anaconda等创建python3.7或以上的虚拟环境）
+   # 精度测试需要执行以下操作，性能测试可以不执行，推荐使用Anaconda等创建python3.7或以上的虚拟环境
    cd path/to/model-zoo
    pip3 install -r requirements.txt
 
-另外，运行环境中调用 tpu 硬件进行性能和精度测试，请根据 libsophon 使用手册安装 libsophon。
+另外，进行性能和精度测试时需要调用 tpu 硬件，请根据 libsophon 使用手册安装 libsophon。
+
 
 准备数据集
-~~~~~~~~~~
+~~~~~~~~~~~~
 
 ImageNet
 --------
 
+下载 `ImageNet 2012 数据集 <https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data?select=ILSVRC>`_ 。
 
-下载 `imagenet 2012 数据集 <https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data?select=ILSVRC>`_ 。
+解压后，将 ``Data/CLS_LOC/val`` 下的数据移动到 model-zoo 如下目录中：
 
-解压后，将 Data/CLS_LOC/val 下的数据移动到 model-zoo 如下目录中：
-
-.. code :: shell
+.. code-block:: shell
 
    cd path/to/sophon/model-zoo
    mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
-   # 也可以通过软链接 ln -s 将目录映射为 dataset/ILSVRC2012/ILSVRC2012_img_val
+   # 也可以通过软链接 ln -s 将数据集目录映射到 dataset/ILSVRC2012/ILSVRC2012_img_val
+
 
 COCO (可选)
 -----------
 
 如果精度测试用到了 coco 数据集（如yolo等用coco训练的网络），请按照如下步骤下载解压：
 
-.. code :: shell
+.. code-block:: shell
 
    cd path/to/model-zoo/dataset/COCO2017/
    wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
@@ -114,32 +114,76 @@ COCO (可选)
    unzip annotations_trainval2017.zip
    unzip val2017.zip
 
-在非 x86 环境运行性能与精度测试
+
+Vid4 (可选)
+-----------
+
+如果需要对 BasicVSR 进行精度测试，请按照如下步骤下载解压 Vid4 数据集：
+
+.. code-block:: shell
+
+   $ pip3 install gdown
+   $ cd path/to/model-zoo/dataset/basicvsr/
+   $ gdown https://drive.google.com/open?id=1ZuvNNLgR85TV_whJoHM7uVb-XW1y70DW --fuzzy
+   $ unzip -o Vid4.zip -d eval
+
+
+准备工具链编译环境
+~~~~~~~~~~~~~~~~~~
+
+建议在 docker 环境使用工具链软件，可以参考 :ref:`基础环境配置 <docker configuration>` 安装Docker。并在工作目录（即 ``model-zoo`` 所在目录）下执行以下命令创建Docker容器：
+
+.. code-block:: shell
+
+   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+
+运行命令后会处于Docker的容器中，在Docker容器中安装tpu_mlir:
+
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
+
+
+安装 ``tpu-perf`` 工具
+~~~~~~~~~~~~~~~~~~~~~~
+
+从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf`` wheel安装包。例如 ``tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl`` 。
+
+在Docker内和Docker外都需要安装 ``tpu-perf`` ：
+
+.. code-block:: shell
+
+   # 进入Docker，安装tpu-perf
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
+   # 退出Docker
+   $ exit
+   # 在Docker外再次安装tpu-perf
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
+
+
+配置SOC设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 注意: 如果您的设备是 PCIE 板卡, 可以直接跳过该节内容。
 
-性能测试只依赖于 ``libsophon`` 运行环境, 所以在工具链编译环境编译完的模型连同
-``model-zoo`` 整个打包, 就可以在 SOC 环境使用 ``tpu_perf`` 进行性能与精度测试。
-但是, SOC设备上存储有限, 完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到
-SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SOC 设备上运行测试的
-方法。
+性能测试只依赖于 ``libsophon`` 运行环境, 所以在工具链编译环境编译完的模型连同 ``model-zoo`` 整个打包, 就可以在 SOC 环境使用 ``tpu_perf`` 进行性能与精度测试。但是, SOC设备上存储有限, 完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到 SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SOC 设备上运行测试的方法。
 
 首先, 在工具链环境服务器『host 系统』安装 nfs 服务:
 
-.. code :: shell
+.. code-block:: shell
 
    $ sudo apt install nfs-kernel-server
 
 在 ``/etc/exports`` 中添加以下内容(配置共享目录):
 
-.. code ::
+.. code-block:: shell
 
    /the/absolute/path/of/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
 
 其中 ``*`` 表示所有人都可以访问该共享目录, 也可以配置成特定网段或 IP 可访问, 如:
 
-.. code ::
+.. code-block:: shell
 
    /the/absolute/path/of/model-zoo 192.168.43.0/24(rw,sync,no_subtree_check,no_root_squash)
 
@@ -155,7 +199,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 .. code-block:: shell
 
-   chmod -R +r path/to/model-zoo/dataset
+   $ chmod -R +r path/to/model-zoo/dataset
 
 在 SOC 设备上安装客户端并挂载该共享目录:
 
@@ -165,44 +209,8 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
-这样便可以在 SOC 环境访问测试目录。SOC 测试其余的操作与 PCIE 基本一致, 请参考下
-文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
+这样便可以在 SOC 环境访问测试目录。SOC 测试其余的操作与 PCIE 基本一致, 请参考下文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
 
-获取 ``tpu-perf`` 工具
-~~~~~~~~~~~~~~~~~~~~~~
-
-从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``
-wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并将
-``tpu-perf`` 包放置到与 ``model-zoo`` 同一级目录下。此时的目录结构应该为如下形式:
-
-::
-
-   ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   └── model-zoo
-
-准备工具链编译环境
-~~~~~~~~~~~~~~~~~~
-
-建议在 docker 环境使用工具链软件，最新版本的 docker 可以参考 `官方教程 <https://docs.docker.com/engine/install/ubuntu/>`_ 进行安装。安装完成后，执行下面的脚本将当前用户加入 docker 组，获得 docker 执行权限。
-
-.. code :: shell
-
-   $ sudo usermod -aG docker $USER
-   $ newgrp docker
-
-然后，在欲使用的工作目录(即 ``model-zoo`` 所在目录)下执行以下命令:
-
-.. code :: shell
-
-   $ docker pull sophgo/tpuc_dev:v3.2
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
-
-运行命令后会处于Docker的容器中。
-在Docker容器中安装tpu_mlir:
-
-.. code :: shell
-
-   $ pip install tpu_mlir[all]
 
 模型性能和精度测试流程
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -210,34 +218,29 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 模型编译
 ---------
 
-使用以下命令完成设置运行测试所需的环境变量:
+模型编译过程需要在Docker内进行，Docker内需要按照上文要求安装 ``tpu_mlir`` 和 ``tpu_perf`` 。
 
-.. code :: shell
+``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/config.yaml`` 。
 
-   $ source $(which envsetup.sh)
+执行以下命令，可以编译 ``resnet18-v2`` 模型：
 
-该过程结束后不会有任何提示。之后使用以下命令安装 ``tpu-perf``:
+.. code-block:: shell
 
-.. code :: shell
+   $ cd ../model-zoo
+   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
 
-   $ pip3 install ../tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X``。
 
-``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。例如: resnet18的
-配置文件为 ``model-zoo/vision/classification/resnet18-v2/config.yaml`` 。
+执行以下命令, 可以编译全部测试样例:
 
-执行以下命令, 运行全部测试样例:
-
-.. code :: shell
+.. code-block:: shell
 
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X``。
+此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型）：
 
-此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型；同时该
-过程也编译了用于测试精度的模型，后续精度测试部分无需再编译模型。）:
-
-::
+.. code-block:: shell
 
    * efficientnet-lite4
    * mobilenet_v2
@@ -249,93 +252,109 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    * yolov5s
    * ...
 
-命令正常结束后, 会看到新生成的 ``output`` 文件夹(测试输出内容都在该文件夹中)。
-修改 ``output`` 文件夹的属性, 以保证其可以被Docker外系统访问。
+编译结束后, 会看到新生成的 ``output`` 文件夹，编译输出内容都在该文件夹中，此编译结果可以用于性能测试和精度测试，无需重新编译。但需要修改 ``output`` 文件夹的属性, 以保证其可以被Docker外系统访问：
 
-.. code :: shell
+.. code-block:: shell
 
    $ chmod -R a+rw output
+
 
 性能测试
 ---------
 
-运行测试需要在 Docker 外面的环境(此处假设您已经安装并配置好了1684X设备和
-驱动)中进行, 可以退出 Docker 环境:
+性能测试需要在 Docker 外面的环境中进行，此处假设已经安装并配置好了1684X设备和驱动。退出 Docker 环境:
 
-.. code :: shell
+.. code-block:: shell
 
    $ exit
 
-1. PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能。
+**PCIE板卡**
 
-.. code :: shell
+PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能：
+
+.. code-block:: shell
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X``。
+注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
 
-注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
-``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
-
-.. code :: shell
+.. code-block:: shell
 
    $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt
 
+**SOC设备**
 
-2. SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
+SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
 从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``
 ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl`` 文件到SOC设备上并执行
 以下操作:
 
-.. code :: shell
+.. code-block:: shell
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
+**输出结果**
+
 运行结束后, 性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
-运行时间、计算资源利用率和带宽利用率。
+运行时间、计算资源利用率和带宽利用率。下方为 ``resnet18-v2`` 的性能测试结果：
+
+.. code-block:: shell
+
+   name,prec,shape,gops,time(ms),mac_utilization,ddr_utilization,processor_usage
+   resnet18-v2,FP32,1x3x224x224,3.636,6.800,26.73%,10.83%,3.00%
+   resnet18-v2,FP16,1x3x224x224,3.636,1.231,18.46%,29.65%,2.00%
+   resnet18-v2,INT8,1x3x224x224,3.636,0.552,20.59%,33.20%,3.00%
+   resnet18-v2,FP32,4x3x224x224,14.542,26.023,27.94%,3.30%,3.00%
+   resnet18-v2,FP16,4x3x224x224,14.542,3.278,27.73%,13.01%,2.00%
+   resnet18-v2,INT8,4x3x224x224,14.542,1.353,33.59%,15.46%,2.00%
+
 
 精度测试
 ---------
 
-运行测试需要在 Docker 外面的环境(此处假设您已经安装并配置好了1684X设备和
-驱动)中进行, 可以退出 Docker 环境:
+精度测试需要在 Docker 外面的环境中进行，此处假设已经安装并配置好了1684X设备和驱动。退出 Docker 环境:
 
-.. code :: shell
+.. code-block:: shell
 
    $ exit
 
-PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度。
+PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度：
 
-.. code :: shell
+.. code-block:: shell
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X``。
-
-各类精度数据在 output 目录中的各个 csv 文件可以获得。
-
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
-.. code :: shell
+.. code-block:: shell
 
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt
 
 具体参数说明可以通过以下命令获得：
 
-.. code :: shell
+.. code-block:: shell
 
   python3 -m tpu_perf.precision_benchmark --help
 
+输出的精度数据在 ``output/topk.csv`` 中可以获得。下方为 ``resnet18-v2`` 的精度测试结果：
+
+.. code-block:: shell
+
+   name,top1,top5
+   resnet18-v2-FP32,69.68%,89.23%
+   resnet18-v2-INT8,69.26%,89.08%
+
+
 FAQ
-~~~~
+~~~~~~~~~~~~~~~~
 
 此章节列出一些tpu_perf安装、使用中可能会遇到的问题及解决办法。
 
@@ -343,11 +362,11 @@ invalid command 'bdist_wheel'
 -----------------------------
 tpu_perf编译之后安装，如提示如下图错误，由于没有安装wheel工具导致。
 
-.. image :: ../assets/invalid-bdist_wheel.png
+.. figure:: ../assets/invalid-bdist_wheel.png
 
 则先运行：
 
-.. code :: shell
+.. code-block:: shell
 
    pip3 install wheel
 
@@ -357,11 +376,11 @@ not a supported wheel
 ---------------------
 tpu_perf编译之后安装，如提示如下图错误，由于pip版本导致。
 
-.. image :: ../assets/not-support-wheel.png
+.. figure:: ../assets/not-support-wheel.png
 
 则先运行：
 
-.. code :: shell
+.. code-block:: shell
 
    pip3 install --upgrade pip
 
@@ -372,15 +391,16 @@ no module named 'xxx'
 
 安装运行model-zoo所需的依赖时，如提示如下图错误，由于pip版本导致。
 
-.. image :: ../assets/no-module-named-skbuild.png
+.. figure:: ../assets/no-module-named-skbuild.png
 
 则先运行：
 
-.. code :: shell
+.. code-block:: shell
 
    pip3 install --upgrade pip
 
 再安装运行 model-zoo 所需的依赖
+
 
 精度测试因为内存不足被kill
 --------------------------

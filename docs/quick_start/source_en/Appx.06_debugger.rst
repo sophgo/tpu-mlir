@@ -92,7 +92,7 @@ TDB command summary
 
 After entering TDB, press tab twice to get the command prompt. The display looks like this:
 
-.. image:: ../assets/tdb_tab.png
+.. figure:: ../assets/tdb_tab.png
 
 
 After entering TDB, the following commands can be used:
@@ -522,11 +522,11 @@ To use ``bmodel_checker`` you need to enter the Context directory, as shown in t
 
 After executing the ``bmodel_checker`` command, the checker report is output and the error outputs are saved to the ``failed_bmodel_outputs.npz`` file, which is described below:
 
-.. image:: ../assets/tdb_checker_readme_en.png
+.. figure:: ../assets/tdb_checker_readme_en.png
 
 where the "check" means pass, which the data is checked and its similarity conforms to ``cos > 0.99, eul > 0.9`` (This is the default threshold, which can be modified by the tolerance parameter); The "cross" means an error, which the data does not reach the required similarity; The "question mark" means an unknown, which the reference data is not found and the correctness of the data cannot be determined. A complete checker report of a yolov5s model is shown below:
 
-.. image:: ../assets/tdb_check_summary_yolo.png
+.. figure:: ../assets/tdb_check_summary_yolo.png
 
 After outputting the check report, it automatically enters the interactive mode. The interactive mode provides a detailed view of the errors and also allows you to quickly jump between lines, as shown in the following example of a ``cswin_tiny`` model.
 
@@ -535,7 +535,7 @@ After outputting the check report, it automatically enters the interactive mode.
 
 The check report can be reprinted by using the ``check summary`` command:
 
-.. image:: ../assets/tdb_check_summary_cswin.png
+.. figure:: ../assets/tdb_check_summary_cswin.png
 
 It is worth noting that you can aggregate inputs and outputs with the same line numbers using the ``check summary reduce`` command.
 
@@ -548,7 +548,7 @@ It is worth noting that you can aggregate inputs and outputs with the same line 
 
 where ``file-line`` is the line number in the checker report, which corresponds to the line number of ``final.mlir`` . This command gives a description of all the input and output data of the command corresponding to ``file-line``, an example is shown below:
 
-.. image:: ../assets/tdb_check_data_1.png
+.. figure:: ../assets/tdb_check_data_1.png
 
 .. code-block:: shell
 
@@ -556,9 +556,9 @@ where ``file-line`` is the line number in the checker report, which corresponds 
 
 Where ``index`` is the index of the data output by the ``check data [file-line]`` command. This command gives detailed information about the corresponding ``index`` data, and an example of comparing the correct data is shown below:
 
-.. image:: ../assets/tdb_check_data_2.png
+.. figure:: ../assets/tdb_check_data_2.png
 
 An example of comparison error data is shown below:
 
-.. image:: ../assets/tdb_check_data_3.png
+.. figure:: ../assets/tdb_check_data_3.png
 

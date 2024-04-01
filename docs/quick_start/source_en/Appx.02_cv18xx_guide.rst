@@ -11,15 +11,21 @@ Compile yolov5 model
 Install tpu_mlir
 ~~~~~~~~~~~~~~~~~~~~
 
+Go to the Docker container and execute the following command to install tpu_mlir:
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[all]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
+
 
 Prepare working directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create the ``model_yolov5s`` directory in the same directory as tpu-mlir, and put the model and image files in this directory.
+.. include:: get_resource.rst
 
+Create a ``model_yolov5s`` directory, and put both model files and image files into the ``model_yolov5s`` directory.
 
 The operation is as follows:
 
@@ -32,8 +38,6 @@ The operation is as follows:
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 ONNX to MLIR
 ~~~~~~~~~~~~~~~~~~~~

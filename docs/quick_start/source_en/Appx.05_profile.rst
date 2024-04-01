@@ -1,6 +1,6 @@
 .. _profile:
 
-Appendix.05：TPU Profile Tool Usage
+Appendix.05：TPU Profile Tool Guidance
 ========================================
 
 This chapter mainly introduces how to use Profile data and Tensor Computing Processor Profile tools to visualize the complete running process of the model to facilitate model performance analysis.
@@ -10,9 +10,7 @@ Compile Bmodel
 
 TPU Profile is a tool for converting Profile data into visual web pages. First, generate bmodel. The following uses the yolov5s model in the tpu-mlir project to demonstrate.
 
-Since Profile data will save some layer information during compilation into bmodel, causing the size of bmodel to increase, it is turned off by defa
-ult. The way to open it is to call model_deploy.py with the --debug option.
-If this option is not turned on at compile time, some data will be missing when the data obtained by turning on Profile at runtime is visualized.
+Since Profile data will save some layer information during compilation into bmodel, causing the size of bmodel to increase, it is turned off by default. The way to open it is to call ``model_deploy`` with the ``--debug`` option. If this option is not turned on at compile time, some data will be missing when the data obtained by turning on Profile at runtime is visualized. The command to generate a bmodel within Docker is as follows:
 
 .. code-block:: shell
 
@@ -40,14 +38,14 @@ If this option is not turned on at compile time, some data will be missing when 
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_1684x_f16.bmodel \
-       --debug # Record profile data
+       --debug
 
-Through the above commands, yolov5s.onnx is compiled into yolov5s_bm1684x_f16.bmodel.
+Through the above commands, ``yolov5s.onnx`` is compiled into ``yolov5s_bm1684x_f16.bmodel`` , and the ``--debug`` parameter will record the profile data.
 
 Generate Raw Profile Data
 --------------------------
 
-Copy the generated yolov5s_bm1684x_f16.bmodel to the running environment. In the same compilation process, the Profile function at runtime is turned off by default to prevent additional time consumption when saving and transmitting profiles. When you need to enable the profile function, set the environment variable BMRUNTIME_ENABLE_PROFILE=1 before running the compiled application. Then use the model testing tool bmrt_test provided in libsophon as an application to generate profile data.
+Copy the generated ``yolov5s_bm1684x_f16.bmodel`` to the running environment with libsophon. In the same compilation process, the Profile function at runtime is turned off by default to prevent additional time consumption when saving and transmitting profiles. When you need to enable the profile function, set the environment variable ``BMRUNTIME_ENABLE_PROFILE=1`` before running the compiled application. Then use the model testing tool ``bmrt_test`` provided in libsophon to run bmodel and generate profile data. Execute the following command outside of Docker:
 
 .. code-block:: shell
 
@@ -56,19 +54,20 @@ Copy the generated yolov5s_bm1684x_f16.bmodel to the running environment. In the
 
 The following is the log output after opening Profile:
 
-    .. _profile_log:
-    .. figure:: ../assets/profile_log_en.png
-          :height: 13cm
-          :align: center
+.. _profile_log:
+.. figure:: ../assets/profile_log_en.png
+   :height: 13cm
+   :align: center
 
-          The log output after opening Profile
+   The log output after opening Profile
 
-At the same time, the bmprofile_data-1 folder is generated in the current directory, which contains all Profile data.
+After the run completes, the ``bmprofile_data-1`` folder is generated in the current directory, which contains all Profile data.
+
 
 Visualize Profile Data
 --------------------------
 
-Copy the bmprofile_data-1 directory back to the tpu-mlir project environment. Tpu-mlir provides the tpu_profile.py script to convert the generated profile data into a web page file for visualization. The command is as follows:
+Copy the ``bmprofile_data-1`` directory back to the tpu-mlir project environment inside Docker. Tpu-mlir provides the ``tpu_profile`` script to convert the generated profile data into a web page file for visualization. Execute the following command inside Docker:
 
 .. code-block:: shell
 
@@ -76,9 +75,14 @@ Copy the bmprofile_data-1 directory back to the tpu-mlir project environment. Tp
     # page and place it in the bmprofile_out directory
     # If there is a graphical interface, the browser will be opened directly and the
     # results will be seen directly.
-    tpu_profile.py bmprofile_data-1 bmprofile_out
+    tpu_profile bmprofile_data-1 bmprofile_out
     ls bmprofile_out
     # echarts.min.js  profile_data.js  result.html
 
+Open ``bmprofile_out/result.html`` with a browser to see the profile chart. In addition, there are other uses of this tool, which can be viewed through the command as follows:
 
-Open bmprofile_out/result.html with a browser to see the profile chart. In addition, there are other uses of this tool, which can be viewed through tpu_profile.py --help. For more analysis instructions on using Profile tools, please refer to https://tpumlir.org/zh-cn/2023/09/18/analyse-tpu-performance-with-tpu-profile.html
+.. code-block:: shell
+
+   tpu_profile --help
+
+For more analysis instructions on using Profile tools, please refer to https://tpumlir.org/zh-cn/2023/09/18/analyse-tpu-performance-with-tpu-profile.html

@@ -25,9 +25,9 @@ At present, the two main series of processors supported by TPU-MLIR are BM168x a
      - True
      - True
 
-The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the model_transform tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
+The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the ``model_transform`` tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
 
-To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the model_deploy tool, and the test_input should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows:
+To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the ``model_deploy`` tool, and the ``test_input`` should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows:
 
 .. list-table:: Types of customization_format and Description
    :widths: 27 43 12 10
@@ -78,11 +78,12 @@ To integrate preprocessing into the model, you need to speficy the "--fuse_prepr
      - False
      - True
 
-The "YUV*" type format is the special input format of CV18xx series processors. When the order of the color channels in the customization_format is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding customization_format will be automatically set according to the pixel_format and channel_format arguments defined when using the model_transform tool.
+The "YUV*" type format is the special input format of CV18xx series processors. When the order of the color channels in the ``customization_format`` is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding ``customization_format`` will be automatically set according to the ``pixel_format`` and ``channel_format`` arguments defined when using the ``model_transform`` tool.
+
 
 Model Deployment Example
 -------------------------
-Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table (refer to the chapter "Compiling the Caffe Model" for more details).
+Take the mobilenet_v2 model as an example, use the ``model_transform`` tool to generate the original mlir, and the ``run_calibration`` tool to generate the calibration table (refer to the chapter "Compiling the Caffe Model" for more details).
 
 
 Deploy to BM168x
@@ -142,6 +143,6 @@ When the input data comes from the video post-processing module VPSS provided by
        --aligned_input \
        --model mobilenet_v2_cv183x_int8_sym_fuse_preprocess_aligned.cvimodel
 
-In the above command, aligned_input specifies the alignment that the model input needs to do.
+In the above command, ``aligned_input`` specifies the alignment that the model input needs to do.
 
-Note that with vpss as input, runtime can use CVI_NN_SetTensorPhysicalAddr to reduce memory data copy.
+Note that with vpss as input, runtime can use ``CVI_NN_SetTensorPhysicalAddr`` to reduce memory data copy.
