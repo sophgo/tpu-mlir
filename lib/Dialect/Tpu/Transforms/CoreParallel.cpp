@@ -10,6 +10,7 @@
 #include "CoreParallel/CoreParallel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace llvm;
 
@@ -121,6 +122,8 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 // [offset, offset+num_core)
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
                            int num_core = 1) {
+  if(getRunMode(op)==RunMode::TPU_DYNAMIC)
+    return nullptr;
   if (num_core < 2)
     return nullptr;
   auto indexMap = op.getIndexingMaps();
