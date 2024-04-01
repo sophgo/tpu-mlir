@@ -21,20 +21,31 @@ void tpu::AddOp::codegen_global_bm1684x() {
   std::vector<int64_t> rshift_v;
   std::vector<float> f8_scales;
 
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
+
   if (module::isUniformQuantized(getInputs()[0], getOutput()) ||
       (module::isUniformQuantized(getInputs()[1], getOutput()))) {
     auto m_v = module::getI64Array(getMultipliers(), 2, 1);
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    if (module::isUniformQuantized(getInputs()[0])) {
+      spec.izp_A =
+          module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+    }
+    if (module::isUniformQuantized(getInputs()[1])) {
+      spec.izp_B =
+          module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+    }
+    spec.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 
-  bcbinary_global_param_t param{0};
-  auto &spec = param.spec;
   spec.binary_type = BINARY_ADD;
   spec.if_relu = getDoRelu();
   spec.relu_upper_limit = getReluLimit().convertToDouble();
@@ -83,6 +94,7 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  bcbinary_local_param_t param = {0};
 
   std::vector<int64_t> multi_v;
   std::vector<int64_t> rshift_v;
@@ -93,13 +105,23 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    if (module::isUniformQuantized(getInputs()[0])) {
+      param.spec.common.izp_A =
+          module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+    }
+    if (module::isUniformQuantized(getInputs()[1])) {
+      param.spec.common.izp_B =
+          module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+    }
+    param.spec.common.ozp =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 
-  bcbinary_local_param_t param = {0};
   param.spec.common.binary_type = BINARY_ADD;
   param.spec.common.if_relu = getDoRelu();
   param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
@@ -125,6 +147,8 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
   std::vector<int64_t> rshift_v;
   std::vector<float> f8_scales;
 
+  bcbinary_local_param_t param;
+  memset(&param, 0, sizeof(param));
   if (module::isUniformQuantized(getInputs()[0], getOutput()) ||
       (module::isWeight(getInputs()[0]) &&
        module::isUniformQuantized(getInputs()[1], getOutput()))) {
@@ -132,14 +156,23 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    if (module::isUniformQuantized(getInputs()[0])) {
+      param.spec.common.izp_A =
+          module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+    }
+    if (module::isUniformQuantized(getInputs()[1])) {
+      param.spec.common.izp_B =
+          module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+    }
+    param.spec.common.ozp =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 
-  bcbinary_local_param_t param;
-  memset(&param, 0, sizeof(param));
   param.spec.common.binary_type = BINARY_ADD;
   param.spec.common.if_relu = getDoRelu();
   param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
@@ -175,6 +208,16 @@ int64_t tpu::AddOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.rshift_B = r_v->at(1);
   spec.scale_A = m_v->at(0);
   spec.scale_B = m_v->at(1);
+
+  if (module::isUniformQuantized(getInputs()[0])) {
+    spec.izp_A = module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getInputs()[1])) {
+    spec.izp_B = module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    spec.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   spec.f8_scale_A = f8_scales->at(0);
   spec.f8_scale_B = f8_scales->at(1);
   return BM168x::dynamic_spec_to_buffer(buffer, param);

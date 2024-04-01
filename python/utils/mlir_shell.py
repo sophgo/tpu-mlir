@@ -115,7 +115,7 @@ def mlir_lowering(top_mlir: str,
             chip.lower(), num_device, num_core)
     ]
     mode = mode.upper()
-    asymmetric = False  # TODO: always using symmetric, as asymmetric not good
+    # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)

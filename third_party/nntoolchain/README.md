@@ -1,7 +1,7 @@
 **注意：所有提交到代码库的第三方依赖库都必须是release版本的；nntoolchain和libsophon需要与tpu-mlir同级目录**
 
 ## TPU1684 2023-11-24
-sha256: a809f267eabd9aa477646a89db5ce53542dc0062
+sha256: 700029cfcfbf5ba5d94f1d2d81abd7e0483eaa06
 
 ``` bash
 cd  nntoolchain/net_compiler/
@@ -15,7 +15,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690 2024-3-26
 ``` bash
 
-#bm1684x sha256: 4bbdace1fa67972c86a3bb32cd45c1e7d1aaa839
+#bm1684x sha256: 6a791d036f08694de2f0b18c2661dcb445c0aae9
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 57b05454476f4b6b8250388526df6ec1d0c63a0e
+#bm1688 sha256: 6a791d036f08694de2f0b18c2661dcb445c0aae9
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 57b05454476f4b6b8250388526df6ec1d0c63a0e
+#bm1690 sha256: 6a791d036f08694de2f0b18c2661dcb445c0aae9
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**

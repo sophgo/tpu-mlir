@@ -37,6 +37,10 @@ void tpu::SubConstOp::codegen_global_bm1684x() {
     param.common.B_dtype =
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
+  if (module::isUniformQuantized(getOutput())) {
+    param.common.zp_out =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   BM168x::call_global_func("backend_api_constbinary_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
@@ -96,7 +100,10 @@ void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     param.common.B_dtype =
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
-
+  if (module::isUniformQuantized(getOutput())) {
+    param.common.zp_out =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   BM168x::call_local_func("backend_api_constbinary_local", &param,
                           sizeof(param), &sec_info, input_spec->data(),
                           output_spec->data());
@@ -124,6 +131,10 @@ int64_t tpu::SubConstOp::dyn_codegen_local_bm1684x(void *buffer) {
     param.common.B_dtype =
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
+  if (module::isUniformQuantized(getOutput())) {
+    param.common.zp_out =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -150,6 +161,10 @@ int64_t tpu::SubConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   } else {
     param.common.B_dtype =
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    param.common.zp_out =
+        module::getUniformQuantizedType(getOutput()).getZeroPoint();
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
