@@ -2,11 +2,10 @@
 #include <unordered_map>
 #include <string>
 
-#include "cpu_impl_mycpuop.h"
-#include "cpu_impl_topk.h"
+#include "ap_impl_mycpuop.h"
+#include "ap_impl_topk.h"
 
 namespace bmcpu {
-
 
 } // end of namespace
 
@@ -30,8 +29,8 @@ bmcpu::cpu_layer* createLayerInstance(const char* layerType) {
     return nullptr;
 }
 
-bmcpu::cpu_layer* createTopkLayer() {
-    return new bmcpu::cpu_topklayer();
+bmap::ap_layer* createTopkLayer() {
+    return new bmap::ap_topklayer();
 }
 
 void registerFactoryFunctions() {

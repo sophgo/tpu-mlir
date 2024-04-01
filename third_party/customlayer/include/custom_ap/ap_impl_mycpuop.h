@@ -1,9 +1,10 @@
-#ifndef CPU_MYCPUOP_H
-#define CPU_MYCPUOP_H
+#ifndef AP_MYAPOP_H
+#define AP_MYAPOP_H
 #include "cpu_layer.h"
 
+#define ap_mycpuoplayer cpu_mycpuoplayer
 namespace bmcpu {
-class cpu_mycpuoplayer : public cpu_layer {
+class cpu_mycpuoplayer : public ap_layer {
 public:
     explicit cpu_mycpuoplayer() {}
     virtual ~cpu_mycpuoplayer() {}
@@ -25,4 +26,4 @@ public:
 };
 
 } /* namespace bmcpu */
-#endif // CPU_MYCPUOP_H
+#endif // AP_MYAPOP_H

@@ -3,9 +3,11 @@
 
 #include <memory>
 #include "bmcpu_macro.h"
-#include "customcpu_common.h"
+#include "customap_common.h"
 #include "cpu_layer_factory.h"
 
+#define bmap bmcpu
+#define ap_layer cpu_layer
 #define MAX_SHAPE_DIMS 8
 namespace bmcpu {
 

@@ -56,7 +56,7 @@ public:
 
 
 /* create layer object like cpu_softmaxlayer, and register */
-#define REGISTER_CPULAYER_CLASS(layer_type, layer_name)           \
+#define REGISTER_APLAYER_CLASS(layer_type, layer_name)           \
   std::shared_ptr<cpu_layer> Creator_##layer_name##Layer() {      \
     return std::shared_ptr<cpu_layer>(new layer_name##layer());   \
   }                                                               \

@@ -632,54 +632,54 @@ This subsection provides application examples of custom operators absadd and cei
 
   The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.
 
-Custom CPU Operator Addition Process
+Custom AP(Application Processor) Operator Adding Process
 -------------------------------------
 
-TpuLang Custom CPU Operator Addition
+TpuLang Custom AP Operator Adding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Load TPU-MLIR
 
    The process is consistent with when loading tpu-mlir for TPU custom operators.
 
-2. Write CPU Operator Implementation
+2. Write Processor Operator Implementation
 
   Assuming you are currently in the $TPUC_ROOT/customlayer path, declare a custom derived class
-  layer that inherits from the cpu_layer class in the header file 
-  ./include/custom_cpu/cpu_impl_{op_name}.h (where "forward()" declares the specific 
+  layer that inherits from the ap_layer class in the header file 
+  ./include/custom_ap/ap_impl_{op_name}.h (where "forward()" declares the specific 
   implementation method, "shape_infer()" declares the method for inferring tensor shape
   changes before and after, "dtype_infer()" declares the method for inferring data type 
   changes before and after, "get_param()" declares the parameter parsing method). Also, 
-  add cpu_impl_{op_name}.cpp in the ./cpu_src directory, where you implement the corresponding 
+  add ap_impl_{op_name}.cpp in the ./ap_src directory, where you implement the corresponding 
   functions, define new member variables, and override the member functions.
 
 3. Register Custom Operator
 
-  a. Add the operator's name in cpu_impl_{op_name}.cpp to register the custom operator:
+  a. Add the operator's name in ap_impl_{op_name}.cpp to register the custom operator:
 
   .. code-block:: c++
   
-    REGISTER_CPULAYER_CLASS(CPU_CUSTOM, {op_name});
+    REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. And define the member CPU_CUSTOM_{OP_NAME} in the enumeration type `CPU_CUSTOM_LAYER_TYPE_T` 
-    in ./customlayer/include/customcpu_common.h, where OP_NAME is uppercase.
+  b. And define the member AP_CUSTOM_{OP_NAME} in the enumeration type `AP_CUSTOM_LAYER_TYPE_T` 
+    in ./customlayer/include/customap_common.h, where OP_NAME is uppercase.
 
   .. code-block:: c++
   
     typedef enum {
-      CPU_CUSTOM                                 = 10001,
-      CPU_CUSTOM_TOPK                            = 10002,
-      CPU_CUSTOM_XXXX                            = 10003,
-      CPU_CUSTOM_LAYER_NUM                       ,
-      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
-    } CPU_CUSTOM_LAYER_TYPE_T;
+      AP_CUSTOM                                 = 10001,
+      AP_CUSTOM_TOPK                            = 10002,
+      AP_CUSTOM_XXXX                            = 10003,
+      AP_CUSTOM_LAYER_NUM                       ,
+      AP_CUSTOM_LAYER_UNKNOW = AP_CUSTOM_LAYER_NUM,
+    } AP_CUSTOM_LAYER_TYPE_T;
 
-  c. Define the instantiation method in customlayer/cpu_src/cpu_layer.cpp
+  c. Define the instantiation method in customlayer/ap_src/ap_layer.cpp
 
   .. code-block:: c++
 
-    bmcpu::cpu_layer* create{OP_NAME}Layer() {
-      return new bmcpu::cpu_{op_name}layer();
+    bmap::ap_layer* create{OP_NAME}Layer() {
+      return new bmap::ap_{op_name}layer();
     }
 
     void registerFactoryFunctions() {
@@ -700,7 +700,7 @@ TpuLang Custom CPU Operator Addition
 
     .. code-block:: c++
 
-      int cpu_mylayer::get_param(void *param, int param_size);
+      int ap_mylayer::get_param(void *param, int param_size);
 
 
   b. [Required] Inference function, i.e., the C++ implementation of the operator. Override 
@@ -708,7 +708,7 @@ TpuLang Custom CPU Operator Addition
 
     .. code-block:: c++
 
-      int cpu_mylayer::forward(void *raw_param, int param_size);
+      int ap_mylayer::forward(void *raw_param, int param_size);
 
   c. [Optional] Shape inference function. This patch function is used for compiler shape 
     inference. If not implemented, by default, there is only one input and one output, and
@@ -716,7 +716,7 @@ TpuLang Custom CPU Operator Addition
 
     .. code-block:: c++
 
-      int cpu_mylayer::shepe_infer(void *param, int param_size,
+      int ap_mylayer::shepe_infer(void *param, int param_size,
                                     const vector<vector<int>> &input_shapes,
                                     vector<vector<int>> &output_shapes);
 
@@ -737,34 +737,34 @@ TpuLang Custom CPU Operator Addition
 
     rebuild_custom_plugin
   
-  Compile the custom operator library file according to the CPU architecture
-  (to obtain `libcustomcpuop.so`). It is important to note that the environment for 
-  compiling the custom CPU operator must be compatible with the glibc version in the bmodel 
+  Compile the custom operator library file according to the processor architecture
+  (to obtain `libcustomapop.so`). It is important to note that the environment for 
+  compiling the custom processor operator must be compatible with the glibc version in the bmodel 
   runtime environment. The commands are as follows:
 
   a. x86 architecture
 
   .. code-block:: shell
 
-    rebuild_custom_cpuop_x86
+    rebuild_custom_apop_x86
 
   b. ARM architecture
 
 
   .. code-block:: shell
 
-    rebuild_custom_cpuop_aarch64
+    rebuild_custom_apop_aarch64
 
-  With this, we have completed the backend part of the custom CPU operator.
+  With this, we have completed the backend part of the custom processor operator.
 
-6. Build Custom CPU Operators with TpuLang
+6. Build Custom AP Operators with TpuLang
 
   For how to use TpuLang, please refer to the TpuLang interface section.
 
-  TpuLang provides the `TpuLang.custom` interface which can also be used for custom CPU operators. 
+  TpuLang provides the `TpuLang.custom` interface which can also be used for custom processor operators. 
   The method of use is basically the same as that for custom TPU operators. The difference is that 
-  when defining the "TpuLang.custom" object, the "op_name" parameter must start with the "cpu."
-  prefix to distinguish it, for example, "cpu.topk":
+  when defining the "TpuLang.custom" object, the "op_name" parameter must start with the "ap."
+  prefix to distinguish it, for example, "ap.topk":
 
   .. code-block:: python
 
@@ -782,25 +782,25 @@ TpuLang Custom CPU Operator Addition
           outputs = tpul.custom(
               tensors_in=inputs,
               shape_func=shape_func,
-              op_name="cpu.topk",
+              op_name="ap.topk",
               params=params,
               out_dtypes=...)
           return outputs
 
 7. On-Processor Testing
 
-  When the network contains custom CPU operators, the bmodel needs to include operator information.
-  Use the command to write libcustomcpuop.so into the bmodel file, which is used for all host 
-  CPU architectures:
+  When the network contains custom processor operators, the bmodel needs to include operator information.
+  Use the command to write libcustomapop.so into the bmodel file, which is used for all host 
+  processor architectures:
 
   .. code-block:: shell
 
-    tpu_model --custom_cpu_update xxx.bmodel libcustomcpuop.so
+    tpu_model --custom_ap_update xxx.bmodel libcustomapop.so
 
-  Note: It is especially important that the environment for compiling the custom CPU operator 
+  Note: It is especially important that the environment for compiling the custom processor operator 
   is compatible with the glibc version in the bmodel runtime environment.
 
-Custom CPU Operator Example
+Custom AP(Application Processor) Operator Example
 ----------------------------
 
 This section assumes that the tpu-mlir release package has been loaded.
@@ -815,7 +815,7 @@ through the TpuLang interface.
 
   Here, the field "order" corresponds to the "order" attribute on the frontend.
 
-  Define member variables in the custom class in {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+  Define member variables in the custom class in {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp:
 
   .. code-block:: c++
 
@@ -825,25 +825,25 @@ through the TpuLang interface.
 
 
   Override the `get_param()` interface in the custom class in 
-  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp. It is worth noting that what is
+  {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp. It is worth noting that what is
   passed from the compiler to the backend is an array A of custom_param_t, the first 
   element of which is reserved, and from the second element onwards, each element
   corresponds to an attribute on the frontend:
 
   .. code-block:: c++
 
-    int cpu_topklayer::get_param(void *param, int param_size) {
+    int ap_topklayer::get_param(void *param, int param_size) {
       axis_ = ((custom_param_t *)param)[1].int_t;
       K_ = ((custom_param_t *)param)[2].int_t;
       return 0;
     }
 
   Override the `shape_infer()` interface in the custom class in 
-  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+  {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp:
 
   .. code-block:: c++
 
-    int cpu_topklayer::shepe_infer(const vector<vector<int> > &input_shapes,
+    int ap_topklayer::shepe_infer(const vector<vector<int> > &input_shapes,
                                       vector<vector<int> > &output_shapes) {
       get_param(param, param_size);
       for (const auto& array : input_shapes) {
@@ -853,44 +853,44 @@ through the TpuLang interface.
       return 0;
     }
 
-2. CPU Operator Implementation
+2. Processor Operator Implementation
 
   Override the `forward()` interface in the custom class in
-  {TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp:
+  {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp:
 
   .. code-block:: c++
 
-    int cpu_topklayer::forward(void *raw_param, int param_size) {
+    int ap_topklayer::forward(void *raw_param, int param_size) {
       // implementation code right here
       return 0;
     }
 
-3. CPU Operator Registration
+3. Processor Operator Registration
 
-  a. Add the operator's name in cpu_impl_{op_name}.cpp to register the custom operator:
+  a. Add the operator's name in ap_impl_{op_name}.cpp to register the custom operator:
 
   .. code-block:: c++
 
-    REGISTER_CPULAYER_CLASS(CPU_CUSTOM_TOPK, cpu_topk);
+    REGISTER_APLAYER_CLASS(AP_CUSTOM_TOPK, ap_topk);
 
-  b. And define the member CPU_CUSTOM_TOPK in the enumeration type `CPU_CUSTOM_LAYER_TYPE_T`
-    in ./customlayer/include/customcpu_common.h.
+  b. And define the member AP_CUSTOM_TOPK in the enumeration type `AP_CUSTOM_LAYER_TYPE_T`
+    in ./customlayer/include/customap_common.h.
 
   .. code-block:: c++
 
     typedef enum {
-      CPU_CUSTOM                                 = 10001,
-      CPU_CUSTOM_TOPK                            = 10002,
-      CPU_CUSTOM_LAYER_NUM                          ,
-      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
-    } CPU_CUSTOM_LAYER_TYPE_T;
+      AP_CUSTOM                                 = 10001,
+      AP_CUSTOM_TOPK                            = 10002,
+      AP_CUSTOM_LAYER_NUM                          ,
+      AP_CUSTOM_LAYER_UNKNOW = AP_CUSTOM_LAYER_NUM,
+    } AP_CUSTOM_LAYER_TYPE_T;
 
-  c. Define the instantiation method in customlayer/cpu_src/cpu_layer.cpp
+  c. Define the instantiation method in customlayer/ap_src/ap_layer.cpp
 
   .. code-block:: c++
 
-    bmcpu::cpu_layer* createTopkLayer() {
-      return new bmcpu::cpu_topklayer();
+    bmap::ap_layer* createTopkLayer() {
+      return new bmap::ap_topklayer();
     }
 
     void registerFactoryFunctions() {
@@ -901,7 +901,7 @@ through the TpuLang interface.
 
 4. Frontend Preparation
 
-  The process of building a custom CPU operator using the TpuLang interface is basically 
+  The process of building a custom Processor operator using the TpuLang interface is basically 
   the same as for a TPU custom operator. The difference is that when defining the 
-  "TpuLang.custom" object, the "op_name" parameter must start with the "cpu." prefix to 
-  distinguish it, for example, "cpu.topk"
+  "TpuLang.custom" object, the "op_name" parameter must start with the "ap." prefix to 
+  distinguish it, for example, "ap.topk"

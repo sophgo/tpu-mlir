@@ -10,15 +10,15 @@ if (CMAKE_VERSION VERSION_LESS 3.12)
   set(CMAKE_PROJECT_VERSION 1.0.0)
 endif()
 
-file(GLOB_RECURSE srcs cpu_src/*.cpp)
+file(GLOB_RECURSE srcs ap_src/*.cpp)
 add_library(customcpuop SHARED ${srcs})
 target_include_directories(customcpuop PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/include/custom_cpu)
+                                              ${CMAKE_CURRENT_SOURCE_DIR}/include/custom_ap)
 target_compile_features(customcpuop PUBLIC cxx_std_11)
-set_target_properties(customcpuop PROPERTIES SOVERSION ${CMAKE_PROJECT_VERSION})
+set_target_properties(customcpuop PROPERTIES SOVERSION ${CMAKE_PROJECT_VERSION}
+                                              OUTPUT_NAME "customapop")
 
-
-set(ENABLE_TESTING OFF CACHE BOOL "Enable testings")
+set(ENABLE_TESTING OFF CACHE BOOL "Enable testing")
 if (ENABLE_TESTING)
     enable_testing()
     add_subdirectory(tests)
@@ -29,6 +29,12 @@ install(TARGETS customcpuop
     COMPONENT libsophon)
 install(FILES
     include/bmcpu.h
-    include/customcpu_common.h
+    include/customap_common.h
     DESTINATION include
     COMPONENT libsophon)
+
+install(CODE "
+    file(INSTALL ${CMAKE_CURRENT_BINARY_DIR}/libcustomapop.so
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+         RENAME libcustomcpuop.so)
+")

@@ -1,9 +1,10 @@
-#ifndef CPU_TOPK_H
-#define CPU_TOPK_H
+#ifndef AP_TOPK_H
+#define AP_TOPK_H
 #include "cpu_layer.h"
 
+#define ap_topklayer cpu_topklayer
 namespace bmcpu {
-class cpu_topklayer : public cpu_layer {
+class cpu_topklayer : public ap_layer {
 public:
     explicit cpu_topklayer() {}
     virtual ~cpu_topklayer() {}
@@ -28,4 +29,4 @@ private:
 };
 
 } /* namespace bmcpu */
-#endif // CPU_TOPK_H
+#endif // AP_TOPK_H

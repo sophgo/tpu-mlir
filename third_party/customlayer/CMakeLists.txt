@@ -15,12 +15,12 @@ if ("$ENV{CUSTOM_LAYER_DEV_MODE}" STREQUAL "unittest")
 elseif ("$ENV{CUSTOM_LAYER_DEV_MODE}" STREQUAL "plugin")
     include_directories(${SRC_DIR}/include)
     include_directories(${SRC_DIR}/include/kernel)
-    include_directories(${SRC_DIR}/include/custom_cpu)
+    include_directories(${SRC_DIR}/include/custom_ap)
 
     file(GLOB_RECURSE SRC_FILES
         ${SRC_DIR}/plugin/*.c
         ${SRC_DIR}/plugin/*.cpp
-        ${SRC_DIR}/cpu_src/*.cpp
+        ${SRC_DIR}/ap_src/*.cpp
     )
 
     include(utils/plugin.cmake)

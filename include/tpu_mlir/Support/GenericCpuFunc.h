@@ -10,7 +10,7 @@
 #pragma once
 
 #include "bmcpu_common.h"
-#include "customcpu_common.h"
+#include "customap_common.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include <algorithm>
 #include <map>

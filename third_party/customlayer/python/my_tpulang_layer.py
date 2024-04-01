@@ -85,7 +85,7 @@ class cpuTopk:
         outs = tpul.custom(
             tensors_in=inputs,
             # op_name should be consistent with the backend
-            op_name="cpu.topk",
+            op_name="ap.topk",
             params=params,
             out_dtypes=[dtype])
         return outs

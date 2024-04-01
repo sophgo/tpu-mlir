@@ -3,7 +3,7 @@
 #include "bmcpu.h"
 #include "cpu_layer.h"
 #include "cpu_layer_factory.h"
-#include "cpu_impl_mycpuop.h"
+#include "ap_impl_mycpuop.h"
 
 using namespace std;
 namespace bmcpu {
@@ -34,5 +34,5 @@ int cpu_mycpuoplayer::shepe_infer(void *param, int param_size,
     return 0;
 }
 
-REGISTER_CPULAYER_CLASS(CPU_CUSTOM, cpu_mycpuop);
+REGISTER_APLAYER_CLASS(AP_CUSTOM, ap_mycpuop);
 } /* namespace bmcpu */
