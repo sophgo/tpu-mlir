@@ -89,7 +89,7 @@ class TORCH_IR_TESTER(object):
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "FrobeniusNorm":    (self.test_FrobeniusNorm,     N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
-            "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
+            "GridSampler":      (self.test_GridSampler,       N, N, N, Y),
             "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),

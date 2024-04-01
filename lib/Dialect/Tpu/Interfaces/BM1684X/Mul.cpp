@@ -29,6 +29,15 @@ void tpu::MulOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  if (module::isUniformQuantized(getInputs()[0])) {
+    spec.izp_A = module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getInputs()[1])) {
+    spec.izp_B = module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    spec.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   BM168x::call_global_func("backend_api_bcbinary_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
 }
@@ -53,12 +62,12 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(
   auto dtype_O = BM168x::getDataType(getOutput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
     buffer_size = out_lmem_bytes * 2;
-    //aligned with backend
+    // aligned with backend
     if (getMultiplier() != 1 || getRshift() != 0) {
       buffer_size += out_lmem_bytes * 2;
     }
   } else if (dtype_A == DTYPE_F8E4M3) {
-    //calc method keep the same as add/sub at backend
+    // calc method keep the same as add/sub at backend
     if (dtype_B == DTYPE_F8E4M3) {
       buffer_size = 3 * out_lmem_bytes * sizeof(int16_t);
     } else if (dtype_B == DTYPE_FP16) {
@@ -95,6 +104,15 @@ void tpu::MulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
+  if (module::isUniformQuantized(getInputs()[0])) {
+    param.spec.common.izp_A = module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getInputs()[1])) {
+    param.spec.common.izp_B = module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    param.spec.common.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
 
   BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());
@@ -119,6 +137,16 @@ int64_t tpu::MulOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
+  if (module::isUniformQuantized(getInputs()[0])) {
+    param.spec.common.izp_A = module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getInputs()[1])) {
+    param.spec.common.izp_B = module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    param.spec.common.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
+
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -140,6 +168,15 @@ int64_t tpu::MulOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto scales = module::getF64Array(getOutF8Scales(), 1, 1.0);
   spec.f8_scale_A = scales->at(0);
   spec.f8_scale_B = 1.0;
+  if (module::isUniformQuantized(getInputs()[0])) {
+    spec.izp_A = module::getUniformQuantizedType(getInputs()[0]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getInputs()[1])) {
+    spec.izp_B = module::getUniformQuantizedType(getInputs()[1]).getZeroPoint();
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    spec.ozp = module::getUniformQuantizedType(getOutput()).getZeroPoint();
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

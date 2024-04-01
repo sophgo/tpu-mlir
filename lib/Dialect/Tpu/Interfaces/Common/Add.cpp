@@ -79,8 +79,6 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     p.handle = (void *)binary;
   }
 
-
-
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
   memset(p.outputs[0], 0, num_elem * sizeof(float));

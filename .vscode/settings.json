@@ -97,5 +97,9 @@
         "editor.defaultFormatter": "eeyore.yapf",
         "editor.tabSize": 4
     },
-    "yapf.args": ["--style", "{based_on_style: pep8, indent_width: 4, column_limit:100}"]
+    "yapf.args": [
+        "--style",
+        "{based_on_style: pep8, indent_width: 4, column_limit:100}"
+    ],
+    "esbonio.sphinx.confDir": "."
 }
