@@ -3,12 +3,9 @@ on:
     tags:
       - v*.*
 
-# on:
-#   push:
-
 jobs:
   build:
-    name: Collect and Build
+    name: Collect, Build and Release
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,6 +28,7 @@ jobs:
         cp -rf install/docs/TPU-MLIR_* ./
         cp install/docs/TPU-MLIR快速入门指南.pdf ./TPU-MLIR_Quick_Start_ZH.pdf
         cp install/docs/TPU-MLIR开发参考手册.pdf ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
+        rm ./dist/*.tar.gz
 
     - name: Upload to Artifacts
       uses: actions/upload-artifact@v3
@@ -38,6 +36,13 @@ jobs:
         name: my-artifact
         path: |
           ./dist/
+
+    - name: Release asset
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          ./dist/*.whl
           ./tpu-mlir-resource.tar
           ./TPU-MLIR_Quick_Start.pdf
           ./TPU-MLIR_Quick_Start_ZH.pdf
@@ -45,36 +50,21 @@ jobs:
           ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
   pypi-publish:
-      if: "!contains(github.ref, 'beta')"
-      needs: build
-      name: Upload release to PyPI
-      runs-on: ubuntu-latest
-      environment:
-        name: pypi
-        url: https://pypi.org/p/tpu_mlir
-      permissions:
-        contents: write
-        id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-      steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: my-artifact
-          path: ./
-    
-      - name: Release asset
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            ./dist/*.whl
-            ./tpu-mlir-resource.tar
-            ./TPU-MLIR_Quick_Start.pdf
-            ./TPU-MLIR_Quick_Start_ZH.pdf
-            ./TPU-MLIR_Technical_Reference_Manual.pdf
-            ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
+    if: "!contains(github.ref, 'beta')"
+    needs: build
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tpu_mlir
+    permissions:
+      contents: write
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: my-artifact
+        path: ./
 
-      - name: Delete .tar.gz file
-        run: rm ./dist/*.tar.gz
-
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
