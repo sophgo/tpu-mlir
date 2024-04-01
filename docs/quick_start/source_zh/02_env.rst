@@ -1,13 +1,12 @@
 开发环境配置
 ============
-首先检查当前系统环境是否满足ubuntu 22.04和python 3.10。如不满足，请进行下一节
-:ref:`基础环境配置 <env setup>` ；如满足，直接跳至 :ref:`tpu_mlir 安装 <install tpu_mlir>` 。
+首先检查当前系统环境是否满足ubuntu 22.04和python 3.10。如不满足，请进行下一节 :ref:`基础环境配置 <env setup>` ；如满足，直接跳至 :ref:`tpu_mlir 安装 <install tpu_mlir>` 。
 
 .. _env setup:
 
 基础环境配置
 ------------------
-如不满足，从 DockerHub https://hub.docker.com/r/sophgo/tpuc_dev 下载所需的镜像:
+如不满足上述系统环境，则需要使用Docker，从 DockerHub https://hub.docker.com/r/sophgo/tpuc_dev 下载所需的镜像文件，或使用下方命令直接拉取镜像：
 
 
 .. code-block:: shell
@@ -15,7 +14,7 @@
    $ docker pull sophgo/tpuc_dev:v3.2
 
 
-如果是首次使用Docker, 可执行下述命令进行安装和配置(仅首次执行):
+如果是首次使用Docker, 可执行下述命令进行安装和配置（仅首次执行）：
 
 
 .. _docker configuration:
@@ -33,59 +32,81 @@
 
 .. _docker container_setup:
 
-确保安装包在当前目录, 然后在当前目录创建容器如下:
+若下载镜像文件，则需要确保镜像文件在当前目录，并在当前目录创建容器如下:
 
 .. code-block:: shell
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
-  # myname只是举个名字的例子, 请指定成自己想要的容器的名字
 
-后文假定用户已经处于docker里面的/workspace目录。
+其中， ``myname`` 为容器名称, 可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
+
+后文假定用户已经处于 docker 里面的 ``/workspace`` 目录。
 
 
 .. _install tpu_mlir:
 
-tpu_mlir安装
+安装tpu_mlir
 ------------------
 
+目前支持2种安装方法，分别是在线安装和离线安装。
 
-目前支持2种安装方法：
+**在线安装**
 
-（1）直接从pypi下载并安装：
+直接从pypi下载并安装，默认安装最新版：
 
 .. code-block:: shell
 
    $ pip install tpu_mlir
 
-（2）从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ 处下载最新 `tpu_mlir-\*-py3-none-any.whl`，然后使用pip安装:
+**离线安装**
+
+从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ 处下载最新的 `tpu_mlir-*-py3-none-any.whl`，然后使用pip安装:
 
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir-\*-py3-none-any.whl
+   $ pip install tpu_mlir-*-py3-none-any.whl
 
 
-tpu_mlir在对不同框架模型处理时所需的依赖不同，对于onnx或torch生成的模型文件，使用下面命令安装额外的依赖环境:
+安装tpu_mlir依赖
+------------------
 
+tpu_mlir在对不同框架模型处理时所需的依赖不同，在线安装和离线安装方式都需要安装额外依赖。
+
+**在线安装**
+
+在线安装方式对于 ``onnx`` 或 ``torch`` 生成的模型文件，可使用下方命令安装额外的依赖环境:
 
 .. code-block:: shell
 
+   # 安装onnx依赖
    $ pip install tpu_mlir[onnx]
-
-.. code-block:: shell
-
+   # 安装torch依赖
    $ pip install tpu_mlir[torch]
 
 目前支持5种配置:
-*onnx*, *torch*, *tensorflow*, *caffe*, *paddle*。
+
+.. code-block:: shell
+
+   onnx, torch, tensorflow, caffe, paddle
+
 可使用一条命令安装多个配置，也可直接安装全部依赖环境:
 
 .. code-block:: shell
 
+   # 同时安装onnx, torch, caffe依赖
    $ pip install tpu_mlir[onnx,torch,caffe]
+   # 安装全部依赖
+   $ pip install tpu_mlir[all]
 
+**离线安装**
+
+同理，离线安装方式可使用下方命令安装额外的依赖环境：
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   # 安装onnx依赖
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
+   # 安装全部依赖
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 

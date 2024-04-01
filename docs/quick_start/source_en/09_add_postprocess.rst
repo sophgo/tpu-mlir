@@ -8,17 +8,21 @@ This chapter requires the tpu_mlir python package.
 Install tpu_mlir
 ------------------
 
+Go to the Docker container and execute the following command to install tpu_mlir:
+
 .. code-block:: shell
 
    $ pip install tpu_mlir[onnx]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
 
 Prepare working directory
 -------------------------
 
-Create a ``model_yolov5s`` directory, note that it is the same level directory as tpu-mlir; and put both model files and image files
-into the ``model_yolov5s`` directory.
+.. include:: get_resource.rst
 
+Create a ``model_yolov5s`` directory, and put both model files and image files into the ``model_yolov5s`` directory.
 
 The operation is as follows:
 
@@ -31,8 +35,6 @@ The operation is as follows:
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 ONNX to MLIR
 --------------------
@@ -71,6 +73,11 @@ The generated yolov5s.mlir file finally has a top.YoloDetection inserted at the 
 
 Here you can see that top.YoloDetection includes parameters such as anchors, num_boxes, and so on. If the post-processing is not standard YOLO, and needs to be changed to other parameters, these parameters in the MLIR file can be directly modified.
 Also, the output has been changed to one, with the shape of 1x1x200x7, where 200 represents the maximum number of detection boxes. When there are multiple batches, its value will change to batchx200. The 7 elements respectively represent [batch_number, class_id, score, center_x, center_y, width, height].
+The coordinates are relative to the width and length of the model input, it's 640x640 in this example, with the following values:
+
+.. code-block:: text
+
+   [0., 16., 0.924488, 184.21094, 401.21973, 149.66412, 268.50336 ]
 
 
 MLIR to Bmodel
@@ -118,6 +125,7 @@ In this way, the converted model is a model that includes post-processing. The m
     host mem size: 0 (coeff: 0, runtime: 0)
 
 Here, [1, 1, 200, 7] is the maximum shape, and the actual output varies depending on the number of detected boxes.
+
 
 Bmodel Verification
 -----------------------

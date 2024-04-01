@@ -1,21 +1,27 @@
 编译TFLite模型
 ================
 
-本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X 平台运行。
+本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至 BM1684X 平台运行。
 
 本章需要安装tpu_mlir。
 
 
-安装tpu-mlir
+安装tpu_mlir
 ------------------
+
+进入Docker容器，并执行以下命令安装tpu_mlir：
 
 .. code-block:: shell
 
    $ pip install tpu_mlir[tensorflow]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[tensorflow]
 
 
 准备工作目录
 ------------------
+
+.. include:: get_resource.rst
 
 建立 ``mobilebert_tf`` 目录, 注意是与tpu-mlir同级目录; 并把测试图片文件放入
 ``mobilebert_tf`` 目录中。
@@ -31,8 +37,6 @@
    $ cp -rf tpu_mlir_resource/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 TFLite转MLIR
 ------------------

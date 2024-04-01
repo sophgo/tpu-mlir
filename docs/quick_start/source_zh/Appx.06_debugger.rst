@@ -44,7 +44,7 @@
 ..    # CModel模式
 ..    $ use_cmodel
 ..    # PCIE模式
-..    $ use_chip
+..    $ use_processor
 
 .. 默认为CMmodel模式，使用TDB时，支持PCIE模式的平台目前仅有bm1684x。
 
@@ -108,7 +108,7 @@ TDB命令汇总
 
 在进入TDB后，按下两次 tab 可以获取命令提示。显示效果如下：
 
-.. image:: ../assets/tdb_tab.png
+.. figure:: ../assets/tdb_tab.png
 
 
 进入TDB后，可使用的命令如下：
@@ -538,11 +538,11 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 执行 ``bmodel_checker`` 命令后，会输出检查报告，并将错误的输出结果保存到 ``failed_bmodel_outputs.npz`` 文件中，下面对检查报告进行说明：
 
-.. image:: ../assets/tdb_checker_readme.png
+.. figure:: ../assets/tdb_checker_readme.png
 
 其中，“对勾”表示通过，即该数据被检查，且其相似度符合 ``cos>0.99, eul>0.9`` (默认阈值，可通过 tolerance 参数修改)；“叉号”表示错误，即该数据没有达到要求的相似度；“问号”表示未知，即没有找到对应的参考数据，无法确定此数据的正确性。一个 ``yolov5s`` 模型的完整检查报告如下图所示：
 
-.. image:: ../assets/tdb_check_summary_yolo.png
+.. figure:: ../assets/tdb_check_summary_yolo.png
 
 输出检查报告后会自动进入交互模式。交互模式可提供对错误的详细浏览，而且还可以快速在不同行之间跳转，下面以一个 ``cswin_tiny`` 模型为例展示其使用方法。
 
@@ -551,7 +551,7 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 使用 ``check summary`` 命令可以重新打印检查报告，使用示例如下：
 
-.. image:: ../assets/tdb_check_summary_cswin.png
+.. figure:: ../assets/tdb_check_summary_cswin.png
 
 值得一提的是，使用 ``check summary reduce`` 命令可以聚合相同行号的输入和输出。
 
@@ -564,7 +564,7 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 其中， ``file-line`` 为检查报告中的行号，对应 final.mlir 的行号。此命令可以给出 ``file-line`` 对应指令的所有输入输出数据的描述信息，使用示例如下：
 
-.. image:: ../assets/tdb_check_data_1.png
+.. figure:: ../assets/tdb_check_data_1.png
 
 .. code-block:: shell
 
@@ -572,9 +572,9 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 其中， ``index`` 为 ``check data [file-line]`` 命令输出数据的 ``index``。此命令可以给出对应 ``index`` 数据的详细信息，对比正确的数据示例如下：
 
-.. image:: ../assets/tdb_check_data_2.png
+.. figure:: ../assets/tdb_check_data_2.png
 
 对比错误的数据示例如下：
 
-.. image:: ../assets/tdb_check_data_3.png
+.. figure:: ../assets/tdb_check_data_3.png
 

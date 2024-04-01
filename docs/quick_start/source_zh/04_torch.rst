@@ -5,20 +5,25 @@
 
 本章需要安装tpu_mlir。
 
-安装tpu-mlir
+
+安装tpu_mlir
 ------------------
+
+进入Docker容器，并执行以下命令安装tpu_mlir：
 
 .. code-block:: shell
 
    $ pip install tpu_mlir[torch]
+   # or
+   $ pip install tpu_mlir-*-py3-none-any.whl[torch]
 
 
 准备工作目录
 ------------------
 
-建立 ``model_yolov5s_pt`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
-放入 ``model_yolov5s_pt`` 目录中。
+.. include:: get_resource.rst
 
+建立 ``model_yolov5s_pt`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s_pt`` 目录中。
 
 操作如下:
 
@@ -31,8 +36,6 @@
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace
 
-
-.. include:: get_resource.rst
 
 TORCH转MLIR
 ------------------
@@ -58,7 +61,7 @@ TORCH转MLIR
        --mlir yolov5s_pt.mlir
 
 
-转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。值得注意的是，目前我们仅支持静态模型，模型在编译前需要调用torch.jit.trace()以生成静态模型。
+转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。值得注意的是，目前我们仅支持静态模型，模型在编译前需要调用 ``torch.jit.trace()`` 以生成静态模型。
 
 
 MLIR转F16模型
@@ -124,6 +127,7 @@ MLIR转INT8模型
 ------------------
 
 利用 ``detect_yolov5`` 命令, 对图片进行目标检测。
+
 用以下代码分别来验证pytorch/f16/int8的执行结果。
 
 

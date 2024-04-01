@@ -5,7 +5,7 @@ Appendix.04: Test SDK release package with TPU-PERF
 Configure the system environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you are using Docker for the first time, use the methods in :ref:`Environment Setup <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you can execute the following commands for installation and configuration (only for the first time, and the configuration is in the user's own system, not in Docker container):
+If you are using Docker for the first time, use the methods in :ref:`Environment Setup <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you need execute the following commands for installation and configuration in the user's own system (not in Docker container).
 
 .. code-block:: shell
    :linenos:
@@ -14,18 +14,20 @@ If you are using Docker for the first time, use the methods in :ref:`Environment
    $ sudo apt-get install git-lfs
 
 
-Get the ``model-zoo`` model [#extra]_
+Get the ``model-zoo`` model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use the following command to clone the ``model-zoo`` project:
+In your working directory, use the following command to clone the ``model-zoo`` project:
 
 .. code-block:: shell
    :linenos:
 
-   $ git clone --depth=1 https://github.com/sophgo/model-zoo
+   $ git clone http://172.28.142.50:8090/nntoolchain/model-zoo.git
    $ cd model-zoo
+   # pulling model files
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
-   $ cd ../
+   # pull the specified file, using ground_truth from the ImageNet2012 dataset as an example
+   $ git lfs pull --include "dataset/ILSVRC2012/caffe_val.txt" --exclude=""
 
 If you have cloned ``model-zoo``, you can execute the following command to synchronize the model to the latest state:
 
@@ -35,127 +37,138 @@ If you have cloned ``model-zoo``, you can execute the following command to synch
    $ cd model-zoo
    $ git pull
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG" --exclude=""
-   $ cd ../
 
 This process downloads a large amount of data from ``GitHub``. Due to differences in specific network environments, this process may take a long time.
 
-.. rubric:: Footnotes
-
-.. [#extra] If you get the ``model-zoo`` test package provided by SOPHGO, you can
-   do the following to create and set up the ``model-zoo``. After completing
-   this step, go directly to the next section :ref:`get tpu-perf`.
-
-   .. code :: console
-
-      $ mkdir -p model-zoo
-      $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
-
-
-.. _get tpu-perf:
-
-Get the ``tpu-perf`` tool
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Download the latest ``tpu-perf`` wheel installation package from https://github.com/sophgo/tpu-perf/releases. For example, tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl. And put the ``tpu-perf`` package in the same directory as ``model-zoo``. The directory structure at this point should look like this:
-
-
-::
-
-   ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   └── model-zoo
-
-
-Test process
-~~~~~~~~~~~~
-
-Unzip the SDK and create a Docker container
-+++++++++++++++++++++++++++++++++++++++++++
-
-Execute the following command in the workspace directory (note that ``model-zoo`` should be contained in this dir):
+If you get the ``model-zoo`` test package provided by SOPHGO, you can do the following to create and set up the ``model-zoo``. After completing this step, go directly to the next section :ref:`get tpu-perf`.
 
 .. code-block:: shell
-   :linenos:
 
-   $ tar zxf tpu-mlir_xxxx.tar.gz
+    $ mkdir model-zoo
+    $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
+
+The directory structure of model-zoo is as follows:
+
+.. code-block:: shell
+
+    ├── config.yaml
+    ├── requirements.txt
+    ├── dataset
+    ├── harness
+    ├── output
+    └── ...
+
+* config.yaml: contains generic configuration: dataset directory, model root directory, etc., as well as some reused parameters and commands
+* requirements.txt: contains python dependencies for model-zoo.
+* dataset: directory contains the datasets of the models in modelzoo, which will be called by tpu_perf as plugins.
+* output: directory will be used to store the compiled output bmodel and some intermediate data.
+* The other directories contain information and configuration for each model. The directory corresponding to each model has a config.yaml file, which configures the model's name, path and FLOPs, dataset production parameters, and the model's quantization compilation commands.
+
+
+Prepare the runtime environment
+~~~~~~~~~~~~
+
+Install the dependencies needed to run ``model-zoo`` on your system (outside of the Docker container):
+
+.. code-block:: shell
+
+   # for ubuntu operating system
+   sudo apt install build-essential
+   sudo apt install python3-dev
+   sudo apt install -y libgl1
+   # for centos operating system
+   sudo yum install make automake gcc gcc-c++ kernel-devel
+   sudo yum install python-devel
+   sudo yum install mesa-libGL
+   # accuracy tests require the following operations to be performed, performance tests can be performed without, it is recommended to use Anaconda to create a virtual environment of python 3.7 or above
+   cd path/to/model-zoo
+   pip3 install -r requirements.txt
+
+In addition, tpu hardware needs to be invoked for performance and accuracy tests, so please install libsophon according to the libsophon manual.
+
+
+Prepare dataset
+~~~~~~~~~~~~~~~~~~
+
+ImageNet
+--------
+
+Download `ImageNet 2012 Dataset <https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data?select=ILSVRC>`_ 。
+
+After unzipping, move the data under ``Data/CLS_LOC/val`` to a directory like model-zoo:
+
+.. code-block:: shell
+
+   cd path/to/sophon/model-zoo
+   mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
+   # It is also possible to map the dataset directory to dataset/ILSVRC2012/ILSVRC2012_img_val through the soft link ln -s
+
+
+COCO (optional)
+-----------
+
+If the precision test uses the coco dataset (networks trained with coco such as yolo), please download and unzip it as follows:
+
+.. code-block:: shell
+
+   cd path/to/model-zoo/dataset/COCO2017/
+   wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+   wget http://images.cocodataset.org/zips/val2017.zip
+   unzip annotations_trainval2017.zip
+   unzip val2017.zip
+
+
+Vid4 (optional)
+-----------
+
+If you need precision test on BasicVSR, please download and unzip the Vid4 dataset as follows:
+
+.. code-block:: shell
+
+   $ pip3 install gdown
+   $ cd path/to/model-zoo/dataset/basicvsr/
+   $ gdown https://drive.google.com/open?id=1ZuvNNLgR85TV_whJoHM7uVb-XW1y70DW --fuzzy
+   $ unzip -o Vid4.zip -d eval
+
+
+Prepare the toolchain compilation environment
+~~~~~~~~~~~~~~~~~~
+
+It is recommended to use the toolchain software in a docker environment, see :ref:`Base environment configuration <docker configuration>` to install Docker. and execute the following commands in your working directory (the directory which ``model-zoo`` is located) to create a Docker container:
+
+.. code-block:: shell
+
    $ docker pull sophgo/tpuc_dev:v3.2
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-After running the command, it will be in a Docker container.
-Install tpu_mlir python package in the docker environment:
+After running the command, it will be in a Docker container, install tpu_mlir python package in the docker environment:
 
-.. code :: shell
+.. code-block:: shell
 
    $ pip install tpu_mlir[all]
 
 
-Set environment variables and install ``tpu-perf``
-++++++++++++++++++++++++++++++++++++++++++++++++++
+.. _get tpu-perf:
 
-Complete setting the environment variables needed to run the tests with the following command:
+Install ``tpu-perf`` tool
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: shell
-   :linenos:
+Download the latest ``tpu-perf`` wheel installation package from https://github.com/sophgo/tpu-perf/releases. For example, ``tpu_perf-x.x.x-py3-none-manylinux2014_x86_64`` .whl.
 
-   $ source $(which envsetup.sh)
-
-There will be no prompts after the process ends. Then install ``tpu-perf`` with the following command:
+You need to install ``tpu-perf`` both inside and outside of Docker:
 
 .. code-block:: shell
 
-   $ pip3 install ../tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
+   # go to Docker and install tpu-perf
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
+   # exit Docker
+   $ exit
+   # installing tpu-perf again outside of Docker
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
-
-.. _test_main:
-
-Run the test
-++++++++++++
-
-Compile the model
-``````````````````
-
-``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/config.yaml`` .
-
-Execute the following command to run all test samples:
-
-.. code-block:: shell
-   :linenos:
-
-   $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --mlir -l full_cases.txt
-
-The following models are compiled (Due to continuous additions of models in the
-model-zoo, only a partial list of models is provided here; at the same time,
-this process also compiles models for accuracy testing, and subsequent accuracy
-testing sections do not require recompilation of models.):
-
-::
-
-   * efficientnet-lite4
-   * mobilenet_v2
-   * resnet18
-   * resnet50_v2
-   * shufflenet_v2
-   * squeezenet1.0
-   * vgg16
-   * yolov5s
-   * ...
-
-
-After the command is finished, you will see the newly generated ``output`` folder (where the test output is located).
-Modify the properties of the ``output`` folder to make it accessible to systems outside of Docker.
-
-
-.. code-block:: shell
-   :linenos:
-
-   $ chmod -R a+rw output
-
-
-Test model performance
-````````````````````````
 
 Configure SOC device
-++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~
 
 Note: If your device is a PCIE board, you can skip this section directly.
 
@@ -169,14 +182,14 @@ First, install the nfs service on the toolchain environment server "host system"
 
 Add the following content to ``/etc/exports`` (configure the shared directory):
 
-.. code ::
+.. code-block:: shell
 
    /the/absolute/path/of/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
 
 Where ``*`` means that everyone can access the shared directory. Moreover, it
 can be configured to be accessible by a specific network segment or IP, such as:
 
-.. code ::
+.. code-block:: shell
 
    /the/absolute/path/of/model-zoo 192.168.43.0/24(rw,sync,no_subtree_check,no_root_squash)
 
@@ -204,19 +217,71 @@ Install the client on the SOC device and mount the shared directory:
 In this way, the test directory is accessible in the SOC environment. The rest of the SOC test operation is basically the same as that of PCIE. Please refer to the following content for operation. The difference in command execution position and operating environment has been explained in the execution place.
 
 
-Run the test
-+++++++++++++
+.. _test_main:
 
-Running the test needs to be done in an environment outside Docker (it is assumed that you have installed and configured the 1684X device and driver), so you can exit the Docker environment:
+Model performance and accuracy testing process
+~~~~~~~~~~~~~~~~~~~~~~
 
-.. code :: console
+Compile the model
+---------
+
+The model compilation process needs to be done within Docker, where ``tpu_mlir`` and ``tpu_perf`` need to be installed as described above.
+
+``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/config.yaml`` .
+
+Execute the following command to compile the ``resnet18-v2`` model:
+
+.. code-block:: shell
+
+   $ cd ../model-zoo
+   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
+
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684``, ``BM1684X``, ``BM1688`` and ``CV186X``.
+
+Execute the following command to compile all test samples:
+
+.. code-block:: shell
+
+   $ cd ../model-zoo
+   $ python3 -m tpu_perf.build --mlir -l full_cases.txt
+
+The following models are compiled (Due to continuous additions of models in the
+model-zoo, only a partial list of models is provided here):
+
+.. code-block:: shell
+
+   * efficientnet-lite4
+   * mobilenet_v2
+   * resnet18
+   * resnet50_v2
+   * shufflenet_v2
+   * squeezenet1.0
+   * vgg16
+   * yolov5s
+   * ...
+
+
+After the command is finished, you will see the newly generated ``output`` folder. This compilation result can be used for performance and accuracy testing without recompilation. But you need modify the properties of the ``output`` folder to make it accessible to systems outside of Docker:
+
+.. code-block:: shell
+
+   $ chmod -R a+rw output
+
+
+Performance test
+---------
+
+Running the test needs to be done in an environment outside Docker, it is assumed that you have installed and configured the 1684X device and driver, so you can exit the Docker environment:
+
+.. code-block:: shell
 
    $ exit
 
-1. Run the following commands under the PCIE board to test the performance of the generated ``bmodel``.
+**PCIE board**
+
+Run the following commands under the PCIE board to test the performance of the generated ``bmodel`` :
 
 .. code-block:: shell
-   :linenos:
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
@@ -228,42 +293,51 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.run --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt
 
+**SOC device**
 
-2. The SOC device uses the following steps to test the performance of the generated ``bmodel``.
+The SOC device uses the following steps to test the performance of the generated ``bmodel``.
 
 Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl``, from https://github.com/sophgo/tpu-perf/releases to the SOC device and execute the following operations:
 
 .. code-block:: shell
-   :linenos:
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
+**Output results**
 
-After that, performance data is available in ``output/stats.csv``, in which the running time, computing resource utilization, and bandwidth utilization of the relevant models are recorded.
+After that, performance data is available in ``output/stats.csv``, in which the running time, computing resource utilization, and bandwidth utilization of the relevant models are recorded. The performance test results for ``resnet18-v2`` as follows:
+
+.. code-block:: shell
+
+   name,prec,shape,gops,time(ms),mac_utilization,ddr_utilization,processor_usage
+   resnet18-v2,FP32,1x3x224x224,3.636,6.800,26.73%,10.83%,3.00%
+   resnet18-v2,FP16,1x3x224x224,3.636,1.231,18.46%,29.65%,2.00%
+   resnet18-v2,INT8,1x3x224x224,3.636,0.552,20.59%,33.20%,3.00%
+   resnet18-v2,FP32,4x3x224x224,14.542,26.023,27.94%,3.30%,3.00%
+   resnet18-v2,FP16,4x3x224x224,14.542,3.278,27.73%,13.01%,2.00%
+   resnet18-v2,INT8,4x3x224x224,14.542,1.353,33.59%,15.46%,2.00%
+
 
 Precision test
-+++++++++++++++
+---------
 
-Precision test shall be carried out in the running environment beyond docker. It is optional to exit docker environment:
+Running the test needs to be done in an environment outside Docker, it is assumed that you have installed and configured the 1684X device and driver, so you can exit the Docker environment:
 
-.. code :: shell
+.. code-block:: shell
 
    exit
 
-Run the following commands under the PCIE board to test the precision of the generated ``bmodel``.
+Run the following commands under the PCIE board to test the precision of the generated ``bmodel`` :
 
 .. code-block:: shell
-   :linenos:
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.precision_benchmark --mlir -l full_cases.txt
-
-Various types of precision data are available in individual csv files in the output directory.
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
 
 Note: If multiple SOPHGO accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
@@ -271,4 +345,18 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.precision_benchmark --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt
+
+Specific parameter descriptions can be obtained with the following commands:
+
+.. code-block:: shell
+
+  python3 -m tpu_perf.precision_benchmark --help
+
+The output precision data is available in ``output/topk.csv`` . The precision results for ``resnet18-v2``:
+
+.. code-block:: shell
+
+   name,top1,top5
+   resnet18-v2-FP32,69.68%,89.23%
+   resnet18-v2-INT8,69.26%,89.08%
