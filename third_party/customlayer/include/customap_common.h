@@ -1,13 +1,15 @@
-#ifndef _CUSTOMCPU_COMMON_H_
-#define _CUSTOMCPU_COMMON_H_
+#ifndef _CUSTOMAP_COMMON_H_
+#define _CUSTOMAP_COMMON_H_
 #include <string.h>
 
+#define CPU_CUSTOM_LAYER_TYPE_T AP_CUSTOM_LAYER_TYPE_T
 typedef enum {
-    CPU_CUSTOM                                 = 10001,
-    CPU_CUSTOM_TOPK                            = 10002,
-    CPU_CUSTOM_LAYER_NUM                          ,
-    CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
-} CPU_CUSTOM_LAYER_TYPE_T;
+    AP_CUSTOM                                 = 10001,
+    AP_CUSTOM_TOPK                            = 10002,
+    AP_CUSTOM_LAYER_NUM                          ,
+    AP_CUSTOM_LAYER_UNKNOW = AP_CUSTOM_LAYER_NUM,
+} AP_CUSTOM_LAYER_TYPE_T;
+
 
 #ifndef _CPU_COMMON_H_
 typedef enum {
@@ -29,12 +31,12 @@ typedef struct {
     CPU_CUSTOM_LAYER_TYPE_T value;
 } NameToEnum;
 
-#define NAME_TO_ENUM_MAP(ENUM) { #ENUM, CPU_CUSTOM_##ENUM }
+#define NAME_TO_ENUM_MAP(ENUM) { #ENUM, AP_CUSTOM_##ENUM }
 
 static const NameToEnum custom_layer_map[] = {
     NAME_TO_ENUM_MAP(TOPK),
     // map new name to optype here
-    {NULL, CPU_CUSTOM_LAYER_UNKNOW}
+    {NULL, AP_CUSTOM_LAYER_UNKNOW}
 };
 
 static CPU_CUSTOM_LAYER_TYPE_T GetCustomLayerType(const char* name) {
@@ -45,6 +47,6 @@ static CPU_CUSTOM_LAYER_TYPE_T GetCustomLayerType(const char* name) {
         }
         ++current;
     }
-    return CPU_CUSTOM_LAYER_UNKNOW;
+    return AP_CUSTOM_LAYER_UNKNOW;
 }
-#endif /* _CUSTOMCPU_COMMON_H_ */
+#endif /* _CUSTOMAP_COMMON_H_ */

@@ -32,7 +32,7 @@ LogicalResult tpu::CustomOp::inference(InferenceParameter &p) {
   values.push_back({0});
   customOpProcessParam(params, values);
   std::string op_name = getName().str();
-  if (getName().starts_with("cpu.")) {
+  if (getName().starts_with("ap.")) {
     // Custom cpu layers
     llvm::StringRef custom_lib_name = "libplugin_custom.so";
     std::string Err;
@@ -46,7 +46,7 @@ LogicalResult tpu::CustomOp::inference(InferenceParameter &p) {
     std::transform(
         op_name.begin(), op_name.end(), op_name.begin(),
         [](unsigned char c) -> unsigned char { return std::toupper(c); });
-    std::string to_replace = "CPU.";
+    std::string to_replace = "AP.";
     size_t start_pos = op_name.find(to_replace);
     if (start_pos != std::string::npos) {
       op_name.replace(start_pos, to_replace.size(), "");

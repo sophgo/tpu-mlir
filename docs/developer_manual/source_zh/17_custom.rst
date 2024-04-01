@@ -649,50 +649,50 @@ Caffe示例
 
   absadd 与 ceiladd 的实现部分和 swapchannel 算子相似，可在 $TPUC_ROOT/customlayer/include 和  $TPUC_ROOT/customlayer/src 目录下找到相应代码。
 
-自定义CPU算子添加流程
+自定义AP（application processor）算子添加流程
 ------------------------------------------------------
 
-TpuLang自定义CPU算子添加
+TpuLang自定义AP算子添加
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. 加载tpu-mlir
 
   与TPU自定义算子时加载tpu-mlir一致。
 
-2. 编写CPU算子实现
+2. 编写AP算子实现
 
-  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/custom_cpu/cpu_impl_{op_name}.h 头文件中，
-  声明一个继承cpu_layer类的自定义派生类layer（其中“forward()”声明具体实现方法，“shape_infer()”声明推理前后
+  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/custom_ap/ap_impl_{op_name}.h 头文件中，
+  声明一个继承ap_layer类的自定义派生类layer（其中“forward()”声明具体实现方法，“shape_infer()”声明推理前后
   张量形状变化方法，“dtype_infer()”声明推理前后数据类型变化方法，“get_param()”声明参数解析方法）。并且
-  在./cpu_src 目录下添加cpu_impl_{op_name}.cpp，在其中实现相应的函数，定义新的成员变量，重写其中的成员函数。
+  在./ap_src 目录下添加ap_impl_{op_name}.cpp，在其中实现相应的函数，定义新的成员变量，重写其中的成员函数。
 
 3. 注册自定义算子
 
-  a. 在 cpu_impl_{op_name}.cpp 中添加算子的名字以注册自定义算子：
+  a. 在 ap_impl_{op_name}.cpp 中添加算子的名字以注册自定义算子：
 
   .. code-block:: c++
 
-    REGISTER_CPULAYER_CLASS(CPU_CUSTOM, {op_name});
+    REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. 并在./customlayer/include/customcpu_common.h中的枚举类型 `CPU_CUSTOM_LAYER_TYPE_T`中定义成员 
-    CPU_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
+  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员 
+    AP_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
 
   .. code-block:: c++
 
     typedef enum {
-      CPU_CUSTOM                                 = 10001,
-      CPU_CUSTOM_TOPK                            = 10002,
-      CPU_CUSTOM_XXXX                            = 10003,
-      CPU_CUSTOM_LAYER_NUM                          ,
-      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
-    } CPU_CUSTOM_LAYER_TYPE_T;
+      AP_CUSTOM                                 = 10001,
+      AP_CUSTOM_TOPK                            = 10002,
+      AP_CUSTOM_XXXX                            = 10003,
+      AP_CUSTOM_LAYER_NUM                          ,
+      AP_CUSTOM_LAYER_UNKNOW = AP_CUSTOM_LAYER_NUM,
+    } AP_CUSTOM_LAYER_TYPE_T;
 
-  c. 在customlayer/cpu_src/cpu_layer.cpp中定义实例化方法
+  c. 在customlayer/ap_src/ap_layer.cpp中定义实例化方法
 
   .. code-block:: c++
 
-    bmcpu::cpu_layer* create{OP_NAME}Layer() {
-      return new bmcpu::cpu_{op_name}layer();
+    bmap::ap_layer* create{OP_NAME}Layer() {
+      return new bmap::ap_{op_name}layer();
     }
 
     void registerFactoryFunctions() {
@@ -710,22 +710,22 @@ TpuLang自定义CPU算子添加
 
     .. code-block:: c++
 
-      int cpu_mylayer::get_param(void *param, int param_size);
+      int ap_mylayer::get_param(void *param, int param_size);
 
   b. （必选）推理函数，即算子的C++实现。重写自定义layer的forward()方法：
 
   .. code-block:: c++
 
-    int cpu_mylayer::forward(void *raw_param, int param_size);
+    int ap_mylayer::forward(void *raw_param, int param_size);
 
   c. （可选）形状推断函数。此补丁函数用于编译器形状推断，若不实现，默认只有一个输入一个输出，且输出形状跟输入形状
     相同。补丁函数形式如下：
 
   .. code-block:: c++
 
-    int cpu_mylayer::shepe_infer(void *param, int param_size,
-                                 const vector<vector<int>> &input_shapes,
-                                 vector<vector<int>> &output_shapes);
+    int ap_mylayer::shepe_infer(void *param, int param_size,
+                                const vector<vector<int>> &input_shapes,
+                                vector<vector<int>> &output_shapes);
 
   其中，input_shapes/output_shapes为输入/出张量形状的数组，input_dims/output_dims为输入/出张量维度的数组。
 
@@ -743,29 +743,29 @@ TpuLang自定义CPU算子添加
 
     rebuild_custom_plugin
 
-  根据CPU架构编译自定义算子库文件（得到 `libcustomcpuop.so`），需要特别注意的是，编译自定义CPU算子的
+  根据处理器架构编译自定义算子库文件（在目录build_ap下得到 `libcustomapop.so`），需要特别注意的是，编译自定义AP算子的
   环境要与bmodel运行环境中的glic版本兼容，命令如下：
 
   a. x86架构
 
   .. code-block:: shell
 
-    rebuild_custom_cpuop_x86
+    rebuild_custom_apop_x86
 
   b. arm架构
 
   .. code-block:: shell
 
-    rebuild_custom_cpuop_aarch64
+    rebuild_custom_apop_aarch64
 
-  至此我们完成了自定义CPU算子后端部分的工作。
+  至此我们完成了自定义AP算子后端部分的工作。
 
-6. 利用TpuLang构建自定义CPU算子
+6. 利用TpuLang构建自定义AP算子
 
   关于TpuLang的使用方式请参考TpuLang接口章节。
 
-  TpuLang中提供了 `TpuLang.custom` 接口可以同样用于自定义CPU算子，使用方法与自定义Tpu算子基本一致，区别
-  在定义“TpuLang.custom”对象时，“op_name”参数要以“cpu.”开头字段作为区分，例如“cpu.topk”：
+  TpuLang中提供了 `TpuLang.custom` 接口可以同样用于自定义AP算子，使用方法与自定义Tpu算子基本一致，区别
+  在定义“TpuLang.custom”对象时，“op_name”参数要以“ap.”开头字段作为区分，例如“ap.topk”：
 
   .. code-block:: python
 
@@ -783,23 +783,23 @@ TpuLang自定义CPU算子添加
           outputs = tpul.custom(
               tensors_in=inputs,
               shape_func=shape_func,
-              op_name="cpu.topk",
+              op_name="ap.topk",
               params=params,
               out_dtypes=...)
           return outputs
 
 7. 上卡测试
 
-  当网络中存在自定义CPU算子时，bmodel需要包含算子信息，使用命令将libcustomcpuop.so写入bmodel文件，
-  所有主机CPU架构均使用：
+  当网络中存在自定义AP算子时，bmodel需要包含算子信息，使用命令将libcustomapop.so写入bmodel文件，
+  所有主机处理器架构均使用：
 
   .. code-block:: shell
 
-    tpu_model --custom_cpu_update xxx.bmodel libcustomcpuop.so
+    tpu_model --custom_ap_update xxx.bmodel libcustomapop.so
 
-  注：需要特别注意的是，编译自定义CPU算子的环境要与bmodel运行环境中的glibc版本兼容。
+  注：需要特别注意的是，编译自定义AP算子的环境要与bmodel运行环境中的glibc版本兼容。
 
-自定义CPU算子示例
+自定义AP算子示例
 ------------------
 
 本节内容假定已经完成了tpu-mlir发布包加载。
@@ -813,7 +813,7 @@ TpuLang示例
 
   其中，这里的字段order对应前端的属性order 。
 
-  在{TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp 的自定义类中定义成员变量：
+  在{TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp 的自定义类中定义成员变量：
 
   .. code-block:: c++
 
@@ -821,23 +821,23 @@ TpuLang示例
       int axis_;
       int K_;
 
-  在{TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp 的自定义类中重写接口 `get_param()`。
+  在{TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp 的自定义类中重写接口 `get_param()`。
   值得注意的是，从编译器传递到后端的是一个 custom_param_t 的数组A，它的第一个元素是保留的，从第二个元
   素开始，每个元素对应前端的一个属性：
 
   .. code-block:: c++
 
-    int cpu_topklayer::get_param(void *param, int param_size) {
+    int ap_topklayer::get_param(void *param, int param_size) {
       axis_ = ((custom_param_t *)param)[1].int_t;
       K_ = ((custom_param_t *)param)[2].int_t;
       return 0;
     }
 
-  在{TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp 的自定义类中重写接口 `shape_infer()`：
+  在{TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp 的自定义类中重写接口 `shape_infer()`：
 
   .. code-block:: c++
 
-    int cpu_topklayer::shepe_infer(const vector<vector<int> > &input_shapes,
+    int ap_topklayer::shepe_infer(const vector<vector<int> > &input_shapes,
                                       vector<vector<int> > &output_shapes) {
       get_param(param, param_size);
       for (const auto& array : input_shapes) {
@@ -847,43 +847,43 @@ TpuLang示例
       return 0;
     }
 
-2. CPU算子实现
+2. AP算子实现
 
-  在{TPUC_ROOT}/customlayer/cpu_src/cpu_impl_{op_name}.cpp 的自定义类中重写接口 `forward()`：
+  在{TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp 的自定义类中重写接口 `forward()`：
 
   .. code-block:: c++
 
-    int cpu_topklayer::forward(void *raw_param, int param_size) {
+    int ap_topklayer::forward(void *raw_param, int param_size) {
       // implementation code right here
       return 0;
     }
 
-3. CPU算子注册
+3. AP算子注册
 
-  a. 在 cpu_impl_{op_name}.cpp 中添加算子的名字以注册自定义算子：
+  a. 在 ap_impl_{op_name}.cpp 中添加算子的名字以注册自定义算子：
 
   .. code-block:: c++
 
-    REGISTER_CPULAYER_CLASS(CPU_CUSTOM_TOPK, cpu_topk);
+    REGISTER_APLAYER_CLASS(AP_CUSTOM_TOPK, ap_topk);
 
-  b. 并在./customlayer/include/customcpu_common.h中的枚举类型 `CPU_CUSTOM_LAYER_TYPE_T`中定义成员
-    CPU_CUSTOM_TOPK。
+  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员
+    AP_CUSTOM_TOPK。
 
   .. code-block:: c++
 
     typedef enum {
-      CPU_CUSTOM                                 = 10001,
-      CPU_CUSTOM_TOPK                            = 10002,
-      CPU_CUSTOM_LAYER_NUM                          ,
-      CPU_CUSTOM_LAYER_UNKNOW = CPU_CUSTOM_LAYER_NUM,
-    } CPU_CUSTOM_LAYER_TYPE_T;
+      AP_CUSTOM                                 = 10001,
+      AP_CUSTOM_TOPK                            = 10002,
+      AP_CUSTOM_LAYER_NUM                          ,
+      AP_CUSTOM_LAYER_UNKNOW = AP_CUSTOM_LAYER_NUM,
+    } AP_CUSTOM_LAYER_TYPE_T;
 
-  c. 在customlayer/cpu_src/cpu_layer.cpp中定义实例化方法
+  c. 在customlayer/ap_src/ap_layer.cpp中定义实例化方法
 
   .. code-block:: c++
 
-    bmcpu::cpu_layer* createTopkLayer() {
-      return new bmcpu::cpu_topklayer();
+    bmap::ap_layer* createTopkLayer() {
+      return new bmap::ap_topklayer();
     }
 
     void registerFactoryFunctions() {
@@ -894,6 +894,6 @@ TpuLang示例
 
 4. 前端准备
 
-  调用TpuLang接口构建自定义CPU算子的流程与TPU自定义算子基本一致，区别在定义“TpuLang.custom”对象时，
-  “op_name”参数要以“cpu.”开头字段作为区分，例如“cpu.topk”
+  调用TpuLang接口构建自定义AP算子的流程与TPU自定义算子基本一致，区别在定义“TpuLang.custom”对象时，
+  “op_name”参数要以“ap.”开头字段作为区分，例如“ap.topk”
 

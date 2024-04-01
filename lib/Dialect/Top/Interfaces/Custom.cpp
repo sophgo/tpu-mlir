@@ -49,7 +49,7 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
   assert(custom_dl.isValid() &&
          "Opening libplugin_custom.so failed while using custom op! Check and "
          "make a plugin first");
-  if (getName().starts_with("cpu.")) {
+  if (getName().starts_with("ap.")) {
     // Custom cpu layers
     typedef bmcpu::cpu_layer *(*CreateLayerInstanceFunc)(const char *);
     void *factoryFuncPtr = custom_dl.getAddressOfSymbol("createLayerInstance");
@@ -59,7 +59,7 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
     std::transform(
         op_name.begin(), op_name.end(), op_name.begin(),
         [](unsigned char c) -> unsigned char { return std::toupper(c); });
-    std::string to_replace = "CPU.";
+    std::string to_replace = "AP.";
     size_t start_pos = op_name.find(to_replace);
     if (start_pos != std::string::npos) {
       op_name.replace(start_pos, to_replace.size(), "");
@@ -125,7 +125,7 @@ void top::CustomOp::shape_inference() {
   assert(custom_dl.isValid() &&
          "Opening libplugin_custom.so failed while using custom op! Check and "
          "make a plugin first");
-  if (getName().starts_with("cpu.")) {
+  if (getName().starts_with("ap.")) {
     // Custom cpu layers
     typedef bmcpu::cpu_layer *(*CreateLayerInstanceFunc)(const char *);
     void *factoryFuncPtr = custom_dl.getAddressOfSymbol("createLayerInstance");
@@ -135,7 +135,7 @@ void top::CustomOp::shape_inference() {
     std::transform(
         op_name.begin(), op_name.end(), op_name.begin(),
         [](unsigned char c) -> unsigned char { return std::toupper(c); });
-    std::string to_replace = "CPU.";
+    std::string to_replace = "AP.";
     size_t start_pos = op_name.find(to_replace);
     if (start_pos != std::string::npos) {
       op_name.replace(start_pos, to_replace.size(), "");

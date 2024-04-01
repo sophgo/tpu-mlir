@@ -238,7 +238,7 @@ public:
     } else if (dynamic || force_dynamic_run(op)) {
       return RunMode::TPU_DYNAMIC;
     } else if (isa<CustomOp>(op)) {
-      if (dyn_cast<CustomOp>(op).getName().starts_with("cpu")) {
+      if (dyn_cast<CustomOp>(op).getName().starts_with("ap")) {
         return RunMode::CPU;
       }
     }

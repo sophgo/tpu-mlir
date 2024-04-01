@@ -1,4 +1,4 @@
-#include "cpu_impl_topk.h"
+#include "ap_impl_topk.h"
 #include "bmcpu.h"
 #include "cpu_layer.h"
 #include "cpu_layer_factory.h"
@@ -151,5 +151,5 @@ int cpu_topklayer::shepe_infer(void *param, int param_size,
 }
 
 
-REGISTER_CPULAYER_CLASS(CPU_CUSTOM_TOPK, cpu_topk);
+REGISTER_APLAYER_CLASS(AP_CUSTOM_TOPK, ap_topk);
 } /* namespace bmcpu */

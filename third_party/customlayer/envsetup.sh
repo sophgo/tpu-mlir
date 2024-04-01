@@ -47,12 +47,18 @@ function rebuild_custom_plugin() {
 
 function rebuild_custom_cpuop_x86() {
   export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
-  _rebuild_custom customcpuop build_cpu
+  _rebuild_custom customcpuop build_ap
+}
+function rebuild_custom_apop_x86() {
+  rebuild_custom_cpuop_x86
 }
 
 function rebuild_custom_cpuop_aarch64() {
   export CUSTOM_LAYER_CHIP_ARCH=${1:-bm1684x}
-  _rebuild_custom_aarch64 customcpuop build_cpu
+  _rebuild_custom_aarch64 customcpuop build_ap
+}
+function rebuild_custom_apop_aarch64() {
+  rebuild_custom_cpuop_aarch64
 }
 
 function rebuild_custom_backend() {

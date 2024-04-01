@@ -1095,11 +1095,6 @@ typedef union {
   float float_arr_t[16];
 } custom_param_t;
 
-struct custom_topk_param {
-  int axis;
-  int K;
-} custom_topk_param_t;
-
 Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
                                                   func::CallOp call) {
   bm168x->before_codegen();
@@ -1215,7 +1210,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
       std::string op_name = op_.getName().str();
       std::transform(op_name.begin(), op_name.end(), op_name.begin(),
                    [](unsigned char c) -> unsigned char { return std::toupper(c); });
-      std::string to_replace = "CPU.";
+      std::string to_replace = "AP.";
       size_t start_pos = op_name.find(to_replace);
       if (start_pos != std::string::npos) {
         op_name.replace(start_pos, to_replace.size(), "");

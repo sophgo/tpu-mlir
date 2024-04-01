@@ -49,7 +49,7 @@ void* bmcpu_init()
     auto& cpu_layers_ = bmcpu_handle_->cpu_layers_;
 
     cpu_layers_.clear();
-    for (int layer_idx = CPU_CUSTOM; layer_idx < CPU_CUSTOM_LAYER_NUM; layer_idx++) {
+    for (int layer_idx = AP_CUSTOM; layer_idx < AP_CUSTOM_LAYER_NUM; layer_idx++) {
         #ifndef __linux__
         if (!windows_support(layer_idx)) {
             continue;
