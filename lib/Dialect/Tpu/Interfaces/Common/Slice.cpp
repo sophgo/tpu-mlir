@@ -243,6 +243,9 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       // TODO: force layer group to allow that offset->at(2) != 0
       if (steps->at(1) != 1)
         return failure();
+      // force (1x76725x4) -> (1x76725x1) step in global
+      if (num_dims > 2 && shape[1]>65535)
+        return failure();
     }
     if (num_dims > 4) {
       if(num_dims == 5){
