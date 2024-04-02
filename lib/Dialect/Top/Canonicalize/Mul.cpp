@@ -292,7 +292,9 @@ struct MulMerge : public OpRewritePattern<MulOp> {
     }
     rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), ValueRange{c, weight},
                                        attrs);
-    rewriter.eraseOp(mul);
+    if (mul->getUsers().empty()) {
+      rewriter.eraseOp(mul);
+    }
     return success();
   }
 };
