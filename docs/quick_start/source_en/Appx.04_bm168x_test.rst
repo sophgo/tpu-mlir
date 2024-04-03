@@ -8,7 +8,6 @@ Configure the system environment
 If you are using Docker for the first time, use the methods in :ref:`Environment Setup <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you need execute the following commands for installation and configuration in the user's own system (not in Docker container).
 
 .. code-block:: shell
-   :linenos:
 
    $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
    $ sudo apt-get install git-lfs
@@ -20,19 +19,14 @@ Get the ``model-zoo`` model
 In your working directory, use the following command to clone the ``model-zoo`` project:
 
 .. code-block:: shell
-   :linenos:
 
-   $ git clone http://172.28.142.50:8090/nntoolchain/model-zoo.git
+   $ git clone --depth=1 https://github.com/sophgo/model-zoo
    $ cd model-zoo
-   # pulling model files
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
-   # pull the specified file, using ground_truth from the ImageNet2012 dataset as an example
-   $ git lfs pull --include "dataset/ILSVRC2012/caffe_val.txt" --exclude=""
 
 If you have cloned ``model-zoo``, you can execute the following command to synchronize the model to the latest state:
 
 .. code-block:: shell
-   :linenos:
 
    $ cd model-zoo
    $ git pull
@@ -44,7 +38,7 @@ If you get the ``model-zoo`` test package provided by SOPHGO, you can do the fol
 
 .. code-block:: shell
 
-    $ mkdir model-zoo
+    $ mkdir -p model-zoo
     $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
 
 The directory structure of model-zoo is as follows:
@@ -161,10 +155,6 @@ You need to install ``tpu-perf`` both inside and outside of Docker:
 
    # go to Docker and install tpu-perf
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   # exit Docker
-   $ exit
-   # installing tpu-perf again outside of Docker
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
 
 Configure SOC device
@@ -204,7 +194,7 @@ In addition, you need to add read permissions to the images in the dataset direc
 
 .. code-block:: shell
 
-   chmod -R +r path/to/model-zoo/dataset
+   $ chmod -R +r path/to/model-zoo/dataset
 
 Install the client on the SOC device and mount the shared directory:
 
@@ -236,14 +226,14 @@ Execute the following command to compile the ``resnet18-v2`` model:
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
 
-where the ``--target`` is used to specify the processor model, which currently supports ``BM1684``, ``BM1684X``, ``BM1688`` and ``CV186X``.
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Execute the following command to compile all test samples:
 
 .. code-block:: shell
 
    $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
 
 The following models are compiled (Due to continuous additions of models in the
 model-zoo, only a partial list of models is provided here):
@@ -283,9 +273,11 @@ Run the following commands under the PCIE board to test the performance of the g
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Note: If multiple SOPHGO accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
@@ -303,7 +295,7 @@ Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch6
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
@@ -335,9 +327,11 @@ Run the following commands under the PCIE board to test the precision of the gen
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
+
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Note: If multiple SOPHGO accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
