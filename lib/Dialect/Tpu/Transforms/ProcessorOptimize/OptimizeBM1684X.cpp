@@ -1401,6 +1401,46 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
   }
 };
 
+// reshape + permute -> permute
+struct ReshapePermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    auto reshape_op = dyn_cast<tpu::ReshapeOp>(op.getInput().getDefiningOp());
+    if (!reshape_op) {
+      return failure();
+    }
+    auto order = module::getI64Array(op.getOrder());
+    if (!(order->size() == 4 && order->at(0) == 0 && order->at(1) == 2 &&
+         order->at(2) == 1 && order->at(3) == 3)) {
+      return failure();
+    }
+    auto input_shape = module::getShape(in);
+    if (!(input_shape[0] == 1 && input_shape[2] == 1)) {
+      return failure();
+    }
+    auto pre_input_shape = module::getShape(reshape_op.getInput());
+    auto out_shape = module::getShape(op.getOutput());
+    if (pre_input_shape != out_shape) {
+      return failure();
+    }
+
+    // ReshapeOp
+    op.getOutput().replaceAllUsesWith(reshape_op.getInput());
+    rewriter.eraseOp(op);
+    rewriter.eraseOp(reshape_op);
+    return success();
+  }
+};
+
 // permute + reshape -> reshape
 struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -3055,6 +3095,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermuteFuseAddSoftmax,
                 patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                 PermuteReshapeFuse,
+                ReshapePermuteFuse,
                 PermuteReshapeFuse2,
                 GatherElementsPattern,
                 ScatterElementsPattern,
