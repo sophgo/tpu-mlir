@@ -102,14 +102,6 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     spec.merge_coeff = 2;
     common.ipad_value = 0;
   }
-  if (op->hasAttr("compress_info")) {
-    auto cinfo = getCompressInfo();
-    common.nnvlc_param = {cinfo->getDoCompress(),
-                          cinfo->getDoDecompress(),
-                          cinfo->getBias0(),
-                          cinfo->getBias1(),
-                          cinfo->getZeroGuard()};
-  }
   BM168x::call_global_func("backend_api_conv_global", &spec, sizeof(spec),
                            input_spec->data(), output_spec->data());
 }

@@ -422,10 +422,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift_pos,
     OptionalAttr<SI32Attr>:$rshift_neg,
-    OptionalAttr<F64ArrayAttr>:$out_f8_scales,
-    //nnvlc
-    DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales
   );
 
   let results = (outs AnyRankedTensor:$output);
