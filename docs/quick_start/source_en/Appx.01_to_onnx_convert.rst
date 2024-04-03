@@ -166,7 +166,7 @@ In addition, use the ``paddle_infer_shape.py`` script from the PaddlePaddle proj
 .. code-block:: shell
    :linenos:
 
-   $ wget wget https://raw.githubusercontent.com/jiangjiajun/PaddleUtils/main/paddle/paddle_infer_shape.py
+   $ wget https://raw.githubusercontent.com/jiangjiajun/PaddleUtils/main/paddle/paddle_infer_shape.py
    $ python paddle_infer_shape.py  --model_dir . \
                              --model_filename inference.pdmodel \
                              --params_filename inference.pdiparams \
