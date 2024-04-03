@@ -526,48 +526,49 @@ class OnnxConverter(BaseConverter):
                 for output in node.output:
                     if not self.isWeight(output):
                         model.graph.output.extend([onnx.ValueInfoProto(name=output)])
-        ort_inputs = {}
-        test_file = ''
-        if isinstance(self.test_input, list):
-            assert self.test_input[0].endswith('.npz')
-            test_file = self.test_input[0]
-        elif isinstance(self.test_input, str):
-            assert self.test_input.endswith('.npz')
-            test_file = self.test_input
-        else:
-            raise ValueError("test_input npz file is necessary when transform dynamic shape model")
-        test_data = np.load(test_file)
-        for i in test_data.files:
-            ort_inputs[i] = test_data[i]
-        try:
+        if model.graph.output:
+            ort_inputs = {}
+            test_file = ''
+            if isinstance(self.test_input, list):
+                assert self.test_input[0].endswith('.npz')
+                test_file = self.test_input[0]
+            elif isinstance(self.test_input, str):
+                assert self.test_input.endswith('.npz')
+                test_file = self.test_input
+            else:
+                raise ValueError("test_input npz file is necessary when transform dynamic shape model")
+            test_data = np.load(test_file)
+            for i in test_data.files:
+                ort_inputs[i] = test_data[i]
             try:
-                ort_session = rt.InferenceSession(model.SerializeToString())
-            except Exception as E:
-                if "Message onnx.ModelProto exceeds maximum protobuf size of 2GB" in str(E):
-                    print("LOG: Try to convert through a temporary file when Constant Folding.")
-                    # large models try to convert through a temporary file
-                    import os
-                    import tempfile
-                    with tempfile.TemporaryDirectory() as tmpdirname:
-                        model_path = os.path.join(tmpdirname, 'dynamic_model.onnx')
-                        onnx.save(model,
-                                  model_path,
-                                  save_as_external_data=True,
-                                  location="temp_external_data",
-                                  convert_attribute=True)
-                        ort_session = rt.InferenceSession(model.SerializeToString())
-                else:
-                    raise E
-        except ValueError:
-            print("WARNING: onnxruntime.InferenceSession error when getting dynamic output shape.")
+                try:
+                    ort_session = rt.InferenceSession(model.SerializeToString())
+                except Exception as E:
+                    if "Message onnx.ModelProto exceeds maximum protobuf size of 2GB" in str(E):
+                        print("LOG: Try to convert through a temporary file when Constant Folding.")
+                        # large models try to convert through a temporary file
+                        import os
+                        import tempfile
+                        with tempfile.TemporaryDirectory() as tmpdirname:
+                            model_path = os.path.join(tmpdirname, 'dynamic_model.onnx')
+                            onnx.save(model,
+                                    model_path,
+                                    save_as_external_data=True,
+                                    location="temp_external_data",
+                                    convert_attribute=True)
+                            ort_session = rt.InferenceSession(model.SerializeToString())
+                    else:
+                        raise E
+            except ValueError:
+                print("WARNING: onnxruntime.InferenceSession error when getting dynamic output shape.")
 
-        # ort_session = rt.InferenceSession(model.SerializeToString())
-        outputs = [x.name for x in ort_session.get_outputs()]
-        ort_outs = ort_session.run(outputs, ort_inputs)
-        ort_outs_shape = [x.shape for x in ort_outs]
-        for i, output in enumerate(outputs):
-            self.addDynamicShape(output, ort_outs_shape[i])
-        del self.model.graph.output[:]
+            # ort_session = rt.InferenceSession(model.SerializeToString())
+            outputs = [x.name for x in ort_session.get_outputs()]
+            ort_outs = ort_session.run(outputs, ort_inputs)
+            ort_outs_shape = [x.shape for x in ort_outs]
+            for i, output in enumerate(outputs):
+                self.addDynamicShape(output, ort_outs_shape[i])
+            del self.model.graph.output[:]
         model.graph.output.extend(ori_outputs)
 
     def input_shape_assign(self, input_shapes):
