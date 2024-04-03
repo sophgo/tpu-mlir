@@ -359,7 +359,7 @@ class Memory(CModelMemory):
             result.reshape(shape)
             if memref.dtype == DType.si4:
                 return np.where(result > 7, result - 16, result).astype(np.int8)
-            return data
+            return result
 
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
@@ -554,15 +554,18 @@ class Memory(CModelMemory):
         return data
 
     def _ddr_to_numpy(self, memref: MemRef):
+        def _cal_offset(offsets):
+            if len(offsets) <= 1:
+                return offsets[0]
+            b = offsets.pop()
+            a = offsets.pop()
+            offsets.append(np.add.outer(a, b))
+            return _cal_offset(offsets)
+
         def _ddr_to_numpy_int4(shape, stride):
             result = np.zeros(shape, dtype=np.uint8)
-            n_offset = np.arange(shape[0]) * stride[0]
-            c_offset = np.arange(shape[1]) * stride[1]
-            h_offset = np.arange(shape[2]) * stride[2]
-            w_offset = np.arange(shape[3]) * stride[3]
-            dst_offset = np.add.outer(
-                n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))
-            ).ravel()
+            offsets = [np.arange(shape[i]) * stride[i] for i in range(len(shape))]
+            dst_offset = _cal_offset(offsets).ravel()
             index = memref.r_addr + (dst_offset >> 1)
             values = self.DDR[index].view(np.uint8)
             result = np.where(dst_offset & 1 == 0, values & 0xF, values >> 4).reshape(
