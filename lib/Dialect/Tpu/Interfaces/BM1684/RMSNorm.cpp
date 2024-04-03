@@ -33,4 +33,9 @@ uint32_t tpu::RMSNormOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   return 0;
 }
 
+int32_t tpu::RMSNormOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
 int64_t tpu::RMSNormOp::get_fw_type_bm1684() { return -1; }

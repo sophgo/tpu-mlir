@@ -50,7 +50,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
 
-      if ((lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) &&
+      if (mode != RunMode::TPU_DYNAMIC && (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) &&
           succeeded(lgOp.AllowDataSplit(1, lg_info.type))) {
         int64_t csecs = ceiling_func(c, Arch::NPU_NUM);
         max_csecs = std::min(max_csecs, csecs);

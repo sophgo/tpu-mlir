@@ -23,12 +23,13 @@ def get_npz_shape(args):
         exit(-1)
     npz_in = np.load(args[0])
     shape = npz_in[args[1]].shape
-    ret = ""
-    for i in shape:
-        if i is shape[-1]:
-            ret = ret + "{}".format(i)
-        else:
-            ret = ret + "{},".format(i)
+    ret = "["
+    dims = len(shape)
+    for i in range(dims):
+        ret += "{}".format(shape[i])
+        if i != dims-1:
+            ret += ","
+    ret += "]"
     print(ret)
     exit(0)
 
