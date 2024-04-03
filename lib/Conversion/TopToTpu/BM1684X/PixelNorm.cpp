@@ -58,9 +58,12 @@ static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp o
   std::vector<Value> opds;
   opds.reserve(3);
   const int nInputs = op->getNumOperands();
+  auto none = module::getNoneOp(op);
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (module::isWeight(opd)) {
+    if (opd.getDefiningOp() ==none) {
+      opds.push_back(none);
+    } else if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));
@@ -81,7 +84,7 @@ static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp o
       opds.push_back(castOp.getOutput());
     }
   }
-  auto none = module::getNoneOp(op);
+  // auto none = module::getNoneOp(op);
   opds.push_back(none);
   opds.push_back(none);
   std::vector<NamedAttribute> attrs;
