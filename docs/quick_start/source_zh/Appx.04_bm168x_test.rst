@@ -19,12 +19,9 @@
 
 .. code-block:: shell
 
-   $ git clone http://172.28.142.50:8090/nntoolchain/model-zoo.git
+   $ git clone --depth=1 https://github.com/sophgo/model-zoo
    $ cd model-zoo
-   # 拉取模型文件
    $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
-   # 拉取指定文件，以ImageNet2012数据集的ground_truth为例
-   $ git lfs pull --include "dataset/ILSVRC2012/caffe_val.txt" --exclude=""
 
 如果已经克隆过 ``model-zoo`` 可以执行以下命令同步模型到最新状态:
 
@@ -41,7 +38,7 @@
 
 .. code-block:: shell
 
-    $ mkdir model-zoo
+    $ mkdir -p model-zoo
     $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
 
 model-zoo的目录结构如下：
@@ -156,10 +153,6 @@ Vid4 (可选)
 
    # 进入Docker，安装tpu-perf
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   # 退出Docker
-   $ exit
-   # 在Docker外再次安装tpu-perf
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
 
 配置SOC设备
@@ -229,7 +222,7 @@ Vid4 (可选)
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X``。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X`` 。
 
 执行以下命令, 可以编译全部测试样例:
 
@@ -274,9 +267,11 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能：
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X`` 。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
 
@@ -294,7 +289,7 @@ SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
@@ -327,9 +322,11 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度：
 
 .. code-block:: shell
 
-   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
+
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 和 ``CV186X`` 。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
