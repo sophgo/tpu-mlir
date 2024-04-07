@@ -59,5 +59,8 @@ LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::ShapeSliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    return type_verify_case_same(getOperation(), 0, mode);
+  }
   return do_nothing(mode);
 }

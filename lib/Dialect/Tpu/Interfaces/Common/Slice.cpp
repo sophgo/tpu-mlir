@@ -338,6 +338,13 @@ void tpu::SliceOp::assign_fw_param(void *param) {
   memcpy(param, &slice_param, sizeof(fw_stride_slice_layer_param_t));
 }
 
+mlir::Type tpu::SliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    return type_verify_case_same(getOperation(), 0, mode);
+  }
+  return do_nothing(mode);
+}
+
 struct SliceCastSwapPattern : public OpRewritePattern<tpu::SliceOp> {
   SliceCastSwapPattern(mlir::MLIRContext *context):
     OpRewritePattern<tpu::SliceOp>(context) {}
