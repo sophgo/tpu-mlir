@@ -622,8 +622,8 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   }
 
   // update lg_infos
-  if ((cost_sum_v[0] > 5e6 && cost_sum_v[1] < cost_sum_v[0] * 1.05) ||
-        (cost_sum_v[0] <= 5e6 && cost_sum_v[1] < cost_sum_v[0]) || cost_sum_v[0] == cost_sum_v[1] && cost_sum_v[0] == 0) {
+  if (lg_infos_s[0].size()*10 >= lg_infos_s[1].size() && ((cost_sum_v[0] > 5e6 && cost_sum_v[1] < cost_sum_v[0] * 1.05) ||
+        (cost_sum_v[0] <= 5e6 && cost_sum_v[1] < cost_sum_v[0]) || cost_sum_v[0] == cost_sum_v[1] && cost_sum_v[0] == 0)) {
     lg_infos = lg_infos_s[1];
     opt_cost_all = true;
   } else {
