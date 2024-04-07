@@ -1875,7 +1875,9 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>,
-  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>
+  ]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
