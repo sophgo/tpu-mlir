@@ -318,7 +318,12 @@ class mm2_op(TiuCmd):
         return m * n * k * 2
 
     def initial_cycle(self) -> int:
-        return 0
+        init_cycle_dict = {
+            4: 37+44,
+            5: 37+19,
+            6: 37
+        }
+        return init_cycle_dict.get(self.reg['tsk_eu_typ'], 0)
 
     def alg_cycle(self, alg_ops: int) -> int:
         dtype = self.operands[0].dtype
@@ -407,6 +412,8 @@ class sfu_op(TiuCmd):
         return DIV_UP(alg_ops, EU_NUM(dtype) * LANE_NUMBER * factor)
 
     def initial_cycle(self) -> int:
+        if self.eu_name == "sfu.rsqrt":
+            return 14
         return 0
 
     def bank_conflict_cycle(self) -> int:
@@ -440,7 +447,7 @@ class lin_op(TiuCmd):
         return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * factor)
 
     def initial_cycle(self) -> int:
-        return 0
+        return 12
 
     def bank_conflict_cycle(self) -> int:
         return 0
@@ -554,13 +561,14 @@ class ar_op(TiuCmd):
         return n * c * hw * factor
 
     def initial_cycle(self) -> int:
-        if self.reg['tsk_eu_typ'] in [14, 19, 11, 15, 4, 5, 26]:
-            misc = -1
-        elif self.reg['tsk_eu_typ'] == 12:
-            misc = -4
-        else:
-            misc = 0
-        return 10 + misc
+        # if self.reg['tsk_eu_typ'] in [14, 19, 11, 15, 4, 5, 26]:
+        #     misc = -1
+        # elif self.reg['tsk_eu_typ'] == 12:
+        #     misc = -4
+        # else:
+        #     misc = 0
+        # return 10 + misc
+        return 11
 
     def alg_cycle(self, alg_ops: int) -> int:
         factor = 1
@@ -800,6 +808,15 @@ class transbc_op(TiuCmd):
             throughPut = activatedEuNumber * channelNumPerCyc
         return DIV_UP(alg_ops, throughPut)
 
+    def initial_cycle(self) -> int:
+        init_cycle_dict={
+            0: 30,
+            2: 27,
+            3: 27,
+            4: 3,
+            5: 3
+        }
+        return init_cycle_dict.get(self.reg['tsk_eu_typ'], 0)
 
 class stransbc_op(transbc_op):
     name = "sCW&sBC"
