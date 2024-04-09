@@ -18,6 +18,8 @@ except:
     warnings.warn("Warning: npz_tool not available in your environment. Fall back to integrated compare.", Warning)
     use_npz_tool = False
 
+from multiprocess import Pool
+from pathlib import Path
 
 ###########################
 # Colored Print Functions #
@@ -480,7 +482,7 @@ def make_slice_object(something):
 
 class NPZWrapper:
     def __init__(self, npz, role="darray"):
-        if isinstance(npz, str):
+        if isinstance(npz, (str, Path)):
             self.npz = np.load(npz)
         elif isinstance(npz, (np.lib.npyio.NpzFile, dict, NPZTdbErrWrapper)):
             self.npz = npz
@@ -532,7 +534,10 @@ class NPZWrapper:
             tensor = list(self.keys())[0]
         slice_list = tuple(make_slice_object(e)
                            for e in slices) if not slices is None else (slice(None),)
-        darray = self[tensor][slice_list].astype(float)
+        if len(self[tensor].shape) == 0:
+            darray = self[tensor].reshape(1).astype(float)
+        else:
+            darray = self[tensor][slice_list].astype(float)
         reshaped = get_nchw(darray, mix_axis)
         if print_shape:
             if not slices is None:
@@ -541,15 +546,16 @@ class NPZWrapper:
                   (darray.shape, tuple(reshaped)), end=", ")
         darray = np.reshape(darray, reshaped)
         data_mask_channel = assign_new_shape(reshaped, resize_hw)
-        if print_shape:
-            print("shown in %s" % (tuple(reshaped), ))
-
         if transpose_hw:
             darray = np.transpose(darray, [0, 1, 3, 2])
             if resize_hw in {'none', None, 'rectangle', 'auto'}:
                 reshaped[2], reshaped[3] = reshaped[3], reshaped[2]
                 data_mask_channel = np.reshape(
                     data_mask_channel.reshape(-1), data_mask_channel.shape[::-1])
+            if print_shape:
+                print("with hw transposed data", end=" ")
+        if print_shape:
+            print("shown in %s" % (tuple(reshaped), ))
 
         n_, c_, h_, w_ = reshaped
         per_c = math.ceil(c_ / c_columns)
@@ -662,10 +668,11 @@ class NPZComparer:
         for key in tensors:
             print("tensor='%s'," % key, "#shape", self.ref[key].shape)
 
-    def compare(self, tolerance=(-1., -1.), tensor=None):
+    def compare(self, tolerance=(-1., -1.), tensor=None, verbose=True, summary=False):
         if tensor is None:
             tensors = self.keys
-            print(f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}")
+            if verbose:
+                print(f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}")
         else:
             if isinstance(tensor, list):
                 for ts in tensor:
@@ -676,8 +683,16 @@ class NPZComparer:
 
         min_similarity = np.array([1.0, 1.0, np.inf])
         ALL_PASS = 1
+
+        results = {}
+        with Pool() as pool:
+            for key in tensors:
+                results[key] = pool.apply_async(calc_similarity, args=(self.target[key].reshape(self.ref[key].shape), self.ref[key]))
+            pool.close()
+            pool.join()
+
         for key in tensors:
-            result = calc_similarity(self.target[key].reshape(self.ref[key].shape), self.ref[key], np.ones_like(self.ref[key]).astype(int))
+            result = results[key].get()
             PASS = 1
             if 'similarity' in result:
                 similarity = np.array(result['similarity'])
@@ -685,8 +700,12 @@ class NPZComparer:
                 if np.any(similarity[:2] < np.array(tolerance)):
                     PASS = 0
                     ALL_PASS = 0
-            print(color_str(f"tensor='{key}', #{self.ref[key].shape} {''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in result.items())}{(' √' if PASS else ' ×') if tolerance != (-1., -1) else '' }", 'none' if tolerance == (-1., -1) else ('green' if PASS else 'red')))
-        print(color_str(f"min_similarity: {tuple(min_similarity)}{(' √' if ALL_PASS else ' ×') if tolerance != (-1., -1.) else ''}", 'none' if tolerance == (-1., -1.) else ('green' if ALL_PASS else 'red')))
+            if verbose and not summary:
+                print(color_str(f"tensor='{key}', #{self.ref[key].shape} {''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in result.items())}{(' √' if PASS else ' ×') if tolerance != (-1., -1) else '' }", 'none' if tolerance == (-1., -1) else ('green' if PASS else 'red')))
+
+        if verbose:
+            print(color_str(f"min_similarity: {tuple(min_similarity)}{(' √' if ALL_PASS else ' ×') if tolerance != (-1., -1.) else ''}", 'none' if tolerance == (-1., -1.) else ('green' if ALL_PASS else 'red')))
+        return bool(ALL_PASS)
 
     def get_diff(self, tensor=None, abs_tol=0, rel_tol=0, **kwargs):
         if tensor is None:
@@ -891,7 +910,9 @@ def nchw_to_idx(nchw, attr):
         return (h, w)
     return (n * attr['h_split'] + h, c * attr['w_split'] + w)
 
-def calc_similarity(target, ref, mask):
+def calc_similarity(target, ref, mask=None):
+    if mask is None:
+        mask = np.ones_like(target)
     target_flatten = target[mask == 1].flatten().astype(float)
     ref_flatten = ref[mask == 1].flatten().astype(float)
     # compare similarity as npz_tool does
