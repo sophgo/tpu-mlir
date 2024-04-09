@@ -11,6 +11,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/MARS3.h"
+#include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
@@ -51,6 +52,8 @@ void Arch::init(uint64_t freq) {
       inst = &BM1690::instance();
     } else if (chip == module::Chip::MARS3){
       inst = &MARS3::instance(A2_1::value);
+    } else if (chip == module::Chip::SG2380) {
+      inst = &SG2380::instance();
     } else {
       llvm_unreachable("unsupport chip");
     }
