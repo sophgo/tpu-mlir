@@ -28,8 +28,7 @@ void AddConstTryLowering::Lowering(PatternRewriter &rewriter,
       RankedTensorType::get({1}, rewriter.getIntegerType(32, true));
   auto weight_op = top::WeightOp::create(op, "i64", *constI32, weight_type);
   std::vector<Value> operands;
-  auto d2h_op = insert_device2host(weight_op, weight_op.getType(), op);
-  operands.push_back(d2h_op);
+  operands.push_back(weight_op);
   operands.push_back(op.getInput());
   Type new_type =
       RankedTensorType::get(module::getShape(op.getOutput()),
