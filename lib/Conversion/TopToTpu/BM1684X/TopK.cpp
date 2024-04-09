@@ -12,7 +12,15 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void _try_insert_device2host(top::TopKOp op) {
+  if (op.getKT()) {
+    try_insert_device2host(op.getOperation(), 1);
+  }
+}
+
 static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
+  _try_insert_device2host(op);
+
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -42,16 +50,6 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
   operands.push_back(NoneOp_0);
   operands.push_back(NoneOp_1);
   rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, new_types, operands, attrs);
-  return;
-}
-
-void TopKTryLowering::Lowering(PatternRewriter &rewriter,
-                               top::TopKOp op) const {
-  if (!op.getKT() ||
-      !op.getKT().getDefiningOp()->hasTrait<trait::ShapeProducer>())
-    return;
-
-  LoweringTopK(rewriter, op, rewriter.getF32Type());
   return;
 }
 

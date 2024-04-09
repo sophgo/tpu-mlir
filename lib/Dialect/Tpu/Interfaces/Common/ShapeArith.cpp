@@ -20,7 +20,11 @@ LogicalResult tpu::ShapeArithOp::init(InferenceParameter &p) {
   auto rhs_shape = module::getShape(getInputs()[1]);
   auto type = getType();
   algorithm alg;
-  if (type == "Mul") {
+  if (type == "Add") {
+    alg = algorithm::binary_add;
+  } else if (type == "Sub") {
+    alg = algorithm::binary_sub;
+  } else if (type == "Mul") {
     alg = algorithm::binary_mul;
   } else {
     return failure();

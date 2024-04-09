@@ -63,19 +63,15 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
       ShapeTryLowering,
-      ConstantFillTryLowering,
       ConcatTryLowering,
       UnsqueezeTryLowering,
       SqueezeTryLowering,
       SliceTryLowering,
-      RangeTryLowering,
-      ReshapeTryLowering,
-      TopKTryLowering,
       MinConstTryLowering,
       MaxConstTryLowering,
-      TileTryLowering,
       CompareConstTryLowering,
       MulTryLowering,
+      AddConstTryLowering,
       SubConstTryLowering,
       MulConstTryLowering
       // clang-format on
@@ -101,6 +97,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CeilLowering,
       ClipLowering,
       ConcatLowering,
+      ConstantFillLowering,
       ConvLowering,
       CosLowering,
       CoshLowering,

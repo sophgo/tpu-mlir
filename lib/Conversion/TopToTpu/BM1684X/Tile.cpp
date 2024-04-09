@@ -12,8 +12,15 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void _try_insert_device2host(top::TileOp op) {
+  if (op.getTileT()) {
+    try_insert_device2host(op.getOperation(), 1);
+  }
+}
+
 static void LoweringTile(PatternRewriter &rewriter, top::TileOp op, Type type) {
-  rewriter.setInsertionPointAfter(op);
+  _try_insert_device2host(op);
+
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   if (op.getTileT())
@@ -24,28 +31,23 @@ static void LoweringTile(PatternRewriter &rewriter, top::TileOp op, Type type) {
   }
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
-  auto new_type = op.getOutput().getType();
-  rewriter.replaceOpWithNewOp<tpu::TileOp>(op, new_type, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::TileOp>(op, type, operands, attrs);
   return;
-}
-
-void TileTryLowering::Lowering(PatternRewriter &rewriter,
-                                  top::TileOp op) const {
-  if (!op.getTileT() ||
-      (!op.getTileT().getDefiningOp()->hasTrait<trait::ShapeProducer>()))
-    return;
-  LoweringTile(rewriter, op, rewriter.getF32Type());
 }
 
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  LoweringTile(rewriter, op, rewriter.getF32Type());
-
+  auto new_type = getQuantFloatType(op->getResult(0));
+  LoweringTile(rewriter, op, new_type);
 }
 
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
                                 bool asymmetric) const {
-  lowering_common_int8<tpu::TileOp>(rewriter, op, asymmetric, 2);
+  if (op.getTileT()) {
+    LoweringF32(rewriter, op);
+  } else {
+    lowering_common_int8<tpu::TileOp>(rewriter, op, asymmetric, 2);
+  }
 }
 void TileLowering::LoweringINT4(PatternRewriter &rewriter, top::TileOp op,
                                    bool asymmetric) const {
@@ -53,12 +55,20 @@ void TileLowering::LoweringINT4(PatternRewriter &rewriter, top::TileOp op,
 }
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TileOp op) const {
-  lowering_common_bf16<tpu::TileOp>(rewriter, op, 2);
+  if (op.getTileT()) {
+    LoweringF32(rewriter, op);
+  } else {
+    lowering_common_bf16<tpu::TileOp>(rewriter, op, 2);
+  }
 }
 
 void TileLowering::LoweringF16(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_f16<tpu::TileOp>(rewriter, op, 2);
+  if (op.getTileT()) {
+    LoweringF32(rewriter, op);
+  } else {
+    lowering_common_f16<tpu::TileOp>(rewriter, op, 2);
+  }
 }
 
 void TileLowering::LoweringF8(PatternRewriter &rewriter,
@@ -68,7 +78,11 @@ void TileLowering::LoweringF8(PatternRewriter &rewriter,
 
 void TileLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TileOp op) const {
-  lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType(), 2);
+  if (op.getTileT()) {
+    LoweringF32(rewriter, op);
+  } else {
+    lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType(), 2);
+  }
 }
 
 } // namespace bm1684x
