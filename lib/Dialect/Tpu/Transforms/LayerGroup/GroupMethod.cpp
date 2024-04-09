@@ -341,6 +341,16 @@ bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
     for (auto op : lg_info.group_ops) {
       if (!res)
         break;
+      if (isa<tpu::ReshapeOp>(op)) {
+        auto reshape_op = dyn_cast<tpu::ReshapeOp>(op);
+        auto shape = module::getI64Array(reshape_op.getShape());
+        for (auto s : *shape) {
+          if (s < 0) {
+            res = false;
+            break;
+          }
+        }
+      }
       auto outs = get_output_values(op);
       for (auto out : outs) {
         if (group_n != module::getShape(out)[0]) {

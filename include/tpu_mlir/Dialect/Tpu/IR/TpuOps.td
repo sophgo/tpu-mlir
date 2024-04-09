@@ -1259,6 +1259,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
     Optional<AnyTensorOrNone>:$buffer
   );
   let results = (outs AnyRankedTensor:$output);

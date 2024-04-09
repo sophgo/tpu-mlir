@@ -91,5 +91,5 @@ void top::ReshapeOp::shape_inference() {
     module::bindShapeTensorValue(getOutput(), out_shape);
   }
 
-  removeShapeAttr();
+  // removeShapeAttr();
 }

@@ -12,15 +12,16 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void RangeTryLowering::Lowering(PatternRewriter &rewriter,
-                                top::RangeOp op) const {
-  // current only support dyn limit
-  // intput will be convert to INT32, output is FP32
-  // fixme: output int32 may introduce other problems
-  auto prev_op = op.getLimit().getDefiningOp();
-  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
-    return;
+static void _try_insert_device2host(top::RangeOp op) {
+  const bool is_dynamic = !module::isNone(op.getLimit());
+  if (is_dynamic) {
+    try_insert_device2host(op.getOperation(), 1);
   }
+}
+
+void RangeLowering::LoweringF32(PatternRewriter &rewriter,
+                                top::RangeOp op) const {
+  _try_insert_device2host(op);
 
   std::vector<Value> operands;
   auto i32_t_type =
@@ -58,28 +59,23 @@ void RangeTryLowering::Lowering(PatternRewriter &rewriter,
                                         Float32Type::get(op.getContext()));
   rewriter.replaceOpWithNewOp<tpu::RangeOp>(op, new_type, operands, attrs);
 }
-
-void RangeLowering::LoweringF32(PatternRewriter &rewriter,
-                                top::RangeOp op) const {
-  llvm_unreachable("Not implemented");
-}
 void RangeLowering::LoweringINT4(PatternRewriter &rewriter, top::RangeOp op,
                                  bool asymmetric) const {
   llvm_unreachable("Not implemented");
 }
 void RangeLowering::LoweringINT8(PatternRewriter &rewriter, top::RangeOp op,
                                  bool asymmetric) const {
-  llvm_unreachable("Not implemented");
+  LoweringF32(rewriter, op);
 }
 
 void RangeLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::RangeOp op) const {
-  llvm_unreachable("Not implemented");
+  LoweringF32(rewriter, op);
 }
 
 void RangeLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::RangeOp op) const {
-  llvm_unreachable("Not implemented");
+  LoweringF32(rewriter, op);
 }
 
 void RangeLowering::LoweringF8(PatternRewriter &rewriter,

@@ -55,10 +55,11 @@ int64_t tpu::ReshapeOp::dyn_codegen_local_bm1684x(void *buffer) {
     return sizeof(reshape_spec_t);
   reshape_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  auto out_shape = module::getShape(getOutput());
-  spec.dims = out_shape.size();
+  // auto out_shape = module::getShape(getOutput());
+  auto shape = module::getI64Array(getShape());
+  spec.dims = shape->size();
   for (int i = 0; i < spec.dims; i++) {
-    spec.shape[i] = out_shape[i];
+    spec.shape[i] = shape->at(i);
   }
 
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
