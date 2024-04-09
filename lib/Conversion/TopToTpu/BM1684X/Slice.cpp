@@ -30,19 +30,6 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
   }
-  _try_insert_device2host(op);
-
-  // Check whether the next op is d2s, if so, delete the next d2s
-  auto users = op->getUsers();
-  for(auto i = users.begin(); i != users.end(); ++ i){
-    auto user = *i;
-    if (!isa<tpu::Device2HostOp>(user)) {
-      continue;
-    }
-    auto next_d2sOp = dyn_cast<tpu::Device2HostOp>(user);
-    next_d2sOp.getOutput().replaceAllUsesWith(next_d2sOp.getInput());
-    rewriter.eraseOp(next_d2sOp);
-  }
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs())  {

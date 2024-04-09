@@ -23,6 +23,7 @@ public:
 
 protected:
   void calibration_process();
+  void device2host_process();
   void host2device_convert_process();
   void relu_process();
   void cast_process();

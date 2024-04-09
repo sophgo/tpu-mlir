@@ -32,8 +32,7 @@ void MulConstTryLowering::Lowering(PatternRewriter &rewriter, top::MulConstOp op
   auto weight_op = top::WeightOp::create(op, "f32", *constF32, weight_type);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  auto d2h_op = insert_device2host(weight_op, weight_op.getType(), op);
-  operands.push_back(d2h_op);
+  operands.push_back(weight_op);
   Type new_type =
       RankedTensorType::get(module::getShape(op.getOutput()),
                             rewriter.getF32Type());

@@ -1065,7 +1065,7 @@ void ConvertTopToTpu::runOnOperation() {
   }
 
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
-
+  device2host_process();
   patterns.clear();
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
     ConversionTarget target(*ctx_);
@@ -1250,6 +1250,20 @@ void ConvertTopToTpu::host2device_convert_process() {
       return;
     for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
       try_insert_host2device(op, idx);
+    }
+  });
+}
+
+void ConvertTopToTpu::device2host_process() {
+  mainFunc_.walk([&](Operation *op) {
+    if (!op->hasTrait<trait::ShapeProducer>())
+      return;
+    if (isa<tpu::ShapeOp,tpu::Device2HostOp>(op))
+      return;
+    op->dump();
+    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+      if (module::isNone(op->getOperand(idx))) continue;
+      try_insert_device2host(op, idx);
     }
   });
 }
