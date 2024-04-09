@@ -1157,9 +1157,11 @@ bool isCV18xx() {
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
-          chip == Chip::CV186X || chip == Chip::MARS3);
+          chip == Chip::CV186X || chip == Chip::MARS3 ||
+          chip == Chip::SG2380);
 }
 bool isBM1690Family() { return (chip == Chip::BM1690); }
+bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() {
   return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3);
 }

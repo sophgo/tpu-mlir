@@ -187,6 +187,7 @@ bool isCV18xx();
 bool isBM1684Family();
 bool isBM1684XFamily();
 bool isBM1690Family();
+bool isSG2380();
 bool isBM1688();
 bool isBM1684X();
 

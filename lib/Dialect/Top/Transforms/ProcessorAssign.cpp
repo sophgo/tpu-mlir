@@ -29,7 +29,7 @@ public:
       // only one device
       num_device = 1;
     }
-    if (!(module::isBM1688() || module::isBM1690Family()) || chip_ == "cv186x") {
+    if (!(module::isBM1688() || module::isBM1690Family() || module::isSG2380()) || chip_ == "cv186x") {
       // only one core
       num_core = 1;
     }
