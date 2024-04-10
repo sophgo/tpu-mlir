@@ -47,13 +47,44 @@ public:
 
 } // namespace bm1684
 
+class NoneZeroFixRowMajor : public OpRewritePattern<tpu::NonZeroOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::NonZeroOp op,
+                                PatternRewriter &rewriter) const override {
+    const int order = op.getOrder().str() == "ColMajor" ? 0 : 1;
+    if (order == 0){
+      return failure();
+    }
+    auto type = op.getResult().getType();
+    op->setAttr("order", rewriter.getStringAttr("ColMajor"));
+    auto out_shape = module::getShape(op.getOutput());
+    std::vector<int64_t> new_out_shape = {out_shape[1], out_shape[0]};
+    module::setShape(op.getOutput(), new_out_shape);
+
+    rewriter.setInsertionPointAfter(op);
+    auto permute_out = NameLoc::get(
+      rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_permute")
+      );
+    std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> Porder = {1, 0};
+    attrs.push_back(rewriter.getNamedAttr(
+      "order", rewriter.getI64ArrayAttr(Porder)));
+    auto permute_op = rewriter.create<tpu::PermuteOp>(
+      permute_out, type, ValueRange{op.getOutput(), module::getNoneOp(op)}, attrs
+      );
+    op.getOutput().replaceAllUsesExcept(permute_op.getOutput(), permute_op);
+    return success();
+  }
+};
+
 namespace top {
 using namespace bm1684;
 void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   // add bm1684 optimize here
   patterns->add<patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
                 patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-                ConvertMultiInputAdd, ConcatToSwapDimInner>(patterns->getContext(),
+                ConvertMultiInputAdd, ConcatToSwapDimInner,NoneZeroFixRowMajor>(patterns->getContext(),
                                                       8);
 }
 
