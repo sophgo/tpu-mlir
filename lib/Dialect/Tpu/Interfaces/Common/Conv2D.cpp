@@ -534,7 +534,7 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 }
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
-  if(!(module::isBM1688() && !(BM168x::getDataType(getInput()) == DTYPE_FP32 && module::getShape(getInput())[0] == 1))){
+  if(!(module::isBM1688() && !(BM168x::getDataType(getInput()) == DTYPE_FP32 && module::getShape(getInput())[0] <= 2))){
     auto &attr = getConv2DParam(*this);
     bool is_depthwise = attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
     auto in_etype = module::getStorageType(getInput());
