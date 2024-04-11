@@ -559,12 +559,16 @@ class TpuLangConverter(BaseConverter):
                     symbol_table.update({-1 : res})
 
         return_op = []
+        graph_outs = dict()
         for op in subgraph.operators:
             add_operation(op)
             for out in op.outputs:
                 if out is None: continue
                 if out.name in self.output_names:
-                    return_op.append(symbol_table[out])
+                    graph_outs[out.name] = out
+
+        for out_name in self.output_names:
+            return_op.append(symbol_table[graph_outs[out_name]])
 
         return return_op
 

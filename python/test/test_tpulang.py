@@ -173,6 +173,7 @@ class TPULANG_IR_TESTER(object):
             "VitL": (self.test_Vit_L,                   Y, Y),
             "VitL16": (self.test_Vit_L_f16,             Y, Y),
             "VitB": (self.test_Vit_B,                   Y, Y),
+            "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -3231,6 +3232,24 @@ class TPULANG_IR_TESTER(object):
                 assert(os.system(deploy_cmd) == 0)
 
         _test_self_attn_block(1, 128, 10, 1024, 1024)
+
+    def test_KeepOutputOrder(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_keep_output_order(shape: List[int], dtype="float32"):
+            shape = [2, 3, 10, 12]
+            x_dtype = 'int8'
+            t_dtype = 'uint8'
+            x_data = rand_data(shape, x_dtype)
+            t_data = rand_data([256], t_dtype)
+            x = tpul.Tensor(dtype=x_dtype, shape=shape, data=x_data)
+            t = tpul.Tensor(dtype=t_dtype, shape=list(t_data.shape), data=t_data, ttype="coeff")
+            y = tpul.lut(x, t)
+            z = tpul.lut(y, t)
+            u = tpul.lut(z, t)
+            self.compile_and_check(self.unique_name(case_name), [x], [z, u, y], is_quantized=True)
+
+        _test_keep_output_order([4, 11])
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     import traceback
