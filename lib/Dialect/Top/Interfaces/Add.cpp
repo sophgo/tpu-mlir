@@ -120,9 +120,16 @@ void top::AddOp::shape_inference() {
         input_shapes_v.push_back(data_v);
       }
     }
-    // out_shape = module::getShape(getOutput());
+
     auto output_shape_v =
         module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);
+    if(out_shape.size() == 1 || out_shape.size() == 0){
+      auto output_shape_v =
+          module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+      module::bindShapeTensorValue(getOutput(), output_shape_v);
+    } else {
+      module::setShapeOrVerify(getOutput(), out_shape);
+    }
   }
 }
