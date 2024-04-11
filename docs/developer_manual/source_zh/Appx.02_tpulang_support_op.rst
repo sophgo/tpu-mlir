@@ -53,6 +53,55 @@ TpuLang中Tensor的定义如下：
       #weight
       weight = tpul.Tensor(dtype='float32', shape=[3,4], data=np.random.uniform(0,1,shape).astype('float32'), ttype="coeff")
 
+张量前处理(Tensor.preprocess)
+---------------
+
+TpuLang中Tensor如果是输入，且需要对输入进行前处理，可以调用该函数
+
+TpuLang中Tensor.preprocess的定义如下：
+
+   .. code-block:: python
+
+      class Tensor:
+
+         def preprocess(self,
+                        mean : List[float] = [0, 0, 0],
+                        scale : List[float] = [1.0, 1.0, 1.0],
+                        pixel_format : str = 'bgr',
+                        channel_format : str = 'nchw',
+                        resize_dims : List[int] = None,
+                        keep_aspect_ratio : bool = False,
+                        keep_ratio_mode : str = 'letterbox',
+                        pad_value : int = 0,
+                        pad_type : str = 'center',
+                        white_level : float = 4095,
+                        black_level : float = 112):
+               #pass
+
+如上所示，TpuLang中Tensor的preprocess有4个参数。
+
+* mean：Tensor的每个channel的平均值，默认值为[0, 0, 0]；
+* scale：Tensor的每个channel的scale值，默认值为[1, 1, 1]；
+* pixel_format：Tensor的pixel的方式，默认值为'bgr'，取值范围为：'rgb'，'bgr'，'gray'，'rgba'，'gbrg'，'grbg'，'bggr'，'rggb'；
+* channel_format：Tensor的格式是，channel维在前还是在最后。默认值为'nchw'，取值范围为"nchw"，"nhwc"。
+* resize_dims：Tensor的resize后的[h，w]，默认值为None，表示取Tensor的h和w；
+* keep_aspect_ratio：resize参数，是否保持相同的scale。bool量，默认值为False；
+* keep_ratio_mode：resize参数，如果使能keep_aspect_ratio的两种模式，默认值'letterbox'，取值范围为'letterbox'，'short_side_scale'；
+* pad_value：resize参数，当resize时pad的值。int类型，默认值为0；
+* pad_type：resize参数，当resize时pad的方式。str类型，默认值为'center'，取值范围为'normal'，'center'；
+* white_level：raw参数。str类型，默认值为4095；
+* black_level：raw参数。str类型，默认值为112；
+
+声明Tensor.preprocess的示例：
+
+   .. code-block:: python
+
+      #activation
+      input = tpul.Tensor(name='x', shape=[2,3], dtype='int8')
+      input.preprocess(mean=[123.675,116.28,103.53], scale=[0.017,0.017,0.017])
+      # pass
+
+
 .. _scalar:
 
 标量(Scalar)
