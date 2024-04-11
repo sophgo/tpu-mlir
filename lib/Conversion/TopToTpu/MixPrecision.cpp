@@ -75,6 +75,8 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
             aop = dyn_cast<top::AddOp>(user);
           }
         }
+        if (lnop == NULL)
+          return;
       } else if (mmop != NULL) {
         if (std::distance(mmop.getResult().user_begin(),
                           mmop.getResult().user_end()) == 1 &&
@@ -83,30 +85,44 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
           for (auto user : aop_.getOutput().getUsers()) {
             if (isa<top::LayerNormOp>(user)) {
               lnop = dyn_cast<top::LayerNormOp>(user);
-            } else if (isa<top::AddOp>(user)) {
-              aop = dyn_cast<top::AddOp>(user);
             }
           }
         } else {
           for (auto user : mmop.getOutput().getUsers()) {
             if (isa<top::LayerNormOp>(user)) {
               lnop = dyn_cast<top::LayerNormOp>(user);
+            } else if (isa<top::ReshapeOp>(user)) {
+              auto reshapeop_ = dyn_cast<top::ReshapeOp>(user); // Deal with reshape pattern
+              for (auto user1 : reshapeop_.getOutput().getUsers()) {
+                if (isa<top::AddOp>(user1)) {
+                  aop = dyn_cast<top::AddOp>(user1);
+                }
+              }
             } else if (isa<top::AddOp>(user)) {
               aop = dyn_cast<top::AddOp>(user);
             }
           }
         }
+        if (lnop == NULL || aop == NULL)
+          return;
       } else if (lnop_ != NULL) {
         for (auto user : lnop_.getOutput().getUsers()) {
           if (isa<top::LayerNormOp>(user)) {
             lnop = dyn_cast<top::LayerNormOp>(user);
+          } else if (isa<top::ReshapeOp>(user)) {
+              auto reshapeop_ = dyn_cast<top::ReshapeOp>(user); // Deal with reshape pattern
+              for (auto user1 : reshapeop_.getOutput().getUsers()) {
+                if (isa<top::AddOp>(user1)) {
+                  aop = dyn_cast<top::AddOp>(user1);
+                }
+              }
           } else if (isa<top::AddOp>(user)) {
             aop = dyn_cast<top::AddOp>(user);
           }
         }
+        if (lnop == NULL || aop == NULL)
+          return;
       } else
-        return;
-      if (lnop == NULL || aop == NULL)
         return;
 #if 0
       if (!isSISO(lnop.getOperation()))
@@ -124,8 +140,8 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
           return;
       }
 #endif
-      if (!convergence(lnop, aop))
-        return;
+      // if (!convergence(lnop, aop))
+      //   return;
       if (isa<top::ReshapeOp>(*(lnop.getResult().getUsers().begin())) ||
           isa<top::SwapDimInnerOp>(*(lnop.getResult().getUsers().begin()))) {
         auto rsop1 = dyn_cast_or_null<top::ReshapeOp>(
@@ -289,7 +305,8 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                           ; // u->dump();
                         }
                       }
-                      if (*(swdi2.getResult().user_begin()) == aop) {
+                      if (*(swdi2.getResult().user_begin()) == aop ||
+                          isa<top::ReshapeOp>(*(swdi2.getResult().user_begin()))) { // additional reshape op
                         if (rsop != NULL) {
                           wmsa.push_back(rsop);
                         } else if (mmop != NULL) {
@@ -301,7 +318,7 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                       } else
                         return;
                     } else if (*(rsop5.getResult().user_begin()) ==
-                               aop) { // maybe no swdi2
+                               aop || isa<top::AddOp>(*(rsop5.getResult().user_begin()))) { // maybe no swdi2
                       if (rsop != NULL) {
                         wmsa.push_back(rsop);
                       } else if (mmop != NULL) {
@@ -314,7 +331,8 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                       return;
                   } else
                     return;
-                } else if (*(rsop4.getResult().user_begin()) == aop) {
+                } else if (*(rsop4.getResult().user_begin()) == aop ||
+                           isa<top::AddOp>(*(rsop4.getResult().user_begin()))) {
                   if (rsop != NULL) {
                     wmsa.push_back(rsop);
                   } else if (mmop != NULL) {
@@ -323,6 +341,15 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                     wmsa.push_back(lnop_);
                   } else
                     return;
+                } else
+                  return;
+              } else if (isa<top::AddOp>(*(mmop3.getResult().user_begin()))) {
+                if (rsop != NULL) {
+                  wmsa.push_back(rsop);
+                } else if (mmop != NULL) {
+                  wmsa.push_back(mmop);
+                } else if (lnop_ != NULL) {
+                  wmsa.push_back(lnop_);
                 } else
                   return;
               } else
@@ -446,17 +473,29 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
       if (rsop == NULL && mmop == NULL && lnop == NULL)
         return false;
       top::AddOp addop = NULL;
+      top::AddOp addop_end = NULL;
+      top::ReshapeOp reshapeop_ = NULL;
       if (rsop != NULL) {
+        auto preOp = rsop->getOperands()[0].getDefiningOp();
+        if (isa<top::AddOp>(preOp)) {
+          addop = dyn_cast_or_null<top::AddOp>(preOp);
+          for (auto u : addop.getResult().getUsers()) {
+            if (isa<top::AddOp>(u))
+              addop_end = dyn_cast_or_null<top::AddOp>(u);
+          }
+        }
         for (auto u : rsop.getResult().getUsers()) {
-          if (isa<top::AddOp>(u))
-            addop = dyn_cast_or_null<top::AddOp>(u);
           if (isa<top::LayerNormOp>(u))
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
         }
+
       } else if (mmop != NULL) {
         for (auto u : mmop.getResult().getUsers()) {
-          if (isa<top::AddOp>(u))
-            addop = dyn_cast_or_null<top::AddOp>(u);
+          if (isa<top::ReshapeOp>(u))
+            reshapeop_ = dyn_cast_or_null<top::ReshapeOp>(u);
+            for (auto user1 : reshapeop_.getResult().getUsers()) {
+              addop = dyn_cast_or_null<top::AddOp>(user1);
+            }
           if (isa<top::LayerNormOp>(u))
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
         }
@@ -468,17 +507,17 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
         }
       } else if (lnop != NULL) {
         for (auto u : lnop.getResult().getUsers()) {
-          if (isa<top::AddOp>(u))
-            addop = dyn_cast_or_null<top::AddOp>(u);
+          if (isa<top::ReshapeOp>(u))
+            reshapeop_ = dyn_cast_or_null<top::ReshapeOp>(u);
+            for (auto user1 : reshapeop_.getResult().getUsers()) {
+              addop = dyn_cast_or_null<top::AddOp>(user1);
+            }
           if (isa<top::LayerNormOp>(u))
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
         }
       }
       if (addop == NULL || lnop_ == NULL)
         return false;
-      if (cnt <= 2) {
-        ; // set_block_fp16<top::MatMulOp>(lnop_.getOperation(),addop.getOperation());
-      }
       if (rsop != NULL) {
         if (LoweringConfig::quantize_map.find(
                 module::getName(rsop.getOperation()).str()) ==
@@ -496,6 +535,14 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
           LoweringConfig::quantize_map.end()) {
         LoweringConfig::quantize_map.insert(
             {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      if (addop_end != NULL) {
+        if (LoweringConfig::quantize_map.find(
+                module::getName(addop_end.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(addop_end.getOperation()).str(), module::Mode::F16});
+        }
       }
     }
     cnt = 0;
