@@ -172,6 +172,7 @@ class Tensor:
         self.buffer = data
         self.is_quantized: bool = False
         self.quantization(scale=scale, zero_point=zero_point)
+        self.is_preprocess = False
         Tensor.ID += 1
 
     def quantization(self,
@@ -192,6 +193,51 @@ class Tensor:
                 self.zero_point = zero_point
             elif zero_point is not None:
                 assert self.zero_point == zero_point
+
+    def preprocess(self,
+                   mean : List[float] = [0, 0, 0],
+                   scale : List[float] = [1.0, 1.0, 1.0],
+                   pixel_format : str = 'bgr',
+                   channel_format : str = 'nchw',
+                   resize_dims : List[int] = None,
+                   keep_aspect_ratio : bool = False,
+                   keep_ratio_mode : str = 'letterbox',
+                   pad_value : int = 0,
+                   pad_type : str = 'center',
+                   white_level : float = 4095,
+                   black_level : float = 112):
+        self.mean = mean
+        self.scale = scale
+        assert pixel_format in ['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb' ]
+        assert channel_format in ['nhwc', 'nchw']
+        self.pixel_format = pixel_format
+        self.channel_format = channel_format
+        if resize_dims == None:
+            self.resize_dims = self.shape[-2:] if channel_format == 'nchw' else self.shape[-3 : -1]
+        self.keep_aspect_ratio = keep_aspect_ratio
+        self.keep_ratio_mode = keep_ratio_mode
+        self.pad_value = pad_value
+        self.pad_type = pad_type
+        self.white_level = white_level
+        self.black_level = black_level
+        self.is_preprocess = True
+
+    def preprocess_to_dict(self):
+        if self.is_preprocess:
+            return {
+                'resize_dims': self.resize_dims,
+                'keep_aspect_ratio': self.keep_aspect_ratio,
+                'keep_ratio_mode': self.keep_ratio_mode,
+                'pad_value': self.pad_value,
+                'pad_type': self.pad_type,
+                'mean': self.mean,
+                'scale': self.scale,
+                'pixel_format': self.pixel_format,
+                'channel_format': self.channel_format,
+                'white_level': self.white_level,
+                'black_level': self.black_level
+            }
+        return {}
 
     def __repr__(self):
         s = "tensor (\n{modstr}\n)"
@@ -483,7 +529,10 @@ class TpuLangConverter(BaseConverter):
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
             loc = Location.fused([Location.name(input.name)])
-            input_op = self.mlir.create_input_op(loc, idx)
+            p_dict = input.preprocess_to_dict()
+            if input.is_preprocess:
+                p_dict["preprocess_list"] = [idx + 1]
+            input_op = self.mlir.create_input_op(loc, idx, p_dict)
             symbol_table.update({input.id: input_op})
 
         def add_operation(operation: Operator):

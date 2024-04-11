@@ -603,6 +603,7 @@ class TPULANG_IR_TESTER(object):
             return self.add_op(conv2, x)
 
         def resnet50(x, dtype="float32"):
+            # perm = tpul.permute(x, [0, 3, 1, 2])
             norm0 = self.batch_norm_op(x, 3)
             conv1 = conv_block(norm0, [64, 3, 7, 7], [2,2], [3,3,3,3])
             pool1 = max_pool_block(conv1, 64, [3,3], [2,2], [1,1,1,1])
@@ -647,6 +648,8 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = resnet50(x)
+            if dtype == 'float32':
+                x.preprocess(mean=[0, 0.3, 0])
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
 
         _test_model_def([1, 3, 224, 224])
@@ -2186,8 +2189,17 @@ class TPULANG_IR_TESTER(object):
     # Reshape
     # ------------
     def reshape_op(self, input):
+
         reshape = tpul.reshape(input, [32, 28, 1, 28])
         return reshape
+        # reshape = tpul.reshape(input, [1, 28, 28, 192])
+        # add = tpul.add(reshape, 1)
+        # reshape1 = tpul.reshape(add, [1, 4, 7, 4, 7, 192])
+
+        # add1 = tpul.add(input, reshape1)
+        # reshape2 = tpul.reshape(add1, [1, 784, 192])
+        # norm = tpul.layer_norm(reshape2)
+        # return norm
 
     def test_Reshape(self, case_name):
         """reshape"""
@@ -2202,6 +2214,7 @@ class TPULANG_IR_TESTER(object):
         _test_reshape([1, 32, 28, 28])
         _test_reshape([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_reshape([1, 32, 28, 28], dtype="float16", is_quantized=True)
+        # _test_reshape([1, 4, 7, 4, 7, 192], dtype="float32", is_quantized=True)
 
     #######################################################################
     # Shape_fetch

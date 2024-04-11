@@ -9,6 +9,7 @@ import atexit
 from typing import List, Union, Tuple
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
+from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, shm_clean
@@ -58,11 +59,19 @@ def compile(name: str,
     TpuLang.graph.quantized_type_inference()
     # convert to mlir
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized")
+    ctm_format = None
+    fuse = False
+    for input in TpuLang.graph.inputs:
+        if input.is_preprocess:
+            ctm_format = getCustomFormat(input.pixel_format, input.channel_format)
+            fuse = True
+            break
     if not save_in_mem:
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter)
         compare = cmp and refs != None
-        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, asymmetric=asymmetric)
+        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, \
+                                     asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic)
     else:
         name = "/dev/shm/" + name
@@ -70,7 +79,8 @@ def compile(name: str,
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter, save_in_mem=save_in_mem)
         compare = cmp and refs != None
-        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, asymmetric=asymmetric, save_in_mem=save_in_mem)
+        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, \
+                                     asymmetric=asymmetric, save_in_mem=save_in_mem, ctm_format=ctm_format, fuse=fuse)
         return bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic, save_in_mem=save_in_mem)
 
 
@@ -134,11 +144,14 @@ def model_top_inference(model_name, cmp=False):
         ref_npz = model_name + '_ref_output.npz'
         f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
 
-def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, inference: bool = True, cmp: bool = False, save_in_mem: bool = False):
+def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
+                                 inference: bool = True, cmp: bool = False, save_in_mem: bool = False, \
+                                 ctm_format = "BGR_PLANAR", fuse=False):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
-    mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, weight_in_mem=save_in_mem)
+    mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
+                  weight_in_mem=save_in_mem, customization_format=ctm_format, fuse_preprocess=fuse)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")

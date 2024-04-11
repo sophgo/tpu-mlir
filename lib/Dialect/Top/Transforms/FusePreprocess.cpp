@@ -102,6 +102,12 @@ public:
       if ( inputOp.getDoPreprocess() )
       {
         auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
+        if (layout == "nhwc") {
+          int tmp = c;
+          c = w;
+          w = h;
+          h = tmp;
+        }
         if (resized_dims->size() == 2) {
           resize_h = resized_dims->at(0);
           resize_w = resized_dims->at(1);
