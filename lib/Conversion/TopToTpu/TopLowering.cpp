@@ -185,8 +185,15 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   if (tensorType == false) {
     newType = RankedTensorType::get(module::getShape(input), to_stype);
   }
+  auto inputOp = input.getDefiningOp();
+  auto quantOp = quant.getDefiningOp();
+  auto inputIt = inputOp->getIterator();
+  if (inputIt->isBeforeInBlock(quantOp)) {
+    builder.setInsertionPointAfterValue(quant);
+  } else {
+    builder.setInsertionPointAfterValue(input);
+  }
 
-  builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
@@ -234,7 +241,16 @@ Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
     newType = RankedTensorType::get(module::getShape(input), to_stype);
   }
   auto name_loc = NameLoc::get(builder.getStringAttr(to_name));
-  builder.setInsertionPointAfterValue(input);
+
+  auto inputOp = input.getDefiningOp();
+  auto quantOp = quant.getDefiningOp();
+  auto inputIt = inputOp->getIterator();
+  if (inputIt->isBeforeInBlock(quantOp)) {
+    builder.setInsertionPointAfterValue(quant);
+  } else {
+    builder.setInsertionPointAfterValue(input);
+  }
+
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
