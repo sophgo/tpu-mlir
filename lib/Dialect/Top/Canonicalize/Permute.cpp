@@ -360,6 +360,7 @@ struct PermuteFuse : public OpRewritePattern<PermuteOp> {
     if (out1_shape == in0_shape) {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
       rewriter.eraseOp(op);
+      if (permute_op->getUsers().empty())
       rewriter.eraseOp(permute_op);
     } else {
       std::string in_name =
