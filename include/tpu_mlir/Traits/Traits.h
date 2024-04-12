@@ -34,6 +34,14 @@ template <typename ConcreteType>
 class ShapeConsumer
     : public ::mlir::OpTrait::TraitBase<ConcreteType, ShapeConsumer> {};
 
+template <typename ConcreteType>
+class ScalarProducer
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, ScalarProducer> {};
+
+template <typename ConcreteType>
+class ScalarConsumer
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, ScalarConsumer> {};
+
 // If a op has this trait, it means that relu follow this op can be fused to
 // this op
 template <typename ConcreteType>

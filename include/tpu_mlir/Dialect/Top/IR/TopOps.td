@@ -155,7 +155,9 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   }];
 }
 
-def Top_InputOp: Top_BaseOp<"Input"> {
+def Top_InputOp: Top_BaseOp<"Input", [
+  DeclareOpInterfaceMethods<ShapeInterface>
+  ]> {
   let summary = "Input operator";
 
   let description = [{
@@ -163,6 +165,8 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyRankedTensor:$input,
+    // input affects tensor's shape or not
+    DefaultValuedAttr<BoolAttr, "false">:$is_shape,
     // whether need preprocess
     DefaultValuedAttr<BoolAttr, "false">:$do_preprocess,
     // preprocess for input
@@ -536,7 +540,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, SupportConstant]> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, SupportConstant, ScalarProducer, ScalarConsumer]> {
   let summary = "add operator";
 
   let description = [{
@@ -548,7 +552,8 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, SupportConstant]> {
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<F64ArrayAttr>:$coeff
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
@@ -621,7 +626,7 @@ def Top_MaxOp: Top_Op<"Max", [SupportConstant]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove]> {
+def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove, ScalarProducer, ScalarConsumer]> {
   let summary = "Add Const operator";
 
   let description = [{
@@ -632,7 +637,8 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove]> {
     AnyTensor:$input,
     F64Attr: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
@@ -1560,7 +1566,7 @@ def Top_DivOp: Top_Op<"Div"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_SqueezeOp: Top_Op<"Squeeze"> {
+def Top_SqueezeOp: Top_Op<"Squeeze", [ScalarProducer]> {
   let summary = "Squeeze operator";
 
   let description = [{
@@ -1577,7 +1583,7 @@ def Top_SqueezeOp: Top_Op<"Squeeze"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_UnsqueezeOp: Top_Op<"Unsqueeze"> {
+def Top_UnsqueezeOp: Top_Op<"Unsqueeze", [ScalarConsumer]> {
   let summary = "Unsqueeze operator";
 
   let description = [{
@@ -1747,7 +1753,7 @@ def Top_MatchTemplateOp: Top_Op<"MatchTemplate"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_GatherOp: Top_Op<"Gather"> {
+def Top_GatherOp: Top_Op<"Gather", [ScalarProducer]> {
   let summary = "Gather operator";
   let description = [{
     Perform Gather operation on the given axis.
@@ -1757,7 +1763,8 @@ def Top_GatherOp: Top_Op<"Gather"> {
     AnyTensor:$input,
     AnyTensor:$indices,
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
-    DefaultValuedAttr<SI32Attr, "0">:$axis
+    DefaultValuedAttr<SI32Attr, "0">:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);

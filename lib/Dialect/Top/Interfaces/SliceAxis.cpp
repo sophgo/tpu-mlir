@@ -66,6 +66,10 @@ void top::SliceAxisOp::shape_inference() {
       auto end_op = getEnd().getDefiningOp<top::WeightOp>();
       auto end_data = end_op.read<float>();
       end = end_data->at(0);
+    } else if (module::isShape(getEnd())) {
+      auto end_v = module::getShapeTensorValue(getEnd());
+      assert(end_v.size() == 1);
+      end = end_v[0];
     } else {
       end = in_shape[(int)axis];
     }
@@ -75,6 +79,10 @@ void top::SliceAxisOp::shape_inference() {
       auto start_op = getStart().getDefiningOp<top::WeightOp>();
       auto start_data = start_op.read<float>();
       start = start_data->at(0);
+    } else if (module::isShape(getStart())) {
+      auto start_v = module::getShapeTensorValue(getStart());
+      assert(start_v.size() == 1);
+      start = start_v[0];
     } else {
       start = 0;
     }

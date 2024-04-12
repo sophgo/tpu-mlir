@@ -18,6 +18,8 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
 
 def ShapeProducer : TPUMLIROpTrait<"ShapeProducer">;
 def ShapeConsumer : TPUMLIROpTrait<"ShapeConsumer">;
+def ScalarProducer : TPUMLIROpTrait<"ScalarProducer">;
+def ScalarConsumer : TPUMLIROpTrait<"ScalarConsumer">;
 def SupportPermuteMove : TPUMLIROpTrait<"SupportPermuteMove">;
 def SupportConstant: TPUMLIROpTrait<"SupportConstant">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;

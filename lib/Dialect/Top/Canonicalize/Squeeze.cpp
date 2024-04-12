@@ -35,7 +35,27 @@ struct TopFuseSqueeze : public OpRewritePattern<SqueezeOp> {
   }
 };
 
+// squeeze scalar [1] -> [1]
+struct TopSqueezeErase : public OpRewritePattern<SqueezeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SqueezeOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.getIsScalar()) {
+      return failure();
+    }
+    auto shape0 = module::getShape(op.getOutput());
+    auto shape1 = module::getShape(op.getInput());
+    if (shape0 != shape1) {
+      return failure();
+    }
+    op.getOutput().replaceAllUsesWith(op.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void SqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<TopFuseSqueeze>(context);
+  results.insert<TopFuseSqueeze, TopSqueezeErase>(context);
 }

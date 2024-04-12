@@ -84,9 +84,11 @@ LogicalResult top::AddOp::inference(InferenceParameter &p) {
 
 void top::AddOp::shape_inference() {
   broadcast_shape_inference(getOperation());
+  bool has_scalar = false;
   for (int i = 0; i < getNumOperands(); i++) {
     auto value = getInputs()[i];
     broadcast_tensor_reshape(getOutput(), value);
+    has_scalar = has_scalar || module::isScalar(value.getDefiningOp());
   }
   auto inputs = getInputs();
   // shape value inference can only support shape and weight
@@ -100,6 +102,12 @@ void top::AddOp::shape_inference() {
   need_shape_val_infer &=
       std::any_of(inputs.begin(), inputs.end(),
                   [](auto in_op) { return module::isShape(in_op); });
+  auto out_shape = module::getShape(getOutput());
+  if (out_shape.size() == 1 && out_shape[0] == 1 && has_scalar) {
+    auto context = getContext();
+    mlir::Builder builder(context);
+    setIsScalarAttr(builder.getBoolAttr(true));
+  }
   if (need_shape_val_infer) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     for (auto in_op : inputs) {
@@ -112,7 +120,7 @@ void top::AddOp::shape_inference() {
         input_shapes_v.push_back(data_v);
       }
     }
-    auto out_shape = module::getShape(getOutput());
+    // out_shape = module::getShape(getOutput());
     auto output_shape_v =
         module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);

@@ -291,7 +291,7 @@ class preprocess(object):
         else:
             return
         attrs = input_op.attributes
-        if len(attrs) <= 1:
+        if len(attrs) <= 2:
             return
         self.pixel_format = Operation.str(attrs['pixel_format'])
         self.channel_num = 3

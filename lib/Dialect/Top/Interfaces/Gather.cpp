@@ -68,6 +68,13 @@ void top::GatherOp::shape_inference() {
   if (indices_shape.size() == 1 && indices_shape[0] == 1 && !getKeepdims()) {
     // if indices_shape.size() == 1 and indices is scalar(not a array) do
     // squeeze manner do nothing
+    if (input_shape.size() == 1) {
+      // if input_shape.size() == 1, output_shape should be scalar represent by 1D tensor
+      out_shape.push_back({1});
+      auto context = getContext();
+      mlir::Builder builder(context);
+      setIsScalarAttr(builder.getBoolAttr(true));
+    }
   } else {
     for (int s : indices_shape) {
       out_shape.push_back(s);

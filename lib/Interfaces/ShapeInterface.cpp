@@ -22,6 +22,13 @@ void common_shape_inference(mlir::Operation *op) {
   auto out = op->getResult(0);
   auto in_shape = module::getShape(in);
   module::setShapeOrVerify(out, in_shape);
+  auto pre_op = in.getDefiningOp();
+  if (op->hasTrait<trait::ScalarConsumer>()) {
+    auto context = op->getContext();
+    mlir::Builder builder(context);
+    auto is_scalar = module::isScalar(pre_op);
+    op->setAttr("is_scalar", builder.getBoolAttr(is_scalar));
+  }
 }
 
 void broadcast_shape_inference(mlir::Operation *op) {

@@ -272,6 +272,9 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
 void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool &sign, bool asymmetric, int bitwidth = 8);
 
+// for Value with shape [1] but means scalar
+bool isScalar(mlir::Operation *op);
+
 //-----------------------------------------------------------------
 // Helper for shape op inference
 //-----------------------------------------------------------------

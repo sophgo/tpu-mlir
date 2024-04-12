@@ -255,7 +255,7 @@ class ONNX_IR_TESTER(object):
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N, Y),
             "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y, Y),
             "Gather2Slice2":    (self.test_Gather2Slice2,   N, Y, Y, Y, Y),
-            "GatherUnsueeze":   (self.test_GatherUnsueeze,  Y, Y, Y, Y, Y),
+            "GatherUnsqueeze":  (self.test_GatherUnsqueeze,  Y, Y, Y, Y, Y),
             "GLMTilePermute":   (self.test_GLMTilePermute,  N, Y, N, N, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y, Y),
@@ -3231,7 +3231,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(3, 36, 12, 49, 32).float()
         self.torch_and_test(x, Model(), case_name)
 
-    def test_GatherUnsueeze(self, case_name):
+    def test_GatherUnsqueeze(self, case_name):
 
         class Model(torch.nn.Module):
 

@@ -1468,6 +1468,14 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
   }
 }
 
+bool isScalar(mlir::Operation *op) {
+  if (op->hasTrait<trait::ScalarProducer>()) {
+    auto is_scalar = op->getAttr("is_scalar").cast<BoolAttr>().getValue();
+    return is_scalar;
+  }
+  return false;
+}
+
 bool isCalibratedType(Type type) {
   return type.cast<RankedTensorType>()
       .getElementType()
