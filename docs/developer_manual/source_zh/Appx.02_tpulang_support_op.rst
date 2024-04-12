@@ -1496,6 +1496,38 @@ relu激活函数，逐元素实现功能 :math:`y = max(0, x)`。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
+prelu
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def prelu(input: Tensor, slope : Tensor, out_name=None):
+          #pass
+
+功能描述
+"""""""""""
+prelu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0\\x*slope \quad x<=0\\\end{cases}`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入Tensor。
+* slope：Tensor类型，表示slope Tensor。仅支持slope为coeff Tensor。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
+
+
 leaky_relu
 :::::::::::::::::
 
@@ -1504,7 +1536,7 @@ leaky_relu
 
     .. code-block:: python
 
-      def leaky_relu(tensor, negative_slope=0.01, out_name=None):
+      def leaky_relu(input, negative_slope=0.01, out_name=None):
           #pass
 
 功能描述
@@ -1514,7 +1546,7 @@ leaky_relu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入Tensor。
+* input：Tensor类型，表示输入Tensor。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 * negative_slope：FLOAT类型，表示输入的负斜率。
 

@@ -1064,6 +1064,13 @@ def relu(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+def prelu(input: Tensor, slope : Tensor, out_name: str = None):
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.PRelu", inputs=[input, slope], outputs=[output])
+    return output
+
+@auto_name()
+@annotation_check
 def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None):
     attr = {
         "alpha": Attr(negative_slope, data_type="float64"),
