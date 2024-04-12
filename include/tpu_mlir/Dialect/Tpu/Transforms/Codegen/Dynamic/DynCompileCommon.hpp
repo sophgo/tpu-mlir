@@ -201,6 +201,7 @@ typedef enum fw_layer_type {
   FW_BMNET_SCATTERELEMENTS = 153,
   FW_BMNET_RMSNORM = 154,
   FW_BMNET_A16_MATMUL = 155,
+  FW_BMNET_FATTENTION = 156,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
