@@ -37,7 +37,7 @@ public:
           rewriter.getArrayAttr({coeffArrayAttr[i - 1], coeffArrayAttr[i]});
       accumulated = rewriter.create<top::AddOp>(
           ori_loc, accumulated.getType(), ValueRange{accumulated, inputs[i]},
-          op.getDoReluAttr(), op.getReluLimitAttr(), newCoeffArrayAttr);
+          op.getDoReluAttr(), op.getReluLimitAttr(), newCoeffArrayAttr, op.getIsScalarAttr());
     }
 
     rewriter.replaceOp(op, accumulated);

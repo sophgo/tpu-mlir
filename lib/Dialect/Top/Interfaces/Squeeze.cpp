@@ -23,8 +23,6 @@ LogicalResult top::SqueezeOp::inference(InferenceParameter &p) {
 }
 
 void top::SqueezeOp::shape_inference() {
-  auto context = getContext();
-  mlir::Builder builder(context);
   auto in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto axes = module::getI64Array(getAxesAttr());
@@ -50,6 +48,8 @@ void top::SqueezeOp::shape_inference() {
   }
   if (out_shape.empty()) {
     out_shape.push_back(1);
+    auto context = getContext();
+    mlir::Builder builder(context);
     setIsScalarAttr(builder.getBoolAttr(true));
   }
   module::setShapeOrVerify(getOutput(), out_shape);

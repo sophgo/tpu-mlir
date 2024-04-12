@@ -13,6 +13,7 @@ import mlir.dialects.top as top
 import numpy as np
 import torchvision
 import logging
+import copy
 
 logger = logging.getLogger("root")
 
@@ -49,8 +50,10 @@ class TorchConverter(BaseConverter):
                  input_shapes: list,
                  input_types: list,
                  output_names: list,
-                 preprocess_args: dict = {}):
+                 preprocess_args: dict = {},
+                 inputs_is_shape: list = []):
         super().__init__()
+        self.inputs_is_shape = inputs_is_shape
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.model = None
@@ -352,8 +355,13 @@ class TorchConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
+            is_shape = False
+            if _name in self.inputs_is_shape:
+                is_shape = True
+            kwargs = copy.deepcopy(self.preprocess_args)
+            kwargs['is_shape'] = is_shape
             input_ = self.mlir.create_input_op(
-                self.get_loc(_name), idx, self.preprocess_args)
+                self.get_loc(_name), idx, kwargs)
             self.addOperand(_name, input_)
 
         def NoneAndRaise(node):

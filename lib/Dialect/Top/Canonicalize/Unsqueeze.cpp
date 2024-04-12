@@ -59,6 +59,23 @@ struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
   }
 };
 
+// void recursivelyModifyShapes(Operation *op, PatternRewriter &rewriter) {
+//   if (!isa<UnrankedTensorType>(op->getResult(0).getType()) &&
+//       module::getShape(op->getResult(0)).size() == 0) {
+//     module::setShape(op->getResult(0), {1});
+//     if (op->hasTrait<trait::ScalarProducer>()) {
+//       op->setAttr("is_scalar", rewriter.getBoolAttr(true));
+//     }
+//     if (op->getResult(0).getUsers().empty()) {
+//       return;
+//     }
+//     for (auto user : op->getResult(0).getUsers()) {
+//       recursivelyModifyShapes(user, rewriter);
+//     }
+//   }
+//   return;
+// }
+
 struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
   using OpRewritePattern::OpRewritePattern;
   TopGatherToSliceByUnsqueeze(MLIRContext *context)
@@ -83,16 +100,17 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       if (!op->hasOneUse() || !isa<UnsqueezeOp>(*nextOp)) {
         // tmp code convert scalar to tensor for rangeOp (wait for shute's
         // commit)
-        if (!isa<UnrankedTensorType>(op.getType()) &&
-            module::getShape(op.getOutput()).size() == 0) {
-          module::setShape(op.getResult(), {1});
-        }
-        for (auto user: op->getUsers()) {
-          for (auto res: user->getResults()) {
-            if (!isa<UnrankedTensorType>(res.getType()) && module::getShape(res).size() == 0)
-            module::setShape(res, {1});
-          }
-        }
+        // if (!isa<UnrankedTensorType>(op.getType()) &&
+        //     module::getShape(op.getOutput()).size() == 0) {
+        //   module::setShape(op.getResult(), {1});
+        // }
+        // for (auto user: op->getUsers()) {
+        //   for (auto res: user->getResults()) {
+        //     if (!isa<UnrankedTensorType>(res.getType()) && module::getShape(res).size() == 0)
+        //     module::setShape(res, {1});
+        //   }
+        // }
+        // recursivelyModifyShapes(op.getOperation(), rewriter);
         return failure();
       }
 
@@ -143,7 +161,25 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
     return failure();
   }
 };
+
+// unsqueeze scalar [1] -> [1]
+struct TopUnsqueezeErase : public OpRewritePattern<UnsqueezeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(UnsqueezeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto shape0 = module::getShape(op.getOutput());
+    auto shape1 = module::getShape(op.getInput());
+    if (shape0 != shape1) {
+      return failure();
+    }
+    op.getOutput().replaceAllUsesWith(op.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void UnsqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
-  results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze>(context);
+  results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze, TopUnsqueezeErase>(context);
 }

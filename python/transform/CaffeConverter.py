@@ -18,6 +18,7 @@ from utils.pad_setting import set_caffe_pad
 import mlir.dialects.top as top
 from mlir.ir import *
 import logging
+import copy
 
 logger = logging.getLogger("root")
 
@@ -29,7 +30,8 @@ class CaffeConverter(BaseConverter):
                  caffemodel: str,
                  input_shapes: list,
                  output_names: list,
-                 preprocess_args: dict = {}):
+                 preprocess_args: dict = {},
+                 inputs_is_shape: list = []):
         super().__init__()
         # yapf: disable
         # for caffe v1
@@ -45,6 +47,7 @@ class CaffeConverter(BaseConverter):
             22: 'Split', 33: 'Slice', 23: 'Tanh', 24: 'WindowData', 31: 'Threshold', 32: 'Relu6',
         }
         # yapf: enable
+        self.inputs_is_shape = inputs_is_shape
         self.model_name = model_name
         self.prototxt = prototxt
         self.caffemodel = caffemodel
@@ -199,7 +202,12 @@ class CaffeConverter(BaseConverter):
     def generate_mlir(self, mlir_file: str, save_in_mem=False):
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, self.preprocess_args)
+            is_shape = False
+            if _name in self.inputs_is_shape:
+                is_shape = True
+            kwargs = copy.deepcopy(self.preprocess_args)
+            kwargs['is_shape'] = is_shape
+            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, kwargs)
             self.addOperand(_name, input_)
 
         def NoneAndRaise(layer):

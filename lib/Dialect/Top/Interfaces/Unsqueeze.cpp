@@ -28,12 +28,8 @@ void top::UnsqueezeOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
   auto axes = module::getI64Array(getAxesAttr());
   std::vector<int64_t> out_shape(in_shape);
-  bool is_scalar = false;
   auto pre_op = getInput().getDefiningOp();
-  if (isa<top::SqueezeOp>(pre_op)) {
-    auto squeeze_op = dyn_cast<top::SqueezeOp>(pre_op);
-    is_scalar = squeeze_op.getIsScalar();
-  }
+  bool is_scalar = module::isScalar(pre_op);
   if (!is_scalar) {
     std::vector<int64_t> axes_(*axes);
     int64_t out_dims = in_shape.size() + axes_.size();

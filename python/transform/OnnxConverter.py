@@ -24,6 +24,7 @@ from typing import List
 import onnxsim.onnx_simplifier as onnxsim
 import onnxruntime as rt
 import logging
+import copy
 
 logger = logging.getLogger("root")
 
@@ -109,7 +110,8 @@ class OnnxConverter(BaseConverter):
                  static_shape=True,
                  onnx_sim="",
                  dynamic_inputs=[],
-                 dynamic=False):
+                 dynamic=False,
+                 inputs_is_shape=[]):
         super().__init__()
 
         self.dynamic_inputs = dynamic_inputs
@@ -117,6 +119,7 @@ class OnnxConverter(BaseConverter):
         if self.dynamic_inputs:
             self.dynamic = True
         self.dynamic_shapes = dict()
+        self.inputs_is_shape = inputs_is_shape
         self.test_input = test_input
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
@@ -644,7 +647,12 @@ class OnnxConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, self.preprocess_args)
+            is_shape = False
+            if _name in self.inputs_is_shape:
+                is_shape = True
+            kwargs = copy.deepcopy(self.preprocess_args)
+            kwargs['is_shape'] = is_shape
+            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, kwargs)
             self.addOperand(_name, input_)
 
         def NoneAndRaise(node):

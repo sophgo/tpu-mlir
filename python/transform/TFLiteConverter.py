@@ -13,6 +13,7 @@ import mlir.dialects.quant as quant
 import numpy as np
 from .tflite.TensorType import TensorType
 import logging
+import copy
 
 logger = logging.getLogger("root")
 
@@ -219,8 +220,10 @@ class TFLiteConverter(BaseConverter):
                  tflite_file: str,
                  input_shapes=None,
                  output_names: list = [],
-                 preprocess_args: dict = {}):
+                 preprocess_args: dict = {},
+                 inputs_is_shape: list = []):
         super().__init__()
+        self.inputs_is_shape = inputs_is_shape
         self.model_name = model_name
         self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
@@ -909,7 +912,12 @@ class TFLiteConverter(BaseConverter):
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
             loc = Location.fused([Location.name(input.name)])
-            input_op = self.mlir.create_input_op(loc, idx, self.preprocess_args)
+            is_shape = False
+            if input.name in self.inputs_is_shape:
+                is_shape = True
+            kwargs = copy.deepcopy(self.preprocess_args)
+            kwargs['is_shape'] = is_shape
+            input_op = self.mlir.create_input_op(loc, idx, kwargs)
             symbol_table.update({input.id: input_op})
 
         def add_operation(operation):

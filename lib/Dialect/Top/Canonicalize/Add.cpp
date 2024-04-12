@@ -159,6 +159,8 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
         "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));
     attrs.push_back(rewriter.getNamedAttr(
         "relu_limit", op->getAttr("relu_limit").cast<FloatAttr>()));
+    attrs.push_back(rewriter.getNamedAttr(
+        "is_scalar", op->getAttr("is_scalar").cast<BoolAttr>()));
     rewriter.replaceOpWithNewOp<AddConstOp>(op, output, new_input, attrs);
     return success();
   }
