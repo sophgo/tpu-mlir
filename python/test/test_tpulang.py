@@ -134,6 +134,7 @@ class TPULANG_IR_TESTER(object):
             "Nonzero": (self.test_Nonzero,              Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
+            "Prelu": (self.test_PRelu,                  Y, Y),
             "Reduce": (self.test_Reduce,                Y, Y),
             "Relu": (self.test_Relu,                    Y, Y),
             "Repeat": (self.test_Repeat,                Y, Y),
@@ -1576,6 +1577,24 @@ class TPULANG_IR_TESTER(object):
         _test_leaky_relu([1, 32, 28, 28])
         _test_leaky_relu([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_leaky_relu([1, 32, 28, 28], scale=10.0, dtype="int8", is_quantized=True)
+
+    #######################################################################
+    # PRelu
+    # ------------
+    def test_PRelu(self, case_name):
+        """PRelu"""
+
+        @tpulang(self.chip)
+        def _test_prelu(shape_x: List[int], shape_s: List[int], dtype="float32", is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            slope_coeff = rand_data(shape_s, dtype, 0.0001, 0.2)
+            slope = tpul.Tensor(shape_s, ttype="coeff", data=slope_coeff, dtype=dtype)
+            prelu = tpul.prelu(x, slope)
+            self.compile_and_check(self.unique_name(case_name), [x], [prelu], is_quantized=is_quantized)
+
+        _test_prelu([1, 32, 28, 28], [1])
+        _test_prelu([1, 32, 28, 28], [1, 32, 1, 1], dtype="float16", is_quantized=True)
 
     #######################################################################
     # Abs
