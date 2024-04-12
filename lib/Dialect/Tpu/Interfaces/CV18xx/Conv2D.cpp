@@ -156,6 +156,7 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
     float neg_slope = 0.0f;
     int8_t pos_rshift = 0, pos_m_i8 = 0;
     int8_t neg_rshift = 0, neg_m_i8 = 0;
+    bool do_relu = attr.do_relu;
 
     auto do_leaky_relu = getDoLeakyRelu();
     if (do_leaky_relu.has_value() && do_leaky_relu.value()) {
@@ -164,14 +165,17 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
       neg_rshift = static_cast<int8_t>(getRshiftNeg().value());
       pos_m_i8 = static_cast<int8_t>(getMultiplierPos().value());
       neg_m_i8 = static_cast<int8_t>(getMultiplierNeg().value());
+      if (neg_slope == 0.0) {
+        do_relu = true;
+      }
     }
     cvi_backend_tl_conv(layer_id, la_input, la_output, la_weight, la_working,
                         la_bias, n, attr.ic, ih, attr.iw, attr.groups, attr.oc,
                         oh, attr.ow, attr.kh, attr.kw, attr.dh, attr.dw, pht,
                         phb, attr.pwl, attr.pwr, attr.sh, attr.sw, attr.ins_h,
-                        attr.ins_w, 0, /*result_add*/
-                        0,             /*crtl*/
-                        attr.has_bias, attr.do_relu, neg_slope, 0, /*rshift*/
+                        attr.ins_w, 0,                        /*result_add*/
+                        0,                                    /*crtl*/
+                        attr.has_bias, do_relu, neg_slope, 0, /*rshift*/
                         attr.oc,    /*rshift_shift_len*/
                         pos_rshift, /*rshift_pos*/
                         neg_rshift, /*rshift8_neg*/
