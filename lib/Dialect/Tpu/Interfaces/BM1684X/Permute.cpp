@@ -26,14 +26,14 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
     param.spec.order[i] = attr.order_fix[i];
   }
   param.buffer_size_ptr = 0;
-  if (attr.in_shape_fix[0] == 1 && // multi batch case will be done by parallelOp
-      attr.order_fix[0] == 0 && attr.order_fix.size() == 4 &&
-      attr.order_fix[1] == 3 && attr.order_fix[2] == 1 &&
-      attr.order_fix[3] == 2 && attr.in_shape_fix[3] == 3) {
-    param.num_core = module::getCoreNum();
-  } else {
-    param.num_core = 1;
-  }
+  // if (attr.in_shape_fix[0] == 1 && // multi batch case will be done by parallelOp
+  //     attr.order_fix[0] == 0 && attr.order_fix.size() == 4 &&
+  //     attr.order_fix[1] == 3 && attr.order_fix[2] == 1 &&
+  //     attr.order_fix[3] == 2 && attr.in_shape_fix[3] == 3) {
+  //   param.num_core = module::getCoreNum();
+  // } else {
+  // }
+  param.num_core = 1;
   BM168x::call_global_func("backend_api_transpose_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
