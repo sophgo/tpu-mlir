@@ -44,6 +44,14 @@ source  scripts/envsetup.sh sg2260
 **release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.so
+
+#sg2380 sha256: 2534dced91a0b67cb9525236e341bdc8aa9fba3b
+cd TPU1686
+source  scripts/envsetup.sh sg2380
+**debug: rebuild_backend_lib_cmodel**
+**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
+cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 ```
 
 

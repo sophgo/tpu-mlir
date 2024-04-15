@@ -42,6 +42,33 @@ void computePerChannelParam(
   }
 }
 
+void computePerChannelParam(
+    const std::shared_ptr<std::vector<float>> &weight_data, int row, int col,
+    bool sign, int bitwidth, std::shared_ptr<std::vector<float>> &scale,
+    std::shared_ptr<std::vector<float>> &zp) {
+
+  if (bitwidth != 4) {
+    for (auto c = 0; c < row; c++) {
+      float *p_weight = weight_data->data() + c * col;
+      auto w_max = findMaxabs(p_weight, col);
+      auto pow_value = sign ? bitwidth - 1 : bitwidth;
+      scale->at(c) = w_max / (std::pow(2, pow_value) - 1);
+    }
+  } else {
+    int max_int = std::pow(2, bitwidth) - 1;
+    int min_int = 0;
+    float max_val = 0;
+    float min_val = 0;
+    for (auto c = 0; c < row; c++) {
+      float *p_weight = weight_data->data() + c * col;
+      findMinMax(p_weight, col, &min_val, &max_val);
+      scale->at(c) = std::max(max_val - min_val, (float)1e-5) / max_int;
+      zp->at(c) =
+          std::clamp(-(int)std::round(min_val / scale->at(c)), min_int, max_int) *
+          scale->at(c);
+    }
+  }
+}
 /***
  *  The function for per-group int4 asymmetric quantization
  ***/
@@ -62,6 +89,27 @@ void computePerGroupParam(
     scale->at(i) = std::max(max_val - min_val, (float)1e-5) / max_int;
     zp->at(i) = (uint8_t)std::clamp(-(int)std::round(min_val / scale->at(i)),
                                     min_int, max_int);
+  }
+}
+
+void computePerGroupParam(
+    const std::shared_ptr<std::vector<float>> &weight_data, int row, int col,
+    int q_group_size, std::shared_ptr<std::vector<float>> &scale,
+    std::shared_ptr<std::vector<float>> &zp) {
+  assert(col % q_group_size == 0 && "invalid q_group_size");
+  int num_groups = row * col / q_group_size;
+  int max_int = std::pow(2, 4) - 1;
+  int min_int = 0;
+  float max_val = 0;
+  float min_val = 0;
+
+  for (int i = 0; i < num_groups; i++) {
+    float *p_weight = weight_data->data() + i * q_group_size;
+    findMinMax(p_weight, q_group_size, &min_val, &max_val);
+    scale->at(i) = std::max(max_val - min_val, (float)1e-5) / max_int;
+    zp->at(i) =
+        std::clamp(-(int)std::round(min_val / scale->at(i)), min_int, max_int) *
+        scale->at(i);
   }
 }
 
@@ -108,6 +156,53 @@ void weightQuantization(
       auto tmp_value =
           std::round(weight_f32_data->at(i) / scale->at(quant_idx)) +
           zp->at(quant_idx);
+      int real_weight_idx = i / 2;
+      if (i % 2) {
+        uint_weight_data->at(real_weight_idx) |= to_uint4(tmp_value) << 4;
+      } else {
+        uint_weight_data->at(real_weight_idx) = to_uint4(tmp_value);
+      }
+    }
+  }
+}
+
+void weightQuantization(
+    int bitwidth, bool sign, int row, int col, int q_group_size,
+    std::shared_ptr<std::vector<float>> &weight_f32_data,
+    std::shared_ptr<std::vector<float>> &scale,
+    std::shared_ptr<std::vector<float>> &zp,
+    std::shared_ptr<std::vector<int8_t>> &int_weight_data,
+    std::shared_ptr<std::vector<uint8_t>> &uint_weight_data) {
+  if (!q_group_size) {
+    for (auto c = 0; c < row; c++) {
+      int offset = c * col;
+      int int4_offset = offset / 2;
+      for (auto i = 0; i < col; i++) {
+        auto tmp_value = std::round(
+            (weight_f32_data->at(offset + i) + zp->at(c)) / scale->at(c));
+
+        if (bitwidth == 8) {
+          if (sign) {
+            int_weight_data->at(offset + i) = to_int8(tmp_value);
+          } else {
+            uint_weight_data->at(offset + i) = to_uint8(tmp_value);
+          }
+        } else {
+          int index = i / 2;
+          if (i % 2) {
+            uint_weight_data->at(int4_offset + index) |= to_uint4(tmp_value)
+                                                         << 4;
+          } else {
+            uint_weight_data->at(int4_offset + index) = to_uint4(tmp_value);
+          }
+        }
+      }
+    }
+  } else {
+    for (auto i = 0; i < row * col; i++) {
+      int quant_idx = i / q_group_size;
+      auto tmp_value = std::round((weight_f32_data->at(i) + zp->at(quant_idx)) /
+                                  scale->at(quant_idx));
       int real_weight_idx = i / 2;
       if (i % 2) {
         uint_weight_data->at(real_weight_idx) |= to_uint4(tmp_value) << 4;
@@ -177,11 +272,13 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         auto zp_i = zp[i];
         auto scale_i = scale[i];
         for (int j = 0; j < N; j++) {
-          new_weight[offset + j] =
-              ((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i;
+          new_weight[offset + j] = module::isSG2380() ?
+              ((int(weight[(offset + j) / 2]) & 0x0F) * scale_i - zp_i) :
+              (((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i);
           j++;
-          new_weight[offset + j] =
-              ((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i;
+          new_weight[offset + j] = module::isSG2380() ?
+              ((int(weight[(offset + j) / 2]) >> 4) * scale_i - zp_i) :
+              (((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i);
         }
       }
     } else {
@@ -189,9 +286,13 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
         auto scale_i = scale[quant_idx];
-        new_weight[i] = ((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i;
+        new_weight[i] = module::isSG2380() ?
+            ((int(weight[i / 2]) & 0x0F) * scale_i - zp_i) :
+            (((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i);
         i++;
-        new_weight[i] = ((int(weight[i / 2]) >> 4) - zp_i) * scale_i;
+        new_weight[i] =  module::isSG2380() ?
+            ((int(weight[i / 2]) >> 4) * scale_i - zp_i) :
+            (((int(weight[i / 2]) >> 4) - zp_i) * scale_i);
       }
     }
 
@@ -205,10 +306,13 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     matmul->run();
     delete matmul;
   } else {
+    auto zp = p.inputs[3];
     for (int i = 0; i < K; i++) {
       auto offset = i * N;
       for (int j = 0; j < N; j++) {
-        weight[offset + j] = (weight[offset + j]) * scale[i];
+        weight[offset + j] = module::isSG2380() ?
+            ((weight[offset + j]) * scale[i] - zp[i]) :
+            ((weight[offset + j]) * scale[i]);
       }
     }
     // hand over the rest work to onednn matmul
@@ -275,13 +379,20 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   int64_t quant_param_size = !q_group_size ? row : (row * col / q_group_size);
 
   auto scale = std::make_shared<std::vector<float>>(quant_param_size, 0);
-  auto zp = std::make_shared<std::vector<uint8_t>>(quant_param_size, 0);
+  auto zp_int8 = std::make_shared<std::vector<uint8_t>>(quant_param_size, 0);
+  auto zp_fp = std::make_shared<std::vector<float>>(quant_param_size, 0);
 
   if (!q_group_size) {
-    computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale, zp);
+    if (module::isSG2380())
+      computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale, zp_fp);
+    else
+       computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale, zp_int8);
   } else {
     op.setQGroupSize(q_group_size);
-    computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp);
+    if (module::isSG2380())
+      computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp_fp);
+    else
+      computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp_int8);
   }
 
   // 2. quantize weight to low bit integer
@@ -294,8 +405,12 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   auto uint_weight_data =
       std::make_shared<std::vector<uint8_t>>(weight_size, 0);
 
-  weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
-                     scale, zp, int_weight_data, uint_weight_data);
+  if (module::isSG2380())
+    weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
+                       scale, zp_fp, int_weight_data, uint_weight_data);
+  else
+    weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
+                       scale, zp_int8, int_weight_data, uint_weight_data);
 
   // 3. create f16 weightOp for scale
   rewriter.setInsertionPoint(op);
@@ -307,12 +422,20 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   auto half_scale_value = ele_type.isF16() ? f32_scale_op.clone_f16(op)
                                            : f32_scale_op.clone_bf16(op);
   op.setOperand(2, half_scale_value);
-  if (bitwidth == 4) {
-    auto zp_type = RankedTensorType::get(quant_param_shape,
-                                         rewriter.getIntegerType(8, false));
-    auto zp_op = top::WeightOp::create(op, "zp", *zp, zp_type)
-                     .getDefiningOp<top::WeightOp>();
-    op.setOperand(3, zp_op.getOutput());
+  if (module::isSG2380()) {
+    auto zp_type = RankedTensorType::get(quant_param_shape, rewriter.getF32Type());
+    auto fp_zp_op = top::WeightOp::create(op, "zp", *zp_fp, zp_type)
+                        .getDefiningOp<top::WeightOp>();
+    auto half_zp_value = ele_type.isF16() ? fp_zp_op.clone_f16(op) : fp_zp_op.clone_bf16(op);
+    op.setOperand(3, half_zp_value);
+  } else {
+    if (bitwidth == 4) {
+      auto zp_type = RankedTensorType::get(quant_param_shape,
+                                           rewriter.getIntegerType(8, false));
+      auto zp_op = top::WeightOp::create(op, "zp", *zp_int8, zp_type)
+                       .getDefiningOp<top::WeightOp>();
+      op.setOperand(3, zp_op.getOutput());
+    }
   }
 
   // 4. create i8 weightOp
@@ -331,3 +454,7 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
 
   return success();
 };
+
+bool tpu::A16MatMulOp::supports_multi_core() {
+  return module::getCoreNum() > 1 && module::isSG2380();
+}
