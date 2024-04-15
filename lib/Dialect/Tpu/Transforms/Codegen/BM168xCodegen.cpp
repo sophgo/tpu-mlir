@@ -949,13 +949,11 @@ void BMCodegen::codegen(FuncOp funcOp) {
     } else if (auto PermuteOp = dyn_cast<tpu::PermuteOp>(op)) {
       auto order = *(module::getI64Array(PermuteOp.getOrder()));
       auto in_shape = module::getShape(PermuteOp.getInput());
-      if (!(module::isBM1688() && !(BM168x::getDataType(PermuteOp.getInput()) == DTYPE_FP32 && module::getShape(PermuteOp.getInput())[0] == 1))) {
-        if (core_num != 1 && in_shape.size() == 4 && order[0] == 0 && order[1] == 3 &&
-            order[2] == 1 && order[3] == 2 && in_shape[3] == 3) {
-          setupMultiCoreCodegen();
-          codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
-          return WalkResult::skip();
-        }
+      if (core_num != 1 && in_shape.size() == 4 && order[0] == 0 && order[1] == 3 &&
+          order[2] == 1 && order[3] == 2 && in_shape[3] == 3) {
+        setupMultiCoreCodegen();
+        codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
+        return WalkResult::skip();
       }
     }
 
