@@ -186,7 +186,7 @@ MLIR转F16模型
    * - processor
      - 是
      - 指定模型将要用到的平台,
-       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+       支持bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表

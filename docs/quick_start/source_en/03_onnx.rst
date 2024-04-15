@@ -187,7 +187,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Quantization type (F32/F16/BF16/INT8)
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1690/bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
      - The calibration table path. Required when it is INT8 quantization

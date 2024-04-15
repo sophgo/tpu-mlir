@@ -179,7 +179,7 @@ Use ``run_qtable`` to gen qtable, parameters as below:
      - Name of calibration table file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
+     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -491,7 +491,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - Name of calibration table file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
+     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -749,7 +749,7 @@ Parameter Description
      - mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
+     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.
