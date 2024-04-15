@@ -381,6 +381,10 @@ public:
           if (matmulOp.supports_multi_core())
             return WalkResult::skip();
         }
+        if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
+          if (a16matmulOp.supports_multi_core())
+            return WalkResult::skip();
+        }
         if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
           groupParallelDistribute(groupParallelOp, num_core);
           return WalkResult::skip();

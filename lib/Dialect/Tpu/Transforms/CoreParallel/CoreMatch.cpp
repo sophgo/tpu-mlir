@@ -329,6 +329,10 @@ struct CommonMatch : public RewritePattern {
       if (matmulOp.supports_multi_core())
       return failure();
     }
+    if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
+      if (a16matmulOp.supports_multi_core())
+      return failure();
+    }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
     if (num_users < 2) {
@@ -358,6 +362,10 @@ struct CommonMatch : public RewritePattern {
         }
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(left_op)) {
           if (matmulOp.supports_multi_core())
+            continue;
+        }
+        if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(left_op)) {
+          if (a16matmulOp.supports_multi_core())
             continue;
         }
         if (find_f(same_ops, left_op)) {
@@ -406,7 +414,7 @@ public:
   LogicalResult matchAndRewrite(tpu::A16MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
-    if (num_cores < 2) {
+    if (num_cores < 2 || module::isSG2380()) {
       return failure();
     }
     if (isOpInBlock(op)) {

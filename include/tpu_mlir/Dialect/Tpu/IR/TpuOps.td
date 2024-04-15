@@ -1147,6 +1147,9 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
 
   let hasCanonicalizeMethod = 1;
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    bool supports_multi_core();
+  }];
 }
 
 def Tpu_AttentionOp: Tpu_Op<"Attention", [

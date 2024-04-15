@@ -24,38 +24,68 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewrite(
   auto zp_stype = module::getStorageType(op.getZp());
   auto scale_shape = scaleOp.getType().getShape();
   auto ori_scale_data = scaleOp.read<uint16_t>();
-  auto ori_zp_data = zpOp.read<uint8_t>();
+  if (module::isSG2380()) {
+    auto ori_zp_data = zpOp.read<uint16_t>();
 
-  auto new_scale_data = std::make_shared<std::vector<uint16_t>>(
-      scale_shape[0] * scale_shape[1], 0);
-  auto new_zp_data = std::make_shared<std::vector<uint8_t>>(
-      scale_shape[0] * scale_shape[1], 0);
-  int64_t npu_num = backend::Arch::NPU_NUM;
-  if (scale_shape[0] % npu_num) {
-    llvm_unreachable("invalid scale channel");
-  }
-  auto w = scale_shape[1];
-  auto h = scale_shape[0] / npu_num;
-
-  for (auto i = 0; i < npu_num; i++) {
-    for (auto j = 0; j < h; j++) {
-      auto offset_new = i * h * w + j * w;
-      auto offset_ori = i * w + npu_num * j * w;
-      memcpy(new_scale_data->data() + offset_new,
-             ori_scale_data->data() + offset_ori, w * sizeof(uint16_t));
-      memcpy(new_zp_data->data() + offset_new, ori_zp_data->data() + offset_ori,
-             w * sizeof(uint8_t));
+    int64_t npu_num = backend::Arch::NPU_NUM;
+    if (scale_shape[0] % npu_num) {
+      llvm_unreachable("invalid scale channel");
     }
+    auto w = scale_shape[1];
+    auto h = scale_shape[0] / npu_num;
+
+    auto scale_zp_data = std::make_shared<std::vector<uint16_t>>(
+        scale_shape[0] * scale_shape[1] * 2, 0);
+
+    for (auto i = 0; i < npu_num; i++) {
+      for (auto j = 0; j < h; j++) {
+        auto offset_new = 2 * (i * h * w + j * w);
+        auto offset_ori = i * w + npu_num * j * w;
+        memcpy(scale_zp_data->data() + offset_new,
+                ori_scale_data->data() + offset_ori, w * sizeof(uint16_t));
+        memcpy(scale_zp_data->data() + offset_new + w,
+                ori_zp_data->data() + offset_ori, w * sizeof(uint16_t));
+      }
+    }
+
+    auto scale_zp_type = RankedTensorType::get({npu_num, h, 2 * w}, scale_stype);
+    auto scaleZpOp =
+        top::WeightOp::create(op, "reordered_s_zp", *scale_zp_data, scale_zp_type);
+    op.setOperand(2, scaleZpOp);
+    op.setOperand(3, module::getNoneOp(op));
+  } else {
+    auto ori_zp_data = zpOp.read<uint8_t>();
+
+    auto new_scale_data = std::make_shared<std::vector<uint16_t>>(
+        scale_shape[0] * scale_shape[1], 0);
+    auto new_zp_data = std::make_shared<std::vector<uint8_t>>(
+        scale_shape[0] * scale_shape[1], 0);
+    int64_t npu_num = backend::Arch::NPU_NUM;
+    if (scale_shape[0] % npu_num) {
+      llvm_unreachable("invalid scale channel");
+    }
+    auto w = scale_shape[1];
+    auto h = scale_shape[0] / npu_num;
+
+    for (auto i = 0; i < npu_num; i++) {
+      for (auto j = 0; j < h; j++) {
+        auto offset_new = i * h * w + j * w;
+        auto offset_ori = i * w + npu_num * j * w;
+        memcpy(new_scale_data->data() + offset_new,
+               ori_scale_data->data() + offset_ori, w * sizeof(uint16_t));
+        memcpy(new_zp_data->data() + offset_new, ori_zp_data->data() + offset_ori,
+               w * sizeof(uint8_t));
+      }
+    }
+
+    auto new_scale_type = RankedTensorType::get({npu_num, h, w}, scale_stype);
+    auto new_zp_type = RankedTensorType::get({npu_num, h, w}, zp_stype);
+    auto new_scaleOp =
+        top::WeightOp::create(op, "reordered", *new_scale_data, new_scale_type);
+    auto new_zpOp =
+        top::WeightOp::create(op, "reordered", *new_zp_data, new_zp_type);
+    op.setOperand(2, new_scaleOp);
+    op.setOperand(3, new_zpOp);
   }
-
-  auto new_scale_type = RankedTensorType::get({npu_num, h, w}, scale_stype);
-  auto new_zp_type = RankedTensorType::get({npu_num, h, w}, zp_stype);
-  auto new_scaleOp =
-      top::WeightOp::create(op, "reordered", *new_scale_data, new_scale_type);
-  auto new_zpOp =
-      top::WeightOp::create(op, "reordered", *new_zp_data, new_zp_type);
-  op.setOperand(2, new_scaleOp);
-  op.setOperand(3, new_zpOp);
-
   return success();
 }
