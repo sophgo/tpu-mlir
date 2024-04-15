@@ -100,10 +100,11 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     }
   }
 
-  if (module::getCoreNum() > 1 && supports_multi_core())
+  if (module::getCoreNum() > 1 && supports_multi_core()) {
     return BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
                                     sizeof(spec), input_spec->data(),
                                     output_spec->data());
+  }
 
   return BM168x::call_global_func("backend_api_fc_global", &spec, sizeof(spec),
                                   input_spec->data(), output_spec->data());
