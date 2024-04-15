@@ -183,7 +183,7 @@
    * - processor
      - 是
      - 指定模型将要用到的平台,
-       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+       支持bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -493,7 +493,7 @@ INT8对称量化模型：
    * - processor
      - 是
      - 指定模型将要用到的平台,
-       支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+       支持bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -745,7 +745,7 @@ INT8模型mAP为： 34.70%
      - 指定mlir文件
    * - processor
      - 是
-     - 指定模型将要用到的平台，支持bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+     - 指定模型将要用到的平台，支持bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fpfwd_inputs
      - 否
      - 指定层（包含本层）之前不执行量化，多输入用,间隔
