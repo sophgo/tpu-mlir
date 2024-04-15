@@ -82,4 +82,15 @@ model_deploy.py \
   --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
   --test_reference qwen_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.90 \
-  --model qwen_block_cache_0.bmodel
+  --model qwen_block_cache_0_static.bmodel
+
+# dynamic
+model_deploy.py \
+  --mlir qwen_block_cache_0.mlir \
+  --quantize W8BF16 \
+  --chip bm1684x \
+  --dynamic \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
+  --test_reference qwen_block_cache_0_top_outputs.npz \
+  --tolerance 0.98,0.90 \
+  --model qwen_block_cache_0_dynamic.bmodel

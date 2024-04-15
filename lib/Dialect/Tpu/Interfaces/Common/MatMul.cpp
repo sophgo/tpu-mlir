@@ -467,10 +467,13 @@ bool tpu::MatMulOp::supports_multi_core() {
       module::getMode() == module::Mode::F8E4M3 ||
       module::getMode() == module::Mode::F8E5M2 ||
       module::getMode() == module::Mode::F8 ||
-      module::getMode() == module::Mode::INT8)
+      module::getMode() == module::Mode::INT8) {
     return false;
+  }
 
-  if (module::isUniformQuantized(getInput()))
-    return false;
-  return true;
+  auto in_stype = module::getStorageType(getInput());
+  if (in_stype.isF16() || in_stype.isBF16()) {
+    return true;
+  }
+  return false;
 }
