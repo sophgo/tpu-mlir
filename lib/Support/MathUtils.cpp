@@ -719,7 +719,7 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
 template <typename T>
 std::shared_ptr<std::vector<T>>
 tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length) {
+             int64_t offset, int64_t length, std::string mode) {
   auto outer_size = std::accumulate(shape.begin(), shape.begin() + axis, 1,
                                     std::multiplies<int64_t>());
   auto axis_size = shape[axis];
@@ -728,33 +728,52 @@ tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
   assert(length + offset <= axis_size);
   auto output =
       std::make_shared<std::vector<T>>(outer_size * inner_size * length);
-  for (int64_t i = 0; i < outer_size; i++) {
-    T *src_ptr = src_data + i * axis_size * inner_size + offset * inner_size;
-    T *dst_ptr = output->data() + i * length * inner_size;
-    std::copy(src_ptr, src_ptr + length * inner_size, dst_ptr);
+  if (mode == "default") {
+    for (int64_t i = 0; i < outer_size; i++) {
+      T *src_ptr = src_data + i * axis_size * inner_size + offset * inner_size;
+      T *dst_ptr = output->data() + i * length * inner_size;
+      std::copy(src_ptr, src_ptr + length * inner_size, dst_ptr);
+    }
+  } else if (mode == "half") {
+    int64_t half_length = length / 2;
+    int64_t half_axis_size = axis_size / 2;
+    int64_t half_offset = offset / 2;
+    for (int64_t i = 0; i < outer_size; i++) {
+      T *src_ptr =
+          src_data + i * axis_size * inner_size + half_offset * inner_size;
+      T *dst_ptr = output->data() + i * length * inner_size;
+      std::copy(src_ptr, src_ptr + half_length * inner_size, dst_ptr);
+
+      T *src_half_ptr = src_data + i * axis_size * inner_size +
+                        half_axis_size * inner_size + half_offset * inner_size;
+      T *dst_half_ptr =
+          output->data() + i * length * inner_size + half_length * inner_size;
+      std::copy(src_half_ptr, src_half_ptr + half_length * inner_size,
+                dst_half_ptr);
+    }
   }
   return output;
 }
 
 template std::shared_ptr<std::vector<float>>
 tensor_slice(float *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length);
+             int64_t offset, int64_t length, std::string mode);
 
 template std::shared_ptr<std::vector<uint16_t>>
 tensor_slice(uint16_t *src_data, const std::vector<int64_t> &shape,
-             int64_t axis, int64_t offset, int64_t length);
+             int64_t axis, int64_t offset, int64_t length, std::string mode);
 
 template std::shared_ptr<std::vector<int8_t>>
 tensor_slice(int8_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length);
+             int64_t offset, int64_t length, std::string mode);
 
 template std::shared_ptr<std::vector<uint8_t>>
 tensor_slice(uint8_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length);
+             int64_t offset, int64_t length, std::string mode);
 
 template std::shared_ptr<std::vector<int32_t>>
 tensor_slice(int32_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length);
+             int64_t offset, int64_t length, std::string mode);
 template <typename T>
 int64_t saturate(T v, mlir::Type type, RoundingMode round_mode) {
   auto itype = dyn_cast<mlir::IntegerType>(type);

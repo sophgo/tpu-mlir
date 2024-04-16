@@ -247,7 +247,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = reshape_users[0];
     other_opds = {past_v_out};
     next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  num_devices, cur_device, true, num_head)[0];
+                                  2, num_devices, cur_device, true, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
 
@@ -276,7 +276,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                               num_devices, cur_device);
     // Attention Matrix branch
     other_opds = {attn_mask_out};
-    next_op = cloneAttentionMatrix(rewriter, next_op, cur_out, other_opds,
+    next_op = cloneAttentionMatrix(rewriter, next_op, cur_out, 2, other_opds,
                                    num_devices, cur_device)[0];
     Value qk_out = cur_out;
     // QK@V

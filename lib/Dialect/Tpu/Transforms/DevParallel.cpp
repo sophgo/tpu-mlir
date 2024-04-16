@@ -129,7 +129,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
     // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
     inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
       return use.getOwner() != end &&
-             !isa<tpu::ConcatOp, tpu::MatMulOp>(use.getOwner());
+             !isa<tpu::ConcatOp, tpu::MatMulOp, tpu::PermuteOp>(use.getOwner());
     });
   }
 }
@@ -273,6 +273,9 @@ public:
         sliceMergeSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op,
                         num_devices);
         break;
+      case tpu::DevPattern::AttentionSliceMerge:
+        sliceAttentionMergeSplit(rewriter, op, num_devices);
+        break;
       case tpu::DevPattern::MatMulSliceMerge2:
         sliceMerge2Split(rewriter, op, num_devices);
         break;
@@ -294,6 +297,9 @@ public:
       case tpu::DevPattern::MatMulSliceMerge:
         sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
                         num_devices);
+        break;
+      case tpu::DevPattern::AttentionSliceMerge:
+        sliceAttentionMergeSplit(rewriter, op, num_devices);
         break;
       case tpu::DevPattern::MatMulSliceMerge2:
         sliceMerge2Split(rewriter, op, num_devices);
@@ -339,12 +345,14 @@ public:
         module::applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<AttentionSliceMerge<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
       } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                  mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
         module::applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
         module::applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
         module::applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<AttentionSliceMerge<tpu::A16MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::A16MatMulOp>>(mOp);
       } else {
         llvm_unreachable("Not supported quantization mode");

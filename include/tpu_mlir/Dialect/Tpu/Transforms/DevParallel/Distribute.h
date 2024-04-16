@@ -22,6 +22,8 @@ namespace tpu {
 // ===================================
 void dump(Operation *op);
 
+Value getTheOtherOperand(Operation *op, Value curr);
+
 void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
                 std::vector<Operation *> ops_end,
                 tpu::DevPattern pattern,
@@ -44,6 +46,14 @@ void eraseForward(PatternRewriter &rewriter, Operation *op);
 // ===================================
 template <typename MatMulTy>
 class MatMulSliceMerge : public OpRewritePattern<MatMulTy> {
+public:
+  using OpRewritePattern<MatMulTy>::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulTy op,
+                                PatternRewriter &rewriter) const override;
+};
+
+template <typename MatMulTy>
+class AttentionSliceMerge : public OpRewritePattern<MatMulTy> {
 public:
   using OpRewritePattern<MatMulTy>::OpRewritePattern;
   LogicalResult matchAndRewrite(MatMulTy op,
@@ -84,6 +94,13 @@ public:
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
                      tpu::DevBeginOp op, int64_t num_devices);
+
+void sliceAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
+                              int64_t num_devices);
+
+template <typename MatMulTy>
+void sliceAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
+                              int64_t num_devices);
 
 void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                       int64_t num_devices);

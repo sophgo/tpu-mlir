@@ -24,6 +24,10 @@ bool isAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
                         std::vector<Operation *> &end_ops, bool GQA,
                         int *num_head);
 
+bool isChatGLMAttentionPattern(Operation *op,
+                               std::vector<Operation *> &begin_ops,
+                               std::vector<Operation *> &end_ops, int *num_head);
+
 // ===================================
 // distribute helper functions
 // ===================================
@@ -36,6 +40,11 @@ int64_t get_splited_offset(int64_t size, int64_t num_devices,
 std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
                                            Operation *next_op, Value &cur_out,
                                            std::string suffix);
+
+std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
+                                           Operation *next_op, Value &cur_out,
+                                           int axis, int num_devices,
+                                           int cur_device);
 
 std::vector<Operation *> cloneCommonOp(PatternRewriter &rewriter,
                                        Operation *next_op, Value &cur_out,
@@ -54,6 +63,12 @@ Operation *cloneMultiInsOp(PatternRewriter &rewriter, Operation *next_op,
                            Value &cur_out, std::vector<Value> &operands,
                            int axis, int num_devices, int cur_device);
 
+std::vector<Operation *> cloneMultiInsOps(PatternRewriter &rewriter,
+                                          Operation *next_op, Value &cur_out,
+                                          std::vector<Value> &operands,
+                                          int axis, int num_devices,
+                                          int cur_device);
+
 std::vector<Operation *>
 cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
                    Value &cur_out, int axis, std::vector<Value> pos_ids,
@@ -61,18 +76,29 @@ cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
 
 Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
                                   Value &cur_out, int num_devices,
-                                  int cur_device, int num_head);
+                                  int cur_device, int num_head, std::string mode = "default");
 
 Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
                                   Value &cur_out, int num_devices,
-                                  int cur_device, int num_head);
+                                  int cur_device, int num_head, std::string mode = "default");
 
 void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
                       int num_devices, int cur_device);
 
+void createMulConstOp2(PatternRewriter &rewriter, Value &cur_out,
+                       int num_devices, int cur_device);
+
 Operation *createSliceOp(PatternRewriter &rewriter, Operation *next_op,
                          Value &cur_out, int axis, int num_devices,
                          int cur_device, int num_head);
+
+Operation *cloneSliceAxisOp(PatternRewriter &rewriter, Operation *next_op,
+                            Value &cur_out, int axis, int num_devices,
+                            int cur_device);
+
+// ===================================
+// distribute helper functions for llama2/falcon/qwen
+// ===================================
 
 std::vector<Operation *> cloneAttentionInput(PatternRewriter &rewriter,
                                              Operation *next_op, Value &cur_out,
@@ -92,14 +118,14 @@ cloneAttentionKey(PatternRewriter &rewriter, Operation *next_op, Value &cur_out,
 
 std::vector<Operation *> cloneAttentionMatrix(PatternRewriter &rewriter,
                                               Operation *next_op,
-                                              Value &cur_out,
+                                              Value &cur_out, int axis,
                                               std::vector<Value> &other_opds,
                                               int num_devices, int cur_device);
 
 std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
                                              Operation *next_op, Value &cur_out,
                                              std::vector<Value> &other_opds,
-                                             std::vector<Value> &outs,
+                                             std::vector<Value> &outs, int axis,
                                              int num_devices, int cur_device,
                                              bool GQA, int num_head);
 
@@ -107,5 +133,45 @@ std::vector<Operation *> cloneAttentionOutput(PatternRewriter &rewriter,
                                               Operation *next_op,
                                               Value &cur_out, int num_devices,
                                               int cur_device, int num_head);
+
+// ===================================
+// distribute helper functions for chatglm2
+// ===================================
+std::vector<Value> cloneChatGLMPosInput(PatternRewriter &rewriter,
+                                        Operation *next_op, Value &cur_out,
+                                        int axis, int num_devices,
+                                        int cur_device, std::string suffix);
+
+std::vector<Operation *> cloneChatGLMRotaryEmbedOp(PatternRewriter &rewriter, 
+                                                   Operation *next_op, 
+                                                   Value &cur_out, int axis, 
+                                                   std::vector<Value> pos_operands, 
+                                                   int num_devices, int cur_device);
+
+std::vector<Operation *> cloneChatGLMAttentionQK(PatternRewriter &rewriter, 
+                                                 Operation *next_op, 
+                                                 Value &cur_out, int axis, 
+                                                 std::vector<Value> &pos_operands, 
+                                                 int num_devices, int cur_device, int num_head);
+
+std::vector<Operation *> cloneChatGLMAttentionValue(PatternRewriter &rewriter,
+                                                    Operation *next_op, Value &cur_out,
+                                                    std::vector<Value> &other_opds,
+                                                    std::vector<Value> &outs, int axis,
+                                                    int num_devices, int cur_device,
+                                                    int num_head);
+
+std::vector<Operation *> cloneChatGLMAttentionQxK(PatternRewriter &rewriter, 
+                                                  std::vector<Operation *> query_next_ops, 
+                                                  std::vector<Operation *> key_next_ops, 
+                                                  Operation *next_op, Value &cur_out, 
+                                                  std::vector<Value> &operands, int num_devices, int cur_device);
+
+Operation *cloneChatGLMAttentionOutput(PatternRewriter &rewriter,
+                                       Operation *qk_next_op,
+                                       Operation *value_next_op,
+                                       Operation *next_op, Value &value_branch,
+                                       Value &qk_out, Value &cur_out,
+                                       int num_devices, int cur_device, int num_head);
 } // namespace tpu
 } // namespace tpu_mlir

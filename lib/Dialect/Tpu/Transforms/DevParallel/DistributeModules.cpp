@@ -35,16 +35,23 @@ struct OpReorderPattern : public RewritePattern {
     }
     llvm::SmallVector<Operation *, 8> opds;
     llvm::SmallVector<Operation *, 8> weights;
+    int is_before_num  = 0;
     for (auto opd : op->getOperands()) {
       auto op_ = opd.getDefiningOp();
       if (op_ == nullptr || isa<top::NoneOp, FuncOp>(op_)) {
         continue;
+      }
+      if (op_->isBeforeInBlock(op)) {
+        is_before_num++;
       }
       if (isa<top::WeightOp>(op_)) {
         weights.push_back(op_);
       } else {
         opds.push_back(op_);
       }
+    }
+    if (is_before_num == op->getNumOperands()) {
+      return failure();
     }
     opds.append(weights);
     bool fixed = false;
@@ -606,7 +613,7 @@ static void updateFuncIONames(ModuleOp m) {
                       operands.begin();
             int num_result = end->getNumResults();
             idx = idx - device_id * num_result;
-            if (end_methods->at(idx) == (int)DevEndMethod::EndToConcat) {
+            if (idx >= 0 && end_methods->at(idx) == (int)DevEndMethod::EndToConcat) {
               auto next_result = user->getResult(idx);
               auto loc = module::getLocLike(next_result, suffix);
               outputs[i].setLoc(loc);
