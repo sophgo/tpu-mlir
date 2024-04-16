@@ -210,14 +210,6 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
   module::removeUnusedOp();
 }
 
-Value getTheOtherOperand(Operation *op, Value curr) {
-  std::vector<Value> opds(op->operand_begin(), op->operand_end());
-  if (opds.size() != 2) {
-    llvm_unreachable("Not implemented.");
-  }
-  return (opds[0] != curr ? opds[0] : opds[1]);
-}
-
 /**
  * Attention Tensor Parallelism
  */
@@ -439,7 +431,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     cur_out = attn_start_out;
     other_opds = {past_v_out};
     next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  num_devices, cur_device, false, num_head)[0];
+                                  2, num_devices, cur_device, false, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
     // Query branch
@@ -467,7 +459,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                               num_devices, cur_device);
     // Attention Matrix branch
     other_opds = {attn_mask_out};
-    next_op = cloneAttentionMatrix(rewriter, next_op, cur_out, other_opds,
+    next_op = cloneAttentionMatrix(rewriter, next_op, cur_out, 2, other_opds,
                                    num_devices, cur_device)[0];
     Value qk_out = cur_out;
     // QK@V

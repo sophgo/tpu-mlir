@@ -1535,7 +1535,7 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
 // Helper Functions for op translate
 //-----------------------------------------------------------------
 mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
-                        int64_t offset, int64_t length) {
+                        int64_t offset, int64_t length, std::string mode) {
   auto stype = module::getStorageType(v);
   auto shape = module::getShape(v);
   std::vector<int64_t> new_shape(shape);
@@ -1547,23 +1547,23 @@ mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
     auto op = v.getDefiningOp<top::WeightOp>();
     if (stype.isBF16() || stype.isF16()) {
       auto data = op.read<uint16_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
     } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
       auto data = op.read<int8_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
     } else if (stype.isUnsignedInteger(8)) {
       auto data = op.read<uint8_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type);
     } else if (stype.isF32()) {
       auto data = op.read<float>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
     } else if (stype.isInteger(32)) {
       auto data = op.read<int32_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type);
     }
     op.dump();

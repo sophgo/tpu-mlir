@@ -221,7 +221,7 @@ void setGmemPrivateSize(ModuleOp submodule, int64_t size);
 // Helper Functions for op translate
 //-----------------------------------------------------------------
 mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
-                        int64_t offset, int64_t length);
+                        int64_t offset, int64_t length, std::string mode = "default");
 
 //-----------------------------------------------------------------
 // Helper Functions for weight

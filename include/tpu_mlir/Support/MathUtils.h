@@ -180,7 +180,7 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
 template <typename T>
 std::shared_ptr<std::vector<T>>
 tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
-             int64_t offset, int64_t length);
+             int64_t offset, int64_t length, std::string mode);
 
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
