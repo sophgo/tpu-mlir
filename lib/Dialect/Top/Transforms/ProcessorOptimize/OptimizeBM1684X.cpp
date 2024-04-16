@@ -763,10 +763,14 @@ class ConvertConv2DToImg2Col final : public OpRewritePattern<top::ConvOp> {
     const int ic = filterShape[1];
     const int kh = filterShape[2];
     const int kw = filterShape[3];
-    if (!(ic <= 3 && kh >= 16 && kw >= 16 && strides->at(0) == kh &&
+    // When kh >= 29 and kw >= 29, the last dimension of the reordered kernel becomes quite large. 
+    // Using it as the right matrix in matrix multiplication, particularly when performing a transpose on the right matrix, 
+    // can lead to performance degradation.This adjustment is primarily made concerning the CLIP model.Further improvements will be considered later
+    if (!(ic <= 3 && kh >= 16 && kh < 29  && kw >= 16 && kw < 29 && strides->at(0) == kh &&
           strides->at(1) == kw)) {
       return failure();
     }
+
     int id = 0;
     auto loc_name = module::getName(convOp.getOperation()).str();
     // 1. Input->Reshape+permute+Reshape(reorder the input)
