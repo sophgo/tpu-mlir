@@ -71,12 +71,12 @@ def to_scalar(num):
         def decorate(*args, **kwargs):
             need_to_scalar = False
             for idx, v in enumerate(args):
-                if isinstance(v, Union[int, float]) and idx < num:
+                if isinstance(v, (int, float)) and idx < num:
                     need_to_scalar = True
             if need_to_scalar:
                 new_args = []
                 for idx, v in enumerate(args):
-                    if isinstance(v, Union[int, float]) and idx < num:
+                    if isinstance(v, (int, float)) and idx < num:
                         new_args.append(__to_scalar(v))
                     else:
                         new_args.append(v)
