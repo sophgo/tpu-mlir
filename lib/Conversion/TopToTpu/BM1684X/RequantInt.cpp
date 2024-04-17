@@ -54,7 +54,7 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (raw_multi.size() == 1) {
     auto newValue =
         do_requant(op->getLoc(), op.getInput(), op.getOutput().getType(), true,
-                   raw_multi[0], raw_shift[0], get_requant_mode(requant_mode),
+                   raw_multi[0], -raw_shift[0], get_requant_mode(requant_mode),
                    get_round_mode(round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
@@ -67,7 +67,7 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
       for (int i = 0; i < raw_multi.size(); ++i) {
         quant[i * 2] = raw_multi[i];
         quant[i * 2 + 1] =
-            (((int32_t)raw_shift[i]) & 0xffff) |
+            ((-(int32_t)raw_shift[i]) & 0xffff) |
             (((int32_t)zero_point & 0xffff) << 16);
       }
       quant_shape.back() = 2;
@@ -75,7 +75,7 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
       quant.resize(raw_multi.size() * 3, 0);
       for (int i = 0; i < raw_multi.size(); ++i) {
         quant[i * 3] = raw_multi[i];
-        quant[i * 3 + 1] = raw_shift[i];
+        quant[i * 3 + 1] = -raw_shift[i];
         quant[i * 3 + 2] = zero_point;
       }
       quant_shape.back() = 3;

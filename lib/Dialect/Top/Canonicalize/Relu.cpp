@@ -26,6 +26,10 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
     if (false == formerOp->hasTrait<SupportFuseRelu>()) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
     auto relu_limit = op.getReluLimit().convertToDouble();
     if (formerOp->hasAttr("relu_limit")) {
       auto old_limit =
