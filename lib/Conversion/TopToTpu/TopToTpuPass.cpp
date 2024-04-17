@@ -434,6 +434,30 @@ struct ForwardTypePattern : public OpRewritePattern<TyOp> {
   }
 };
 
+template <typename TyOp>
+struct ForwardInt32TypePattern : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    auto pre_op = op->getOperand(0).getDefiningOp();
+    if (isa<top::InputOp>(pre_op))
+      return failure();
+    Value in = op.getInput();
+    Value out = op.getOutput();
+    auto in_type = in.getType().cast<RankedTensorType>();
+    auto out_type = out.getType().cast<RankedTensorType>();
+    auto in_etype = in_type.getElementType();
+    auto out_etype = out_type.getElementType();
+    if (in_etype == out_etype || in_etype.isInteger(32)) {
+      return failure();
+    }
+    auto new_type = RankedTensorType::get(out_type.getShape(), in_etype);
+    out.setType(new_type);
+    return success();
+  }
+};
+
 // to make compare inputs have the same min max
 struct CompareCalibartion : public OpRewritePattern<top::CompareOp> {
   using OpRewritePattern<top::CompareOp>::OpRewritePattern;
@@ -1075,7 +1099,9 @@ void ConvertTopToTpu::runOnOperation() {
   applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
   // adjust reshape
   patterns.clear();
-  patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
+  patterns.add<ForwardTypePattern<tpu::ReshapeOp>,
+               ForwardInt32TypePattern<tpu::SqueezeOp>,
+               ForwardInt32TypePattern<tpu::SliceOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
   if (module::isBM1684XFamily()) {
