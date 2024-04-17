@@ -698,8 +698,8 @@ matmul_int
 * right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
 * output_transpose：bool型，默认为False。表示计算时是否对输出矩阵进行转置。
 * keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
-* input_zp：List[int]型或int型，表示input的偏移。取None则表示0，取List时要求长度为k。
-* right_zp：List[int]型或int型，表示right的偏移。取None则表示0，取List时要求长度为k。
+* input_zp：int型，表示input的偏移。取None则表示0。
+* right_zp：int型，表示right的偏移。取None则表示0。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -751,12 +751,12 @@ matmul_quant
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[n]。
 * right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
 * keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
-* input_scale：List[float]型或float型，表示input的量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为k。
-* right_scale：List[float]型或float型，表示right的量化参数。取None则使用right Tensor中的量化参数，取List时要求长度为k。
-* output_scale：List[float]型或float型，表示output的量化参数。不可以取None，取List时要求长度为k。
-* input_zp：List[int]型或int型，表示input的偏移。取None则表示0，取List时要求长度为k。
-* right_zp：List[int]型或int型，表示right的偏移。取None则表示0，取List时要求长度为k。
-* output_zp：List[int]型或int型，表示output的偏移。取None则表示0，取List时要求长度为k。
+* input_scale：float型，表示input的量化参数。取None则使用input Tensor中的量化参数。
+* right_scale：float型，表示right的量化参数。取None则使用right Tensor中的量化参数。
+* output_scale：float型，表示output的量化参数。不可以取None。
+* input_zp：int型，表示input的偏移。取None则表示0。
+* right_zp：int型，表示right的偏移。取None则表示0。
+* output_zp：int型，表示output的偏移。取None则表示0。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -3237,7 +3237,7 @@ requant_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * mul：List[int]型或int型，表示量化乘子系数。
-* shift:List[int]型或int型，表示量化移位系数。
+* shift:List[int]型或int型，表示量化移位系数。右移为正，左移为负。
 * offset：List[int]型或int型，表示输出偏移。
 * requant_mode：int型，表示量化模式。
 * round_mode：string型，表示舍入模式。默认为“half_up”。
@@ -3337,9 +3337,9 @@ dequant_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * mul：List[int]型或int型，表示量化乘子系数。
-* shift:List[int]型或int型，表示量化移位系数。
+* shift:List[int]型或int型，表示量化移位系数。右移为负，左移为正。
 * offset：List[int]
-* lshift：int型，表示移位系数。
+* lshift：int型，表示左移位系数。
 * requant_mode：int型，表示量化模式。
 * round_mode：string型，表示舍入模式。默认为“half_up”。
 * out_dtype：string类型，表示输入Tensor的类型.

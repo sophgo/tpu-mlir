@@ -450,9 +450,8 @@ class TpuLangConverter(BaseConverter):
             is_signed, storage_type.width)
         flags = 1 if is_signed else 0
         scale = tensor.scale if tensor.scale is not None else 1.0
-        # zero_point = tensor.zero_point if tensor.zero_point is not None else 0
         zero_point = tensor.zero_point if tensor.zero_point != None else 0
-        is_perchannel = isinstance(scale, List) or isinstance(zero_point, List)
+        is_perchannel = (isinstance(scale, List) and len(scale) > 1) or (isinstance(zero_point, List) and len(zero_point) > 1)
         if is_perchannel:
             length = len(scale) if isinstance(scale, List) else len(zero_point)
             zero_point = zero_point if isinstance(zero_point, List) or zero_point == None else [zero_point] * length
@@ -462,6 +461,8 @@ class TpuLangConverter(BaseConverter):
                 zero_point, 1,
                 storage_min, storage_max)
         else:
+            scale = scale[0] if isinstance(scale, List) else scale
+            zero_point = zero_point[0] if isinstance(zero_point, List) else zero_point
             return quant.UniformQuantizedType.get(  # type: ignore
                 flags, storage_type, self.type_to_mlir["float32"], scale, zero_point, storage_min,
                 storage_max)
