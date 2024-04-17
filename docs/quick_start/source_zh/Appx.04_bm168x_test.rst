@@ -167,11 +167,11 @@ Vid4 (可选)
    $ docker pull sophgo/tpuc_dev:v3.2
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-运行命令后会处于Docker的容器中，在Docker容器中安装tpu_mlir:
+运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装tpu_mlir:
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
 安装 ``tpu-perf`` 工具
