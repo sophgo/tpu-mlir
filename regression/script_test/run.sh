@@ -9,18 +9,18 @@ TEST_DIR=$REGRESSION_PATH/regression_out/script_test
 mkdir -p $TEST_DIR
 pushd $TEST_DIR
 
-$DIR/test1.sh
-$DIR/test2.sh
-$DIR/test5.sh
-$DIR/test6.sh
-$DIR/test7.sh
-$DIR/test8.sh
-$DIR/test9.sh
+$DIR/test1.sh # test workflow
+$DIR/test2.sh # test quantization with qtable
+$DIR/test5.sh # test mix precision
+$DIR/test9.sh # test addr mode
 
 if [ $IS_BASIC == 'all' ]; then
-  $DIR/test3.sh
-  $DIR/test4.sh
-  $DIR/test_llm.sh
+  $DIR/test3.sh    # test i32 or i16 input
+  $DIR/test4.sh    # test preprocess and postprocess
+  $DIR/test6.sh    # test sensitive layer
+  $DIR/test7.sh    # test core parallel
+  $DIR/test8.sh    # test tpu profile
+  $DIR/test_llm.sh # test llm models
 fi
 
 popd
