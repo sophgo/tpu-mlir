@@ -27,8 +27,21 @@ model_deploy.py \
   --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
   --test_reference llama2_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.84 \
-  --model llama2_block_cache_0.bmodel
+  --model llama2_block_cache_0_static.bmodel
 
+# model_deploy.py \
+#   --mlir llama2_block_cache_0.mlir \
+#   --quantize W4F16 \
+#   --q_group_size 64 \
+#   --chip bm1684x \
+#   --quant_input \
+#   --quant_output \
+#   --addr_mode io_alone \
+#   --dynamic \
+#   --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+#   --test_reference llama2_block_cache_0_top_outputs.npz \
+#   --tolerance 0.98,0.84 \
+#   --model llama2_block_cache_0_dynamic.bmodel
 
 # block
 # qwen_0.5b
@@ -47,7 +60,6 @@ model_deploy.py \
   --quantize W4BF16 \
   --q_group_size 64 \
   --chip bm1684x \
-  --debug \
   --quant_input \
   --quant_output \
   --model qwen_block_0.bmodel
@@ -60,8 +72,27 @@ model_runner.py \
 npz_tool.py compare \
   qwen_block_0_top_outputs.npz \
   qwen_block_0_tpu_outputs.npz \
-  --tolerance 0.98,0.90 --except - -vv
+  --tolerance 0.98,0.90 -v
 
+model_deploy.py \
+  --mlir qwen_block_0.mlir \
+  --quantize W4BF16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --dynamic \
+  --quant_input \
+  --quant_output \
+  --model qwen_block_0_dynamic.bmodel
+
+model_runner.py \
+  --input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
+  --model qwen_block_0_dynamic.bmodel \
+  --output qwen_block_0_model_outputs.npz
+
+npz_tool.py compare \
+  qwen_block_0_model_outputs.npz \
+  qwen_block_0_tpu_outputs.npz \
+  --tolerance 0.98,0.90 -v
 
 # block cache
 # qwen_0.5b

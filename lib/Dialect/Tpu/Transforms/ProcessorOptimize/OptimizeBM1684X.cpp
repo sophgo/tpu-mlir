@@ -2909,7 +2909,7 @@ public:
      * MatMul(1x1x48x16384,1x1x16384x48) => Add
      */
     // TODO : judge whether K is splited; what if other shape > 65535
-    if (module::isBM1690Family()) {
+    if (!module::isBM1688()) {
       return failure();
     }
     auto left = op.getInput();
