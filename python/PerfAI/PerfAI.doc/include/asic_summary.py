@@ -76,7 +76,7 @@ class AsicSummary(object):
             uArch_opss.append(self.tius[core_id].uArch_total_ops)
             uArch_rates.append(get_ratio_str_2f_zero(self.tius[core_id].alg_total_ops, self.tius[core_id].uArch_total_ops))
 
-            gdma_cycles.append(self.gdmas[core_id].dma_cycle)
+            gdma_cycles.append(self.gdmas[core_id].working_cycle)
             gdma_ddr_datasizes.append(self.gdmas[core_id].ddr_total_datasize)
             gdma_l2_datasizes.append(self.gdmas[core_id].l2_total_datasize)
             gdma_ddr_avg_bds.append(get_ratio_float_2f(self.gdmas[core_id].ddr_total_datasize,
@@ -89,7 +89,7 @@ class AsicSummary(object):
             gdma_bl_sum += self.gdmas[core_id].ddr_burst_length_sum
             gdma_xact_sum += self.gdmas[core_id].ddr_xact_cnt
 
-            sdma_cycles.append(self.sdmas[core_id].dma_cycle)
+            sdma_cycles.append(self.sdmas[core_id].working_cycle)
             sdma_ddr_datasizes.append(self.sdmas[core_id].ddr_total_datasize)
             sdma_ddr_avg_bds.append(get_ratio_float_2f(self.sdmas[core_id].ddr_total_datasize,
                                                      get_time_by_cycle(self.sdmas[core_id].ddr_total_cycle, dma_frequency)))
@@ -99,7 +99,7 @@ class AsicSummary(object):
             sdma_bl_sum += self.sdmas[core_id].ddr_burst_length_sum
             sdma_xact_sum += self.sdmas[core_id].ddr_xact_cnt
 
-            cdma_cycles.append(self.cdmas[core_id].dma_cycle)
+            cdma_cycles.append(self.cdmas[core_id].working_cycle)
             cdma_ddr_datasizes.append(self.cdmas[core_id].ddr_total_datasize)
             cdma_l2_datasizes.append(self.cdmas[core_id].l2_total_datasize)
             cdma_ddr_avg_bds.append(get_ratio_float_2f(self.cdmas[core_id].ddr_total_datasize,
@@ -112,7 +112,7 @@ class AsicSummary(object):
             cdma_bl_sum += self.cdmas[core_id].ddr_burst_length_sum
             cdma_xact_sum += self.cdmas[core_id].ddr_xact_cnt
         core_ids.append('Overall')
-        tiu_work_ratios.append(get_ratio_str_2f_zero(get_time_by_cycle(sum(tiu_cycles), tiu_frequency),  total_time))
+        tiu_work_ratios.append(get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency),  total_time))
         if self.act_core_num > 1:
             prallelisms.append(get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency) +
                                                      get_time_by_cycle(max(gdma_cycles) + max(sdma_cycles), dma_frequency), total_time))
@@ -158,6 +158,8 @@ class AsicSummary(object):
             sdma_ddr_datasizes[idx] = datasize_to_MB(sdma_ddr_datasizes[idx])
             cdma_ddr_datasizes[idx] = datasize_to_MB(cdma_ddr_datasizes[idx])
             cdma_l2_datasizes[idx] = datasize_to_MB(cdma_l2_datasizes[idx])
+        # if chip_arch['Chip Arch'].lower() == 'a2' and self.act_core_num == 1:
+        #     chip_arch['DDR Max BW(GB/s)'] = int(chip_arch['DDR Max BW(GB/s)']) * 2
         self.data = transpose([core_ids, tiu_work_ratios, prallelisms, concurrencys, total_times, tiu_cycles, alg_cycles,
                             alg_opss, uArch_opss, uArch_rates, gdma_cycles,
                             gdma_ddr_datasizes, gdma_l2_datasizes, gdma_ddr_avg_bds,
@@ -272,7 +274,7 @@ class AsicSummary(object):
                 elif float(ws.cell(h, uRate_pos).value[:-1]) < 75:
                     ws.cell(h, uRate_pos).fill = DetailsStyle.yellow_light
             # parallelismPos
-            if chip_arch['Chip Arch'].lower() in ["bm1690", 'a2']:
+            if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 205:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.yellow_light
             elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
@@ -282,7 +284,7 @@ class AsicSummary(object):
                 print('Not support chip arch')
                 assert(0)
             # gdma_ddr_bd_pos
-            ddr_max_bd, l2_max_bd, ddr_max_bl = float(chip_arch['DDR Max BW(GB/s)']), float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst'])
+            ddr_max_bd, l2_max_bd, ddr_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']), float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst'])
             if float(ws.cell(h, gdma_ddr_bd_pos).value) > 0:
                 if float(ws.cell(h, gdma_ddr_bd_pos).value) < (ddr_max_bd * 0.5):
                     ws.cell(h, gdma_ddr_bd_pos).fill = DetailsStyle.red_light
@@ -316,7 +318,7 @@ class AsicSummary(object):
                 if float(ws.cell(h, cdma_ddr_avg_bl_pos).value) < ddr_max_bl:
                     ws.cell(h, cdma_ddr_avg_bl_pos).fill = DetailsStyle.red_light
         content_end_rows = chart_len
-        if chip_arch['Chip Arch'].lower() in ["bm1690", 'a2']:
+        if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<205%'
         elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<105%'

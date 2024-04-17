@@ -11,13 +11,12 @@ from openpyxl.utils import get_column_letter
 from definition.style import LayerStyle
 from utils.utils import get_dtype_size
 
-CORE_NUM = 8
-L1_BANDWIDTH = 546 / CORE_NUM
-L2_BANDWIDTH = 1024 / CORE_NUM
 
-
-def get_trans_cost(ddr_bytes, lmem_bytes):
-    cost = get_ratio(ddr_bytes / L1_BANDWIDTH + lmem_bytes / L2_BANDWIDTH, 1)
+def get_trans_cost(ddr_bytes, lmem_bytes, ddr_bw, lmem_bw):
+    if lmem_bw:
+        cost = get_ratio(ddr_bytes / ddr_bw + lmem_bytes / lmem_bw, 1)
+    else:
+        cost = get_ratio(ddr_bytes / ddr_bw, 1)
     return cost
 
 
@@ -46,9 +45,9 @@ def get_layer_fm(layer, is_in:bool):
 
 def get_layer_dtype(layer):
     if layer.in_tensors:
-        return layer.in_tensors[0].dtype.name
+        return layer.in_tensors[0].dtype
     if layer.out_tensors:
-        return layer.out_tensors[0].dtype.name
+        return layer.out_tensors[0].dtype
     return None
 
 
@@ -190,6 +189,7 @@ class Layer:
 class LayerInfo:
     def __init__(self):
         self.layer_id = -1
+        self.core_id = 0
         self.layer_type = None
         self.layer_name = ""
         self.is_local = False
@@ -203,6 +203,7 @@ class LayerInfo:
         self.gdma_tensor = None
         self.gdma_nodes = []
         self.bd_nodes = []
+        self.engine_type = None
 
     def add_input(self, tensor):
         if tensor in self.in_tensors:
@@ -228,20 +229,22 @@ class TotalLayerInfo:
         self.custom_layers = []
         self.sheet_name = 'Layer by Layer Info'
 
-    def add_kpi_field(self, tiu_instances, gdma_instances):
+    def add_kpi_field(self, tiu_instances, gdma_instances, chip_arch):
         layer_id_map = dict()
         total_tiu_cycles = 0
         total_gdma_cycles = 0
         total_alg_cycles = 0
+        ddr_bw, l2_bw = chip_arch['DDR Max BW(GB/s/Core)'], chip_arch['L2 Max BW(GB/s)']
         for layer_info in self.layer_infos:
-            if len(layer_info.bd_nodes) == 0 or layer_info.layer_type in ("Load", "Store"):
+            if len(layer_info.bd_nodes) == 0 or layer_info.layer_name in ("Load", "Store"):
                 continue
             if layer_info.layer_id not in layer_id_map.keys():
                 layer = Layer()
                 layer.layer_id = layer_info.layer_id
                 layer.data_type = get_layer_dtype(layer_info)
-                layer.layer_name = layer_info.layer_type
-                layer.layer_type = 'local' if layer_info.is_local else 'global'
+                layer.layer_name = layer_info.layer_name
+                layer.layer_type = layer_info.layer_type
+                layer.engine_type = layer_info.engine_type
                 layer.input_shape = get_layer_nchw(layer_info, True)
                 layer.iN, layer.iC, layer.iH, layer.iW = layer.input_shape[0], layer.input_shape[1], \
                     layer.input_shape[2], layer.input_shape[3]
@@ -266,9 +269,9 @@ class TotalLayerInfo:
                     for i in range(len(layer_info.in_tensors)):
                         layer.other_info += "tensor_" + str(i) + ': ' + str(layer_info.in_tensors[i].shape)
                 for n in layer_info.bd_nodes:
-                    if (n.bd_id - 1) not in tiu_instances.keys():
+                    if (n.bd_id, n.core_id) not in tiu_instances.keys():
                         continue
-                    tiu_node = tiu_instances[n.bd_id - 1]
+                    tiu_node = tiu_instances[n.bd_id, n.core_id]
                     layer.alg_ops += tiu_node.alg_ops
                     layer.uarch_ops += tiu_node.uarch_ops
                     layer.sim_cycle += tiu_node.cycle
@@ -278,17 +281,17 @@ class TotalLayerInfo:
                     if tiu_node.des_tsk_typ in [0, 1]:  # conv、pord
                         layer.kh = max(layer.kh, int(tiu_node.des_opd1_h))
                         layer.kw = max(layer.kw, int(tiu_node.des_opd1_w))
-                        tiu_node.des_opd1_h_str = 0 if not tiu_node.des_opd1_h_str.isnumeric() \
+                        tiu_node.des_opd1_h_str = 0 if not str(tiu_node.des_opd1_h_str).isnumeric() \
                             else tiu_node.des_opd1_h_str
-                        tiu_node.des_opd1_w_str = 0 if not tiu_node.des_opd1_w_str.isnumeric() \
+                        tiu_node.des_opd1_w_str = 0 if not str(tiu_node.des_opd1_w_str).isnumeric() \
                             else tiu_node.des_opd1_w_str
                         layer.k_stride_h = max(layer.k_stride_h, int(tiu_node.des_opd1_h_str))
                         layer.k_stride_w = max(layer.k_stride_w, int(tiu_node.des_opd1_w_str))
 
                 for n in layer_info.gdma_nodes:
-                    if (n.gdma_id - 1) not in gdma_instances.keys():
+                    if (n.gdma_id, n.core_id) not in gdma_instances.keys():
                         continue
-                    gdma_node = gdma_instances[n.gdma_id - 1]
+                    gdma_node = gdma_instances[(n.gdma_id, n.core_id)]
                     if gdma_node.direction.lower().endswith('ddr') or \
                         gdma_node.direction.lower().endswith('l2'):
                         layer.store_bytes += gdma_node.datasize
@@ -307,7 +310,7 @@ class TotalLayerInfo:
                         layer.g_n_slice, layer.g_k_slice, layer.g_cost = get_golden_slice(layer.m, layer.k, layer.n, layer.data_type)
                     layer.a_m_secs_o, layer.a_n_secs_o, layer.a_k_secs_o, \
                         layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = 1, 1, 1, 1, 1, 1, \
-                        get_trans_cost(layer.ddr_bytes, layer.lmem_bytes)
+                        get_trans_cost(layer.ddr_bytes, layer.lmem_bytes, ddr_bw, l2_bw)
                 else:
                     layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = '-', '-', '-', '-'
                     layer.g_m_slice, layer.g_n_slice, layer.g_k_slice, layer.g_cost = '-', '-', '-', '-'
@@ -316,7 +319,7 @@ class TotalLayerInfo:
                 layer_id_map[layer_info.layer_id] = layer
             else:
                 for n in layer_info.bd_nodes:
-                    tiu_node = tiu_instances[n.bd_id]
+                    tiu_node = tiu_instances[n.bd_id, n.core_id]
                     layer_id_map[layer_info.layer_id].sim_cycle += tiu_node.cycle
                     layer_id_map[layer_info.layer_id].alg_cycle += tiu_node.alg_cycle
                     layer_id_map[layer_info.layer_id].uarch_ops += tiu_node.uarch_ops
@@ -324,7 +327,7 @@ class TotalLayerInfo:
                     total_tiu_cycles += tiu_node.cycle
                     total_alg_cycles += tiu_node.alg_cycle
                 for n in layer_info.gdma_nodes:
-                    gdma_node = gdma_instances[n.gdma_id]
+                    gdma_node = gdma_instances[n.gdma_id, n.core_id]
                     # print(layer_info.layer_id, gdma_node.__dict__)
                     if gdma_node.direction.lower().endswith('ddr') or \
                             gdma_node.direction.lower().endswith('l2'):
@@ -341,7 +344,7 @@ class TotalLayerInfo:
                         layer_id_map[layer_info.layer_id].lmem_bytes += gdma_node.datasize
                 if 'matmul' in layer_id_map[layer_info.layer_id].layer_name.lower():
                     layer_id_map[layer_info.layer_id] = get_trans_cost(layer_id_map[layer_info.layer_id].ddr_bytes,
-                                                                       layer_id_map[layer_info.layer_id].lmem_bytes)
+                                                                       layer_id_map[layer_info.layer_id].lmem_bytes, ddr_bw, l2_bw)
         for k in layer_id_map.keys():
             layer = layer_id_map[k]
             layer.uarch_rate = get_ratio_str(layer.alg_ops, layer.uarch_ops)
@@ -376,31 +379,34 @@ class TotalLayerInfo:
     def write(self, chip_arch):
         network = chip_arch['network']
         platform = chip_arch['Chip Arch']
-        if platform.lower() == 'bm1690':
+        if platform.lower() == 'sg2260':
             int8_ops = 256
-            fp32_ops = '--'
+            fp32_ops = 16
         elif platform.lower() == 'bm1684x':
             int8_ops = 32
-            fp32_ops = 2
-        ddr_bw = float(chip_arch['DDR Max BW(GB/s)']) * int(chip_arch['NPU Num'])
-        tpu_freq = float(chip_arch['Frequency(MHz)']) / 1000
-        dma_freq = float(chip_arch['DDR Frequency']) / 1000
+            fp32_ops = 2.2
+        elif platform.lower() == 'a2':
+            int8_ops = 14.4
+            fp32_ops = 0.45
+        ddr_bw = round(float(chip_arch['DDR Max BW(GB/s/Core)']) * int(chip_arch['Core Num']), 2)
+        tpu_freq = float(chip_arch['TIU Frequency(MHz)']) / 1000
+        dma_freq = float(chip_arch['DMA Frequency(MHz)']) / 1000
         condition_dict = {
             'Network': [network],
             'platform': [platform],
             'TPU INT8 TOPS': [int8_ops],
             'TPU FP16 TOPS': [int8_ops / 2],
             'TPU FP32 TOPS': [fp32_ops],
-            'DDR BW(GB/s)': [ddr_bw],
+            'DDR BW(GB/s/Core)': [ddr_bw],
             'TPU Frequency(GHz)': [tpu_freq],
             'DMA Frequency(GHz)': [dma_freq]
         }
         npu_num = int(chip_arch['NPU Num'])
         Cube_IC_Align = int(chip_arch['Cube IC Align(8bits)'])
-        Conv_OHOW_Align = int(chip_arch['Cube OHOW Align'])
+        Conv_OHOW_Align = int(chip_arch['Cube OHOW Align(8bits)'])
         Vector_OHOW_Align = int(chip_arch['Vector OHOW Align(8bits)'])
         Conv_ops = int(npu_num * Cube_IC_Align * Conv_OHOW_Align * tpu_freq * 2 / 1000)
-        Vector_ops = int(npu_num * Vector_OHOW_Align * tpu_freq / 1000)
+        Vector_ops = round(npu_num * Vector_OHOW_Align * tpu_freq / 1000, 2)
         pooling_ops = Conv_ops / 4
         detail_spec = {
             'NPU NUM (lane)': [npu_num],

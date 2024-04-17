@@ -630,7 +630,7 @@
                 category_count[data[i][0]] += 1;
                 let colorPalette = colors[calcColorIndex(data[i][color_col], colors.length)];
                 msg_data.push({
-                    name: `${data[i][3]}`,
+                    name: `${data[i][3]}`, //duration
                     value: data[i],
                     itemStyle: {
                         normal: {
@@ -1019,7 +1019,7 @@
             ];
             params.context.rendered = true;
 
-            let tip = api.value(7) + '\n' + usec_str(api.value(2) - api.value(1)) //1:func_name
+            let tip = api.value(5) + '\n' + usec_str(api.value(2) - api.value(1)) //block_top:func_type 1:func_name
             var tipRect = echarts.format.getTextRect(tip);
             if (tipRect.width > w) {
                 tip = ""
@@ -1218,10 +1218,14 @@
             let category_time = new Array(categories.length).fill(0);
             let category_count = new Array(categories.length).fill(0);
             let startTime = raw_data.length > 0 ? raw_data[0][1] : 0;
+            let total_cycles = 0;
             for (let i = 0; i < raw_data.length; i++) {
                 if (startTime > raw_data[i][1]) startTime = raw_data[i][1];
                 category_time[raw_data[i][0]] += raw_data[i][3]; //duration
                 category_count[raw_data[i][0]] += 1;
+                if (categories[raw_data[i][0]] !== 'TPU_LAYER') {
+                    total_cycles += raw_data[i][3];
+                }
                 data.push({
                     name: `${raw_data[i][funcTypeIndex]}`, //func_type
                     value: raw_data[i],
@@ -1233,17 +1237,17 @@
                     }
                 })
             }
-            console.log("data:", data)
+            //console.log("data:", data)
             let new_categories = [];
-            let totalcycles = 0;
-            for (let i = 0; i < category_time.length; i++) {
-                totalcycles += category_time[i]
-            }
             for (let i = 0; i < categories.length; i++) {
+                let proportion = '';
+                if (categories[i] !== 'TPU_LAYER') { // 检查是否为'TPU_LAYER'
+                    proportion = (category_time[i] / total_cycles * 100).toFixed(2) + "%";
+                }
                 new_categories.push(categories[i] +
                     "\ncount=" + category_count[i] +
                     "\ntotal=" + usec_str(category_time[i]) +
-                    "\nProportion=" + (category_time[i] / totalcycles * 100).toFixed(2) + "%"
+                    "\nProportion=" + proportion
                 )
             }
 
@@ -1265,6 +1269,7 @@
             const baseHeightPerCategory = 80; // 每个类别的基础高度
             let gridHeight = Math.max(categories.length * baseHeightPerCategory, 350); // 确保至少有一个最小高度
             console.log("gridHeight", gridHeight)
+
             now = Date.now()
             let option = {
                 tooltip: {
@@ -1599,7 +1604,8 @@
                         let begin_usec = val[1]
                         let end_usec = val[2]
                         console.log("begin_usec,end_usec:", begin_usec, end_usec)
-                        set_chart_time_range(begin_usec - range * 1.2, end_usec + range * 2)
+                        // set_chart_time_range(begin_usec - range * 1.2, end_usec + range * 1.2)
+                        set_chart_time_range(begin_usec - range * 0.5, end_usec + range * 0.5)
                     }
                     let updatedData = data.map((item, index) => {
                         // Copy the itemStyle object if it exists, otherwise create a new one
@@ -1711,8 +1717,8 @@
             let highlightedRowElement = null;
             let previouslyHighlight = null;
             for (let r = 0; r < show_len; r++) {
-                let row_data = new_data[r]
-                let row_body = document.createElement("tr")
+                let row_data = new_data[r];
+                let row_body = document.createElement("tr");
                     //row_body.onclick = (e) => {
                     //    let range = row_data[2] - row_data[1]
                     //    set_chart_time_range(row_data[1] - range * 0.25, row_data[2] + range * 0.25)
@@ -2729,7 +2735,6 @@
             console.log("rangeStart, rangeEnd:", rangeStart, rangeEnd)
             let range = rangeStart - rangeEnd;
             set_chart_time_range(rangeStart, rangeEnd);
-            //set_chart_time_range(rangeStart - range * 1, rangeEnd + range * 1);
         }
 
         //生成uArch rate点图
@@ -2946,11 +2951,6 @@
                         top: 0,
                         bottom: 0,
                         rich: {
-                            //a: {
-                            //    color: '#999',
-                            //    lineHeight: 22,
-                            //    align: 'center'
-                            //},
                             hr: {
                                 borderColor: '#aaa',
                                 width: '100%',

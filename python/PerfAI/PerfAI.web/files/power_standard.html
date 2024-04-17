@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Sim Power</title>
+<script src="output.js" type="text/javascript"></script>
+<script src="echarts.min.js" type="text/javascript"></script>
+<!-- <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script> -->
+<script src="jquery-3.5.1.min.js" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="data-type-selector">
+        <label for="data-type">Choose Data Type:</label>
+        <select id="data-type">
+    <option value="perf">PerfAI Data</option>
+    <option value="pld">PLD Data</option>
+    </select>
+    </div>
+    <table id="base-power-table">
+        <caption>Base Power(w)</caption>
+    </table>
+    <div id="comparison-content"></div>
+    <style>
+        caption {
+            padding: 10px;
+            caption-side: top;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #content-wrapper {
+            display: flex;
+        }
+
+        #perfai-content,
+        #pld-content {
+            flex: 1;
+            /* 让两个区域平分空间 */
+            padding: 10px;
+            /* 为内容添加一些内边距 */
+        }
+
+        #comparison-content {
+            font-family: Arial, sans-serif;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #comparison-content>label,
+        #comparison-content>button {
+            margin: 5px 0;
+        }
+
+        #master-checkbox+span {
+            font-weight: bold;
+            padding-left: 8px;
+        }
+
+        .sub-checkbox {
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .sub-checkbox .core-checkbox {
+            margin-right: 5px;
+        }
+
+        button {
+            margin-top: 10px;
+            display: inline-block;
+            padding: 5px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #table-area {
+            width: 100%;
+        }
+
+        .select-container {
+            margin-bottom: 10px;
+        }
+
+        #base-power-table,
+        #table-container {
+            margin: 2%;
+            overflow-y: auto;
+            border: 1% solid #ccc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        .select-container {
+            margin: 10px 0;
+        }
+
+        #message-container {
+            padding: 10px;
+            background-color: #ffcccb;
+            color: black;
+            text-align: center;
+            margin: 10px 0;
+            border: 1px solid #ff0000;
+            border-radius: 5px;
+        }
+
+    </style>
+    <script type="text/javascript">
+        function generateTable(base_power_keys, base_power_values) {
+            const tableContainer = document.getElementById('base-power-table');
+            tableContainer.innerHTML = ''; // 清空现有内容
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.setAttribute('border', '1');
+
+            // 添加表头
+            let thead = table.createTHead();
+            let row = thead.insertRow();
+            let th1 = document.createElement('th');
+            th1.innerHTML = '信息';
+            let th2 = document.createElement('th');
+            th2.innerHTML = '说明';
+            row.appendChild(th1);
+            row.appendChild(th2);
+
+            // 添加“PTPX INFO”行
+            //let ptpxRow = table.insertRow();
+            // ptpxRow.insertCell().innerHTML = 'PTPX Environment';
+            //ptpxRow.insertCell().innerHTML = 'Voltage: 0.75v <br>Temperatrue: 85°C <br>Frequency: 1000MHz';
+
+            let basePowerRow = table.insertRow();
+            basePowerRow.insertCell().innerHTML = 'Base Power(W)';
+            let basePowerDescCell = basePowerRow.insertCell();
+
+            base_power_keys.forEach((key, index) => {
+                basePowerDescCell.innerHTML += `${key}: ${base_power_values[index]}<br>`;
+            });
+
+            tableContainer.appendChild(table);
+        }
+
+        function checkAndDisplayMissingData(arr) {
+            if (arr && arr.length > 0) {
+                // 创建消息容器
+                const messageContainer = document.createElement('div');
+                messageContainer.id = 'message-container';
+                messageContainer.style.padding = '10px';
+                messageContainer.style.backgroundColor = '#ffcccb'; // 浅红色背景
+                messageContainer.style.color = 'black';
+                messageContainer.style.textAlign = 'center';
+                messageContainer.style.margin = '10px 0';
+
+                const message = `无法显示对应信息，因为缺少以下指令的相关信息：${arr.join(', ')}`;
+                messageContainer.textContent = message;
+
+                const body = document.body;
+                body.insertBefore(messageContainer, body.firstChild);
+            }
+        }
+
+        function removeMessage() {
+            const messageContainer = document.getElementById('message-container');
+            if (messageContainer) {
+                messageContainer.remove();
+            }
+        }
+
+        function createCombinedPowerChart(dataArray, tiu_header, dma_header, selectedCores, total_energy, data, concat_timemark) {
+            let maxEndTime = dataArray.reduce((prev, current) => {
+                return (prev.end_time > current.end_time) ? prev : current;
+            }).end_time;
+            let minDuration = dataArray.reduce((prev, current) => {
+                return (prev.duration < current.duration) ? prev : current;
+            }).duration;
+
+            let stride = minDuration; // 默认stride值为最小指令执行时间
+            let segmentCount = Math.ceil(maxEndTime / stride);
+            console.log("maxEndTime:", maxEndTime)
+            console.log("minDuration:", minDuration)
+            console.log("segmentCount:", segmentCount)
+            if (segmentCount > 1500) {
+                stride = Math.ceil(maxEndTime / 1500);
+            }
+            let strideInputContainer = document.getElementById('strideInput');
+            if (!strideInputContainer) {
+                strideInputContainer = document.createElement('div');
+                strideInputContainer.innerHTML = `Set stride (cycle): <input type="number" id="strideInput" value="${stride}" style="width: 100px;">`;
+                document.getElementById('comparison-content').appendChild(strideInputContainer);
+            } else {
+                document.getElementById('strideInput').value = stride;
+            }
+
+            document.getElementById('strideInput').addEventListener('change', () => {
+                let stride = parseInt(document.getElementById('strideInput').value) || 1500; // 获取新的stride值
+                updateCharts(dataArray, tiu_header, dma_header, selectedCores, stride, total_energy, data, concat_timemark); // 使用新的stride值更新图表
+            });
+
+            let initialStride = parseInt(document.getElementById('strideInput').value) || 1500;
+            updateCharts(dataArray, tiu_header, dma_header, selectedCores, initialStride, total_energy, data, concat_timemark);
+
+        }
+
+        function processPower(dataArray, selectedCores, stride) {
+            let timeSegments = {
+                'tiu': {
+                    avg: [],
+                },
+                'dma': {
+                    avg: {
+                        gdma_pw: [],
+                        sdma_pw: [],
+                        cdma_pw: [],
+                        noc_pw: [],
+                        ddr_pw: [],
+                        l2m_pw: []
+                    },
+                }
+            };
+
+            let maxEndTime = dataArray.reduce((max, item) => Math.max(max, item.end_time), -Infinity);
+            let segmentCount = Math.ceil(maxEndTime / stride);
+
+            // Initialize timeSegments for 'tiu' and 'dma'
+            timeSegments['tiu'].avg = Array(segmentCount).fill(0);
+
+            Object.keys(timeSegments['dma'].avg).forEach(powerType => {
+                timeSegments['dma'].avg[powerType] = Array(segmentCount).fill(0);
+            });
+
+            // Initialize maxPerCore with empty arrays for each core and segment
+            let maxPerCore = {};
+            selectedCores.forEach(core => {
+                maxPerCore[core] = {
+                    tiu: Array(segmentCount).fill(0),
+                    dma: Array(segmentCount).fill(0)
+                };
+            });
+
+
+            // 初始化每个核心的功耗时间线
+            let powerTimelinePerCore = {};
+            selectedCores.forEach(core => {
+                powerTimelinePerCore[core] = {
+                    tiu: {},
+                    dma: {}
+                };
+            });
+
+            // 遍历数据数组，填充功耗时间线
+            dataArray.forEach(item => {
+                // 确保当前核心被选中
+                if (!selectedCores.includes(item.core)) return;
+                let type = item.type === 'tiu' ? 'tiu' : 'dma';
+
+                // 确保每种类型的时间线已经初始化
+                if (!powerTimelinePerCore[item.core][type]) {
+                    powerTimelinePerCore[item.core][type] = {};
+                }
+
+                let powerPerInstruction = item.power.reduce((acc, p) => acc + (isNaN(p) ? 0 : p), 0);
+
+                for (let time = item.begin_time; time <= item.end_time; time++) {
+                    // 如果当前时间点还没有记录，则初始化为0
+                    if (!powerTimelinePerCore[item.core][type][time]) {
+                        powerTimelinePerCore[item.core][type][time] = 0;
+                    }
+
+                    powerTimelinePerCore[item.core][type][time] += powerPerInstruction;
+                }
+            });
+
+            // 计算每个时间段的最大功耗
+            selectedCores.forEach(core => {
+                for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+                    let segmentStart = segmentIndex * stride;
+                    let segmentEnd = (segmentIndex + 1) * stride - 1;
+                    let max = 0;
+                    // 遍历当前时间段内的所有时间点
+                    for (let time = segmentStart; time <= segmentEnd; time++) {
+                        let tiuPower = powerTimelinePerCore[core].tiu[time] || 0;
+                        let dmaPower = powerTimelinePerCore[core].dma[time] || 0;
+                        let totalPower = tiuPower + dmaPower;
+
+                        // 如果tiu和dma在同一时间点都有功耗，则累加它们
+                        if (max < totalPower) {
+                            maxPerCore[core].tiu[segmentIndex] = tiuPower //Math.max(maxPerCore[core].tiu[segmentIndex], totalPower);
+                            maxPerCore[core].dma[segmentIndex] = dmaPower //Math.max(maxPerCore[core].dma[segmentIndex], totalPower);
+                            max = totalPower
+                        }
+                    }
+                }
+            });
+            dataArray.forEach(item => {
+                let segmentIndexStart = Math.floor(item.begin_time / stride);
+                let segmentIndexEnd = Math.min(Math.floor(item.end_time / stride), segmentCount - 1);
+
+                for (let segmentIndex = segmentIndexStart; segmentIndex <= segmentIndexEnd; segmentIndex++) {
+                    let segmentStart = segmentIndex * stride;
+                    let segmentEnd = (segmentIndex + 1) * stride;
+                    let overlapStart = Math.max(segmentStart, item.begin_time);
+                    let overlapEnd = Math.min(segmentEnd, item.end_time);
+                    let overlapDuration = overlapEnd - overlapStart;
+                    if (item.type === 'tiu') {
+                        let tiuPower = isNaN(item.power[0]) ? 0 : item.power[0];
+                        let overlapAverage = (overlapDuration / stride) * tiuPower;
+                        timeSegments['tiu'].avg[segmentIndex] += overlapAverage;
+
+                    } else {
+                        let dmaPowerTypes = ['gdma_pw', 'sdma_pw', 'cdma_pw', 'noc_pw', 'ddr_pw', 'l2m_pw'];
+                        dmaPowerTypes.forEach((powerType, index) => {
+                            let dmaPower = isNaN(item.power[index]) ? 0 : item.power[index];
+                            timeSegments['dma'].avg[powerType][segmentIndex] += (overlapDuration / stride) * dmaPower;
+                        });
+                    }
+                }
+            });
+
+            return {
+                timeSegments,
+                maxPerCore
+            };
+        }
+
+
+        function updateCharts(dataArray, tiu_header, dma_header, selectedCores, stride, total_energy, data, concat_timemark) {
+            let power_array = processPower(dataArray, selectedCores, stride);
+            console.log("power_array", power_array); //timeSegments
+
+            let powerChartContainerId = 'power-chart';
+            let powerChartContainer = document.getElementById(powerChartContainerId);
+            if (!powerChartContainer) {
+                powerChartContainer = document.createElement('div');
+                powerChartContainer.id = powerChartContainerId;
+                powerChartContainer.style.width = '100%';
+                powerChartContainer.style.height = '750px';
+                powerChartContainer.style.height.marginTop = '30x';
+                document.getElementById('comparison-content').appendChild(powerChartContainer);
+            }
+            //let total_base_power = base_power_values.reduce((accumulator, currentValue) => accumulator + currentValue);
+            let total_base_power = base_power_values.reduce((accumulator, currentValue, currentIndex) => {
+                if (["CDMA", "NOC", "DDR", "DDR MICORN"].includes(base_power_keys[currentIndex])) {
+                  return accumulator + currentValue;
+                } else {
+                  return accumulator + (currentValue * 8);
+                }
+              }, 0);
+
+            showPowerChart(data, tiu_header, dma_header, power_array, powerChartContainerId, selectedCores, stride, total_energy, total_base_power, concat_timemark);
+        }
+
+        function showPowerChart(original_data, tiu_header, dma_header, power_array, elementId, selectedCores, stride, energy_lst, base_power, concat_timemark, mode = 'avg') {
+            let {
+                timeSegments,
+                maxPerCore
+            } = power_array;
+            let {
+                tiu,
+                dma
+            } = timeSegments;
+
+            console.log("tiu:", tiu)
+            console.log("dma:", dma)
+            let totalPower;
+            let segmentCount = tiu.avg.length;
+            let dmaPowerTypes = ['gdma_pw', 'sdma_pw', 'cdma_pw', 'noc_pw', 'ddr_pw', 'l2m_pw'];
+            if (mode === 'avg') {
+                console.log("avg mode")
+                totalPower = tiu.avg.map((val, index) => {
+                    let dmaTotalAvg = dmaPowerTypes.reduce((sum, type) => sum + dma.avg[type][index], 0);
+                    return val + dmaTotalAvg;
+                });
+            } else { // mode === 'max'
+                totalPower = Array(segmentCount).fill(0);
+                selectedCores.forEach(core => {
+                    for (let i = 0; i < segmentCount; i++) {
+                        totalPower[i] += maxPerCore[core].tiu[i] + maxPerCore[core].dma[i];
+                    }
+                });
+            }
+            console.log("totalPower:", totalPower)
+            let maxPowerValue = totalPower.reduce((max, currentValue) => Math.max(max, currentValue), totalPower[0]);
+            let avgPowerValue = totalPower.reduce((accumulator, currentValue) => accumulator + currentValue, 0) / segmentCount;
+            console.log("maxPowerValue:", maxPowerValue)
+            console.log("avgPowerValue:", avgPowerValue)
+
+            var chartContainer = document.getElementById(elementId);
+            var myChart = echarts.init(chartContainer);
+            myChart.clear();
+
+            let modeDisplay = mode === 'avg' ? 'Average Mode' : 'Maximum Mode';
+            let series = [];
+            let legendData = ['底电', 'tiu'];
+            let xAxisData = [];
+            let colors = ['#cb997e', '#a5a58d', '#6b705c', '#a1a497', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']; // Array of colors for different series
+
+            for (let i = 0; i < totalPower.length; i++) {
+                let start = (i * stride);
+                let end = ((i + 1) * stride - 1);
+                xAxisData.push(`${start}-${end}`);
+            }
+            console.log("xAxisData:", xAxisData)
+            let basePowerSeries = {
+                name: '底电',
+                type: 'bar',
+                stack: 'total',
+                barWidth: '100%',
+                data: Array(segmentCount).fill(base_power), // 创建一个与 xAxisData 长度相同的数组，每个元素都是 base_power
+                itemStyle: {
+                    color: 'lightblue'
+                },
+                silent: true
+            };
+            series.push(basePowerSeries);
+
+            let dmaMaxData = [];
+            let tiuMaxData = [];
+            for (let i = 0; i < segmentCount; i++) {
+                dmaMaxData[i] = 0;
+                tiuMaxData[i] = 0;
+                selectedCores.forEach(core => {
+                    dmaMaxData[i] += maxPerCore[core].dma[i];
+                    tiuMaxData[i] += maxPerCore[core].tiu[i];
+                });
+            }
+            //console.log("dmaMaxData", dmaMaxData)
+            //console.log("tiuMaxData", tiuMaxData)
+
+            series.push({
+                name: 'tiu',
+                type: 'bar',
+                stack: 'total',
+                data: mode === 'avg' ? tiu.avg : tiuMaxData,
+                itemStyle: {
+                    color: colors[0]
+                }
+            });
+            // 如果是avg模式，添加所有DMA类型的series
+            if (mode === 'avg') {
+                dmaPowerTypes.forEach((type, index) => {
+                    legendData.push(type);
+                    series.push({
+                        name: type,
+                        type: 'bar',
+                        stack: 'total',
+                        data: dma.avg[type],
+                        itemStyle: {
+                            color: colors[index + 1]
+                        }
+                    });
+                });
+            } else { // 如果是max模式，计算所有选定核心的DMA总和
+                legendData.push('dma');
+                series.push({
+                    name: 'dma',
+                    type: 'bar',
+                    stack: 'total',
+                    data: dmaMaxData,
+                });
+            };
+
+            // 标记线系列
+            let maxPowerMarkLineSeries = {
+                name: 'Markline',
+                type: 'line',
+                data: [],
+                markLine: {
+                    label: {
+                        show: true,
+                        position: 'outsideEndTop',
+                        formatter: function(params) {
+                            return `${params.name}: ${params.value}W`;
+                        }
+                    },
+                    lineStyle: {
+                        type: 'dashed',
+                        color: 'red'
+                    },
+                    data: [{
+                        yAxis: maxPowerValue + base_power,
+                        name: "Max Power"
+                    }, {
+                        yAxis: avgPowerValue + base_power,
+                        name: "Avg Power"
+                    }, {
+                        yAxis: base_power,
+                        name: "Base Power"
+                    }]
+                },
+                itemStyle: {
+                    normal: {
+                        opacity: 0
+                    }
+                }
+            };
+            series.push(maxPowerMarkLineSeries);
+
+            let markLineData = [];
+            if (concat_patterns.length > 1) {
+                // 单核case
+                if (selectedCores.length === 1) {
+                    let coreIndex = selectedCores[0];
+                    single_timemark = concat_timemark.map(timemarks => timemarks[coreIndex]);
+                } else {
+                    // allcores case
+                    single_timemark = concat_timemark.map(timemarks => Math.max(...timemarks));
+                }
+
+                // 计算markLine在xAxisData中的位置
+                single_timemark.forEach((mark, index) => {
+                    // 找到mark对应的xAxis范围
+                    let xAxisIndex = Math.floor(mark / stride);
+                    let xAxisValue = xAxisData[xAxisIndex];
+
+                    if (xAxisValue) {
+                        markLineData.push({
+                            xAxis: xAxisValue,
+                            name: concat_patterns[index], //pattern_name
+                            timeMark: mark,
+                            lineStyle: {
+                                color: 'red',
+                                type: 'dashed'
+                            }
+                        });
+                    }
+                });
+
+                // 添加 markLine 系列到 series 数组
+                series.push({
+                    name: 'Pattern_markline',
+                    type: 'line',
+                    data: [],
+                    markLine: {
+                        symbol: ['none', 'none'],
+                        label: {
+                            show: false,
+                            position: 'end',
+                            formatter: function(params) {
+                                return params.name + '\nEnd Time: ' + params.data.timeMark; // 显示concat_patterns中对应的字符串
+                            }
+                        },
+                        lineStyle: {
+                            normal: {
+                                type: 'solid',
+                                color: 'red'
+                            }
+                        },
+                        data: markLineData
+                    }
+                });
+            }
+            console.log("markLineData:", markLineData)
+
+            //Add pie chart setting
+            let pie_colors = ['#cb997e', '#ddbea9', '#ffddc2', '#b7b7a4', '#a5a58d', '#6b705c', '#898d7d', '#a1a497'];
+            let totalEnergy = selectedCores.reduce((sum, coreIndex) => sum + energy_lst[coreIndex], 0);
+            let pieSeriesData = selectedCores.map(coreIndex => {
+                return {
+                    name: `Core ${coreIndex}`,
+                    value: energy_lst[coreIndex],
+                    itemStyle: {
+                        color: pie_colors[coreIndex % pie_colors.length]
+                    }
+                };
+            });
+            series.push({
+                name: 'Energy Distribution',
+                type: 'pie',
+                radius: ['10%', '22%'],
+                center: ['50%', '25%'], //pie position: horizontal, vertical
+                data: pieSeriesData,
+                label: {
+                    formatter: '{b}: {c} mJ ({d}%)'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} mJ ({d}%)'
+                }
+            });
+            console.log("series:", series)
+
+            var option = {
+                title: [{
+                    text: `Pattern: ${pattern_name}`,
+                    left: '2%',
+                    top: '0%',
+                    textAlign: 'left',
+                    textStyle: {
+                        fontSize: 20
+                    }
+                }, {
+                    text: `AI Compiler commitId: ${compiler_commit}`,
+                    left: '2%',
+                    top: '4%',
+                    textAlign: 'left',
+                    textStyle: {
+                        fontSize: 12
+                    }
+                }, {
+                    text: 'PTPX Info: \nVoltage: 0.75v\nTemperatrue: 85°C\nFrequency: 1000MHz',
+                    left: '80%',
+                    top: '4%',
+                    textAlign: 'left',
+                    textStyle: {
+                        fontSize: 15
+                    }
+                }, {
+                    text: 'Energy Distribution',
+                    left: '2%',
+                    top: '8%',
+                    textAlign: 'left',
+                    textStyle: {
+                        fontSize: 15
+                    }
+                }, {
+                    text: `Bar Chart\n${modeDisplay}`,
+                    left: '2%',
+                    top: '40%',
+                    textAlign: 'left',
+                    textStyle: {
+                        fontSize: 15
+                    }
+                }, {
+                    text: 'Total Energy:' + totalEnergy.toFixed(2) + 'mJ',
+                    left: '50%',
+                    top: '24%', //adjust the position(height)
+                    textAlign: 'center',
+                    textStyle: {
+                        fontSize: 14,
+                        fontWeight: 'normal'
+                    }
+                }],
+                tooltip: {
+                    alwaysShowContent: true,
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: function(params) {
+                        let xaxisInfo = params[0].axisValue; // 提取x轴信息（区间）
+                        let details = params.map(param => {
+                            let powerValue = param.value.toFixed(2) + 'W';
+                            return `${param.marker}${param.seriesName}: ${powerValue}`;
+                        }).join('<br/>');
+                        return `Time range:${xaxisInfo}<br/>${details}`; // 组合x轴信息与详细信息
+                    }
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    xAxisIndex: 0,
+                    filterMode: 'weakFilter'
+                }, {
+                    type: 'inside',
+                    xAxisIndex: 0,
+                    filterMode: 'weakFilter'
+                }],
+                toolbox: {
+                    show: true,
+                    feature: {
+                        myTool1: {
+                            show: true,
+                            title: 'Switch to Avg',
+                            icon: 'path://M413.911579 591.225263a37.079579 37.079579 0 0 1-8.623158-15.090526c-2.155789-6.467368-3.772632-15.629474-5.928421-27.486316l-43.115789-259.772632c-1.616842-8.623158-2.694737-18.324211-4.311579-28.56421-1.616842-10.778947-2.694737-22.635789-3.233685-35.031579l-25.869473 3.233684c-3.772632 6.467368-8.084211 12.934737-12.39579 18.863158-4.850526 5.928421-9.162105 12.934737-14.012631 21.018947l-157.372632 269.473685c-8.084211 13.473684-15.090526 24.252632-21.018947 32.336842-5.928421 8.084211-11.317895 14.551579-17.246316 18.863158-5.928421 4.850526-11.856842 8.084211-18.863158 9.701052-7.006316 1.616842-15.629474 3.233684-25.869474 3.772632l-2.155789 13.473684c9.701053 0 19.941053 0 30.72-0.538947 10.778947 0 20.48-0.538947 30.72-0.538948 11.856842 0 23.713684 0 36.109474 0.538948 12.395789 0.538947 23.174737 0.538947 32.875789 0.538947l3.772632-14.551579c-16.707368-0.538947-28.025263-2.694737-33.953685-5.389474-5.928421-2.694737-8.623158-7.545263-7.006315-14.551578 0.538947-3.772632 4.850526-13.473684 12.934736-28.564211l44.193685-78.147368h132.581052l13.473684 84.614736c0.538947 4.850526 1.077895 9.162105 1.616843 12.934737 0.538947 3.772632 0.538947 7.006316 0 10.24-1.077895 7.006316-5.389474 11.856842-11.856843 14.012632-7.006316 2.694737-17.785263 4.311579-32.875789 5.389474l-1.077895 13.473684c11.317895 0 22.635789 0 33.953684-0.538948 11.317895 0 22.635789-0.538947 33.953685-0.538947 13.473684 0 26.947368 0 40.421052 0.538947s25.330526 0.538947 36.648421 0.538948l3.772632-14.551579a132.581053 132.581053 0 0 1-24.791579-3.233684 26.354526 26.354526 0 0 1-16.168421-6.467369zM217.195789 452.176842L307.2 294.804211h1.077895l24.252631 157.372631H217.195789z m469.962106-29.103158c3.772632-4.850526 7.545263-8.623158 11.856842-11.317895 4.311579-2.694737 8.623158-4.850526 13.473684-5.928421 4.850526-1.077895 11.317895-2.694737 19.941053-3.772631l1.616842-12.934737c-6.467368 0-13.473684 0-20.48 0.538947-7.006316 0-15.090526 0.538947-24.791579 0.538948-12.395789 0-22.096842 0-30.181053-0.538948-8.084211 0-16.168421-0.538947-24.252631-0.538947l-3.233685 13.473684c11.856842 0.538947 19.941053 2.155789 24.252632 4.311579 4.311579 2.155789 5.928421 5.928421 5.389474 9.701053-0.538947 2.155789-1.077895 4.311579-2.694737 7.545263s-3.233684 5.928421-4.850526 9.162105l-75.991579 127.730527-28.564211-126.652632a22.689684 22.689684 0 0 1-2.155789-9.701053 17.623579 17.623579 0 0 1 0-7.545263c0.538947-4.311579 3.233684-7.545263 8.08421-9.701052 4.311579-1.616842 12.395789-3.233684 23.174737-4.850527l1.616842-12.934737c-7.545263 0-15.629474 0-24.791579 0.538948-8.623158 0-18.324211 0.538947-28.56421 0.538947-11.856842 0-23.174737 0-33.953685-0.538947-10.778947 0-20.48-0.538947-29.103158-0.538948l-3.772631 14.551579c7.545263 0.538947 14.012632 1.077895 18.32421 2.15579 4.850526 1.077895 8.623158 2.694737 11.856843 5.389473s5.389474 6.467368 7.545263 11.317895 3.772632 11.317895 5.928421 18.863158c7.545263 29.642105 14.551579 59.284211 22.096842 88.926316 7.006316 29.642105 13.473684 60.362105 19.402105 92.698947l18.324211-1.616842c10.778947-18.863158 22.096842-37.726316 32.336842-55.511579 10.778947-17.785263 20.48-34.492632 30.181052-49.583158 9.701053-15.629474 18.324211-29.642105 26.408421-42.037894 8.084211-12.934737 15.629474-23.713684 22.096843-32.87579 4.850526-7.545263 9.701053-14.012632 13.473684-18.863158zM970.105263 398.282105l-2.155789-3.233684-61.44 4.311579c-1.077895 0-3.233684 0-6.467369 0.538947-3.233684 0-6.467368-0.538947-8.623158-1.077894-2.155789-0.538947-4.850526-2.155789-7.545263-3.772632-14.012632-9.162105-31.258947-13.473684-52.277895-13.473684-13.473684 0-26.408421 2.155789-38.80421 7.006316-12.934737 4.850526-24.252632 11.317895-35.031579 19.941052s-19.941053 18.324211-26.947368 30.181053c-7.545263 11.317895-12.395789 23.713684-14.551579 37.187368-6.467368 35.570526 3.772632 60.901053 30.72 75.991579-3.772632 2.694737-8.623158 6.467368-14.012632 10.24s-10.778947 8.084211-15.629474 12.934737c-4.850526 4.850526-9.701053 9.701053-13.473684 14.551579-3.772632 4.850526-6.467368 9.701053-7.006316 14.551579-1.616842 10.24 0.538947 18.324211 7.545264 24.791579 6.467368 6.467368 15.090526 11.856842 25.330526 16.168421-7.545263 4.850526-15.629474 9.701053-23.174737 15.090526-8.084211 5.389474-15.090526 11.317895-21.557895 17.246316-6.467368 6.467368-12.395789 13.473684-17.246316 21.018947s-8.084211 15.629474-9.701052 24.791579c-2.155789 12.934737-1.077895 23.713684 3.233684 33.414737 4.311579 9.162105 11.317895 17.246316 19.941053 23.713684s18.863158 10.778947 30.181052 14.012632c11.317895 3.233684 23.174737 4.311579 34.492632 4.311579 22.096842 0 42.576842-3.233684 62.517895-9.162105s36.648421-14.551579 52.277894-25.330527c15.090526-10.778947 27.486316-23.713684 37.726316-38.265263 10.24-14.551579 16.707368-30.181053 19.402105-46.888421 2.694737-14.012632 1.616842-25.330526-2.155789-33.953684a41.714526 41.714526 0 0 0-17.246316-21.018947c-7.545263-5.389474-16.707368-8.623158-26.947368-10.778948s-20.48-3.233684-31.258948-3.233684c-9.701053 0-20.48 0-31.797894 0.538947-11.317895 0.538947-22.096842 0.538947-32.336842 0.538948-3.772632 0-8.084211-0.538947-12.39579-1.077895a47.319579 47.319579 0 0 1-12.395789-3.772632c-3.772632-1.616842-7.006316-4.311579-9.162106-7.006315s-3.233684-5.928421-2.694737-9.701053c1.077895-4.850526 3.772632-10.24 9.162106-16.168421 4.850526-5.928421 10.778947-10.24 17.785263-12.934737 11.317895 2.694737 22.096842 3.772632 32.336842 3.772632 11.856842 0 23.713684-2.155789 36.648421-5.928421 12.934737-4.311579 24.791579-10.24 36.109474-18.324211 11.317895-8.084211 21.018947-18.324211 29.642105-30.181052 8.084211-11.856842 14.012632-25.869474 16.707368-41.498948 3.233684-16.707368 0.538947-32.336842-8.08421-46.349474h56.050526l4.311579-23.713684z m-226.357895 257.077895c3.233684-1.616842 6.467368-2.694737 10.778948-3.772632 3.772632-0.538947 8.623158-1.077895 14.551579-1.616842h29.642105c12.395789 0 22.635789 0.538947 31.797895 1.077895 9.162105 0.538947 17.246316 2.694737 24.252631 5.928421 8.623158 3.772632 14.012632 9.162105 17.785263 16.707369s4.311579 16.707368 2.15579 28.025263c-2.155789 12.395789-6.467368 22.635789-12.39579 31.258947-5.928421 8.623158-13.473684 16.168421-22.635789 21.557895s-18.863158 9.701053-30.181053 12.395789a147.132632 147.132632 0 0 1-63.595789 0.538948c-9.701053-2.155789-18.324211-5.389474-25.869474-10.24a51.038316 51.038316 0 0 1-17.246316-18.324211 45.433263 45.433263 0 0 1-3.233684-27.486316c1.616842-9.162105 5.389474-18.324211 10.778948-26.947368 5.389474-8.623158 12.934737-16.168421 22.635789-23.174737 4.311579-2.155789 7.545263-4.311579 10.778947-5.928421z m122.341053-175.157895c-1.616842 7.545263-3.772632 15.090526-7.006316 23.174737-3.233684 8.084211-7.545263 15.090526-12.395789 21.557895s-10.778947 11.317895-17.785263 15.629474c-7.006316 3.772632-14.551579 5.928421-23.174737 5.928421-10.24 0-18.324211-2.694737-24.252632-7.545264a42.145684 42.145684 0 0 1-13.473684-19.402105c-3.233684-8.084211-4.850526-16.707368-4.850526-26.408421-0.538947-9.701053 0-18.863158 1.616842-28.025263 1.616842-8.084211 3.772632-15.629474 7.006316-23.713684 3.233684-8.084211 7.006316-15.090526 11.856842-21.018948a53.194105 53.194105 0 0 1 40.96-21.018947c10.24 0 18.863158 2.155789 24.791579 7.006316 5.928421 4.850526 10.778947 10.778947 14.012631 18.863158 3.233684 7.545263 4.850526 16.168421 4.850527 25.869473s-0.538947 19.402105-2.15579 29.103158z',
+                            onclick: function() {
+                                showPowerChart(original_data, tiu_header, dma_header, power_array, elementId, selectedCores, stride, energy_lst, base_power, concat_timemark, 'avg');
+                            }
+                        },
+                        myTool2: {
+                            show: true,
+                            title: 'Switch to Max',
+                            icon: 'path://M494.214737 392.353684c1.077895-9.162105 3.233684-16.168421 4.850526-22.096842 2.155789-5.928421 5.389474-10.24 9.162105-13.473684s9.162105-5.928421 16.168421-7.545263c6.467368-1.616842 15.629474-2.694737 26.408422-3.233684l1.616842-12.39579H462.955789c-5.389474 9.701053-11.317895 18.863158-16.707368 28.564211-5.389474 9.701053-11.317895 18.863158-17.246316 28.56421l-142.282105 233.903158H285.642105L223.124211 396.126316c-2.694737-10.24-5.389474-21.018947-8.084211-30.72-2.694737-10.24-5.389474-20.48-8.084211-31.258948H118.568421l-3.233684 12.39579c9.162105 0.538947 17.246316 1.616842 23.713684 3.233684 7.006316 1.616842 11.856842 4.850526 15.629474 9.701053 2.155789 2.694737 3.772632 5.389474 4.850526 8.623158 1.616842 3.233684 2.155789 7.006316 2.694737 11.317894 0 4.311579 0 9.701053-1.077895 16.168421s-2.155789 13.473684-4.311579 22.63579l-40.96 188.092631c-3.233684 14.551579-5.928421 25.869474-9.162105 34.492632-2.694737 8.084211-6.467368 14.551579-10.778947 18.324211-4.311579 4.311579-9.701053 7.006316-16.168421 8.08421-6.467368 1.077895-15.090526 2.694737-24.791579 3.233684l-1.077895 12.934737c8.623158 0 17.785263 0 28.025263-0.538947 10.24 0 19.941053-0.538947 29.103158-0.538948 11.856842 0 22.096842 0 30.72 0.538948 9.162105 0 17.246316 0.538947 25.330526 0.538947l3.233684-12.934737c-9.162105-0.538947-16.707368-1.616842-22.096842-2.694737s-9.701053-3.233684-12.395789-6.467368c-2.694737-3.233684-3.772632-8.084211-3.772632-14.551579 0-6.467368 1.616842-15.090526 3.772632-26.947368l44.193684-210.189474 1.616842-0.538947c12.934737 47.427368 25.869474 93.776842 38.804211 139.048421 12.934737 45.271579 25.330526 92.16 37.187368 140.126315l17.785263-2.155789c29.642105-50.122105 58.745263-99.166316 87.848421-147.671579 29.103158-48.505263 58.745263-97.010526 88.926316-146.593684l1.077895 1.077895-33.953684 231.208421c-1.077895 9.162105-2.694737 16.168421-4.311579 22.096842-1.616842 5.928421-4.311579 10.24-7.545263 13.473684-3.233684 3.233684-8.084211 5.928421-13.473685 7.545263-5.389474 1.616842-12.934737 2.694737-21.557894 3.233684l-1.077895 12.39579h128.269474l3.233684-12.934737c-10.778947-0.538947-18.863158-1.077895-25.330527-2.694737a34.492632 34.492632 0 0 1-14.012631-5.389474 14.767158 14.767158 0 0 1-5.389474-9.701052c-0.538947-3.772632-0.538947-8.623158 0-14.551579l36.109474-245.221053z m453.793684 82.997895c-7.006316 0-14.012632 0.538947-22.096842 0.538947-7.545263 0-15.629474 0-23.713684-0.538947-8.084211 0-16.168421-0.538947-23.713684-0.538947l-2.694737 12.395789c13.473684 1.077895 19.402105 4.311579 18.863158 9.701053-0.538947 3.233684-3.233684 7.545263-8.084211 12.934737l-36.648421 42.576842-23.174737-45.810527c-2.155789-4.850526-3.233684-8.623158-2.694737-11.317894a7.545263 7.545263 0 0 1 5.389474-5.928421c3.233684-1.077895 8.084211-2.155789 15.090526-2.694737l1.616842-11.856842c-7.545263 0-15.090526 0-23.713684 0.538947-8.623158 0-16.707368 0.538947-24.252631 0.538947-9.162105 0-18.324211 0-27.486316-0.538947-9.162105 0-17.785263-0.538947-25.869474-0.538947l-3.233684 13.473684c6.467368 1.077895 12.934737 1.616842 17.246316 2.155789s8.084211 2.155789 11.317894 3.772632c3.233684 2.155789 5.928421 4.850526 8.084211 8.623158l8.084211 14.551579 32.875789 64.673684-51.738947 54.972631c-6.467368 6.467368-11.856842 11.856842-16.707369 16.168422-4.850526 4.311579-9.701053 7.545263-14.551579 10.24-4.850526 2.694737-9.701053 4.311579-15.090526 5.389473-1.077895 0-2.694737 0.538947-3.772632 0.538948l-3.772631-7.545264c-7.545263 4.311579-14.012632 5.928421-19.941053 5.928421-6.467368 0-11.317895-2.694737-14.012631-8.08421-2.694737-5.389474-3.233684-12.934737-1.616843-22.096842 4.311579-23.174737 8.084211-44.732632 11.856843-63.59579s7.006316-36.109474 9.701052-50.661052c1.616842-9.701053 1.616842-18.324211 0-25.330527a35.516632 35.516632 0 0 0-25.330526-26.947368c-6.467368-2.155789-13.473684-3.233684-21.557895-3.233684-15.629474 0-32.336842 3.772632-50.122105 10.778947-7.006316 2.694737-13.473684 5.928421-20.48 9.701053-6.467368 3.772632-12.934737 7.545263-18.324211 11.317895-5.928421 3.772632-10.24 8.084211-14.012631 12.395789a23.713684 23.713684 0 0 0-6.467369 11.856842c-1.077895 4.850526 1.077895 9.162105 5.389474 11.317895 4.311579 2.694737 9.701053 3.772632 15.090526 3.772631 7.006316 0 12.395789-1.616842 16.707369-4.850526a60.577684 60.577684 0 0 1 15.090526-30.72 42.145684 42.145684 0 0 1 32.87579-14.012631c12.934737 0 22.096842 4.311579 26.408421 12.395789 4.311579 8.084211 5.928421 18.324211 3.772631 30.72l-3.233684 18.324211c-0.538947 3.233684-1.077895 5.928421-1.616842 8.623157-0.538947 2.694737-1.077895 4.311579-1.616842 5.928421-19.941053 2.155789-37.187368 4.850526-52.277895 8.084211-14.551579 3.772632-26.947368 7.006316-36.109474 10.24-12.395789 4.850526-23.174737 11.856842-31.797894 20.48-8.623158 8.623158-14.012632 19.402105-16.168421 31.797895-1.077895 7.545263-1.077895 14.012632 0 20.48 1.616842 6.467368 4.311579 12.395789 8.08421 17.246316 3.772632 4.850526 8.623158 9.162105 15.090526 11.856842 5.928421 2.694737 12.934737 4.311579 21.018948 4.311579 7.006316 0 14.012632-1.077895 22.096842-3.772632 8.084211-2.694737 15.629474-5.928421 22.635789-9.162105 7.006316-3.772632 13.473684-7.006316 19.402106-10.24 5.928421-3.233684 9.701053-5.928421 12.395789-7.545263 0.538947 11.317895 3.772632 18.863158 10.24 23.713684 6.467368 4.850526 14.012632 7.006316 22.096842 7.006316 8.084211 0 16.707368-1.616842 25.330527-4.850527 2.155789-1.077895 3.772632-2.155789 5.928421-3.233684v1.616842c7.545263 0 15.090526 0 22.096842-0.538947 7.006316 0 14.012632-0.538947 22.096842-0.538948 7.545263 0 16.168421 0 24.791579 0.538948 9.162105 0 17.246316 0.538947 25.330526 0.538947l2.694737-12.395789a51.792842 51.792842 0 0 1-17.785263-3.233685c-3.233684-1.616842-4.850526-4.311579-4.311579-7.545263 0.538947-3.772632 3.772632-8.623158 9.162105-15.090526l41.498947-47.966316 25.869474 51.2c1.616842 3.233684 2.155789 5.928421 2.694737 8.084211 0.538947 2.155789 0.538947 4.311579 0.538947 5.389473-1.077895 5.928421-8.623158 9.162105-22.096842 10.24l-1.077895 11.856843c7.006316 0 15.090526 0 23.713685-0.538948 8.623158 0 17.785263-0.538947 26.947368-0.538947 9.162105 0 18.863158 0 29.103158 0.538947 10.24 0 19.402105 0.538947 26.947368 0.538948l3.233685-13.473685c-7.545263-0.538947-14.012632-1.077895-18.863158-2.155789a37.187368 37.187368 0 0 1-12.39579-4.850526 39.720421 39.720421 0 0 1-9.162105-9.701053c-2.694737-4.311579-5.928421-9.701053-9.701053-16.707369l-35.031579-68.446315 40.96-43.11579c7.006316-7.545263 12.934737-12.934737 17.785264-17.785263 5.389474-4.311579 10.24-8.084211 15.629473-10.778947 5.389474-2.694737 10.778947-4.850526 16.707369-5.928421 5.928421-1.077895 12.934737-2.694737 21.018947-3.233685l1.616842-12.395789h-22.096842z m-303.966316 136.353684c-2.155789 9.701053-3.772632 19.402105-5.389473 29.642105-8.084211 6.467368-16.707368 11.317895-25.869474 15.090527-9.162105 3.772632-17.785263 5.389474-25.330526 5.389473-10.778947 0-18.324211-3.772632-22.096843-10.778947a40.313263 40.313263 0 0 1-3.233684-25.869474c1.616842-8.623158 5.928421-15.629474 12.934737-21.018947 4.311579-3.772632 9.701053-7.006316 15.629474-9.701053 5.928421-2.694737 12.395789-4.850526 18.863158-6.467368 6.467368-1.616842 13.473684-3.233684 20.48-4.311579 7.006316-1.077895 13.473684-2.155789 20.48-2.694737-2.694737 11.317895-4.311579 21.018947-6.467369 30.72z',
+                            onclick: function() {
+                                showPowerChart(original_data, tiu_header, dma_header, power_array, elementId, selectedCores, stride, energy_lst, base_power, concat_timemark, 'max');
+                            }
+                        },
+                        dataView: {
+                            show: true,
+                            readOnly: false
+                        },
+                        saveAsImage: {
+                            show: true
+                        }
+                    }
+                },
+                grid: {
+                    top: '50%',
+                    bottom: '10%'
+                },
+                legend: {
+                    data: legendData,
+                    top: '40%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: xAxisData,
+                    name: 'unit: cycle',
+                    nameLocation: 'end',
+                    nameTextStyle: {
+                        padding: [6, 0, 0, 0]
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'unit: watt',
+                    nameLocation: 'end',
+                    nameTextStyle: {
+                        padding: [0, 0, 6, 0]
+                    }
+                },
+                series: series,
+            };
+
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+
+            myChart.setOption(option);
+
+            // 为图表添加点击事件监听器
+            myChart.on('click', function(params) {
+                if (params.seriesType === 'bar') {
+                    console.log("params.seriesName:", params.seriesName)
+                    let dataIndex = params.dataIndex;
+                    let xAxisRange = xAxisData[dataIndex];
+                    let [startCycle, endCycle] = xAxisRange.split('-').map(Number);
+                    console.log("startCycle, endCycle", startCycle, endCycle)
+                        // 过滤 original_data 来找到对应时间区间的数据
+                    let filteredData = {}
+                    for (let key in original_data) {
+                        let filterStart = original_data[key].filter(item => item[4] <= endCycle);
+                        let filterEnd = original_data[key].filter(item => item[5] >= startCycle);
+
+                        filteredData[key] = filterStart.filter(itemStart => filterEnd.some(itemEnd => itemEnd === itemStart));
+                    }
+                    console.log("filteredData:", filteredData)
+                    displayTable(filteredData, params.seriesName, selectedCores, tiu_header, dma_header); // 假设您想展示的是 'tiu' 类型
+                    document.getElementById('refreshButton').addEventListener('click', function() {
+                        console.log("original_data:", original_data)
+                        displayTable(original_data, 'params.seriesName', selectedCores, tiu_header, dma_header);
+                    });
+                }
+            });
+        }
+
+        function findSelectedData(groupData, selectedCores) {
+            let array = [];
+            selectedCores.forEach(core => {
+                groupData[core].forEach(dataItem => {
+                    let powerValues;
+                    if (dataItem[1] === 'tiu') {
+                        powerValues = [dataItem[dataItem.length - 1]]; // Power is the last value for 'tiu'
+                    } else {
+                        powerValues = dataItem.slice(-6); // Power is the last four values for others
+                    }
+
+                    let dataObject = {
+                        type: dataItem[1],
+                        begin_time: dataItem[4],
+                        end_time: dataItem[5],
+                        duration: dataItem[6],
+                        power: powerValues,
+                        core: core
+                    };
+                    array.push(dataObject);
+                });
+            });
+            return array;
+        }
+
+
+        function handleConfirmSelection(data, tiu_header, dma_header, total_energy, concat_timemark) {
+            let coreSelect = document.getElementById('core-select');
+            let selectedCore = coreSelect.value;
+            let selectedCores = selectedCore === 'all' ? [...Array(dataCount).keys()] : [parseInt(selectedCore)];
+            console.log("selectedCore:", selectedCore)
+
+            clearTable();
+            if (selectedCores.length > 0) {
+                let arrays = findSelectedData(data, selectedCores);
+                console.log("arrays:", arrays);
+                createCombinedPowerChart(arrays, tiu_header, dma_header, selectedCores, total_energy, data, concat_timemark);
+                displayTable(data, 'tiu', selectedCores, tiu_header, dma_header);
+            }
+
+        }
+
+        function displayTable(dataGroups, selectedType, selectedCores, tiu_header, dma_header) {
+            const header = selectedType === 'tiu' ? tiu_header : dma_header;
+            const type = selectedType === 'tiu' ? "tiu" : "dma";
+            let dataArray;
+            if (selectedCores.length === 1) {
+                dataArray = dataGroups[selectedCores[0]].filter(item => item[1].includes(type));
+            } else {
+                dataArray = Object.values(dataGroups).flat().filter(item => item[1].includes(type));
+            }
+            let tableArea = document.getElementById('table-area');
+            if (!tableArea) {
+                tableArea = document.createElement('div');
+                tableArea.id = 'table-area';
+                document.body.appendChild(tableArea); // 或者将其添加到其他特定元素中
+            } else {
+                // 如果已经存在，则清空内容以便重新创建
+                tableArea.innerHTML = '';
+            }
+
+            // 创建下拉选择容器和下拉框
+            let selectContainer = document.createElement('div');
+            selectContainer.classList.add('select-container');
+            let label = document.createElement('label');
+            label.setAttribute('for', 'data-type-select');
+            label.textContent = 'Select Data Type:';
+            selectContainer.appendChild(label);
+
+            let select = document.createElement('select');
+            select.id = 'data-type-select';
+            select.innerHTML = `
+                    <option value="tiu">TIU</option>
+                    <option value="dma">DMA</option>
+                `;
+            select.value = type;
+            selectContainer.appendChild(select);
+            tableArea.appendChild(selectContainer);
+
+            let tableContainer = document.getElementById('table-container');
+            if (!tableContainer) {
+                tableContainer = document.createElement('div');
+                tableContainer.id = 'table-container';
+                tableContainer.style.height = '700px'; // 固定高度
+                tableContainer.style.overflowY = 'auto'; // 可滚动
+                document.body.appendChild(tableContainer);
+            } else {
+                // 清空之前的表格内容
+                tableContainer.innerHTML = '';
+            }
+
+            //做一个refresh button用于刷新展示所有数据
+            let refreshButton = document.getElementById('refreshButton');
+            if (!refreshButton) {
+                // 创建刷新按钮
+                refreshButton = document.createElement('button');
+                refreshButton.id = 'refreshButton';
+                refreshButton.textContent = '刷新表格';
+
+                document.getElementById('table-container').appendChild(refreshButton);
+            }
+
+            let table = createTable(dataArray, header);
+            tableContainer.appendChild(table);
+            select.addEventListener('change', function() {
+                displayTable(dataGroups, this.value, selectedCores, tiu_header, dma_header);
+            });
+        }
+
+        function createTable(data, headers) {
+            let table = document.createElement('table');
+            let thead = table.createTHead();
+            let tbody = table.createTBody();
+            let theadRow = thead.insertRow();
+
+            // 创建表头
+            headers.forEach((header, index) => {
+                let th = document.createElement('th');
+                th.textContent = header;
+                th.addEventListener('click', () => {
+                    console.log(`Sorting by column ${index}`);
+                    sortTable(tbody, index);
+                });
+                theadRow.appendChild(th);
+            });
+
+            // 创建表格数据行
+            data.forEach(dataArray => {
+                let tr = tbody.insertRow();
+                headers.forEach((header, index) => {
+                    let td = tr.insertCell();
+                    td.textContent = dataArray[index] || '';
+                });
+            });
+
+            return table;
+        }
+
+        function sortTable(tbody, columnIndex) {
+            console.log(`sortTable called for column ${columnIndex}`);
+            let rows = Array.from(tbody.rows);
+            let isAscending = tbody.getAttribute('data-sort-ascending') === 'true';
+
+            // 如果没有排序方向，假设初始为升序
+            if (isAscending === null) {
+                isAscending = true;
+            } else {
+                isAscending = !isAscending; // 切换排序方向
+            }
+
+            // 更新排序方向属性
+            tbody.setAttribute('data-sort-ascending', isAscending);
+
+            rows.sort((rowA, rowB) => {
+                let cellA = rowA.cells[columnIndex].textContent;
+                let cellB = rowB.cells[columnIndex].textContent;
+
+                // 尝试转换为数字进行比较
+                let numA = parseFloat(cellA);
+                let numB = parseFloat(cellB);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    cellA = numA;
+                    cellB = numB;
+                } else {
+                    // 不是数字时，转换为小写进行字符串比较
+                    cellA = cellA.toLowerCase();
+                    cellB = cellB.toLowerCase();
+                }
+
+                if (cellA < cellB) {
+                    return isAscending ? -1 : 1;
+                }
+                if (cellA > cellB) {
+                    return isAscending ? 1 : -1;
+                }
+                return 0;
+            });
+
+            // 在添加新行前移除现有行
+            while (tbody.firstChild) {
+                tbody.removeChild(tbody.firstChild);
+            }
+
+            // 将排序后的行重新添加到tbody
+            rows.forEach(row => {
+                tbody.appendChild(row);
+            });
+
+            console.log(`Rows after sorting: ${rows.map(row => row.innerHTML).join(', ')}`);
+        }
+
+        function clearTable() {
+            let tableArea = document.getElementById('table-area');
+            let tableContainer = document.getElementById('table-container');
+            if (tableContainer) {
+                tableArea.innerHTML = '';
+                tableContainer.innerHTML = ''; // 清空表格容器
+            }
+        }
+
+
+        function createCombinedChart(dataCount, data, tiu_header, dma_header, total_energy, concat_timemark) {
+            let comparisonContent = document.getElementById('comparison-content');
+            if (!comparisonContent) {
+                comparisonContent = document.createElement('div');
+                comparisonContent.id = 'comparison-content';
+                document.body.appendChild(comparisonContent);
+            } else {
+                comparisonContent.innerHTML = ''; // 清除旧内容
+            }
+
+            let coreSelect = document.createElement('select');
+            coreSelect.id = 'core-select';
+
+            let allCoresOption = document.createElement('option');
+            allCoresOption.value = 'all';
+            allCoresOption.text = 'All Cores';
+            coreSelect.appendChild(allCoresOption);
+
+            for (let i = 0; i < dataCount; i++) {
+                let coreOption = document.createElement('option');
+                coreOption.value = i;
+                coreOption.text = 'CORE' + i;
+                coreSelect.appendChild(coreOption);
+            }
+
+            comparisonContent.appendChild(coreSelect);
+
+            let confirmButton = document.createElement('button');
+            confirmButton.innerText = 'Confirm Selection';
+            confirmButton.onclick = function() {
+                handleConfirmSelection(data, tiu_header, dma_header, total_energy, concat_timemark);
+            };
+            comparisonContent.appendChild(confirmButton);
+        }
+
+        function check_PLD_data(pld_data) {
+            let allEmpty = true;
+            for (let key in pld_data) {
+                if (pld_data[key].length !== 0) {
+                    allEmpty = false;
+                    break;
+                }
+            }
+
+            let dataTypeSelector = document.getElementById('data-type');
+            let pldOption = dataTypeSelector.querySelector('option[value="pld"]');
+
+            if (allEmpty) {
+                if (pldOption) pldOption.remove();
+                // 或者可以禁用选项而不是移除
+                // if (pldOption) pldOption.disabled = true;
+            } else {
+                if (!pldOption) {
+                    pldOption = document.createElement('option');
+                    pldOption.value = 'pld';
+                    pldOption.textContent = 'PLD Data';
+                    dataTypeSelector.appendChild(pldOption);
+                }
+                // 或者如果之前被禁用了，可以重新启用
+                // if (pldOption) pldOption.disabled = false;
+            }
+        }
+
+
+        function handleDataTypeSelection(dataCount, perf_data, pld_data) {
+            let dataType = document.getElementById('data-type').value;
+            let comparisonContent = document.getElementById('comparison-content');
+            comparisonContent.innerHTML = '';
+            if (dataType === 'perf') {
+                console.log("perf")
+                removeMessage()
+                checkAndDisplayMissingData(missing_perf_data);
+                clearTable();
+                createCombinedChart(dataCount, perf_data, perf_tiu_columns, perf_dma_columns, perf_energy, perf_concat_timemark);
+            } else if (dataType === 'pld') {
+                console.log("pld")
+                removeMessage()
+                checkAndDisplayMissingData(missing_pld_data);
+                clearTable();
+                createCombinedChart(dataCount, pld_data, pld_tiu_header, pld_dma_header, pld_energy, pld_concat_timemark);
+            }
+        }
+
+        console.log("category:", category)
+        const dataCount = Object.keys(window).filter(key => key.startsWith('PERFCORE')).length;
+        console.log("dataCount", dataCount)
+        var perf_data = {};
+        var pld_data = {};
+        for (let i = 0; i < dataCount; i++) {
+            perf_data[i] = window['PERFCORE' + i];
+            pld_data[i] = window['PLDCORE' + i];
+        }
+        console.log("pld_data:", pld_data)
+        console.log("perf_data:", perf_data)
+            //populateTable();
+        generateTable(base_power_keys, base_power_values);
+        check_PLD_data(pld_data);
+        document.getElementById('data-type').addEventListener('change', function() {
+            handleDataTypeSelection(dataCount, perf_data, pld_data);
+        });
+
+        handleDataTypeSelection(dataCount, perf_data, pld_data);
+    </script>
+</body>
+
+</html>

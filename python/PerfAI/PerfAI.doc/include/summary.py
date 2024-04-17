@@ -56,15 +56,15 @@ class SubnetInfo:
 class TensorInfo:
     def __init__(self):
         self.tensor_id = -1
+        self.name = None
         self.shape = None
         self.dtype = DataType.UNKNOWN
         self.is_const = False
-        self.gaddr = -1
+        self.address = -1
         self.gsize = 0
         self.loffset = -1
         self.nslice = 0
         self.hslice = 0
-        self.l2addr = 0
         self.in_layer = None
         self.out_layers = []
 
@@ -76,6 +76,7 @@ class StaticRunNode:
         self.__class__.__run_id += 1
         self.run_id = self.__class__.__run_id
         self.type = None
+        self.core_id = -1
         self.bd_id = -1
         self.gdma_id = -1
         self.gdma_dir = None
@@ -113,6 +114,18 @@ class SummaryInfo:
         self.end_usec = None
         self.gdma_nodes = []
         self.bd_nodes = []
+
+
+class jsonObj:
+    def __init__(self):
+        self.flie_line = -1
+        self.subnet_id = 0
+        self.core_id = 0
+        self.opcode = None
+        self.bd_ids = None # (start_bd_id, end_bd_id]
+        self.dma_ids = None # (start_gdma_id, end_gdma_id]
+        self.operands = []
+        self.results = []
 
 
 class Summary:
@@ -156,11 +169,12 @@ class Summary:
         self.data_rows = []
         self.writer = writer
 
-    def load(self, layer_infos):
+    def load(self, layer_infos, chip_arch):
         total_weight_size = 0
         total_alg_ops = 0
         total_arch_ops = 0
         total_sim_cycles = 0
+        tpu_freq = float(chip_arch['TIU Frequency(MHz)'])
         for k in self.layer_summary_rows:
             self.layer_summary_map[k] = [k, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         for layer in layer_infos:
@@ -169,11 +183,11 @@ class Summary:
             layer_alg_ops = layer.alg_ops
             layer_arch_ops = layer.uarch_ops
             weight_size = layer.weight_size
-            layer_cycles = layer.asic_cycle
+            layer_cycles = layer.sim_cycle
             total_weight_size += weight_size
             total_alg_ops += layer_alg_ops
             total_arch_ops += layer_arch_ops
-            total_asic_cycles += layer_cycles
+            total_sim_cycles += layer_cycles
             item = [row_name, layer_alg_ops, 0, weight_size, layer_arch_ops, 0, 0, layer_cycles,
                     0, 0, layer_cycles]
             for i in range(1, len(item)):
@@ -184,8 +198,8 @@ class Summary:
             summary[2] = get_ratio_str_3f(summary[1], total_alg_ops)
             summary[6] = get_ratio_str_3f(summary[4], total_arch_ops)
             summary[5] = get_ratio_str_3f(summary[1], summary[4])
-            summary[8] = cycle_to_us(summary[7], 1000)
-            summary[9] = get_ratio_str_3f(summary[7], total_asic_cycles)
+            summary[8] = cycle_to_us(summary[7], tpu_freq)
+            summary[9] = get_ratio_str_3f(summary[7], total_sim_cycles)
             summary[1] = ops_to_tops(summary[1])
             summary[4] = ops_to_tops(summary[4])
             summary[10] = '-'
@@ -193,20 +207,23 @@ class Summary:
         self.data_rows.append(
             ["Overall", ops_to_tops(total_alg_ops), "100%", total_weight_size, ops_to_tops(total_arch_ops),
              total_arch_urate, "100%",
-             total_asic_cycles, cycle_to_us(total_asic_cycles, 1000), "100%", cycle_to_fps(total_asic_cycles)])
+             total_sim_cycles, cycle_to_us(total_sim_cycles, tpu_freq), "100%", cycle_to_fps(total_sim_cycles)])
 
     def write(self, chip_arch):
         network = chip_arch['network']
         platform = chip_arch['Chip Arch']
-        if platform.lower() == 'bm1690':
+        if platform.lower() == 'sg2260':
             int8_ops = 256
-            fp32_ops = '--'
+            fp32_ops = 16
         elif platform.lower() == 'bm1684x':
             int8_ops = 32
-            fp32_ops = 2
-        ddr_bw = float(chip_arch['DDR Max BW(GB/s)']) * int(chip_arch['NPU Num'])
-        tpu_freq = float(chip_arch['Frequency(MHz)']) / 1000
-        dma_freq = float(chip_arch['DDR Frequency']) / 1000
+            fp32_ops = 2.2
+        elif platform.lower() == 'a2':
+            int8_ops = 14.4
+            fp32_ops = 0.45
+        ddr_bw = round(float(chip_arch['DDR Max BW(GB/s/Core)']) * int(chip_arch['Core Num']), 2)
+        tpu_freq = float(chip_arch['TIU Frequency(MHz)']) / 1000
+        dma_freq = float(chip_arch['DMA Frequency(MHz)']) / 1000
         condition_dict = {
             'Network': [network],
             'platform': [platform],
@@ -219,10 +236,10 @@ class Summary:
         }
         npu_num = int(chip_arch['NPU Num'])
         Cube_IC_Align = int(chip_arch['Cube IC Align(8bits)'])
-        Conv_OHOW_Align = int(chip_arch['Cube OHOW Align'])
+        Conv_OHOW_Align = int(chip_arch['Cube OHOW Align(8bits)'])
         Vector_OHOW_Align = int(chip_arch['Vector OHOW Align(8bits)'])
         Conv_ops = int(npu_num * Cube_IC_Align * Conv_OHOW_Align * tpu_freq * 2 / 1000)
-        Vector_ops = int(npu_num * Vector_OHOW_Align * tpu_freq / 1000)
+        Vector_ops = round(npu_num * Vector_OHOW_Align * tpu_freq / 1000, 2)
         pooling_ops = Conv_ops / 4
         detail_spec = {
             'NPU NUM (lane)': [npu_num],

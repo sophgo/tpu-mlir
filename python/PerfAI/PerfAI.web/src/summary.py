@@ -112,31 +112,40 @@ class SummaryProcessor:
 
         ParallelismList = []
         # 计算每个核心的并行性
-        # import pdb; pdb.set_trace()
         for i in range(max_corenum):
             if self.total_time_list[i] == 0:
                 ParallelismList.append('0.00%')
             else:
-                parallelism = (Decimal(((self.tiuProcessor.tiu_cycle_list[i]/self.tiuProcessor.frequency + 
-                                        self.gdmaProcessor.dma_cycle_list[i]/self.gdmaProcessor.frequency + 
-                                        self.sdmaProcessor.dma_cycle_list[i]/self.sdmaProcessor.frequency) * 100 / self.total_time_list[i]))
-                            .quantize(Decimal("0.00")))
-                ParallelismList.append(str(parallelism) + '%')
+                tiu_time = self.tiuProcessor.tiu_cycle_list[i] / self.tiuProcessor.frequency if self.tiuProcessor.frequency != 0 else 0
+                gdma_time = self.gdmaProcessor.dma_cycle_list[i] / self.gdmaProcessor.frequency if self.gdmaProcessor.frequency != 0 else 0
+                sdma_time = self.sdmaProcessor.dma_cycle_list[i] / self.sdmaProcessor.frequency if self.sdmaProcessor.frequency != 0 else 0
+                total_cycles = tiu_time + gdma_time + sdma_time
+                if total_cycles == 0:
+                    ParallelismList.append('0.00%')
+                else:
+                    parallelism = (Decimal(total_cycles * 100 / self.total_time_list[i])
+                                .quantize(Decimal("0.00")))
+                    ParallelismList.append(str(parallelism) + '%')
+
         # 计算所有核心的并行性
         if max_corenum > 1:
             if sum(self.total_time_list[:-1]) == 0:
                 ParallelismList.append('0.00%')
             else:
-                total_parallelism = Decimal(((max(self.tiuProcessor.tiu_cycle_list[:-1])/self.tiuProcessor.frequency + 
-                                            max(self.gdmaProcessor.dma_cycle_list[:-1])/self.gdmaProcessor.frequency + 
-                                            max(self.sdmaProcessor.dma_cycle_list[:-1])/self.sdmaProcessor.frequency) / max(self.total_time_list[:-1]) * 100))
+                tiu_time = max(self.tiuProcessor.tiu_cycle_list[:-1])/self.tiuProcessor.frequency if self.tiuProcessor.frequency != 0 else 0
+                gdma_time = max(self.gdmaProcessor.dma_cycle_list[:-1]) / self.gdmaProcessor.frequency if self.gdmaProcessor.frequency != 0 else 0
+                sdma_time = max(self.sdmaProcessor.dma_cycle_list[:-1]) / self.sdmaProcessor.frequency if self.sdmaProcessor.frequency != 0 else 0
+                total_cycles = tiu_time + gdma_time + sdma_time
+                total_parallelism = Decimal((total_cycles / max(self.total_time_list[:-1]) * 100))
                 ParallelismList.append(str(total_parallelism.quantize(Decimal("0.00"))) + '%')
         else:
             if sum(self.total_time_list[:-1]) == 0:
                 ParallelismList.append('0.00%')
             else:
-                total_parallelism = Decimal(((max(self.tiuProcessor.tiu_cycle_list[:-1])/self.tiuProcessor.frequency + 
-                                             max(self.gdmaProcessor.dma_cycle_list[:-1])/self.gdmaProcessor.frequency) / max(self.total_time_list[:-1]) * 100))
+                tiu_time = max(self.tiuProcessor.tiu_cycle_list[:-1])/self.tiuProcessor.frequency if self.tiuProcessor.frequency != 0 else 0
+                gdma_time = max(self.gdmaProcessor.dma_cycle_list[:-1]) / self.gdmaProcessor.frequency if self.gdmaProcessor.frequency != 0 else 0
+                total_cycles = tiu_time + gdma_time
+                total_parallelism = Decimal((total_cycles / max(self.total_time_list[:-1]) * 100))
                 ParallelismList.append(str(total_parallelism.quantize(Decimal("0.00"))) + '%')
         self.data[0] = CoreIdList
         self.data[1] = ParallelismList
