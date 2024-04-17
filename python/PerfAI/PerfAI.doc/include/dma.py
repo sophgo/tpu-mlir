@@ -30,11 +30,11 @@ class Dma(object):
         """
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Stall Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)', 'L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
                         'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
-                        'src_nstride', 'src_cstride', 'src_wstride', 'src_hstride',
+                        'src_nstride', 'src_cstride', 'src_hstride', 'src_wstride',
                         'dst_nstride', 'dst_cstride', 'dst_hstride', 'dst_wstride',
                         'nchw_copy', 'stride_enable', 'src_data_format', 'cmd_type',
                         'index_csize', 'index_hsize', 'index_cstride', 'index_hstride',
@@ -123,6 +123,14 @@ class Dma(object):
                             val = float(val)
                         reg_dict[attr] = val
                         idx += 1
+                if idx != 0:
+                    k = int(reg_dict['Cmd Id'])
+                    if k in dma_layer_map.keys():
+                        layer_id_name = dma_layer_map[k]
+                    else:
+                        layer_id_name = ['-', '-']
+                    reg_dict['Layer Id'] = layer_id_name[0]
+                    reg_dict['Layer Name'] = layer_id_name[1]
                 self.reg_list.append(reg_dict)
         self.height = len(self.reg_list)
 
@@ -170,7 +178,7 @@ class Dma(object):
                                                     if self.chip_arch_dict else 0
         self.ddr_avg_burst_length = get_ratio_float_2f(self.ddr_burst_length_sum, self.ddr_xact_cnt)
         self.perf_dict = {
-            'totalDmaCycle': [self.dma_cycle],
+            'totalDmaCycle': [self.working_cycle],
             'workingCycle': [self.working_cycle],
             'totalStallCycle': [self.stall_cycle],
             'stallCycleRatio': [get_ratio_str_2f_zero(self.stall_cycle, self.dma_cycle)],
@@ -249,7 +257,7 @@ class Dma(object):
             cell.fill = DetailsStyle.content_pattern
             cell.font = DetailsStyle.title_header_font
         # set content style
-        content_end_cols = 18
+        content_end_cols = 19
         for w in range(1, content_end_cols + 1):
             for h in range(7, len(df) + 2):
                 # set key content border style
@@ -258,38 +266,37 @@ class Dma(object):
                 ws.cell(h, w).alignment = DetailsStyle.right_align
                 ws.cell(h, w).font = DetailsStyle.title_font
         stall_cycle_pos = 12
-        bandwidth_pos = 13
-        tsk_typ_pos = 41
+        ddr_bandwidth_pos = 13
+        l2m_bandwidth_pos = 14
+        tsk_typ_pos = 42
         dma_cycle_pos = 11
-        avg_burst_length_pos = 15
-        direction_pos = 14
-        data_type_pos = 16
+        avg_burst_length_pos = 16
+        direction_pos = 15
+        data_type_pos = 17
         for h in range(5, len(df)):
-            ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s)']),\
+            ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']),\
             float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst']), int(chip_arch['L2 Max Burst'])
             # bandwidth
             if int(ws.cell(h + 2, tsk_typ_pos).value) == 6 or ws.cell(h + 2, direction_pos).value == None:
                 # sys do not have bandwidth
                 continue
             else:
-                if 'DDR' in ws.cell(h + 2, direction_pos).value:
-                    if float(ws.cell(h + 2, bandwidth_pos).value) < (ddr_max_bd * 0.5):
-                        ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.red_light
-                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
-                    elif float(ws.cell(h + 2, bandwidth_pos).value) < (ddr_max_bd * 0.75):
-                        ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.yellow_light
-                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
-                elif 'L2' in ws.cell(h + 2, direction_pos).value:
-                    if float(ws.cell(h + 2, bandwidth_pos).value) < (l2_max_bd * 0.5):
-                        ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.red_light
-                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
-                    elif float(ws.cell(h + 2, bandwidth_pos).value) < (l2_max_bd * 0.75):
-                        ws.cell(h + 2, bandwidth_pos).fill = DetailsStyle.yellow_light
-                        if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
-                            ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
+                if float(ws.cell(h + 2, ddr_bandwidth_pos).value) < (ddr_max_bd * 0.5):
+                    ws.cell(h + 2, ddr_bandwidth_pos).fill = DetailsStyle.red_light
+                    if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                        ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
+                elif float(ws.cell(h + 2, ddr_bandwidth_pos).value) < (ddr_max_bd * 0.75):
+                    ws.cell(h + 2, ddr_bandwidth_pos).fill = DetailsStyle.yellow_light
+                    if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                        ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
+                if float(ws.cell(h + 2, l2m_bandwidth_pos).value) < (l2_max_bd * 0.5):
+                    ws.cell(h + 2, l2m_bandwidth_pos).fill = DetailsStyle.red_light
+                    if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                        ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
+                elif float(ws.cell(h + 2, l2m_bandwidth_pos).value) < (l2_max_bd * 0.75):
+                    ws.cell(h + 2, l2m_bandwidth_pos).fill = DetailsStyle.yellow_light
+                    if int(ws.cell(h + 2, dma_cycle_pos).value) < 1000:
+                        ws.cell(h + 2, dma_cycle_pos).fill = DetailsStyle.red_light
             # avg burst length
             if 'DDR' in ws.cell(h + 2, direction_pos).value:
                 if float(ws.cell(h + 2, avg_burst_length_pos).value) < ddr_max_bl:
@@ -303,13 +310,23 @@ class Dma(object):
             # stall cycle
             if int(ws.cell(h + 2, stall_cycle_pos).value) > 0:
                 ws.cell(h + 2, stall_cycle_pos).fill = DetailsStyle.red_light
-        h, w = 4, bandwidth_pos
-        ws.cell(h, w).value = 'BW<75%'
+        h, w = 4, ddr_bandwidth_pos
+        ws.cell(h, w).value = 'DDR_BW<75%'
         ws.cell(h, w).fill = DetailsStyle.yellow_light
         ws.cell(h, w).font = DetailsStyle.title_font
         ws.cell(h, w).alignment = DetailsStyle.center_align
-        h, w = 5, bandwidth_pos
-        ws.cell(h, w).value = 'BW<50%'
+        h, w = 5, ddr_bandwidth_pos
+        ws.cell(h, w).value = 'DDR_BW<50%'
+        ws.cell(h, w).fill = DetailsStyle.red_light
+        ws.cell(h, w).font = DetailsStyle.title_font
+        ws.cell(h, w).alignment = DetailsStyle.center_align
+        h, w = 4, l2m_bandwidth_pos
+        ws.cell(h, w).value = 'L2M_BW<75%'
+        ws.cell(h, w).fill = DetailsStyle.yellow_light
+        ws.cell(h, w).font = DetailsStyle.title_font
+        ws.cell(h, w).alignment = DetailsStyle.center_align
+        h, w = 5, l2m_bandwidth_pos
+        ws.cell(h, w).value = 'L2M_BW<50%'
         ws.cell(h, w).fill = DetailsStyle.red_light
         ws.cell(h, w).font = DetailsStyle.title_font
         ws.cell(h, w).alignment = DetailsStyle.center_align

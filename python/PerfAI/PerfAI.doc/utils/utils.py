@@ -74,7 +74,7 @@ def get_dma_trace(addr):
             return 'LMEM'
         else:
             return 'None'
-    elif CHIP_ARCH == "bm1690":
+    elif CHIP_ARCH == "sg2260":
         addr = int(addr)
         if (addr >> 5) & 0x4 == 0x4:
             return 'DDR'
@@ -266,6 +266,20 @@ def enum_cast(value, enum_type, default_val=-1):
         return enum_type(default_val)
 
 
+def get_memory_type(s):
+    s = s[1:-1]
+    shape = s.split('x')[:-1]
+    data_type = s.split('x')[-1]
+    shape = [int(num) for num in shape]
+    return shape, data_type
+
+
+def get_layer_info_by_opcode(s):
+    e_type = s.split('.')[0].upper()
+    l_name = s.split('.')[1]
+    return e_type, l_name
+
+
 def calc_bandwidth(num_bytes, dur_usec):
     bandwidth = num_bytes / dur_usec * 1e6
     if bandwidth > 1e9:
@@ -288,6 +302,10 @@ def get_ratio_str_2f_zero(x, y):
     y = int(y)
     return '%.2f%%' % (x / y * 100) if y != 0 else "0.00%"
 
+def get_ratio_str_2f_zero_f(x, y):
+    x = float(x)
+    y = float(y)
+    return '%.2f%%' % (x / y * 100) if y != 0 else "0.00%"
 
 def get_ratio_float_2f(x, y):
     x = int(x)
@@ -299,6 +317,13 @@ def get_ratio_str_3f(x, y):
     x = int(x)
     y = int(y)
     return '%.3f%%' % (x / y * 100) if y != 0 else "--"
+
+
+
+def get_ratio_float_6f(x, y):
+    x = int(x)
+    y = int(y)
+    return round(x / y, 6) * 1000 if y != 0 else 0
 
 
 def cycle_to_us(cycles, frequency):

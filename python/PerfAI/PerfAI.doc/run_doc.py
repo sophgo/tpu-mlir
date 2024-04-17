@@ -13,7 +13,7 @@ from src.generator.details import generate_details
 from src.generator.layer import generate_layer
 from src.generator.style import set_details_style, set_summary_style, set_layer_style, set_sim_summary_style
 from src.generator.summary import generate_summary
-from src.parser.global_profile_parser import GlobalProfileParser
+from src.parser.exfile_parser import GlobalProfileParser
 
 def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0):
     input_fold = input if input[-1] == '/' else input + '/'
@@ -81,12 +81,12 @@ if __name__ == "__main__":
         "cores",
         type=int,
         default=1,
-        help="The number of cores, if bm1684x set 1, set 2 for A2, set 8 for bm1690.",
+        help="The number of cores, if bm1684x set 1, set 2 for A2, set 8 for sg2260.",
     )
     parser.add_argument(
         "--output",
         type=str,
-        default="PerAI_output.xlsx",
+        default="PerfAI_output.xlsx",
         help="The output file path.",
     )
     parser.add_argument(

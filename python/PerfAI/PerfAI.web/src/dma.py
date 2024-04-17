@@ -26,9 +26,9 @@ class DMA(): #GDMA/SDMA/CDMA
         self.total_burst_length = 0
         self.total_xact_cnt = 0
         self.frequency = 0
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
+        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Stall Cycle', 'Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
+                        'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)','L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
                         'index_shape', 'src_shape', 'dst_shape',
                         'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
@@ -50,9 +50,10 @@ class DMA(): #GDMA/SDMA/CDMA
             self.dmaType = 'TDMA'
             return '3'
 
-    def process_file(self):
+    def process_file(self, layer_map):
         engineId = self.dma_engine_type()
-        file_name = f"{self.dirpath}/{self.dmaType.lower()}RegInfo_0.txt"
+        # file_name = f"{self.dirpath}/{self.dmaType.lower()}RegInfo_0.txt"
+        file_name = os.path.join(self.dirpath,f'{self.dmaType.lower()}RegInfo_0.txt')
         if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
             with open(file_name, "r") as f:
                 lines = f.readlines()
@@ -73,13 +74,13 @@ class DMA(): #GDMA/SDMA/CDMA
                     self.actual_corenum += 1
             dmaDf_list = [] #list of tiu dataframes
             for coreId in range(self.actual_corenum):
-                dmaDf_list.append(self.process_data(coreId,engineId))
+                dmaDf_list.append(self.process_data(coreId,engineId,layer_map))
             return dmaDf_list
         else:
             self.dma_cycle_list.append(0)
             return []
 
-    def process_data(self,coreId,engineId):
+    def process_data(self, coreId, engineId, layer_map):
         curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
         new_reglist = []
         with open(curDmaRegFile) as f:
@@ -95,6 +96,16 @@ class DMA(): #GDMA/SDMA/CDMA
             for row in rows:
                 if f"__{self.dmaType}_REG_INFO__" in row: #TDMA/CDMA
                     if idx != 0:
+                        k = int(dmaRegDict['Cmd Id'])
+                        layer_info = ['-', '-','-','-']
+                        if (k,coreId) in layer_map.keys():
+                            layer_info = layer_map[(k,coreId)]
+                        if all(map(lambda x: isinstance(x, float) and math.isnan(x), layer_info)):
+                            layer_info = ['-', '-', '-', '-']
+                        dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
+                        dmaRegDict['Layer Name'] = layer_info[1]
+                        dmaRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
+                        dmaRegDict['Subnet Type'] = layer_info[3]
                         new_reglist.append(dmaRegDict)
                     dmaRegDict = dict.fromkeys(fieldList, '')
                 else:
@@ -103,6 +114,14 @@ class DMA(): #GDMA/SDMA/CDMA
                     val = fields[1][:-1]
                     dmaRegDict[attr] = val
                 idx += 1
+            k = int(dmaRegDict['Cmd Id'])
+            layer_info = ['-', '-','-','-']
+            if (k,coreId) in layer_map.keys():
+                layer_info = layer_map[(k,coreId)]
+            dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
+            dmaRegDict['Layer Name'] = layer_info[1]
+            dmaRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
+            dmaRegDict['Subnet Type'] = layer_info[3]
             new_reglist.append(dmaRegDict)
 
         temp = []
@@ -147,8 +166,13 @@ class DMA(): #GDMA/SDMA/CDMA
                 regDict['AvgBurstLength'] = 0
                 regDict['Non32ByteRatio'] = 0
                 regDict['MaskWriteRatio'] = 0
-            regDict['Start Cycle'] = get_realtime_from_cycle(int(regDict['Start Cycle']),self.frequency)
-            regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency)
+            regDict['Start Cycle'] = int(regDict['Start Cycle'])
+            regDict['End Cycle'] = int(regDict['End Cycle'])
+            regDict['Asic Cycle'] = int(regDict['Asic Cycle'])
+            # regDict['Start Cycle'] = get_realtime_from_cycle(int(regDict['Start Cycle']),self.frequency)
+            # regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency)
+            regDict['DDR Bandwidth(GB/s)'] = round(float(regDict['DDR Bandwidth(GB/s)']), 2)
+            regDict['L2M Bandwidth(GB/s)'] = round(float(regDict['L2M Bandwidth(GB/s)']), 2)
             startTime = min(startTime, int(regDict['Start Cycle']))
             endTime = max(endTime, int(regDict['End Cycle']))
             totalInstRegList.append(regDict)

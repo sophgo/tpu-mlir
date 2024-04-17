@@ -21,10 +21,11 @@ class TIU:
         self.total_alg_ops_list = []
         self.uArach_rate_list = []
         self.total_uarch_ops_list = []
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
-                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Alg Ops',
+        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type',
+                        'Function Type', 'Function Name',
+                        'Alg Cycle', 'Alg Ops','Asic Cycle', 'Start Cycle', 'End Cycle',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
-                        'Initial Cycle Ratio', 'Data Type', 'des_cmd_id_dep',
+                        'Initial Cycle Ratio', 'Data Type', 'Sim Power(W)','des_cmd_id_dep',
                         'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
                         'des_res0_n_str', 'des_res0_c_str', 'des_res0_h_str', 'des_res0_w_str',
                         'des_opd0_n', 'des_opd0_c', 'des_opd0_h', 'des_opd0_w',
@@ -46,8 +47,9 @@ class TIU:
                         'des_opt_kernel_rotate', 'des_res_op_x_str', 'des_res_op_y_str', 'des_opd0_x_ins0',
                         'des_tsk_opd_num', 'des_opd0_dn_pad', 'des_intr_en', 'des_opt_relu', 'des_pwr_step', 'Msg Id', 'Sd\Wt Count']
 
-    def process_file(self):
-        file_name = f"{self.dirpath}/tiuRegInfo_0.txt"
+    def process_file(self, layer_map):
+        # file_name = f"{self.dirpath}/tiuRegInfo_0.txt"
+        file_name = os.path.join(self.dirpath,'tiuRegInfo_0.txt')
         if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
             with open(file_name, "r") as f:
                 lines = f.readlines()
@@ -69,13 +71,13 @@ class TIU:
             # self.actual_corelist = [str[i] for i in range(0, actualCoreNum)]
             tiuDf_list = [] #list of tiu dataframes
             for coreId in range(self.actual_corenum):
-                tiuDf_list.append(self.process_data(coreId))
+                tiuDf_list.append(self.process_data(coreId, layer_map))
             return tiuDf_list
         else:
             self.tiu_cycle_list.append(0)
             return []
 
-    def process_data(self, coreId):
+    def process_data(self, coreId, layer_map):
         TiuCycle = 0
         algTotalCycle = 0
         algTotalOps = 0
@@ -101,8 +103,17 @@ class TIU:
             for row in rows:
                 if "__TIU_REG_INFO__" in row:
                     if idx != 0:
+                        k = int(tiuRegDict['Cmd Id'])
+                        layer_info = ['-', '-','-','-']
+                        if (k,coreId) in layer_map.keys():
+                            layer_info = layer_map[(k,coreId)]
+                        tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
+                        tiuRegDict['Layer Name'] = layer_info[1]
+                        tiuRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
+                        tiuRegDict['Subnet Type'] = layer_info[3]
                         new_regList.append(tiuRegDict)
                         tiuRegDict = dict.fromkeys(fieldList, '')
+
                 elif "\t" not in row:
                     tiuRegDict['Function Type'] = row[:-2]
                 else:
@@ -111,10 +122,18 @@ class TIU:
                     val = fields[1][:-1]
                     tiuRegDict[attr] = val
                 idx += 1
+            k = int(tiuRegDict['Cmd Id'])
+            layer_info = ['-', '-','-','-']
+            if (k,coreId) in layer_map.keys():
+                layer_info = layer_map[(k,coreId)]
+            tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
+            tiuRegDict['Layer Name'] = layer_info[1]
+            tiuRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
+            tiuRegDict['Subnet Type'] = layer_info[3]
             new_regList.append(tiuRegDict)
 
         for i in range(len(new_regList)):
-            regDict = new_regList[i]
+            regDict = new_regList[i] #tiuRegDict
             if regDict['Asic Cycle'].isnumeric() and not (regDict['des_tsk_typ'] == '15' and regDict['des_tsk_eu_typ'] == '9'):
                 TiuCycle += int(regDict['Asic Cycle'])
             if regDict['Alg Cycle'].isnumeric():
@@ -123,16 +142,20 @@ class TIU:
                 algTotalOps += int(regDict['Alg Ops'])
             if regDict['uArch Ops'].isnumeric():
                 uArchTotalOps += int(regDict['uArch Ops'])
-            if data_type_dict[regDict['des_opt_opd0_prec']].isnumeric():
-                regDict['Data Type'] = data_type_dict[regDict['des_opt_res0_prec']] + \
+            if regDict['des_opt_opd0_prec'].isnumeric():
+                regDict['Data Type'] = data_type_dict[regDict['des_opt_opd0_prec']] + \
                                         ' -> ' + data_type_dict[regDict['des_opt_res0_prec']]
             else:
                 regDict['Data Type'] = data_type_dict[regDict['des_opt_res0_prec']] + \
                                         ' -> ' + data_type_dict[regDict['des_opt_res0_prec']]
-            regDict['Start Cycle'] = get_realtime_from_cycle(int(regDict['Start Cycle']),self.frequency) #ns
-            regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency) #ns
-            startTime = min(startTime, int(regDict['Start Cycle']))
-            endTime = max(endTime, int(regDict['End Cycle']))
+            regDict['Start Cycle'] = int(regDict['Start Cycle'])
+            regDict['End Cycle'] = int(regDict['End Cycle'])
+            regDict['Asic Cycle'] = int(regDict['Asic Cycle'])
+            # regDict['Start Time'] = get_realtime_from_cycle(regDict['Start Cycle'],self.frequency) #ns
+            # regDict['End Time'] = get_realtime_from_cycle(regDict['End Cycle'],self.frequency) #ns
+
+            startTime = min(startTime, regDict['Start Cycle'])
+            endTime = max(endTime, regDict['End Cycle'])
             totalInstRegList.append(regDict)
         self.total_time_dict["start"].append(startTime)
         self.total_time_dict["end"].append(endTime)
@@ -164,7 +187,7 @@ class TIU:
             ['des_opd0_n', 'des_opd0_c', 'des_opd0_h', 'des_opd0_w', 'des_opt_opd0_prec', 'des_opd0_size'],
             ['des_opd1_n', 'des_opd1_c', 'des_opd1_h', 'des_opd1_w', 'des_opt_opd1_prec', 'des_opd1_size']
         ]
-        # 初始化新列
+
         for _, _, _, _, _, new_col in groups:
             tiuDf[new_col] = None
         for idx, row in tiuDf.iterrows():

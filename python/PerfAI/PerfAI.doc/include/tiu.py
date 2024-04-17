@@ -37,12 +37,12 @@ class Tiu(object):
         self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
                         'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Avg Cycle Last 200', 'Alg Ops',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
-                        'Initial Cycle Ratio', 'Data Type', 'des_cmd_id_dep',
+                        'Initial Cycle Ratio', 'Data Type', 'Sim Power(W)', 'des_cmd_id_dep',
                         'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
                         'des_res0_n_str', 'des_res0_c_str', 'des_res0_h_str', 'des_res0_w_str',
                         'des_opd0_n', 'des_opd0_c', 'des_opd0_h', 'des_opd0_w',
                         'des_opd0_n_str', 'des_opd0_c_str', 'des_opd0_h_str', 'des_opd0_w_str',
-                        'des_opd1_c', 'des_opd1_h', 'des_opd1_w', 'des_opd1_n_str', 'des_opd1_c_str', 'des_opd1_h_str',
+                        'des_opd1_n', 'des_opd1_c', 'des_opd1_h', 'des_opd1_w', 'des_opd1_n_str', 'des_opd1_c_str', 'des_opd1_h_str',
                         'des_opd1_w_str',
                         'des_opd2_n_str', 'des_res0_addr', 'des_res1_addr', 'des_opd0_addr', 'des_opd1_addr',
                         'des_opd2_addr',
@@ -67,20 +67,20 @@ class Tiu(object):
         self.height = None
         self.width = len(self.columns)
         self.sheet_color = '008000'
-        # The architecture parameters of the BM1690 are set to the initial values
+        # The architecture parameters of the SG2260 are set to the initial values
         # It will be changed as the chip architecture parameters change
         self.detail_spec = {
                             'Platform': ['simulator'],
-                            'CHIP ARCH': ['bm1690'],
+                            'CHIP ARCH': ['sg2260'],
                             'Core Num': ['64'],
                             'NPU Num': ['64'],
                             'Cube IC Align(8bits)': ['32'],
                             'Cube OHOW Align': ['8'],
                             'Vector OHOW Align(8bits)': ['128'],
-                            'Tiu Frequency': ['1000'],
-                            'DMA Frequency': ['1000'],
+                            'Tiu Frequency(MHz)': ['1000'],
+                            'DMA Frequency(MHz)': ['1000'],
                             'Dram Bandwidth': ['8533'],
-                            'TPU Lmem Size': ['16777216']}
+                            'TPU Lmem Size(MiB)': ['16777216']}
         self.kpi_desc = pd.DataFrame({'Field': [
             'uArch Rate',
             'Bank Conflict Ratio',
@@ -107,6 +107,7 @@ class Tiu(object):
         self.alg_total_cycle = 0
         self.alg_total_ops = 0
         self.uArch_total_ops = 0
+        self.total_power = 0.0
         self.wait_msg_time = 0
         self.chip_arch_dict = None
 
@@ -165,6 +166,14 @@ class Tiu(object):
                         idx += 1
                 if 'Platform' not in chip_arch_dict.keys():
                     chip_arch_dict['Platform'] = 'pmu'
+                if idx != 0:
+                    k = int(reg_dict['Cmd Id'])
+                    if k in tiu_layer_map.keys():
+                        layer_id_name = tiu_layer_map[k]
+                    else:
+                        layer_id_name = ['-', '-']
+                    reg_dict['Layer Id'] = layer_id_name[0]
+                    reg_dict['Layer Name'] = layer_id_name[1]
                 self.reg_list.append(reg_dict)
                 self.detail_spec = {
                     'Platform': [chip_arch_dict['Platform']],
@@ -172,12 +181,12 @@ class Tiu(object):
                     'Core Num': [chip_arch_dict['Core Num']],
                     'NPU Num': [chip_arch_dict['NPU Num']],
                     'Cube IC Align(8bits)': [chip_arch_dict['Cube IC Align(8bits)']],
-                    'Cube OHOW Align': [chip_arch_dict['Cube OHOW Align']],
+                    'Cube OHOW Align': [chip_arch_dict['Cube OHOW Align(8bits)']],
                     'Vector OHOW Align(8bits)': [chip_arch_dict['Vector OHOW Align(8bits)']],
                     'TIU Frequency(MHz)': [chip_arch_dict['TIU Frequency(MHz)']],
                     'DMA Frequency(MHz)': [chip_arch_dict['DMA Frequency(MHz)']],
-                    'DDR Frequency(MHz)': [chip_arch_dict['DDR Frequency']],
-                    'TPU Lmem Size': [chip_arch_dict['Tpu Lmem Size']]}
+                    'DDR Frequency(GHz)': [chip_arch_dict['DDR Frequency(GHz)']],
+                    'TPU Lmem Size(MiB)': [chip_arch_dict['TPU Lmem Size(MiB)']]}
         self.height = len(self.reg_list)
         self.chip_arch_dict = chip_arch_dict
         return chip_arch_dict
@@ -190,9 +199,10 @@ class Tiu(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             continous_gap = 200
-            if i < continous_gap - 1:
+            if int(reg_dict['Cmd Id']) < continous_gap:
                 reg_dict['Avg Cycle Last 200'] = round(int(reg_dict['End Cycle']) / int(reg_dict['Cmd Id']))
             else:
+                assert(i >= continous_gap - 1)
                 reg_dict['Avg Cycle Last 200'] = round((reg_dict['End Cycle'] - self.reg_list[i-199]['Start Cycle']) / continous_gap)
             if not (reg_dict['des_tsk_typ'] == 15 and reg_dict['des_tsk_eu_typ'] == 9):
                 # wait msg time do not add to tiu cycles
@@ -210,6 +220,7 @@ class Tiu(object):
                 self.wait_msg_time += int(reg_dict['Asic Cycle'])
             self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
             self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
+            self.total_power += float(reg_dict['Sim Power(W)'])
             if reg_dict['Function Type'] not in self.perf_dict.keys():
                 func_dict = {
                     'Function Name': reg_dict['Function Type'],
@@ -222,7 +233,9 @@ class Tiu(object):
                     'uArch URate': 0,
                     'uArch Ops Ratio': 0,
                     'Asic Cycle': int(reg_dict['Asic Cycle']),
-                    'Asic Cycle Ratio': 0
+                    'Asic Cycle Ratio': 0,
+                    'Sim Power': float(reg_dict['Sim Power(W)']),
+                    'Sim Power Ratio': 0
                 }
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             else:
@@ -232,6 +245,7 @@ class Tiu(object):
                 func_dict['uArch Ops'] += int(reg_dict['uArch Ops'])
                 func_dict['Alg Cycle'] += int(reg_dict['Alg Cycle'])
                 func_dict['Asic Cycle'] += int(reg_dict['Asic Cycle'])
+                func_dict['Sim Power'] += float(reg_dict['Sim Power(W)'])
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             self.total_instr += 1
         self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)']) if self.chip_arch_dict else 0
@@ -247,6 +261,8 @@ class Tiu(object):
         Write register information and kpi field to Excel.
         :return: None
         """
+        if len(self.reg_list) <= 0:
+            return
         df = pd.DataFrame(self.reg_list)
         new_cols = []
         for col in self.columns:
@@ -263,6 +279,7 @@ class Tiu(object):
             'algTotalOps': [self.alg_total_ops],
             'totalUArchOps': [self.uArch_total_ops],
             'uArchURate': [get_ratio_str_2f_zero(self.alg_total_ops, self.uArch_total_ops)],
+            'totalTiuPower(W)': [self.total_power],
             'waitMsgTotalTime': [self.wait_msg_time]
         }
         for func in self.perf_dict.keys():
@@ -273,6 +290,7 @@ class Tiu(object):
             tmp_func_dict['uArch URate'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'], tmp_func_dict['uArch Ops'])
             tmp_func_dict['uArch Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['uArch Ops'], self.uArch_total_ops)
             tmp_func_dict['Asic Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Asic Cycle'], self.tiu_cycle)
+            tmp_func_dict['Sim Power Ratio'] = get_ratio_str_2f_zero_f(tmp_func_dict['Sim Power'], self.total_power)
             self.perf_dict[func] = tmp_func_dict
             self.stati_list.append(tmp_func_dict)
         self.perf_dict['Overall'] = {
@@ -285,6 +303,8 @@ class Tiu(object):
             'uArch Ops': self.uArch_total_ops,
             'uArch URate': get_ratio_str_2f_zero(self.alg_total_ops, self.uArch_total_ops),
             'uArch Ops Ratio': '100.00%',
+            'Sim Power': self.total_power,
+            'Sim Power Ratio': '100.00%',
             'Asic Cycle': self.tiu_cycle,
             'Asic Cycle Ratio': '100.00%'
         }
@@ -300,10 +320,10 @@ class Tiu(object):
                                                 startcol=1,
                                                 engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
-                                                    startcol=13,
+                                                    startcol=15,
                                                     engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.kpi_desc).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=3,
-                                                 startcol=13,
+                                                 startcol=15,
                                                  engine='xlsxwriter', float_format='%g')
             pd.DataFrame(self.stati_list).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5,
                                                    startcol=1,
@@ -330,14 +350,14 @@ class Tiu(object):
         ws = wb[sheet_name]
         ws.cell(1, 1).value = 'Performance'
         ws.cell(2, 1).value = 'Summary'
-        ws.cell(1, 13).value = 'Detail Spec'
+        ws.cell(1, 15).value = 'Detail Spec'
         ws.cell(6, 1).value = 'Statistics'
-        ws.cell(4, 13).value = 'Description'
-        for h, w in zip([1, 2, 1, 6, 4], [1, 1, 13, 1, 13]):
+        ws.cell(4, 15).value = 'Description'
+        for h, w in zip([1, 2, 1, 6, 4], [1, 1, 15, 1, 15]):
             ws.cell(h, w).fill = detail_style.title_pattern
             ws.cell(h, w).font = detail_style.title_font
         summary_start_cols = 2
-        summary_end_cols = summary_start_cols + 6
+        summary_end_cols = summary_start_cols + 7
         for w in range(summary_start_cols, summary_end_cols):
             # summary title style
             ws.cell(1, w).fill = detail_style.title_header_pattern
@@ -345,7 +365,7 @@ class Tiu(object):
             # summary content style
             ws.cell(2, w).fill = detail_style.title_content_pattern
             ws.cell(2, w).font = detail_style.title_font
-        detail_start_cols = summary_end_cols + 6
+        detail_start_cols = summary_end_cols + 7
         detail_end_cols = detail_start_cols + 11
         for w in range(detail_start_cols, detail_end_cols):
             # detail title style
@@ -355,7 +375,7 @@ class Tiu(object):
             ws.cell(2, w).fill = detail_style.title_content_pattern
             ws.cell(2, w).font = detail_style.title_font
         perf_start_cols = summary_start_cols
-        perf_end_cols = perf_start_cols + 11
+        perf_end_cols = perf_start_cols + 13
         perf_start_rows = 6
         perf_df_len = df.query('totalTiuCycle == "Core Id"').index[0] - perf_start_rows - 1
         for w in range(perf_start_cols, perf_end_cols):
@@ -382,7 +402,7 @@ class Tiu(object):
             cell.fill = detail_style.content_pattern
             cell.font = detail_style.title_header_font
         # set content style
-        content_end_cols = 18
+        content_end_cols = 19
         content_start_rows = 8 + perf_df_len
         initial_cycle_pos = 17
         uArch_ratio_pos = 15
@@ -435,7 +455,7 @@ class Tiu(object):
             ws.cell(h, w).alignment = detail_style.center_align
         for start_rows, end_rows, start_cols, end_cols in zip([1, 1, 6, 4],
                                                               [3, 3, 7 + perf_df_len, 10],
-                                                              [2, 14, 2, 14], [8, 25, 13, 16]):
+                                                              [2, 16, 2, 16], [9, 27, 15, 18]):
             for h in range(start_rows, end_rows):
                 for w in range(start_cols, end_cols):
                     # set all header border style
@@ -462,7 +482,7 @@ class Tiu(object):
             ws.column_dimensions[letter].width = collen * 1.05
         desc_start_rows, desc_end_rows = 5, 9
         for row in range(desc_start_rows, desc_end_rows):
-            ws.merge_cells(start_row=row, end_row=row, start_column=15, end_column=28)
+            ws.merge_cells(start_row=row, end_row=row, start_column=17, end_column=30)
         ws.sheet_properties.tabColor = '008000'
         if frozen:
             _cell = ws.cell(content_start_rows + 2, 1)

@@ -117,18 +117,19 @@ DMA_ARCH = {
     "Platform": "ASIC",
     "Core Num": 2,
     "NPU Num": 32,
-    "Tpu Lmem Size": 4194304,
+    "TPU Lmem Size(MiB)": 4194304,
     "Tpu Lmem Addr Width(bits)": 17,
     "Tpu Bank Addr Width(bits)": 13,
     "Execution Unit Number(int8)": 16,
     "Bus Max Burst": 16,
     "L2 Max Burst": 0,
     "Bus Bandwidth": 64,
-    "DDR Frequency": 4266,
-    "DDR Max BW(GB/s)": 30.7152,
+    "DDR Frequency(GHz)": 4266,
+    "DDR Max BW(GB/s/Core)": 32,
     "L2 Max BW(GB/s)": 0,
     "Cube IC Align(8bits)": 32,
-    "Cube OHOW Align": 4,
+    "Cube OHOW Align(8bits)": 4,
+    "Cube OHOW Align(16bits)": 4,
     "Vector OHOW Align(8bits)": 16,
     "TIU Frequency(MHz)": 900,
     "DMA Frequency(MHz)": 750}
@@ -204,7 +205,7 @@ def get_dma_info(monitor_info, reg_info):
         monitor_info.fmem_ar_bytes + monitor_info.fmem_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
     dma_info["DMA data size(B)"] = max(
         dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
-    dma_info["Bandwidth(GB/s)"] = max(
+    dma_info["DDR Bandwidth(GB/s)"] = max(
         dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
 
     # not implemented
@@ -212,7 +213,7 @@ def get_dma_info(monitor_info, reg_info):
     dma_info["gmem_avg_burst_length"] = 0
     dma_info["lmem_bl_sum"] = 0
     dma_info["lmem_avg_burst_length"] = 0
-
+    dma_info['L2M Bandwidth(GB/s)'] = 0
     # no need
     dma_info["lmem_msk_wr_cnt"] = 0
     dma_info["gmem_msk_wr_cnt"] = 0
@@ -262,7 +263,9 @@ def get_tiu_info(monitor_info, reg_info):
         _reg_info.initial_cycle() / (tiu_info0["Asic Cycle"] + 1e-4))
     tiu_info0["Bank Conflict Ratio"] = "{:.1%}".format(
         _reg_info.bank_conflict_cycle() / (tiu_info0["Asic Cycle"] + 1e-4))
+
     # not implemented
+    tiu_info0['Sim Power(W)'] = 0
     return tiu_info0, tiu_info1
 
 

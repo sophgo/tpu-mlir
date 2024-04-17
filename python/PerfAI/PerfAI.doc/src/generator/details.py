@@ -34,20 +34,23 @@ def get_engine_layer(g_info):
     tiu_layer_map = dict()
     gdma_layer_map = dict()
     if isinstance(g_info, GlobalInfo):
-        for tiu_node in g_info.subnet_list[0].bd_nodes:
-            k = tiu_node.bd_id
-            if k in tiu_layer_map.keys():
-                print('ERROR! Tiu id is not unique.')
-                assert 0
-            else:
-                tiu_layer_map[k] = [tiu_node.layer.layer_id, tiu_node.layer.layer_type]
-        for gdma_node in g_info.subnet_list[0].gdma_nodes:
-            k = gdma_node.gdma_id - 1
-            if k in gdma_layer_map.keys():
-                print('ERROR! Gdma id is not unique.')
-                assert 0
-            else:
-                gdma_layer_map[k] = [gdma_node.layer.layer_id, gdma_node.layer.layer_type]
+        for layer_info in g_info.subnet_list[0].layer_list:         
+            for tiu_node in layer_info.bd_nodes:
+                k = tiu_node.bd_id
+                c = tiu_node.core_id
+                if (k,c) in tiu_layer_map.keys():
+                    print('ERROR! Tiu id is not unique.')
+                    assert 0
+                else:
+                    tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_name]
+            for gdma_node in layer_info.gdma_nodes:
+                k = gdma_node.gdma_id
+                c = gdma_node.core_id
+                if (k,c) in gdma_layer_map.keys():
+                    print('ERROR! Gdma id is not unique.')
+                    assert 0
+                else:
+                    gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_name]
     return tiu_layer_map, gdma_layer_map
 
 
