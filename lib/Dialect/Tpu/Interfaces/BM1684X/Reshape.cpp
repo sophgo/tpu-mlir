@@ -79,7 +79,6 @@ int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto out_shape = module::getShape(getOutput());
   auto in_shape = module::getShape(getInput());
   spec.dims = out_shape.size() | MLIR_RESHAPE_FLAG;
-  std::vector<int32_t> bitmap(in_shape.size(), 0);
 
   /* because reshapeop's 2nd tensor(shape tensor) is the same
    as the output tensor, it's infomation is useless, it need to
@@ -99,41 +98,18 @@ int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.shape[0] = -1;
   } else {
     for (int32_t i = 0; i < out_shape.size(); i++) {
-      if (i < in_shape.size() && out_shape.size() == in_shape.size() &&
-          out_shape[i] == in_shape[i] && !bitmap[i]) {
-        spec.shape[i] = 0; // remain the same
-        bitmap[i] = 1;
-      } else {
-        for (int32_t j = 0; j < in_shape.size(); j++) {
-          if (out_shape[i] == in_shape[j] && !bitmap[j]) {
-            spec.shape[i] = j;
-            bitmap[j] = 1;
-            break;
-          } else if (out_shape[i] == 1) {
-            // case: input shape = (2,3,4), output shape = (2, 12, 1)
-            spec.shape[i] = 1 | MLIR_RESHAPE_FLAG;
-          }
-        }
-
-        if (spec.shape[i] == FLAG_VAL) {
-          /* case: input shape = (4,4,4), output shape = (2,2,16)
-            for to distinguish between real shape and axis indicator
-            with MLIR_RESHAPE_FLAG */
-          spec.shape[i] = out_shape[i] | MLIR_RESHAPE_FLAG;
+      for (int32_t j = 0; j < in_shape.size(); j++) {
+        if (out_shape[i] == in_shape[j]) {
+          spec.shape[i] = j;
+          break;
         }
       }
-    }
 
-    int32_t flag = 0;
-    // config the remain axis
-    for (int32_t i = 0; i < out_shape.size(); i++) {
-      if (spec.shape[i] == FLAG_VAL && !flag) {
-        // case: input shape = (4,4,4), output shape = (2,2,16) -> (2,2,-1)
-        spec.shape[i] = -1;
-        flag = 1;
-      } else if (spec.shape[i] == FLAG_VAL) {
-        // other case, need to improve
-        assert(0);
+      if (spec.shape[i] == FLAG_VAL) {
+        /* case: input shape = (4,4,4), output shape = (2,2,16)
+          for to distinguish between real shape and axis indicator
+          with MLIR_RESHAPE_FLAG */
+        spec.shape[i] = out_shape[i] | MLIR_RESHAPE_FLAG;
       }
     }
   }
