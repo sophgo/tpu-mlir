@@ -2060,24 +2060,36 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "NonMaxSuppression")
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         operands = []
-        for i, x in enumerate(onnx_node.inputs):
-            if self.isWeight(x):
-                data = self.getWeight(x)
-                self.addWeight(x, data)
-                operands.append(self.getWeightOp(x))
-                if i == 2:
-                    # not strictly equal to 2**63 -1, (case:9.223372e+18) still can be cast to negative because of overflow
-                    if(data > 2**63 -1000):
-                        max_output_size = 2**63 -1
-                    else:
-                        max_output_size = data.astype(np.int64)
+        optional_weight_name = ['max_output_boxes_per_class', 'iou_threshold', 'score_threshold']
+        # for i, x in enumerate(onnx_node.inputs):
+        inputs_len = len(onnx_node.inputs)
+        assert(inputs_len >= 2 and inputs_len <= 5)
+        for i in range(5):
+            if i < inputs_len:
+                x = onnx_node.inputs[i]
+                if self.isWeight(x):
+                    data = self.getWeight(x)
+                    # self.addWeight(x, data)
+                    operands.append(self.getWeightOp(x))
+                    if i == 2:
+                        # not strictly equal to 2**63 -1, (case:9.223372e+18) still can be cast to negative because of overflow
+                        if(data > 2**63 -1000):
+                            max_output_size = 10000
+                        else:
+                            max_output_size = data.astype(np.int64)
+                else:
+                    operands.append(self.getOperand(x))
             else:
-                operands.append(self.getOperand(x))
+                w_name = "{}_{}_default".format(name, optional_weight_name[i - 2])
+                wtype = np.float32 if i > 2 else np.int64
+                self.addWeight(w_name, np.array([0], dtype=wtype))
+                operands.append(self.getWeightOp(w_name))
+
         max_output_size = 0
-        if (len(onnx_node.inputs) > 3):
+        if (len(onnx_node.inputs) > 2):
             if self.isWeight(onnx_node.inputs[2]):
                 if(self.getWeight(onnx_node.inputs[2]) > 2**63 -1000):
-                    max_output_size = 2**63 -1
+                    max_output_size = 10000
                 else:
                     max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
         nms_op = top.NmsOp(self.unranked_type,
