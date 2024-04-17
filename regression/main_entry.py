@@ -11,7 +11,8 @@ import os
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
-test_custom_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
+test_custom_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
 import time
 from chip import *
@@ -33,16 +34,19 @@ class Status:
 
 
 def timeit(func):
+
     def wrapper(*args, **kwargs):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
         print(f"{func.__name__} ran in {end - start:.2f} seconds")
         return result
+
     return wrapper
 
 
 class Timer:
+
     def __init__(self):
         self.start_time = time.time()
 
@@ -51,25 +55,30 @@ class Timer:
 
 
 class MAIN_ENTRY(object):
+
     def __init__(self, test_type, disable_thread: bool):
         self.test_type = test_type
         self.disable_thread = disable_thread
         self.current_dir = os.getcwd()
         self.is_basic = test_type == "basic"
         # yapf: disable
-        self.op_test_types = {
+        self.op0_test_types = {
             # op_source: (tester, test_all_func, chips)
             "onnx_int4": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_int4,  ["bm1688"]),
             "onnx_fp8": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_fp8,  ["bm1690"]),
             "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1688", "cv183x"]),
             "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
+        }
+        self.op1_test_types = {
+            # op_source: (tester, test_all_func, chips)
             "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x"]),
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
         # yapf: enable
         self.test_set = {
-            "op": self.run_op_test,
+            "op0": self.run_op0_test,
+            "op1": self.run_op1_test,
             "script": self.run_script_test,
             "model": self.run_model_test,
             "multi_core_model": self.run_multi_core_test,
@@ -96,7 +105,9 @@ class MAIN_ENTRY(object):
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(file_handler)
 
-        print(f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} =====")
+        print(
+            f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} ====="
+        )
         dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(dir, exist_ok=True)
         os.chdir(dir)
@@ -104,7 +115,7 @@ class MAIN_ENTRY(object):
                               chip,
                               self.test_type,
                               save_log=True,
-                              num_core = num_core,
+                              num_core=num_core,
                               disable_thread=self.disable_thread)
         ret = regressor.run_full()
         finished_list.append({
@@ -159,16 +170,22 @@ class MAIN_ENTRY(object):
         self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
         return not success
 
-    def run_op_test(self):
-        for op_source in self.op_test_types.keys():
+    def run_op_test(self, op_test_types):
+        for op_source in op_test_types.keys():
             t = Timer()
-            tester, test_func, chips = self.op_test_types[op_source]
+            tester, test_func, chips = op_test_types[op_source]
             for chip in chips:
                 success = self._run_op_test(op_source, tester, test_func, chip)
                 # basic test stops once a test failed
                 if not success and self.is_basic:
                     return 1
             self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
+
+    def run_op0_test(self):
+        self.run_op_test(self.op0_test_types)
+
+    def run_op1_test(self):
+        self.run_op_test(self.op1_test_types)
 
     def run_model_test(self, multi_core: bool = False):
         model_list = None
@@ -248,7 +265,7 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op", "script", "model", "multi_core_model"]
+    choices = ["op0", "op1", "script", "model", "multi_core_model"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
@@ -270,7 +287,9 @@ if __name__ == "__main__":
 
     # print last 100 lines log of failed cases first
     for result in main_entry.results:
-        if result["name"].startswith(tuple(main_entry.op_test_types.keys())):
+        if result["name"].startswith(tuple(
+                main_entry.op0_test_types.keys())) or result["name"].startswith(
+                    tuple(main_entry.op1_test_types.keys())):
             continue
         if result["status"] != Status.PASSED:
             with open(result["name"] + ".log", 'r') as file:

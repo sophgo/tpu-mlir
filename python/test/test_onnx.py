@@ -315,7 +315,8 @@ class ONNX_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
-        elif self.chip == "bm1690":
+        elif self.chip == "bm1690" and not self.simple:
+            # only full test
             self.support_quant_modes.append("f8e4m3")
             self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
@@ -518,9 +519,6 @@ class ONNX_IR_TESTER(object):
 
         counter = 0
         onnx_transformed_model = {}
-        print("*****************************")
-        print(model_outs)
-        print("*****************************")
         for name in onnx_outs:
             key_vals = {key_val[0:len(name)]: key_val for key_val in model_outs.keys()}
             found = False
@@ -554,6 +552,8 @@ class ONNX_IR_TESTER(object):
         # simple calibration table
         if qmode == 'f8e4m3' or qmode == 'f8e5m2':
             table_name = table_name + "_" + qmode
+        elif qmode not in ['int8','int4']:
+            return
         with open(table_name, 'w') as f:
             if qmode == 'f8e4m3' or qmode == 'f8e5m2':
                 f.write("#tpu-mlir-fp8 caliration table\n")
