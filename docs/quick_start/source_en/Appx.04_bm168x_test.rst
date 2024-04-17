@@ -169,11 +169,11 @@ It is recommended to use the toolchain software in a docker environment, see :re
    $ docker pull sophgo/tpuc_dev:v3.2
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-After running the command, it will be in a Docker container, install tpu_mlir python package in the docker environment:
+After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package provided by SOPHGO, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 
 .. code-block:: shell
 
-   $ pip install tpu_mlir[all]
+   $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
 .. _get tpu-perf:
