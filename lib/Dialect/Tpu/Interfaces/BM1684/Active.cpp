@@ -136,6 +136,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         case ActiveMode::ELU:
         case ActiveMode::EXP:
         case ActiveMode::ABSVAL:
+        case ActiveMode::COS:
         case ActiveMode::FLOOR:
         case ActiveMode::TANH:
         case ActiveMode::ARCCOS:
@@ -146,6 +147,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         case ActiveMode::SQUARE:
         case ActiveMode::SOFT_PLUS:
         case ActiveMode::SIGN:
+        case ActiveMode::SIN:
         case ActiveMode::SIGMOID: break;
         case ActiveMode::SILU: activate_type = (int)ActiveMode::SWISH; prelu_slope = 1.0; break;
         default:
