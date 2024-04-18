@@ -73,7 +73,7 @@ mlir::Type tpu::ScatterElementsOp::type_verify(uint64_t opd_idx,
       return do_nothing(mode);
     }
     mode = TypeCastMode::DO_CAST;
-    auto bitwidth = stype.getIntOrFloatBitWidth();
+    auto bitwidth = 32;
     return Builder(op).getIntegerType(bitwidth);
   }
   return type_verify_case_same(op, opd_idx, mode);
