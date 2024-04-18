@@ -346,7 +346,7 @@ if __name__ == "__main__":
                             index = int(opd_ref[1])
                         func_inputs_names[subfunc_name].append([opd_name, index])
 
-            elif is_opname(op, "tpu.Group"):
+            elif is_opname(op, "tpu.Group", "tpu.CoreParallel","tpu.Parallel"):
                 group_graph = draw_group_op(op)
                 func_graph.add_subgraph(group_graph)
             else:
