@@ -172,7 +172,7 @@ def Top_InputOp: Top_BaseOp<"Input", [
   let arguments = (
     ins AnyRankedTensor:$input,
     // input affects tensor's shape or not
-    DefaultValuedAttr<BoolAttr, "false">:$is_shape,
+    OptionalAttr<I64ArrayAttr>:$shape_tensor,
     // whether need preprocess
     DefaultValuedAttr<BoolAttr, "false">:$do_preprocess,
     // preprocess for input

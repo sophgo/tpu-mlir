@@ -203,12 +203,23 @@ class CaffeConverter(BaseConverter):
 
     def convert_subgraph(self):
         # add input op
+        input_data = None
+        if self.inputs_is_shape:
+            test_file = ''
+            if isinstance(self.test_input, list):
+                assert self.test_input[0].endswith('.npz')
+                test_file = self.test_input[0]
+            elif isinstance(self.test_input, str):
+                assert self.test_input.endswith('.npz')
+                test_file = self.test_input
+            else:
+                raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+            input_data = np.load(test_file)
         for idx, _name in enumerate(self.input_names):
-            is_shape = False
-            if _name in self.inputs_is_shape:
-                is_shape = True
             kwargs = copy.deepcopy(self.preprocess_args)
-            kwargs['is_shape'] = is_shape
+            if _name in self.inputs_is_shape:
+                assert input_data[_name].ndim == 1, "input shape tensor should be 1D tensor"
+                kwargs['shape_tensor'] = input_data[_name]
             input_ = self.mlir.create_input_op(self.get_loc(_name), idx, kwargs)
             self.addOperand(_name, input_)
 

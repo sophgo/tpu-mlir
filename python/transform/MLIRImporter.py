@@ -165,7 +165,6 @@ class MLIRImporter(object):
         init_args = {}
         channel_axis = 1
         shape = self.input_shapes[index]
-        is_shape = False
         if 'channel_format' in kargs:
             if kargs['channel_format'] == 'nhwc':
                 channel_axis = -1
@@ -179,14 +178,13 @@ class MLIRImporter(object):
                     init_args["do_preprocess"] = 1
             if 'preprocess_list' in init_args:
                 del init_args["preprocess_list"]
-        if 'is_shape' in kargs:
-            is_shape = kargs['is_shape']
+        if 'shape_tensor' in kargs:
+            init_args["shape_tensor"] = kargs['shape_tensor']
         init_args["loc"] = loc
         init_args["ip"] = self.insert_point
         init_args["input"] = self.func_args[index]
         init_args["output"] = self.input_types[
             index] if self.platform in [Platform.TFLITE, Platform.TPULANG] else self.input_op_types[index]
-        init_args["is_shape"] = is_shape
         input_op = top.InputOp(**init_args)
         return input_op.output
 

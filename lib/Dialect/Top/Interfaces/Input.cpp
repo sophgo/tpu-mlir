@@ -10,12 +10,10 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 void top::InputOp::shape_inference() {
-  auto in_shape = module::getShape(getInput());
-  std::vector<int64_t> out_shape(in_shape);
-  // if (out_shape.size() == 1 || out_shape.size() == 0) {
-  //   module::bindShapeTensorValue(getOutput(), out_shape);
-  // }
-  if (getIsShape()) {
-    module::bindShapeTensorValue(getOutput(), out_shape);
+  if (!getShapeTensor().has_value()) return;
+  std::vector<int64_t> shape_tensor = *(module::getI64Array(getShapeTensor().value()));
+  if (shape_tensor.size() > 0) {
+    module::bindShapeTensorValue(getOutput(), shape_tensor);
   }
+  removeShapeTensorAttr();
 }
