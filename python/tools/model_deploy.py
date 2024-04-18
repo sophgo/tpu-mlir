@@ -49,6 +49,14 @@ def getCustomFormat(pixel_format, channel_format):
         custom_format = "GRAYSCALE"
     elif pixel_format == "rgba":
         custom_format == "RGBA_PLANAR"
+    elif pixel_format == "gbrg":
+        custom_format == "GBRG_RAW"
+    elif pixel_format == "grbg":
+        custom_format == "GRBG_RAW"
+    elif pixel_format == "bggr":
+        custom_format == "BGGR_RAW"
+    elif pixel_format == "rggb":
+        custom_format == "RGGB_RAW"
     else:
         logger.info("pixel_format of {} no supported!".format(pixel_format))
         assert (0)
