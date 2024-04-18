@@ -76,11 +76,10 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   auto op = out.getDefiningOp();
   OpBuilder builder(op);
   auto in_name = module::getName(in).str();
-  auto in_stype = module::getStorageType(in);
   float offset = out_zp;
   auto in_shape = module::getShape(in);
   auto rq_in = in;
-  if (in_stype.isInteger(8) || (in_zp != 0 && out_zp != 0)) {
+  if (in_zp != 0 && out_zp != 0) {
     auto add_name = in_name + "_add_zp";
     auto add_type = RankedTensorType::get(in_shape, builder.getI32Type());
     std::vector<NamedAttribute> attrs;
@@ -90,8 +89,13 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
     auto addOp = builder.create<tpu::AddConstOp>(name_loc, add_type,
                                                  ValueRange{in}, attrs);
     rq_in = addOp.getOutput();
+    offset = in_scale / out_scale * (-in_zp) + out_zp;
   } else if (in_zp != 0 && out_zp == 0) {
     offset = in_scale / out_scale * (-in_zp);
+  } else if (in_zp == 0 && out_zp != 0) {
+    offset = out_zp;
+  } else if (in_zp == 0 && out_zp == 0) {
+    offset = 0;
   }
 
   auto out_name = module::getName(op).str();
@@ -109,11 +113,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
                         op->getContext(), tpu::RequantMode::MultiplierShift)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
-  if (out_zp == 0) {
-    return rqOp.getOutput();
-  } else {
-    llvm_unreachable("Not support now.\n");
-  }
+  return rqOp.getOutput();
 }
 
 Value do_dequant(Location name_loc, Value input, Type to_type,

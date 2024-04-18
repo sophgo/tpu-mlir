@@ -2335,32 +2335,31 @@ class TPULANG_IR_TESTER(object):
         def _test_concat(shapes: List[List[int]], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input0 = rand_data(shapes[0], dtype)
             input1 = rand_data(shapes[1], dtype)
-
             x = tpul.Tensor(dtype=dtype, shape=shapes[0], data=input0, scale=scale, zero_point=zero_point)
             y = tpul.Tensor(dtype=dtype, shape=shapes[1], data=input1, scale=scale, zero_point=zero_point)
-            output = tpul.concat([x, y], axis=1)
+            scale_values = scale if scale is None else [scale, scale, scale]
+            zero_point_values = zero_point if zero_point is None else [zero_point, zero_point, zero_point]
+            output = tpul.concat([x, y], scale_values, zero_point_values, axis=1, out_name=None, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x, y], [output], is_quantized=is_quantized)
 
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
-        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], scale=3.0, dtype="int8", is_quantized=True)
+        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], scale=3.0,zero_point=0, dtype="int8", is_quantized=True)
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="float16", is_quantized=True)
 
     def test_Concat2(self, case_name):
         """test concat for int8 with different scales and zerp points"""
         @tpulang(self.chip)
-        def _test_concat(shapes: List[List[int]], scales, zero_points, asymmetric):
+        def _test_concat(shapes: List[List[int]], scales, zero_points, asymmetric, dtype):
             dtype="int8"
             input0 = rand_data(shapes[0], dtype)
             input1 = rand_data(shapes[1], dtype)
-
             x = tpul.Tensor(dtype=dtype, shape=shapes[0], data=input0, scale=scales[0], zero_point=zero_points[0] if asymmetric else None)
             y = tpul.Tensor(dtype=dtype, shape=shapes[1], data=input1, scale=scales[1], zero_point=zero_points[1] if asymmetric else None)
-            output = tpul.concat([x, y], axis=1)
-            output.quantization(scale=2.4, zero_point=2 if asymmetric else None)
+            output = tpul.concat([x, y], scales, zero_points, axis=1, out_name=None, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x, y], [output], is_quantized=True, asymmetric=asymmetric)
 
-        _test_concat([[1, 12, 28, 28], [1, 3, 28, 28]], [2, 3], [-1, 1], False)
-        _test_concat([[1, 12, 28, 28], [1, 3, 28, 28]], [2, 3], [-1, 1], True)
+        _test_concat([[1, 12, 28, 28], [1, 3, 28, 28]], [2.0, 3.0, 2.4], [-1, 1, 2], False, dtype="int8")
+        _test_concat([[1, 12, 28, 28], [1, 3, 28, 28]], [2.0, 3.0, 2.4], [-1, 1, 2], True, dtype="int8")
 
     #######################################################################
     # broadcast

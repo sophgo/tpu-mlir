@@ -6,7 +6,7 @@
 # ==============================================================================
 
 import atexit
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
@@ -1439,13 +1439,23 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
 
 @auto_name()
 @annotation_check
-def concat(inputs: List[Tensor], axis: int = 0, out_name: str = None):
+def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+    if scales is None:
+        scales = [None] * (len(inputs) + 1)
+    if zero_points is None:
+        zero_points = [None] * (len(inputs) + 1)
     assert len(inputs) > 1, "concat should have more than one input"
     attr = {
         "axis": Attr(axis, "int32"),
     }
+    input_list_ = []
+    for index, i_tensor in  enumerate(inputs):
+        i_tensor.quantization(scale=scales[index], zero_point=zero_points[index])
+        input_list_.append(i_tensor)
     output = Tensor(dtype=inputs[0].dtype, name=out_name)
-    TpuLang.insert_op("top.Concat", inputs=inputs, outputs=[output], params=attr)
+    if dtype != "float32":
+        output.quantization(scale=scales[len(scales) - 1], zero_point=zero_points[len(zero_points) - 1])
+    TpuLang.insert_op("top.Concat", inputs=input_list_, outputs=[output], params=attr)
     return output
 
 @auto_name()

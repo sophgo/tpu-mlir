@@ -2617,20 +2617,23 @@ concat
 
     .. code-block:: python
 
-      def concat(tensors, axis=0, out_name=None):
-          #pass
+    def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+        #pass
 
 功能描述
 """""""""""
-对多个张量在指定的轴上进行拼接。
+对多个张量在指定的轴上进行拼接, 以及支持不同量纲输入、输出。
 
 该操作属于 **受限本地操作** 。
 
 参数说明
 """""""""""
-* tensors：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。若数据类型包含scale或zero_point，则scale，zero_point必须一致。
+* tensors：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。
+* scales：Optional[Union[List[float],List[int]]]类型，存放多个输入和一个输出scale，最后一个为输出的scale。
+* zero_points：Optional[List[int]]类型，存放多个输入和一个输出的zero_point, 最后一个为输出的zero_point。
 * axis：int型，表示进行拼接运算的轴。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* dtype：string类型,默认是"float32"。
 
 返回值
 """""""""""

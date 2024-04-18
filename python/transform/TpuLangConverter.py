@@ -293,8 +293,8 @@ class Graph:
         self._outputs = outputs
 
     def quantized_type_inference(self):
-        # operators that needs no quantization
-        assign_ops = ["Permute", "Reshape", "Tile", "Concat", "Split", "Repeat", "Relu", \
+        # operators that needs no quantization.
+        assign_ops = ["Permute", "Reshape", "Tile", "Split", "Repeat", "Relu", \
                       "Unsqueeze", "Unsqueeze", "Expand", "Slice", "Copy", "LeakyRelu", "Abs"]
         for op in self.operators:
             if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.inputs[0].is_quantized:
