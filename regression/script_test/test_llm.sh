@@ -62,6 +62,7 @@ model_deploy.py \
   --chip bm1684x \
   --quant_input \
   --quant_output \
+  --debug \
   --model qwen_block_0.bmodel
 
 model_runner.py \
