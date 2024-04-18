@@ -964,11 +964,22 @@ class TFLiteConverter(BaseConverter):
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
             loc = Location.fused([Location.name(input.name)])
-            is_shape = False
-            if input.name in self.inputs_is_shape:
-                is_shape = True
+            input_data = None
+            if self.inputs_is_shape:
+                test_file = ''
+                if isinstance(self.test_input, list):
+                    assert self.test_input[0].endswith('.npz')
+                    test_file = self.test_input[0]
+                elif isinstance(self.test_input, str):
+                    assert self.test_input.endswith('.npz')
+                    test_file = self.test_input
+                else:
+                    raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+                input_data = np.load(test_file)
             kwargs = copy.deepcopy(self.preprocess_args)
-            kwargs['is_shape'] = is_shape
+            if input.name in self.inputs_is_shape:
+                assert input_data[input.name].ndim == 1, "input shape tensor should be 1D tensor"
+                kwargs['shape_tensor'] = input_data[input.name]
             input_op = self.mlir.create_input_op(loc, idx, kwargs)
             symbol_table.update({input.id: input_op})
 
