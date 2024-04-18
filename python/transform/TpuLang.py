@@ -892,6 +892,7 @@ def requant_int(tensor_i: Tensor,
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=offset)
     mul = mul if isinstance(mul, List) else [mul]
     shift = shift if isinstance(shift, List) else [shift]
+    shift = [-sft for sft in shift]
     attr = {
         "multiplier": ArrayAttr(mul, "int64"),
         "rshift": ArrayAttr(shift, "int64"),

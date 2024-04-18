@@ -526,9 +526,11 @@ class TPULANG_IR_TESTER(object):
             # mul, shift = quantization(input_scale * weight_scale / output_scale)
             # https://tpumlir.org/docs/developer_manual/06_quantization.html
             mul = [2030043136] * 64
-            shift = [13] * 64
+            shift = [-13] * 64
             rq1 = tpul.requant_int(conv1, mul, shift, 0, 2, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
             relu1 = tpul.relu(rq1)
+            # reshape1 = tpul.reshape(relu1, [64, 109, 109])
+            # cast1 = tpul.dequant_int_to_fp(reshape1, scale=0.0625, offset=0)
             return relu1
 
         def model_conv_quant(x):
@@ -563,7 +565,7 @@ class TPULANG_IR_TESTER(object):
             rq0 = tpul.requant_fp_to_int(x, [0.078125], 0, 0, 'int8')
             weight0 = self.coeff_tensor([128, 512], 'int8')
             mat1 = tpul.matmul_int(rq0, weight0, None, input_zp=0, right_zp=0, out_dtype='int32')
-            rq2 = tpul.requant_int(mat1, 2030043136, 13, 0, 0, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
+            rq2 = tpul.requant_int(mat1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
             return rq2
 
         @tpulang(self.chip)
@@ -691,25 +693,25 @@ class TPULANG_IR_TESTER(object):
             rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
             # conv1 = conv_block(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], [2030043136, -13, 0])
             conv1 = self.conv_int_op(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], zp=[0, 0], out_dtype='int32')
-            rq1 = tpul.requant_int(conv1, 2030043136, 7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq1 = tpul.requant_int(conv1, 2030043136, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
             # relu1 = tpul.relu(rq1)
             conv2 = self.conv_int_op(rq1, [96,64,3,3], [2,2], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq2 = tpul.requant_int(conv2, 1748893696, 10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq2 = tpul.requant_int(conv2, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
             coeff3 = self.coeff_tensor([1,96,1,1], 'int8', scale=10.0)
             mul3 = tpul.mul(rq2, coeff3, scale=[0.25, 10.0, 2.5], out_dtype='int8')
             coeff4 = self.coeff_tensor([1,96,1,1], 'int8', scale=2.0)
             add4 = tpul.add(mul3, coeff4, scale=[2.5, 2.0, 4.0], out_dtype='int8')
             conv5 = self.conv_int_op(add4, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq5 = tpul.requant_int(conv5, 1623457792, 8, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq5 = tpul.requant_int(conv5, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
             conv6 = self.conv_int_op(rq5, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq6 = tpul.requant_int(conv6, 1623457792, 10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq6 = tpul.requant_int(conv6, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
             add7 = tpul.add(rq2, rq6, [0.25, 0.0625, 0.4], out_dtype='int8')
             coeff7 = self.coeff_tensor([1,96,1,1], 'int8', scale=2.0)
             mul7 = tpul.mul(add7, coeff7, scale=[0.4, 2.0, 4.0], out_dtype='int8')
             coeff8 = self.coeff_tensor([1,96,1,1], 'int8', scale=-2)
             add8 = tpul.add(mul7, coeff8, scale=[4.0, 2.0, 8.0], out_dtype='int8')
             conv9 = self.conv_int_op(add8, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq9 = tpul.requant_int(conv9, 1712717824, 7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq9 = tpul.requant_int(conv9, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
             dq10 = tpul.dequant_int_to_fp(rq9, 0.0625, 0)
             return add4, dq10
 
@@ -717,10 +719,10 @@ class TPULANG_IR_TESTER(object):
             rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
             # conv1 = conv_block(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], [2030043136, -13, 0])
             conv1 = self.conv_int_op(rq0, [64, 3, 7, 7], [2, 2], [3,3,3,3], zp=[0, 0], out_dtype='int32')
-            rq1 = tpul.requant_int(conv1, 2030043136, 7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq1 = tpul.requant_int(conv1, 2030043136, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
             relu1 = tpul.relu(rq1)
             conv2 = self.conv_int_op(relu1, [96,64,3,3], [2,2], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq2 = tpul.requant_int(conv2, 1748893696, 10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq2 = tpul.requant_int(conv2, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
             relu2 = tpul.relu(rq2)
             dq3 = tpul.dequant_int_to_fp(relu2, 0.25, 0, out_dtype=fdtype)
             coeff3 = self.coeff_tensor([1,96,1,1], fdtype, scale=10.0)
@@ -729,10 +731,10 @@ class TPULANG_IR_TESTER(object):
             add4 = tpul.add(mul3, coeff4)
             rq4 = tpul.requant_fp_to_int(add4, 4.0, 0, 0, "int8")
             conv5 = self.conv_int_op(rq4, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq5 = tpul.requant_int(conv5, 1623457792, 8, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq5 = tpul.requant_int(conv5, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
             relu5 = tpul.relu(rq5)
             conv6 = self.conv_int_op(relu5, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq6 = tpul.requant_int(conv6, 1623457792, 10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq6 = tpul.requant_int(conv6, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
             relu6 = tpul.relu(rq6)
             dq7 = tpul.dequant_int_to_fp(relu6, 0.0625, 0, out_dtype=fdtype)
             add7 = tpul.add(dq3, dq7)
@@ -742,7 +744,7 @@ class TPULANG_IR_TESTER(object):
             add8 = tpul.add(mul7, coeff8)
             rq8 = tpul.requant_fp_to_int(add8, 8.0, 0, 0, "int8")
             conv9 = self.conv_int_op(rq8, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
-            rq9 = tpul.requant_int(conv9, 1712717824, 7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            rq9 = tpul.requant_int(conv9, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
             dq10 = tpul.dequant_int_to_fp(rq9, 0.0625, 0)
             return add4, dq10
 
