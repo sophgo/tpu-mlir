@@ -2206,8 +2206,8 @@ The interface definition
 
     .. code-block:: python
 
-      def concat(tensors, axis=0, out_name=None):
-          #pass
+    def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+        #pass
 
 Description of the function
 """""""""""""""""""""""""""""""""
@@ -2217,9 +2217,12 @@ This operation is considered a **restricted local operation**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensors: A `List[Tensor]` type, containing multiple tensors. All tensors must have the same data type and the same number of shape dimensions.Except for the dimension to be concatenated, the values of the other dimensions should be equal.
+* tensors: A `List[Tensor]` type, containing multiple tensors. All tensors must have the same data type and the same number of shape dimensions.
+* scales: An optional Union[List[float], List[int]] type, containing multiple input scales and one output scale, where the last element is the scale for the output.
+* zero_points: An optional List[int] type, containing multiple input zero points and one output zero point, with the last one being the zero point for the output.
 * axis: An `int` type, indicating the axis along which the concatenation operation will be performed.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* dtype: A string type, defaulting to "float32".
 
 Return value
 """"""""""""""""""""""
