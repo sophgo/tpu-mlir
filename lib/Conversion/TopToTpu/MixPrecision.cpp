@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/ConvertTopToTpu.h"
+#include <tuple>
 namespace tpu_mlir {
 
 void ConvertTopToTpu::match_swin_mlp(std::vector<Operation *> &mlp) {
@@ -57,8 +58,22 @@ void ConvertTopToTpu::match_swin_mlp(std::vector<Operation *> &mlp) {
   });
 }
 
+void processLNUsers(top::LayerNormOp lnop) {
+  for (auto user : lnop.getResult().getUsers()) {
+    if (isa<top::SliceOp>(user) &&
+        std::distance(user->getResult(0).getUsers().begin(),
+                      user->getResult(0).getUsers().end()) == 0)
+      continue;
+    else if (isa<top::ReshapeOp>(user) || isa<top::SwapDimInnerOp>(user))
+      continue;
+    else
+      return;
+  }
+}
+
 void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
-                                      std::vector<Operation *> &sm_ops) {
+                                      std::vector<Operation *> &sm_ops,
+                                      std::vector<Operation *> &qkmmops) {
   mainFunc_.walk([&](Operation *op) {
     if (isa<top::ReshapeOp>(op) || isa<top::MatMulOp>(op) ||
         isa<top::LayerNormOp>(op)) {
@@ -73,6 +88,13 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
             lnop = dyn_cast<top::LayerNormOp>(user);
           } else if (isa<top::AddOp>(user)) {
             aop = dyn_cast<top::AddOp>(user);
+          }
+        }
+        auto preOp = rsop->getOperands()[0].getDefiningOp(); //dino pattern layernorm->reshape
+        if (isa<top::LayerNormOp>(preOp)) {
+          auto ln_tmp = dyn_cast<top::LayerNormOp>(preOp);
+          if (isa<top::AddOp>(ln_tmp->getOperands()[0].getDefiningOp())) { //pattern has to be Add->LayerNorm->Reshape
+            lnop = dyn_cast<top::LayerNormOp>(preOp);
           }
         }
         if (lnop == NULL)
@@ -128,17 +150,7 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
       if (!isSISO(lnop.getOperation()))
         return;
 #else
-      for (auto u : lnop.getResult().getUsers()) {
-        // some dirty slices left after some passes took effect before lowerring
-        if (isa<top::SliceOp>(u) &&
-            std::distance(u->getResult(0).getUsers().begin(),
-                          u->getResult(0).getUsers().end()) == 0)
-          continue;
-        else if (isa<top::ReshapeOp>(u) || isa<top::SwapDimInnerOp>(u))
-          continue;
-        else
-          return;
-      }
+      processLNUsers(lnop);
 #endif
       // if (!convergence(lnop, aop))
       //   return;
@@ -164,6 +176,7 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
         }
 
         top::ReshapeOp rsop2 = NULL;
+        int dino_flag = 0; // add flag to distinguish swin series with dino
         if (rsop1 != NULL)
           rsop2 = rsop1;
         else if (swdiop != NULL)
@@ -171,6 +184,44 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
               *(swdiop.getResult().getUsers().begin()));
         if (rsop2 == NULL)
           return;
+        // Update reshape here(for dino).
+        if (isa<top::PadOp>(*(rsop2.getResult().getUsers().begin()))) {
+          auto padop_ = dyn_cast<top::PadOp>(*(rsop2.getResult().getUsers().begin()));
+          dino_flag = 1;
+          if (isa<top::ReshapeOp>(*(padop_.getResult().getUsers().begin()))) {
+            rsop2 = dyn_cast<top::ReshapeOp>(*(padop_.getResult().getUsers().begin()));
+          } else if (isa<top::SwapDimInnerOp>(*(padop_.getResult().getUsers().begin()))) {
+            auto swdiop_tmp = dyn_cast<top::SwapDimInnerOp>(*(padop_.getResult().getUsers().begin()));
+            for (auto swduser : swdiop_tmp.getResult().getUsers()) {
+              if (isa<top::SwapDimInnerOp>(swduser)) {
+                swdiop_tmp = dyn_cast<top::SwapDimInnerOp>(swduser);
+              }
+            }
+            if (isa<top::ReshapeOp>(*(swdiop_tmp.getResult().getUsers().begin()))) {
+              rsop2 = dyn_cast<top::ReshapeOp>(*(swdiop_tmp.getResult().getUsers().begin()));
+            }
+          }
+        }
+        // Update reshape for mask-rcnn.
+        if (isa<top::ConcatOp>(*(rsop2.getResult().getUsers().begin()))) {
+          auto concat_tmp = dyn_cast<top::ConcatOp>(*(rsop2.getResult().getUsers().begin()));
+          if (isa<top::ConcatOp>(*(concat_tmp.getResult().getUsers().begin()))) {
+            concat_tmp = dyn_cast<top::ConcatOp>(*(concat_tmp.getResult().getUsers().begin()));
+            if (isa<top::ReshapeOp>(*(concat_tmp.getResult().getUsers().begin()))) {
+              rsop2 = dyn_cast<top::ReshapeOp>(*(concat_tmp.getResult().getUsers().begin()));
+            } else if (isa<top::SwapDimInnerOp>(*(concat_tmp.getResult().getUsers().begin()))) {
+              auto swdiop_tmp = dyn_cast<top::SwapDimInnerOp>(*(concat_tmp.getResult().getUsers().begin()));
+              for (auto user : swdiop_tmp.getResult().getUsers()) {
+                if(isa<top::SwapDimInnerOp>(user)) {
+                  swdiop_tmp = dyn_cast<top::SwapDimInnerOp>(user);
+                  if (isa<top::ReshapeOp>(*(swdiop_tmp.getResult().getUsers().begin()))) {
+                    rsop2 = dyn_cast<top::ReshapeOp>(*(swdiop_tmp.getResult().getUsers().begin()));
+                  }
+                }
+              }
+            }
+          }
+        }
         if (isSISO(rsop2.getOperation()) &&
             isa<top::PermuteOp>(*(rsop2.getResult().getUsers().begin()))) {
           auto p =
@@ -181,13 +232,17 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
           else
             return;
         }
-        if ((std::distance(rsop2.getOutput().user_begin(),
+
+        if (dino_flag != 1) { // dino split might be different
+          if ((std::distance(rsop2.getOutput().user_begin(),
                            rsop2.getOutput().user_end()) != 3) &&
             (std::distance(rsop2.getOutput().user_begin(),
                            rsop2.getOutput().user_end()) !=
              4)) // chip opt may split matmul to 3, but left the original matmul
                  // not removed
           return;
+        }
+
         top::MatMulOp mmop_[3] = {NULL};
         top::ReshapeOp rsop_[3] = {NULL};
         top::PermuteOp pmop_[3] = {NULL};
@@ -213,36 +268,62 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                       *(rsop_tmp.getResult().user_begin()))) {
                 if (!isSISO(pmop))
                   return;
-                if (isa<top::MulConstOp>(*(pmop.getResult().user_begin()))) {
-                  mcop_ = dyn_cast<top::MulConstOp>(
-                      *(pmop.getResult().user_begin()));
-                  if (!isSISO(mcop_))
-                    return;
-                  idx = 0;
-                } else if (isa<top::PermuteOp>(
-                               *(pmop.getResult().user_begin()))) {
-                  pmop = dyn_cast<top::PermuteOp>(
-                      *(pmop.getResult().user_begin()));
-                  idx = 1;
-                } else if (isa<top::MatMulOp>(
-                               *(pmop.getResult().user_begin()))) {
-                  auto mmop_tmp1 =
-                      dyn_cast<top::MatMulOp>(*(pmop.getResult().user_begin()));
-                  if (isa<top::AddOp>(*(mmop_tmp1.getResult().user_begin()))) {
-                    idx = 1;
-                  } else if (isa<top::PermuteOp>(
-                                 *(mmop_tmp1.getResult().user_begin()))) {
-                    idx = 2;
-                  } else {
-                    //(*(mmop_tmp1.getResult().user_begin()))->dump();
-                    return;
+                //Update permute here(for dino)
+                if (isa<top::PermuteOp>(*(pmop.getResult().user_begin()))) {
+                  pmop = dyn_cast<top::PermuteOp>(*(pmop.getResult().user_begin()));
+                  dino_flag = 1;
+                  for (auto permuteuser : pmop.getResult().getUsers()) {
+                    auto sliceop_ = dyn_cast<top::SliceOp>(permuteuser);
+                    if (isa<top::MulConstOp>(*(sliceop_.getOutput().getUsers().begin()))) {
+                      mcop_ = dyn_cast<top::MulConstOp>(
+                          *(sliceop_.getResult().user_begin()));
+                      if (!isSISO(mcop_))
+                        return;
+                      idx = 0;
+                    } else if (isa<top::ReshapeOp>(*(sliceop_.getOutput().getUsers().begin()))) {
+                      rsop2 = dyn_cast<top::ReshapeOp>(*(sliceop_.getOutput().getUsers().begin()));
+                      if (isa<top::MatMulOp>(*(rsop2.getResult().user_begin()))) {
+                        auto mmop_tmp1 = dyn_cast<top::MatMulOp>(*(rsop2.getResult().user_begin()));
+                        if (isa<top::AddOp>(*(mmop_tmp1.getResult().user_begin()))) {
+                          idx = 1;
+                        } else if (isa<top::PermuteOp>(*(mmop_tmp1.getResult().user_begin()))) {
+                          idx = 2;
+                        }
+                      }
+                    }
                   }
                 } else {
-                  return;
+                    if (isa<top::MulConstOp>(*(pmop.getResult().user_begin()))) {
+                    mcop_ = dyn_cast<top::MulConstOp>(
+                        *(pmop.getResult().user_begin()));
+                    if (!isSISO(mcop_))
+                      return;
+                    idx = 0;
+                  } else if (isa<top::PermuteOp>(
+                                *(pmop.getResult().user_begin()))) {
+                    pmop = dyn_cast<top::PermuteOp>(
+                        *(pmop.getResult().user_begin()));
+                    idx = 1;
+                  } else if (isa<top::MatMulOp>(
+                                *(pmop.getResult().user_begin()))) {
+                    auto mmop_tmp1 =
+                        dyn_cast<top::MatMulOp>(*(pmop.getResult().user_begin()));
+                    if (isa<top::AddOp>(*(mmop_tmp1.getResult().user_begin()))) {
+                      idx = 1;
+                    } else if (isa<top::PermuteOp>(
+                                  *(mmop_tmp1.getResult().user_begin()))) {
+                      idx = 2;
+                    } else {
+                      //(*(mmop_tmp1.getResult().user_begin()))->dump();
+                      return;
+                    }
+                  } else {
+                    return;
+                  }
+                  mmop_[idx] = mmop_tmp;
+                  rsop_[idx] = rsop_tmp;
+                  pmop_[idx] = pmop;
                 }
-                mmop_[idx] = mmop_tmp;
-                rsop_[idx] = rsop_tmp;
-                pmop_[idx] = pmop;
               } else {
                 return;
               }
@@ -253,20 +334,25 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
             return;
           }
         }
-        if (pmop_[0] == NULL || pmop_[1] == NULL || pmop_[2] == NULL)
-          return;
 
-        if (mcop_ != NULL) {
-          if (!isa<top::MatMulOp>(*(mcop_.getResult().user_begin())) ||
-              !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
-              (*mcop_.getResult().user_begin() !=
-               *pmop_[1].getResult().user_begin()))
+        if (dino_flag != 1) {
+          if (pmop_[0] == NULL || pmop_[1] == NULL || pmop_[2] == NULL)
             return;
+          if (mcop_ != NULL) {
+            if (!isa<top::MatMulOp>(*(mcop_.getResult().user_begin())) ||
+                !isa<top::MatMulOp>(*(pmop_[1].getResult().user_begin())) ||
+                (*mcop_.getResult().user_begin() !=
+                *pmop_[1].getResult().user_begin()))
+              return;
+          } else {
+            return;
+          }
+          mmop1 = dyn_cast<top::MatMulOp>(*(pmop_[1].getResult().user_begin()));
         } else {
-          return;
+          auto reshape_tmp = dyn_cast<top::ReshapeOp>(*(mcop_.getResult().user_begin()));
+          mmop1 = dyn_cast<top::MatMulOp>(*(reshape_tmp.getResult().user_begin()));
         }
-
-        mmop1 = dyn_cast<top::MatMulOp>(*(pmop_[1].getResult().user_begin()));
+        qkmmops.push_back(mmop1); // for dino only
         auto addop1 =
             dyn_cast_or_null<top::AddOp>(*(mmop1.getResult().user_begin()));
         if (addop1 == NULL)
@@ -276,9 +362,11 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
         if (smop == NULL)
           return;
         sm_ops.push_back(smop.getOperation());
-        if (*(smop.getOutput().getUsers().begin()) !=
+        if (dino_flag != 1) {
+          if (*(smop.getOutput().getUsers().begin()) !=
             *(pmop_[2].getResult().user_begin()))
           return;
+        }
         mmop2 =
             dyn_cast_or_null<top::MatMulOp>(*(smop.getResult().user_begin()));
         if (mmop2 == NULL)
@@ -295,18 +383,40 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                         *(rsop4.getResult().user_begin()))) {
                   if (auto rsop5 = dyn_cast<top::ReshapeOp>(
                           *(pmop2.getResult().user_begin()))) {
+                    if (isa<top::SliceOp>(*(rsop5.getResult().user_begin()))) {
+                      auto slice_tmp = dyn_cast<top::SliceOp>(*(rsop5.getResult().user_begin()));
+                      if (isa<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()))) {
+                        rsop5 = dyn_cast<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()));
+                      }
+                    }
                     if (auto swdi2 = dyn_cast<top::SwapDimInnerOp>(
                             *(rsop5.getResult().user_begin()))) {
                       for (auto u : swdi2.getResult().getUsers()) {
                         if (isa<top::SwapDimInnerOp>(u)) {
                           swdi2 = dyn_cast_or_null<top::SwapDimInnerOp>(u);
+                          if (isa<top::SliceOp>(*(swdi2.getResult().user_begin()))) {
+                            auto slice_tmp = dyn_cast<top::SliceOp>(*(swdi2.getResult().user_begin()));
+                            if (isa<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()))) {
+                              rsop5 = dyn_cast<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()));
+                            }
+                          }
                           break;
                         } else {
-                          ; // u->dump();
+                          ;
                         }
                       }
                       if (*(swdi2.getResult().user_begin()) == aop ||
                           isa<top::ReshapeOp>(*(swdi2.getResult().user_begin()))) { // additional reshape op
+                        if (rsop != NULL) {
+                          wmsa.push_back(rsop);
+                        } else if (mmop != NULL) {
+                          wmsa.push_back(mmop);
+                        } else if (lnop_ != NULL) {
+                          wmsa.push_back(lnop_);
+                        } else
+                          return;
+                      } else if (*(rsop5.getResult().user_begin()) == aop ||
+                                 isa<top::AddOp>(*(rsop5.getResult().user_begin()))) {
                         if (rsop != NULL) {
                           wmsa.push_back(rsop);
                         } else if (mmop != NULL) {
@@ -368,9 +478,11 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
 bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
   std::vector<Operation *> mlp;
   std::vector<Operation *> wmsa;
+  std::vector<Operation *> qkmmops;
   std::vector<Operation *> dep2space;
   std::vector<Operation *> smops;
   bool patch_embed = false;
+  bool dino_flag = false;
 
   auto match_depth2space_and_patch_embed =
       [&](std::vector<Operation *> &depth2space, bool /*  */ &patch_embed) {
@@ -400,7 +512,7 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
         });
       };
   match_swin_mlp(mlp);
-  match_swin_wmsa(wmsa, smops);
+  match_swin_wmsa(wmsa, smops, qkmmops);
   match_depth2space_and_patch_embed(dep2space, patch_embed);
 
   if (mlp.size() == 12 && patch_embed &&
@@ -475,6 +587,8 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
       top::AddOp addop = NULL;
       top::AddOp addop_end = NULL;
       top::ReshapeOp reshapeop_ = NULL;
+      top::PadOp padop = NULL;
+      top::SwapDimInnerOp concatop = NULL;
       if (rsop != NULL) {
         auto preOp = rsop->getOperands()[0].getDefiningOp();
         if (isa<top::AddOp>(preOp)) {
@@ -483,21 +597,48 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
             if (isa<top::AddOp>(u))
               addop_end = dyn_cast_or_null<top::AddOp>(u);
           }
+        } else if (isa<top::LayerNormOp>(preOp)) {
+          lnop_ = dyn_cast<top::LayerNormOp>(preOp);
+          auto ln_prev = lnop_->getOperands()[0].getDefiningOp();
+          if (isa<top::AddOp>(ln_prev)) {
+            addop = dyn_cast_or_null<top::AddOp>(ln_prev);
+            for (auto u : addop.getResult().getUsers()) {
+              if (isa<top::AddOp>(u))
+                addop_end = dyn_cast_or_null<top::AddOp>(u);
+            }
+          }
         }
         for (auto u : rsop.getResult().getUsers()) {
           if (isa<top::LayerNormOp>(u))
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
+          if (isa<top::AddOp>(u))
+            addop = dyn_cast_or_null<top::AddOp>(u);
+          if (isa<top::PadOp>(u)) {
+            padop = dyn_cast_or_null<top::PadOp>(u);
+            if (isa<top::SwapDimInnerOp>(*(padop.getResult().getUsers().begin()))) { // Try set ConcatOp
+              concatop = dyn_cast_or_null<top::SwapDimInnerOp>(*(padop.getResult().getUsers().begin()));
+            }
+          }
         }
-
       } else if (mmop != NULL) {
         for (auto u : mmop.getResult().getUsers()) {
-          if (isa<top::ReshapeOp>(u))
+          if (isa<top::ReshapeOp>(u)) {
             reshapeop_ = dyn_cast_or_null<top::ReshapeOp>(u);
             for (auto user1 : reshapeop_.getResult().getUsers()) {
               addop = dyn_cast_or_null<top::AddOp>(user1);
             }
-          if (isa<top::LayerNormOp>(u))
+          }
+          if (isa<top::LayerNormOp>(u)) {
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
+            if (isa<top::ReshapeOp>(*(lnop_.getResult().user_begin()))) {
+              auto reshape_tmp = dyn_cast<top::ReshapeOp>(*(lnop_.getResult().user_begin()));
+              if (isa<top::PadOp>(*(reshape_tmp.getResult().user_begin()))) {
+                padop = dyn_cast_or_null<top::PadOp>(*(reshape_tmp.getResult().user_begin()));
+              }
+            }
+          }
+          if (isa<top::AddOp>(u))
+            addop = dyn_cast_or_null<top::AddOp>(u);
         }
         if (LoweringConfig::quantize_map.find(
                 module::getName(mmop.getOperation()).str()) ==
@@ -506,14 +647,32 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
               {module::getName(mmop.getOperation()).str(), module::Mode::F16});
         }
       } else if (lnop != NULL) {
+        auto preOp = lnop->getOperands()[0].getDefiningOp();
+        if (isa<top::AddOp>(preOp)) {
+          addop = dyn_cast_or_null<top::AddOp>(preOp);
+          for (auto u : addop.getResult().getUsers()) {
+            if (isa<top::AddOp>(u))
+              addop_end = dyn_cast_or_null<top::AddOp>(u);
+          }
+        }
         for (auto u : lnop.getResult().getUsers()) {
-          if (isa<top::ReshapeOp>(u))
+          if (isa<top::ReshapeOp>(u)) {
             reshapeop_ = dyn_cast_or_null<top::ReshapeOp>(u);
             for (auto user1 : reshapeop_.getResult().getUsers()) {
-              addop = dyn_cast_or_null<top::AddOp>(user1);
+              if (isa<top::AddOp>(user1))
+                addop = dyn_cast<top::AddOp>(user1);
             }
-          if (isa<top::LayerNormOp>(u))
+          }
+          if (isa<top::LayerNormOp>(u)) {
             lnop_ = dyn_cast_or_null<top::LayerNormOp>(u);
+            if (isa<top::ReshapeOp>(*(lnop_.getResult().user_begin()))) {
+              auto reshape_tmp = dyn_cast_or_null<top::ReshapeOp>(*(lnop_.getResult().user_begin()));
+              if (isa<top::PadOp>(*(reshape_tmp.getResult().user_begin())))
+                padop = dyn_cast_or_null<top::PadOp>(*(reshape_tmp.getResult().user_begin()));
+            }
+          }
+          if (isa<top::AddOp>(u))
+            addop = dyn_cast_or_null<top::AddOp>(u);
         }
       }
       if (addop == NULL || lnop_ == NULL)
@@ -542,6 +701,33 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
             LoweringConfig::quantize_map.end()) {
           LoweringConfig::quantize_map.insert(
               {module::getName(addop_end.getOperation()).str(), module::Mode::F16});
+        }
+        auto preadd = addop_end->getOperands()[0].getDefiningOp(); //set reshape before add to F16
+        if (isa<top::ReshapeOp>(preadd)) {
+          auto rs_add = dyn_cast<top::ReshapeOp>(preadd);
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(rs_add.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(rs_add.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
+      if (padop != NULL) { // set some pad to f16
+        dino_flag = true;
+        if (LoweringConfig::quantize_map.find(
+                module::getName(padop.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(padop.getOperation()).str(), module::Mode::F16});
+        }
+      }
+      if (concatop != NULL) { // set some Concat to f16
+        if (LoweringConfig::quantize_map.find(
+                module::getName(concatop.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(concatop.getOperation()).str(), module::Mode::F16});
         }
       }
     }
@@ -602,6 +788,58 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
           }
         }
       }
+      // Try More MLP nodes to F16(for dino only)
+      if (dino_flag) {
+        for (auto in : addop.getOperands()) {
+          if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(mmop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(mmop.getOperation()).str(),
+                  module::Mode::F16});
+            }
+            if (auto geluop = dyn_cast<top::GELUOp>(
+                    mmop.getOperands()[0].getDefiningOp())) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(geluop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end())
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(geluop.getOperation()).str(),
+                    module::Mode::F16});
+
+              if (auto mmop = dyn_cast<top::MatMulOp>(
+                      geluop.getInput().getDefiningOp())) {
+                if (LoweringConfig::quantize_map.find(
+                        module::getName(mmop.getOperation()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(mmop.getOperation()).str(),
+                      module::Mode::F16});
+                }
+              }
+            } else if (auto rsop = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(rsop.getOperation()).str()) ==
+                  LoweringConfig::quantize_map.end()) {
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(rsop.getOperation()).str(),
+                    module::Mode::F16});
+              }
+            }
+          }
+        }
+
+        for (auto qkop : qkmmops) { // some q,k matmul might affect accuracy
+          auto qkmmop = dyn_cast_or_null<top::MatMulOp>(qkop);
+          if (LoweringConfig::quantize_map.find(
+                  module::getName(qkmmop.getOperation()).str()) ==
+              LoweringConfig::quantize_map.end()) {
+            LoweringConfig::quantize_map.insert(
+                {module::getName(qkmmop.getOperation()).str(), module::Mode::F16});
+          }
+        }
+      }
     }
     for (auto op : smops) {
       auto smop = dyn_cast<top::SoftmaxOp>(op);
@@ -611,6 +849,19 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
           LoweringConfig::quantize_map.end()) {
         LoweringConfig::quantize_map.insert(
             {module::getName(addop.getOperation()).str(), module::Mode::F16});
+      }
+      if (dino_flag) {
+        // might try matmul after softmax
+        top::MatMulOp vmmop = NULL;
+        if (isa<top::MatMulOp>(*(smop.getResult().user_begin()))) {
+          vmmop = dyn_cast<top::MatMulOp>(*(smop.getResult().user_begin()));
+        }
+        if (LoweringConfig::quantize_map.find(
+                module::getName(vmmop.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(vmmop.getOperation()).str(), module::Mode::F16});
+        }
       }
     }
     return true;
