@@ -1270,11 +1270,13 @@ def DMA_gather_converter(context: "BM1688Context", reg: DMA_gather_reg):
     return dma_gather_base(context, reg)
 
 
-@opparam_converter_regitstry("DMA_scatter ")
 def DMA_scatter_converter(context: "BM1688Context", reg: DMA_scatter_reg):
-    results, _, operands = dma_gather_base(reg)
+    results, _, operands = dma_gather_base(context, reg)
 
     return (results, {}, operands)
+
+opparam_converter_regitstry("DMA_scatter ")(DMA_scatter_converter)
+opparam_converter_regitstry("DMA_scatter")(DMA_scatter_converter)
 
 
 @opparam_converter_regitstry("DMA_reverse")
