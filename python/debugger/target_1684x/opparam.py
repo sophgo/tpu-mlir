@@ -1059,7 +1059,7 @@ def DMA_masked_select_t_converter(reg: DMA_masked_select_reg):
 
 @opparam_converter_regitstry("DMA_general")
 def DMA_general_t_converter(reg: DMA_general_reg):
-    copy_len = reg.src_cstride
+    copy_len = reg.src_cstride_move_length_
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
