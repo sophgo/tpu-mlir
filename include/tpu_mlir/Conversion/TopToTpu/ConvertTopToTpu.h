@@ -39,7 +39,8 @@ protected:
   bool deit_mix_precision();
   void match_swin_mlp(std::vector<Operation *> &mlp);
   void match_swin_wmsa(std::vector<Operation *> &wmsa,
-                       std::vector<Operation *> &sm_ops);
+                       std::vector<Operation *> &sm_ops,
+                       std::vector<Operation *> &qkmmops);
   void match_cswin_cswsa(std::vector<Operation *> &cswsa);
   bool convergence(Operation *from, Operation *to);
   bool convergence_with_sm_matmul_slice(Operation *from, Operation *to,
