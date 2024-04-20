@@ -69,7 +69,7 @@ void GridSamplerLowering::LoweringINT4(PatternRewriter &rewriter,
 void GridSamplerLowering::LoweringINT8(PatternRewriter &rewriter,
                                        top::GridSamplerOp op,
                                        bool asymmetric) const {
-  LoweringF32(rewriter, op);
+  LoweringF16(rewriter, op);
 }
 
 void GridSamplerLowering::LoweringBF16(PatternRewriter &rewriter,
