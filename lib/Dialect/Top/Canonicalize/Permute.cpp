@@ -361,7 +361,7 @@ struct PermuteFuse : public OpRewritePattern<PermuteOp> {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
       rewriter.eraseOp(op);
       if (permute_op->getUsers().empty())
-      rewriter.eraseOp(permute_op);
+        rewriter.eraseOp(permute_op);
     } else {
       std::string in_name =
           module::getName(permute_op.getInput()).str() + "_Reshape";

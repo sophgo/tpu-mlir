@@ -87,6 +87,8 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::TAN:
   case ActiveMode::SIN:
   case ActiveMode::COS:
+  buffer_size = 2 *(tensor_size + align_up(32 * dtype_len, Arch::EU_BYTES));
+    break;
   case ActiveMode::ARCSIN:
   case ActiveMode::ARCCOS:
     buffer_size = tensor_size + align_up(32 * dtype_len, Arch::EU_BYTES);

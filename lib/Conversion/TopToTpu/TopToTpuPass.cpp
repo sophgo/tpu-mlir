@@ -1026,14 +1026,15 @@ void ConvertTopToTpu::runOnOperation() {
 
   RewritePatternSet patterns(ctx_);
   patterns.clear();
-  patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
-               TryInsertTileBinaryPattern<top::SubOp>,
-               TryInsertTileBinaryPattern<top::MulOp>,
+  patterns.add<TryInsertTileBinaryPattern<top::SubOp>,
                TryInsertTileBinaryPattern<top::MaxOp>,
                TryInsertTileBinaryPattern<top::MinOp>,
                TryInsertTileBinaryPattern<top::CompareOp>,
                TryInsertTileMatMulPattern>(ctx_);
-
+  if(!module::isBM1684XFamily()){
+    patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
+              TryInsertTileBinaryPattern<top::MulOp>>(ctx_);
+  }
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
   LoweringConfig::doWinograd =
@@ -1100,6 +1101,8 @@ void ConvertTopToTpu::runOnOperation() {
   // adjust reshape
   patterns.clear();
   patterns.add<ForwardTypePattern<tpu::ReshapeOp>,
+               ForwardTypePattern<tpu::UnsqueezeOp>,
+               ForwardTypePattern<tpu::TileOp>,
                ForwardInt32TypePattern<tpu::SqueezeOp>,
                ForwardInt32TypePattern<tpu::SliceOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));

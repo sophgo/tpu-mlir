@@ -54,6 +54,7 @@ class TORCH_IR_TESTER(object):
             "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
             "Add":              (self.test_Add,               N, Y, Y, Y),
+            "AddLarge":         (self.test_AddLarge,          N, Y, Y, N),
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
             "Add6d":            (self.test_Add6d,             N, Y, Y, Y),
             "Addmm":            (self.test_Addmm,             N, Y, Y, Y),
@@ -115,6 +116,7 @@ class TORCH_IR_TESTER(object):
             "Math":             (self.test_Math,              N, Y, Y, N),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y),
             "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y),
+            "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N),
             "Max":              (self.test_Max,               N, Y, Y, N),
             "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y),
@@ -412,6 +414,44 @@ class TORCH_IR_TESTER(object):
     #######################################################################
     # Convolution
     # ------------
+    def _test_bcbinary_abnormal(self, op_type, in0_shape, in1_shape):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                return op_type(x, y)
+
+        self.trace_and_test([in0_shape,in1_shape], Model())
+
+    #######################################################################
+
+
+    def test_AddLarge(self):
+        # self._test_bcbinary_abnormal(torch.add, (1, 76760, 8, 5, 4, 2), (1, 76760, 1, 5, 4, 2))
+        # # need tile
+        self._test_bcbinary_abnormal(torch.add, (1, 76760, 8, 5, 4, 2), (1, 76760, 1, 5, 1, 2))
+        # self._test_bcbinary_abnormal(torch.add, (8, 32, 76760, 20), (8, 1, 76760, 20))
+        # self._test_bcbinary_abnormal(torch.add, (1, 48, 65536), (1, 48, 1))
+        # self._test_bcbinary_abnormal(torch.add, (1, 76760, 8, 5, 4, 2), (1, 1, 1, 5, 1, 2))
+        # self._test_bcbinary_abnormal(torch.add, (200, 64, 8, 40), (200, 64, 8,40))
+        # self._test_bcbinary_abnormal(torch.add, (1, 76760, 256), (1, 76760, 256))
+        # self._test_bcbinary_abnormal(torch.add, (8, 8, 76760, 20), (8, 1, 76760, 20))
+
+    def test_MatMulSplit(self):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                y = torch.transpose(y,1,2)
+                return torch.matmul(x,y)
+
+        self.trace_and_test([(1,48,65536), (1,48,65536)], Model())
+
     def _test_Conv(self):
 
         def case1(conv_fun, input_shape):
@@ -1221,6 +1261,8 @@ class TORCH_IR_TESTER(object):
         # _test_reduce(torch.mean, (2, 3, 64, 64))
         _test_reduce(torch.mean, (1, 3, 64, 64), 1, True)
         _test_reduce(torch.mean, (2, 3, 64, 64), [1, 2])
+        # cv183x not supported below
+        # _test_reduce(torch.mean, (1, 48, 65536), 2, True)
 
     #######################################################################
     # Pow
