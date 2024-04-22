@@ -247,6 +247,9 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
     save_profile_info(
         "net_" + std::to_string(cur_net_idx) + ".profile",
         std::bind(&bmodel::NetParameterBuilder::add_net_profile, &npb, _1));
+    save_profile_info(
+        BMCodegen::getfilename() +".json",
+        std::bind(&bmodel::NetParameterBuilder::add_tensor_loc, &npb, _1));
     if (!save_profile_info(
             "compiler_profile_0.txt",
             std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1))) {
@@ -1582,6 +1585,10 @@ void BMCodegen::updateAllHidden() {
       special_in_names.push_back(name);
     }
   }
+}
+
+std::string BMCodegen::getfilename(){
+  return filename;
 }
 
 } // namespace tpu
