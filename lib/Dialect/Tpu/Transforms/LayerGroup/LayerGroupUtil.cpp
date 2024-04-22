@@ -1164,6 +1164,8 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
 // MatMul weight split case
 // case1 : [4, 5, 6] * [4, 6, 7] = [4, 5, 7]  => batch = 4, M = 5, k = 6, N = 7
 // case2 : [3, 4, 5, 6] * [3, 4, 6, 7] => batch = 12, M = 5, K = 6, N = 7
+// case3 :matmul attrs: r_trans=true, hdim_is_batch=true
+//=>[1, 16, 320, 64] * [1, 320, 320, 64] => [1, 16, 320, 64] * [1, 64, 320, 320] => batch =320 , M = 16, K = 64, N = 320
 // other cases TODO
 bool check_split_matmul(Operation *op) {
   if (!isa<tpu::MatMulOp>(op)) {
@@ -1189,6 +1191,12 @@ bool check_split_matmul(Operation *op) {
   // case 2
   if (a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1] &&
       b_s[1] != 1 && a_s[3] == b_s[2]) {
+    return true;
+  }
+
+  // case 3
+  if (a_s.size() == 4 && a_s[0] == b_s[0]  && a_s[2] == b_s[2] &&
+      a_s[3] == b_s[3]) {
     return true;
   }
 
