@@ -32,8 +32,8 @@ python_version=$(python3.10 -V 2>&1 | awk '{print $2}')
 
 if [ "$os_version" != "22.04" ] || [[ ! "$python_version" == 3.10* ]]; then
     echo "Error: System requirements not met (ubuntu==22.04 and python==3.10)."
-    echo "       You can use sophgo/tpuc_dev:v3.1 docker image."
-    echo " hint: docker pull sophgo/tpuc_dev:v3.1"
+    echo "       You can use sophgo/tpuc_dev:v3.2 docker image."
+    echo " hint: docker pull sophgo/tpuc_dev:v3.2"
     exit 1
 fi
 

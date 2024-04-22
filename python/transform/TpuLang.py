@@ -14,6 +14,7 @@ from tools.model_deploy import getCustomFormat
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, shm_clean
 from tools.npz_tool import npz_compare
+import pymlir
 
 import numpy as np
 import logging
@@ -54,6 +55,7 @@ def compile(name: str,
             dynamic=False,
             asymmetric=False,
             save_in_mem=False):
+    logger.info("TPU-MLIR {}".format(pymlir.module().version))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
