@@ -1035,6 +1035,7 @@ class OnnxConverter(BaseConverter):
     def convert_avgpool_op(self, onnx_node):
         assert (onnx_node.op_type == "AveragePool")
         op = self.getOperand(onnx_node.inputs[0])
+        ceil_mode = onnx_node.attrs.get("ceil_mode", False)
         kernel_shape = onnx_node.attrs['kernel_shape']
         count_include_pad = onnx_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
@@ -1050,6 +1051,7 @@ class OnnxConverter(BaseConverter):
                                strides=strides,
                                pads=pads,
                                auto_pad=StringAttr.get(auto_pad),
+                               ceil_mode=ceil_mode,
                                count_include_pad=count_include_pad,
                                do_relu=False,
                                keepdims=True,

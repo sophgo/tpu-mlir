@@ -327,6 +327,12 @@ public:
     if (!add) {
       mul_out = softmax.getInput();
     } else {
+      auto shape = module::getShape(add.getInputs()[1]);
+      auto batch = module::getShape(op.getInput())[0];
+      auto ele_num = module::getNumElements(add.getInputs()[1]);
+      if (batch * shape[shape.size() - 1] != ele_num) {
+        return failure();
+      }
       mul_out = add.getInputs()[0];
     }
     auto mul_const = dyn_cast<top::MulConstOp>(mul_out.getDefiningOp());

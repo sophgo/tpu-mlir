@@ -150,10 +150,11 @@ void top::AvgPoolOp::shape_inference() {
   }
   // for CeilMode
   if (getCeilMode().has_value() && getCeilMode().value()) {
-    for(uint32_t i = 0; i <= 1; i++) {
+    auto kernel_len = kernel_shape->size();
+    for(uint32_t i = 0; i < kernel_len; i++) {
       auto remain_pixel = (input_shape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) % strides->at(i);
       if (remain_pixel > 0) {
-        new_pads[i + 2] += (strides->at(i) - remain_pixel);
+        new_pads[i + kernel_len] += (strides->at(i) - remain_pixel);
       }
     }
     removeCeilModeAttr();
