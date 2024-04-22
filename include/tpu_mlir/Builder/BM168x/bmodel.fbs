@@ -150,6 +150,7 @@ table NetParameter {
     // io address alone
     io_addr:uint64 (id: 17);
     io_size:uint64 (id: 18);
+    tensor_loc:Binary (id: 19);
 }
 
 table Cascade {

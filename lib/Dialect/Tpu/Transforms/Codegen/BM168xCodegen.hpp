@@ -65,6 +65,7 @@ private:
   void checkAndUpdateHidden(const std::vector<Value> &inputs,
                             const std::vector<Value> &outputs);
   void updateAllHidden();
+  std::string getfilename();
 
 private:
   StringRef state;
