@@ -249,8 +249,8 @@ static int conv_split(SLICES &slices, int input_n, int input_c, int input_d,
                  stride_w, dilation_h, dilation_w));
 
   slices.n = 1;
-  slices.oc = ceiling_func(oc, CV18xx::NPU_NUM); // lane parallelism
-  // slices.oc = 1; //ceiling_func(oc, CV18xx::NPU_NUM);  // lane parallelism
+  // slices.oc = ceiling_func(oc, CV18xx::NPU_NUM); // lane parallelism
+  slices.oc = 1; //ceiling_func(oc, CV18xx::NPU_NUM);  // lane parallelism
   slices.ic = 1;
   slices.h = (ih + (4095 - 32 - 1)) / (4095 - 32); // 12bit, max 4095-32(lanes)
   slices.w = (iw + (4095 - 32 - 1)) / (4095 - 32); // 12bit, max 4095-32(lanes)
@@ -277,7 +277,7 @@ static int conv_split(SLICES &slices, int input_n, int input_c, int input_d,
 
     // Split oh
     for (slices.h = 1; slices.h <= oh; ++slices.h) {
-      for (slices.oc = 1; slices.oc <= oc; ++slices.oc) {
+      for (; slices.oc <= oc; ++slices.oc) {
         int oc_step = ceiling_func(oc, slices.oc);
 
         // We may need to put EU-alignment info in one place
@@ -307,7 +307,7 @@ static int conv_split(SLICES &slices, int input_n, int input_c, int input_d,
           uint32_t total_needed = 0;
 
           uint32_t ofmap_size = CV18xx::lmem_tensor_to_size(
-              CV18xx::tl_shape_t4(n_step, oc_step, oh_step, ow_step), fmt,
+              CV18xx::tl_shape_t4(n_step * 2, oc_step, oh_step, ow_step), fmt,
               /*eu_align=*/1);
           total_needed += ofmap_size;
 
@@ -491,14 +491,17 @@ void cvi_backend_tg_bf16_conv3d_kernel(
 
   cvk_tl_shape_t tl_output_shape =
       CV18xx::tl_shape_t4(input_n, oc_step, oh_step, ow_step);
+  cvk_tl_shape_t tl_output_shape_32 =
+      CV18xx::tl_shape_t4(input_n * 2, oc_step, oh_step, ow_step);
   cvk_tl_shape_t tl_input_shape =
       CV18xx::tl_shape_t4(input_n, input_c, ih_step, iw_step);
   cvk_tl_shape_t tl_weight_shape =
       CV18xx::tl_shape_t4(kd, oc_step, kh * kw, input_c);
   cvk_tl_shape_t tl_bias_shape = CV18xx::tl_shape_t4(2, oc_step, 1, 1);
 
-  cvk_tl_t *tl_output = CV18xx::lmem_alloc_tensor(tl_output_shape, fmt,
+  cvk_tl_t *tl_output = CV18xx::lmem_alloc_tensor(tl_output_shape_32, fmt,
                                                   /*eu_align=*/1);
+  tl_output->shape = tl_output_shape;
   cvk_tl_t *tl_input = CV18xx::lmem_alloc_tensor(tl_input_shape, fmt,
                                                  /*eu_align=*/1);
   cvk_tl_t *tl_weight = CV18xx::lmem_alloc_tensor(tl_weight_shape, fmt,
