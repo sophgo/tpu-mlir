@@ -292,12 +292,13 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
 
     // rewrite
     auto input = op.getInput();
-    auto inputType = input.getType();
+    auto inputShape = module::getShape(input);
+    auto outputType = nextOp->getResult(0).getType();
     // input -> next
     rewriter.updateRootInPlace(nextOp, [&] {
       nextOp->setOperands(input);
       // should be the same type as the input
-      nextOp->getResult(0).setType(inputType);
+      module::setShape(nextOp->getResult(0), inputShape);
       // rewrite loc for tests
       auto loc = NameLoc::get(
           rewriter.getStringAttr(module::getName(input).str() + "_" +
@@ -309,6 +310,7 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
     // next -> perm
     rewriter.updateRootInPlace(op, [&] {
       op->setOperands(nextOp->getResults());
+      op->getResult(0).setType(outputType);
       // linear IR, tweak order
       op->moveAfter(nextOp);
       // rewrite loc for tests
