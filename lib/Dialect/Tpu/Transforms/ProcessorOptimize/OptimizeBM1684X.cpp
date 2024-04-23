@@ -3165,9 +3165,9 @@ public:
      * MatMul(1x48x16384,1x16384x48) => Add
      */
     // TODO : judge whether K is splited; what if other shape > 65535
-    if (!module::isBM1688()) {
-      return failure();
-    }
+    // if (!module::isBM1688()) {
+    //   return failure();
+    // }
     auto left = op.getInput();
     auto right = op.getRight();
     auto left_shape = module::getShape(left);
@@ -3241,7 +3241,7 @@ public:
           loc, right_type, ValueRange{right, none, none, none, none}, attrs);
 
       attrs.clear();
-      rewriter.setInsertionPointAfter(right_op);
+      rewriter.setInsertionPointAfter(op);
       auto new_matmul_op = rewriter.clone(*op);
       module::setLocSuffix(new_matmul_op, std::to_string(i));
       new_matmul_op->setOperand(0, left_op->getResult(0));
