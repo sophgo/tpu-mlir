@@ -708,6 +708,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                      llvm::zip(yieldOp->getOperands(),
                                parallelOp->getResultTypes())) {
                   joinOpValue.setType(returnType);
+                  if(!isa<tpu::JoinOp>(joinOpValue.getDefiningOp())) continue;
                   int64_t address = module::getAddress(joinOpValue);
                   for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
                   if (v.getType().isa<NoneType>()) {
