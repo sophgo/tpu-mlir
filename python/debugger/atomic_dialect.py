@@ -29,6 +29,7 @@ from .target_common import (
 from .target_1684.context import BM1684Context
 from .target_1688.context import BM1688Context
 from .target_1690.context import BM1690Context
+from .target_2380.context import SG2380Context
 import functools
 import textwrap
 
@@ -37,7 +38,7 @@ INDENT_SPACE = "  "
 
 def BModel2MLIR(bmodel_net: BModel):
     with use_backend(bmodel_net.chip) as context:
-        if isinstance(context, BM1688Context):
+        if isinstance(context, BM1688Context) or isinstance(context, SG2380Context):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
@@ -189,7 +190,8 @@ class Block(Node):
                     from .target_1690.multi_core import MultiCore, MsgCore
                 elif isinstance(context, BM1688Context):
                     from .target_1688.multi_core import MultiCore, MsgCore
-
+                elif isinstance(context, SG2380Context):
+                    from .target_2380.multi_core import MultiCore, MsgCore
                 core_nums = len(self.cmds)
                 self.cores_cmds = [
                     MultiCore(core_id, core_nums, core_cmds.all, indent)

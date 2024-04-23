@@ -24,6 +24,7 @@ from debugger.tdb_support import (
 )
 from ..target_1688.context import BM1688Context
 from ..target_1690.context import BM1690Context
+from ..target_2380.context import SG2380Context
 
 
 class WatchPlugin(TdbPlugin, TdbPluginCmd):
@@ -216,7 +217,7 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
             if value.is_scalar:
                 data = value.data
             else:
-                if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context):
+                if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context) or isinstance(self.tdb.context, SG2380Context):
                     data = self.tdb.memory.get_data(value, core_id=cmd_or_watchpoint.core_id)
                 else:
                     data = self.tdb.memory.get_data(value)

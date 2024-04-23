@@ -195,6 +195,8 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
     } else if (isa_and_nonnull<tpu::StoreOp>(op)) {
       address = module::getAddress(val) + offset();
       layout = "continuous";
+    } else if (module::getChip() == module::Chip::SG2380) {
+      address |= (0x1ful << 40);
     }
   }
   if (is_xn(val))
@@ -357,7 +359,10 @@ void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
                      .cast<tpu::LayerGroupAttr>();
   int buffer_size = g_param.getBufferSize();
   if (buffer_size > 0) {
-    int buffer_addr = g_param.getBufferAddr();
+    int64_t buffer_addr = g_param.getBufferAddr();
+    if (module::getChip() == module::Chip::SG2380) {
+      buffer_addr |= (0x1ful << 40);
+    }
     buffers.push_back(json::Object{{"address", buffer_addr}, {"size", buffer_size}});
   }
 

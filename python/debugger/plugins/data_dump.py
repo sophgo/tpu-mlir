@@ -25,6 +25,7 @@ from ..tdb_support import (
 from .common import FinalMlirIndexPlugin, ValueView
 from ..target_1688.context import BM1688Context
 from ..target_1690.context import BM1690Context
+from ..target_2380.context import SG2380Context
 
 class IncNpzFile2:
     def __init__(self, file: str):
@@ -142,7 +143,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
                 return
 
         cmd = self.tdb.cmditer[point_index]
-        if isinstance(context, BM1690Context) or isinstance(context, BM1688Context):
+        if isinstance(context, BM1690Context) or isinstance(context, BM1688Context) or isinstance(context, SG2380Context):
             raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
         else:
             raw_data = context.memory.get_data(memref)
