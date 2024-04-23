@@ -3240,7 +3240,7 @@ requant_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * mul：List[int]型或int型，表示量化乘子系数。
-* shift:List[int]型或int型，表示量化移位系数。右移为正，左移为负。
+* shift:List[int]型或int型，表示量化移位系数。右移为负，左移为正。
 * offset：List[int]型或int型，表示输出偏移。
 * requant_mode：int型，表示量化模式。
 * round_mode：string型，表示舍入模式。默认为“half_up”。

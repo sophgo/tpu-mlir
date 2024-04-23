@@ -1711,16 +1711,21 @@ class TPULANG_IR_TESTER(object):
 
     def _test_quantized_active_op(self, shape, func, case_name, scale=None, zero_point=None, dtype="float32"):
         def active_op(input, scale=None, zero_point=None):
-            scale = scale if scale == None else [scale, scale]
+            scale = scale if scale == None else [scale, scale*2]
             zero_point = zero_point if zero_point == None else [zero_point, zero_point]
             out = func(input, scale=scale, zero_point=zero_point)
             return out
 
         @tpulang(self.chip)
         def quantized_op(shape):
+            import copy
             input = rand_data(shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape, data=input, scale=scale, zero_point=zero_point)
-            out = active_op(x, scale=scale, zero_point=zero_point)
+            new_shape = copy.copy(shape)
+            new_shape[-1] = 1
+            new_shape[-2] = -1
+            reshape = tpul.reshape(x, new_shape)
+            out = active_op(reshape, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
         quantized_op(shape)
 
