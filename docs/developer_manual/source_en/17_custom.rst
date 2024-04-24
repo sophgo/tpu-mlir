@@ -28,14 +28,14 @@ The frontend can build models containing custom operators using tpulang or Caffe
 Custom Operator Addition Process
 --------------------------------
 
-Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {processor_arch} represents architecture of processor, whose optional values are `bm1684x` or `bm1688`.
+Notice: in the following context, {op_name} represent the name of operator, whose length is limited to 20. {processor_arch} represents architecture of processor, whose optional values are `BM1684X` or `BM1688`.
 
 Add TpuLang Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Load TPU-MLIR
 
-.. include:: ./../../quick_start/source_en/env_var.rst
+.. include:: ./env_comm.rst
 
 2. Define the structure of parameter and parse function
 
@@ -197,13 +197,13 @@ Add TpuLang Custom Operator
 
     rebuild_custom_firmware_cmodel {processor_arch}
 
-  b. SOC mode (target: `libxxx_kernel_module_custom_soc.so`):
+  b. SoC mode (target: `libxxx_kernel_module_custom_soc.so`):
 
   .. code-block:: shell
 
     rebuild_custom_firmware_soc {processor_arch}
 
-  c. PCIE mode (target: `libxxx_kernel_module_custom_pcie.so`, note that bm1688 does not support PCIE mode):
+  c. PCIe mode (target: `libxxx_kernel_module_custom_pcie.so`, note that BM1688 does not support PCIe mode):
 
   .. code-block:: shell
 
@@ -219,7 +219,7 @@ Add TpuLang Custom Operator
 
   .. code-block:: python
 
-    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
+    def custom(tensors_in: List[TpuLang.Tensor],
                    op_name: str,
                    out_dtypes: List[str],
                    out_names: List[str] = None,
@@ -278,9 +278,9 @@ Add TpuLang Custom Operator
 
   .. code-block:: shell
 
-    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so # SOC mode
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so # SoC mode
 
-    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIE mode
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIe mode
 
 Add Caffe Custom Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -645,12 +645,12 @@ TpuLang Custom AP Operator Adding
 2. Write Processor Operator Implementation
 
   Assuming you are currently in the $TPUC_ROOT/customlayer path, declare a custom derived class
-  layer that inherits from the ap_layer class in the header file 
-  ./include/custom_ap/ap_impl_{op_name}.h (where "forward()" declares the specific 
+  layer that inherits from the ap_layer class in the header file
+  ./include/custom_ap/ap_impl_{op_name}.h (where "forward()" declares the specific
   implementation method, "shape_infer()" declares the method for inferring tensor shape
-  changes before and after, "dtype_infer()" declares the method for inferring data type 
-  changes before and after, "get_param()" declares the parameter parsing method). Also, 
-  add ap_impl_{op_name}.cpp in the ./ap_src directory, where you implement the corresponding 
+  changes before and after, "dtype_infer()" declares the method for inferring data type
+  changes before and after, "get_param()" declares the parameter parsing method). Also,
+  add ap_impl_{op_name}.cpp in the ./ap_src directory, where you implement the corresponding
   functions, define new member variables, and override the member functions.
 
 3. Register Custom Operator
@@ -658,14 +658,14 @@ TpuLang Custom AP Operator Adding
   a. Add the operator's name in ap_impl_{op_name}.cpp to register the custom operator:
 
   .. code-block:: c++
-  
+
     REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. And define the member AP_CUSTOM_{OP_NAME} in the enumeration type `AP_CUSTOM_LAYER_TYPE_T` 
+  b. And define the member AP_CUSTOM_{OP_NAME} in the enumeration type `AP_CUSTOM_LAYER_TYPE_T`
     in ./customlayer/include/customap_common.h, where OP_NAME is uppercase.
 
   .. code-block:: c++
-  
+
     typedef enum {
       AP_CUSTOM                                 = 10001,
       AP_CUSTOM_TOPK                            = 10002,
@@ -695,7 +695,7 @@ TpuLang Custom AP Operator Adding
   The following patch functions are currently supported (defined in the ./plugin folder):
 
   a. [Required] You need to implement the operator parameter parsing function yourself,
-    which is used to obtain the key parameters required by the operator, and override the 
+    which is used to obtain the key parameters required by the operator, and override the
     get_param() method of the custom layer:
 
     .. code-block:: c++
@@ -703,14 +703,14 @@ TpuLang Custom AP Operator Adding
       int ap_mylayer::get_param(void *param, int param_size);
 
 
-  b. [Required] Inference function, i.e., the C++ implementation of the operator. Override 
+  b. [Required] Inference function, i.e., the C++ implementation of the operator. Override
     the custom layer's forward() method:
 
     .. code-block:: c++
 
       int ap_mylayer::forward(void *raw_param, int param_size);
 
-  c. [Optional] Shape inference function. This patch function is used for compiler shape 
+  c. [Optional] Shape inference function. This patch function is used for compiler shape
     inference. If not implemented, by default, there is only one input and one output, and
     the output shape is the same as the input shape. The patch function is as follows:
 
@@ -720,7 +720,7 @@ TpuLang Custom AP Operator Adding
                                     const vector<vector<int>> &input_shapes,
                                     vector<vector<int>> &output_shapes);
 
-  Where input_shapes/output_shapes are arrays of input/output tensor shapes, and 
+  Where input_shapes/output_shapes are arrays of input/output tensor shapes, and
   input_dims/output_dims are arrays of input/output tensor dimensions.
 
 5. Compile and Install the Dynamic Library
@@ -736,10 +736,10 @@ TpuLang Custom AP Operator Adding
   .. code-block:: shell
 
     rebuild_custom_plugin
-  
+
   Compile the custom operator library file according to the processor architecture
-  (to obtain `libcustomapop.so`). It is important to note that the environment for 
-  compiling the custom processor operator must be compatible with the glibc version in the bmodel 
+  (to obtain `libcustomapop.so`). It is important to note that the environment for
+  compiling the custom processor operator must be compatible with the glibc version in the bmodel
   runtime environment. The commands are as follows:
 
   a. x86 architecture
@@ -761,8 +761,8 @@ TpuLang Custom AP Operator Adding
 
   For how to use TpuLang, please refer to the TpuLang interface section.
 
-  TpuLang provides the `TpuLang.custom` interface which can also be used for custom processor operators. 
-  The method of use is basically the same as that for custom TPU operators. The difference is that 
+  TpuLang provides the `TpuLang.custom` interface which can also be used for custom processor operators.
+  The method of use is basically the same as that for custom TPU operators. The difference is that
   when defining the "TpuLang.custom" object, the "op_name" parameter must start with the "ap."
   prefix to distinguish it, for example, "ap.topk":
 
@@ -790,14 +790,14 @@ TpuLang Custom AP Operator Adding
 7. On-Processor Testing
 
   When the network contains custom processor operators, the bmodel needs to include operator information.
-  Use the command to write libcustomapop.so into the bmodel file, which is used for all host 
+  Use the command to write libcustomapop.so into the bmodel file, which is used for all host
   processor architectures:
 
   .. code-block:: shell
 
     tpu_model --custom_ap_update xxx.bmodel libcustomapop.so
 
-  Note: It is especially important that the environment for compiling the custom processor operator 
+  Note: It is especially important that the environment for compiling the custom processor operator
   is compatible with the glibc version in the bmodel runtime environment.
 
 Custom AP(Application Processor) Operator Example
@@ -808,7 +808,7 @@ This section assumes that the tpu-mlir release package has been loaded.
 TpuLang Example
 ~~~~~~~~~~~~~~~~
 
-This subsection provides an example of a swapchannel operator implementation and its application 
+This subsection provides an example of a swapchannel operator implementation and its application
 through the TpuLang interface.
 
 1. Custom Operator Derived Class
@@ -824,9 +824,9 @@ through the TpuLang interface.
       int K_;
 
 
-  Override the `get_param()` interface in the custom class in 
+  Override the `get_param()` interface in the custom class in
   {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp. It is worth noting that what is
-  passed from the compiler to the backend is an array A of custom_param_t, the first 
+  passed from the compiler to the backend is an array A of custom_param_t, the first
   element of which is reserved, and from the second element onwards, each element
   corresponds to an attribute on the frontend:
 
@@ -838,7 +838,7 @@ through the TpuLang interface.
       return 0;
     }
 
-  Override the `shape_infer()` interface in the custom class in 
+  Override the `shape_infer()` interface in the custom class in
   {TPUC_ROOT}/customlayer/ap_src/ap_impl_{op_name}.cpp:
 
   .. code-block:: c++
@@ -901,7 +901,7 @@ through the TpuLang interface.
 
 4. Frontend Preparation
 
-  The process of building a custom Processor operator using the TpuLang interface is basically 
-  the same as for a TPU custom operator. The difference is that when defining the 
-  "TpuLang.custom" object, the "op_name" parameter must start with the "ap." prefix to 
+  The process of building a custom Processor operator using the TpuLang interface is basically
+  the same as for a TPU custom operator. The difference is that when defining the
+  "TpuLang.custom" object, the "op_name" parameter must start with the "ap." prefix to
   distinguish it, for example, "ap.topk"

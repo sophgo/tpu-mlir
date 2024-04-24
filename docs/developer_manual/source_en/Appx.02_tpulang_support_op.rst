@@ -104,7 +104,7 @@ The interface for the initialization function is as follows, where you choose th
       def init(device):
           #pass
 
-* The device parameter is of type string and can take values from the range "cpu" | "bm1684" | "bm1684x".
+* The device parameter is of type string and can take values from the range "BM1684X"\|"BM1688"\|"CV183X".
 
 .. _compile:
 compile
@@ -2532,7 +2532,7 @@ Parameters
 """""""""""
 * input: Tensor type, representing input.
 * key: Tensor type, representing key.
-* axis: Int type, representing the axis used in sorting. 
+* axis: Int type, representing the axis used in sorting.
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 

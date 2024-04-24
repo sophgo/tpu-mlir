@@ -36,7 +36,7 @@ canonicalize
 extra-optimize
    额外的pattern实现, 比如求FLOPs、去除无效输出等等。
 processor-assign
-   配置处理器, 如bm1684x或者cv183x等等; 并根据处理器对top层进行调整, 比如cv18xx将输入全部调整为F32。
+   配置处理器, 如BM1684X或者CV183X等等; 并根据处理器对top层进行调整, 比如CV18XX将输入全部调整为F32。
 import-calibration-table
    按照calibration table, 给每个op插入min和max, 用于后续量化; 对应对称量化则插入threshold
 processor-top-optimize

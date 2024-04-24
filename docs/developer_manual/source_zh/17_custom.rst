@@ -30,13 +30,13 @@ tpu-mlir当前已经包含了丰富的算子库，可以满足大部分神经网
 自定义算子添加流程
 ---------------------------
 
-注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{processor_arch} 表示架构名称，当前可选 `bm1684x` 和 `bm1688` 。
+注意: 在下文中, {op_name} 表示算子的名字, 且字符串长度应不超过 20 。{processor_arch} 表示架构名称，当前可选 `BM1684X` 和 `BM1688` 。
 
 TpuLang自定义算子添加
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 1. 加载tpu-mlir
 
-.. include:: ./../../quick_start/source_zh/env_var.rst
+.. include:: ./env_comm.rst
 
 2. 定义参数结构体与解析函数
 
@@ -202,13 +202,13 @@ TpuLang自定义算子添加
 
     rebuild_custom_firmware_cmodel {processor_arch}
 
-  b. SOC模式（得到 `libxxx_kernel_module_custom_soc.so`）
+  b. SoC模式（得到 `libxxx_kernel_module_custom_soc.so`）
 
   .. code-block:: shell
 
     rebuild_custom_firmware_soc {processor_arch}
 
-  c. PCIE模式（得到 `libxxx_kernel_module_custom_pcie.so`）
+  c. PCIe模式（得到 `libxxx_kernel_module_custom_pcie.so`）
 
   .. code-block:: shell
 
@@ -225,7 +225,7 @@ TpuLang自定义算子添加
 
   .. code-block:: python
 
-    TpuLang.custom(tensors_in: List[TpuLang.Tensor],
+    def custom(tensors_in: List[TpuLang.Tensor],
                    op_name: str,
                    out_dtypes: List[str],
                    out_names: List[str] = None,
@@ -285,9 +285,9 @@ TpuLang自定义算子添加
 
   .. code-block:: shell
 
-    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so #SOC模式下
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_soc.so #SoC模式下
 
-    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIE模式下
+    tpu_model --kernel_update xxx.bmodel libxxx_kernel_module_custom_pcie.so #PCIe模式下
 
 
 Caffe自定义算子添加
@@ -674,7 +674,7 @@ TpuLang自定义AP算子添加
 
     REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员 
+  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员
     AP_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
 
   .. code-block:: c++

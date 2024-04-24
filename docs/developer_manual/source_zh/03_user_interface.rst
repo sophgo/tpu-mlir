@@ -23,7 +23,7 @@
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize F32 \ # F16/BF16
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input resnet_in_f32.npz \
        --test_reference resnet_top_outputs.npz \
        --model resnet50_f32.bmodel
@@ -80,7 +80,7 @@
        --mlir resnet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input somenet_in_f32.npz \
        --test_reference somenet_top_outputs.npz \
        --tolerance 0.9,0.7 \
@@ -96,7 +96,7 @@
    $ run_qtable.py somenet.mlir \
        --dataset dataset \
        --calibration_table somenet_cali_table \
-       --processor bm1684x \
+       --processor BM1684X \
        -o somenet_qtable
 
 然后将量化表传入生成模型, 如下:
@@ -108,7 +108,7 @@
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --quantize_table somenet_qtable \
-       --processor bm1684x \
+       --processor BM1684X \
        --model somenet_mix.bmodel
 
 支持量化模型TFLite
@@ -133,7 +133,7 @@
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
        --tolerance 0.95,0.85 \
@@ -231,12 +231,29 @@ model_transform.py
    * - tolerance
      - 否
      - 模型转换相似度的误差容忍度
-   * - disable_layer_group
+   * - cache_skip
      - 否
-     - 是否进行layer group操作
-   * - opt
+     - 是否在生成相同mlir/bmodel时跳过正确性的检查
+   * - dynamic_inputs
      - 否
-     - 优化级别, 默认2
+     - 指定动态输入名，例如input1,input2
+   * - inputs_is_shape
+     - 否
+     - shape信息作为一个输入操作数
+   * - resize_dims
+     - 否
+     - 图像缩放到指定的固定尺寸h/w,缺省时为输入图像本身尺寸
+   * - pad_value
+     - 否
+     - 图片缩放时边框填充大小
+   * - pad_type
+     - 否
+     - 图片缩放时的填充类型，有normal, center
+   * - preprocess_list
+     - 否
+     - 输入是否需要做预处理的选项,例如:'1,3' 表示输入1&3需要进行预处理, 缺省代表所有输入要做预处理
+
+
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
 
@@ -331,7 +348,7 @@ run_qtable.py
      - 输入校准表
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
@@ -361,7 +378,7 @@ run_qtable.py
     # genetated time: 2022-11-09 21:35:47.981562
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # processor: bm1684x  mix_mode: F32
+    # processor: BM1684X  mix_mode: F32
     ###
     # op_name   quantize_mode
     conv2_1/linear/bn F32
@@ -377,7 +394,7 @@ run_qtable.py
     # genetated time: 2022-11-09 22:30:31.912270
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # processor: bm1684x  mix_mode: F32
+    # processor: BM1684X  mix_mode: F32
     ###
     No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
     No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
@@ -417,7 +434,7 @@ model_deploy.py
      - 指定mlir文件
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
@@ -466,9 +483,6 @@ model_deploy.py
    * - debug
      - 否
      - 是否保留中间文件
-   * - core
-     - 否
-     - 当target选择为bm1688时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
    * - asymmetric
      - 否
      - 指定做int8非对称量化
@@ -505,11 +519,32 @@ model_deploy.py
    * - compress_mode
      - 否
      - 指定模型的压缩模式："none","weight","activation","all"。支持bm1688, 默认为"none",不进行压缩
+   * - cache_skip
+     - 否
+     - 是否在生成相同mlir/bmodel时跳过正确性的检查
+   * - aligned_input
+     - 否
+     - 是否输入图像的宽/通道是对齐的，仅用于CV系列芯片的VPSS输入对齐
+   * - group_by_cores
+     - 否
+     - layer groups是否根据core数目进行强制分组, 可选auto/true/false, 默认为auto
+   * - opt
+     - 否
+     - LayerGroup优化类型，可选1/2, 默认为2
+   * - addr_mode
+     - 否
+     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag'], 默认为auto
+   * - disable_layer_group
+     - 否
+     - 是否关闭LayerGroup
+   * - do_winograd
+     - 否
+     - 是否使用WinoGrad卷积, 仅用于BM1684平台
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~
 
-对模型进行推理, 支持mlir/pytorch/onnx/tflie/bmodel/prototxt。
+对模型进行推理, 支持mlir/pytorch/onnx/tflite/bmodel/prototxt。
 
 执行参考如下:
 
@@ -534,7 +569,7 @@ model_runner.py
      - 指定模型输入, npz文件
    * - model
      - 是
-     - 指定模型文件, 支持mlir/pytorch/onnx/tflie/bmodel/prototxt
+     - 指定模型文件, 支持mlir/pytorch/onnx/tflite/bmodel/prototxt
    * - dump_all_tensors
      - 否
      - 开启后对导出所有的结果, 包括中间tensor的结果

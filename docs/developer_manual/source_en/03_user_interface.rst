@@ -23,7 +23,7 @@ Calibration is required if you need to get the INT8 model.
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize F32 \ # F16/BF16
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input resnet_in_f32.npz \
        --test_reference resnet_top_outputs.npz \
        --model resnet50_f32.bmodel
@@ -80,7 +80,7 @@ Generating Model with Calibration Table Input.
        --mlir resnet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input somenet_in_f32.npz \
        --test_reference somenet_top_outputs.npz \
        --tolerance 0.9,0.7 \
@@ -96,7 +96,7 @@ When the precision of the INT8 model does not meet business requirements, you ca
    $ run_qtable.py somenet.mlir \
        --dataset dataset \
        --calibration_table somenet_cali_table \
-       --processor bm1684x \
+       --processor BM1684X \
        -o somenet_qtable
 
 Then pass the quantization table to generate the model
@@ -108,7 +108,7 @@ Then pass the quantization table to generate the model
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --quantize_table somenet_qtable \
-       --processor bm1684x \
+       --processor BM1684X \
        --model somenet_mix.bmodel
 
 Support for Quantized TFLite Models
@@ -133,7 +133,7 @@ TFLite model conversion is also supported, with the following command:
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
        --tolerance 0.95,0.85 \
@@ -231,12 +231,28 @@ Used to convert various neural network models into MLIR files, the supported par
    * - tolerance
      - N
      - Minimum similarity tolerance to model transform
-   * - disable_layer_group
+   * - cache_skip
      - N
-     - Whether to Perform Layer Group Operation
-   * - opt
+     - skip checking the correctness when generate same mlir and bmodel
+   * - dynamic_inputs
      - N
-     - Optimization Level, Default 2
+     - list of dynamic input names, like:input1,input2
+   * - inputs_is_shape
+     - N
+     - inputs affect tensors shape
+   * - resize_dims
+     - N
+     - Image was resize to fixed 'h,w', default is same as net input dims
+   * - pad_value
+     - N
+     - pad value when resize
+   * - pad_type
+     - N
+     - type of pad when resize, such as normal/center
+   * - preprocess_list
+     - N
+     - choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs
+
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
@@ -331,7 +347,7 @@ Use ``run_qtable.py`` to generate a mixed precision quantization table. The rele
      - The quantization table path
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
    * - input_num
      - N
      - The number of input for calibration. Use all samples if it is 10
@@ -361,7 +377,7 @@ A sample mixed precision quantization table is as follows:
     # genetated time: 2022-11-09 21:35:47.981562
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # processor: bm1684x  mix_mode: F32
+    # processor: BM1684X  mix_mode: F32
     ###
     # op_name   quantize_mode
     conv2_1/linear/bn F32
@@ -377,7 +393,7 @@ At the same time, a loss table will be generated, the default is ``full_loss_tab
     # genetated time: 2022-11-09 22:30:31.912270
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # processor: bm1684x  mix_mode: F32
+    # processor: BM1684X  mix_mode: F32
     ###
     No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
     No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
@@ -417,7 +433,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
@@ -466,9 +482,6 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - debug
      - N
      - to keep all intermediate files for debug
-   * - core
-     - N
-     - When the target is selected as bm1688, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
    * - asymmetric
      - N
      - Do INT8 asymmetric quantization
@@ -504,12 +517,33 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Group size for per-group quant, only used in W4A16 quant mode
    * - compress_mode
      - N
-     - Specify the compression mode of the model: "none", "weight", "activation", "all". Supported on BM1688. Default is "none", no compression.
+     - Specify the compression mode of the model: "none", "weight", "activation", "all". Supported on BM1688. Default is "none", no compression
+   * - cache_skip
+     - N
+     - skip checking the correctness when generate same mlir and bmodel
+   * - aligned_input
+     - N
+     - if the input frame is width/channel aligned. VPSS input alignment for CV series processors only
+   * - group_by_cores
+     - N
+     - whether layer groups force group by cores, auto/true/false, default is auto
+   * - opt
+     - N
+     - Optimization type of LayerGroup, 1 or 2, default is 2
+   * - addr_mode
+     - N
+     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag'], if not set, auto as default
+   * - disable_layer_group
+     - N
+     - Whether to disable LayerGroup pass
+   * - do_winograd
+     - N
+     - if do WinoGrad convolution, only for BM1684
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
 
-Model inference. mlir/pytorch/onnx/tflie/bmodel/prototxt supported.
+Model inference. mlir/pytorch/onnx/tflite/bmodel/prototxt supported.
 
 Example:
 
@@ -534,7 +568,7 @@ Supported parameters:
      - Input npz file
    * - model
      - Y
-     - Model file (mlir/pytorch/onnx/tflie/bmodel/prototxt)
+     - Model file (mlir/pytorch/onnx/tflite/bmodel/prototxt)
    * - dump_all_tensors
      - N
      - Export all the results, including intermediate ones, when specified

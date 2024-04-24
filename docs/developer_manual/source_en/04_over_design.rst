@@ -35,7 +35,7 @@ canonicalize
 extra-optimize
    Do extra patterns, such as get FLOPs, remove unuse output, etc.
 processor-assign
-   Assign processor, such as bm1684x, cv183x, etc; and adjust top mlir by processor, for example, make all cv18xx input types as F32.
+   Assign processor, such as BM1684X, CV183X, etc; and adjust top mlir by processor, for example, make all CV18XX input types as F32.
 import-calibration-table
    Import calibration table, assign min and max for all ops, for quantization later.
 processor-top-optimize
