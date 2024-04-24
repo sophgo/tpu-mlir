@@ -286,6 +286,7 @@ class TFLiteConverter(BaseConverter):
             "REDUCE_MAX": self.reduce_max_op,
             "REDUCE_MIN": self.reduce_min_op,
             "CONV_2D": self.conv_2d_op,
+            "DECONV_2D": self.deconv_2d_op,
             "DEPTHWISE_CONV_2D": self.depthwise_2d_op,
             "FULLY_CONNECTED": self.fully_connected_op,
             "MAX_POOL_2D": self.maxpool_op,
@@ -351,7 +352,7 @@ class TFLiteConverter(BaseConverter):
         quantParam = tensor.quantization
         if quantParam.Details() is not None:
             raise ValueError("Cannot handle experimental quantization")
-        is_signed = tensor.type_str is 'INT8' or tensor.type_str is 'INT16' or tensor.type_str is 'INT32'
+        is_signed = tensor.type_str in ['INT8', 'INT16', 'INT32']
         storage_type = self.type_to_mlir[tensor.type]
         # TFLite uses narrow-range [u]int8 for constant buffers of quantized weights.
         # Since we don't know which ones are weights, we represent this optimization
@@ -675,6 +676,51 @@ class TFLiteConverter(BaseConverter):
         }
         return "top.Conv", attr, True
 
+    def deconv_2d_op(self, op):
+        from .tflite.TransposeConvOptions import TransposeConvOptions
+        from .tflite.Padding import Padding
+
+        op_options = op.builtin_options
+        param = TransposeConvOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        kernel_shape = op.inputs[1].shape
+        fused_active = param.FusedActivationFunction()
+        padding = [0, 0, 0, 0]  # VALID padding
+        if param.Padding() == Padding.SAME:
+            # high, width
+            stride = np.array([param.StrideH(), param.StrideW()])
+            dilation_rate = np.array(
+                [param.DilationHFactor(), param.DilationWFactor()], dtype=np.int64)
+            kernel_size = np.array(kernel_shape[1:3], dtype=np.int64)
+            input_size = np.array(op.inputs[0].shape[1:3], dtype=np.int64)  # NHWC
+            effective_filter_size = (kernel_size - 1) * dilation_rate + 1
+            output_size = (input_size + stride - 1) // stride
+            padding_needed = np.int64((output_size - 1) * stride + effective_filter_size -
+                                      input_size)
+            padding_needed = padding_needed.clip(min=0)
+            # For odd values of total padding, add more padding at the 'right'
+            # side of the given dimension.
+            padding_before = padding_needed // 2
+            padding_after = padding_needed - padding_before
+            padding = [
+                padding_before[0],
+                padding_before[1],
+                padding_after[0],
+                padding_after[1],
+            ]
+
+        if fused_active not in [0, 1, 3]:
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
+        attr = {
+            "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
+            "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
+            "dilations": self.mlir.ArrayAttr([param.DilationHFactor(),
+                                              param.DilationWFactor()]),
+            "pads": self.mlir.ArrayAttr(padding),
+            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),  # relu6 to relu
+        }
+        return "top.Deconv", attr, True
+
     def fully_connected_op(self, op):
         from .tflite.FullyConnectedOptions import FullyConnectedOptions
 
@@ -945,7 +991,7 @@ class TFLiteConverter(BaseConverter):
                     for x in operation.outputs
                 ]
             else:
-                if operation.type is 'RESHAPE':
+                if operation.type == 'RESHAPE':
                     operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
                 else:
                     operands = []

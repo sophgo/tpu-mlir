@@ -280,7 +280,172 @@ void DeconvLowering::LoweringF8(PatternRewriter &rewriter,
 
 void DeconvLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::DeconvOp op) const {
-  llvm_unreachable("Not Implemented");
+  if (module::isUniformQuantized(op.getInput()) == false) {
+    llvm_unreachable("input output should be quantized");
+  }
+  bool out_i32 = module::isUniformQuantized(op.getOutput()) == false;
+  auto p = op.parseParam();
+  auto input_qtype = module::getUniformQuantizedType(op.getInput());
+  auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
+  auto filter_qtype = filter_type.getElementType()
+                          .dyn_cast<quant::UniformQuantizedPerAxisType>();
+  int32_t filter_zeroPoint;
+
+  if (!filter_qtype) {
+    auto filter_qtype = module::getUniformQuantizedType(op.getFilter());
+    filter_zeroPoint = filter_qtype.getZeroPoint();
+  } else {
+    filter_zeroPoint = filter_qtype.getZeroPoints()[0];
+  }
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  operands.push_back(op.getFilter());
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+
+  int32_t input_zeroPoint = input_qtype.getZeroPoint();
+  bool with_bias = true;
+  if (input_zeroPoint != 0) {
+    // merge input_zeroPoint to bias
+    auto filter_stype = module::getStorageType(op.getFilter());
+    i32_array_t bias_quant;
+    std::shared_ptr<std::vector<int8_t>> filter_quant;
+    filter_quant =
+        cast<top::WeightOp>(op.getFilter().getDefiningOp()).read<int8_t>();
+    if (p.with_bias) {
+      bias_quant =
+          cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
+    } else {
+      // bias_quant->resize(p.oc, 0);
+      bias_quant = i32_array_t(new std::vector<int32_t>(p.oc, 0));
+    }
+    int64_t oc = filter_type.getShape()[0];
+    int64_t kernel_size = filter_type.getNumElements() / oc;
+
+    if (filter_stype.isUnsignedInteger(8)) {
+      for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+        for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+          bias_quant->data()[oc_ind] -=
+              input_zeroPoint *
+              ((uint8_t)filter_quant->at(kernel_ind + oc_ind * kernel_size) -
+               filter_zeroPoint);
+        }
+      }
+    } else {
+      for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+        for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+          bias_quant->data()[oc_ind] -=
+              input_zeroPoint *
+              (filter_quant->at(kernel_ind + oc_ind * kernel_size) -
+               filter_zeroPoint);
+        }
+      }
+    }
+    auto bias_type = RankedTensorType::get({oc}, rewriter.getI32Type());
+    auto new_bias =
+        top::WeightOp::create(op, "_merge_bias", *bias_quant, bias_type);
+    operands.push_back(new_bias);
+  } else if (p.with_bias) {
+    auto bias_stype = module::getStorageType(op.getBias());
+    auto bias_new_type =
+        RankedTensorType::get(module::getShape(op.getBias()), bias_stype);
+    op.getBias().setType(bias_new_type);
+    operands.push_back(op.getBias());
+  } else {
+    with_bias = false;
+    operands.push_back(op.getBias());
+  }
+  if (filter_zeroPoint)
+    attrs.push_back(rewriter.getNamedAttr(
+        "kernel_zp", rewriter.getI64IntegerAttr(filter_zeroPoint)));
+  attrs.push_back(
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  auto dims = module::getShape(op.getInput()).size() - 2;
+  if (out_i32) {
+    auto newValue =
+      CreateDeconvOp(rewriter, dims, op->getLoc(), op.getOutput().getType(), operands, attrs);
+    rewriter.replaceOp(op, {newValue});
+    return;
+  }
+
+  auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
+                                       rewriter.getI32Type());
+  auto new_name = module::getName(op.getOperation()).str() + "_int32";
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+
+  auto newValue =
+      CreateDeconvOp(rewriter, dims, name_loc, newType, operands, attrs);
+
+  // generate requant param
+  auto output_qtype = module::getUniformQuantizedType(op.getOutput());
+  int quant_size = 1;
+  SmallVector<int64_t> shift(1);
+  SmallVector<int64_t> multiplier(1);
+  auto input_scale = input_qtype.getScale();
+  auto output_scale = output_qtype.getScale();
+
+  if (!filter_qtype) {
+    auto filter_qtype = module::getUniformQuantizedType(op.getFilter());
+    filter_zeroPoint = filter_qtype.getZeroPoint();
+    auto filter_scale = filter_qtype.getScale();
+    const double effective_output_scale =
+        input_scale * filter_scale / output_scale;
+    QuantizeMultiplier(effective_output_scale, &multiplier[0], &shift[0]);
+  } else {
+    auto filter_scales = filter_qtype.getScales();
+    filter_zeroPoint = filter_qtype.getZeroPoints()[0];
+    quant_size = filter_scales.size();
+    shift.resize(quant_size);
+    multiplier.resize(quant_size);
+    // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
+    // Populate multiplier and shift using affine quantization.
+    for (auto filter : llvm::enumerate(filter_scales)) {
+      const double effective_output_scale =
+          input_scale * filter.value() / output_scale;
+      QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
+                         &shift[filter.index()]);
+    }
+  }
+
+  // do requant
+  if (quant_size == 1) {
+    newValue =
+        do_requant(op->getLoc(), newValue, op.getOutput().getType(), true,
+                   multiplier[0], shift[0], tpu::RequantMode::TFLite_LShift);
+  } else {
+    std::vector<int32_t> quant;
+    std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
+                                     1l);
+    quant_shape[1] = quant_size;
+    if (module::isBM1688()) {
+      quant.resize(quant_size * 2, 0);
+      for (int i = 0; i < quant_size; ++i) {
+        quant[i * 2] = multiplier[i];
+        quant[i * 2 + 1] =
+            (((int32_t)shift[i]) & 0xffff) |
+            (((int32_t)output_qtype.getZeroPoint() & 0xffff) << 16);
+      }
+      quant_shape.back() = 2;
+    } else {
+      quant.resize(quant_size * 3, 0);
+      for (int i = 0; i < quant_size; ++i) {
+        quant[i * 3] = multiplier[i];
+        quant[i * 3 + 1] = shift[i];
+        quant[i * 3 + 2] = output_qtype.getZeroPoint();
+      }
+      quant_shape.back() = 3;
+    }
+    auto quant_type = RankedTensorType::get(quant_shape, rewriter.getI32Type());
+    auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
+    newValue =
+        do_requant(op->getLoc(), newValue, quantValue, op.getOutput().getType(),
+                   true, tpu::RequantMode::TFLite_LShift);
+  }
+  rewriter.replaceOp(op, {newValue});
 }
 
 } // namespace bm1684x

@@ -567,6 +567,45 @@ def deconv(input: Tensor,
 
 @auto_name()
 @annotation_check
+def deconv_int(input: Tensor,
+             weight: Tensor,
+             bias: Tensor = None,
+             stride: List[int] = None,
+             dilation: List[int] = None,
+             pad: List[int] = None,
+             output_padding: List[int] = None,
+             group: int = 1,
+             input_zp: Union[int, List[int]] = None,
+             weight_zp: Union[int, List[int]] = None,
+             out_dtype: str = None,
+             out_name: str = None):
+    dilation = [1, 1] if dilation is None else dilation
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    output_padding = [0, 0] if output_padding is None else output_padding
+    o_dtype = "int32" if out_dtype is None else out_dtype
+    assert o_dtype in ["int32", "uint32"]
+    assert input.is_quantized is True or input_zp is not None
+    assert weight.is_quantized is True or weight_zp is not None
+
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "output_padding": ArrayAttr(output_padding),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    output = Tensor(dtype=o_dtype, name=out_name)
+    input.quantization(zero_point=input_zp)
+    weight.quantization(zero_point=weight_zp)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op("top.Deconv", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+@auto_name()
+@annotation_check
 def deconv3d(input: Tensor,
                 weight: Tensor,
                 bias: Tensor = None,
@@ -768,6 +807,7 @@ def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_
         TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
     else:
         if isinstance(tensor_i0, Tensor):
+            del output
             tensor_i1.value = 1 / tensor_i1.value
             return _base_binary(tensor_i0, tensor_i1, "top.Mul", out_dtype=o_dtype, out_name=out_name)
         else:
@@ -904,6 +944,7 @@ def requant_int(tensor_i: Tensor,
     TpuLang.insert_op("top.RequantInt", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
+@auto_name()
 @annotation_check
 def dequant_int(tensor_i: Tensor,
                 mul: Union[int, List[int]],
@@ -929,6 +970,7 @@ def dequant_int(tensor_i: Tensor,
     TpuLang.insert_op("top.DequantInt", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
+@auto_name()
 @annotation_check
 def requant_fp(tensor_i: Tensor,
                scale: Union[float, List[float]],
@@ -1487,6 +1529,7 @@ def upsample(input: Tensor, scale: int = 2, out_name: str = None):
     return output
 
 @auto_name()
+@annotation_check
 def reduce(input: Tensor, method: str = "ReduceSum", axes: Union[List[int], int] = [1,2], keep_dims: bool = True, out_name: str = None):
     assert(method in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"])
     if isinstance(axes, int):

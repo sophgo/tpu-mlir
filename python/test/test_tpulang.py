@@ -444,6 +444,56 @@ class TPULANG_IR_TESTER(object):
         _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3, dtype="float16")
         _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1], dtype="float16")
 
+        @tpulang(self.chip)
+        def _test_deconvolution_int(input_shape: List[int],
+                                    kernel_shape: List[int],
+                                    stride: List[int] = [1, 1],
+                                    dilation: List[int] = [1, 1],
+                                    pad: List[int] = None,
+                                    zp: List[int] = [0, 0],
+                                    group=1,
+                                    dtype="int8"
+        ):
+            x_data = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+            deconv = self.deconv_int_op(x,
+                                kernel_shape,
+                                stride,
+                                pad,
+                                group=group,
+                                dilation=dilation,
+                                zp=zp,
+                                out_dtype="int32")
+            rq1 = tpul.requant_int(deconv, 2030043136, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            self.compile_and_check(self.unique_name(case_name), [x], [rq1], is_quantized=True)
+
+        _test_deconvolution_int([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1], zp=[1, 1])
+
+    def deconv_int_op(self,
+                x,
+                kshape,
+                stride,
+                pad=None,
+                group=1,
+                dilation=[1, 1],
+                bias=False,
+                zp=[0,0],
+                out_dtype="int32"):
+        oc = kshape[0]
+        weight = self.coeff_tensor(kshape, x.dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])), zero_point=zp[1])
+        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        conv = tpul.deconv_int(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            input_zp=zp[0],
+                            weight_zp=zp[1],
+                            out_dtype=out_dtype)
+        return conv
+
     def test_Deconv3d(self, case_name):
         """Deconv 3D"""
 
@@ -475,9 +525,9 @@ class TPULANG_IR_TESTER(object):
     def test_Model(self, case_name):
 
         def conv_quant(x, kshape, has_bias=False, stride=None, pad=None, group=1,
-                       dilation=[1,1], scale=[1, 1, 1], scale_w=1, zp=[0, 0 , 0], dtype='int8'):
+                       dilation=[1,1], scale=[1, 1, 1], zp=[0, 0 , 0], dtype='int8'):
             oc = kshape[0]
-            weight = self.coeff_tensor(kshape, dtype, scale=scale_w, zero_point=zp[1])
+            weight = self.coeff_tensor(kshape, dtype, scale=[scale[1]] * oc, zero_point=zp[1])
             out_dtype = dtype
             bias = self.coeff_tensor(oc, 'int32') if has_bias else None
             conv = tpul.conv_quant(x,
@@ -488,7 +538,7 @@ class TPULANG_IR_TESTER(object):
                                    dilation=dilation,
                                    group=group,
                                    input_scale=scale[0],
-                                   weight_scale=scale_w,
+                                   weight_scale=[scale[1]] * oc,
                                    output_scale=scale[2],
                                    input_zp=zp[0],
                                    weight_zp=zp[1],
@@ -514,7 +564,7 @@ class TPULANG_IR_TESTER(object):
             return matm
 
         def model_conv_int(x):
-            rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
+            rq0 = tpul.requant_fp_to_int(x, 0.875, 0, 0, 'int8')
             kshape = [64, 3, 7, 7]
             data = rand_data(kshape, 'int8')
             weight0 = tpul.Tensor(dtype='int8', shape=kshape, data=data, ttype="coeff")
@@ -528,6 +578,7 @@ class TPULANG_IR_TESTER(object):
             mul = [2030043136] * 64
             shift = [-13] * 64
             rq1 = tpul.requant_int(conv1, mul, shift, 0, 2, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
+            rq1.quantization(0.875)
             relu1 = tpul.relu(rq1)
             # reshape1 = tpul.reshape(relu1, [64, 109, 109])
             # cast1 = tpul.dequant_int_to_fp(reshape1, scale=0.0625, offset=0)
@@ -538,9 +589,14 @@ class TPULANG_IR_TESTER(object):
             # mul, shift = affine_quantization(input_scale * weight_scale / output_scale)
             # tensorflow/lite/kernels/internal/quantization_utils.cc:QuantizeMultiplier()
             conv1 = conv_quant(rq0, [64,3,7,7], True, stride=[2,2], pad=[3,3,3,3], dilation=None,
-                        group=1, scale=[0.078125, 0.078125, 0.078125], scale_w=[0.078125] * 64, zp=[0, 0, 0], dtype='int8')
+                        group=1, scale=[0.078125, 0.078125, 0.078125], zp=[0, 0, 0], dtype='int8')
             relu1 = tpul.relu(conv1)
-            # pool1 = tpul.maxpool2d(conv1, [3,3], stride=[2,2], pad=[1,1,1,1])
+            dq2 = tpul.dequant_int_to_fp(relu1, 0.078125, 0)
+            reshape1 = tpul.reshape(dq2, [64, 12544])
+            mat_w = self.coeff_tensor(shape=[12544, 1000], dtype="float32")
+            matmul1 = self.matmul_op(reshape1, mat_w)
+            soft1 = tpul.softmax(matmul1, 1)
+            # pool1 = tpul.maxpool2d(relu1, [3,3], stride=[2,2], pad=[1,1,1,1])
             # conv2_1 = conv_quant(pool1, [64,64,1,1], True,
             #             scale=[0.078125, 0.078125, 0.078125], zp=[0, 0, 0], dtype='int8')
             # # relu2_1 = tpul.relu(conv2_1)
@@ -551,9 +607,10 @@ class TPULANG_IR_TESTER(object):
             #             scale=[0.078125, 0.078125, 0.078125], zp=[0, 0, 0], dtype='int8')
             # conv2_0 = conv_quant(pool1, [256,64,1,1], True,
             #             scale=[0.078125, 0.078125, 0.078125], zp=[0, 0, 0], dtype='int8')
-            # add2 = tpul.add(conv2_3, conv2_0, scale=[0.078125, 0.078125, 0.078125], out_dtype='int8')
+            # add2 = tpul.add(conv2_3, conv2_0, scale=[0.078125, 0.078125, 0.0625], out_dtype='int8')
             # dq29 = tpul.dequant_int_to_fp(add2, 0.0625, 0)
-            return relu1
+            # reshape3 = tpul.reshape([])
+            return soft1
 
         def model_mat_quant(x):
             rq0 = tpul.requant_fp_to_int(x, 0.078125, 0, 0, 'int8')
@@ -729,6 +786,7 @@ class TPULANG_IR_TESTER(object):
             mul3 = tpul.mul(dq3, coeff3)
             coeff4 = self.coeff_tensor([1,96,1,1], fdtype, scale=-2.0)
             add4 = tpul.add(mul3, coeff4)
+            # add4 = self.batch_norm_op(dq3, 96)
             rq4 = tpul.requant_fp_to_int(add4, 4.0, 0, 0, "int8")
             conv5 = self.conv_int_op(rq4, [96,96,3,3], [1,1], [1,1,1,1], zp=[0,0], out_dtype='int32')
             rq5 = tpul.requant_int(conv5, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
@@ -927,6 +985,7 @@ class TPULANG_IR_TESTER(object):
             return mlp
 
         def gelu(x):
+            # return tpul.gelu(x)
             div = tpul.mul(x, 1/np.sqrt(2))
             erf = tpul.erf(div)
             add = tpul.add(erf, 1.0)
@@ -935,6 +994,9 @@ class TPULANG_IR_TESTER(object):
             return mulc
 
         def layer_norm(x, oc, axis, eps, dtype):
+            # gamma = self.coeff_tensor([oc], dtype=dtype, scale=1.0)
+            # beta = self.coeff_tensor(shape=[oc], dtype=dtype, scale=0.05)
+            # return tpul.layer_norm(x, gamma=gamma, beta=beta, epsilon=eps, axis=axis)
             mean = tpul.reduce(x, 'ReduceMean', axes=axis)
             sub = tpul.sub(x, mean)
             pow = tpul.square(sub)
@@ -963,7 +1025,7 @@ class TPULANG_IR_TESTER(object):
             permut1 = tpul.permute(reshape0, [0, 2, 1])
             weight1 = self.coeff_tensor([shape[0], 1, H], dtype=dtype)
             concat1 = tpul.concat([weight1, permut1], axis=1)
-            weight2 = self.coeff_tensor([1, 577, H], dtype=dtype)
+            weight2 = self.coeff_tensor([1, shape[1], H], dtype=dtype)
             add2 = tpul.add(concat1, weight2)
             transformer = add2
             for i in range(num):
@@ -979,7 +1041,7 @@ class TPULANG_IR_TESTER(object):
         def _test_model_def(in_shape, d, head, num, dtype='float32'):
             x_data = rand_data(in_shape, dtype, -2, 2)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
-            shape = [in_shape[0], 577, head*d]
+            shape = [in_shape[0], int(in_shape[2] * in_shape[3] / 16 / 16 + 1), head*d]
             out = vit(x, shape, d, head, num, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
 
@@ -992,7 +1054,7 @@ class TPULANG_IR_TESTER(object):
         self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float16')
     def test_Vit_B(self, case_name):
         self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float32')
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float16')
+        self.test_Vit(case_name, [1, 3, 224, 224], 64, 12, 2, 'float16')
 
     #######################################################################
     # swin_t
@@ -1948,8 +2010,17 @@ class TPULANG_IR_TESTER(object):
             softmax = self.softmax_op(x, axis)
             self.compile_and_check(self.unique_name(case_name), [x], [softmax], is_quantized=dtype!="float32")
 
+        @tpulang(self.chip)
+        def _test_softmax_int(shape_x: List[int], axis: int, dtype="int8"):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=0.25)
+            reshape = tpul.reshape(x, [1, -1])
+            softmax = tpul.softmax_int(reshape, axis, scale=[0.25, 128.0])
+            self.compile_and_check(self.unique_name(case_name), [x], [softmax], is_quantized=True)
+
         _test_softmax([1, 32, 28, 28], axis=1)
         _test_softmax([1, 32, 28, 28], axis=1, dtype="float16")
+        _test_softmax_int([1, 32, 1, 1], axis=1)
 
     #######################################################################
     # Mish
