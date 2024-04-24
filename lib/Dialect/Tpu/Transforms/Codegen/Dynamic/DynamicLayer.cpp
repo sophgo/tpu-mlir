@@ -185,12 +185,12 @@ size_t dynamic_layer::copy_tensors_to_buffer(void *buffer, const T *specs,
       void *buffer, const spec_type *, size_t n, bool feign);
 
 explicit_instanciate(dynamic_global_tensor_spec, OUTPUT)
-    explicit_instanciate(dynamic_global_tensor_spec, INPUT)
-        explicit_instanciate(dynamic_local_tensor_spec, INPUT)
-            explicit_instanciate(dynamic_local_tensor_spec, OUTPUT)
+explicit_instanciate(dynamic_global_tensor_spec, INPUT)
+explicit_instanciate(dynamic_local_tensor_spec, INPUT)
+explicit_instanciate(dynamic_local_tensor_spec, OUTPUT)
 
-                size_t dynamic_layer::write_global_tensor_specs(void *buffer,
-                                                                bool feign) {
+size_t dynamic_layer::write_global_tensor_specs(void *buffer,
+                                                bool feign) {
   auto u8_buffer = static_cast<uint8_t *>(buffer);
   auto input_specs = this->get_input_global_tensor_specs();
   u8_buffer += this->copy_tensors_to_buffer<INPUT>(
