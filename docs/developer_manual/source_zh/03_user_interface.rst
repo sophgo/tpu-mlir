@@ -553,7 +553,8 @@ model_runner.py
    $ model_runner.py \
       --input sample_in_f32.npz \
       --model sample.bmodel \
-      --output sample_output.npz
+      --output sample_output.npz \
+      --out_fixed
 
 支持的参数如下:
 
@@ -573,6 +574,9 @@ model_runner.py
    * - dump_all_tensors
      - 否
      - 开启后对导出所有的结果, 包括中间tensor的结果
+   * - out_fixed
+     - 否
+     - 开启后当出现int8类型定点数时不再自动转成float32类型进行打印
 
 
 npz_tool.py

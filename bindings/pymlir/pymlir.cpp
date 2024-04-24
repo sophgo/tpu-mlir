@@ -195,7 +195,7 @@ public:
     return q_info;
   }
 
-  void invoke() { interpreter_->invoke(); }
+  void invoke(bool fixed_to_float) { interpreter_->invoke(fixed_to_float); }
   void fake_quant_weight() { interpreter_->fake_quant_weight(); }
 
   py::array invoke_at(const std::string name) {
@@ -278,7 +278,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
       .def("get_fp32_tensor", &py_module::get_fp32_tensor, "get one fp32 tensor data")
       .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
-      .def("invoke", &py_module::invoke)
+      .def("invoke", &py_module::invoke, py::arg("fixed_to_float")=true)
       .def("fake_quant_weight", &py_module::fake_quant_weight)
       .def("invoke_at", &py_module::invoke_at, "invote at specified layer")
       .def("backward_weight_at", &py_module::backward_weight_at, "invoke the backward weight function of conv op")
