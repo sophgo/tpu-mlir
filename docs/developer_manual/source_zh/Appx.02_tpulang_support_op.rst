@@ -151,7 +151,7 @@ Control Functions
       def init(device):
           #pass
 
-* device：string类型。取值范围"cpu"\|"bm1684x"\|"bm1688"\|"cv183x"。
+* device：string类型。取值范围"BM1684X"\|"BM1688"\|"CV183X"。
 
 .. _compile:
 compile
