@@ -141,6 +141,7 @@ class Scalar:
 
 class Tensor:
     ID = 0
+    name_list = []
 
     def __init__(self,
                  shape: list = [],
@@ -154,6 +155,8 @@ class Tensor:
         shape = shape if isinstance(shape, list) else [shape]
         self.shape = shape
         self.name = "BMTensor" + str(self.id) if name is None else name
+        assert self.name not in Tensor.name_list, "Tensor name must be uinque. {} has been used".format(self.name)
+        Tensor.name_list.append(self.name)
         assert ttype.lower() in ["neuron", "coeff"]
         self.ttype = ttype.lower()
         check_dtype(dtype)
@@ -174,6 +177,10 @@ class Tensor:
         self.quantization(scale=scale, zero_point=zero_point)
         self.is_preprocess = False
         Tensor.ID += 1
+
+    def __del__(self):
+        if self.name in Tensor.name_list:
+            Tensor.name_list.remove(self.name)
 
     def quantization(self,
                      scale: Union[float, List[float]] = None,

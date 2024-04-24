@@ -425,8 +425,8 @@ deconv
 * stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为1或2。
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* output_padding：List[int]，表示输出的填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* group：int类型，表示表示卷积层的组数。
+* output_padding：List[int]，表示输出的填充大小，取None则表示[0,0]，不为None时要求长度为1或2。
+* group：int类型，表示表示反卷积层的组数。
 * out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -439,6 +439,63 @@ deconv
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。input与weight的数据类型必须一致。bias的数据类型必须是FLOAT32。
 
+deconv_int
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def conv_int(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   output_padding: List[int] = None,
+                   group: int = 1,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
+
+功能描述
+"""""""""""
+二维卷积定点运算。可参考各框架下的二维卷积定义。
+::
+
+  for c in channel
+    izp = is_izp_const ? izp_val : izp_vec[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    output = (input - izp) Deconv (weight - wzp) + bias[c];
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
+* weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
+* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
+* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
+* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
+* output_padding：List[int]，表示输出的填充大小，取None则表示[0,0]，不为None时要求长度为1或2。
+* groups：int型，表示反卷积层的组数。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由out_dtype确定。
+
+处理器支持
+"""""""""""
+* BM1688：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
+* BM1684X：输入和权重的数据类型可以是INT8/UINT8。偏置的数据类型为INT32。
 
 conv3d
 :::::::::::::::::

@@ -43,7 +43,7 @@ except ImportError:
     from tensorflow.contrib import lite as interpreter_wrapper
 
 
-Failed_Cases = ["Cast", "Gather", "ReduceMin",
+Failed_Cases = ["Cast", "Gather", "ReduceMin", "Deconv2d",
                 "ReduceMax", "Sum", "Matmul"]
 
 
@@ -59,6 +59,7 @@ class TFLITE_IR_TESTER(object):
             "Cast": self.test_Cast,
             "Concat": self.test_Concat,
             "Conv2d": self.test_Conv2d,
+            "Deconv2d": self.test_Deconv2d,
             "DepthwiseConv2d": self.test_Depthwise_Conv2d,
             "Dequant": self.test_Max_Pool2d,
             "Gather": self.test_Gather,
@@ -558,6 +559,37 @@ class TFLITE_IR_TESTER(object):
 
       _test_convolution((1, 28, 28, 3), (1, 1), 12)
       _test_convolution((1, 3, 32, 32), (3, 3), 12, data_format="NCHW")
+
+    #######################################################################
+    # Ddconvolution
+    # ------------
+    def test_Deconv2d(self, case_name):
+      """Deconv 2D"""
+      def _test_deconvolution(
+          input_shape, kernel_shape, filters, padding="valid", data_format="NHWC", int_quant_dtype=tf.int8
+      ):
+        data_format = "channels_last" if data_format == "NHWC" else "channels_first"
+        keras_model, data = self.gen_keras_model(
+            tf.keras.layers.Conv2DTranspose,
+            input_shape,
+            filters=filters,
+            kernel_size=(kernel_shape[0], kernel_shape[1]),
+            activation=tf.nn.relu,
+            padding=padding,
+            data_format=data_format,
+        )
+
+        model_def = self._quantize_keras_model(
+            keras_model,
+            data,
+            is_float_input=True,
+            is_float_output=True,
+            int_quant_dtype=int_quant_dtype,
+        )
+        self.convert_tflite_and_compare([data], case_name, model_def, need_transpose=True)
+
+      _test_deconvolution((1, 28, 28, 3), (1, 1), 12)
+      _test_deconvolution((1, 3, 32, 32), (3, 3), 12, data_format="NCHW")
 
     #######################################################################
     # Depthwise Convolution
