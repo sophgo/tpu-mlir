@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include "cpu_layer.h"
 
+
 LogicalResult tpu::CustomOp::init(InferenceParameter &p) { return success(); }
 void tpu::CustomOp::deinit(InferenceParameter &p) {}
 
@@ -85,7 +86,8 @@ LogicalResult tpu::CustomOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::CustomOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
-  return type_verify_case_same(getOperation(), opd_idx, mode);
+  return  type_verify_case_same(getOperation(), opd_idx, mode);
+  // do_nothing(mode);
 }
 
 LogicalResult tpu::CustomOp::LocalGenSupport() {

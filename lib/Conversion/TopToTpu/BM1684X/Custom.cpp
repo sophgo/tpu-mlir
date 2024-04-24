@@ -20,7 +20,7 @@ void CustomLowering::LoweringF32(PatternRewriter &rewriter, top::CustomOp op) co
 
 void CustomLowering::LoweringINT8(PatternRewriter &rewriter, top::CustomOp op,
                                   bool asymmetric) const {
-  lowering_common_f16<tpu::CustomOp>(rewriter, op, op.getInputs().size() + 1);
+  lowering_common_int8<tpu::CustomOp>(rewriter, op, asymmetric, op.getInputs().size() + 1);
 }
 
 void CustomLowering::LoweringINT4(PatternRewriter &rewriter, top::CustomOp op,
@@ -45,7 +45,13 @@ void CustomLowering::LoweringF8(PatternRewriter &rewriter,
 
 void CustomLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CustomOp op) const {
-  LoweringINT8(rewriter, op, false);
+  // lowering_common<tpu::CustomOp>(rewriter, op.getOperation(), op.getOutputs()[0].getType(), op.getInputs().size() + 1);
+  auto out_stype = module::getStorageType(op.getOutputs()[0]);
+  if(out_stype.isSignedInteger(8)) {
+     lowering_common_int8<tpu::CustomOp>(rewriter, op, false, op.getInputs().size() + 1);
+  } else {
+     LoweringF16(rewriter, op);
+  }
 }
 
 } // namespace bm1684x

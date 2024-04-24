@@ -21,4 +21,10 @@ typedef struct {
   int wnew;
 } crop_param_t;
 
+typedef struct {
+  float scale;
+  float mean;
+  int type;
+} preprocess_param_t;
+
 #endif

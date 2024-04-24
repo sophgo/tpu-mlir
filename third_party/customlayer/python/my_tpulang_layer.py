@@ -1,6 +1,16 @@
 import numpy as np
 import transform.TpuLang as tpul
 
+def get_dtype2int(dtype):
+    if dtype == 'float32':
+        return 1
+    if dtype == 'float16':
+        return 2
+    if dtype == 'int8':
+        return 3
+    if dtype == 'uint8':
+       return 4
+    assert 0,"not support now!"
 class absAdd:
     @staticmethod
     def native(data, b):
@@ -65,6 +75,23 @@ class crop:
             tensors_in=inputs,
             # op_name should be consistent with the backend
             op_name="crop",
+            params=params,
+            out_dtypes=[dtype])
+        return outs
+
+class preprocess:
+    @staticmethod
+    def native(data, scale, mean):
+        result = (data - mean) * scale
+        print(" result: ",result)
+        return result
+    @staticmethod
+    def tpulang(inputs, scale, mean, dtype="float32"):
+        params = {"scale": scale, "mean": mean, "odtype" : get_dtype2int(dtype)}
+        outs = tpul.custom(
+            tensors_in=inputs,
+            # op_name should be consistent with the backend
+            op_name="preprocess",
             params=params,
             out_dtypes=[dtype])
         return outs
