@@ -552,7 +552,8 @@ Example:
    $ model_runner.py \
       --input sample_in_f32.npz \
       --model sample.bmodel \
-      --output sample_output.npz
+      --output sample_output.npz \
+      --out_fixed
 
 Supported parameters:
 
@@ -572,6 +573,9 @@ Supported parameters:
    * - dump_all_tensors
      - N
      - Export all the results, including intermediate ones, when specified
+   * - out_fixed
+     - N
+     - Remain integer output when the dtype of output is int8, instead of transforming to float32 automaticall
 
 
 npz_tool.py

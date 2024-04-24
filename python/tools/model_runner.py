@@ -48,20 +48,20 @@ def pack_bmodel_context_generator(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False) -> dict:
+def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False) -> dict:
     if mute:
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
-        return _model_inference(inputs, model_file, dump_all)
+        return _model_inference(inputs, model_file, dump_all, out_fixed)
     finally:
         if mute:
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
+def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed = False) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
@@ -152,7 +152,7 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     dyn_idx = 0
 
     for i in net.outputs:
-        if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
+        if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0 and out_fixed == False:
             if is_cv18xx and i.name in inputs:
                 name = i.name + "_si8" if i.data.dtype == np.int8 else "_ui8"
                 outputs[name] = np.array(i.data.astype(np.float32) / np.float32(i.qscale))
@@ -185,20 +185,20 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
 g_mlir_module = None
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False) -> dict:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False) -> dict:
     if mute:
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
-        return _mlir_inference(inputs, mlir_file, dump_all)
+        return _mlir_inference(inputs, mlir_file, dump_all, out_fixed)
     finally:
         if mute:
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
+def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, out_fixed: bool = False) -> dict:
     import pymlir
     pymlir.set_mem_mode("value_mem")
     from utils.mlir_parser import MlirParser
@@ -227,7 +227,7 @@ def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict
     #     if layer_name in layer_names:
     #         tensors[layer_name] = g_mlir_module.get_tensor(layer_name).copy()
     # g_mlir_module.after_invoke(func2)
-    g_mlir_module.invoke()
+    g_mlir_module.invoke(not out_fixed)
     tensors = g_mlir_module.get_all_tensor()
     if dump_all:
         return tensors
@@ -463,13 +463,15 @@ if __name__ == '__main__':
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
                         help="configure the debugging information.")
+    parser.add_argument("--out_fixed", action="store_true",
+                        help="no float number transforming, only for int8/uint8.")
 
     # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()
     if args.model.endswith(".mlir"):
-        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug)
+        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed)
     elif args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
@@ -479,7 +481,7 @@ if __name__ == '__main__':
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):
         output = torch_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model)
+        output = model_inference(data, args.model, out_fixed=args.out_fixed)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     print("\nSaving ...")
