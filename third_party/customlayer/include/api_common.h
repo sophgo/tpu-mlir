@@ -4,8 +4,7 @@
 #include <stdbool.h>
 #include "tpu_defs.h"
 
-#define MAX_SHAPE_DIMS 8
-
+#define MAX_SHAPE_DIMS  8
 typedef struct local_tensor_spec {
     uint64_t addr;
     int32_t dtype;

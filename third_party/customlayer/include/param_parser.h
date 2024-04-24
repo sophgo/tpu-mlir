@@ -30,3 +30,12 @@ static swapchannel_param_t swapchannel_parse_param(const void* param) {
     }
     return sc_param;
 }
+
+static preprocess_param_t preprocess_parse_param(const void* param) {
+    preprocess_param_t sc_param = {0};
+    sc_param.scale = ((custom_param_t *)param)[0].float_t;
+    sc_param.mean = ((custom_param_t *)param)[1].float_t;
+    sc_param.type = ((custom_param_t *)param)[2].int_t;
+    return sc_param;
+}
+

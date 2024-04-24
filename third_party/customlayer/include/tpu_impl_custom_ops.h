@@ -11,6 +11,15 @@ void tpu_impl_absadd_global(
     float b_val,
     data_type_t dtype);
 
+void tpu_impl_preprocess_global(
+    global_addr_t input_global_addr,
+    global_addr_t output_global_addr,
+    const int *shape,
+    float scale,
+    float mean,
+    data_type_t idtype,
+    data_type_t odtype);
+
 void tpu_impl_ceiladd_global(
     global_addr_t input_global_addr,
     global_addr_t output_global_addr,
