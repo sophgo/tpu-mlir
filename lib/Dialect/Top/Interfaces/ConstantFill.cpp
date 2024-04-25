@@ -39,5 +39,8 @@ void top::ConstantFillOp::shape_inference() {
   } else if (module::isShape(getInput())) {
     auto out_shape = module::getShapeTensorValue(getInput());
     module::setShapeOrVerify(getOutput(), out_shape);
+  }else {
+    auto output_shape = module::getShape(getInput());
+    module::setShapeOrVerify(getOutput(), output_shape);
   }
 }
