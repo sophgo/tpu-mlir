@@ -28,14 +28,12 @@ jobs:
         cp -rf install/docs/TPU-MLIR_* ./
         cp install/docs/TPU-MLIR快速入门指南.pdf ./TPU-MLIR_Quick_Start_ZH.pdf
         cp install/docs/TPU-MLIR开发参考手册.pdf ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
-        rm ./dist/*.tar.gz
 
     - name: Upload to Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: my-artifact
-        path: |
-          ./dist/
+        path: ./dist/
 
     - name: Release asset
       uses: softprops/action-gh-release@v1
@@ -65,6 +63,9 @@ jobs:
       with:
         name: my-artifact
         path: ./
+
+    - name: Delete *.tar.gz
+      run: rm ./dist/*.tar.gz
 
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
