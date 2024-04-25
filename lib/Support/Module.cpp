@@ -274,7 +274,7 @@ static void removeUnusedOp(ModuleOp submodule) {
   for (auto func : submodule.getOps<FuncOp>()) {
     // for to support nested region's op
     func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-      if (!isa<ReturnOp, FuncOp, tpu::YieldOp, top::YieldOp>(op))
+      if (!isa<ReturnOp, FuncOp, tpu::YieldOp, top::YieldOp, top::InputOp>(op))
         all_ops.push_back(op);
     });
   }
