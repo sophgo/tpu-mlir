@@ -56,6 +56,7 @@ class CaffeConverter(BaseConverter):
         text_format.Merge(open(prototxt).read(), self.param)
         self.layers = self.param.layer if len(self.param.layer) != 0 else self.param.layers
         self.input_names = self.net.inputs
+        self.origin_output_names = output_names
         self.select_outputs = list(output_names) if output_names else list(self.net.outputs)
         self.blobs = self.net.blobs
         self.mlir = None
@@ -230,11 +231,15 @@ class CaffeConverter(BaseConverter):
             for out in layer.top:
                 if out in self.select_outputs:
                     self.output_names.append(out)
-        assert (len(self.select_outputs) == len(self.output_names))
         # add return op
         return_op = list()
         # Set output
-        for name in self.select_outputs:
+        final_output_names = []
+        if self.origin_output_names:
+            final_output_names = self.origin_output_names
+        else:
+            final_output_names = self.select_outputs
+        for name in final_output_names:
             op = self.getOperand(name)
             return_op.append(op)
 

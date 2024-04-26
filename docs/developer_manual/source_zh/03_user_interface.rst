@@ -205,7 +205,7 @@ model_transform.py
      - 通道类型, 对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认是nchw
    * - output_names
      - 否
-     - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
+     - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后按照该指定名称的顺序做输出
    * - add_postprocess
      - 否
      - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5和ssd后处理
