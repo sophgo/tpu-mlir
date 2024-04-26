@@ -348,7 +348,7 @@ run_qtable.py
      - 输入校准表
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
+     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
@@ -434,7 +434,7 @@ model_deploy.py
      - 指定mlir文件
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
+     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8

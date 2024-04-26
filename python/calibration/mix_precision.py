@@ -43,7 +43,8 @@ FLOAT_MAP = {
     "cv181x": "BF16",
     "cv180x": "BF16",
     "bm1688": "F16",
-    "cv186x": "F16"
+    "cv186x": "F16",
+    "bm1690": "F16"
 }
 
 chip_support_mix_fp_type = {

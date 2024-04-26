@@ -347,7 +347,7 @@ Use ``run_qtable.py`` to generate a mixed precision quantization table. The rele
      - The quantization table path
    * - processor
      - Y
-     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
+     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - input_num
      - N
      - The number of input for calibration. Use all samples if it is 10
@@ -433,7 +433,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X
+     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
