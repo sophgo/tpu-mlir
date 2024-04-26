@@ -14,8 +14,10 @@ namespace bm1684x {
 
 void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
                                bool asymmetric) const {
-  if (asymmetric)
-    return lowering_common_f32<tpu::SubOp>(rewriter, op);
+  if (asymmetric) {
+    lowering_common_f32<tpu::SubOp>(rewriter, op);
+    return;
+  }
 
   auto op_ = op.getOperation();
   std::vector<Value> operands;

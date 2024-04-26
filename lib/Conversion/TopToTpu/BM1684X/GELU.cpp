@@ -27,8 +27,8 @@ void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
                                 bool asymmetric) const {
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric, [](double val) {
-        return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
-      });
+              return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
+          });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
@@ -65,8 +65,14 @@ void GELULowering::LoweringF8(PatternRewriter &rewriter,
 
 void GELULowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::GELUOp op) const {
-  // llvm_unreachable("Not Implemented");
-  LoweringINT8(rewriter, op, true);
+  auto round_mode = round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
+  auto table = create_lookup_table(
+      op.getInput(), op.getOutput(), true, [](double val) {
+              return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
+          }, 8, round_mode);
+  auto newType = getQuantInt8Type(op.getOutput(), true);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.getInput(), table});
 }
 
 } // namespace bm1684x

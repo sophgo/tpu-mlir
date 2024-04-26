@@ -1127,6 +1127,16 @@ std::shared_ptr<std::vector<StringRef>> getOutputs() {
   return std::move(data);
 }
 
+void removeAttr(mlir::Operation *op, std::string attr_name) {
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    if (attr.getName() != attr_name) {
+      attrs.push_back(attr);
+    }
+  }
+  op->setAttrs(attrs);
+}
+
 bool isState(State state) { return state == getState(); }
 
 bool isTpuOp(Operation *op) {

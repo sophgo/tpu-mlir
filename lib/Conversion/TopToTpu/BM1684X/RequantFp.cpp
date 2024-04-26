@@ -42,6 +42,7 @@ void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto offset = module::getF64Array(op.getOffset());
   auto requant_mode = op.getQuantModeAttr().str();
   auto round_mode = op.getRoundModeAttr().str();
+  auto first_round_mode = op.getFirstRoundModeAttr().str();
   auto raw_scale = *scale;
   auto raw_offset = *offset;
   assert(raw_scale.size() == raw_offset.size() &&
@@ -51,7 +52,8 @@ void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (raw_scale.size() == 1) {
     auto newValue =
         do_requantFp(op.getInput(), raw_scale[0], raw_offset[0], op.getOutput().getType(),
-                     name, get_requant_mode(requant_mode), get_round_mode(round_mode));
+                     name, get_requant_mode(requant_mode), get_round_mode(round_mode),
+                     get_round_mode(first_round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
     std::vector<int32_t> quant;
@@ -69,7 +71,8 @@ void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue =
         do_requantFp(op.getInput(), quantValue, op.getOutput().getType(), true,
-                     name, get_requant_mode(requant_mode), get_round_mode(round_mode));
+                     name, get_requant_mode(requant_mode), get_round_mode(round_mode),
+                     get_round_mode(first_round_mode));
     rewriter.replaceOp(op, {newValue});
   }
 }

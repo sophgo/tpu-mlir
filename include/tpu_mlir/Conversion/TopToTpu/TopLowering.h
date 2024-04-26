@@ -248,8 +248,16 @@ public:
     if (isQuantized) {
       auto stype = module::getStorageType(opTy.getODSResults(0)[0]);
       if (stype.isF32()) {
+        if (!isa<top::CastOp>(op)) {
+          module::removeAttr(op, "round_mode");
+          module::removeAttr(op, "first_round_mode");
+        }
         LoweringF32(rewriter, opTy);
       } else if (stype.isF16()) {
+        if (!isa<top::CastOp>(op)) {
+          module::removeAttr(op, "round_mode");
+          module::removeAttr(op, "first_round_mode");
+        }
         LoweringF16(rewriter, opTy);
       } else {
         LoweringQuantized(rewriter, opTy);
@@ -262,6 +270,8 @@ public:
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
     }
+    module::removeAttr(op, "round_mode");
+    module::removeAttr(op, "first_round_mode");
     switch (real_mode) {
     case module::Mode::INT8:
       if (auto conv = dyn_cast<top::ConvOp>(op)) {
@@ -408,7 +418,7 @@ static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
 // lowering to a new Operation, with same operands and same attrs, and quantize
 // f32 output to int8 output
 template <typename OpTy>
-static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common_int8(PatternRewriter &rewriter, Operation *from,
                                  bool asymmetric = false,
                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
@@ -417,7 +427,7 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
     newType = from->getResult(0).getType();
   else
     newType = getQuantInt8Type(from->getResult(0), asymmetric);
-  lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  return lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
 
@@ -470,29 +480,29 @@ static mlir::Type getQuantF16Type(Value v) {
 
 // lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy>
-static void lowering_common_float(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common_float(PatternRewriter &rewriter, Operation *from,
                                   int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
-  lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  return lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_f32(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common_f32(PatternRewriter &rewriter, Operation *from,
                                 int num_operands = 0) {
-  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands);
+  return lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
                                  int num_operands = 0) {
-  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
+  return lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common_f16(PatternRewriter &rewriter, Operation *from,
                                 int num_operands = 0) {
-  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
+  return lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
 
@@ -517,11 +527,13 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name,
                    tpu::RequantMode mode = tpu::RequantMode::MultiplierShift,
-                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero,
+                   tpu::RoundMode first_rmode=tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
                    std::string &to_name, tpu::RequantMode mode,
-                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero,
+                   tpu::RoundMode first_rmode=tpu::RoundMode::HalfAwayFromZero);
 
 tpu::RequantMode get_requant_mode(std::string mode);
 tpu::DequantMode get_dequant_mode(std::string mode);

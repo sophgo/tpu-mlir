@@ -68,6 +68,9 @@ void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
+  auto round_mode = op.getRoundModeAttr().str();
+  attrs.push_back(rewriter.getNamedAttr("round_mode",
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode))));
 
   rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, op.getOutput().getType(),
                                                 Value(op.getInput()), attrs);

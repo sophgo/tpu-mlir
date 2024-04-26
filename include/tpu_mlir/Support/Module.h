@@ -180,6 +180,7 @@ void getInputsOutputs(ModuleOp submodule, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);
+void removeAttr(mlir::Operation *op, std::string attr_name);
 
 bool isTpuOp(Operation *op);
 bool isInt4Op(Operation *op);

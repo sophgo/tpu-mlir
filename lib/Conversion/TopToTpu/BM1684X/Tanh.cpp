@@ -52,8 +52,12 @@ void TanhLowering::LoweringF8(PatternRewriter &rewriter, top::TanhOp op) const {
 }
 
 void TanhLowering::LoweringQuantized(PatternRewriter &rewriter, top::TanhOp op) const {
-  // llvm_unreachable("Not Implemented");
-  LoweringINT8(rewriter, op, false);
+  auto round_mode = round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), true,
+                                    [](double val) { return std::tanh(val); }, 8, round_mode);
+  auto newType = getQuantInt8Type(op.getOutput(), true);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.getInput(), table});
 }
 
 } // namespace bm1684x

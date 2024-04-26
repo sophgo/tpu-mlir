@@ -86,10 +86,12 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
 
+  // auto round_mode = round_mode_convert(get_round_mode(concatOp.getRoundModeAttr().str()));
   for (auto in : concatOp.getInputs()) {
       auto new_in = do_transfer(in, concatOp.getOutput(), true);
       operands.push_back(new_in);
   }
+  module::removeAttr(concatOp, "round_mode");
 
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, concatOp.getOutput().getType(),
                                              operands, op->getAttrs());

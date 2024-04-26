@@ -256,6 +256,10 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     if (attr.getName() == "axis" && op.getAxis() != 1) {
       attrs.push_back(
           rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(1)));
+    } else if (attr.getName() == "round_mode") {
+      auto round_mode = get_round_mode(op.getRoundModeAttr().str());
+      attrs.push_back(rewriter.getNamedAttr("round_mode",
+          tpu::RoundModeAttr::get(op.getContext(), round_mode)));
     } else
       attrs.push_back(attr);
   }

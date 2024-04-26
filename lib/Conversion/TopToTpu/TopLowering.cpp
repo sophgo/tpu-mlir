@@ -206,7 +206,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name, tpu::RequantMode mode,
-                   tpu::RoundMode rmode) {
+                   tpu::RoundMode rmode, tpu::RoundMode first_rmode) {
   [[maybe_unused]]auto from_stype = module::getStorageType(input);
   [[maybe_unused]]auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -222,6 +222,8 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
   attrs.push_back(
       builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
+  attrs.push_back(
+      builder.getNamedAttr("first_round_mode", tpu::RoundModeAttr::get(ctx, first_rmode)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 
@@ -230,7 +232,7 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
 
 Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
                    std::string &to_name, tpu::RequantMode mode,
-                   tpu::RoundMode rmode) {
+                   tpu::RoundMode rmode, tpu::RoundMode first_rmode) {
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -256,6 +258,8 @@ Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
   attrs.push_back(
       builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(ctx, rmode)));
+  attrs.push_back(
+      builder.getNamedAttr("first_round_mode", tpu::RoundModeAttr::get(ctx, first_rmode)));
   auto newOp =
       builder.create<tpu::RequantFpAxisOp>(name_loc, newType, operands, attrs);
   return newOp.getOutput();

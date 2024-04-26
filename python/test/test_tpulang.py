@@ -163,6 +163,7 @@ class TPULANG_IR_TESTER(object):
             "Upsample": (self.test_Upsample,            Y, Y),
             "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
             #### model ####
+            "AttenQuantBlock": (self.test_AttenQuant,   N, N),
             "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
             "Resnet50":(self.test_Resnet50,             Y, Y),
@@ -928,6 +929,108 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([1, 384, 1024], 64, 16, 2, 'float16')
         _test_model_def([1, 224, 768], 64, 12, 2, 'float16')
         _test_model_def([1, 384, 768], 64, 12, 2)
+
+
+    #######################################################################
+    # attention quant block
+    # ------------
+    def test_AttenQuant(self, case_name):
+        def matmul_weight(x, shape, multi, shift, dtype='int8'):
+            weight = self.coeff_tensor(shape, dtype)
+            b_data = np.random.randint(-32768, 32767, size=[1, 1, shape[-1]]).astype('int32')
+            bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="int32", data=b_data)
+            mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
+            return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero')
+
+        def attention_block(x0, x1, x2, shape, d, head, musk=None, dtype="int8"):
+            B = shape[0]
+            S_q = shape[1]
+            H_q = shape[2]
+            S_k = shape[1]
+            H_k = shape[2]
+            S_v = shape[1]
+            H_v = shape[2]
+            q = matmul_weight(x0, [H_q, d*head], 8158145, -30, dtype)
+            q = tpul.reshape(q, [B, S_q, head, d])
+            q = tpul.permute(q, [0, 2, 1, 3])
+            k = matmul_weight(x1, [H_k, d*head], 8158145, -30, dtype)
+            k = tpul.reshape(k, [B, S_k, head, d])
+            k = tpul.permute(k, [0, 2, 1, 3])
+            k = tpul.permute(k, [0, 1, 3, 2])
+            v = matmul_weight(x2, [H_v, d*head], 8158145, -30, dtype)
+            v = tpul.reshape(v, [B, S_v, head, d])
+            v = tpul.permute(v, [0, 2, 1, 3])
+            m0 = tpul.matmul_int(q, k, input_zp=0, right_zp=0, out_dtype='int32')
+            m0 = tpul.requant_int(m0, 8158145, -30, 0, 2, dtype, round_mode='half_away_from_zero')
+            dq0 = tpul.dequant_int_to_fp(m0, 0.875, 0)
+            div0 = tpul.div(dq0, np.sqrt(d))
+            m0 = tpul.add(div0, musk) if musk is not None else div0
+            m0 = tpul.softmax(m0, 3)
+            rq0 = tpul.requant_fp_to_int(m0, 0.0078125, 0, 2, dtype)
+            m1 = tpul.matmul_int(rq0, v, input_zp=0, right_zp=0, out_dtype='int32')
+            m1 = tpul.requant_int(m1, 8158145, -30, 0, 2, dtype, round_mode='half_away_from_zero')
+            m1 = tpul.permute(m1, [0, 2, 1, 3])
+            m1 = tpul.reshape(m1, [B, S_q, -1])
+            out = matmul_weight(m1, [d*head, H_q], 8158145, -30, dtype=dtype)
+            return out
+
+        def mlp_block(x, shape, dtype):
+            H = shape[2]
+            mat0 = matmul_weight(x, [H, 4*H], 8158145, -30, dtype=dtype)
+            ge = tpul.gelu(mat0, scale=[0.845, 0.845], zero_point=[0,0])
+            mat1 = matmul_weight(ge, [4*H, H], 8158145, -30, dtype=dtype)
+            return mat1
+
+        def transformer_block(x, shape, d, head, dtype="int8"):
+            norm = layer_norm(x, shape[2], -1, 1e-6, dtype="float32")
+            rq0 = tpul.requant_fp_to_int(norm, 0.875, 0, 2, dtype)
+            atten = attention_block(rq0, rq0, rq0, shape, d, head, dtype=dtype)
+            dq0 = tpul.dequant_int_to_fp(atten, 0.875, 0)
+            add0 = tpul.add(norm, dq0)
+            norm1 = layer_norm(add0, shape[2], -1, 1e-6, dtype="float32")
+            rq1 = tpul.requant_fp_to_int(norm1, 0.875, 0, 2, dtype)
+            mlp = mlp_block(rq1, shape, dtype=dtype)
+            dq1 = tpul.dequant_int_to_fp(mlp, 0.875, 0)
+            add1 = tpul.add(add0, dq1)
+            return add1
+
+        def layer_norm(x, oc, axis, eps, dtype):
+            gamma = self.coeff_tensor([oc], dtype=dtype, scale=1.0)
+            beta = self.coeff_tensor(shape=[oc], dtype=dtype, scale=0.05)
+            norm = tpul.layer_norm(x, gamma=gamma, beta=beta, epsilon=eps, axis=axis)
+            return norm
+
+        def vit(x, shape, d, head, num, dtype="float32", atten_dtype='int8'):
+            H = d * head
+            conv0 = self.conv_op(x, [H, 3, 16, 16], [16, 16], bias=True, dtype=dtype)
+            reshape0 = tpul.reshape(conv0, [shape[0], shape[2], shape[1]-1])
+            permut1 = tpul.permute(reshape0, [0, 2, 1])
+            weight1 = self.coeff_tensor([shape[0], 1, H], dtype=dtype)
+            concat1 = tpul.concat([weight1, permut1], axis=1)
+            weight2 = self.coeff_tensor([1, shape[1], H], dtype=dtype)
+            add2 = tpul.add(concat1, weight2)
+            transformer = add2
+            for i in range(num):
+                trans = transformer_block(transformer, shape, d, head, dtype=atten_dtype)
+                transformer = trans
+            norm3 = layer_norm(transformer, shape[2], -1, 1e-6, dtype=dtype)
+            slice3 = tpul.slice(norm3, [0, 0, 0], [-1, 1, -1])
+            reshape3 = tpul.squeeze(slice3, [1])
+            rq3 = tpul.requant_fp_to_int(reshape3, 0.875, 0, 2, atten_dtype)
+            mat3 = matmul_weight(rq3, [shape[2], 1000], 8158145, -30, dtype=atten_dtype)
+            dq3 = tpul.dequant_int_to_fp(mat3, 0.875, 0)
+            return dq3
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, d, head, num, dtype='float32', atten_dtype='int8'):
+            x_data = rand_data(in_shape, dtype, -2, 2)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            shape = [in_shape[0], int(in_shape[2] * in_shape[3] / 16 / 16 + 1), head*d]
+            out = vit(x, shape, d, head, num, dtype=dtype, atten_dtype=atten_dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+
+        _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8")
+
 
     #######################################################################
     # vit
