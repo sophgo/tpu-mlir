@@ -62,7 +62,7 @@ jobs:
     - uses: actions/download-artifact@v3
       with:
         name: my-artifact
-        path: ./
+        path: ./dist/
 
     - name: Delete *.tar.gz
       run: rm ./dist/*.tar.gz
