@@ -132,6 +132,7 @@ class OnnxConverter(BaseConverter):
             np.bool_, np.float16, np.float64, np.uint32, np.uint64, None, None, None
         ]
         self.onnx_sim = onnx_sim
+        self.origin_output_names = output_names.copy()
         self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
@@ -691,7 +692,12 @@ class OnnxConverter(BaseConverter):
         # add return op
         return_op = list()
         # Set output
-        for idx, _name in enumerate(self.output_names):
+        final_output_names = []
+        if self.origin_output_names:
+            final_output_names = self.origin_output_names
+        else:
+            final_output_names = self.output_names
+        for idx, _name in enumerate(final_output_names):
             op = self.getOperand(_name)
             return_op.append(op)
 

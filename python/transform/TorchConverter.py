@@ -311,8 +311,10 @@ class TorchConverter(BaseConverter):
             self.input_names.append(inp.debugName())
             self.addShape(inp.debugName(), s)
         self.output_names = []
+        self.origin_output_names = []
         if output_names:
             self.output_names = output_names
+            self.origin_output_names = output_names
         else:
             for outp in self.graph.outputs():
                 if outp.node().kind() == 'prim::TupleConstruct' or \
@@ -385,7 +387,12 @@ class TorchConverter(BaseConverter):
         # add return op
         return_op = list()
         # Set output
-        for idx, _name in enumerate(self.output_names):
+        final_output_names = []
+        if self.origin_output_names:
+            final_output_names = self.origin_output_names
+        else:
+            final_output_names = self.output_names
+        for idx, _name in enumerate(final_output_names):
             op = self.getOperand(_name)
             return_op.append(op)
 

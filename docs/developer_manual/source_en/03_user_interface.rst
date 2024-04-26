@@ -205,7 +205,7 @@ Used to convert various neural network models into MLIR files, the supported par
      - Channel type, can be nhwc or nchw for image input, otherwise it is none. The default is nchw
    * - output_names
      - N
-     - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
+     - The names of the output. Use the output of the model if not specified, otherwise output in the order of the specified names
    * - add_postprocess
      - N
      - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/ssd

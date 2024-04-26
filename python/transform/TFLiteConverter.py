@@ -256,13 +256,19 @@ class TFLiteConverter(BaseConverter):
             self.addShape(x.name, x.shape)
         self.output_shapes = []
         self.outputs = []
+        output_dict = dict()
         for op in self.graph.operators:
             for out in op.outputs:
                 if out.name in self.output_names:
-                    self.outputs.append(out)
+                    output_dict[out.name] = out
                     self.__nhwc2nchw(out)
-                    self.output_shapes.append(out.shape)
                     self.addShape(out.name, out.shape)
+
+        #for declare func user, keep order
+        for out_name in self.output_names:
+            if out_name in output_dict:
+                self.outputs.append(output_dict[out_name])
+                self.output_shapes.append(self.shapes[out_name])
 
         self.mlir = MLIRImporter(
             self.input_shapes,
@@ -1020,11 +1026,17 @@ class TFLiteConverter(BaseConverter):
             symbol_table.update(dict(zip((x.id for x in operation.outputs), res)))  # type: ignore
 
         return_op = []
+        graphs_out = dict()
         for op in subgraph.operators:
             add_operation(op)
             for out in op.outputs:
+                if out is None: continue
                 if out.name in self.output_names:
-                    return_op.append(symbol_table[out])
+                    graphs_out[out.name] = out
+
+        for out_name in self.output_names:
+            if out_name in graphs_out:
+                return_op.append(symbol_table[graphs_out[out_name]])
 
         return return_op
 
