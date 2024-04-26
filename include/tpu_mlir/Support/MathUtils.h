@@ -326,4 +326,6 @@ typedef struct {
 
 void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices);
 
+RoundingMode round_mode_convert(tpu::RoundMode mode);
+
 } // namespace tpu_mlir

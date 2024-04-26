@@ -171,9 +171,20 @@ void AvgPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
   double scale_factor = in_scale / (kernel_sum * out_scale);
   double offset_factor = out_zp - in_scale / out_scale * in_zp;
   auto op = poolOp.getOperation();
+  auto round_mode = get_round_mode(poolOp.getRoundModeAttr().str());
+  auto first_round_mode = get_round_mode(poolOp.getFirstRoundModeAttr().str());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
+    if (attr.getName() == "round_mode") {
+      attrs.push_back(rewriter.getNamedAttr("round_mode",
+          tpu::RoundModeAttr::get(poolOp.getContext(), round_mode)));
+    } else if (attr.getName() == "first_round_mode")
+    {
+      attrs.push_back(rewriter.getNamedAttr("first_round_mode",
+          tpu::RoundModeAttr::get(poolOp.getContext(), first_round_mode)));
+    } else {
+      attrs.push_back(attr);
+    }
   }
   attrs.push_back(
       rewriter.getNamedAttr("scale", rewriter.getF64FloatAttr(scale_factor)));

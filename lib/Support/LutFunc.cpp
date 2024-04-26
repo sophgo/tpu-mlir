@@ -13,7 +13,8 @@
 namespace tpu_mlir {
 
 Value create_lookup_table(Value in, Value out, bool asymmetric,
-                          activate_f &&func, int bit_width) {
+                          activate_f &&func, int bit_width,
+                          RoundingMode round_mode) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool in_sign, out_sign;
@@ -32,7 +33,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
         double data = (i - in_zp) * in_scale;
         data = func(data) / out_scale + out_zp;
         int index = i < 0 ? 256 + i : i;
-        table[index] = to_int8(data);
+        table[index] = to_int8(data, round_mode);
       }
       return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                    table_type);

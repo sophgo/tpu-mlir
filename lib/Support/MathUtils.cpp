@@ -540,6 +540,19 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
   return 0;
 }
 
+RoundingMode round_mode_convert(tpu::RoundMode mode) {
+  if (mode == tpu::RoundMode::HalfAwayFromZero) return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+  else if (mode == tpu::RoundMode::HalfUp) return RoundingMode::ROUNDING_HALF_UP;
+  else if (mode == tpu::RoundMode::HalfDown) return RoundingMode::ROUNDING_HALF_DOWN;
+  else if (mode == tpu::RoundMode::HalfToEven) return RoundingMode::ROUNDING_HALF_TO_EVEN;
+  else if (mode == tpu::RoundMode::HalfToOdd) return RoundingMode::ROUNDING_HALF_TO_ODD;
+  else if (mode == tpu::RoundMode::HalfTowardsZero) return RoundingMode::ROUNDING_HALF_TOWARDS_ZERO;
+  else if (mode == tpu::RoundMode::TowardsZero) return RoundingMode::ROUNDING_TOWARDS_ZERO;
+  else if (mode == tpu::RoundMode::Up) return RoundingMode::ROUNDING_UP;
+  else if (mode == tpu::RoundMode::Down) return RoundingMode::ROUNDING_DOWN;
+  else llvm_unreachable("Not Implemented");
+}
+
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value) {
   int nc = n * c;

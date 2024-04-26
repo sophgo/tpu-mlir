@@ -61,11 +61,12 @@ void SigmoidLowering::LoweringF8(PatternRewriter &rewriter,
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
   bool log = op.getLog();
+  auto round_mode = round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), true, [&](double val) {
-        return log ? std::log(1 / (1 + std::exp(-val)))
-                   : 1 / (1 + std::exp(-val));
-      });
+            return log ? std::log(1 / (1 + std::exp(-val)))
+                      : 1 / (1 + std::exp(-val));
+          }, 8, round_mode);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),
                                           ValueRange{op.getInput(), table});
 }

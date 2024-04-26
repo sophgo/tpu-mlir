@@ -261,7 +261,8 @@ def Top_CastOp:Top_Op<"Cast"> {
     quant::UniformQuantizedType cast to float type; or float type cast to quant::UniformQuantizedType
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -278,7 +279,8 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
     ins Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<SI32Attr, "1">:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
   let results = (outs AnyTensor:$output);
@@ -326,7 +328,8 @@ def Top_RequantFpOp:Top_Op<"RequantFp"> {
     F64ArrayAttr:$scale,
     F64ArrayAttr:$offset,
     RequantModeAttr:$quant_mode,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfUp\"">:$first_round_mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -468,7 +471,9 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$first_round_mode
   );
 
   let results = (outs AnyTensor:$output);
@@ -1006,7 +1011,8 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [SupportPermuteMove]> {
     AnyTensor:$input,
     DefaultValuedAttr<F64Attr, "1">:$scale,
     DefaultValuedAttr<F64Attr, "0">:$bias,
-    DefaultValuedAttr<BoolAttr, "false">:$log
+    DefaultValuedAttr<BoolAttr, "false">:$log,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
   let results = (outs AnyTensor:$output);
@@ -1115,7 +1121,8 @@ def Top_GELUOp : Top_Op<"GELU"> {
      Y = 0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))
   }];
   let arguments = (
-    ins AnyTensor:$input
+    ins AnyTensor:$input,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
   let results = (outs AnyTensor:$output);
@@ -1211,7 +1218,8 @@ def Top_SoftmaxOp:Top_Op<"Softmax"> {
     AnyTensor:$input,
     SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
-    DefaultValuedAttr<F64Attr, "1.0">:$beta
+    DefaultValuedAttr<F64Attr, "1.0">:$beta,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1295,7 +1303,8 @@ def Top_LeakyReluOp : Top_Op<"LeakyRelu"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    F64Attr:$alpha
+    F64Attr:$alpha,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1528,7 +1537,8 @@ def Top_TanhOp: Top_Op<"Tanh"> {
   }];
 
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
   let results = (outs AnyTensor:$output);

@@ -501,6 +501,8 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     /// fp8 quantize param
     OptionalAttr<F64Attr>:$fp8_out_scale
@@ -535,6 +537,8 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     /// fp8 quantize param
     OptionalAttr<F64Attr>:$fp8_out_scale
@@ -1308,7 +1312,8 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
     AnyRankedTensor:$input,
     OptionalAttr<BoolAttr>:$extra_input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    DefaultValuedAttr<BoolAttr, "true">:$with_scale //for BM1684
+    DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -1417,6 +1422,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     DefaultValuedAttr<F64Attr, "0.0">:$offset,
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
@@ -1435,6 +1441,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
     AnyRankedTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
@@ -1652,7 +1659,8 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     AnyTensorOrNone:$buffer,
     SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
-    DefaultValuedAttr<F64Attr, "1.0">:$beta
+    DefaultValuedAttr<F64Attr, "1.0">:$beta,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1676,6 +1684,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift,
     OptionalAttr<SI32Attr>:$rshift_neg,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);

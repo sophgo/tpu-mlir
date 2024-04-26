@@ -871,8 +871,11 @@ def cast(tensor_i: Tensor,
          out_name: str = None,
          round_mode: str = 'half_away_from_zero'):
     shape = tensor_i.shape
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
     output = Tensor(shape, dtype=out_dtype, name=out_name)
-    TpuLang.insert_op("top.Cast", [tensor_i], [output])
+    TpuLang.insert_op("top.Cast", [tensor_i], [output], params=attr)
     return output
 
 @auto_name()
@@ -898,7 +901,10 @@ def requant_fp_to_int(tensor_i: Tensor,
                       out_name: str=None,
                       round_mode: str='half_away_from_zero'):
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, scale=scale, zero_point=offset)
-    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
+    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
 @auto_name()
@@ -907,11 +913,15 @@ def dequant_int_to_fp(tensor_i: Tensor,
                       scale: Union[float, List[float]],
                       offset: Union[int, List[int], float, List[float]],
                       out_dtype: str="float32",
-                      out_name: str=None):
+                      out_name: str=None,
+                      round_mode: str='half_away_from_zero'):
     assert out_dtype in ["float32", "float16"]
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
     tensor_i.quantization(scale=scale, zero_point=offset)
-    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
+    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
 def round_mode_convert(rmode: str):
@@ -977,7 +987,8 @@ def requant_fp(tensor_i: Tensor,
                offset: Union[float, List[float]],
                out_dtype: str,
                out_name: str=None,
-               round_mode: str='half_away_from_zero'):
+               round_mode: str='half_away_from_zero',
+               first_round_mode: str='half_away_from_zero'):
     scale = scale if isinstance(scale, List) else [scale]
     offset = offset if isinstance(offset, List) else [offset]
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=(int)(offset[0]))
@@ -985,7 +996,8 @@ def requant_fp(tensor_i: Tensor,
         "scale": ArrayAttr(scale, "float64"),
         "offset": ArrayAttr(offset, "float64"),
         "quant_mode": Attr("MultiplierShift", "string"),
-        "round_mode": Attr(round_mode_convert(round_mode), "string")
+        "round_mode": Attr(round_mode_convert(round_mode), "string"),
+        "first_round_mode": Attr(round_mode_convert(first_round_mode), "string"),
     }
     TpuLang.insert_op("top.RequantFp", inputs=[tensor_i], outputs=[output], params=attr)
     return output
@@ -1000,7 +1012,8 @@ def maxpool2d(input: Tensor,
             ceil_mode: bool = False,
             scale: List[float] = None,
             zero_point: List[int] = None,
-            out_name: str = None):
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
     assert(not kernel or (len(kernel) == 2))
     assert(not stride or len(stride) == 2)
     assert(not pad or len(pad) == 4)
@@ -1018,7 +1031,8 @@ def maxpool2d(input: Tensor,
         "pad_value": Attr(0),
         "count_include_pad": Attr(False, "bool"),
         "do_relu":  Attr(False, "bool"),
-        "relu_limit":  Attr(-1.0, "float64")
+        "relu_limit":  Attr(-1.0, "float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
 
     output = Tensor(dtype=o_dtype, name=out_name)
@@ -1073,7 +1087,10 @@ def avgpool2d(input: Tensor,
             ceil_mode: bool = False,
             scale: List[float] = None,
             zero_point: List[int] = None,
-            out_name: str = None):
+            out_name: str = None,
+            count_include_pad : bool = False,
+            round_mode : str="half_away_from_zero",
+            first_round_mode : str="half_away_from_zero"):
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
@@ -1086,9 +1103,11 @@ def avgpool2d(input: Tensor,
         "ceil_mode": Attr(ceil_mode, "bool"),
         "keepdims": Attr(True, "bool"),
         "pad_value": Attr(0),
-        "count_include_pad": Attr(False, "bool"),
+        "count_include_pad": Attr(count_include_pad, "bool"),
         "do_relu":  Attr(False, "bool"),
-        "relu_limit":  Attr(-1.0, "float64")
+        "relu_limit":  Attr(-1.0, "float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+        "first_round_mode": Attr(round_mode_convert(first_round_mode), data_type="string"),
     }
 
     output = Tensor(dtype=o_dtype, name=out_name)
@@ -1116,9 +1135,10 @@ def prelu(input: Tensor, slope : Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
-def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None):
+def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None, round_mode : str="half_away_from_zero",):
     attr = {
         "alpha": Attr(negative_slope, data_type="float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.LeakyRelu", inputs=[input], outputs=[output], params=attr)
@@ -1195,18 +1215,25 @@ def ln(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_n
 
 @auto_name()
 @annotation_check
-def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None, round_mode : str="half_away_from_zero",):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
-    TpuLang.insert_op("top.Tanh", inputs=[input], outputs=[output])
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
+    TpuLang.insert_op("top.Tanh", inputs=[input], outputs=[output], params=attr)
     return output
 
 @auto_name()
 @annotation_check
-def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
+            out_name: str = None, round_mode : str="half_away_from_zero"):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
-    TpuLang.insert_op("top.Sigmoid", inputs=[input], outputs=[output])
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), "string"),
+    }
+    TpuLang.insert_op("top.Sigmoid", inputs=[input], outputs=[output], params=attr)
     return output
 
 @auto_name()
@@ -1286,9 +1313,11 @@ def softmax(input: Tensor, axis: int, out_name: str = None):
 
 @auto_name()
 @annotation_check
-def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[int] = None, out_name: str = None):
+def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[int] = None,
+                out_name: str = None, round_mode : str="half_away_from_zero"):
     attr = {
         "axis": Attr(axis, data_type="int32"),
+        "round_mode": Attr(round_mode_convert(round_mode), "string"),
     }
     zero_point = zero_point if zero_point is not None else [0, 0]
     assert len(scale) == 2 and len(zero_point) == 2
@@ -1353,10 +1382,14 @@ def sign(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
-def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
+         out_name: str = None, round_mode : str="half_away_from_zero"):
     output = Tensor(dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
-    TpuLang.insert_op("top.GELU", inputs=[input], outputs=[output])
+    attr = {
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
+    TpuLang.insert_op("top.GELU", inputs=[input], outputs=[output], params=attr)
     return output
 
 @auto_name()
@@ -1481,7 +1514,9 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
 
 @auto_name()
 @annotation_check
-def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None,
+           zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None,
+           dtype: str="float32", round_mode: str="half_away_from_zero"):
     if scales is None:
         scales = [None] * (len(inputs) + 1)
     if zero_points is None:
@@ -1489,6 +1524,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
     assert len(inputs) > 1, "concat should have more than one input"
     attr = {
         "axis": Attr(axis, "int32"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
     input_list_ = []
     for index, i_tensor in  enumerate(inputs):
@@ -1925,7 +1961,7 @@ def lut(input: Tensor, table: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
-def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, Scalar], out_name = None):
+def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, Scalar], out_name: str = None):
     assert tbrn.dtype == fbrn.dtype
     out_dtype = tbrn.dtype
     params = {}
@@ -1949,7 +1985,7 @@ def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, S
 
 @auto_name()
 @annotation_check
-def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name = None):
+def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name: str = None):
     assert lhs.shape == rhs.shape
     cond = __compare(lhs, rhs, type, f"{out_name}_compare")
     cond.shape = lhs.shape
@@ -1957,9 +1993,10 @@ def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_
 
 @auto_name()
 @annotation_check
-def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name = None):
+def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name: str = None, keep_dims: bool = True):
     attr = {
         "axis": Attr(axis, "int32"),
+        "keepdims": Attr(keep_dims, "bool"),
     }
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Gather", inputs=[input, index], outputs=[output], params=attr)

@@ -14,8 +14,11 @@ namespace bm1684x {
 
 void CastLowering::LoweringF32(PatternRewriter &rewriter,
                                top::CastOp op) const {
-  lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
+  auto round_mode = op.getRoundModeAttr().str();
+  auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.getOutput().getType());
+   newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
 }
 void CastLowering::LoweringINT4(PatternRewriter &rewriter, top::CastOp op,
                                 bool asymmetric) const {
@@ -23,20 +26,29 @@ void CastLowering::LoweringINT4(PatternRewriter &rewriter, top::CastOp op,
 }
 void CastLowering::LoweringINT8(PatternRewriter &rewriter, top::CastOp op,
                                 bool asymmetric) const {
-  lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
+  auto round_mode = op.getRoundModeAttr().str();
+  auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.getOutput().getType());
+   newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
 }
 
 void CastLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::CastOp op) const {
-  lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
+  auto round_mode = op.getRoundModeAttr().str();
+  auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.getOutput().getType());
+   newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
 }
 
 void CastLowering::LoweringF16(PatternRewriter &rewriter,
                                top::CastOp op) const {
-  lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
+  auto round_mode = op.getRoundModeAttr().str();
+  auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.getOutput().getType());
+   newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
 }
 
 void CastLowering::LoweringF8(PatternRewriter &rewriter,
@@ -46,9 +58,12 @@ void CastLowering::LoweringF8(PatternRewriter &rewriter,
 
 void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CastOp op) const {
+  auto round_mode = op.getRoundModeAttr().str();
   if (module::isUniformQuantized(op.getInput(), op.getOutput()) == false) {
-    lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
+    auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                  op.getOutput().getType());
+    newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
     return;
   }
   int64_t i_zeropoint, o_zeropoint;
@@ -85,6 +100,8 @@ void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode",
       tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
+  attrs.push_back(rewriter.getNamedAttr("round_mode",
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode))));
 
   rewriter.replaceOpWithNewOp<tpu::RequantIntOp>(
       op.getOperation(), op.getOutput().getType(), operands, attrs);

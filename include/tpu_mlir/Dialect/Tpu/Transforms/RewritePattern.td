@@ -46,7 +46,7 @@ def SplitMixedQuantizedMLPPattern :  Pat<(Tpu_MatMulOp:$result1
                                                   I64Attr:$right_zp2, I64Attr:$input_zp2, Tpu_RequantModeAttr:$quant_mode2,
                                                   I64Attr:$left_reuse2, $arg3, $arg4),
                                                 $arg5,
-                                                $arg6), $extra_input, $ginfo, $with_scale),
+                                                $arg6), $extra_input, $ginfo, $with_scale, $round_mode),
                                           $arg7, $arg8, BoolAttr:$left_transpose, BoolAttr:$right_transpose,
                                           BoolAttr:$output_transpose, BoolAttr:$hdim_is_batch, BoolAttr:$keep_dims,
                                           BoolAttr:$do_relu, F64Attr:$relu_limit, I64ArrayAttr:$multipliers, I64ArrayAttr:$rshifts,
