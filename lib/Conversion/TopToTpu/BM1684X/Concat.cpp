@@ -87,9 +87,16 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<Value> operands;
 
   // auto round_mode = round_mode_convert(get_round_mode(concatOp.getRoundModeAttr().str()));
-  for (auto in : concatOp.getInputs()) {
-      auto new_in = do_transfer(in, concatOp.getOutput(), true);
+  auto out_stype = module::getStorageType(concatOp.getOutput());
+  if (out_stype.isUnsignedInteger(8)) {
+    for (auto in : concatOp.getInputs()) {
+      auto new_in = do_transfer_fp(in, concatOp.getOutput(), true);
       operands.push_back(new_in);
+    }
+  } else {
+    for (auto in : concatOp.getInputs()) {
+      operands.push_back(in);
+    }
   }
   module::removeAttr(concatOp, "round_mode");
 
