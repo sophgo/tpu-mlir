@@ -163,7 +163,7 @@ class TPULANG_IR_TESTER(object):
             "Upsample": (self.test_Upsample,            Y, Y),
             "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
             #### model ####
-            "AttenQuantBlock": (self.test_AttenQuant,   N, N),
+            "AttenQuantBlock": (self.test_AttenQuant,   Y, Y),
             "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
             "Resnet50":(self.test_Resnet50,             Y, Y),
@@ -1154,7 +1154,7 @@ class TPULANG_IR_TESTER(object):
     def test_Vit_L(self, case_name):
         self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float32')
     def test_Vit_L_f16(self, case_name):
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float16')
+        self.test_Vit(case_name, [1, 3, 224, 224], 64, 16, 2, 'float16')
     def test_Vit_B(self, case_name):
         self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float32')
         self.test_Vit(case_name, [1, 3, 224, 224], 64, 12, 2, 'float16')
@@ -1953,7 +1953,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [tanh])
 
         _test_tanh([1, 32, 28, 28])
-        self._test_quantized_active_op([1, 32, 28, 28], tpul.tanh, case_name, scale=3.0, dtype="int8")
+        self._test_quantized_active_op([1, 32, 28, 28], tpul.tanh, case_name, scale=0.0078125, dtype="int8")
         self._test_quantized_active_op([1, 32, 28, 28], tpul.tanh, case_name, dtype="float16")
 
     #######################################################################

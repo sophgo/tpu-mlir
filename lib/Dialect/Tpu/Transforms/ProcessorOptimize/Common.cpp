@@ -248,7 +248,7 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     secOp.erase();
     return success();
   } else if (isa<tpu::SoftmaxOp, tpu::CastOp, tpu::MulConstOp, tpu::AddConstOp,
-                 tpu::MulShiftOp, tpu::ReluOp,
+                 tpu::MulShiftOp, tpu::ReluOp, tpu::RequantIntOp,
                  tpu::ActiveOp /** ex. tpu::SigmoidOp */
                  >(nextOp)) {
     /**
