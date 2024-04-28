@@ -279,6 +279,16 @@ static void group_distribute(PatternRewriter &rewriter,
   }
 }
 
+bool checkForReturnOpUser(const std::vector<Operation *> &ops) {
+  for (Operation *op : ops) {
+    for (auto *user : op->getUsers()) {
+      if (isa<ReturnOp>(user)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 static void common_match(PatternRewriter &rewriter,
                          std::vector<Operation *> &ops) {
   std::vector<Operation *> ops_begin = ops;
@@ -399,7 +409,11 @@ struct CommonMatch : public RewritePattern {
     if (same_ops.empty()) {
       return failure();
     }
-
+    for (auto ops : same_ops) {
+      if (checkForReturnOpUser(ops)) {
+      return failure();
+    }
+    }
     for (auto ops : same_ops) {
       common_match(rewriter, ops);
     }
