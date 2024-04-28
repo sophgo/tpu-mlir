@@ -39,8 +39,10 @@ private:
   Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   std::shared_ptr<std::vector<bmodel::Binary>> CreateCmdVector(const char *);
-  Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
-                                          uint64_t coeff_addr,
+  bool getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
+                          uint64_t coeff_size, uint64_t &offset,
+                          uint64_t &size);
+  Offset<bmodel::CoeffMem> CreateCoeffMem(ModuleOp s, uint64_t coeff_addr,
                                           uint64_t coeff_size);
   Offset<Vector<Offset<bmodel::StageIR>>>
   CreateStageIRVector(const vector<stage_param_t> &stage_param_v,

@@ -103,10 +103,6 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   // record the line number of operation in module.
   DynCodegenInit();
-  std::vector<top::WeightOp> weights;
-  for (auto func : s.getOps<FuncOp>()) {
-    func.walk([&](top::WeightOp op) { weights.push_back(op); });
-  }
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(s, inputs, outputs);
@@ -128,7 +124,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   // if tensor not in device 0, will be hidden
   auto input_tensor = CreateTensorVector(inputs, cascade.device_id);
   auto output_tensor = CreateTensorVector(outputs, cascade.device_id);
-  auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
+  auto coeff_mem = CreateCoeffMem(s, coeff_addr, coeff_size);
   std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
   auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
   // codegen all subnet
@@ -248,7 +244,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
         "net_" + std::to_string(cur_net_idx) + ".profile",
         std::bind(&bmodel::NetParameterBuilder::add_net_profile, &npb, _1));
     save_profile_info(
-        BMCodegen::getfilename() +".json",
+        BMCodegen::getfilename() + ".json",
         std::bind(&bmodel::NetParameterBuilder::add_tensor_loc, &npb, _1));
     if (!save_profile_info(
             "compiler_profile_0.txt",
@@ -393,30 +389,91 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
   return builder.CreateVector(tensor_v);
 }
 
-Offset<bmodel::CoeffMem>
-BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
-                          uint64_t coeff_addr, uint64_t coeff_size) {
+bool BMCodegen::getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
+                                   uint64_t coeff_size, uint64_t &offset,
+                                   uint64_t &size) {
+  offset = 0;
+  size = 0;
+  if (op == nullptr || op->getNumOperands() == 0 ||
+      op->getName().getDialect()->getNamespace() != "tpu" ||
+      isa<tpu::LoadOp, tpu::GroupOp>(op)) {
+    return false;
+  }
+  uint64_t addr = 0;
+  // coeff should be continuos
+  for (auto opd : op->getOperands()) {
+    auto in_op = opd.getDefiningOp();
+    if (in_op == nullptr || !isa<top::WeightOp, tpu::LoadOp>(in_op)) {
+      continue;
+    }
+    if (isa<tpu::LoadOp>(in_op)) {
+      opd = in_op->getOperand(0);
+    }
+    if (!module::isWeight(opd)) {
+      continue;
+    }
+    auto a_ = module::getAddress(opd);
+    auto s_ = align_up(module::getBytes(opd), BM168x::ALIGNMENT);
+    if (addr == 0 && size == 0) {
+      addr = a_;
+      size = s_;
+    } else if (addr + size == a_) {
+      size += s_;
+    } else {
+      return false;
+    }
+  }
+  if (size == 0 || addr < coeff_addr ||
+      (addr + size) > (coeff_addr + coeff_size)) {
+    return false;
+  }
+  offset = addr - coeff_addr;
+  return true;
+}
+
+Offset<bmodel::CoeffMem> BMCodegen::CreateCoeffMem(ModuleOp s,
+                                                   uint64_t coeff_addr,
+                                                   uint64_t coeff_size) {
   if (coeff_size == 0) {
     return 0;
   }
+  auto &builder = model_gen->Builder();
+  std::vector<Offset<bmodel::Location>> locations;
+  for (auto func : s.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      uint64_t offset = 0, size = 0;
+      auto ret = getOpCoeffLocation(op, coeff_addr, coeff_size, offset, size);
+      if (ret) {
+        auto name = builder.CreateString(op->getName().getStringRef().str());
+        bmodel::LocationBuilder lb(builder);
+        lb.add_name(name);
+        lb.add_offset(offset);
+        lb.add_size(size);
+        locations.push_back(lb.Finish());
+      }
+    });
+  }
+  auto coeff_location = builder.CreateVector(locations);
   auto data_u8 = std::make_shared<std::vector<uint8_t>>(coeff_size, 0);
   uint64_t offset = 0;
-  for (auto weight : coeffs) {
-    auto data = weight.read_as_byte();
-    memcpy(data_u8->data() + offset, data->data(), data->size());
-    offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
+  for (auto func : s.getOps<FuncOp>()) {
+    func.walk([&](top::WeightOp weightOp) {
+      auto data = weightOp.read_as_byte();
+      memcpy(data_u8->data() + offset, data->data(), data->size());
+      offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
+    });
   }
   if (offset != coeff_size) {
     llvm::errs() << "Warning: coeff size is not correct\n";
   }
   auto sha256 = llvm::SHA256::hash(llvm::ArrayRef(data_u8->data(), coeff_size));
   auto binary_coeff = model_gen->WriteBinary(coeff_size, data_u8->data());
-  auto coeff_sha256 =
-      model_gen->Builder().CreateVector(sha256.data(), sha256.size());
-  bmodel::CoeffMemBuilder cmb(model_gen->Builder());
+  auto coeff_sha256 = builder.CreateVector(sha256.data(), sha256.size());
+  bmodel::CoeffMemBuilder cmb(builder);
   cmb.add_address(coeff_addr);
   cmb.add_check_code(coeff_sha256);
   cmb.add_binary_coeff(&binary_coeff);
+  cmb.add_location(coeff_location);
   return cmb.Finish();
 }
 
@@ -938,7 +995,9 @@ void BMCodegen::codegen(FuncOp funcOp) {
       bool is_depthwise =
           attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
       auto in_etype = module::getStorageType(Conv2dOp.getInput());
-      if (!(module::isBM1688() && !(BM168x::getDataType(Conv2dOp.getInput()) == DTYPE_FP32 && module::getShape(Conv2dOp.getInput())[0] == 1))) {
+      if (!(module::isBM1688() &&
+            !(BM168x::getDataType(Conv2dOp.getInput()) == DTYPE_FP32 &&
+              module::getShape(Conv2dOp.getInput())[0] == 1))) {
         if (is_depthwise == false && in_etype.isIntOrIndex() == false &&
             core_num != 1) {
           setupMultiCoreCodegen();
@@ -949,8 +1008,8 @@ void BMCodegen::codegen(FuncOp funcOp) {
     } else if (auto PermuteOp = dyn_cast<tpu::PermuteOp>(op)) {
       auto order = *(module::getI64Array(PermuteOp.getOrder()));
       auto in_shape = module::getShape(PermuteOp.getInput());
-      if (core_num != 1 && in_shape.size() == 4 && order[0] == 0 && order[1] == 3 &&
-          order[2] == 1 && order[3] == 2 && in_shape[3] == 3) {
+      if (core_num != 1 && in_shape.size() == 4 && order[0] == 0 &&
+          order[1] == 3 && order[2] == 1 && order[3] == 2 && in_shape[3] == 3) {
         setupMultiCoreCodegen();
         codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
         return WalkResult::skip();
@@ -1190,7 +1249,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
         for (auto it = dict.begin(); it != dict.end(); ++it) {
           // here is the code of mlir dictionary to cpuop.so bin buffer
           // llvm::outs() << "Key: " << it->getName().str() << "\n";
-          // llvm::outs() << "Value: " << it->getValue().cast<IntegerAttr>().getInt() << "\n";
+          // llvm::outs() << "Value: " <<
+          // it->getValue().cast<IntegerAttr>().getInt() << "\n";
           custom_param_t value = {0};
           Attribute value_param = it->getValue();
           if (auto int_attr = value_param.dyn_cast<IntegerAttr>()) {
@@ -1221,8 +1281,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
       memcpy(param, values.data(), param_size);
       is_custom = 1;
       std::string op_name = op_.getName().str();
-      std::transform(op_name.begin(), op_name.end(), op_name.begin(),
-                   [](unsigned char c) -> unsigned char { return std::toupper(c); });
+      std::transform(
+          op_name.begin(), op_name.end(), op_name.begin(),
+          [](unsigned char c) -> unsigned char { return std::toupper(c); });
       std::string to_replace = "AP.";
       size_t start_pos = op_name.find(to_replace);
       if (start_pos != std::string::npos) {
@@ -1585,9 +1646,7 @@ void BMCodegen::updateAllHidden() {
   }
 }
 
-std::string BMCodegen::getfilename(){
-  return filename;
-}
+std::string BMCodegen::getfilename() { return filename; }
 
 } // namespace tpu
 } // namespace tpu_mlir

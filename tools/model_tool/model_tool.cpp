@@ -25,6 +25,7 @@ static void usage(void) {
        << "      --chip model_file : show chip of model" << endl
        << "      --dynamic model_file : true or false" << endl
        << "      --print model_file : show detailed model info" << endl
+       << "      --weight model_file : show model weight info" << endl
        << "      --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
@@ -69,6 +70,14 @@ static void show_chip(const string &filename) {
   } else {
     bm_show_chip(filename);
   }
+}
+
+static void show_weight(const string &filename) {
+  if (isCv18xx(filename)) {
+    cout << "cv18xx not supported!" << endl;
+    return;
+  }
+  bm_show_weight(filename);
 }
 
 static void show_dynamic(const string &filename) {
@@ -263,6 +272,8 @@ int main(int argc, char **argv) {
       all = true;
     }
     show(argv[2], all);
+  } else if (cmd == "--weight") {
+    show_weight(argv[2]);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
   } else if (cmd == "--is_dynamic") {
