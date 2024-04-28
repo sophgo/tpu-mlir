@@ -1509,6 +1509,116 @@ public:
 
 class ConvertWhereOp : public OpRewritePattern<top::WhereOp> {
 public:
+  Value genLeftOpd(top::WhereOp &op, Value left, Value right, bool is_const,
+                   double const_v, double out_thr, bool isCali,
+                   std::vector<int64_t> &out_shape, std::string &name,
+                   std::string ext, PatternRewriter &rewriter) const {
+    if (module::isWeight(left) && module::isWeight(right)) {
+      auto constOp = dyn_cast<top::WeightOp>(left.getDefiningOp());
+      auto constF32 = constOp.read<float>();
+      std::vector<float> data(constF32->size());
+      if (is_const) {
+        for (int i = 0; i < constF32->size(); ++i) {
+          data[i] = const_v * constF32->at(i);
+        }
+      } else {
+        auto const_x = dyn_cast<top::WeightOp>(right.getDefiningOp());
+        auto x_f32 = const_x.read<float>();
+        assert(x_f32->size() == constF32->size());
+        for (int i = 0; i < constF32->size(); ++i) {
+          data[i] = x_f32->at(i) * constF32->at(i);
+        }
+      }
+      auto type = RankedTensorType::get({out_shape}, rewriter.getF32Type());
+      auto newWeight = top::WeightOp::create(
+          op, module::getName(op.getOutput()).str() + ext, data, type);
+      return newWeight;
+    } else {
+      Type out_type;
+      if (isCali) {
+        double r_thr;
+        if (module::isWeight(right)) {
+          r_thr = out_thr;
+        } else {
+          auto r_type = module::getCalibratedType(right);
+          r_thr = r_type.getMax();
+        }
+        auto caliType = quant::CalibratedQuantizedType::get(
+            rewriter.getF32Type(), -r_thr, r_thr);
+        out_type = RankedTensorType::get(out_shape, caliType);
+      } else {
+        out_type = RankedTensorType::get(out_shape, rewriter.getF32Type());
+      }
+      std::vector<Value> operands;
+      std::vector<NamedAttribute> attrs;
+      operands.emplace_back(left);
+      operands.emplace_back(right);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + ext));
+      auto mulOp = rewriter.create<top::MulOp>(loc, out_type, operands, attrs);
+      return mulOp.getOutput();
+    }
+  }
+
+  Value genRightOpd(top::WhereOp &op, Value left, Value right, bool is_const,
+                    double const_v, double out_thr, bool isCali,
+                    std::vector<int64_t> &out_shape, std::string &name,
+                    std::string ext, PatternRewriter &rewriter) const {
+    if (module::isWeight(left) && module::isWeight(right)) {
+      auto constOp = dyn_cast<top::WeightOp>(left.getDefiningOp());
+      auto constF32 = constOp.read<float>();
+      std::vector<float> data(constF32->size());
+      if (is_const) {
+        for (int i = 0; i < constF32->size(); ++i) {
+          data[i] = (1 - const_v) * constF32->at(i);
+        }
+      } else {
+        auto const_x = dyn_cast<top::WeightOp>(right.getDefiningOp());
+        auto x_f32 = const_x.read<float>();
+        assert(x_f32->size() == constF32->size());
+        for (int i = 0; i < constF32->size(); ++i) {
+          data[i] = (1 - x_f32->at(i)) * constF32->at(i);
+        }
+      }
+      auto type = RankedTensorType::get({out_shape}, rewriter.getF32Type());
+      auto newWeight = top::WeightOp::create(
+          op, module::getName(op.getOutput()).str() + ext, *constF32, type);
+      return newWeight;
+    } else {
+      Type out_type;
+      if (isCali) {
+        double r_thr;
+        if (module::isWeight(right)) {
+          r_thr = out_thr;
+        } else {
+          auto r_type = module::getCalibratedType(right);
+          r_thr = r_type.getMax();
+        }
+        auto caliType = quant::CalibratedQuantizedType::get(
+            rewriter.getF32Type(), -r_thr, r_thr);
+        out_type = RankedTensorType::get(out_shape, caliType);
+      } else {
+        out_type = RankedTensorType::get(out_shape, rewriter.getF32Type());
+      }
+      std::vector<Value> operands;
+      std::vector<NamedAttribute> attrs;
+      operands.emplace_back(left);
+      operands.emplace_back(right);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + ext));
+      auto mulOp = rewriter.create<top::MulOp>(loc, out_type, operands, attrs);
+      auto out = mulOp.getOutput();
+
+      // create input[2] - input[0] * input[2]
+      attrs.clear();
+      operands.clear();
+      operands.emplace_back(right);
+      operands.emplace_back(out);
+      auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_sub1"));
+      auto subOp1 =
+          rewriter.create<top::SubOp>(loc3, out_type, operands, attrs);
+
+      return subOp1.getOutput();
+    }
+  }
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::WhereOp op,
                                 PatternRewriter &rewriter) const override {
@@ -1536,80 +1646,31 @@ public:
     std::vector<int64_t> input0_shape = module::getShape(input0);
     std::vector<int64_t> input1_shape = module::getShape(input1);
     std::vector<int64_t> input2_shape = module::getShape(input2);
-    int64_t num_input0 = module::getNumElements(input0);
-    int64_t num_input1 = module::getNumElements(input1);
-    int64_t num_input2 = module::getNumElements(input2);
     // cv18xx only support one operand broadcast now.
     assert((input0_shape == output_shape || input1_shape == output_shape ||
             input2_shape == output_shape));
     bool isCali = false;
-    double out_thr, in1_thr, in2_thr;
+    double out_thr;
     if (module::isCalibratedType(ori_out)) {
       isCali = true;
       auto otype = module::getCalibratedType(ori_out);
-      auto in1_type = module::getCalibratedType(input1);
-      auto in2_type = module::getCalibratedType(input2);
       out_thr = otype.getMax();
-      in1_thr = in1_type.getMax();
-      in2_thr = in2_type.getMax();
     }
-    std::vector<Value> operands;
-    std::vector<NamedAttribute> attrs;
     rewriter.setInsertionPointAfterValue(ori_out);
+    auto out1 = genLeftOpd(op, input0, input1, op.getXIsConst(),
+                           op.getXConstVal().convertToDouble(), out_thr, isCali,
+                           output_shape, name, "_true", rewriter);
 
-    // create input[0] * input[1]
-    operands.emplace_back(input0);
-    operands.emplace_back(input1);
-    std::vector<int64_t> out1_shape =
-        (num_input0 > num_input1) ? input0_shape : input1_shape;
-    auto loc1 = NameLoc::get(rewriter.getStringAttr(name + "_mul1"));
-    RankedTensorType type1;
-    if (isCali) {
-      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
-                                                          -in1_thr, in1_thr);
-      type1 = RankedTensorType::get(out1_shape, caliType);
-    } else {
-      type1 = RankedTensorType::get(out1_shape, rewriter.getF32Type());
-    }
-    auto mulOp1 = rewriter.create<top::MulOp>(loc1, type1, operands, attrs);
-    auto out1 = mulOp1.getOutput();
-
-    // create input[0] * input[2]
-    operands.clear();
-    attrs.clear();
-    operands.emplace_back(input0);
-    operands.emplace_back(input2);
-    rewriter.setInsertionPointAfterValue(out1);
-    std::vector<int64_t> out2_shape =
-        (num_input0 > num_input2) ? input0_shape : input2_shape;
-    auto loc2 = NameLoc::get(rewriter.getStringAttr(name + "mul2"));
-    RankedTensorType type2;
-    if (isCali) {
-      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
-                                                          -in2_thr, in2_thr);
-      type2 = RankedTensorType::get(out2_shape, caliType);
-    } else {
-      type2 = RankedTensorType::get(out2_shape, rewriter.getF32Type());
-    }
-    auto mulOp2 = rewriter.create<top::MulOp>(loc2, type2, operands, attrs);
-    auto out2 = mulOp2.getOutput();
-
-    // create input[2] - input[0] * input[2]
-    attrs.clear();
-    operands.clear();
-    operands.emplace_back(input2);
-    operands.emplace_back(out2);
-    rewriter.setInsertionPointAfterValue(out2);
-    auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_sub1"));
-    auto subOp1 = rewriter.create<top::SubOp>(loc3, type2, operands, attrs);
-    auto out3 = subOp1.getOutput();
+    auto out2 = genRightOpd(op, input0, input2, op.getYIsConst(),
+                            op.getYConstVal().convertToDouble(), out_thr,
+                            isCali, output_shape, name, "_false", rewriter);
 
     // create (input[0] * input[1]) + (input[2] - input[0] * input[2])
-    attrs.clear();
-    operands.clear();
+    std::vector<Value> operands;
+    std::vector<NamedAttribute> attrs;
     operands.emplace_back(out1);
-    operands.emplace_back(out3);
-    rewriter.setInsertionPointAfterValue(out3);
+    operands.emplace_back(out2);
+    rewriter.setInsertionPointAfterValue(out2);
     auto loc4 = NameLoc::get(rewriter.getStringAttr(name));
     RankedTensorType type4;
     if (isCali) {
@@ -1733,8 +1794,7 @@ public:
   }
 };
 
-template <typename OpT>
-struct ConvertPoolOp : public OpRewritePattern<OpT> {
+template <typename OpT> struct ConvertPoolOp : public OpRewritePattern<OpT> {
 public:
   using OpRewritePattern<OpT>::OpRewritePattern;
   LogicalResult matchAndRewrite(OpT op,
@@ -1744,9 +1804,10 @@ public:
     }
     rewriter.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.)));
+    attrs.push_back(
+        rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.)));
     auto newOp = rewriter.create<top::ReluOp>(op->getLoc(), op.getType(),
-                                                op->getResults(), attrs);
+                                              op->getResults(), attrs);
     auto op_name = module::getName(op.getResult()).str();
     std::string lower = op_name;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
@@ -1766,7 +1827,8 @@ public:
 namespace top {
 using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
-  patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
+  patterns->add<MergeScale2Conv>(patterns->getContext(),
+                                 /*PatternBenefit*/ 9);
   patterns->add<
       ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading, ConvertConvDilation,
       ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp, ConvertGatherOp,
