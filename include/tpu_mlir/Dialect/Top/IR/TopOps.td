@@ -649,7 +649,7 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove, Sca
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
+def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu, ScalarProducer, ScalarConsumer]> {
   let summary = "Sub Const operator";
 
   let description = [{
@@ -661,13 +661,14 @@ def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
     F64Attr: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, SupportPermuteMove]> {
+def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, SupportPermuteMove, ScalarProducer, ScalarConsumer]> {
   let summary = "Mul Const operator";
 
   let description = [{
@@ -678,14 +679,15 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, SupportPermuteMove]> {
     AnyTensor:$input,
     F64Attr: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
 }
 
-def Top_MinConstOp: Top_Op<"MinConst"> {
+def Top_MinConstOp: Top_Op<"MinConst", [ScalarProducer, ScalarConsumer]> {
   let summary = "Min Const operator";
 
   let description = [{
@@ -694,13 +696,14 @@ def Top_MinConstOp: Top_Op<"MinConst"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    F64Attr: $const_val
+    F64Attr: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MaxConstOp: Top_Op<"MaxConst"> {
+def Top_MaxConstOp: Top_Op<"MaxConst", [ScalarProducer, ScalarConsumer]> {
   let summary = "Max Const operator";
 
   let description = [{
@@ -709,7 +712,8 @@ def Top_MaxConstOp: Top_Op<"MaxConst"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    F64Attr: $const_val
+    F64Attr: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
@@ -2033,7 +2037,7 @@ def Top_CompareOp : Top_Op<"Compare", [SupportConstant]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_CompareConstOp : Top_Op<"CompareConst"> {
+def Top_CompareConstOp : Top_Op<"CompareConst", [ScalarProducer, ScalarConsumer]> {
   let summary = "CompareConst operation";
   let description = [{
     Returns the tensor resulted from performing the compare
@@ -2043,7 +2047,8 @@ def Top_CompareConstOp : Top_Op<"CompareConst"> {
     AnyTensor:$input,
     CompareModeAttr:$mode,
     F64Attr:$const_val,
-    BoolAttr:$inversed
+    BoolAttr:$inversed,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
