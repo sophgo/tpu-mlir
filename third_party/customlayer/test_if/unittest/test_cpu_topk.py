@@ -9,7 +9,7 @@ class TestTopk(TestTPULangCustom):
         shape = [1, 1000]
         self.data_in = np.random.random(shape).astype(dtype)
         x = tpul.Tensor(name="in", dtype=dtype, shape=shape, data=self.data_in)
-        y = my_tpulang_layer.cpuTopk.tpulang(inputs=[x], dtype=dtype)[0]
+        y = my_tpulang_layer.cpuTopk.tpulang(inputs=[x],  axis=1, k=10, dtype=dtype)[0]
         self.compile('topk', [x], [y], dtype)
     def test_fp32(self):
         self._test('float32')
