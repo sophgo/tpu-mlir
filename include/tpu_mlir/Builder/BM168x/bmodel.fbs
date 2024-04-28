@@ -48,10 +48,17 @@ table StageIR {
     width_low:int32 (id: 4);
 }
 
+table Location {
+    name:string (required, id:0);   // operation name
+    offset:uint64 (id:1);           // offset in binary_coeff
+    size:uint64 (id:2);             // coeff size of operation
+}
+
 table CoeffMem {
     address:uint64 (id: 0);
     check_code:[uint8] (id: 1);  // sha256 for check binary
     binary_coeff:Binary (id: 2); // coeff binary data
+    location:[Location] (id: 3); // each location in binary for coeff of operations
 }
 
 table Tensor {

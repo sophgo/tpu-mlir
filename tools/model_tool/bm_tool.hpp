@@ -248,7 +248,7 @@ void bm_show(const string &filename, bool all) {
        << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
               mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
               mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size
-       << " (coeff: " << mem_info.coeff_mem_size << ", instruct: "
+       << " (weight: " << mem_info.coeff_mem_size << ", instruct: "
        << mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
               mem_info.dynamic_ir_mem_size
        << ", runtime: "
@@ -256,7 +256,7 @@ void bm_show(const string &filename, bool all) {
        << std::endl;
   cout << "host mem size: "
        << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
-       << " (coeff: " << mem_info.host_coeff_mem_size
+       << " (weight: " << mem_info.host_coeff_mem_size
        << ", runtime: " << mem_info.host_neuron_mem_size << ")" << std::endl;
 }
 
@@ -268,6 +268,39 @@ void bm_show_chip(const string &filename) {
   }
   auto model = model_ctx.model();
   cout << model->chip()->c_str();
+}
+
+// print weight of model
+void bm_show_weight(const string &filename) {
+  ModelCtx model_ctx(filename);
+  if (!model_ctx) {
+    FATAL("file[%s] is not correct", filename.c_str());
+  }
+  auto model = model_ctx.model();
+  auto num_net = model->net()->size();
+  for (int i = 0; i < num_net; i++) {
+    auto net = model->net()->Get(i);
+    auto num_stage = model->net()->Get(i)->parameter()->size();
+    for (int j = 0; j < num_stage; j++) {
+      auto param = model->net()->Get(i)->parameter()->Get(j);
+      auto coeff = param->coeff_mem();
+      if (coeff == nullptr) {
+        continue;
+      }
+      auto location = coeff->location();
+      if (location == nullptr || location->size() == 0) {
+        continue;
+      }
+      printf("net %d : \"%s\", stage:%d\n", i, net->name()->c_str(), j);
+      cout << "-------------------------------" << endl;
+      for (int k = 0; k < location->size(); k++) {
+        auto info = location->Get(k);
+        printf("%s : [0x%lx, 0x%lx)\n", info->name()->c_str(), info->offset(),
+               info->offset() + info->size());
+      }
+      cout << "==========================================" << endl;
+    }
+  }
 }
 
 void bm_show_dynamic(const string &filename) {
