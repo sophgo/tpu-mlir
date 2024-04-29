@@ -55,7 +55,7 @@ typedef std::shared_ptr<std::vector<double>> f64_array_t;
 namespace module {
 
 // init module by ModuleOp in init pass
-void init(ModuleOp module, bool weight_in_mem = false);
+void init(ModuleOp module);
 
 //-----------------------------------------------------------------
 // Helper for get/set Attributes

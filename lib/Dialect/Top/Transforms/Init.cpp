@@ -20,7 +20,7 @@ public:
   InitPass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
-    module::init(mOp, weight_in_mem);
+    module::init(mOp);
     backend::Arch::init(freq);
   }
 };

@@ -37,8 +37,7 @@ namespace mlir {
 
 class TensorFile {
 public:
-  TensorFile(llvm::StringRef filename, bool readOnly,
-             bool weight_in_mem = false, bool newCreate = false);
+  TensorFile(llvm::StringRef filename, bool readOnly, bool newCreate = false);
 
   ~TensorFile();
 
@@ -103,7 +102,6 @@ private:
 
   std::string filename;
   bool readOnly;
-  bool use_weight_in_mem;
   cnpy::npz_t map;
   std::atomic<int> cnt_del = {0};
   std::atomic<int> cnt_add = {0};

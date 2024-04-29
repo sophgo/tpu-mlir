@@ -650,7 +650,7 @@ class OnnxConverter(BaseConverter):
             if i.name == name:
                 return i.type.tensor_type.shape.dim
 
-    def generate_mlir(self, mlir_file: str, save_in_mem=False):
+    def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
@@ -697,13 +697,9 @@ class OnnxConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
-        if save_in_mem:
-            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
-            self.WeightToNpzInMem(self.weight_file)
-        else:
-            self.WeightToNpz(self.weight_file)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
+        self.WeightToNpz(self.weight_file)
         logger.info("Save mlir file: {}".format(mlir_file))
 
     def convert_skip_op(self, onnx_node):

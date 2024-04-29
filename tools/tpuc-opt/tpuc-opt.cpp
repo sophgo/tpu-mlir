@@ -16,9 +16,8 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 using namespace mlir;
 
-std::string PluginPrePass[] = {"--init"};
-
-const std::string PluginPostPass[] = {"--deinit", "--mlir-print-debuginfo"};
+const std::string PluginPrePass[] = {"--init"};
+std::vector<std::string> PluginPostPass;
 
 int main(int argc, char **argv) {
   tpu_mlir::registerAllPasses();
@@ -27,11 +26,18 @@ int main(int argc, char **argv) {
   tpu_mlir::registerAllDialects(registry);
 
   // Check if --init option is explicitly provided
+  bool hasDeinit = false;
   for (int i = 1; i < argc; ++i) {
-    if (std::string(argv[i]).find("--init") != std::string(argv[i]).npos) {
-      PluginPrePass[0] = "";
+    if (std::string(argv[i]).find("--deinit") != std::string(argv[i]).npos) {
+      hasDeinit = true;
       break;
     }
+  }
+
+  if (hasDeinit) {
+    PluginPostPass = {"--mlir-print-debuginfo"};
+  } else {
+    PluginPostPass = {"--deinit", "--mlir-print-debuginfo"};
   }
 
   if (argc <= 2) {
@@ -49,7 +55,7 @@ int main(int argc, char **argv) {
   }
 
   int num_pre = sizeof(PluginPrePass) / sizeof(PluginPrePass[0]);
-  int num_post = sizeof(PluginPostPass) / sizeof(PluginPostPass[0]);
+  int num_post = PluginPostPass.size();
   int new_argc = num_pre + argc + num_post;
   char *new_argv[new_argc];
   int left = 0;

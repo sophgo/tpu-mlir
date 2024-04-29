@@ -4,13 +4,11 @@
 # third-party components.
 #
 # ==============================================================================
-import re
 import shutil
 import os
 import subprocess
 import logging
 import utils.pattern_counter
-from .mlir_parser import MlirParser
 
 
 def _os_system_log(cmd_str):
@@ -59,11 +57,6 @@ def _os_system(cmd: list, save_log: bool = False, mute: bool = False):
         _os_system_log(cmd_str)
 
 
-def _remove_used_file(mlirfile):
-    if os.path.exists(mlirfile):
-        os.remove(mlirfile)
-
-
 def get_matched_patterns(log_file: str = ""):
     if log_file:
         matcher = utils.pattern_counter.PatternCounter(log_file)
@@ -74,9 +67,8 @@ def get_matched_patterns(log_file: str = ""):
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
-                     count_patterns: bool = False,
-                     weight_in_mem: bool = False):
-    cmd = ["tpuc-opt", mlirfile, f"--init=\"weight_in_mem={str(weight_in_mem)}\"", "--shape-infer"]
+                     count_patterns: bool = False):
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
     if len(add_postprocess) > 0:
         cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
     cmd.extend(["--canonicalize", "--extra-optimize", "-o", opt_mlirfile])
@@ -84,12 +76,7 @@ def mlir_opt_for_top(mlirfile: str,
     if count_patterns:
         log_file = "top_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-
-    if weight_in_mem:
-        _os_system(cmd, False, True)
-        _remove_used_file(mlirfile)
-    else:
-        _os_system(cmd)
+    _os_system(cmd)
     return get_matched_patterns(log_file)
 
 
@@ -108,10 +95,9 @@ def mlir_lowering(top_mlir: str,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
-                  count_patterns: bool = False,
-                  weight_in_mem: bool = False):
+                  count_patterns: bool = False):
     cmd = [
-        "tpuc-opt", top_mlir, f"--init=\"weight_in_mem={str(weight_in_mem)}\"", "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
+        "tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
             chip.lower(), num_device, num_core)
     ]
     mode = mode.upper()
@@ -144,11 +130,7 @@ def mlir_lowering(top_mlir: str,
     if count_patterns:
         log_file = "lowering_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    if weight_in_mem:
-        _os_system(cmd, False, True)
-        _remove_used_file(top_mlir)
-    else:
-        _os_system(cmd)
+    _os_system(cmd)
     return get_matched_patterns(log_file)
 
 
@@ -170,7 +152,6 @@ def mlir_to_model(tpu_mlir: str,
                   model_version: str = "",
                   count_patterns: bool = False,
                   compress_mode: str = "none",
-                  weight_in_mem: bool = False,
                   debug_cmd: str = ""
 				  ):
     # generate final mlir
@@ -192,7 +173,6 @@ def mlir_to_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
-        f"--init=\"weight_in_mem={str(weight_in_mem)}\"",
         "--mlir-disable-threading",
         strip_io_quant_param,
         "--processor-tpu-optimize",
@@ -212,11 +192,7 @@ def mlir_to_model(tpu_mlir: str,
     if count_patterns:
         log_file = "tpu_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    if weight_in_mem:
-        _os_system(cmd, False, True)
-        _remove_used_file(tpu_mlir)
-    else:
-        _os_system(cmd)
+    _os_system(cmd)
 
     # codegen based on final mlir
     codegen_param = (
@@ -224,17 +200,11 @@ def mlir_to_model(tpu_mlir: str,
     )
     cmd = [
         "tpuc-opt",
-        f"--init=\"weight_in_mem={str(weight_in_mem)}\"",
         final_mlir,
         codegen_param,
         "-o /dev/null",
     ]
-    if weight_in_mem:
-        _os_system(cmd, False, True)
-        _remove_used_file(final_mlir)
-        return get_matched_patterns(log_file)
-    else:
-        _os_system(cmd)
+    _os_system(cmd)
 
     out_dir = model.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
@@ -251,6 +221,139 @@ def mlir_to_model(tpu_mlir: str,
     return get_matched_patterns(log_file)
 
 
+def originMlir_to_Model_without_quantize(
+    converter,
+    model_name: str,
+    mode: str,
+    chip: str,
+    add_postprocess: str = "",
+    num_device: int = 1,
+    num_core: int = 1,
+    cali_table: str = None,
+    asymmetric: bool = False,
+    quantize_table: str = None,
+    customization_format: str = None,
+    fuse_preprocess: bool = False,
+    aligned_input: bool = False,
+    ignore_f16_overflow: bool = False,
+    do_winograd: bool = False,
+    q_group_size: int = 0,
+    dynamic: bool = False,
+    quant_input: bool = False,
+    quant_output: bool = False,
+    quant_input_list: str = "",
+    quant_output_list: str = "",
+    disable_layer_group: bool = False,
+    opt: int = 2,
+    merge_weight: bool = False,
+    op_divide: bool = False,
+    embed_debug_info: bool = False,
+    addr_mode: str = "auto",
+    group_by_cores: str = "auto",
+    model_version: str = "",
+    count_patterns: bool = False,
+    compress_mode: str = "none",
+    mute=False,
+):
+    mlir_origin = model_name + "_origin.mlir"
+    bmodel = f"{model_name}_{mode}.bmodel"
+
+    converter.generate_mlir(mlir_origin)
+
+    cmd = [
+        "tpuc-opt",
+        mlir_origin,
+        "--shape-infer",
+    ]
+    if len(add_postprocess) > 0:
+        cmd.extend([f'--add-postprocess="type={add_postprocess}"'])
+    cmd.extend(["--canonicalize", "--extra-optimize"])
+
+    cmd.extend(
+        [
+            f'--processor-assign="chip={chip.lower()} num_device={num_device} num_core={num_core}"'
+        ]
+    )
+    mode = mode.upper()
+    # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
+    if cali_table != None:
+        cali_param = '--import-calibration-table="file={} asymmetric={}"'.format(
+            cali_table, asymmetric
+        )
+        cmd.extend([cali_param])
+    # do extra conversion for differnet chips
+    cmd.extend(["--processor-top-optimize"])
+    if fuse_preprocess:
+        fuse_pre_param = (
+            '--fuse-preprocess="mode={} customization_format={} align={}"'.format(
+                mode, customization_format, aligned_input
+            )
+        )
+        cmd.extend([fuse_pre_param])
+
+    lower_param = '--convert-top-to-tpu="mode={} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}"'.format(
+        mode, asymmetric, do_winograd, ignore_f16_overflow, q_group_size
+    )
+    cmd.extend(
+        [
+            lower_param,
+            "--canonicalize",
+            "--weight-fold",
+            # "-o",
+            # tpu_mlir,
+        ]
+    )
+    # generate final mlir
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list
+    )
+    lg_param = ""
+    if not disable_layer_group:
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={}"'.format(
+            opt, group_by_cores, compress_mode
+        )
+    subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
+    address_assign_param = '--address-assign="addr_mode={}"'.format(addr_mode)
+    if merge_weight:
+        address_assign_param = (
+            '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
+        )
+    distribute_param = f"--dev-parallel"
+    parallel_param = f"--core-parallel"
+
+    op_divide_param = ""
+    if op_divide:
+        op_divide_param = "--op-divide"
+    # codegen based on final mlir
+    codegen_param = f'--codegen="model_file={bmodel} embed_debug_info={str(embed_debug_info).lower()} model_version={str(model_version).lower()}"'
+
+    cmd.extend(
+        [
+            "--mlir-disable-threading",
+            strip_io_quant_param,
+            "--processor-tpu-optimize",
+            distribute_param,
+            "--weight-reorder",
+            op_divide_param,
+            subnet_param,
+            "--op-reorder",
+            lg_param,
+            parallel_param,
+            address_assign_param,
+            codegen_param,
+            f'--deinit="no_save_weight=True"',
+            "-o /dev/null",
+        ]
+    )
+    log_file = ""
+    if count_patterns:
+        log_file = "tpu_patterns.log"
+        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
+
+    _os_system(cmd, mute=mute)
+    return get_matched_patterns(log_file)
+
+
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
@@ -261,19 +364,15 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
 
 
 # TOPTOTOSA
-def top_to_tosa(top_mlir: str, tosa_mlir: str, includeWeight: bool = False, weight_in_mem = False):
-    cmd = ["tpuc-opt", top_mlir, f"--init=\"weight_in_mem={str(weight_in_mem)}\""]
+def top_to_tosa(top_mlir: str, tosa_mlir: str, includeWeight: bool = False):
+    cmd = ["tpuc-opt", top_mlir]
     lower_param = "--convert-top-to-tosa=\"includeWeight="
     if includeWeight:
         lower_param += "True\""
     else:
         lower_param += "False\""
-    cmd.extend([lower_param, "--canonicalize", f"--deinit=\"weight_in_mem={str(weight_in_mem)}\"", "-o", tosa_mlir])
-    if weight_in_mem:
-        _os_system(cmd, False, True)
-        _remove_used_file(top_mlir)
-    else:
-        _os_system(cmd)
+    cmd.extend([lower_param, "--canonicalize", "-o", tosa_mlir])
+    _os_system(cmd)
 
 
 # TOSATOObj
