@@ -652,6 +652,33 @@ typedef struct bcbinary_global_param {
   int32_t B_is_coeff;
 } bcbinary_global_param_t;
 
+typedef struct binaryshift_spec {
+    int32_t binary_op;
+    int32_t rshift_num;
+    int32_t b_is_const;
+    int32_t b_const_val;
+    int32_t inversed;
+    int32_t round_mode;
+    bool is_saturate;
+} binaryshift_spec_t;
+
+typedef struct binaryshift_local_spec {
+    binaryshift_spec_t common;
+    uint32_t buffer;
+} binaryshift_local_spec_t;
+
+typedef struct binaryshift_local_param {
+    binaryshift_local_spec_t spec;
+    int32_t a_is_coeff;
+    int32_t b_is_coeff;
+} binaryshift_local_param_t;
+
+typedef struct binaryshift_global_param {
+    binaryshift_spec_t spec;
+    int32_t a_is_coeff;
+    int32_t b_is_coeff;
+} binaryshift_global_param_t;
+
 typedef struct {
   uint64_t input_A_global_addr;
   uint64_t input_B_global_addr;
