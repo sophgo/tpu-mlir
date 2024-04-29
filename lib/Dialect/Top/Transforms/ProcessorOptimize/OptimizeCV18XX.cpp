@@ -1518,6 +1518,9 @@ public:
       auto constF32 = constOp.read<float>();
       std::vector<float> data(constF32->size());
       if (is_const) {
+        if (std::isinf(const_v) && const_v < 0) {
+          const_v = -std::pow(2, 22);
+        }
         for (int i = 0; i < constF32->size(); ++i) {
           data[i] = const_v * constF32->at(i);
         }
@@ -1526,7 +1529,11 @@ public:
         auto x_f32 = const_x.read<float>();
         assert(x_f32->size() == constF32->size());
         for (int i = 0; i < constF32->size(); ++i) {
-          data[i] = x_f32->at(i) * constF32->at(i);
+          float x = x_f32->at(i);
+          if (std::isinf(x) && x < 0) {
+            x = -std::pow(2, 22);
+          }
+          data[i] = x * constF32->at(i);
         }
       }
       auto type = RankedTensorType::get({out_shape}, rewriter.getF32Type());
@@ -1568,6 +1575,9 @@ public:
       auto constF32 = constOp.read<float>();
       std::vector<float> data(constF32->size());
       if (is_const) {
+        if (std::isinf(const_v) && const_v < 0) {
+          const_v = -std::pow(2, 22) + 1;
+        }
         for (int i = 0; i < constF32->size(); ++i) {
           data[i] = (1 - const_v) * constF32->at(i);
         }
@@ -1576,7 +1586,11 @@ public:
         auto x_f32 = const_x.read<float>();
         assert(x_f32->size() == constF32->size());
         for (int i = 0; i < constF32->size(); ++i) {
-          data[i] = (1 - x_f32->at(i)) * constF32->at(i);
+          float x = x_f32->at(i);
+          if (std::isinf(x) && x < 0) {
+            x = -std::pow(2, 22) + 1;
+          }
+          data[i] = (1 - x) * constF32->at(i);
         }
       }
       auto type = RankedTensorType::get({out_shape}, rewriter.getF32Type());
@@ -1639,9 +1653,9 @@ public:
     if (op.getYIsConst()) {
       add_weight(op.getYConstVal().convertToDouble(), "_y", 2);
     }
-    Value input0 = op.getOperand(0);
-    Value input1 = op.getOperand(1);
-    Value input2 = op.getOperand(2);
+    Value input0 = op.getOperand(0);  // cond
+    Value input1 = op.getOperand(1);  // true branch
+    Value input2 = op.getOperand(2);  // false branch
     std::string name = module::getName(ori_out).str();
     std::vector<int64_t> input0_shape = module::getShape(input0);
     std::vector<int64_t> input1_shape = module::getShape(input1);
