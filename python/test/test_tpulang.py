@@ -77,6 +77,7 @@ class TPULANG_IR_TESTER(object):
             # case:  (test,                    bm1684x_support, bm1688_support)
             "Abs": (self.test_Abs,                      Y, Y),
             "Add": (self.test_Add,                      Y, Y),
+            "AddShift": (self.test_AddShift,            N, N),
             "Arccos": (self.test_Arccos,                Y, Y),
             "Arctanh": (self.test_Arctanh,              Y, Y),
             "Arg": (self.test_Arg,                      Y, Y),
@@ -107,7 +108,7 @@ class TPULANG_IR_TESTER(object):
             "Gelu": (self.test_Gelu,                    Y, Y),
             "Ge": (self.test_Ge,                        Y, Y),
             "Ges": (self.test_Ges,                      Y, Y),
-            "GroupNorm": (self.test_Group_norm,        Y, Y),
+            "GroupNorm": (self.test_Group_norm,         Y, Y),
             "Gt": (self.test_Gt,                        Y, Y),
             "Gts": (self.test_Gts,                      Y, Y),
             "Hsigmoid": (self.test_Hsigmoid,            Y, Y),
@@ -128,6 +129,7 @@ class TPULANG_IR_TESTER(object):
             "Min": (self.test_Min,                      Y, Y),
             "Mish": (self.test_Mish,                    Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
+            "MulShift": (self.test_MulShift,            N, N),
             "Ne": (self.test_Ne,                        Y, Y),
             "Nes": (self.test_Nes,                      Y, Y),
             "NMS": (self.test_NMS,                      Y, Y),
@@ -141,7 +143,7 @@ class TPULANG_IR_TESTER(object):
             "Reshape": (self.test_Reshape,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
-            "ShapeFetch": (self.test_Shape_fetch,      Y, Y),
+            "ShapeFetch": (self.test_Shape_fetch,       Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
             "Silu": (self.test_Silu,                    Y, Y),
@@ -156,6 +158,7 @@ class TPULANG_IR_TESTER(object):
             "Square": (self.test_Square,                Y, Y),
             "Squeeze": (self.test_Squeeze,              Y, Y),
             "Sub": (self.test_Sub,                      Y, Y),
+            "SubShift": (self.test_SubShift,            N, N),
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
@@ -314,6 +317,54 @@ class TPULANG_IR_TESTER(object):
         self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
         self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
         self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
+    #######################################################################
+    # AddShift
+    # ------------
+    def test_binary_shift(self, case_name, func, shape_x: List[int], shape_y: List[int], dtype_i0="int8", dtype_i1="int8", dtype_o="int8"):
+        @tpulang(self.chip)
+        def binary_coeff():
+            x_data = rand_data(shape_x, dtype_i0)
+            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
+            y = self.coeff_tensor(shape_y, dtype_i1, scale=4.0)
+            out = func(y, x, out_dtype=dtype_o, shift=-1)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+        @tpulang(self.chip)
+        def binary():
+            x_data = rand_data(shape_x, dtype_i0)
+            y_data = rand_data(shape_y, dtype_i1)
+            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype_i1, shape=shape_y, data=y_data)
+            out = func(y, x, out_dtype=dtype_o, shift=-1)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [out], is_quantized=True)
+        @tpulang(self.chip)
+        def binary_scalar():
+            x_data = rand_data(shape_x, dtype_i0)
+            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
+            out = func(tpul.Scalar(2, dtype_i1), x, out_dtype=dtype_o, shift=-1)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+
+        binary_coeff()
+        binary()
+        binary_scalar()
+
+    def test_AddShift(self, case_name):
+        """Add Shift"""
+        self.test_binary_shift(case_name, tpul.add_shift, [1, 3, 32, 32], [1, 32, 32], "int8", "int8", "int8")
+        self.test_binary_shift(case_name, tpul.add_shift, [1, 3, 1, 32], [1, 32, 32], "int8", "uint16", "int16")
+        self.test_binary_shift(case_name, tpul.add_shift, [1, 3, 32, 32], [1, 32, 32], "int32", "int8", "int16")
+
+    def test_SubShift(self, case_name):
+        """Sub Shift"""
+        self.test_binary_shift(case_name, tpul.sub_shift, [1, 3, 32, 32], [1, 32, 32], "int8", "int8", "int8")
+        self.test_binary_shift(case_name, tpul.sub_shift, [1, 3, 1, 32], [1, 32, 32], "int8", "uint16", "int16")
+        self.test_binary_shift(case_name, tpul.sub_shift, [1, 3, 32, 32], [1, 32, 32], "int32", "int8", "int16")
+
+    def test_MulShift(self, case_name):
+        """Mul Shift"""
+        self.test_binary_shift(case_name, tpul.mul_shift, [1, 3, 32, 32], [1, 32, 32], "int8", "int8", "int8")
+        self.test_binary_shift(case_name, tpul.mul_shift, [1, 3, 1, 32], [1, 32, 32], "int8", "uint16", "int16")
+        self.test_binary_shift(case_name, tpul.mul_shift, [1, 3, 32, 32], [1, 32, 32], "int32", "int8", "int16")
 
     #######################################################################
     # Convolution

@@ -75,6 +75,7 @@ def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5","yolov8"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
+def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
@@ -651,6 +652,57 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   let extraClassDeclaration = [{
     void assign_fw_param(void *param);
   }];
+}
+
+def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+
+  let summary = "Binary with shift operator";
+
+  let description = [{
+      Z = saturation(X +/-/* Y >> -shift)
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input1,
+    AnyRankedTensor:$input2,
+    BinaryShiftAttr:$mode,
+    SI32Attr:$shift,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "true">:$saturation,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
+    InOutSameShape, SupportElementwise,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+
+  let summary = "Binary Const with shift operator";
+
+  let description = [{
+      Y = saturation(X +/-/* scale >> -shift)
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input,
+    SI32Attr:$scale,
+    BinaryShiftAttr:$mode,
+    SI32Attr:$shift,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "true">:$saturation,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyRankedTensor:$output);
 }
 
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {

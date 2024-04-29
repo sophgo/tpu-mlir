@@ -533,6 +533,19 @@ int BM168x::compare_mode(StringRef mode) {
   llvm_unreachable("Not Implemented");
 }
 
+int BM168x::binary_mode(StringRef mode) {
+  if (mode == "Add") {
+    return BINARY_ADD;
+  }
+  if (mode == "Sub") {
+    return BINARY_SUB;
+  }
+  if (mode == "Mul") {
+    return BINARY_MUL;
+  }
+  llvm_unreachable("Not Implemented");
+}
+
 static void size_to_2dim(int64_t size, int64_t &small, int64_t &big) {
   int64_t div = std::sqrt(size);
   for (small = div; small >= 1; small--) {

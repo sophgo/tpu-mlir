@@ -77,7 +77,7 @@ def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abc
 def RoundModeAttr: AnyStrAttrOf<["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]>;
 def DequantModeAttr: AnyStrAttrOf<["Normal", "TFLite"]>;
 def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift", "OnlyShift", "QDM", "OnlyScale"]>;
-
+def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -717,6 +717,46 @@ def Top_MaxConstOp: Top_Op<"MaxConst", [ScalarProducer, ScalarConsumer]> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Tpu_BinaryShiftOp: Top_Op<"BinaryShift"> {
+  let summary = "Binary with shift operator";
+
+  let description = [{
+      Z = saturation(X +/-/* Y >> -shift)
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input1,
+    AnyTensor:$input2,
+    BinaryShiftAttr:$mode,
+    SI32Attr:$shift,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "true">:$saturation,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_BinaryConstShiftOp: Top_Op<"BinaryConstShift"> {
+  let summary = "Binary Const with shift operator";
+
+  let description = [{
+      Y = saturation(X +/-/* scale >> -shift)
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input,
+    SI32Attr:$scale,
+    BinaryShiftAttr:$mode,
+    SI32Attr:$shift,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "true">:$saturation,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+
+  let results = (outs AnyRankedTensor:$output);
 }
 
 def Top_NormalizeOp: Top_Op<"Normalize"> {
