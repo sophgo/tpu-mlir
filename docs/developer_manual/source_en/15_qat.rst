@@ -57,10 +57,10 @@ Add the following python module import interface to the training file:
     #Use the pre-trained ResNet18 model from the torchvision model zoo.
     model = models.__dict__['resnet18'](pretrained=True)
     
-    #1.Trace the model, using a dictionary to specify the chip type as SG2260 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
+    #1.Trace the model, using a dictionary to specify the chip type as BM1690 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
     extra_prepare_dict = {
     'quant_dict': {
-                    'chip': 'SG2260',
+                    'chip': 'BM1690',
                     'quantmode': 'weight_activation',
                     'strategy': 'CNN',
                     },
@@ -68,7 +68,7 @@ Add the following python module import interface to the training file:
     model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
 
-When the above interface selects the SG2260 chip, the default quantization configuration is as shown in the following figure:
+When the above interface selects the BM1690 chip, the default quantization configuration is as shown in the following figure:
 
 .. figure:: ../assets/sophgo_tpu_default_para.png
    :align: center
@@ -150,7 +150,7 @@ Run application/imagenet_example/main.py to qat train resent18 as follows:
         --evaluate \
         --train_data=/home/data/imagenet \
         --val_data=/home/data/imagenet \
-        --chip=SG2260 \
+        --chip=BM1690 \
         --quantmode=weight_activation \
         --deploy_batch_size=10 \
         --pre_eval_and_export \
