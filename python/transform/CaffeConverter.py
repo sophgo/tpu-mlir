@@ -199,7 +199,7 @@ class CaffeConverter(BaseConverter):
         else:
             return layer.type
 
-    def generate_mlir(self, mlir_file: str, save_in_mem=False):
+    def generate_mlir(self, mlir_file: str):
         # add input op
         for idx, _name in enumerate(self.input_names):
             is_shape = False
@@ -240,13 +240,9 @@ class CaffeConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
-        if save_in_mem:
-            mlir_txt = self.MlirModify(mlir_txt, self.weight_file)
-            self.WeightToNpzInMem(self.weight_file)
-        else:
-            self.WeightToNpz(self.weight_file)
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
+        self.WeightToNpz(self.weight_file)
         logger.info("Save mlir file: {}".format(mlir_file))
 
     def blob_to_weight_op(self, layer, index, shape: list = [], permute_order=[]):

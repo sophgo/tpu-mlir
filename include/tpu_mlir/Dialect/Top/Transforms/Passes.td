@@ -32,6 +32,10 @@ def Deinit : Pass<"deinit", "ModuleOp"> {
   let summary = "deinit module";
   let constructor = "createDeinitPass()";
   let dependentDialects = ["TopDialect"];
+  let options = [
+    Option<"no_save_weight", "no_save_weight", "bool", /*default=*/"false",
+           "whether to save weight.">,
+  ];
 }
 
 def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {

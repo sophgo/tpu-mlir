@@ -5,14 +5,13 @@
 #
 # ==============================================================================
 
-import atexit
 from typing import List, Union, Tuple, Optional
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
-from utils.auto_remove import file_mark, shm_clean
+from utils.auto_remove import file_mark
 from tools.npz_tool import npz_compare
 import pymlir
 
@@ -45,7 +44,6 @@ class TpuLang:
         TpuLang.graph.operators.append(op)
 
 
-@shm_clean  # activate when save_in_mem
 def compile(name: str,
             inputs: List[Tensor],
             outputs: List[Tensor],
@@ -54,7 +52,7 @@ def compile(name: str,
             mode='f32',         # unused
             dynamic=False,
             asymmetric=False,
-            save_in_mem=False):
+            no_save=False):
     logger.info("TPU-MLIR {}".format(pymlir.module().version))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
@@ -68,7 +66,7 @@ def compile(name: str,
             ctm_format = getCustomFormat(input.pixel_format, input.channel_format)
             fuse = True
             break
-    if not save_in_mem:
+    if not no_save:
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter)
         compare = cmp and refs != None
@@ -76,14 +74,7 @@ def compile(name: str,
                                      asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic)
     else:
-        name = "/dev/shm/" + name
-        save_in_mem = save_in_mem  # used for decorator
-        save_input_reference(model_name=name, refs=refs)
-        model_transform(name, converter, save_in_mem=save_in_mem)
-        compare = cmp and refs != None
-        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, \
-                                     asymmetric=asymmetric, save_in_mem=save_in_mem, ctm_format=ctm_format, fuse=fuse)
-        return bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic, save_in_mem=save_in_mem)
+        originMlir_to_Model_without_quantize(converter=converter, model_name=name, mode="int8", chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
 
 
 def compile_f32(name: str,
@@ -112,12 +103,12 @@ def compile_f32(name: str,
         bmodel_generate_and_inference(model_name=name, quant_mode=mode, dynamic=dynamic)
 
 
-def model_transform(model_name, converter: TpuLangConverter, save_in_mem=False):
-    mlir_file = model_name + ".mlir"
-    mlir_origin = model_name + "_origin.mlir"
-    converter.generate_mlir(mlir_origin, save_in_mem)
-    mlir_opt_for_top(mlir_origin, mlir_file, weight_in_mem=save_in_mem)
-    logger.info("Mlir file generated:{}".format(mlir_file))
+def model_transform(model_name, converter: TpuLangConverter):
+    mlir_file = model_name + '.mlir'
+    mlir_origin = model_name + '_origin.mlir'
+    converter.generate_mlir(mlir_origin)
+    mlir_opt_for_top(mlir_origin, mlir_file)
+    print("Mlir file generated:{}".format(mlir_file))
 
 
 def save_input_reference(model_name, refs:dict):
@@ -147,23 +138,20 @@ def model_top_inference(model_name, cmp=False):
         f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
-                                 inference: bool = True, cmp: bool = False, save_in_mem: bool = False, \
-                                 ctm_format = "BGR_PLANAR", fuse=False):
+                                 inference: bool = True, cmp: bool = False, ctm_format = "BGR_PLANAR", \
+                                 fuse=False):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
-                  weight_in_mem=save_in_mem, customization_format=ctm_format, fuse_preprocess=fuse)
+                  customization_format=ctm_format, fuse_preprocess=fuse)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         input_data = np.load(in_f32_npz)
         file_mark(tpu_npz)
-        if not save_in_mem:
-            show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
-            tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
-        else:
-            tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, mute=True)
+        show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
+        tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         np.savez(tpu_npz, **tpu_mlir_outs)
         if cmp:
             if quant_mode == 'int8':
@@ -173,29 +161,24 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, as
                 top_npz = model_name + '_top_outputs.npz'
                 npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
 
-def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, save_in_mem: bool = False):
+def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
     bmodel = tpu_mlir + ".bmodel"
-    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, weight_in_mem=save_in_mem)
+    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic)
+
     if inference:
+        #inference
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir + "_tpu_out.npz"
         input_data = np.load(in_f32_npz)
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         file_mark(model_npz)
-        if not save_in_mem:
-            show_fake_cmd(in_f32_npz, bmodel, model_npz)
-            model_outs = model_inference(input_data, bmodel)
-        else:
-            model_outs = model_inference(input_data, bmodel, mute=True)
+        show_fake_cmd(in_f32_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
-    if save_in_mem:
-        with open(bmodel, "rb") as f:
-            bmodel_bin = f.read()
-        return bmodel_bin
 
 
 def init(device: str):

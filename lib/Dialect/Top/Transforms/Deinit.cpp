@@ -11,7 +11,6 @@
 
 using namespace llvm;
 
-
 namespace tpu_mlir {
 namespace top {
 
@@ -24,7 +23,8 @@ public:
       return;
     }
     module::removeUnusedOp();
-    module::saveWeight();
+    if (!no_save_weight)
+      module::saveWeight();
   }
 };
 

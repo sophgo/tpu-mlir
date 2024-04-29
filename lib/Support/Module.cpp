@@ -46,11 +46,9 @@ static Chip chip = Chip::ALL;
 static Platform platform = Platform::ONNX;
 static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
 static std::string weightFileName = "";
-bool use_weight_in_mem = false;
 static std::string debug_cmd = "";
 
-void init(ModuleOp module, bool weight_in_mem) {
-  use_weight_in_mem = weight_in_mem;
+void init(ModuleOp module) {
   m = module;
   ctx = m.getContext();
   auto chip_ = m->getAttrOfType<StringAttr>(Attr::CHIP);
@@ -1652,9 +1650,6 @@ static std::string genWeightFileName(bool &same_name) {
   if (same_name) {
     new_name = file_name + "_weight_fix.npz";
   }
-  if (use_weight_in_mem) {
-    new_name = "/dev/shm/" + new_name;
-  }
   return new_name;
 }
 
@@ -1731,7 +1726,7 @@ void detachWeightFile() { wFile = nullptr; }
 mlir::TensorFile &weightFile() {
   if (wFile == nullptr) {
     auto name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
-    wFile = std::make_unique<mlir::TensorFile>(name, false, use_weight_in_mem);
+    wFile = std::make_unique<mlir::TensorFile>(name, false);
   }
   return *wFile;
 }
