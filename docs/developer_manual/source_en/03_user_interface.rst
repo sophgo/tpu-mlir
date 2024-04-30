@@ -6,27 +6,26 @@ This chapter introduces the user interface, including the basic process of conve
 Model Conversion Process
 --------------------------
 
-The basic procedure is transforming the model into a mlir file with ``model_transform.py``, and then transforming the mlir into the corresponding model with ``model_deploy.py``.
-Calibration is required if you need to get the INT8 model.
+The basic procedure is transforming the model into a mlir file with ``model_transform.py``, and then transforming the mlir into the corresponding model with ``model_deploy.py``. Take the ``somenet.onnx`` model as an example, the steps are as follows:
 
 .. code-block:: shell
 
     # To MLIR
     $ model_transform.py \
-        --model_name resnet \
-        --model_def  resnet.onnx \
-        --test_input resnet_in.npz \
-        --test_result resnet_top_outputs.npz \
-        --mlir resnet.mlir
+        --model_name somenet \
+        --model_def  somenet.onnx \
+        --test_input somenet_in.npz \
+        --test_result somenet_top_outputs.npz \
+        --mlir somenet.mlir
 
     # To Float Model
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize F32 \ # F16/BF16
        --processor BM1684X \
-       --test_input resnet_in_f32.npz \
-       --test_reference resnet_top_outputs.npz \
-       --model resnet50_f32.bmodel
+       --test_input somenet_in_f32.npz \
+       --test_reference somenet_top_outputs.npz \
+       --model somenet_f32.bmodel
 
 Support for Image Input
 ~~~~~~~~~~~~~~~
@@ -36,29 +35,29 @@ When using images as input, preprocessing information needs to be specified, as 
 .. code-block:: shell
 
     $ model_transform.py \
-        --model_name resnet \
-        --model_def resnet.onnx \
+        --model_name img_input_net \
+        --model_def img_input_net.onnx \
         --input_shapes [[1,3,224,224]] \
         --mean 103.939,116.779,123.68 \
         --scale 1.0,1.0,1.0 \
         --pixel_format bgr \
         --test_input cat.jpg \
-        --test_result resnet_top_outputs.npz \
-        --mlir resnet.mlir
+        --test_result img_input_net_top_outputs.npz \
+        --mlir img_input_net.mlir
 
 Support for Multiple Inputs
 ~~~~~~~~~~~~~~~~
 
-When the model has multiple inputs, you can pass in a single npz file or sequentially pass in multiple npz files separated by commas, as follows:
+When the model has multiple inputs, you can pass in a single npz file or sequentially pass in multiple npy files separated by commas, as follows:
 
 .. code-block:: shell
 
     $ model_transform.py \
-        --model_name somenet \
-        --model_def  somenet.onnx \
-        --test_input somenet_in.npz \ # a.npy,b.npy,c.npy
-        --test_result somenet_top_outputs.npz \
-        --mlir somenet.mlir
+        --model_name multi_input_net \
+        --model_def  multi_input_net.onnx \
+        --test_input multi_input_net_in.npz \ # a.npy,b.npy,c.npy
+        --test_result multi_input_net_top_outputs.npz \
+        --mlir multi_input_net.mlir
 
 Support for INT8 Symmetric and Asymmetric
 ~~~~~~~~~~~~~~~~~~~~
@@ -77,7 +76,7 @@ Generating Model with Calibration Table Input.
 .. code-block:: shell
 
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --processor BM1684X \
@@ -104,7 +103,7 @@ Then pass the quantization table to generate the model
 .. code-block:: shell
 
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --quantize_table somenet_qtable \
@@ -185,7 +184,7 @@ Used to convert various neural network models into MLIR files, the supported par
      - Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file)
    * - input_shapes
      - N
-     - The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
+     - The shape of the input, such as ``[[1,3,640,640]]`` (a two-dimensional array), which can support multiple inputs
    * - input_types
      - N
      - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
@@ -669,7 +668,7 @@ Example:
         --mlir yolov5s.mlir
 
     # Generate dummy input. Here is a pseudo test picture.
-    $ python gen_rand_input.py
+    $ gen_rand_input.py \
         --mlir yolov5s.mlir \
         --img --output yolov5s_fake_img.png
 
@@ -691,20 +690,20 @@ For more detailed usage, please refer to the following:
 .. code-block:: shell
 
     # Value ranges can be specified for multiple inputs.
-    $ python gen_rand_input.py \
+    $ gen_rand_input.py \
       --mlir ernie.mlir \
       --ranges [[0,300],[0,0]] \
       --output ern.npz
 
     # Type can be specified for the input.
-    $ python gen_rand_input.py \
+    $ gen_rand_input.py \
       --mlir resnet.mlir \
       --ranges [[0,300]] \
       --input_types si32 \
       --output resnet.npz
 
     # Generate random image
-    $ python gen_rand_input.py
+    $ gen_rand_input.py \
         --mlir yolov5s.mlir \
         --img --output yolov5s_fake_img.png
 

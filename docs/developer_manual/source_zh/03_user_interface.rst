@@ -6,27 +6,26 @@
 模型转换过程
 --------------------
 
-基本操作过程是用 ``model_transform.py`` 将模型转成mlir文件, 然后用
-``model_deploy.py`` 将mlir转成对应的model。如下:
+基本操作过程是用 ``model_transform.py`` 将模型转成mlir文件，然后用 ``model_deploy.py`` 将mlir转成对应的model。以 ``somenet.onnx`` 模型为例，操作步骤如下：
 
 .. code-block:: shell
 
     # To MLIR
     $ model_transform.py \
-        --model_name resnet \
-        --model_def  resnet.onnx \
-        --test_input resnet_in.npz \
-        --test_result resnet_top_outputs.npz \
-        --mlir resnet.mlir
+        --model_name somenet \
+        --model_def  somenet.onnx \
+        --test_input somenet_in.npz \
+        --test_result somenet_top_outputs.npz \
+        --mlir somenet.mlir
 
     # To Float Model
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize F32 \ # F16/BF16
        --processor BM1684X \
-       --test_input resnet_in_f32.npz \
-       --test_reference resnet_top_outputs.npz \
-       --model resnet50_f32.bmodel
+       --test_input somenet_in_f32.npz \
+       --test_reference somenet_top_outputs.npz \
+       --model somenet_f32.bmodel
 
 支持图片输入
 ~~~~~~~~~~~~~~~
@@ -36,29 +35,29 @@
 .. code-block:: shell
 
     $ model_transform.py \
-        --model_name resnet \
-        --model_def resnet.onnx \
+        --model_name img_input_net \
+        --model_def img_input_net.onnx \
         --input_shapes [[1,3,224,224]] \
         --mean 103.939,116.779,123.68 \
         --scale 1.0,1.0,1.0 \
         --pixel_format bgr \
         --test_input cat.jpg \
-        --test_result resnet_top_outputs.npz \
-        --mlir resnet.mlir
+        --test_result img_input_net_top_outputs.npz \
+        --mlir img_input_net.mlir
 
 支持多输入
 ~~~~~~~~~~~~~~~~
 
-当模型有多输入的时候, 可以传入1个npz文件, 或者按顺序传入多个npz文件, 用逗号隔开。如下:
+当模型有多输入的时候, 可以传入1个npz文件, 或者按顺序传入多个npy文件, 用逗号隔开。如下:
 
 .. code-block:: shell
 
     $ model_transform.py \
-        --model_name somenet \
-        --model_def  somenet.onnx \
-        --test_input somenet_in.npz \ # a.npy,b.npy,c.npy
-        --test_result somenet_top_outputs.npz \
-        --mlir somenet.mlir
+        --model_name multi_input_net \
+        --model_def  multi_input_net.onnx \
+        --test_input multi_input_net_in.npz \ # a.npy,b.npy,c.npy
+        --test_result multi_input_net_top_outputs.npz \
+        --mlir multi_input_net.mlir
 
 支持INT8对称和非对称
 ~~~~~~~~~~~~~~~~~~~~
@@ -77,7 +76,7 @@
 .. code-block:: shell
 
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --processor BM1684X \
@@ -104,7 +103,7 @@
 .. code-block:: shell
 
     $ model_deploy.py \
-       --mlir resnet.mlir \
+       --mlir somenet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --quantize_table somenet_qtable \
@@ -179,25 +178,25 @@ model_transform.py
      - 指定模型名称
    * - model_def
      - 是
-     - 指定模型定义文件, 比如`.onnx`或`.tflite`或`.prototxt`文件
+     - 指定模型定义文件, 比如 ``.onnx`` 或 ``.tflite`` 或 ``.prototxt`` 文件
    * - model_data
      - 否
-     - 指定模型权重文件, caffe模型需要, 对应`.caffemodel`文件
+     - 指定模型权重文件, caffe模型需要, 对应 ``.caffemodel`` 文件
    * - input_shapes
      - 否
-     - 指定输入的shape, 例如[[1,3,640,640]]; 二维数组, 可以支持多输入情况
+     - 指定输入的shape, 例如 ``[[1,3,640,640]]`` ; 二维数组, 可以支持多输入情况
    * - input_types
      - 否
-     - 指定输入的类型, 例如int32; 多输入用,隔开; 不指定情况下默认处理为float32
+     - 指定输入的类型, 例如int32; 多输入用 ``,`` 隔开; 不指定情况下默认处理为float32
    * - keep_aspect_ratio
      - 否
      - 在Resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
    * - mean
      - 否
-     - 图像每个通道的均值, 默认为0.0,0.0,0.0
+     - 图像每个通道的均值, 默认为 0.0,0.0,0.0
    * - scale
      - 否
-     - 图片每个通道的比值, 默认为1.0,1.0,1.0
+     - 图片每个通道的比值, 默认为 1.0,1.0,1.0
    * - pixel_format
      - 否
      - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况, 默认为bgr
@@ -218,7 +217,7 @@ model_transform.py
      - 指定验证后的输出文件
    * - excepts
      - 否
-     - 指定需要排除验证的网络层的名称, 多个用,隔开
+     - 指定需要排除验证的网络层的名称, 多个用 ``,`` 隔开
    * - onnx_sim
      - 否
      - onnx-sim 的可选项参数，目前仅支持 skip_fuse_bn 选项，用于关闭 batch_norm 和 Conv 层的合并
@@ -663,12 +662,13 @@ gen_rand_input.py
         --input_shapes [[1,3,640,640]] \
         --mean 0.0,0.0,0.0 \
         --scale 0.0039216,0.0039216,0.0039216 \
-        --keep_aspect_ratio     --pixel_format rgb \
+        --keep_aspect_ratio \
+        --pixel_format rgb \
         --output_names 350,498,646 \
         --mlir yolov5s.mlir
 
     # 生成随机测试数据，这里生成的是伪测试图片
-    $ python gen_rand_input.py
+    $ gen_rand_input.py \
         --mlir yolov5s.mlir \
         --img --output yolov5s_fake_img.png
 
@@ -681,7 +681,8 @@ gen_rand_input.py
         --scale 0.0039216,0.0039216,0.0039216 \
         --test_input yolov5s_fake_img.png    \
         --test_result yolov5s_top_outputs.npz \
-        --keep_aspect_ratio     --pixel_format rgb \
+        --keep_aspect_ratio \
+        --pixel_format rgb \
         --output_names 350,498,646 \
         --mlir yolov5s.mlir
 
@@ -690,20 +691,20 @@ gen_rand_input.py
 .. code-block:: shell
 
     # 可为多个输入分别指定取值范围
-    $ python gen_rand_input.py \
+    $ gen_rand_input.py \
       --mlir ernie.mlir \
       --ranges [[0,300],[0,0]] \
       --output ern.npz
 
     # 可为输入指定type类型，如不指定，默认从mlir文件中读取
-    $ python gen_rand_input.py \
+    $ gen_rand_input.py \
       --mlir resnet.mlir \
       --ranges [[0,300]] \
       --input_types si32 \
       --output resnet.npz
 
     # 指定生成随机图片，不指定取值范围和数据类型
-    $ python gen_rand_input.py
+    $ gen_rand_input.py \
         --mlir yolov5s.mlir \
         --img --output yolov5s_fake_img.png
 
