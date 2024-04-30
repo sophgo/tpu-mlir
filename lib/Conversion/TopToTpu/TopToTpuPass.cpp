@@ -449,7 +449,7 @@ struct ForwardInt32TypePattern : public OpRewritePattern<TyOp> {
     auto out_type = out.getType().cast<RankedTensorType>();
     auto in_etype = in_type.getElementType();
     auto out_etype = out_type.getElementType();
-    if (in_etype == out_etype || in_etype.isInteger(32)) {
+    if (in_etype == out_etype || !in_etype.isInteger(32)) {
       return failure();
     }
     auto new_type = RankedTensorType::get(out_type.getShape(), in_etype);
