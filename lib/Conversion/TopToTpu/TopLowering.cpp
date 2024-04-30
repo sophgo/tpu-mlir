@@ -79,7 +79,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   float offset = out_zp;
   auto in_shape = module::getShape(in);
   auto rq_in = in;
-  if (in_zp != 0 && out_zp != 0) {
+  auto in_stype = module::getStorageType(in);
+  if (in_stype.isInteger(8) || (in_zp != 0 && out_zp != 0)) {
     auto add_name = in_name + "_add_zp";
     auto add_type = RankedTensorType::get(in_shape, builder.getI32Type());
     std::vector<NamedAttribute> attrs;
