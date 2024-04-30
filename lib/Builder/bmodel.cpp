@@ -380,7 +380,7 @@ void ModelGen::Save(void *buffer) {
 ModelCtx::ModelCtx(const string &filename)
     : model_gen_(NULL), model_(NULL), bmodel_pointer_(NULL) {
   // read file
-  file_.open(filename, std::ios::binary | std::ios::in);
+  file_.open(filename, std::ios::binary | std::ios::in | std::ios::out);
   if (!file_) {
     BMODEL_LOG(FATAL) << "File[" << filename << "] open failed." << std::endl;
     exit(-1);
@@ -501,15 +501,59 @@ void ModelCtx::read_binary(const Binary *binary, uint64_t offset,
   ASSERT(binary != NULL);
   ASSERT(buffer != NULL);
   ASSERT(size + offset <= binary->size());
+  auto offset_file = binary_offset_ + binary->start() + offset;
   if (bmodel_pointer_ == NULL) { // from file
-    file_.seekg(binary_offset_ + binary->start() + offset, std::ios::beg);
+    file_.seekg(offset_file, std::ios::beg);
     file_.read((char *)buffer, size);
   } else { // from buffer
-    memcpy(buffer,
-           (uint8_t *)bmodel_pointer_ + binary_offset_ + binary->start() +
-               offset,
-           size);
+    memcpy(buffer, (uint8_t *)bmodel_pointer_ + offset_file, size);
   }
+}
+
+void ModelCtx::write_binary(const Binary *binary, uint8_t *buffer) {
+  write_binary(binary, 0, buffer, binary->size());
+}
+
+// write buffer to binary offset
+void ModelCtx::write_binary(const Binary *binary, uint64_t offset,
+                            uint8_t *buffer, uint64_t size) {
+  ASSERT(binary != NULL);
+  ASSERT(buffer != NULL);
+  ASSERT(size + offset <= binary->size());
+  auto offset_file = binary_offset_ + binary->start() + offset;
+  if (bmodel_pointer_ == NULL) { // from file
+    file_.seekg(offset_file, std::ios::beg);
+    file_.write((char *)buffer, size);
+  } else { // from buffer
+    memcpy((uint8_t *)bmodel_pointer_ + offset_file, buffer, size);
+  }
+}
+
+bool ModelCtx::get_weight(const std::string &net_name, int stage_idx,
+                          uint64_t offset, Binary &bin,
+                          std::string &op_name) const {
+  auto num_net = model_->net()->size();
+  for (int i = 0; i < num_net; i++) {
+    auto param = model_->net()->Get(i)->parameter();
+    if (model_->net()->Get(i)->name()->str() == net_name) {
+      if (stage_idx >= 0 && stage_idx < param->size()) {
+        auto weight = param->Get(stage_idx)->coeff_mem();
+        auto num_weight = weight->location()->size();
+        for (int j = 0; j < num_weight; j++) {
+          auto loc = weight->location()->Get(j);
+          if (loc->offset() == offset) {
+            auto weight_bin = weight->binary_coeff();
+            op_name = loc->name()->str();
+            bin.mutate_start(weight_bin->start() + offset);
+            bin.mutate_size(loc->size());
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+  }
+  return false;
 }
 
 template <typename T>
