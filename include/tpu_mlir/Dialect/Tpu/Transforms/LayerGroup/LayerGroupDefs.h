@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "llvm/Support/FormatVariadic.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/Module.h"
 #include <list>
@@ -35,6 +36,17 @@ typedef enum ld_st_type {
   TIMESTEP_LD_G2L2 = 3, // load from gmem to l2mem
   TIMESTEP_LDST_UNKNOWN
 } TIMESTEP_LD_ST;
+
+typedef enum ld_st_type2 {
+  TIMESTEP2_LOAD = 1,    // load from gmem to lmem
+  TIMESTEP2_STORE = 2,   // store from lmem to gmem
+  TIMESTEP2_MOVE = 4,    // move between global mem
+  TIMESTEP2_LD_G2L2 = 8, // load from gmem to l2mem
+  TIMESTEP2_STORE_AND_LOAD = 16, //first store, and skip some timesteps, then load
+  TIMESTEP2_STORE_ONLY_FREE = 32, //only free
+  TIMESTEP2_MOVE_BTW_LMEM = 64,    // move between lmem mem
+  TIMESTEP2_LDST_UNKNOWN
+} TIMESTEP_LD_ST2;
 
 inline bool is_timestep_load(TIMESTEP_LD_ST type) {
   return (type == TIMESTEP_LOAD || type == TIMESTEP_LD_G2L2);
@@ -92,24 +104,44 @@ struct value_compare {
   }
 };
 
+struct ptr_compare {
+  bool operator()(Operation* v0, Operation* v1) const {
+    if ((int64_t)v0 < (int64_t)v1) {
+      return true;
+    }
+    return false;
+  }
+};
+
 struct tensor_info_t {
   TIMESTEP_LD_ST mode;
+  int64_t mode2;
+  std::map<Operation*, slice_info_t, ptr_compare> slice_infos;
   slice_info_t slice_info;
   int64_t stage;
   int64_t use_3ic_opt;
   bool eu_align;
   bool need_bcast;
   bool hold_in_lmem;
+
   // init
   tensor_info_t()
-      : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false),
+      : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false), mode2(0),
         need_bcast(false) {}
   tensor_info_t(TIMESTEP_LD_ST mode)
-      : mode(mode), stage(0), use_3ic_opt(0), eu_align(false),
+      : mode(mode), stage(0), use_3ic_opt(0), eu_align(false), mode2(0),
         need_bcast(false) {}
   tensor_info_t(slice_info_t slice_info)
-      : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0), use_3ic_opt(0),
+      : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0), use_3ic_opt(0), mode2(0),
         eu_align(false), need_bcast(false) {}
+  tensor_info_t(Operation* next_op, slice_info_t slice_info)
+      : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0), use_3ic_opt(0), mode2(0),
+        eu_align(false), need_bcast(false) {
+      slice_infos[next_op] = slice_info;
+  }
+  void add_slice_info(Operation* next_op, slice_info_t slice_info) {
+    slice_infos[next_op] = slice_info;
+  }
 };
 
 using ValueSet = std::set<Value, value_compare>;
@@ -127,6 +159,48 @@ typedef struct {
   TpuTsField tpu0_ts_field;
   GdmaTsField gdma0_ts_field;
 } TimestepRow;
+
+typedef struct ts_var_t {
+  std::string varName;
+  int var_value;
+  int slice_idx;
+
+  Value value;
+  int lmem_bytes;
+  tensor_info_t info;
+  ts_var_t()
+      : var_value(0), lmem_bytes(0), slice_idx(-1) {}
+} ts_var_t;
+
+struct op_related_info_t {
+  Operation*  op;
+  int slice_idx;
+  int buffer_size;
+  int bdc_cycle;
+  int mem_size_for_load;
+  std::map<Value, std::vector<std::string>, value_compare> need_load_var;
+  std::map<Value, int, value_compare> tensor_size;
+  std::map<Value, int, value_compare> load_tensor_cycles;
+  std::vector<ts_var_t>  ada_var_for_free_mem; //在本op执行后可以释放的自动驻留输入tensor
+  op_related_info_t()
+      : op(nullptr){}
+};
+
+typedef struct TimestepRow2 {
+  int cycle_diff;
+  bool can_merge = false;
+  std::vector<ts_var_t>  vec_ts_var;
+  std::vector<op_related_info_t>  vec_op_infos;
+} TimestepRow2;
+
+typedef struct op_var_pos_info
+{
+  std::pair<int, int> key;
+  int ts_id;
+  int start_ts;
+  int end_ts;
+  op_var_pos_info():ts_id(-1), key(std::make_pair(-1, -1)) {}
+} op_var_pos_info;
 
 typedef struct {
   int64_t nsecs;
@@ -154,7 +228,7 @@ struct LgInfo {
       for (auto in : op->getOperands()) {
         auto src_op = in.getDefiningOp();
         if ((src_op == nullptr ||
-             (!isa<top::WeightOp, top::NoneOp>(src_op) &&
+             (!isa<top::NoneOp>(src_op) &&
               (std::find(group_ops.begin(), group_ops.end(), src_op) ==
                group_ops.end()))) &&
             std::find(group_ins.begin(), group_ins.end(), in) ==
@@ -167,6 +241,7 @@ struct LgInfo {
         if (module::isNone(out)) {
           continue;
         }
+        group_op_outs.push_back(out);
         for (auto dst_op : out.getUsers()) {
           if (std::find(group_ops.begin(), group_ops.end(), dst_op) ==
                   group_ops.end() &&
@@ -180,16 +255,60 @@ struct LgInfo {
     }
   }
 
+  void update_bank_info() {
+    group_banked_tensors.clear();
+    for (auto op : group_ops) {
+      if (op->getNumOperands() > 1) {
+        auto pre_op = op->getOperand(1).getDefiningOp();
+        if ((pre_op == nullptr || !isa<top::NoneOp>(pre_op))) {
+          auto opd0 = module::getName(op->getOperand(0)).str();
+          auto opd1 = module::getName(op->getOperand(1)).str();
+          group_banked_tensors[opd0].push_back(opd1);
+          group_banked_tensors[opd1].push_back(opd0);
+        }
+      }
+
+      for (int i = 0; i < op->getNumOperands(); i++) {
+        auto pre_op = op->getOperand(i).getDefiningOp();
+        if (pre_op == nullptr || !isa<top::NoneOp>(pre_op)) {
+          auto opd = module::getName(op->getOperand(i)).str();
+          for (int j = 0; j < op->getNumResults(); j++) {
+            auto res = module::getName(op->getResult(j)).str();
+            group_banked_tensors[opd].push_back(res);
+          }
+        }
+      }
+
+      for (int i = 0; i < op->getNumResults(); i++) {
+        auto res = module::getName(op->getResult(i)).str();
+        for (int j = 0; j < op->getNumOperands(); j++) {
+          auto pre_op = op->getOperand(j).getDefiningOp();
+          if (pre_op == nullptr || !isa<top::NoneOp>(pre_op)) {
+            auto opd = module::getName(op->getOperand(j)).str();
+            group_banked_tensors[res].push_back(opd);
+          }
+        }
+      }
+    }
+  }
   // group layers
   std::vector<Operation *> group_ops;
+  // std::vector<Operation *> edge_ops; //寻找所有preOp或nextOp都在组外的op，即组的边缘op
+
   // in tensors
   std::vector<Value> group_ins;
   // out tensors
   std::vector<Value> group_outs;
+  // all op out tensors
+  std::vector<Value> group_op_outs;
 
   shape_secs_t shape_secs;
   // layer group type
   group_type_t type;
+  int group_id = 0;
+
+  std::vector<int> free_cores;
+  std::map<std::string, std::vector<std::string>> group_banked_tensors;
 };
 
 } // namespace tpu

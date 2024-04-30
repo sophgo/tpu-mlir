@@ -29,8 +29,18 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                          int64_t w_step,
                                          group_type_t group_type,
                                          local_sec_info_t &sec_info) {
+  auto op = getOperation();
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto v = op->getOperand(0);
+  auto pre_op = v.getDefiningOp();
+  if (isa<tpu::MoveOp>(pre_op)) {
+    auto moveOp = dyn_cast<tpu::MoveOp>(pre_op);
+    auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
+    int idx = v.cast<OpResult>().getResultNumber();
+    gi.out_addr = vec_move_dest_addr[idx];
+    llvm::errs() <<"StoreOp codegen, idx:"<<idx<<", vec_move_dest_addr:"<<gi.out_addr<<"\n";
+  }
   int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice, real_cslice;
 
   //set nnvlc param
@@ -89,7 +99,61 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
-  auto g_addr = module::getAddress(getOutput());
+  auto out_value = getOutput();
+  int64_t g_addr = -1;
+
+
+  auto parent = op->getParentOp();
+  assert(isa_and_nonnull<tpu::GroupOp>(parent));
+  auto group_next_op = *(parent->getResult(0).getUsers().begin());
+  bool have_more_groupOp = isa<SliceMergeOp>(group_next_op)?true:false;
+  auto input_gmem = op->getOperand(1);
+  if (!isa<top::NoneOp>(input_gmem.getDefiningOp())) {
+    g_addr = module::getAddress(input_gmem);
+    // llvm::errs() <<"get input_gmem addr: " << g_addr<<"\n";
+  } else {
+    for (auto user: out_value.getUsers()) {
+      if (isa<SliceMergeOp>(user)) {
+        auto res = user->getResult(0);
+        if (have_more_groupOp) {
+          auto yieldOp = *(res.getUsers().begin());
+          assert(isa<tpu::YieldOp>(yieldOp));
+          int opd_idx = -1;
+          for (OpOperand &opd : yieldOp->getOpOperands()) {
+            if (res == opd.get()) {
+              opd_idx = opd.getOperandNumber();
+              break;
+            }
+          }
+          assert(opd_idx >= 0);
+          llvm::errs() <<"opd_idx:"<<opd_idx<<"\n";
+          group_next_op = *(parent->getResult(opd_idx).getUsers().begin());
+          res = group_next_op->getResult(0);
+        }
+        g_addr = module::getAddress(res);
+        break;
+      } else if (isa<tpu::YieldOp>(user)) {
+        if (have_more_groupOp) {
+          int opd_idx = -1;
+          for (OpOperand &opd : user->getOpOperands()) {
+            if (out_value == opd.get()) {
+              opd_idx = opd.getOperandNumber();
+              break;
+            }
+          }
+          assert(opd_idx >= 0);
+          group_next_op = *(parent->getResult(opd_idx).getUsers().begin());
+          g_addr = module::getAddress(group_next_op->getResult(0));
+          llvm::errs() <<"have_more_groupOp, opd_idx:"<<opd_idx<<" g_addr:"<<g_addr<<"\n";
+          break;
+        }
+      }
+    }
+    if (g_addr == -1) {
+      g_addr = module::getAddress(out_value);
+    }
+  }
+
   int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
   int64_t c_stride =
       gi.eu_align ? align_up(real_hslice * real_wslice, Arch::eu_num(fmt_bytes))

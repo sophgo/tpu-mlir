@@ -229,8 +229,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
   let extraClassDeclaration = [{
   static constexpr llvm::StringRef kLayerGroupAttrName = "ginfo";
   static void fixSlice(int64_t &in_idx, int64_t &in_slice, int64_t in_length, bool last = false);
-  static tpu_mlir::group_info_t getGroupInfo(mlir::Operation * op, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0);
-  static tpu_mlir::group_info_t getGroupInfo(mlir::Value, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0);
+  static tpu_mlir::group_info_t getGroupInfo(mlir::Operation * op, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0, mlir::Operation *user_op = nullptr);
+  static tpu_mlir::group_info_t getGroupInfo(mlir::Value, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0, mlir::Operation *user_op = nullptr);
   }];
 }
 #endif // TPU_MLIR_LOCAL_CODEGEN_INTERFACE

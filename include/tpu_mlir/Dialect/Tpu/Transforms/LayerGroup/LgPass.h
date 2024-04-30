@@ -10,6 +10,7 @@
 #pragma once
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/IlpTimeStep.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -29,7 +30,7 @@ typedef struct {
 } LgOptions;
 
 struct LgPassIR {
-  LgPassIR(){};
+  LgPassIR(){returnOp = nullptr;};
   ~LgPassIR() { clear(); };
 
   /**
@@ -60,6 +61,9 @@ struct LgPassIR {
    * time_steps[i] means the time step of the i-th group
    */
   std::vector<BasicTimeStepPtr> time_steps;
+  std::vector<std::vector<ILPTimeStepPtr>> ILP_time_steps;
+  std::vector<std::map<std::pair<Value, int>, int, value_compare2>> map_l2m_load;
+  std::vector<TensorInfo> lg_tensor_infos_;
 
   /**
    * @brief shape split sections of layer groups
@@ -67,6 +71,11 @@ struct LgPassIR {
    * shape_secs[i] means the shape split sections of the i-th group
    */
   std::vector<shape_secs_t> shape_secs;
+
+  std::vector<Value> subnet_return_opds;
+  bool branch_parallel;
+  std::vector<std::vector<Operation*>> tmp_base_groups;
+  Operation* returnOp;
 };
 
 class LgPass {
@@ -99,7 +108,8 @@ public:
   LgOptimizer() {}
   virtual ~LgOptimizer() {}
 
-  virtual void manage_passes(std::shared_ptr<LgPassManager> pm) = 0;
+  virtual void manage_passes(std::shared_ptr<LgPassManager> pm,
+                             const LgOptions &options) = 0;
   virtual std::string brief() = 0;
 };
 

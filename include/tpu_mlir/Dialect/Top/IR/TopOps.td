@@ -3277,6 +3277,7 @@ def Top_ConvBwdWeightOp:Top_Op<"ConvBwd_Weight">{
   let arguments = (ins
   AnyTensor:$input,
   AnyTensor:$gradout,
+  AnyTensor:$gradout_transpose,
   I64Attr:$groups,
   I64ArrayAttr:$input_shape,
   I64ArrayAttr:$grad_out_shape,
@@ -3331,5 +3332,27 @@ def Top_SortOp:Top_Op<"Sort"> {
     AnyTensor:$indices
   );
 }
-
+def Top_MeanRstdOp: Top_Op<"MeanRstd">{
+  let summary = "Compute Mean, Rstd, Running_mean, Running_var in batchnorm train op ";
+  let description = [{
+    mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$running_mean,
+    AnyTensor:$running_var,
+    AnyTensor:$weight,
+    AnyTensor:$bias,
+    F64Attr:$eps,
+    F64Attr:$momentum
+  );
+  let results = (outs
+    AnyTensor:$mean,
+    AnyTensor:$rstd,
+    AnyTensor:$running_mean_update,
+    AnyTensor:$running_var_update,
+    AnyTensor:$scale,
+    AnyTensor:$bias_new
+    );
+}
 #endif // Top_OPS

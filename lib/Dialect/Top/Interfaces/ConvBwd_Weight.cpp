@@ -12,7 +12,7 @@ LogicalResult top::ConvBwdWeightOp::init(InferenceParameter &p) {
 void top::ConvBwdWeightOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ConvBwdWeightOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
   return success();
 }
 

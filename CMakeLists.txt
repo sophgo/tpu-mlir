@@ -100,6 +100,14 @@ set(CUSTOM_PATH ${PROJECT_SOURCE_DIR}/third_party/customlayer)
 include_directories(${CUSTOM_PATH}/include/kernel)
 include_directories(${CUSTOM_PATH}/include)
 
+#-------------------------------------------------------------------------------
+# or-tools Configuration
+#-------------------------------------------------------------------------------
+set(ORTOOLS_PATH ${PROJECT_SOURCE_DIR}/third_party/or-tools)
+include_directories(${ORTOOLS_PATH}/include)
+link_directories(${ORTOOLS_PATH}/lib)
+#-------------------------------------------------------------------------------
+
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)
   FIND_PACKAGE(OpenMP)

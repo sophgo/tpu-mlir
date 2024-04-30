@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include<fstream>
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
@@ -47,6 +47,7 @@ static Platform platform = Platform::ONNX;
 static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
 static std::string weightFileName = "";
 bool use_weight_in_mem = false;
+static std::string debug_cmd = "";
 
 void init(ModuleOp module, bool weight_in_mem) {
   use_weight_in_mem = weight_in_mem;
@@ -61,6 +62,12 @@ void init(ModuleOp module, bool weight_in_mem) {
   } else {
     platform = Platform::ONNX;
   }
+
+  std::ifstream file("/tmp/debug_cmd");
+  if (file.is_open()) {
+    std::getline(file, debug_cmd);
+    file.close();
+  }
 }
 
 top::NoneOp getNoneOp(Operation *op) {
@@ -71,6 +78,8 @@ top::NoneOp getNoneOp(Operation *op) {
   FuncOp funcOp;
   if (isa<FuncOp>(op)) {
     funcOp = cast<FuncOp>(op);
+  } else if (isOpInGroup(op)) {
+    funcOp = cast<FuncOp>(op->getParentOp()->getParentOp());
   } else {
     funcOp = cast<FuncOp>(op->getParentOp());
   }
@@ -1084,6 +1093,12 @@ AddrMode getAddrMode() {
 }
 
 bool isAddrMode(AddrMode mode) { return mode == getAddrMode(); }
+bool isDebugCmdEnable(std::string cmd_str) {
+  if (debug_cmd.find(cmd_str) != std::string::npos) {
+    return true;
+  }
+  return false;
+}
 
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
@@ -1321,6 +1336,14 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
         auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
         assert(return_op);
         outputs.push_back(return_op.getOperand(result.getResultNumber()));
+
+        func_op.walk([&](tpu::OutBufferOp op) {
+          // llvm::errs() <<"ModuleOp dump OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
+          bool need_dump = op.getNeedDump();
+          if (need_dump) {
+            outputs.push_back(op->getResult(0));
+          }
+        });
       } else {
         outputs.push_back(out);
       }
@@ -1367,6 +1390,13 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
   func.walk([&](ReturnOp op) {
     for (auto output : op.getOperands()) {
       outputs.push_back(output);
+    }
+  });
+  func.walk([&](tpu::OutBufferOp op) {
+    llvm::errs() <<"func dump OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
+    bool need_dump = op.getNeedDump();
+    if (need_dump) {
+      outputs.push_back(op->getResult(0));
     }
   });
 }

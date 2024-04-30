@@ -29,6 +29,8 @@ import mlir.dialects.top as top
 import torch._dynamo as td
 from torch.cuda.amp import autocast, GradScaler
 #from apex import amp
+tpu_dev = "privateuseone:0"
+device = torch.device(tpu_dev)
 
 # td.config.log_level = logging.DEBUG
 # td.config.verbose = True
@@ -51,21 +53,29 @@ def torch_dtype_from_tpu_mlir(dtype) -> torch.dtype:
 
 class TpuMlirModule(torch.nn.Module):
     def __init__(
-        self, model_file, output_dtypes = None, return_none_count = 0
+        self, args, model_file, in_tensor_name_to_idx_dict, output_changed_shapes, output_tensor_names = None, output_dtypes = None, return_none_count = 0
     ):
         super(TpuMlirModule, self).__init__()
         print(f'TpuMlirModule __init__ output_dtypes:{output_dtypes}')
         self._register_state_dict_hook(TpuMlirModule._on_state_dict)
+        self.args = args
         self.output_dtypes = output_dtypes
         self.model_file = model_file
         self.initialized = False
         self.return_none_count = return_none_count
+        self.output_changed_shapes = output_changed_shapes
+        self.in_tensor_name_to_idx_dict = in_tensor_name_to_idx_dict
+        self.output_tensor_names = output_tensor_names
+        self.output_tensor_names = None
         if model_file:
             self._initialize()
 
     def _initialize(self):
-        print('_initialize')
-        # os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
+        print('_initialize for', self.args.chip)
+        if self.args.chip == 'bm1690':
+            os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
+        else:
+            os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
         pyruntime = importlib.import_module("pyruntime_bm")
         self.model = pyruntime.Model(self.model_file)
         self.net = self.model.Net(self.model.networks[0])
@@ -109,19 +119,21 @@ class TpuMlirModule(torch.nn.Module):
 
     def forward(self, *inputs):
         print(f'>>>runtime call bmodel:{self.model_file}:')
-        assert len(inputs) == len(
-            self.net.inputs
-        ), f"Wrong number of inputs, expect {len(self.net.inputs)} get {len(inputs)}."
-
         print('input info:')
-        for input, net_input in zip(inputs, self.net.inputs):
-            print(f'pytorch input shape:{input.shape}, bmodel input:{net_input.name} shape:{net_input.data.shape}')
+        new_inputs = []
+        for net_input in self.net.inputs:
+            torch_input = inputs[self.in_tensor_name_to_idx_dict[net_input.name]]
+            if list(torch_input.shape) != list(net_input.data.shape):
+                torch_input = torch_input.reshape(tuple(net_input.data.shape))
+            new_inputs.append(torch_input)
+            print(f' bmodel input:{net_input.name} shape:{net_input.data.shape}, torch input shape:{torch_input.shape}')
+
         with torch.autograd.profiler.record_function("TpuMlirModule:Forward"):
             self._check_initialized()
             input_shapes = []
 
             with torch.autograd.profiler.record_function("TpuMlirModule:ProcessInputs"):
-                contiguous_inputs = [i.contiguous() if isinstance(i, torch.Tensor) else i for i in inputs]
+                contiguous_inputs = [i.contiguous() if isinstance(i, torch.Tensor) else i for i in new_inputs]
                 i = 0
                 for net_input in self.net.inputs:
                     # assert contiguous_inputs[
@@ -150,12 +162,14 @@ class TpuMlirModule(torch.nn.Module):
                     t0 = time.time()
                     dyn_output_shapes = self.net.forward()
                     print(f'time:{time.time()-t0}')
-
             with torch.autograd.profiler.record_function("TpuMlirModule:ProcessOutputs"):
                 # create output tensors
                 tpu_outputs: List[torch.Tensor] = []
                 dyn_idx = 0
                 for i in self.net.outputs:
+                    if self.output_tensor_names is not None and i.name not in self.output_tensor_names:
+                        print('skip:', i.name)
+                        continue
                     output = np.array(i.data)
                     if dyn:
                         if output.shape != dyn_output_shapes[dyn_idx]:
@@ -163,7 +177,13 @@ class TpuMlirModule(torch.nn.Module):
                             output = output.flatten()[:dyn_len].reshape(
                                 *dyn_output_shapes[dyn_idx])
                             dyn_idx += 1
-                    tpu_outputs.append(torch.from_numpy(output))
+                    tmp = torch.from_numpy(output)
+                    if i.name in self.output_changed_shapes:
+                        tmp = tmp.reshape(self.output_changed_shapes[i.name])
+                        print(f'{i.name} reshape from {i.data.shape} to {self.output_changed_shapes[i.name]}')
+                    if tmp.shape == torch.Size([1]):
+                        tmp = tmp[0]
+                    tpu_outputs.append(tmp)
                 if self.output_dtypes is not None:
                     for output, dtype in zip(tpu_outputs, self.output_dtypes):
                         if dtype == torch.int64:
@@ -174,6 +194,13 @@ class TpuMlirModule(torch.nn.Module):
                     print('return_none_count:', self.return_none_count)
             if len(tpu_outputs) == 1:
                 return tpu_outputs[0]
+            # for i,t in enumerate(tpu_outputs):
+                # if hasattr(t,'shape'):
+                #     if t.shape == torch.Size([1]):
+                #         tpu_outputs[i] = torch.tensor(t[0])
+            for i in range(len(tpu_outputs)):
+                if tpu_outputs[i]!=None:
+                    tpu_outputs[i] = tpu_outputs[i].to(device)
             return tuple(tpu_outputs)
 
     def get_layer_info(self) -> str:

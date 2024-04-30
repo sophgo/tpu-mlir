@@ -32,6 +32,7 @@ typedef struct {
   int64_t d_slice;
   int64_t w_idx;
   int64_t w_slice;
+  int64_t h_idx_offset;
   int64_t id;
   int64_t stage;
   int64_t type;
@@ -63,6 +64,15 @@ typedef struct local_sec_info {
   int32_t is_c_split;
   int32_t c_idx;
   int32_t c_slice;
+
+  void print() {
+    printf("group_type:%d, n_slice:%d, out_n_slice:%d, d_slice:%d, \
+            >>>>>>>>is_h_split:%d, h_idx:%d, h_slice:%d, out_h_idx:%d, out_h_slice:%d, \
+            >>>>>>>>is_w_split:%d, w_idx:%d, w_slice:%d, out_w_idx:%d, out_w_slice:%d, \
+            >>>>>>>>is_c_split:%d, c_idx:%d, c_slice:%d\n", group_type, n_slice, out_n_slice, \
+            d_slice, is_h_split, h_idx, h_slice, out_h_idx, out_h_slice, is_w_split, \
+            w_idx, w_slice, out_w_idx, out_w_slice, is_c_split, c_idx, c_slice);
+  }
 } local_sec_info_t;
 
 #ifdef __cplusplus

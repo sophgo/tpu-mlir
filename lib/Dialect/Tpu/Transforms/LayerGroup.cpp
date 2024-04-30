@@ -60,8 +60,8 @@ public:
         if (f.getName() == "main") {
           continue;
         }
-        GroupOps gOps(f);
-        gOps.process();
+        GroupOps gOps(f, opt);
+        gOps.process(opt);
       }
     }
   }

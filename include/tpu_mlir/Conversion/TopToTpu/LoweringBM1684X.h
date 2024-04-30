@@ -187,5 +187,6 @@ LOWERING_BM1684X(Rsqrt)
 LOWERING_BM1684X(RequantFp)
 LOWERING_BM1684X(BinaryShift)
 LOWERING_BM1684X(BinaryConstShift)
+LOWERING_BM1684X(MeanRstd)
 } // namespace bm1684x
 } // namespace tpu_mlir

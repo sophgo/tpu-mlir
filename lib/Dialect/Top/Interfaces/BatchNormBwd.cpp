@@ -19,7 +19,7 @@ LogicalResult top::BatchNormBwdOp::init(InferenceParameter &p) {
 void top::BatchNormBwdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::BatchNormBwdOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
   return success();
 }
 

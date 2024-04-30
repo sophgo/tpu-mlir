@@ -33,14 +33,17 @@ def npz_dump(args):
     raise ValueError("No {} in {} npz file".format(args[1], args[0]))
 
   K = 0
-  if len(args) == 3:
+  if len(args) == 3 and isinstance(args[2], int):
     K = int(args[2])
 
   np.set_printoptions(precision=6)
   np.set_printoptions(suppress=True)
   if K < 0:
     np.set_printoptions(threshold=sys.maxsize)
-  print(d)
+  if len(args) == 3 and isinstance(args[2], str):
+    print(eval('d[{}]'.format(args[2])))
+  else:
+    print(d)
   print('shape', d.shape)
   print('dtype', d.dtype)
 

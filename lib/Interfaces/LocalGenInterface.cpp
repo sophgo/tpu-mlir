@@ -28,47 +28,67 @@ void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
                                              int64_t h_step, int64_t d_step,
-                                             int64_t w_step, int64_t c_step) {
+                                             int64_t w_step, int64_t c_step, mlir::Operation *user_op) {
   auto op = v.getDefiningOp();
-  if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
-    // generate ginfo
-    group_info_t ginfo = {0};
-    if (v.getType().isa<NoneType>()) {
+  if (op && isa<tpu::MoveOp>(op)) {
+    auto moveOp = dyn_cast<tpu::MoveOp>(op);
+    auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
+    int idx = v.cast<OpResult>().getResultNumber();
+    op = moveOp->getOperand(idx).getDefiningOp();
+    auto v2 = moveOp->getOperand(idx);
+    assert(op);
+    while (isa<tpu::MoveOp>(op)) {
+      // llvm::errs() <<"getGroupInfo11, idx:"<<idx<<"\n";
+      idx = v2.cast<OpResult>().getResultNumber();
+      op = op->getOperand(idx).getDefiningOp();
+      v2 = op->getOperand(idx);
+      assert(op);
+    }
+    llvm::errs() <<"getGroupInfo, idx:"<<idx<<", op:"<<module::getName(op).str()<<"\n";
+    group_info_t ginfo = getGroupInfo(op, n_step, h_step, d_step, w_step, c_step);
+    ginfo.out_addr = vec_move_dest_addr[idx];
+    return ginfo;
+  } else {
+    if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
+      // generate ginfo
+      group_info_t ginfo = {0};
+      if (v.getType().isa<NoneType>()) {
+        return ginfo;
+      }
+      // make sure dst_op can cast to LocalGenInterface
+      auto dst_op_iter = std::find_if(v.user_begin(), v.user_end(), [](Operation *x) {
+        return dyn_cast_or_null<LocalGenInterface>(*x);
+      });
+      assert(dst_op_iter != v.user_end());
+      auto dst_op = *dst_op_iter;
+      auto dst_lg_op = cast<LocalGenInterface>(dst_op);
+      auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                        .cast<tpu::LayerGroupAttr>();
+      auto shape = module::getShape(dst_op->getResult(0));
+      int64_t nslice = g_param.getNSlice()[0];
+      int64_t hslice = g_param.getHSlice()[0];
+      int64_t dslice = g_param.getDSlice()[0];
+      int64_t wslice = g_param.getWSlice()[0];
+      int64_t cslice = g_param.getCSlice()[0];
+      dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, 0, nslice);
+      dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, 0, hslice);
+      dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, 0, dslice);
+      if (g_param.getGroupType() == GROUP_MM) {
+        dst_lg_op.BackwardC(ginfo.c_idx, ginfo.c_slice, 0, cslice);
+      }
+      if (shape.size() >= 4) {
+        dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, 0, wslice);
+      }
       return ginfo;
     }
-    // make sure dst_op can cast to LocalGenInterface
-    auto dst_op_iter = std::find_if(v.user_begin(), v.user_end(), [](Operation *x) {
-      return dyn_cast_or_null<LocalGenInterface>(*x);
-    });
-    assert(dst_op_iter != v.user_end());
-    auto dst_op = *dst_op_iter;
-    auto dst_lg_op = cast<LocalGenInterface>(dst_op);
-    auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
-                       .cast<tpu::LayerGroupAttr>();
-    auto shape = module::getShape(dst_op->getResult(0));
-    int64_t nslice = g_param.getNSlice()[0];
-    int64_t hslice = g_param.getHSlice()[0];
-    int64_t dslice = g_param.getDSlice()[0];
-    int64_t wslice = g_param.getWSlice()[0];
-    int64_t cslice = g_param.getCSlice()[0];
-    dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, 0, nslice);
-    dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, 0, hslice);
-    dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, 0, dslice);
-    if (g_param.getGroupType() == GROUP_MM) {
-      dst_lg_op.BackwardC(ginfo.c_idx, ginfo.c_slice, 0, cslice);
-    }
-    if (shape.size() >= 4) {
-      dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, 0, wslice);
-    }
-    return ginfo;
+    return getGroupInfo(op, n_step, h_step, d_step, w_step, c_step, user_op);
   }
-  return getGroupInfo(op, n_step, h_step, d_step, w_step, c_step);
 }
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
                                              int64_t n_step, int64_t h_step,
                                              int64_t d_step, int64_t w_step,
-                                             int64_t c_step) {
+                                             int64_t c_step, mlir::Operation *user_op) {
   group_info_t ginfo = {0};
   if (isa<top::NoneOp>(op)) {
     return ginfo;
@@ -77,6 +97,34 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   assert(op->hasAttr(LocalGenInterface::kLayerGroupAttrName));
   auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                      .cast<tpu::LayerGroupAttr>();
+
+  int idx = 0;
+  std::vector<std::vector<int64_t>> in_hslice_offsets_v;
+  if (user_op && user_op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
+    auto g_user_param = user_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                      .cast<tpu::LayerGroupAttr>();
+    for (auto v: user_op->getOperands()) {
+      (void)v;
+      in_hslice_offsets_v.push_back(std::vector<int64_t>());
+    }
+    auto in_hslice_offset = g_user_param.getInHsliceOffset();
+    for (int i = 0, sz = in_hslice_offset.size(); i < sz; i++) {
+      if (in_hslice_offset[i] == -1) {
+        idx++;
+      } else {
+        in_hslice_offsets_v[idx].push_back(in_hslice_offset[i]);
+      }
+    }
+    idx = 0;
+    for (auto v: user_op->getOperands()) {
+      auto pre_op = v.getDefiningOp();
+      if (pre_op && op == pre_op) {
+        break;
+      }
+      idx++;
+    }
+  }
+
   ginfo.id = g_param.getId();
   ginfo.stage = g_param.getStage();
   ginfo.out_addr = g_param.getOutAddr();
@@ -115,7 +163,12 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
       ginfo.overstepped = true;
       ginfo.n_idx = n_idx_v[n_step % n_idx_v.size()];
       ginfo.c_idx = c_idx_v[c_step % c_idx_v.size()];
-      ginfo.h_idx = h_idx_v[h_step % h_idx_v.size()];
+      if (in_hslice_offsets_v.size() > 0 && in_hslice_offsets_v[idx].size() > 0) {
+        ginfo.h_idx = in_hslice_offsets_v[idx][h_step % h_idx_v.size()];
+        ginfo.h_idx_offset = ginfo.h_idx - h_idx_v[h_step % h_idx_v.size()];
+      } else {
+        ginfo.h_idx = h_idx_v[h_step % h_idx_v.size()];
+      }
       ginfo.d_idx = d_idx_v[d_step % d_idx_v.size()];
       ginfo.w_idx = w_idx_v[w_step % w_idx_v.size()];
       ginfo.n_slice = n_slice_v[n_step % n_slice_v.size()];
@@ -126,7 +179,12 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
     } else {
       ginfo.n_idx = n_idx_v[n_step];
       ginfo.c_idx = c_idx_v[c_step];
-      ginfo.h_idx = h_idx_v[h_step];
+      if (in_hslice_offsets_v.size() > 0 && in_hslice_offsets_v[idx].size() > 0) {
+        ginfo.h_idx = in_hslice_offsets_v[idx][h_step];
+        ginfo.h_idx_offset = ginfo.h_idx - h_idx_v[h_step];
+      } else {
+        ginfo.h_idx = h_idx_v[h_step];
+      }
       ginfo.d_idx = d_idx_v[d_step];
       ginfo.w_idx = w_idx_v[w_step];
       ginfo.n_slice = n_slice_v[n_step];
@@ -151,7 +209,7 @@ static int bcast_type(int s0, int s1) {
 LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
   auto lhs_shape = module::getShape(op->getOperand(0));
   auto rhs_shape = module::getShape(op->getOperand(1));
-  if (lhs_shape.size() != rhs_shape.size())
+  if (!module::isTrain() && lhs_shape.size() != rhs_shape.size())
     return failure();
   if (module::isWeight(op->getOperand(0)) ||
       module::isWeight(op->getOperand(1)))

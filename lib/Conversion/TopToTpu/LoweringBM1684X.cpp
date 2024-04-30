@@ -212,7 +212,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       RsqrtLowering,
       RequantFpLowering,
       BinaryShiftLowering,
-      BinaryConstShiftLowering
+      BinaryConstShiftLowering,
+      MeanRstdLowering
       // clang-format on
       >(patterns->getContext());
 }

@@ -32,10 +32,11 @@ public:
   virtual int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                                      group_type_t group_type,
                                      bool calc_bdc_slack) = 0;
-  virtual int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info,
-                               group_type_t group_type) = 0;
-  virtual int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info,
-                               group_type_t group_type) = 0;
+  virtual int64_t getGdmaCycle(Value v, tensor_info_t &tensor_info,
+                               group_type_t group_type,
+							   Operation* owner_op = nullptr, int mode = 0) = 0;
+  virtual int64_t getLoadCycle(Value v, tensor_info_t &tensor_info,
+                               group_type_t group_type, Operation* owner_op = nullptr) = 0;
   virtual int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info,
                                 group_type_t group_type) = 0;
 
@@ -53,10 +54,11 @@ public:
 
                              group_type_t group_type,
                              bool calc_bdc_slack) override;
-  int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info,
-                       group_type_t group_type) override;
-  int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info,
-                       group_type_t group_type) override;
+  int64_t getGdmaCycle(Value v, tensor_info_t &tensor_info,
+                       group_type_t group_type,
+					   Operation* owner_op = nullptr, int mode = 0) override;
+  int64_t getLoadCycle(Value v, tensor_info_t &tensor_info,
+                       group_type_t group_type, Operation* owner_op = nullptr) override;
   int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info,
                         group_type_t group_type) override;
 };
@@ -69,10 +71,11 @@ public:
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                              group_type_t group_type,
                              bool calc_bdc_slack) override;
-  int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info,
-                       group_type_t group_type) override;
-  int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info,
-                       group_type_t group_type) override;
+  int64_t getGdmaCycle(Value v, tensor_info_t &tensor_info,
+                       group_type_t group_type,
+					   Operation* owner_op = nullptr, int mode = 0) override;
+  int64_t getLoadCycle(Value v, tensor_info_t &tensor_info,
+                       group_type_t group_type, Operation* owner_op = nullptr) override;
   int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info,
                         group_type_t group_type) override;
 
