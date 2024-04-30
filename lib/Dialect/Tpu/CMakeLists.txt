@@ -62,4 +62,5 @@ add_llvm_library(TPUMLIRTpu
   TPUMLIRTrait
   TPUMLIRBackend
   TPUMLIRBuilder
+  ortools
 )

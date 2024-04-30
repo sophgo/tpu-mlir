@@ -23,6 +23,11 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbm1684x_kernel_module.a
               nntoolchain/lib/libbmtpulv60_kernel_module.so
               nntoolchain/lib/libbmtpulv60_kernel_module.a
+              nntoolchain/lib/liblibtorch_plugin.so
+              or-tools/lib/libortools.so
+              or-tools/lib/libortools.so.9
+              or-tools/lib/libortools.so.9.8.3296
+
               # cvitek
               CV18xx/lib/libcvikernel.so
               CV18xx/lib/libcviruntime.so

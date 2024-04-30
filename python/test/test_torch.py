@@ -38,11 +38,14 @@ class TORCH_IR_TESTER(object):
                  quant_input: bool = False,
                  quant_output: bool = False,
                  debug: bool = False,
-                 num_core : int = 1):
+                 num_core : int = 1,
+                 debug_cmd: str = ''):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
         self.debug = debug
+        self.debug_cmd = debug_cmd
+        self.group_opt = 2
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -172,6 +175,8 @@ class TORCH_IR_TESTER(object):
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
             "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
             "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
+            ## only for test
+            "user_define_net":   (self.user_define_net,    N, Y, N, N),
             ## Canonicalization
             "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N)
         }
@@ -340,7 +345,7 @@ class TORCH_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + self.model_file
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug)
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, opt= self.group_opt, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug, debug_cmd = f'--debug_cmd={self.debug_cmd}')
 
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -3467,6 +3472,68 @@ class TORCH_IR_TESTER(object):
         # Permute will be converted to Reshape when there is 1 in shape
         # MovePermuteAfterAdd will be affected by PermuteToReshape Pattern
         # self.trace_and_test([[5,1,8,16],[5,1,8,16],[5,16,8,64]], Model0())
+    def user_define_net(self):
+        """user_define_net"""
+        return
+
+        print('start test test_model1')
+        self.group_opt = 3
+        from tools.train.test_model import test_model1
+        model = test_model1()
+        self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test test_model2')
+        # from tools.train.test_model import test_model2
+        # model = test_model2()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test test_model3')
+        # from tools.train.test_model import test_model3
+        # model = test_model3()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test test_model4')
+        # from tools.train.test_model import test_model4
+        # model = test_model4()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test resnet18')
+        # from tools.train.resnet import resnet18
+        # model = resnet18()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test mobilenet_v2')
+        # import torchvision.models as models
+        # model = models.mobilenet_v2()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test resnet50')
+        # from tools.train.resnet import resnet50
+        # model = resnet50()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+
+
+        # print('start test test_model6')
+        # from tools.train.test_model import test_model6
+        # model = test_model6()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test test_model5') #error
+        # from tools.train.test_model import test_model5
+        # model = test_model5()
+        # self.trace_and_test([(1,3,224,224)], model)
+
+
+        # print('start test test_model7')
+        # from tools.train.test_model import test_model7
+        # model = test_model7()
+        # self.trace_and_test([(1,3,224,224), (1,3,224,224)], model)
+
+        # d_model=10 #768  #test ok at 0918
+        # from tools.train.gpt2 import TransformerBlocks #backward can not use this
+        # mod = TransformerBlocks(d_model=d_model, nlayers=2) #.train()
+        # self.trace_and_test([(1,4,d_model)], mod)
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
@@ -3528,9 +3595,10 @@ if __name__ == "__main__":
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--quant_input", action="store_true", help='quant input')
     parser.add_argument("--quant_output", action="store_true", help='quant output')
+    parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug, args.num_core)
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug, args.num_core, args.debug_cmd)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

@@ -24,6 +24,7 @@ void LgPassIR::clear() {
   lg_infos.clear();
   time_steps.clear();
   shape_secs.clear();
+  ILP_time_steps.clear();
 }
 
 void LgPassManager::add_pass(std::unique_ptr<LgPass> pass) {

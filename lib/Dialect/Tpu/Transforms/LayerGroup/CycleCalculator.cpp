@@ -237,33 +237,51 @@ int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
 }
 
 int64_t Bm168xCycleCalculator::getGdmaCycle(Value v,
-                                            const tensor_info_t &tensor_info,
-                                            group_type_t group_type) {
+                                            tensor_info_t &tensor_info,
+                                            group_type_t group_type, Operation* owner_op, int mode) {
   auto bm168x = BM168x::instance();
   bm168x->set_command_issue_flag(false);
   bm168x->reset_cmd_id_node();
 
   // because LoadOp/StoreOp are not created during LayerGroup
   int64_t cycle = 0;
-  if (tensor_info.mode == TIMESTEP_LOAD) {
-    cycle = getLoadCycle(v, tensor_info, group_type);
+  if (tensor_info.mode2 > 0) {
+    if (tensor_info.mode2 & TIMESTEP2_LOAD) {
+      cycle = getLoadCycle(v, tensor_info, group_type, owner_op);
+    } else if (tensor_info.mode2 & TIMESTEP2_STORE) {
+      cycle = getStoreCycle(v, tensor_info, group_type);
+    } else if (tensor_info.mode2 & TIMESTEP2_STORE_AND_LOAD) {
+      if (mode == 0) {
+        cycle = getStoreCycle(v, tensor_info, group_type);
+      } else if (mode == 1) {
+        cycle = getLoadCycle(v, tensor_info, group_type, owner_op);
+      }
+    }
   } else {
-    cycle = getStoreCycle(v, tensor_info, group_type);
+    if (tensor_info.mode == TIMESTEP_LOAD) {
+      cycle = getLoadCycle(v, tensor_info, group_type);
+    } else {
+      cycle = getStoreCycle(v, tensor_info, group_type);
+    }
   }
   bm168x->dl_sg_stas_reset();
   return cycle;
 }
 
+
 int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
-                                            const tensor_info_t &tensor_info,
-                                            group_type_t group_type) {
+                                            tensor_info_t &tensor_info,
+                                            group_type_t group_type, Operation* owner_op) {
   // need_info:
   // - n_slice, h_slice, eu_align, g_addr, l_addr
   // - need_bcast, use_3ic
   // TODO: CONCAT
   auto bm168x = BM168x::instance();
   int64_t n_slice, c_slice, h_slice, d_slice, w_slice;
-  auto &si = tensor_info.slice_info;
+  auto si = tensor_info.slice_info;
+  if (owner_op) {
+    si = tensor_info.slice_infos[owner_op];
+  }
   get_max_slice_nchdw(si, n_slice, c_slice, h_slice, d_slice, w_slice);
   std::vector<slice_pair_t> slice_idx = get_max_slice_nchdw_and_idx(si, n_slice, c_slice, h_slice, d_slice, w_slice);
   int64_t use_3ic = tensor_info.use_3ic_opt;
@@ -297,7 +315,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
     int n_idx_trans = n_idx / 4;
     int n_slice_trans = ceiling_func(n_slice, 4);
     int oh_slice = (h_slice - conv_param.kh) / conv_param.sh + 1;
-    auto local_offerset = get_buffer_size(v, tensor_info, group_type);
+    auto local_offerset = get_buffer_size(v, tensor_info, group_type, owner_op);
     for (int i = 0; i < n_slice_trans; i++) {
       int src_N = C; // ic
       int src_C = conv_param.kh;
@@ -529,8 +547,8 @@ int64_t Cv18xxCycleCalculator::getLocalLayerCycle(Operation *op,
 }
 
 int64_t Cv18xxCycleCalculator::getGdmaCycle(Value v,
-                                            const tensor_info_t &tensor_info,
-                                            group_type_t group_type) {
+                                            tensor_info_t &tensor_info,
+                                            group_type_t group_type, Operation* owner_op, int mode) {
   int64_t cycle = 0;
   if (tensor_info.mode == TIMESTEP_LOAD) {
     cycle = getLoadCycle(v, tensor_info, group_type);
@@ -541,8 +559,8 @@ int64_t Cv18xxCycleCalculator::getGdmaCycle(Value v,
 }
 
 int64_t Cv18xxCycleCalculator::getLoadCycle(Value v,
-                                            const tensor_info_t &tensor_info,
-                                            group_type_t group_type) {
+                                            tensor_info_t &tensor_info,
+                                            group_type_t group_type, Operation* owner_op) {
   int64_t n_slice, c_slice, h_slice, d_slice, w_slice;
   auto &si = tensor_info.slice_info;
   get_max_slice_nchdw(si, n_slice, c_slice, h_slice, d_slice, w_slice);

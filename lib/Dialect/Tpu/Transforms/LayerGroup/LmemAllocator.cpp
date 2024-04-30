@@ -849,7 +849,8 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
 bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs) {
-  shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
+  std::vector<std::pair<Operation*, int>> vec_op_hsecs;
+  shape_secs_t max_shape_secs = get_group_max_secs(lg_info, vec_op_hsecs);
   update_data_split(time_step, lg_info, shape_secs);
   //  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
   //    return true;

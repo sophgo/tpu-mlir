@@ -10,6 +10,7 @@
 // Main entry function for mlir-opt for when built as standalone binary.
 //
 //===----------------------------------------------------------------------===//
+#include<fstream>
 
 #include "tpu_mlir/InitAll.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
@@ -36,6 +37,15 @@ int main(int argc, char **argv) {
   if (argc <= 2) {
     return asMainReturnCode(MlirOptMain(
         argc, argv, "TPU MLIR module optimizer driver\n", registry));
+  }
+
+  std::string debug_cmd = argv[argc - 1];
+  std::string substring = "--debug_cmd=";
+  if (debug_cmd.find(substring) != std::string::npos) {
+    std::ofstream ofs;
+    ofs.open("/tmp/debug_cmd", std::ios::out | std::ios::trunc);
+    ofs <<debug_cmd.substr(substring.size()) << std::endl;
+    argc -= 1;
   }
 
   int num_pre = sizeof(PluginPrePass) / sizeof(PluginPrePass[0]);

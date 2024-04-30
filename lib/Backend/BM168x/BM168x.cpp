@@ -169,9 +169,19 @@ STORE_MODE_T BM168x::getStoreMode(Value v) {
 tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   tensor_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  if (module::isOpInGroup(v.getDefiningOp())) {
-    auto gi = LocalGenInterface::getGroupInfo(v);
-    spec.addr = gi.out_addr;
+  auto pre_op = v.getDefiningOp();
+  if (module::isOpInGroup(pre_op)) {
+    if (isa<tpu::MoveOp>(pre_op)) {
+      auto moveOp = dyn_cast<tpu::MoveOp>(pre_op);
+      auto vec_input_move_addr = *module::getI64Array(moveOp.getMoveDestAdd());
+      int idx = v.cast<OpResult>().getResultNumber();
+      spec.addr = vec_input_move_addr[idx];
+      llvm::errs() <<"value_to_spec, v:"<<module::getName(v).str()
+                   <<", idx:"<<idx<<", vec_input_move_addr[idx]:"<<spec.addr<<"\n";
+    } else {
+      auto gi = LocalGenInterface::getGroupInfo(v);
+      spec.addr = gi.out_addr;
+    }
   } else {
     spec.addr = module::getAddress(v);
   }

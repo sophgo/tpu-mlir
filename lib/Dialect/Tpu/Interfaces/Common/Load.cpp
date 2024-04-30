@@ -36,7 +36,7 @@ void tpu::LoadOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.h_slice = gi.h_slice;
   sec_info.w_slice = gi.w_slice;
   sec_info.c_idx = gi.c_idx;
-  sec_info.is_c_split = !(gi.c_idx == 0 && gi.c_slice == h);
+  sec_info.is_c_split = !(gi.c_idx == 0 && gi.c_slice == c);
   sec_info.h_idx = gi.h_idx;
   sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
   sec_info.w_idx = gi.w_idx;

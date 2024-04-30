@@ -78,6 +78,7 @@ AddrMode getAddrMode();
 bool isAddrMode(AddrMode mode);
 bool isTrain();
 void setTrain(bool is_train);
+bool isDebugCmdEnable(std::string cmd_str);
 void setInputs(ArrayRef<StringRef> inputs);
 std::shared_ptr<std::vector<StringRef>> getInputs();
 void setOutputs(ArrayRef<StringRef> outputs);

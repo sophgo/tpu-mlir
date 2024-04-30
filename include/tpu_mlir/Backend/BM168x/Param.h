@@ -1955,5 +1955,18 @@ typedef struct {
   int      is_argsort;
 } sort_per_dim_param_t;
 
+typedef struct
+{
+  float eps;
+  float momentum;
+}mean_rstd_param_t;
 
+typedef struct bdc_cpy_spec {
+  int64_t reserved;
+} bdc_cpy_spec_t;
+
+typedef struct
+{
+  ConvBwdWeight_common_spec_t common;
+}ConvBwdWeight_local_spec_t;
 #endif

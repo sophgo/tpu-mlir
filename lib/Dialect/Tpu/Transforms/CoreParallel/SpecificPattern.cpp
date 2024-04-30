@@ -31,6 +31,7 @@ LayerGroupAttr createGroupAttr(LayerGroupAttr inAttr, const NdSlice &ndSlice) {
   return LayerGroupAttr::get(
       inAttr.getContext(), inAttr.getOutAddr(), inAttr.getOutSize(),
       inAttr.getBufferAddr(), inAttr.getBufferSize(), inAttr.getEuAlign(),
+      false, builder.getDenseI64ArrayAttr({}),
       builder.getDenseI64ArrayAttr(ndSlice.N.offsets),
       builder.getDenseI64ArrayAttr(ndSlice.N.sizes),
       builder.getDenseI64ArrayAttr(ndSlice.C.offsets),
@@ -41,7 +42,7 @@ LayerGroupAttr createGroupAttr(LayerGroupAttr inAttr, const NdSlice &ndSlice) {
       builder.getDenseI64ArrayAttr(ndSlice.H.sizes),
       builder.getDenseI64ArrayAttr(ndSlice.W.offsets),
       builder.getDenseI64ArrayAttr(ndSlice.W.sizes), inAttr.getId(),
-      inAttr.getStage(), inAttr.getGroupType());
+      inAttr.getStage(), 0, inAttr.getGroupType());
 }
 
 NdSlice getNdSlice(LayerGroupAttr inAttr) {

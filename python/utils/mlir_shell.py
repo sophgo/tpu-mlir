@@ -170,7 +170,9 @@ def mlir_to_model(tpu_mlir: str,
                   model_version: str = "",
                   count_patterns: bool = False,
                   compress_mode: str = "none",
-                  weight_in_mem: bool = False):
+                  weight_in_mem: bool = False,
+                  debug_cmd: str = ""
+				  ):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
@@ -204,6 +206,7 @@ def mlir_to_model(tpu_mlir: str,
         address_assign_param,
         "-o",
         final_mlir,
+        debug_cmd
     ]
     log_file = ""
     if count_patterns:

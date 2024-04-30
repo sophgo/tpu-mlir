@@ -779,7 +779,11 @@ uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
   if (op != nullptr && isa<tpu::GroupOp>(op)) {
     auto yield_ = dyn_cast<GroupOp>(op).getOps<tpu::YieldOp>().begin();
     auto yieldop = *yield_;
-    auto storeop = yieldop->getOperand(index).getDefiningOp<tpu::StoreOp>();
+    auto pre_op  =yieldop->getOperand(index).getDefiningOp();
+    if (isa<SliceMergeOp>(pre_op)) {
+      pre_op  =pre_op->getOperand(0).getDefiningOp();
+    }
+    auto storeop = dyn_cast<tpu::StoreOp>(pre_op);
     if (storeop->hasAttr("compress_info")) {
       auto cinfo_pre = storeop->getAttr("compress_info").cast<tpu::CompressAttr>();
       do_compress = cinfo_pre.getDoCompress();

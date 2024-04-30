@@ -32,9 +32,8 @@ typedef struct {
 
 class GroupMethod {
 public:
-  GroupMethod();
-  void process(std::vector<LgInfo> &lg_infos,
-               const SetVector<Operation *> &subnet_ops);
+  GroupMethod(int64_t opt);
+  void process(LgPassIR *pass_ir);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const SetVector<Operation *> &subnet_ops);
   void dynamic_programming_layer_group_with_cluster(
@@ -60,7 +59,6 @@ public:
 
   bool dynamic_group_valid_check(const LgInfo &lg_info);
 
-  bool isLgSupport(Operation *op);
 
   int64_t cost_add(int64_t cost0, int64_t cost1);
 
@@ -83,6 +81,14 @@ public:
 
   void show_cut_results();
 
+  void ilp_layer_group(LgPassIR *pass_ir);
+  void get_base_branch_groups(std::vector<std::vector<Operation *>> &base_groups,
+                       const SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
+  void get_base_dfs_topo_groups(std::vector<std::vector<Operation *>> &base_groups,
+                       const SetVector<Operation *> &subnet_ops, const std::vector<std::vector<Operation *>> &tmp_base_groups);
+  std::vector<int> get_sec_per_cores(const shape_secs_t& shape_secs,
+                                                  std::vector<std::vector<int64_t>>& vec_ncdhw,
+                                                  int core_num, TensorInfo& tensor_infos);
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;
@@ -94,7 +100,7 @@ protected:
   RunMode runmode_;
 };
 
-std::unique_ptr<LgPass> CreateLayerGroupSearchPass();
+std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

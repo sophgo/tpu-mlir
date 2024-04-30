@@ -85,6 +85,8 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "int64_t":$buffer_addr,
     "int64_t":$buffer_size,
     "bool":$eu_align,
+    "bool":$can_merge,
+    "DenseI64ArrayAttr":$in_hslice_offset,
     "DenseI64ArrayAttr":$n_idx,
     "DenseI64ArrayAttr":$n_slice,
     "DenseI64ArrayAttr":$c_idx,
@@ -97,6 +99,7 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "DenseI64ArrayAttr":$w_slice,
     "int64_t":$id,
     "int64_t":$stage,
+    "int64_t":$slice_idx,
     "int64_t":$group_type
   );
   let assemblyFormat = "`<` struct(params) `>`";
@@ -1413,6 +1416,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$input_gmem,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
     OptionalAttr<Tpu_CompressAttr>:$compress_info
@@ -1564,7 +1568,10 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     DefaultValuedAttr<I64ArrayAttr, "{}">:$other_up_overlap_op,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$other_down_overlap_op,
     //nnvlc
-    DefaultValuedAttr<BoolAttr, "true">:$support_compress
+    DefaultValuedAttr<BoolAttr, "true">:$support_compress,
+    //core ids that run the group
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$run_core_id,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$core_slice_ncdhw
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
@@ -3476,12 +3483,22 @@ def Tpu_SoftmaxBwdOp: Tpu_Op<"SoftmaxBwd"> {
 
   let results = (outs AnyRankedTensor:$grad_input);
 }
-def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
+
+
+
+def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
+    DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface,
+      ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface,
+      ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "Convolution Backward operator";
   let description = [{Gradient of Weight in Convolution Backward}];
   let arguments = (ins
   AnyTensor:$input,
   AnyTensor:$gradout,
+  AnyTensor:$gradout_transpose,
   I64Attr:$groups,
   I64ArrayAttr:$input_shape,
   I64ArrayAttr:$grad_out_shape,
@@ -3530,5 +3547,80 @@ def Tpu_SortOp:Tpu_Op<"Sort", [DeclareOpInterfaceMethods<TypeInterface>]> {
     AnyTensor:$indices
   );
 }
+def Tpu_SliceMergeOp: Tpu_BaseOp<"SliceMerge"> {
+  let summary = "SliceMerge";
 
+  let description = [{
+    When there are multiple slices in the layer-group,
+    this operation combines the store op output of each slice to output to the yield op.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_MeanRstdOp: Tpu_Op<"MeanRstd">{
+  let summary = "Compute Mean, Rstd, Running_mean, Running_var in batchnorm train op ";
+  let description = [{
+    mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$running_mean,
+    AnyTensor:$running_var,
+    AnyTensor:$weight,
+    AnyTensor:$bias,
+    F64Attr:$eps,
+    F64Attr:$momentum
+  );
+  let results = (outs
+    AnyTensor:$mean,
+    AnyTensor:$rstd,
+    AnyTensor:$running_mean_update,
+    AnyTensor:$running_var_update,
+    AnyTensor:$scale,
+    AnyTensor:$bias_new
+    );
+}
+
+def Tpu_OutBufferOp : Tpu_BaseOp<"OutBuffer"> {
+  let summary = "OutBuffer for store op";
+
+  let description = [{
+     This operation stores storeOp output data on DDR when some tentor in layer-group
+     is not output to returnOp but storeAndLoad is needed.
+  }];
+
+  let arguments = (ins
+    DefaultValuedAttr<BoolAttr, "false">:$need_dump
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_MoveOp:Tpu_BaseOp<"Move"> {
+  let summary = "local mem move op for layer group lmem alloc";
+  let description = [{
+    local mem move op for layer group lmem alloc
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    StrAttr:$name,
+    I64ArrayAttr:$move_src_add,
+    I64ArrayAttr:$move_dest_add,
+    I64ArrayAttr:$move_size,
+    I64Attr:$ts_id
+  );
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+
+  let extraClassDeclaration = [{
+    void codegen_only_for_moveOp(std::vector<int64_t>& move_src_add,
+                                                    std::vector<int64_t>& move_dest_add,
+                                                    std::vector<int64_t>& move_size);
+  }];
+}
 #endif // TPU_OPS

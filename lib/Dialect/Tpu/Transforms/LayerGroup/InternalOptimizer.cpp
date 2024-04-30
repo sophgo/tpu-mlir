@@ -19,39 +19,44 @@
 namespace tpu_mlir {
 namespace tpu {
 
-void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm) {
+void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
+                                        const LgOptions &options) {
   /*
    * Add internal pass pipeline to the pass manager.
    */
 
   // Firstly, group layers
-  pm->add_pass(CreateLayerGroupSearchPass());
+  pm->add_pass(CreateLayerGroupSearchPass(options));
 
-  // Some transform after layer groups is determined
-  pm->add_pass(CreateGroupPostTransformPass());
+  if (options.opt != 3) {
+    // Some transform after layer groups is determined
+    pm->add_pass(CreateGroupPostTransformPass());
 
-  // Then, time step assignment
-  pm->add_pass(CreateTimeStepAssignmentPass());
+    // Then, time step assignment
+    pm->add_pass(CreateTimeStepAssignmentPass());
 
-  // Then, split the data
-  // pm->add_pass(CreateDataSplitPass());
+    // Then, split the data
+    // pm->add_pass(CreateDataSplitPass());
 
-  // Then, allocate local memory for each layer group
-  pm->add_pass(CreateLocalMemoryAllocationPass());
+    // Then, allocate local memory for each layer group
+    pm->add_pass(CreateLocalMemoryAllocationPass());
 
-  // Decrease coeff reload if it is opened
-  // if (use_partial_coeff_reload) {
-  //   pm->add_pass(CreateCoeffReloadDereasePass());
-  // }
+    // Decrease coeff reload if it is opened
+    // if (use_partial_coeff_reload) {
+    //   pm->add_pass(CreateCoeffReloadDereasePass());
+    // }
 
-  // Time step combination if it is opened
-  pm->add_pass(CreateTimeStepCombinePass());
+    // Time step combination if it is opened
+    pm->add_pass(CreateTimeStepCombinePass());
+  }
 }
 
-void InternalLgOptimizer::manage_post_passes(
-    std::shared_ptr<LgPassManager> pm) {
-  pm->add_pass(CreateGroupDataMoveOverlapPass());
-}
+void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
+                                             const LgOptions &options) {
+  if (options.opt != 3) {
+    pm->add_pass(CreateGroupDataMoveOverlapPass());
+  }
+                                             }
 
 } // namespace tpu
 } // namespace tpu_mlir

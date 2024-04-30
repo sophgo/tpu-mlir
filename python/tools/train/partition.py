@@ -116,6 +116,7 @@ class TpuMlirOperatorSupport(OperatorSupport):
     def is_node_supported(
         self, submodules: Dict[str, torch.nn.Module], node: torch.fx.Node
     ) -> bool:
+        return True
         node_name = (
             _get_qualified_name(node.target)
             if not isinstance(node.target, str)

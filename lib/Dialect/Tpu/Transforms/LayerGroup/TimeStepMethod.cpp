@@ -405,7 +405,8 @@ public:
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
       auto time_step = std::make_shared<BasicTimeStep>();
       shape_secs_t shape_secs;
-      if (!init_group_data_secs(pass_ir->lg_infos[i], shape_secs)) {
+      std::vector<std::pair<Value, int64_t>> value_size;
+      if (!init_group_data_secs(pass_ir->lg_infos[i], shape_secs, value_size)) {
         return false;
       }
       bool ret =

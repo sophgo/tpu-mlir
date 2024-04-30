@@ -95,7 +95,20 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
-  auto g_addr = module::getAddress(getInput());
+  int64_t g_addr = -1;
+  auto input = getInput();
+  auto inputOp = input.getDefiningOp();
+  // if (inputOp != nullptr && !input.isa<BlockArgument>()) {
+  if (inputOp != nullptr && module::isOpInGroup(inputOp)) {
+    //In the case of tensor store followed by load, the input to load is the output of the previous store
+    assert(isa<tpu::StoreOp>(inputOp));
+    auto input_gmem = inputOp->getOperand(1);
+    assert(!isa<top::NoneOp>(input_gmem.getDefiningOp()));
+    g_addr = module::getAddress(input_gmem);
+  } else {
+    g_addr = module::getAddress(getInput());
+  }
+  llvm::errs() <<"loadOp g_addr:"<<g_addr<<"\n";
 #if 0
   //note: trick for imgToCol pattern
   const auto defBySliceOp = [&] (Value v) {

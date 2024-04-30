@@ -863,6 +863,111 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
+
+void BMCodegen::codegen_for_group2(GroupOp gOp) {
+  auto group_type = static_cast<group_type_t>(gOp.getGroupType());
+  local_sec_info_t sec_info;
+  bool have_more_groupOp = isa<SliceMergeOp>(*(gOp.getResult(0).getUsers().begin()))?true:false;
+  auto run_core_id = *module::getI64Array(gOp.getRunCoreId());
+  auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+  bool useMuliCore = (run_core_id.size() > 1 || have_more_groupOp) && multi_core;
+
+  std::map<int, std::vector<std::vector<int>>> map_core_slice_ncdhw;
+  for(auto id: run_core_id) {
+    map_core_slice_ncdhw[id] = std::vector<std::vector<int>>();
+  }
+
+  auto core_slice_ncdhw = *module::getI64Array(gOp.getCoreSliceNcdhw());
+  assert(core_slice_ncdhw.size() % (6*run_core_id.size()) == 0);
+  int slice_num_per_core = core_slice_ncdhw.size() / (6*run_core_id.size());
+  int offset = 0;
+  for(auto id: run_core_id) {
+    for (int j = 0; j < slice_num_per_core; j++) {
+      std::vector<int> nchwd_idx;
+      for (int k = 0; k < 5; k++) {
+        nchwd_idx.push_back(core_slice_ncdhw[offset++]);
+      }
+      offset++;
+      map_core_slice_ncdhw[id].push_back(nchwd_idx);
+    }
+  }
+
+  for (auto id: run_core_id) {
+    llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
+    bool async_status = false;
+    int timestep_idx_his = -1;
+    if (useMuliCore) {
+      multi_core->useCore(id);
+      multi_core->syncAll();
+      llvm::errs() <<"useCore:"<<id<<"\n";
+    }
+    for (Operation &op : gOp.getBody().front().getOperations()) {
+      if (isa<YieldOp, SliceMergeOp>(op)) {
+        continue;
+      }
+
+      std::vector<int> ncdhw_steps = {0,0,0,0,0};
+      int timestep_idx = -1, slice_idx = -1;
+      bool can_merge = false;
+      if (isa<MoveOp>(op)) {
+        timestep_idx = op.getAttr("ts_id").cast<IntegerAttr>().getInt();
+      } else {
+        assert(op.hasAttr(LocalGenInterface::kLayerGroupAttrName));
+        auto g_param = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
+                          .cast<tpu::LayerGroupAttr>();
+        timestep_idx = g_param.getId();
+        slice_idx = g_param.getSliceIdx();
+        ncdhw_steps = map_core_slice_ncdhw[id][slice_idx];
+        can_merge = g_param.getCanMerge();
+      }
+
+      auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
+      if (isa<LoadOp, StoreOp>(op)) {
+        pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
+      }
+
+      auto output = *op.getResults().begin();
+      std::string name = module::getName(output).str();
+      llvm::errs() <<" codegen, for op:"<<name<<"\n";
+      assert(timestep_idx >= 0);
+      if (timestep_idx != timestep_idx_his) {
+        if (async_status && !can_merge) {
+          bm168x->merge_sync_id();
+        }
+        if (!can_merge) {
+          bm168x->divide_sync_id();
+        }
+        timestep_idx_his = timestep_idx;
+        async_status = true;
+      }
+      BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(&op).c_str());
+      if (!isa<MoveOp>(op)) {
+        auto lgOp = cast<LocalGenInterfaceDecorator>(op);
+        lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1],
+                              ncdhw_steps[3], ncdhw_steps[2],
+                              ncdhw_steps[4], group_type, sec_info);
+      }
+      // profile_ctx.log_local_layer(&op, ncdhw_steps[0], ncdhw_steps[3]);
+      if (isa<MoveOp>(op)) {
+        auto moveOp = dyn_cast<tpu::MoveOp>(op);
+        auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
+        auto vec_move_src_addr = *module::getI64Array(moveOp.getMoveSrcAdd());
+        auto vec_move_size = *module::getI64Array(moveOp.getMoveSize());
+        moveOp.codegen_only_for_moveOp(vec_move_src_addr, vec_move_dest_addr, vec_move_size);
+      } else {
+        auto lgOp = cast<LocalGenInterfaceDecorator>(op);
+        lgOp.codegen_local_bm168x(ncdhw_steps[0], ncdhw_steps[1],
+                              ncdhw_steps[3], ncdhw_steps[2],
+                              ncdhw_steps[4], group_type, sec_info);
+      }
+    }
+    bm168x->merge_sync_id();
+    if (useMuliCore) {
+      multi_core->syncAll();
+    }
+  }
+}
+
 void codegenCoreParallelOp(
     CoreParallelOp parallelOp, BM168x *bm168x,
     const std::function<void(GlobalGenInterfaceDecorator)>
@@ -964,6 +1069,45 @@ void BMCodegen::codegen(FuncOp funcOp) {
   };
 
   funcOp.walk<WalkOrder::PreOrder>([&](Operation *op) {
+    if (auto sliceMergeOp = dyn_cast<tpu::SliceMergeOp>(op)) {
+      llvm::errs() <<"meet multi groupOp\n";
+      std::vector<int64_t> core_ids;
+      for (auto opd : sliceMergeOp->getOperands()) {
+        if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
+          auto run_core_id = module::getI64Array(castOp.getRunCoreId());
+          core_ids.insert(core_ids.begin(), run_core_id->begin(), run_core_id->end());
+        }
+      }
+      int used_core_num = core_ids.size();
+      auto core_num = module::getCoreNum();
+      auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+      if (multi_core) {
+        if (multi_core->getCoreNum() != core_num) {
+          assert(multi_core->getCoreNum() == 1 &&
+                "The core_num should be set only once, and can not be changed.");
+          multi_core->setupMultiCoreContext(0, core_num, 0);
+          multi_core->setCoreNum(core_num);
+          llvm::errs() <<"setCoreNum:"<<core_num<<"\n";
+        }
+      }
+      for (auto opd : sliceMergeOp->getOperands()) {
+        if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
+          codegen_for_group2(castOp);
+        }
+      }
+      { // consume all the MSG send/wait.
+        for (int core_id = used_core_num; core_id < core_num; core_id++) {
+          multi_core->useCore(core_id);
+          llvm::errs() <<"unused, useCore:"<<core_id<<"\n";
+          multi_core->syncAll();
+          multi_core->syncAll();
+        }
+        if (multi_core)
+          multi_core->useCore(0);
+      }
+      return WalkResult::skip();
+    }
+
     if (auto castOp = dyn_cast<GroupOp>(op)) {
       Operation *prev_op = op->getPrevNode();
       while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
@@ -973,7 +1117,47 @@ void BMCodegen::codegen(FuncOp funcOp) {
       while (next_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(next_op)) {
         next_op = next_op->getNextNode();
       }
-      codegen_for_group(castOp, prev_op, next_op);
+      static bool opt3 = true;
+      auto flow = module::getI64Array(castOp.getFlow());
+      if (flow->size() > 1) {
+        opt3 = false;
+      }
+      if (opt3) {
+        if (!isa<SliceMergeOp>(*(castOp->getUsers().begin()))) {
+          auto run_core_id = module::getI64Array(castOp.getRunCoreId());
+          auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+          auto core_num = module::getCoreNum();
+          int used_core_num = run_core_id->size();
+          // int core_num = used_core_num;
+          if (used_core_num > 1) {
+            if (multi_core) {
+              if (multi_core->getCoreNum() != core_num) {
+                llvm::errs() <<"meet single groupOp, setCoreNum:"<<core_num<<"\n";
+                multi_core->setupMultiCoreContext(0, core_num, 0);
+                multi_core->setCoreNum(core_num);
+              }
+            }
+          }
+          // multi_core->useCore(0);
+          // multi_core->syncAll();
+          codegen_for_group2(castOp);
+          if (used_core_num > 1) { // consume all the MSG send/wait.
+            for (int core_id = used_core_num; core_id < core_num; core_id++) {
+              multi_core->useCore(core_id);
+              multi_core->syncAll();
+              llvm::errs() <<"unused, useCore:"<<core_id<<"\n";
+              multi_core->syncAll();
+            }
+            // multi_core->syncAll();
+            if (multi_core) {
+              multi_core->useCore(0);
+              // multi_core->syncAll();
+            }
+          }
+        }
+      } else {
+        codegen_for_group(castOp, prev_op, next_op);
+      }
       return WalkResult::skip();
     }
 

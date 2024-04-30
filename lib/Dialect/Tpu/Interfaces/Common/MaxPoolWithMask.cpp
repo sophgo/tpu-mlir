@@ -91,8 +91,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::LocalGenSupport() {
   // if ((stride->at(0) > 15 || stride->at(1) > 15)) {
   //   return failure();
   // }
-  // return success();
-  return failure();
+  return success();
 }
 
 LogicalResult tpu::MaxPoolWithMaskOp::BackwardH(int64_t &in_idx,

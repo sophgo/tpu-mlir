@@ -47,7 +47,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
       continue;
     }
     for (auto &tensor : ts_tensors) {
-      const tensor_info_t &tensor_info = tensor_infos[tensor.first];
+      tensor_info_t &tensor_info = tensor_infos[tensor.first];
       cycle_cost = cycle_calculator->getGdmaCycle(tensor.first, tensor_info, GROUP_NORMAL);
       if (time_step->is_tensor_hold_in_lmem(tensor.first)) {
         life_time = time_step->get_tensor_life_time(tensor.first);
