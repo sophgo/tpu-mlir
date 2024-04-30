@@ -742,3 +742,128 @@ Supported functions:
 Notice: CV-related models usually perform a series of preprocessing on the input image. To ensure that the model is verificated correctly, you need to use '--img' to generate a random image as input.
 Random npz files cannot be used as input.
 It is worth noting that random input may cause model correctness verification to fail, especially NLP-related models, so it is recommended to give priority to using real test data.
+
+
+model_tool
+~~~~~~~~~~~~~~~~~~~~
+
+
+This tool is used to process the final model file "bmodel" or "cvimodel". The following uses "xxx.bmodel" as an example to introduce the main functions of this tool.
+
+1) show basic info of bmodel
+
+Example:
+
+.. code-block:: shell
+
+   $ model_tool --info xxx.bmodel
+
+Displays the basic information of the model, including the compiled version of the model, the compilation date, the name of the network in the model, input and output parameters, etc.
+The display effect is as follows:
+
+.. code-block:: text
+
+  bmodel version: B.2.2+v1.7.beta.134-ge26380a85-20240430
+  chip: BM1684X
+  create time: Tue Apr 30 18:04:06 2024
+
+  kernel_module name: libbm1684x_kernel_module.so
+  kernel_module size: 3136888
+  ==========================================
+  net 0: [block_0]  static
+  ------------
+  stage 0:
+  input: input_states, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  input: position_ids, [1, 512], int32, scale: 1, zero_point: 0
+  input: attention_mask, [1, 1, 512, 512], bfloat16, scale: 1, zero_point: 0
+  output: /layer/Add_1_output_0_Add, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Add_1_output_0_Add, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Transpose_2_output_0_Transpose, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  ==========================================
+  net 1: [block_1]  static
+  ------------
+  stage 0:
+  input: input_states, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  input: position_ids, [1, 512], int32, scale: 1, zero_point: 0
+  input: attention_mask, [1, 1, 512, 512], bfloat16, scale: 1, zero_point: 0
+  output: /layer/Add_1_output_0_Add, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Add_1_output_0_Add, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Transpose_2_output_0_Transpose, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+
+  device mem size: 181645312 (weight: 121487360, instruct: 385024, runtime: 59772928)
+  host mem size: 0 (weight: 0, runtime: 0)
+
+2) combine multi bmodels
+
+Example:
+
+.. code-block:: shell
+
+   $ model_tool --combine a.bmodel b.bmodel c.bmodel -o abc.bmodel
+
+
+Merge multiple bmodels into one bmodel. If there is a network with the same name in the bmodel, it will be divided into different stages.
+
+3) extract model to multi bmodels
+
+Example:
+
+.. code-block:: shell
+
+   $ model_tool --extract abc.bmodel
+
+
+Decomposing a bmodel into multiple bmodels is the opposite operation to the combine command. It will be divided into different stages.
+
+4) show weight info
+
+Example:
+
+.. code-block:: shell
+
+   $ model_tool --weight xxx.bmodel
+
+Display the weight range information of each operator in different networks. The display effect is as follows:
+
+.. code-block:: text
+
+  net 0 : "block_0", stage:0
+  -------------------------------
+  tpu.Gather : [0x0, 0x40000)
+  tpu.Gather : [0x40000, 0x80000)
+  tpu.RMSNorm : [0x80000, 0x81000)
+  tpu.A16MatMul : [0x81000, 0x2b1000)
+  tpu.A16MatMul : [0x2b1000, 0x2f7000)
+  tpu.A16MatMul : [0x2f7000, 0x33d000)
+  tpu.A16MatMul : [0x33d000, 0x56d000)
+  tpu.RMSNorm : [0x56d000, 0x56e000)
+  tpu.A16MatMul : [0x56e000, 0x16ee000)
+  tpu.A16MatMul : [0x16ee000, 0x286e000)
+  tpu.A16MatMul : [0x286e000, 0x39ee000)
+  ==========================================
+  net 1 : "block_1", stage:0
+  -------------------------------
+  tpu.Gather : [0x0, 0x40000)
+  tpu.Gather : [0x40000, 0x80000)
+  tpu.RMSNorm : [0x80000, 0x81000)
+  tpu.A16MatMul : [0x81000, 0x2b1000)
+  tpu.A16MatMul : [0x2b1000, 0x2f7000)
+  tpu.A16MatMul : [0x2f7000, 0x33d000)
+  tpu.A16MatMul : [0x33d000, 0x56d000)
+  tpu.RMSNorm : [0x56d000, 0x56e000)
+  tpu.A16MatMul : [0x56e000, 0x16ee000)
+  tpu.A16MatMul : [0x16ee000, 0x286e000)
+  tpu.A16MatMul : [0x286e000, 0x39ee000)
+  ==========================================
+
+5) update weight from one bmodel to dst bmodel
+
+Example:
+
+.. code-block:: shell
+
+   # Update the weight of the network named src_net in src.bmodel at the 0x2000 position to the 0x1000 position of dst_net in dst.bmodel
+   $ model_tool --update_weight dst.bmodel dst_net 0x1000 src.bmodel src_net 0x2000
+
+
+The model weights can be updated. For example, if the weight of an operator of a certain model needs to be updated, compile the operator separately into bmodel, and then update its weight to the original model.

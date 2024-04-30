@@ -136,13 +136,22 @@ public:
   // read binary from offset
   void read_binary(const bmodel::Binary *binary, uint64_t offset,
                    uint8_t *buffer, uint64_t size);
+  // write buffer to binary
+  void write_binary(const bmodel::Binary *binary, uint8_t *buffer);
+  // write buffer to offset of binary
+  void write_binary(const bmodel::Binary *binary, uint64_t offset,
+                    uint8_t *buffer, uint64_t size);
 
   // model buffer data for parse
   const void *data() const;
 
   const MODEL_HEADER_T &header() const;
 
+  bool get_weight(const std::string &net_name, int stage_idx, uint64_t offset,
+                  Binary &bin, std::string &op_name) const;
+
   bmodel_mem_info_t get_bmodel_mem_info();
+
 protected:
   void update_bmodel();
 
@@ -152,7 +161,7 @@ private:
   const Model *model_;
   void *model_buffer_;
   uint32_t binary_offset_;
-  std::ifstream file_;         // bmodel in file
+  std::fstream file_;          // bmodel in file
   const void *bmodel_pointer_; // bmodel in buffer
 };
 

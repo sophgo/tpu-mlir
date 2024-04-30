@@ -26,6 +26,7 @@ static void usage(void) {
        << "      --dynamic model_file : true or false" << endl
        << "      --print model_file : show detailed model info" << endl
        << "      --weight model_file : show model weight info" << endl
+       << "      --update_weight dst_model dst_net dst_offset src_model src_net src_offset" << endl
        << "      --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
@@ -78,6 +79,51 @@ static void show_weight(const string &filename) {
     return;
   }
   bm_show_weight(filename);
+}
+
+static void update_weight(int argc, char **argv) {
+  if (argc != 8) {
+    FATAL("parameters are not correct");
+  }
+  auto dst_model = argv[2];
+  auto dst_net = argv[3];
+  auto dst_offset = str2ull(argv[4]);
+  auto src_model = argv[5];
+  auto src_net = argv[6];
+  auto src_offset = str2ull(argv[7]);
+  printf("read dst model:%s ...\n", dst_model);
+  ModelCtx dst_model_ctx(dst_model);
+  if (!dst_model_ctx) {
+    FATAL("file[%s] is not correct", dst_model);
+  }
+  printf("read src model:%s ...\n", src_model);
+  ModelCtx src_model_ctx(src_model);
+  if (!src_model_ctx) {
+    FATAL("file[%s] is not correct", src_model);
+  }
+  bmodel::Binary src_bin, dst_bin;
+  std::string src_name, dst_name;
+  auto dst_ret =
+      dst_model_ctx.get_weight(dst_net, 0, dst_offset, dst_bin, dst_name);
+  if (dst_ret == false || dst_bin.size() == 0) {
+    FATAL("get dst weight failed by net_name:%s, offset:%lx\n", dst_net,
+          dst_offset);
+  }
+  auto src_ret =
+      src_model_ctx.get_weight(src_net, 0, src_offset, src_bin, src_name);
+  if (src_ret == false || src_bin.size() == 0) {
+    FATAL("get src weight failed by net_name:%s, offset:%lx\n", src_net,
+          src_offset);
+  }
+  if (dst_name != src_name || dst_bin.size() != src_bin.size()) {
+    FATAL("weight not the same");
+  }
+  printf("update weight ...\n");
+  auto src_weight = new uint8_t[src_bin.size()];
+  src_model_ctx.read_binary(&src_bin, src_weight);
+  dst_model_ctx.write_binary(&dst_bin, src_weight);
+  delete[] src_weight;
+  printf("update success\n");
 }
 
 static void show_dynamic(const string &filename) {
@@ -274,6 +320,8 @@ int main(int argc, char **argv) {
     show(argv[2], all);
   } else if (cmd == "--weight") {
     show_weight(argv[2]);
+  } else if (cmd == "--update_weight") {
+    update_weight(argc, argv);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
   } else if (cmd == "--is_dynamic") {

@@ -735,3 +735,124 @@ gen_rand_input.py
 
 注意：CV相关模型通常会对输入图片进行一系列预处理，为保证模型正确性验证通过，需要用'--img'生成随机图片作为输入，不能使用随机npz文件作为输入。
 值得关注的是，随机输入可能会引起模型正确性验证对比不通过，特别是NLP相关模型，因此建议优先使用真实的测试数据。
+
+
+model_tool
+~~~~~~~~~~~~~~~~~~~~
+
+该工具用于处理最终的模型文件"bmodel"或者"cvimodel"，以下均以"xxx.bmodel"为例，介绍该工具的主要功能。
+
+1) 查看bmodel的基本信息
+
+执行参考如下:
+
+.. code-block:: shell
+
+   $ model_tool --info xxx.bmodel
+
+显示模型的基本信息，包括模型的编译版本，编译日期，模型中网络名称，输入和输出参数等等。
+显示效果如下：
+
+.. code-block:: text
+
+  bmodel version: B.2.2+v1.7.beta.134-ge26380a85-20240430
+  chip: BM1684X
+  create time: Tue Apr 30 18:04:06 2024
+
+  kernel_module name: libbm1684x_kernel_module.so
+  kernel_module size: 3136888
+  ==========================================
+  net 0: [block_0]  static
+  ------------
+  stage 0:
+  input: input_states, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  input: position_ids, [1, 512], int32, scale: 1, zero_point: 0
+  input: attention_mask, [1, 1, 512, 512], bfloat16, scale: 1, zero_point: 0
+  output: /layer/Add_1_output_0_Add, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Add_1_output_0_Add, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Transpose_2_output_0_Transpose, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  ==========================================
+  net 1: [block_1]  static
+  ------------
+  stage 0:
+  input: input_states, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  input: position_ids, [1, 512], int32, scale: 1, zero_point: 0
+  input: attention_mask, [1, 1, 512, 512], bfloat16, scale: 1, zero_point: 0
+  output: /layer/Add_1_output_0_Add, [1, 512, 2048], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Add_1_output_0_Add, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+  output: /layer/self_attn/Transpose_2_output_0_Transpose, [1, 1, 512, 256], bfloat16, scale: 1, zero_point: 0
+
+  device mem size: 181645312 (weight: 121487360, instruct: 385024, runtime: 59772928)
+  host mem size: 0 (weight: 0, runtime: 0)
+
+2) 合并多个bmodel
+
+执行参考如下:
+
+.. code-block:: shell
+
+   $ model_tool --combine a.bmodel b.bmodel c.bmodel -o abc.bmodel
+
+将多个bmodel合并成一个bmodel，如果bmodel中存在同名的网络，则会分不同的stage。
+
+3) 分解成多个bmodel
+
+执行参考如下:
+
+.. code-block:: shell
+
+   $ model_tool --extract abc.bmodel
+
+将一个bmodel分解成多个bmodel，与combine命令是相反的操作。
+
+4) 显示权重信息
+
+执行参考如下:
+
+.. code-block:: shell
+
+   $ model_tool --weight xxx.bmodel
+
+显示不同网络的各个算子的权重范围信息，显示效果如下：
+
+.. code-block:: text
+
+  net 0 : "block_0", stage:0
+  -------------------------------
+  tpu.Gather : [0x0, 0x40000)
+  tpu.Gather : [0x40000, 0x80000)
+  tpu.RMSNorm : [0x80000, 0x81000)
+  tpu.A16MatMul : [0x81000, 0x2b1000)
+  tpu.A16MatMul : [0x2b1000, 0x2f7000)
+  tpu.A16MatMul : [0x2f7000, 0x33d000)
+  tpu.A16MatMul : [0x33d000, 0x56d000)
+  tpu.RMSNorm : [0x56d000, 0x56e000)
+  tpu.A16MatMul : [0x56e000, 0x16ee000)
+  tpu.A16MatMul : [0x16ee000, 0x286e000)
+  tpu.A16MatMul : [0x286e000, 0x39ee000)
+  ==========================================
+  net 1 : "block_1", stage:0
+  -------------------------------
+  tpu.Gather : [0x0, 0x40000)
+  tpu.Gather : [0x40000, 0x80000)
+  tpu.RMSNorm : [0x80000, 0x81000)
+  tpu.A16MatMul : [0x81000, 0x2b1000)
+  tpu.A16MatMul : [0x2b1000, 0x2f7000)
+  tpu.A16MatMul : [0x2f7000, 0x33d000)
+  tpu.A16MatMul : [0x33d000, 0x56d000)
+  tpu.RMSNorm : [0x56d000, 0x56e000)
+  tpu.A16MatMul : [0x56e000, 0x16ee000)
+  tpu.A16MatMul : [0x16ee000, 0x286e000)
+  tpu.A16MatMul : [0x286e000, 0x39ee000)
+  ==========================================
+
+5) 更新权重
+
+执行参考如下:
+
+.. code-block:: shell
+
+   # 将src.bmodel中网络名为src_net的网络，在0x2000位置的权重，更新到dst.bmodel的dst_net的0x1000位置
+   $ model_tool --update_weight dst.bmodel dst_net 0x1000 src.bmodel src_net 0x2000
+
+可以实现将模型权重进行更新。比如某个模型的某个算子权重需要更新，则将该算子单独编译成bmodel，然后将其权重更新到原始的模型中。

@@ -20,6 +20,7 @@ if [ $IS_BASIC == 'all' ]; then
   $DIR/test6.sh    # test sensitive layer
   $DIR/test7.sh    # test core parallel
   $DIR/test8.sh    # test tpu profile
+  $DIR/test10.sh   # test model_tool update_weight
   $DIR/test_llm.sh # test llm models
 fi
 
