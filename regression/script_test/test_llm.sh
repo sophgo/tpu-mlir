@@ -4,6 +4,10 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+
+# ===------------------------------------------------------------===
+# Llama2
+# ===------------------------------------------------------------===
 # block cache
 # llama2_7b
 model_transform.py \
@@ -29,6 +33,7 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_static.bmodel
 
+# dynamic
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
   --quantize W4F16 \
@@ -43,6 +48,21 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_dynamic.bmodel
 
+# parallel
+model_deploy.py \
+  --mlir llama2_block_cache_0.mlir \
+  --quantize W4F16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --quant_input \
+  --quant_output \
+  --addr_mode io_alone \
+  --num_device 6 \
+  --model llama2_block_cache_0_dev6.bmodel
+
+# ===------------------------------------------------------------===
+# Qwen
+# ===------------------------------------------------------------===
 # block
 # qwen_0.5b
 model_transform.py \
@@ -75,6 +95,7 @@ npz_tool.py compare \
   qwen_block_0_tpu_outputs.npz \
   --tolerance 0.98,0.90 -v
 
+# dynamic
 model_deploy.py \
   --mlir qwen_block_0.mlir \
   --quantize W4BF16 \
@@ -94,6 +115,17 @@ npz_tool.py compare \
   qwen_block_0_model_outputs.npz \
   qwen_block_0_tpu_outputs.npz \
   --tolerance 0.98,0.90 -v
+
+# parallel
+model_deploy.py \
+  --mlir qwen_block_0.mlir \
+  --quantize W4BF16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --num_device 8 \
+  --quant_input \
+  --quant_output \
+  --model qwen_block_0_dev8.bmodel
 
 # block cache
 # qwen_0.5b
@@ -126,3 +158,11 @@ model_deploy.py \
   --test_reference qwen_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.90 \
   --model qwen_block_cache_0_dynamic.bmodel
+
+# parallel
+model_deploy.py \
+  --mlir qwen_block_cache_0.mlir \
+  --quantize W8BF16 \
+  --chip bm1684x \
+  --num_device 2 \
+  --model qwen_block_cache_0_dev2.bmodel
