@@ -747,7 +747,7 @@ def Tpu_BinaryConstShiftOp: Top_Op<"BinaryConstShift"> {
   }];
 
   let arguments = (
-    ins AnyRankedTensor:$input,
+    ins AnyTensor:$input,
     SI32Attr:$scale,
     BinaryShiftAttr:$mode,
     SI32Attr:$shift,
@@ -756,7 +756,7 @@ def Tpu_BinaryConstShiftOp: Top_Op<"BinaryConstShift"> {
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_NormalizeOp: Top_Op<"Normalize"> {

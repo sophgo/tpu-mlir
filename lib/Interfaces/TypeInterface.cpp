@@ -87,6 +87,11 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
     return to_stype;
   }
 
+  if (!from_isQuant && from_stype.isIntOrIndex() &&
+      !to_isQuant && to_stype.isIntOrIndex()) {
+    return do_nothing(mode);
+  }
+
   // case to f8
   if (from_stype.isF32() || from_stype.isF16()) {
     if (to_stype.isFloat8E4M3FN() || to_stype.isFloat8E5M2())

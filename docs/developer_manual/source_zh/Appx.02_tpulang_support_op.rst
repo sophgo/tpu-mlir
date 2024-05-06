@@ -1046,6 +1046,148 @@ min
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。当数据类型为FLOAT16/FLOAT32时，tensor_i0与tensor_i1的数据类型必须一致。
 
+
+
+add_shift
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def add_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+运算公式 :math:`tensor\_o = (tensor\_i0 + tensor\_i1) << shift`。
+张量和张量的按元素相加后再舍入算术移shift位，shift为正时，左移，shift为负时，右移。舍入模式由round_mode确定。
+add_shift数据相加后，以INT64为中间结果保存，然后在INT64基础上做一次舍入的算数移位操作；
+结果支持饱和处理；当tensor_i0、tensor_i1为signed，且tensor_o为unsigned时，结果必须饱和处理。
+该操作支持广播。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
+* tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
+* shift：int型，表示移位的位数。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
+* out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。
+该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+* BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+
+
+sub_shift
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def sub_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+运算公式 :math:`tensor\_o = (tensor\_i0 - tensor\_i1) << shift`。
+张量和张量的按元素相减后再舍入算术移shift位，shift为正时，左移，shift为负时，右移。舍入模式由round_mode确定。
+sub_shift数据相减后，以INT64为中间结果保存，然后在INT64基础上做一次舍入的算数移位操作；结果支持饱和处理。
+该操作支持广播。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
+* tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
+* shift：int型，表示移位的位数。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
+* out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'int16'/'int32'。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。
+该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+* BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+
+
+mul_shift
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def mul_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+运算公式 :math:`tensor\_o = (tensor\_i0 * tensor\_i1) << shift`。
+张量和张量的按元素相减后再舍入算术移shift位，shift为正时，左移，shift为负时，右移。舍入模式由round_mode确定。
+mul_shift数据相乘后，以INT64为中间结果保存，然后在INT64基础上做一次舍入的算数移位操作；
+结果支持饱和处理；当tensor_i0、tensor_i1为signed，且tensor_o为unsigned时，结果必须饱和处理。
+该操作支持广播。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
+* tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
+* shift：int型，表示移位的位数。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
+* out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。当BM1684时，该参数应为None。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor。
+该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+* BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
+
+
 copy
 :::::::::::::::::
 
