@@ -831,8 +831,8 @@ def min(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Min", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
 
-def __binary_shift(tensor_i0: Tensor, tensor_i1: Tensor, type: str, out_dtype: str,
-                   shift: int=0, is_reverse: bool=None, saturation: bool=True,
+def __binary_shift(tensor_i0: Tensor, tensor_i1: Tensor, type: str, shift: int,
+                   out_dtype: str, is_reverse: bool=None, saturation: bool=True,
                    round_mode: str='half_away_from_zero', out_name: str = None):
     assert type in ["Add", "Sub", "Mul"]
     o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype=out_dtype)
@@ -862,29 +862,29 @@ def __binary_shift(tensor_i0: Tensor, tensor_i1: Tensor, type: str, out_dtype: s
 @to_scalar(2)
 @auto_name()
 @annotation_check
-def add_shift(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
-              out_dtype: str, shift: int=0, saturation: bool=True, round_mode: str='half_away_from_zero',
+def add_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
+              shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
-    return __binary_shift(tensor_i0, tensor_i1, "Add", out_dtype, shift=shift, saturation=saturation,
+    return __binary_shift(tensor_i0, tensor_i1, "Add", shift, out_dtype, saturation=is_saturate,
                           round_mode=round_mode, out_name=out_name)
 
 @to_scalar(2)
 @auto_name()
 @annotation_check
-def sub_shift(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
-              out_dtype: str, shift: int=0, saturation: bool=True, round_mode: str='half_away_from_zero',
+def sub_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
+              shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
     is_reverse = None if isinstance(tensor_i0, Tensor) else True
-    return __binary_shift(tensor_i0, tensor_i1, "Sub", out_dtype, shift=shift, saturation=saturation,
+    return __binary_shift(tensor_i0, tensor_i1, "Sub", shift, out_dtype, saturation=is_saturate,
                           is_reverse=is_reverse, round_mode=round_mode, out_name=out_name)
 
 @to_scalar(2)
 @auto_name()
 @annotation_check
-def mul_shift(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
-              out_dtype: str, shift: int=0, saturation: bool=True, round_mode: str='half_away_from_zero',
+def mul_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
+              shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
-    return __binary_shift(tensor_i0, tensor_i1, "Mul", out_dtype, shift=shift, saturation=saturation,
+    return __binary_shift(tensor_i0, tensor_i1, "Mul", shift, out_dtype, saturation=is_saturate,
                           round_mode=round_mode, out_name=out_name)
 
 # def add_shift(tensor_i0: Tensor,

@@ -20,8 +20,8 @@ void tpu::BinaryShiftOp::codegen_global_bm1684x() {
   binaryshift_global_param_t param{0};
   auto &spec = param.spec;
   spec.binary_op = BM168x::binary_mode(getMode());
-  spec.rshift_num = 0;
-  spec.b_const_val = false;
+  spec.rshift_num = -getShift();
+  spec.b_is_const = false;
   spec.inversed = getIsReverse();
   spec.round_mode = round_mode_convert(getRoundMode());
   spec.is_saturate = getSaturation();
@@ -74,8 +74,8 @@ void tpu::BinaryShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   binaryshift_local_param_t param = {0};
   auto &common = param.spec.common;
   common.binary_op = BM168x::binary_mode(getMode());
-  common.rshift_num = 0;
-  common.b_const_val = false;
+  common.rshift_num = -getShift();
+  common.b_is_const = false;
   common.inversed = getIsReverse();
   common.round_mode = round_mode_convert(getRoundMode());
   common.is_saturate = getSaturation();
@@ -94,8 +94,8 @@ int64_t tpu::BinaryShiftOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto &common = param.spec.common;
   common.binary_op = BM168x::binary_mode(getMode());
-  common.rshift_num = 0;
-  common.b_const_val = false;
+  common.rshift_num = -getShift();
+  common.b_is_const = false;
   common.inversed = getIsReverse();
   common.round_mode = round_mode_convert(getRoundMode());
   common.is_saturate = getSaturation();
@@ -114,8 +114,8 @@ int64_t tpu::BinaryShiftOp::dyn_codegen_global_bm1684x(void *buffer) {
   binaryshift_global_param_t param{0};
   auto &spec = param.spec;
   spec.binary_op = BM168x::binary_mode(getMode());
-  spec.rshift_num = 0;
-  spec.b_const_val = false;
+  spec.rshift_num = -getShift();
+  spec.b_is_const = false;
   spec.inversed = getIsReverse();
   spec.round_mode = round_mode_convert(getRoundMode());
   spec.is_saturate = getSaturation();

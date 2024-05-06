@@ -660,7 +660,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
 
 def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Binary with shift operator";
@@ -706,6 +706,7 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
+  let hasCanonicalizeMethod = 1;
   let results = (outs AnyRankedTensor:$output);
 }
 
