@@ -234,9 +234,19 @@ class DeployTool:
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         if not self.cache_skip:
             file_mark(self.model_npz)
+        # dynamic layer output data dump
+        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ["NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
+            if self.chip in ("bm1684x","bm1688") and self.state != "TOP_QUANTIZED":
+                dyn_layer_out_data_path = "./.tmp"
+                os.system(f"export DYNAMIC_LAYER_OUTPUT_DATA_PATH={dyn_layer_out_data_path}")
+                os.system("export DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH={}".format(os.path.join(dyn_layer_out_data_path, "id_dict")))
+                if not os.path.exists(dyn_layer_out_data_path):
+                    os.makedirs(dyn_layer_out_data_path)
+                else:
+                    os.system(f"rm -rf {dyn_layer_out_data_path}/*")
 
     def validate_tpu_mlir(self):
-        show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
+        show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all)
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
@@ -259,9 +269,8 @@ class DeployTool:
             return patterns
 
     def validate_model(self):
-
-        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
-        model_outputs = model_inference(self.inputs, self.model)
+        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.compare_all)
+        model_outputs = model_inference(self.inputs, self.model, self.compare_all)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True)
