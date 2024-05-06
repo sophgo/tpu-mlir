@@ -19,8 +19,9 @@ from utils.misc import str2bool
 from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 
 
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
+def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False):
+    print("[CMD]: model_runner.py --input {} --model {} --output {} {}".format(
+        in_npz, model, out_npz, "--dump_all_tensors" if dump_all_tensors else ""))
 
 
 def get_chip_from_model(model_file: str) -> str:
@@ -178,6 +179,33 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
         next(pack_bmodel_context) # save output
     except StopIteration:
         pass
+
+    if not is_cv18xx and dump_all:
+        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ["NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
+            if "DYNAMIC_LAYER_OUTPUT_DATA_PATH" in os.environ and \
+            "DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH" in os.environ:
+                dyn_layer_out_data_path = os.environ["DYNAMIC_LAYER_OUTPUT_DATA_PATH"]
+                id_dict_file = os.environ["DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH"]
+                if os.path.exists(dyn_layer_out_data_path) and os.path.exists(id_dict_file) and os.path.isfile(id_dict_file):
+                    id_dict_str = "{"
+                    with open(id_dict_file) as f:
+                        id_dict_str += f.readline()
+                    id_dict_str += "}"
+                    id_dict = eval(id_dict_str)
+                    os.remove(id_dict_file)
+                    ids = sorted([int(file) for file in os.listdir(dyn_layer_out_data_path) if file.isdecimal() and int(file) in id_dict])
+                    for id in ids:
+                        name = id_dict[id]
+                        filename = os.path.join(dyn_layer_out_data_path, str(id))
+                        with open(filename, "r") as f:
+                            dict_str = f.readline()
+                            dict_ = eval(dict_str)
+                            data = dict_["data"]
+                            is_fp = dict_["is_fp"]
+                            shape = dict_["shape"]
+                            data = np.array(data, dtype=(np.float32 if is_fp else np.int32))
+                            outputs[name] = np.reshape(data, shape)
+                    os.system(f"rm -r {dyn_layer_out_data_path}/*")
 
     return outputs
 

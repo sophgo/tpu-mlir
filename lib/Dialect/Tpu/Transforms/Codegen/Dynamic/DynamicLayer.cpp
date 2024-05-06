@@ -251,6 +251,21 @@ dynamic_layer::get_input_global_tensor_specs() {
   return specs;
 }
 
+static void __dump_id_name_dict(Value v) {
+  const char *need = getenv("NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA");
+  if (!need) return;
+  if (strcmp(need, "1") == 0) {
+    const char *path = getenv("DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH");
+    if (path) {
+      FILE* fp = fopen(path, "a");
+      fprintf(fp,
+        "%d:\"%s\",",
+        get_tensor_id(v), module::getName(v).str().c_str());
+      fclose(fp);
+    }
+  }
+}
+
 std::vector<dynamic_global_tensor_spec>
 dynamic_layer::get_output_global_tensor_specs() {
   std::vector<dynamic_global_tensor_spec> specs;
@@ -271,6 +286,7 @@ dynamic_layer::get_output_global_tensor_specs() {
     spec.host_data = nullptr;
     spec.elem_num = module::getNumElements(v);
     specs.emplace_back(spec);
+    __dump_id_name_dict(v);
   }
   return specs;
 }
