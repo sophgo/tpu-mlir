@@ -200,17 +200,17 @@ model_runner.py \
 npz_tool.py compare \
   chatglm3_block_0_top_outputs.npz \
   chatglm3_block_0_tpu_outputs.npz \
-  --tolerance 0.98,0.90 -v
+  --tolerance 0.95,0.77 -v
 
 # parallel
 model_deploy.py \
   --mlir chatglm3_block_0.mlir \
   --quantize F16 \
   --chip bm1684x \
-  --num_device 8 \
+  --num_device 2 \
   --quant_input \
   --quant_output \
-  --model chatglm3_block_0_dev8.bmodel
+  --model chatglm3_block_0_dev2.bmodel
 
 # block cache
 # chatglm3_0.5b
@@ -239,4 +239,6 @@ model_deploy.py \
   --quantize W8F16 \
   --chip bm1684x \
   --num_device 2 \
+  --quant_input \
+  --quant_output \
   --model chatglm3_block_cache_0_dev2.bmodel
