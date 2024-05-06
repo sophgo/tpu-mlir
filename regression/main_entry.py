@@ -26,6 +26,9 @@ import argparse
 import logging
 from utils.mlir_shell import _os_system_log
 
+SUCCESS = 0
+FAILURE = 1
+
 
 class Status:
     PASSED = 'PASSED'
@@ -75,6 +78,8 @@ class MAIN_ENTRY(object):
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
+        self.script_basic = ["test1","test2","test5","test9"]
+        self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm"]
         # yapf: enable
         self.test_set = {
             "op0": self.run_op0_test,
@@ -133,7 +138,7 @@ class MAIN_ENTRY(object):
         print(f"======= test_{op_source}.py ======")
         case_name = f"{op_source}_test_{chip}"
         os.makedirs(case_name, exist_ok=True)
-        os.chdir(dir)
+        os.chdir(case_name)
         if op_source == "tflite":
             tester = tester(chip=chip)
         else:
@@ -143,6 +148,21 @@ class MAIN_ENTRY(object):
         os.chdir(self.current_dir)
 
         return not error_cases
+
+    def _run_script_test(self, source):
+        print(f"======= test script:{source}.sh ======")
+        case_name = f"test_script_{source}"
+        os.makedirs(case_name, exist_ok=True)
+        os.chdir(case_name)
+        success = True
+        try:
+            _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/{}.sh".format(source)))
+        except:
+            success = False
+
+        self.add_result(case_name, success)
+        os.chdir(self.current_dir)
+        return success
 
     def run_script_test(self):
         # return exit status
@@ -156,30 +176,31 @@ class MAIN_ENTRY(object):
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(file_handler)
 
-        success = True
-        try:
-            _os_system_log(
-                os.path.expandvars("$REGRESSION_PATH/script_test/run.sh {}".format(self.test_type)))
-        except:
-            success = False
-
-        self.add_result(case_name, success)
-
+        sources = self.script_basic
+        if not self.is_basic:
+            sources += self.script_extend
+        ret = True
+        for source in sources:
+            ret = self._run_script_test(source)
+            if not ret and self.is_basic:
+                break
         self.logger.removeHandler(file_handler)
         file_handler.close()
         self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
-        return not success
+        return SUCCESS if ret else FAILURE
 
     def run_op_test(self, op_test_types):
+        ret = True
         for op_source in op_test_types.keys():
             t = Timer()
             tester, test_func, chips = op_test_types[op_source]
             for chip in chips:
-                success = self._run_op_test(op_source, tester, test_func, chip)
+                ret = self._run_op_test(op_source, tester, test_func, chip)
                 # basic test stops once a test failed
-                if not success and self.is_basic:
-                    return 1
+                if not ret and self.is_basic:
+                    return FAILURE
             self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
+        return SUCCESS if ret else FAILURE
 
     def run_op0_test(self):
         self.run_op_test(self.op0_test_types)
@@ -254,10 +275,11 @@ class MAIN_ENTRY(object):
 
         for test in test_set:
             if self.test_set[test]() and self.is_basic:
-                return 1
+                return FAILURE
 
         self.time_cost.append(f"total time: {int(t.elapsed_time())} seconds")
-        return 1 if any(result.get("status") != Status.PASSED for result in self.results) else 0
+        return FAILURE if any(result.get("status") != Status.PASSED
+                              for result in self.results) else SUCCESS
 
 
 if __name__ == "__main__":
