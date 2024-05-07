@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
 
@@ -21,6 +22,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
   bool qOutput = module::isUniformQuantized(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
+  auto round_mode = round_mode_convert(getRoundMode());
   bool fInput = in_type.isIntOrIndex() == false;
   bool fOutput = out_type.isIntOrIndex() == false;
   int64_t n, c, h, w;
@@ -30,7 +32,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
     cast_global_spec_t spec = {0};
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
-    spec.common.round_mode = ROUND_INF;
+    spec.common.round_mode = round_mode;
 
     auto input_spec = BM168x::get_input_spec(op);
     auto output_spec = BM168x::get_output_spec(op);
@@ -53,6 +55,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.input_dtype = BM168x::getDataType(getInput());
       param.output_dtype = BM168x::getDataType(getOutput());
       param.mode = 0;
+      param.round_mode = round_mode;
       BM168x::call_global_func("backend_api_requant_float_global", &param,
                                sizeof(param));
     } else if (qInput && fOutput) {
@@ -82,6 +85,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(getInput());
       param.output_dtype = BM168x::getDataType(getOutput());
+      param.round_mode = round_mode;
       BM168x::call_global_func("backend_api_dequant_float_global", &param,
                                sizeof(param));
     }

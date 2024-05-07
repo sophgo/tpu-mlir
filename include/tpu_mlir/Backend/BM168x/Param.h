@@ -1034,6 +1034,7 @@ typedef struct {
   int output_dtype;
   int mode;
   int round_mode;
+  int src_round_mode;
 } requant_fp_param_t;
 
 typedef struct {
@@ -1051,6 +1052,7 @@ typedef struct {
   int offset_value;
   int input_dtype;
   int output_dtype;
+  int round_mode;
 } dequant_fp_param_t;
 
 typedef struct interp_common_spec {
@@ -1103,6 +1105,7 @@ typedef struct {
   float scale_value;
   int offset_value;
   int output_dtype; // for fp16/bfp16 output, default(0) fp32 output
+  int round_mode;
 } dyn_dequant_fp_param_t;
 
 typedef struct {
@@ -1112,6 +1115,7 @@ typedef struct {
   int output_dtype;
   int mode;
   int round_mode;
+  int src_round_mode;
 } dyn_requant_fp_common_param_t;
 
 typedef struct {
@@ -1575,6 +1579,7 @@ typedef struct pooling_common_spec {
   int32_t merge_requant;
   float rq_scale;
   float rq_offset;
+  int32_t src_round_mode;
 } pooling_common_spec_t;
 
 typedef struct {
@@ -1605,6 +1610,7 @@ typedef struct pooling3d_spec {
   bool merge_requant;
   float rq_scale;
   float rq_offset;
+  int avg_src_rd_mode;
 } pooling3d_spec_t;
 
 typedef struct arg_common_spec {
@@ -1814,6 +1820,7 @@ typedef struct {
   bool merge_requant;
   float rq_scale;
   float rq_offset;
+  int32_t avg_src_rd_mode;
 } pooling3d_common_param_t;
 
 typedef struct {

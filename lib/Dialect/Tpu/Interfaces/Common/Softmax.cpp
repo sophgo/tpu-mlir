@@ -131,6 +131,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto zp = o_qtype.getZeroPoint();
     float scale = o_qtype.getScale();
+    auto round_mode = round_mode_convert(getRoundMode());
     for (int i = 0; i < outer_dim; ++i) {
       int64_t out_offset = i * inner_dim * channel;
 #pragma omp parallel for schedule(static, omp_schedule(inner_dim))
@@ -153,9 +154,9 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
           float prob_rescaled = exp_table[offset];
           prob_rescaled = prob_rescaled / (sum * scale);
           if (out_type.isSignedInteger(8)) {
-            int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
+            // int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
             p.outputs[0][out_offset + c * inner_dim + j] =
-                to_int8(prob_rnd + zp);
+                to_int8(prob_rescaled + zp, round_mode);
           } else if (out_type.isUnsignedInteger(8)) {
             int prob_rnd = static_cast<int32_t>(prob_rescaled + 0.5);
             p.outputs[0][out_offset + c * inner_dim + j] =

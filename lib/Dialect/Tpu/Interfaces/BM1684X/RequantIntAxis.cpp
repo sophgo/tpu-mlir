@@ -32,9 +32,7 @@ void tpu::RequantIntAxisOp::codegen_global_bm1684x() {
   param.mode = static_cast<int>(getQuantMode());
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
-  param.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                         ? ROUNDING_HALF_UP
-                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
   BM168x::call_global_func("backend_api_requant_int_global", &param,
                            sizeof(param));
 }
@@ -89,9 +87,7 @@ void tpu::RequantIntAxisOp::codegen_local_bm1684x(
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   param.mode = static_cast<int>(getQuantMode());
-  param.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                         ? ROUNDING_HALF_UP
-                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
   BM168x::call_local_func("backend_api_requant_int_local", &param,
                           sizeof(param));
 }
@@ -112,9 +108,7 @@ int64_t tpu::RequantIntAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
   }
   param.common.output_dtype = BM168x::getDataType(getOutput());
   param.common.mode = static_cast<int>(getQuantMode());
-  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                                ? ROUNDING_HALF_UP
-                                : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.common.round_mode = round_mode_convert(getRoundMode());
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -130,9 +124,7 @@ int64_t tpu::RequantIntAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.common.reshaped_coeff = false;
   param.common.mode = static_cast<int>(getQuantMode());
   param.common.output_dtype = BM168x::getDataType(getOutput());
-  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                                ? ROUNDING_HALF_UP
-                                : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.common.round_mode = round_mode_convert(getRoundMode());
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

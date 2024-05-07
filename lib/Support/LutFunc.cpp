@@ -43,7 +43,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
         double data = (i - in_zp) * in_scale;
         data = func(data) / out_scale + out_zp;
         int index = i < 0 ? 256 + i : i;
-        table[index] = to_uint8(data);
+        table[index] = to_uint8(data, round_mode);
       }
       return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                    table_type);
@@ -55,7 +55,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
         double data = (i - in_zp) * in_scale;
         data = func(data) / out_scale + out_zp;
         int index = i < 0 ? 256 + i : i;
-        table[index] = to_int8(data);
+        table[index] = to_int8(data, round_mode);
       }
       return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                    table_type);
@@ -65,7 +65,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
         double data = (i - in_zp) * in_scale;
         data = func(data) / out_scale + out_zp;
         int index = i < 0 ? 256 + i : i;
-        table[index] = to_uint8(data);
+        table[index] = to_uint8(data, round_mode);
       }
       return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                    table_type);

@@ -24,13 +24,13 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
   int64_t mul_val = getMultiplier();
   int64_t offset = (int64_t)qtype.getZeroPoint();
   auto qmode = getQuantMode();
-  auto rmode = getRoundMode();
+  auto rmode = round_mode_convert(getRoundMode());
   switch (qmode) {
   case DequantMode::Normal: {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int32_t tmp = (int32_t)p.inputs[0][idx] - offset;
-      auto v = applyMultiplierAndRShift(tmp, mul_val, -shift_val);
+      auto v = applyMultiplierAndRShift(tmp, mul_val, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
       p.outputs[0][idx] = v;
     }
   } break;

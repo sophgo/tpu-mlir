@@ -22,6 +22,7 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
 
   auto shape = module::getShape(getOutput());
   auto mode = getQuantMode();
+  auto round_mode = round_mode_convert(getRoundMode());
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
@@ -37,7 +38,7 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int index = (n * shape[1] + c) * inner + i;
-          int32_t v = (int32_t)(round(p.inputs[0][index] * scale)) + zero_point;
+          int32_t v = to_int(p.inputs[0][index] * scale, round_mode) + zero_point;
           p.outputs[0][index] = saturate(v, o_sType);
         }
       }
@@ -51,8 +52,7 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int index = (n * shape[1] + c) * inner + i;
-          int32_t v =
-              (int32_t)(round((float)(p.inputs[0][index]) * scale + offset));
+          int32_t v = to_int((float)(p.inputs[0][index]) * scale + offset, round_mode);
           p.outputs[0][index] = saturate(v, o_sType);
         }
       }
