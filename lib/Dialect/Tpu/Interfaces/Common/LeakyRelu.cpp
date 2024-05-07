@@ -22,6 +22,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
   bool is_cv18xx = module::isCV18xx();
+  auto round_mode = round_mode_convert(getRoundMode());
 
   if (out_type.isa<FloatType>()) {
     float *src = p.inputs[0];
@@ -76,7 +77,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
                 ? src
                 : ((src - i_qtype.getZeroPoint()) * (float)(1.0 / scale) +
                    o_qtype.getZeroPoint());
-      p.outputs[0][i] = saturate(dst, out_type);
+      p.outputs[0][i] = saturate(dst, out_type, round_mode);
     }
   }
   return success();

@@ -33,6 +33,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
   int64_t shift_val = -getRshift();
   int64_t multi = getMultiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
+  auto round_mode = round_mode_convert(getRoundMode());
 
   if (shape.size() == 1) {
     return success();
@@ -47,7 +48,8 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
           int offset = (n * shape[1] + c) * inner + i;
           auto v = zero_point + MultiplyByQuantizedMultiplier(
                                     (int32_t)(p.inputs[0][offset]),
-                                    (int32_t)multi, (int32_t)shift_val);
+                                    (int32_t)multi, (int32_t)shift_val,
+                                    round_mode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -60,7 +62,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
           int offset = (n * shape[1] + c) * inner + i;
           auto v = zero_point +
                    applyMultiplierAndRShift((p.inputs[0][offset] - zp_x), multi,
-                                            -shift_val);
+                                            -shift_val, tpu::RequantMode::MultiplierShift, round_mode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }

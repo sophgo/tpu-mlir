@@ -21,7 +21,7 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
 
   auto shape = module::getShape(getOutput());
   auto mode = getQuantMode();
-  auto rmode = getRoundMode();
+  auto rmode = round_mode_convert(getRoundMode());
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
@@ -38,7 +38,7 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
           int offset = (n * shape[1] + c) * inner + i;
           int32_t tmp = (int32_t)p.inputs[0][offset] - zero_point;
           p.outputs[0][offset] =
-              applyMultiplierAndRShift(tmp, multi, -shift_val);
+              applyMultiplierAndRShift(tmp, multi, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
         }
       }
     }

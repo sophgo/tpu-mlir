@@ -125,6 +125,8 @@ typedef struct {
   double relu_limit;
   bool is_global;
   bool count_include_pad;
+  int64_t round_mode;
+  int64_t src_round_mode; 
 } pool_attr_t;
 
 typedef struct {

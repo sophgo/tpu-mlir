@@ -33,7 +33,8 @@ void tpu::RequantFpAxisOp::codegen_global_bm1684x() {
   }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
-  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
+  param.src_round_mode = round_mode_convert(getFirstRoundMode());
   BM168x::call_global_func("backend_api_requant_float_global", &param,
                            sizeof(param));
 }
@@ -83,7 +84,8 @@ void tpu::RequantFpAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }
-  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
+  param.src_round_mode = round_mode_convert(getFirstRoundMode());
   BM168x::call_local_func("backend_api_requant_float_local", &param,
                           sizeof(param));
 }
@@ -108,7 +110,8 @@ int64_t tpu::RequantFpAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }
-  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
+  param.src_round_mode = round_mode_convert(getFirstRoundMode());
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -128,7 +131,8 @@ int64_t tpu::RequantFpAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
-  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  param.round_mode = round_mode_convert(getRoundMode());
+  param.src_round_mode = round_mode_convert(getFirstRoundMode());
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

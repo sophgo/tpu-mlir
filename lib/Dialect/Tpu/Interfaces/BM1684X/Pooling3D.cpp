@@ -60,7 +60,8 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   spec.pad = pads;
   spec.is_avg_pooling = false;
   spec.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
-  spec.avg_rd_mode = ROUND_UP;
+  spec.avg_rd_mode = round_mode_convert(getRoundMode());
+  spec.avg_src_rd_mode = round_mode_convert(getFirstRoundMode());
   spec.if_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
 
@@ -179,7 +180,8 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   spec.pad = pads;
 
   spec.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
-  spec.avg_rd_mode = ROUND_UP;
+  spec.avg_rd_mode = round_mode_convert(getRoundMode());
+  spec.avg_src_rd_mode = round_mode_convert(getFirstRoundMode());
   spec.is_avg_pooling = false;
 
   if (getPoolMode() == tpu::PoolMode::Avg) {
@@ -240,7 +242,8 @@ int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
   memcpy(spec.common.pad, pads, sizeof(int32_t) * 6);
 
   spec.common.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
-  spec.common.avg_rd_mode = ROUND_UP;
+  spec.common.avg_rd_mode = round_mode_convert(getRoundMode());
+  spec.common.avg_src_rd_mode = round_mode_convert(getFirstRoundMode());
   spec.common.is_avg_pooling = false;
 
   if (getPoolMode() == tpu::PoolMode::Avg) {
@@ -294,7 +297,8 @@ int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
   memcpy(spec.common.pad, pads, sizeof(int32_t) * 6);
   spec.common.is_avg_pooling = false;
   spec.common.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
-  spec.common.avg_rd_mode = ROUND_UP;
+  spec.common.avg_rd_mode = round_mode_convert(getRoundMode());
+  spec.common.avg_src_rd_mode = round_mode_convert(getFirstRoundMode());
   spec.common.if_relu = attr.do_relu;
   spec.common.relu_limit = attr.relu_limit;
 

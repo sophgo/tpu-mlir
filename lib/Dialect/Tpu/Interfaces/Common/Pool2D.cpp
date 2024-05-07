@@ -39,6 +39,8 @@ pool_attr_t tpu::Pool2DOp::parseParam() {
   p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
   p.count_include_pad = getCountIncludePad();
+  p.round_mode = round_mode_convert(getRoundMode());
+  p.src_round_mode = round_mode_convert(getFirstRoundMode());
   return p;
 }
 
@@ -106,12 +108,13 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
         }
       }
     } else {
+      auto round_mode = round_mode_convert(getRoundMode());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = p.outputs[0][i] * pooling->kh * pooling->kw *
                               getScale().value().convertToDouble() +
                           getOffset().value().convertToDouble();
-        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type, round_mode);
       }
     }
   } else if (out_type.isa<FloatType>()) {

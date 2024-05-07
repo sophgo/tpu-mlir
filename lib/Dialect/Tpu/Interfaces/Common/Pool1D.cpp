@@ -82,6 +82,7 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
   // average pooling
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
+  auto round_mode = round_mode_convert(getRoundMode());
   if (out_type.isInteger(8)) {
 
     if (module::isAsymmetric() == false) {
@@ -99,7 +100,7 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
         p.outputs[0][i] = p.outputs[0][i] * pooling->kh *
                               getScale().value().convertToDouble() +
                           getOffset().value().convertToDouble();
-        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type, round_mode);
       }
     }
   } else if (out_type.isa<FloatType>()) {

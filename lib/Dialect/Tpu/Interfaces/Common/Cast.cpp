@@ -47,7 +47,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   auto op = getOperation();
   bool is_cv18xx = module::isCV18xx();
   auto round_mode =
-      is_cv18xx ? ROUNDING_HALF_TO_EVEN : ROUNDING_HALF_AWAY_FROM_ZERO;
+      is_cv18xx ? ROUNDING_HALF_TO_EVEN : round_mode_convert(getRoundMode());
   bool is_tpu = module::isTpuOp(op);
 
   if (in_type.isF32() && out_type.isF16()) {

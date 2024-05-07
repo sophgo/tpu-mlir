@@ -36,22 +36,21 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
 
   float scale_v = getScale().convertToDouble();
   float offset_v = getOffset().convertToDouble();
-
+  auto round_mode = round_mode_convert(getRoundMode());
 
   switch (mode) {
   case RequantMode::TFLite:
   case RequantMode::TFLite_LShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
-      int32_t v = (int32_t)(round(p.inputs[0][i] * scale_v)) + zero_point;
+      int32_t v = to_int(p.inputs[0][i] * scale_v, round_mode) + zero_point;
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
   case RequantMode::MultiplierShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
-      int32_t v =
-          (int32_t)(round((float)(p.inputs[0][i]) * scale_v - offset_v));
+      int32_t v = to_int((float)(p.inputs[0][i]) * scale_v - offset_v, round_mode);
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
