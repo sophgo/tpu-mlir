@@ -1476,6 +1476,32 @@ void createSubnetGraph(std::vector<Operation*> subnet_ops, std::shared_ptr<dot_g
   }
 }
 
+static void find_op_in_same_block(Operation * op, std::vector<Operation*>& group_ops,
+                                  std::map<Operation*, int>& op_block_id, int in_idx) {
+  if (std::find(group_ops.begin(), group_ops.end(), op) == group_ops.end()) {
+    return;
+  }
+  if (op_block_id.find(op) != op_block_id.end()) {
+    return;
+  }
+  op_block_id[op] = in_idx;
+  for (auto v : op->getOperands()) {
+    auto pre_op = v.getDefiningOp();
+    if (pre_op == nullptr || isa<top::NoneOp, top::WeightOp, top::InputOp>(pre_op)) {
+      continue;
+    }
+    if (std::find(group_ops.begin(), group_ops.end(), pre_op) != group_ops.end()) {
+      find_op_in_same_block(pre_op, group_ops, op_block_id, in_idx);
+    }
+  }
+
+  for (auto user : op->getUsers()) {
+    if (std::find(group_ops.begin(), group_ops.end(), user) != group_ops.end()) {
+      find_op_in_same_block(user, group_ops, op_block_id, in_idx);
+    }
+  }
+}
+
 void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   llvm::errs() << "\n"
                << "=======================================================\n"
@@ -1483,6 +1509,47 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
                << "=======================================================\n";
   auto start = std::chrono::high_resolution_clock::now();
   LgInfo sub_group;
+  int grp_num = pass_ir->tmp_base_groups.size();
+  for (int64_t i = 0; i < grp_num; i++) {
+    if (pass_ir->tmp_base_groups[i].size() > 1) {
+      sub_group.group_ops.assign(pass_ir->tmp_base_groups[i].begin(), pass_ir->tmp_base_groups[i].end());
+      sub_group.update_group_io();
+      int in_idx = 0;
+      std::map<Operation*, int> op_block_id;
+      for (auto in: sub_group.group_ins) {
+        for (auto user: in.getUsers()) {
+          find_op_in_same_block(user, sub_group.group_ops, op_block_id, in_idx);
+        }
+        in_idx++;
+      }
+	  
+      bool first_group = true;
+      bool have_valid_grp = false;
+      for (int j = 0; j < in_idx; j++) {
+        std::vector<Operation*> block_ops;
+        for (auto itr = op_block_id.begin(); itr != op_block_id.end(); ++itr) {
+          if (j == itr->second) {
+            block_ops.push_back(itr->first);
+          }
+        }
+        if (block_ops.size() > 1) {
+          have_valid_grp = true;
+          if (first_group) {
+            pass_ir->tmp_base_groups[i].assign(block_ops.begin(), block_ops.end());
+            first_group = false;
+          } else {
+            llvm::errs() << "add new block_ops\n";
+            pass_ir->tmp_base_groups.push_back(block_ops);
+          }
+        }
+      }
+      if (!have_valid_grp) {
+        llvm::errs() << "not have_valid_grp\n";
+        pass_ir->tmp_base_groups[i].clear();
+      }
+    }
+  }
+
   std::vector<std::vector<Operation *>> base_groups;
   if (pass_ir->branch_parallel) {
     get_base_branch_groups(base_groups, pass_ir->subnet_ops, pass_ir->subnet_return_opds);
@@ -1490,7 +1557,8 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
     get_base_dfs_topo_groups(base_groups, pass_ir->subnet_ops, pass_ir->tmp_base_groups);
   }
 
-  for (int64_t i = base_groups.size() - 1; i >= 0; --i) {
+  grp_num = base_groups.size();
+  for (int64_t i = grp_num - 1; i >= 0; --i) {
     if (base_groups[i].size() > 1) {
       pass_ir->ILP_time_steps.push_back(std::vector<ILPTimeStepPtr>());
       pass_ir->map_l2m_load.push_back(std::map<std::pair<Value, int>, int, value_compare2>());
@@ -1510,7 +1578,6 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   bool l2m_switch = true;
   bool train = true;
   int grp_idx = 0;
-  int grp_num = base_groups.size();
   std::shared_ptr<dot_graph> dot_graph_log = std::make_shared<dot_graph>();
   std::vector<Operation*> subnet_ops;
   subnet_ops.assign(pass_ir->subnet_ops.begin(), pass_ir->subnet_ops.end());
@@ -1518,7 +1585,6 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   std::shared_ptr<dot_graph> dot_graph_log_ok = std::make_shared<dot_graph>();
   createSubnetGraph(subnet_ops, dot_graph_log_ok);
 
-  // std::vector<int> group_status(grp_num, 0);
   for (int64_t i = 0; i < grp_num; i++) {
     if (base_groups[i].size() > 1) {
       sub_group.group_id = i;
