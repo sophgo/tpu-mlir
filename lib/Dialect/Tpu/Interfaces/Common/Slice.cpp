@@ -123,11 +123,7 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
   auto steps_v = module::getI64Array(getSteps());
   std::vector<int64_t> out_shape = module::getShape(getOutput());
   std::vector<int64_t> in_shape = module::getShape(getInput());
-  for (int i = 0; i < offset_v->size(); ++i) {
-    if (offset_v->at(i) < 0) {
-      offset_v->at(i) += in_shape[i];
-    }
-  }
+  const size_t slice_dims = offset_v->size();
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.
@@ -146,17 +142,33 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
       out_shape[i] = std::min(out_shape[i], in_shape[i]);
     }
     if (!module::isNone(getOffsetT()))
-      offset_v->at(axis) = *p.inputs[1]; // std::max((int64_t)(*p.inputs[1]), (int64_t)out_shape[axis]);
+      offset_v->at(axis) = *p.inputs[1];
     if (!module::isNone(getEndsT()))
-      // ends_v->at(axis) = std::min((int64_t)(*p.inputs[2]), (int64_t)out_shape[axis]);
       ends_v->at(axis) = *p.inputs[2];
     if (!module::isNone(getStepsT()))
       steps_v->at(axis) = *p.inputs[3];
+    if (offset_v->at(axis) < 0)
+      offset_v->at(axis) += in_shape[axis];
+    if (ends_v->at(axis) < 0)
+      ends_v->at(axis) += in_shape[axis];
+    offset_v->at(axis) = steps_v->at(axis) > 0 ? std::clamp(offset_v->at(axis), 0L, in_shape[axis])
+                        : std::clamp(offset_v->at(axis), 0L, in_shape[axis] - 1);
+    ends_v->at(axis) = steps_v->at(axis) > 0 ? std::clamp(ends_v->at(axis), 0L, in_shape[axis])
+                    : std::clamp(ends_v->at(axis), -1L, in_shape[axis] - 1);
 
     out_shape[axis] =
         (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
-    module::setShape(getOutput(), out_shape);
-    out_num_elem = module::getNumElements(getOutput());
+    out_num_elem = 1;
+    for (int i = 0; i < out_dims; i++) {
+      out_num_elem *= out_shape[i];
+    }
+  }
+  for (int i = 0; i < slice_dims; ++i) {
+    if (offset_v->at(i) < 0) {
+      offset_v->at(i) += in_shape[i];
+    }
+    offset_v->at(i) = steps_v->at(i) > 0 ? std::clamp(offset_v->at(i), 0L, in_shape[i])
+                        : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
   }
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);

@@ -1075,7 +1075,7 @@ class TPULANG_IR_TESTER(object):
                 trans = transformer_block(transformer, shape, d, head, dtype=atten_dtype)
                 transformer = trans
             norm3 = layer_norm(transformer, shape[2], -1, 1e-6, dtype=dtype)
-            slice3 = tpul.slice(norm3, [0, 0, 0], [-1, 1, -1])
+            slice3 = tpul.slice(norm3, [0, 0, 0], [np.iinfo(np.int64).max, 1, np.iinfo(np.int64).max])
             reshape3 = tpul.squeeze(slice3, [1])
             rq3 = tpul.requant_fp_to_int(reshape3, 0.875, 0, 2, atten_dtype)
             mat3 = matmul_weight(rq3, [shape[2], 1000], 8158145, -30, dtype=atten_dtype)
@@ -1196,7 +1196,7 @@ class TPULANG_IR_TESTER(object):
                 trans = transformer_block(transformer, shape, d, head, dtype=dtype)
                 transformer = trans
             norm3 = layer_norm(transformer, shape[2], -1, 1e-6, dtype=dtype)
-            slice3 = tpul.slice(norm3, [0, 0, 0], [-1, 1, -1])
+            slice3 = tpul.slice(norm3, [0, 0, 0], [np.iinfo(np.int64).max, 1, np.iinfo(np.int64).max])
             reshape3 = tpul.squeeze(slice3, [1])
             mat3 = matmul_weight(reshape3, [shape[2], 1000], dtype=dtype)
             return mat3

@@ -91,23 +91,28 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
     auto num_dims = output_shape.size();
     auto in_slice = cast<SliceOp>(in_op);
     auto cur_offset = module::getI64Array(op.getOffset());
+    auto cur_ends = module::getI64Array(op.getEnds());
     auto cur_steps = module::getI64Array(op.getSteps());
     auto in_offset = module::getI64Array(in_slice.getOffset());
     auto in_steps = module::getI64Array(in_slice.getSteps());
 
     std::vector<int64_t> new_offset(num_dims, 0);
+    std::vector<int64_t> new_ends(num_dims, 0);
     std::vector<int64_t> new_steps(num_dims, 1);
     for (int i = 0; i < num_dims; i++) {
       auto cur_off = cur_offset->at(i);
+      auto cur_end = cur_ends->at(i);
       auto cur_s = cur_steps->at(i);
       assert(cur_s > 0);
       auto in_off = in_offset->at(i);
       auto in_s = in_steps->at(i);
       assert(in_s > 0);
       new_offset[i] = in_off + cur_off * in_s;
+      new_ends[i] = new_offset[i] + (cur_end - cur_off) * in_s;
       new_steps[i] = in_s * cur_s;
     }
     op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
+    op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));
     op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
     op->setOperand(0, in_slice.getInput());
     rewriter.eraseOp(in_op);
