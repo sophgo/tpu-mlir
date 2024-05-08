@@ -34,3 +34,4 @@ model_deploy.py \
   --test_reference test7_top_outputs.npz \
   --model test7_f16_core2.bmodel
 
+rm -rf *.npz

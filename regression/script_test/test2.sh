@@ -45,3 +45,5 @@ model_deploy.py \
   --tolerance 0.9,0.5 \
   --compare_all \
   --model test2_1684x_int8.bmodel
+
+rm -rf *.npz

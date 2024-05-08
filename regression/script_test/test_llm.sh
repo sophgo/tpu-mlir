@@ -242,3 +242,5 @@ model_deploy.py \
   --quant_input \
   --quant_output \
   --model chatglm3_block_cache_0_dev2.bmodel
+
+  rm -rf *.npz

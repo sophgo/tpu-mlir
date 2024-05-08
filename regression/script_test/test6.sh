@@ -52,4 +52,6 @@ classify_mobilenet_v2.py \
         --output mobilnet_v2_mix.jpg \
         --category_file ../ILSVRC2012/synset_words.txt
 
+rm -rf *.npz
+
 popd

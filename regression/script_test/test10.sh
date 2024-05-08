@@ -38,3 +38,5 @@ model_runner.py --input test10_input.npz --model test10_a.bmodel --output a_out.
 model_runner.py --input test10_input.npz --model test10_b.bmodel --output b_out.npz
 
 npz_tool.py compare a_out.npz b_out.npz --tolerance 1.0,1.0
+
+rm -rf *.npz
