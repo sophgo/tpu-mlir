@@ -63,6 +63,8 @@ detect_yolov5.py \
   --fuse_postprocess \
   --out dog_out.jpg
 
+rm -rf *.npz
+
 popd
 
 mkdir -p yolov5s_3output
@@ -130,6 +132,8 @@ detect_yolov5.py \
   --fuse_postprocess \
   --out dog_out_bm1688.jpg
 
+rm -rf *.npz
+
 popd
 
 mkdir -p yolov3
@@ -168,5 +172,7 @@ detect_yolov3.py \
   --fuse_preprocess \
   --fuse_postprocess \
   --out dog_out.jpg
+
+rm -rf *.npz
 
 popd

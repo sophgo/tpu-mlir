@@ -67,3 +67,5 @@ model_deploy.py \
   --test_reference test3_top_outputs.npz \
   --compare_all \
   --model test3_i16_1684x_int8.bmodel
+
+rm -rf *.npz

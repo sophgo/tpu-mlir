@@ -12,10 +12,10 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690 2024-4-30
+## TPU1684X/1688/BM1690 2024-5-9
 ``` bash
 
-#bm1684x sha256: f3e440ec6b9213ce5c851d7257436070553bc196
+#bm1684x sha256: 4cd62e74c52e5b9cbe8b25eba36fa78cc099e8aa
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: f3e440ec6b9213ce5c851d7257436070553bc196
+#bm1688 sha256: 4cd62e74c52e5b9cbe8b25eba36fa78cc099e8aa
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: f3e440ec6b9213ce5c851d7257436070553bc196
+#bm1690 sha256: 4cd62e74c52e5b9cbe8b25eba36fa78cc099e8aa
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**
@@ -45,7 +45,7 @@ source  scripts/envsetup.sh sg2260
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.so
 
-#sg2380 sha256: f3e440ec6b9213ce5c851d7257436070553bc196
+#sg2380 sha256: 4cd62e74c52e5b9cbe8b25eba36fa78cc099e8aa
 cd TPU1686
 source  scripts/envsetup.sh sg2380
 **debug: rebuild_backend_lib_cmodel**
@@ -55,8 +55,8 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 ```
 
 
-## tpu-runtime 2023-3-24
-build from tpu-runtime 593e93f3489e60fc79dd9335d4bc151c8cadaf62
+## tpu-runtime 2023-5-9
+build from tpu-runtime a312f4db40d04bfb69494e31a4c49bf445fc454c
 ``` bash
 pushd libsophon
 mkdir -p build && cd build

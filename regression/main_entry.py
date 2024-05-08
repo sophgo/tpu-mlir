@@ -8,6 +8,7 @@
 # ==============================================================================
 import sys
 import os
+import shutil
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
@@ -113,9 +114,9 @@ class MAIN_ENTRY(object):
         print(
             f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} ====="
         )
-        dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
-        os.makedirs(dir, exist_ok=True)
-        os.chdir(dir)
+        target_dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
+        os.makedirs(target_dir, exist_ok=True)
+        os.chdir(target_dir)
         regressor = MODEL_RUN(model_name,
                               chip,
                               self.test_type,
@@ -129,7 +130,7 @@ class MAIN_ENTRY(object):
             "error_cases": []
         })
         os.chdir(self.current_dir)
-
+        shutil.rmtree(target_dir)
         self.logger.removeHandler(file_handler)
         file_handler.close()
         return ret == 0

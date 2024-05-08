@@ -47,3 +47,5 @@ model_deploy.py \
   --test_input  mobilenet_v2_b1_in_f32.npz \
   --test_reference mobilenet_v2_top_outputs.npz \
   --model mobilenet_v2_1688_io_alone.bmodel
+
+rm -rf *.npz

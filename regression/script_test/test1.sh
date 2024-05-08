@@ -131,3 +131,5 @@ tpuc-opt mobilenet_v2_b4.mlir \
 #   mlir-translate --mlir-to-llvmir |
 #   llc -mtriple=x86_64-unknown-linux-gnu --filetype=obj \
 #     -o mobilenet_v2.o
+
+rm -rf *.npz
