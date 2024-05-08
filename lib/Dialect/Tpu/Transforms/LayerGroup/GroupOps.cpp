@@ -210,10 +210,11 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   llvm::errs()<<"get pre or next ops time:"<<elapsed.count()<<"\n";
   Operation* glayer_op = nullptr;
+  int round = 0;
   while(true) {
     int count = 0;
+    llvm::errs()<<"start prune, round:"<<round++<<"\n";
     for (auto& group: lg_pass_ir_->tmp_base_groups) {
-      // llvm::errs()<<"get del_ops for group:"<<count<<"\n";
       std::set<Operation*> del_ops;
       for (auto op: group) {
         for (auto itr = glayer_pre_ops.begin(); itr != glayer_pre_ops.end(); ++itr) {
@@ -249,45 +250,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     }
   }
 
-  for (auto& group: lg_pass_ir_->tmp_base_groups) {
-    for (auto op: group) {
-      if (group.size() < 2) {
-        continue;
-      }
-      bool has_adjacent_node = false;
-      for (auto user: op->getUsers()) {
-        auto itr2 = std::find(group.begin(), group.end(), user);
-        if (itr2 != group.end()) {
-          has_adjacent_node = true;
-          break;
-        }
-      }
-      for (OpOperand &opd : op->getOpOperands()) {
-        auto inOp = opd.get().getDefiningOp();
-        if (inOp == nullptr || isa<top::NoneOp>(inOp)) {
-          continue;
-        }
-        auto itr = std::find(group.begin(), group.end(), inOp);
-        if (itr != group.end()) {
-          has_adjacent_node = true;
-          break;
-        }
-      }
-      if (!has_adjacent_node) {
-        for (auto user: op->getUsers()) {
-          for (auto& group2: lg_pass_ir_->tmp_base_groups) {
-            auto itr2 = std::find(group2.begin(), group2.end(), user);
-            if (itr2 != group2.end()) {
-              llvm::errs()<<"  change grp, name:"<<module::getName(op).str()<<"\n";
-              group2.push_back(op);
-              group.erase(std::remove(group.begin(), group.end(), op), group.end());
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
+
 
   auto end1 = std::chrono::high_resolution_clock::now();
   auto elapsed1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start);

@@ -175,8 +175,8 @@ class TORCH_IR_TESTER(object):
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
             "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
             "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
-            ## only for test
-            "user_define_net":   (self.user_define_net,    N, Y, N, N),
+            ## only for test, only run test_single
+            "user_define_net":   (self.user_define_net,    N, N, N, N),
             ## Canonicalization
             "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N)
         }
@@ -3474,13 +3474,12 @@ class TORCH_IR_TESTER(object):
         # self.trace_and_test([[5,1,8,16],[5,1,8,16],[5,16,8,64]], Model0())
     def user_define_net(self):
         """user_define_net"""
-        return
-
-        print('start test test_model1')
         self.group_opt = 3
-        from tools.train.test_model import test_model1
-        model = test_model1()
-        self.trace_and_test([(1,3,224,224)], model)
+
+        # print('start test test_model1')
+        # from tools.train.test_model import test_model1
+        # model = test_model1()
+        # self.trace_and_test([(1,3,224,224)], model)
 
         # print('start test test_model2')
         # from tools.train.test_model import test_model2
@@ -3507,11 +3506,10 @@ class TORCH_IR_TESTER(object):
         # model = models.mobilenet_v2()
         # self.trace_and_test([(1,3,224,224)], model)
 
-        # print('start test resnet50')
-        # from tools.train.resnet import resnet50
-        # model = resnet50()
-        # self.trace_and_test([(1,3,224,224)], model)
-
+        print('start test resnet50')
+        from tools.train.resnet import resnet50
+        model = resnet50()
+        self.trace_and_test([(1,3,224,224)], model)
 
 
         # print('start test test_model6')
