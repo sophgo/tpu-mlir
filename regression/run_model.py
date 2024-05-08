@@ -149,7 +149,7 @@ class MODEL_RUN(object):
                         and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
             if chip =='bm1690' and f"test_{quant_mode}" in self.ini_content:
-                self.quant_modes[quant_mode] &= int(self.ini_content[f"test_{quant_mode}"])
+                self.quant_modes[quant_mode] = int(self.ini_content[f"test_{quant_mode}"])
 
             if f"{chip}_{quant_mode}_time" in self.arch_content.keys():
                 self.time_record[quant_mode] = eval(self.arch_content[f"{chip}_{quant_mode}_time"])
@@ -230,6 +230,10 @@ class MODEL_RUN(object):
                     self.cali_table = os.path.expandvars(
                         f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
                     self.cali_table = self.cali_table + "_" + mode
+            if mode == 'f8e4m3' or mode == 'f8e5m2':
+                self.cali_table_f8 = self.cali_table
+                self.cali_table = self.cali_table[:-(len("_" + mode))]
+
             if os.path.exists(self.cali_table):
                 continue
             if "dataset" not in self.ini_content:
@@ -380,7 +384,10 @@ class MODEL_RUN(object):
         # add for quant modes which require calibration
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):
             if self.do_cali:
-                cmd += [f"--calibration_table {self.cali_table}"]
+                if quant_mode.startswith("f8"):
+                    cmd += [f"--calibration_table {self.cali_table_f8}"]
+                else:
+                    cmd += [f"--calibration_table {self.cali_table}"]
                 if "use_quantize_table" in self.ini_content and int(
                         self.ini_content["use_quantize_table"]):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
