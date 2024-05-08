@@ -39,7 +39,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
         index = input_shape[ax] + index;
       }
       std::vector<int64_t> offsets(input_shape.size(), 0);
-      std::vector<int64_t> ends(input_shape.size(), -1);
+      std::vector<int64_t> ends(input_shape.size(), std::numeric_limits<int64_t>::max());
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = index;
       ends[ax] = offsets[ax] + 1;

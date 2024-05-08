@@ -23,7 +23,7 @@ struct SplitToSlice : public OpRewritePattern<SplitOp> {
     auto axis = op.getAxis();
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);
-    std::vector<int64_t> ends(dims, -1);
+    std::vector<int64_t> ends(dims, std::numeric_limits<int64_t>::max());
     // auto name = module::getName(op.getResult(0)).str();
     ends[axis] = 0;
     rewriter.setInsertionPointAfter(op);
