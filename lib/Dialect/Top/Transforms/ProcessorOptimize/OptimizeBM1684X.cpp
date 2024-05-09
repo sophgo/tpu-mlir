@@ -44,7 +44,7 @@ public:
     }
     auto unsqueeze_op =
         dyn_cast<top::UnsqueezeOp>(tile_op.getInput().getDefiningOp());
-    if (!unsqueeze_op) {
+    if (!unsqueeze_op || module::getShape(unsqueeze_op.getInput())[1] != 1) {
       return failure();
     }
     // not support quant
@@ -201,6 +201,178 @@ public:
         operands, attrs);
 
     // 8. Replace
+    rewriter.setInsertionPointAfter(op);
+    rewriter.replaceAllUsesWith(op, concat_op->getResult(0));
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+// Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
+//                                                    Reshape --> Left -->
+// To
+// Right -> Transpose(Permute) -> Reshape --> MatMul (do loop batch times)
+//                               Left  ->
+// support multi batch
+class ConvertGLMTilePermute2 : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    // [2x32x512x512;512x2x2x128] -> 2x[16x512x2x512;1x512x2x128] (hdim_is_batch)
+    // 1. match the pattern with
+    // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
+    // TODO support case [512x64x512;512x4x128]; eliminate all permute ops
+    auto left = op.getOperand(0); // [64x512x512](64 = batch*num_heads)
+    auto right = op.getOperand(1); // []
+    auto eleType = module::getElementType(left);
+    auto right_op = dyn_cast<top::PermuteOp>(right.getDefiningOp());
+    if (!right_op) {
+      return failure();
+    }
+    auto reshape_op =
+        dyn_cast<top::ReshapeOp>(right_op.getInput().getDefiningOp());
+    if (!reshape_op) {
+      return failure();
+    }
+    auto tile_op = dyn_cast<top::TileOp>(reshape_op.getInput().getDefiningOp());
+    if (!tile_op) {
+      return failure();
+    }
+    auto unsqueeze_op =
+        dyn_cast<top::UnsqueezeOp>(tile_op.getInput().getDefiningOp());
+    if (!unsqueeze_op) {
+      return failure();
+    }
+    // not support quant
+    if (module::isCalibratedType(op.getOutput().getType())) {
+      return failure();
+    }
+
+    // 2. Get Params
+    auto top = unsqueeze_op.getInput(); // [512,2,2,128]
+    auto order = module::getI64Array(right_op.getOrder());
+    for (int i = 0; i < order->size(); i++) {
+      if (order->at(i) == order->size() - 1) {
+        order->at(i) += 1;
+      }
+    }
+    auto op_name = module::getName(op.getOperation()).str();
+    std::vector<int64_t> left_shape = module::getShape(left);
+    std::vector<int64_t> top_shape = module::getShape(top);
+    if (top_shape.size() != 4 || top_shape[2] != 2) {
+      return failure();
+    }
+    int batch_size = top_shape[1];
+    int query_group = top_shape[2];
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    auto none_op = module::getNoneOp(op);
+
+    // 3. <right> PermuteOp [512,2,2,128] -> [2,2,512,128]
+    attrs.clear();
+    operands.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {order->at(0), 2, order->at(1), order->at(2)})));
+    auto right_permute_type = RankedTensorType::get(
+        {top_shape[order->at(0)], top_shape[2], top_shape[order->at(1)],
+         top_shape[order->at(2)]},
+        eleType);
+    auto right_permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_right_permute")),
+        right_permute_type, top, attrs);
+
+    // 4. <Right> ReshapeOp [2,2,512,128] -> [4,512,128]
+    std::vector<int64_t> right_reshape_shape = {batch_size * query_group, top_shape[order->at(1)],
+         top_shape[order->at(2)]};
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                     {batch_size * query_group, top_shape[order->at(1)], top_shape[order->at(2)]})));
+    auto right_reshape_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_right_reshape")),
+        RankedTensorType::get(
+            {batch_size * query_group, top_shape[order->at(1)], top_shape[order->at(2)]}, eleType),
+        right_permute_op->getResult(0), attrs);
+
+    int slice_sec = batch_size * query_group;
+    int left_slice_size = left_shape[0] / slice_sec;
+    std::vector<Value> matmul_operands;
+    std::vector<Value> concat_operands;
+    for(int slice_idex = 0; slice_idex < slice_sec; slice_idex++){
+      // 6. <Left>  SliceOp [64, 512, 512] -> 4 [16, 512, 512]
+      attrs.clear();
+      operands.clear();
+      operands.emplace_back(left);
+      operands.emplace_back(none_op);
+      operands.emplace_back(none_op);
+      operands.emplace_back(none_op);
+      attrs.emplace_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({left_slice_size * slice_idex, 0, 0})));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr(
+                      {left_slice_size * (slice_idex + 1), left_shape[1], left_shape[2]})));
+      auto left_slice_type = RankedTensorType::get(
+          {left_slice_size, left_shape[1], left_shape[2]}, eleType);
+      auto left_slice_op = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_left_slice_" + std::to_string(slice_idex))),
+        left_slice_type, operands, attrs);
+      matmul_operands.emplace_back(left_slice_op->getResult(0));
+
+      // 7. <Right>  SliceOp [4, 512, 128] -> 4 [1, 512, 128]
+      attrs.clear();
+      operands.clear();
+      operands.emplace_back(right_reshape_op);
+      operands.emplace_back(none_op);
+      operands.emplace_back(none_op);
+      operands.emplace_back(none_op);
+      attrs.emplace_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({slice_idex, 0, 0})));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr(
+                      {slice_idex+1, right_reshape_shape[1], right_reshape_shape[2]})));
+      auto right_slice_type = RankedTensorType::get(
+          {1, right_reshape_shape[1], right_reshape_shape[2]}, eleType);
+      auto right_slice_op = rewriter.create<top::SliceOp>(
+          NameLoc::get(rewriter.getStringAttr(op_name + "_right_slice_" + std::to_string(slice_idex))),
+          right_slice_type, operands, attrs);
+      matmul_operands.emplace_back(right_slice_op->getResult(0));
+    }
+    // do matmul after all sliceops to enabled to layergroup
+    // 8. MatMulOp [16, 512, 512] -> [1, 512, 128]
+    for(int slice_idex = 0; slice_idex < slice_sec; slice_idex++)
+    {
+      attrs.clear();
+      operands.clear();
+      operands.emplace_back(matmul_operands[slice_idex * 2]);
+      operands.emplace_back(matmul_operands[slice_idex * 2 + 1]);
+      operands.emplace_back(none_op);
+      auto matmul_type = RankedTensorType::get(
+          {left_shape[0] / (batch_size * query_group), left_shape[1], right_reshape_shape[2]}, eleType);
+      auto matmul_op = rewriter.create<top::MatMulOp>(
+          NameLoc::get(rewriter.getStringAttr(op_name + "_matmul_" + std::to_string(slice_idex))),
+          matmul_type, operands, attrs);
+      concat_operands.emplace_back(matmul_op->getResult(0));
+    }
+    // 9. ConcatOp [16, 512, 128] -> [batch_size * query_group * 16, 512, 128]
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
+    auto concat_type = RankedTensorType::get(
+        {left_shape[0], left_shape[1], right_reshape_shape[2]}, eleType);
+    auto concat_op = rewriter.create<top::ConcatOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_concat")), concat_type,
+        concat_operands, attrs);
+
     rewriter.setInsertionPointAfter(op);
     rewriter.replaceAllUsesWith(op, concat_op->getResult(0));
     rewriter.eraseOp(op);
@@ -1108,7 +1280,7 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
-      ->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
+      ->add<ConvertGLMTilePermute, ConvertGLMTilePermute2, ConvertMatMulWithRightTranspose,
             ConvertMatMul2Attention, ReshapeReorderPattern,
             ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
