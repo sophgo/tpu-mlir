@@ -1606,6 +1606,350 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
   }
 };
 
+
+// permute + (mulconst) + add + cast + softmax + cast + slice + permute
+// -> add + cast + softmax + cast + slice
+struct PermuteFuseAddSoftmaxSlice : public OpRewritePattern<tpu::ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  tpu::ReshapeOp move_reshape_after_add(tpu::AddOp &op,
+                                        PatternRewriter &rewriter) const {
+    auto l_reshape_op = op.getOperand(0).getDefiningOp<tpu::ReshapeOp>();
+    auto r_reshape_op = op.getOperand(1).getDefiningOp<tpu::ReshapeOp>();
+    if (!l_reshape_op || !r_reshape_op)
+      return nullptr;
+    auto l_in_shape = module::getShape(l_reshape_op.getInput()).vec();
+    auto r_in_shape = module::getShape(r_reshape_op.getInput()).vec();
+    if (l_in_shape != r_in_shape)
+      return nullptr;
+    auto l_out_shape = module::getShape(l_reshape_op.getOutput()).vec();
+    auto r_out_shape = module::getShape(r_reshape_op.getOutput()).vec();
+    if (l_out_shape != r_out_shape)
+      return nullptr;
+    auto loc = op.getLoc();
+    op.setOperand(0, l_reshape_op.getInput());
+    op.setOperand(1, r_reshape_op.getInput());
+    auto output = op.getOutput();
+    module::setShape(output, l_in_shape);
+    module::setLocSuffix(op, "before_reshape");
+
+    rewriter.setInsertionPointAfterValue(output);
+    auto reshape_type = module::getTypeLike(output, l_out_shape);
+    auto new_reshape_op =
+        rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
+    output.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+    return new_reshape_op;
+  }
+
+  std::vector<int64_t> modify_top_matmul(tpu::MatMulOp &op,
+                                         tpu::MulConstOp &mulconst_op,
+                                         Value &left, Value &right,
+                                         PatternRewriter &rewriter) const {
+    op.setOperand(0, left);
+    op.setOperand(1, right);
+    auto matmul_output_shape = module::getShape(op.getOutput()).vec();
+    int64_t batch_size = matmul_output_shape[0];
+    int64_t num_head = matmul_output_shape[1];
+    int64_t seq_length = matmul_output_shape[3];
+    std::vector<int64_t> new_shape = {batch_size, 1, num_head, seq_length};
+    module::setShape(op->getResult(0), {batch_size, 1, num_head, seq_length});
+    module::setShape(mulconst_op->getOperand(0), new_shape);
+    module::setShape(mulconst_op->getResult(0), new_shape);
+    op->setAttr("hdim_is_batch", rewriter.getBoolAttr(true));
+    op->setAttr("right_transpose", rewriter.getBoolAttr(true));
+
+    auto add_op =
+        dyn_cast<tpu::AddOp>(*mulconst_op.getOutput().getUsers().begin());
+    if (add_op) {
+      module::setShape(add_op->getOperand(0), new_shape);
+      module::setShape(add_op->getResult(0), new_shape);
+    }
+    return new_shape;
+  }
+
+  std::vector<int64_t> modify_matmul(tpu::MatMulOp &op,
+                                     PatternRewriter &rewriter) const {
+    // auto permute_input_shape =
+    // module::getShape(permute_op->getOperand(0)).vec();
+    auto output_shape = module::getShape(op.getOutput()).vec();
+    auto new_out_shape = {output_shape[0], output_shape[2], output_shape[1],
+                          output_shape[3]};
+    // module::setShape(op->getOperand(0), permute_input_shape);
+    module::setShape(op->getResult(0), new_out_shape);
+    op->setAttr("hdim_is_batch", rewriter.getBoolAttr(true));
+    return new_out_shape;
+  }
+
+  template <typename TyOp>
+  void modify_shape(TyOp &op, std::vector<std::vector<int64_t>> in_shapes,
+                    std::vector<std::vector<int64_t>> out_shapes,
+                    PatternRewriter &rewriter) const {
+    for (size_t i = 0; i < in_shapes.size(); i++) {
+      module::setShape(op->getOperand(i), in_shapes[i]);
+    }
+    for (size_t i = 0; i < out_shapes.size(); i++) {
+      module::setShape(op->getResult(i), out_shapes[i]);
+    }
+    return;
+  }
+
+  template <>
+  void modify_shape(tpu::SliceOp &op,
+                    std::vector<std::vector<int64_t>> in_shapes,
+                    std::vector<std::vector<int64_t>> out_shapes,
+                    PatternRewriter &rewriter) const {
+    for (size_t i = 0; i < in_shapes.size(); i++) {
+      module::setShape(op->getOperand(i), in_shapes[i]);
+    }
+    for (size_t i = 0; i < out_shapes.size(); i++) {
+      module::setShape(op->getResult(i), out_shapes[i]);
+    }
+    auto ends = module::getI64Array(op.getEnds());
+    std::vector<int64_t> ends_v(ends->data(), ends->data() + ends->size());
+    op->setAttr("ends", rewriter.getI64ArrayAttr(
+                            {ends_v[0], ends_v[2], ends_v[1], ends_v[3]}));
+    return;
+  }
+
+  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto add_op = dyn_cast<tpu::AddOp>(op->getOperand(0).getDefiningOp());
+    if (!add_op) {
+      return failure();
+    }
+    int opd_num = add_op->getNumOperands();
+    if (opd_num != 2)
+      return failure();
+
+    // 1. Match Pattern
+    // share branch & unshare branch & self branch
+    auto share_unshare_branch =
+        dyn_cast<tpu::AddOp>(add_op->getOperand(0).getDefiningOp());
+    auto self_branch =
+        dyn_cast<tpu::MatMulOp>(add_op->getOperand(1).getDefiningOp());
+    if (!share_unshare_branch || !self_branch) {
+      return failure();
+    }
+    auto share_branch = dyn_cast<tpu::MatMulOp>(
+        share_unshare_branch->getOperand(0).getDefiningOp());
+    auto unshare_branch = dyn_cast<tpu::MatMulOp>(
+        share_unshare_branch->getOperand(1).getDefiningOp());
+    if (!share_branch || !unshare_branch) {
+      return failure();
+    }
+
+    // share branch
+    auto share_slice_op =
+        dyn_cast<tpu::SliceOp>(share_branch->getOperand(0).getDefiningOp());
+    auto share_tile_op =
+        dyn_cast<tpu::TileOp>(share_branch->getOperand(1).getDefiningOp());
+    if (!share_slice_op || !share_tile_op) {
+      return failure();
+    }
+    auto share_permute_op =
+        dyn_cast<tpu::PermuteOp>(share_tile_op->getOperand(0).getDefiningOp());
+    if (!share_permute_op) {
+      return failure();
+    }
+
+    // unshare branch
+    auto unshare_slice_op =
+        dyn_cast<tpu::SliceOp>(unshare_branch->getOperand(0).getDefiningOp());
+    auto unshare_permute_op =
+        dyn_cast<tpu::PermuteOp>(unshare_branch->getOperand(1).getDefiningOp());
+    if (!unshare_slice_op || !unshare_permute_op) {
+      return failure();
+    }
+
+    auto softmax_op = dyn_cast<tpu::SoftmaxOp>(
+        unshare_slice_op->getOperand(0).getDefiningOp());
+    if (!softmax_op) {
+      return failure();
+    }
+
+    // self branch
+    auto self_slice_op =
+        dyn_cast<tpu::SliceOp>(self_branch->getOperand(0).getDefiningOp());
+    auto _self_reshape_op = self_branch->getOperand(1).getDefiningOp();
+    tpu::ReshapeOp self_reshape_op;
+    if (isa<tpu::CastOp>(_self_reshape_op)) {
+      self_reshape_op = dyn_cast<tpu::ReshapeOp>(
+          _self_reshape_op->getOperand(0).getDefiningOp());
+    } else {
+      self_reshape_op = dyn_cast<tpu::ReshapeOp>(_self_reshape_op);
+    }
+    if (!self_slice_op || !self_reshape_op) {
+      return failure();
+    }
+
+    // Softmax
+    auto concat_op =
+        dyn_cast<tpu::ConcatOp>(softmax_op->getOperand(0).getDefiningOp());
+    if (!concat_op) {
+      return failure();
+    }
+    auto share_add_op =
+        dyn_cast<tpu::AddOp>(concat_op->getOperand(0).getDefiningOp());
+    auto unshare_add_op =
+        dyn_cast<tpu::AddOp>(concat_op->getOperand(1).getDefiningOp());
+    auto self_mulconst_op =
+        dyn_cast<tpu::MulConstOp>(concat_op->getOperand(2).getDefiningOp());
+    if (!share_add_op || !unshare_add_op || !self_mulconst_op) {
+      return failure();
+    }
+
+    // share branch & unshare branch
+    // MulConst
+    auto share_mulconst_op =
+        dyn_cast<tpu::MulConstOp>(share_add_op->getOperand(0).getDefiningOp());
+    auto unshare_mulconst_op = dyn_cast<tpu::MulConstOp>(
+        unshare_add_op->getOperand(0).getDefiningOp());
+    if (!share_mulconst_op || !unshare_mulconst_op) {
+      return failure();
+    }
+
+    // MatMul
+    auto share_top_matmul_op = dyn_cast<tpu::MatMulOp>(
+        share_mulconst_op->getOperand(0).getDefiningOp());
+    auto unshare_top_matmul_op = dyn_cast<tpu::MatMulOp>(
+        unshare_mulconst_op->getOperand(0).getDefiningOp());
+    auto self_top_matmul_op = dyn_cast<tpu::MatMulOp>(
+        self_mulconst_op->getOperand(0).getDefiningOp());
+    if (!share_top_matmul_op || !unshare_top_matmul_op || !self_top_matmul_op) {
+      return failure();
+    }
+
+    // share branch
+    auto top_add_op = dyn_cast<tpu::AddOp>(
+        share_top_matmul_op->getOperand(0).getDefiningOp());
+    auto share_top_tile_op = dyn_cast<tpu::TileOp>(
+        share_top_matmul_op->getOperand(1).getDefiningOp());
+    if (!top_add_op || !share_top_tile_op) {
+      return failure();
+    }
+    auto share_top_permute_op = dyn_cast<tpu::PermuteOp>(
+        share_top_tile_op->getOperand(0).getDefiningOp());
+    if (!share_top_permute_op) {
+      return failure();
+    }
+
+    // unshare branch
+    auto unshare_top_permute_op = dyn_cast<tpu::PermuteOp>(
+        unshare_top_matmul_op->getOperand(1).getDefiningOp());
+    if (!unshare_top_permute_op) {
+      return failure();
+    }
+
+    // self branch
+    auto self_top_permute_op = dyn_cast<tpu::PermuteOp>(
+        self_top_matmul_op->getOperand(1).getDefiningOp());
+    if (!self_top_permute_op) {
+      return failure();
+    }
+
+    // move reshape
+    auto new_top_reshape_op = move_reshape_after_add(top_add_op, rewriter);
+
+    // 2. Set Shape & Operand
+    // share branch
+    // TileOp
+    auto share_top_permute_input_shape =
+        module::getShape(share_top_permute_op->getOperand(0));
+    auto share_top_tile_output_shape =
+        module::getShape(share_top_tile_op->getResult(0));
+    std::vector<int64_t> new_share_top_tile_output_shape =
+        share_top_permute_input_shape;
+    new_share_top_tile_output_shape[0] = share_top_tile_output_shape[0];
+    module::setShape(share_top_tile_op->getResult(0),
+                     new_share_top_tile_output_shape);
+    share_top_tile_op->setOperand(0, share_top_permute_op->getOperand(0));
+    // ReshapeOp
+    Value top_reshape_input = new_top_reshape_op->getOperand(0);
+    // Value share_top_tile_output = share_top_tile_op->getResult(0);
+    // auto share_top_shape = modify_top_matmul(share_top_matmul_op,
+    // share_mulconst_op, top_reshape_input, share_top_tile_output, rewriter);
+    Value share_top_permute_input = share_top_permute_op->getOperand(0);
+    auto share_top_shape =
+        modify_top_matmul(share_top_matmul_op, share_mulconst_op,
+                          top_reshape_input, share_top_permute_input, rewriter);
+
+    // unshare branch
+    Value unshare_top_permute_input = unshare_top_permute_op->getOperand(0);
+    auto unshare_top_shape = modify_top_matmul(
+        unshare_top_matmul_op, unshare_mulconst_op, top_reshape_input,
+        unshare_top_permute_input, rewriter);
+
+    // self branch
+    Value self_top_permute_input = self_top_permute_op->getOperand(0);
+    auto self_top_shape =
+        modify_top_matmul(self_top_matmul_op, self_mulconst_op,
+                          top_reshape_input, self_top_permute_input, rewriter);
+
+    // ConcatOp
+    auto concat_shape = module::getShape(concat_op->getResult(0)).vec();
+    std::vector<int64_t> new_concat_shape = {concat_shape[0], concat_shape[2],
+                                             concat_shape[1], concat_shape[3]};
+    modify_shape<tpu::ConcatOp>(
+        concat_op, {share_top_shape, unshare_top_shape, self_top_shape},
+        {new_concat_shape}, rewriter);
+
+    // SoftmaxOp
+    modify_shape<tpu::SoftmaxOp>(softmax_op, {new_concat_shape},
+                                 {new_concat_shape}, rewriter);
+
+    // SliceOp
+    auto unshare_slice_shape =
+        module::getShape(unshare_slice_op->getResult(0)).vec();
+    auto share_slice_shape =
+        module::getShape(share_slice_op->getResult(0)).vec();
+    auto self_slice_shape = module::getShape(self_slice_op->getResult(0)).vec();
+    std::vector<int64_t> new_unshare_slice_shape = {
+        unshare_slice_shape[0], unshare_slice_shape[2], unshare_slice_shape[1],
+        unshare_slice_shape[3]};
+    std::vector<int64_t> new_share_slice_shape = {
+        share_slice_shape[0], share_slice_shape[2], share_slice_shape[1],
+        share_slice_shape[3]};
+    std::vector<int64_t> new_self_slice_shape = {
+        self_slice_shape[0], self_slice_shape[2], self_slice_shape[1],
+        self_slice_shape[3]};
+    modify_shape<tpu::SliceOp>(unshare_slice_op, {new_concat_shape},
+                               {new_unshare_slice_shape}, rewriter);
+    modify_shape<tpu::SliceOp>(share_slice_op, {new_concat_shape},
+                               {new_share_slice_shape}, rewriter);
+    modify_shape<tpu::SliceOp>(self_slice_op, {new_concat_shape},
+                               {new_self_slice_shape}, rewriter);
+
+    // MatMulOp
+    // share branch
+    auto share_permute_input_shape =
+        module::getShape(share_permute_op->getOperand(0));
+    auto share_tile_output_shape =
+        module::getShape(share_tile_op->getResult(0));
+    std::vector<int64_t> new_share_tile_output_shape =
+        share_permute_input_shape;
+    new_share_tile_output_shape[0] = share_tile_output_shape[0];
+    module::setShape(share_tile_op->getResult(0), new_share_tile_output_shape);
+    share_tile_op->setOperand(0, share_permute_op->getOperand(0));
+    share_branch->setOperand(1, share_permute_op->getOperand(0));
+    modify_matmul(share_branch, rewriter);
+
+    // unshare branch
+    unshare_branch->setOperand(1, unshare_permute_op->getOperand(0));
+    modify_matmul(unshare_branch, rewriter);
+
+    // self branch
+    self_branch->setOperand(1, self_reshape_op->getOperand(0));
+    auto new_add_shape = modify_matmul(self_branch, rewriter);
+
+    // AddOp
+    modify_shape<tpu::AddOp>(share_unshare_branch, {new_add_shape},
+                             {new_add_shape}, rewriter);
+    modify_shape<tpu::AddOp>(add_op, {new_add_shape}, {new_add_shape},
+                             rewriter);
+    return success();
+  }
+};
+
 // reshape + permute -> permute
 struct ReshapePermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -3351,6 +3695,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermuteFuse,
                 PermuteFuse2,
                 PermuteFuseAddSoftmax,
+                PermuteFuseAddSoftmaxSlice,
                 patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                 PermuteReshapeFuse,
                 ReshapePermuteFuse,
