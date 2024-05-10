@@ -88,6 +88,7 @@ class DumpMode(Enum):
     NEVER = 0
     FAILED = 1
     ALL = 2
+    COMB = 3
 
 
 class CmpState(Enum):
@@ -216,8 +217,10 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         super().__init__(tdb)
 
         self.ref_data = []
+        self.ref_data_from_inference = []
         for ref_fn in tdb.reference_data_fns:
             self.ref_data.append(np.load(ref_fn))
+            self.ref_data_from_inference.append({})
 
         self.tc = TensorCompare(
             cosine_similarity_tol=0.99,
@@ -488,6 +491,52 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
+    def get_combined_inference_data(self, operand: Value, actual, desired):
+        for idx, ref in enumerate(self.ref_data):
+            if operand.name not in ref:
+                continue
+            actual = actual.reshape(desired.shape)
+
+            if operand.layout in (
+                "continuous_group3d",
+                "eu_align_group3d",
+                "compact_group3d",
+                "eu_align_xn_group3d",
+                "compact_xn_group3d",
+            ):
+                d, n, c, h, w = 0, 1, 2, 3, 4
+                actual = actual.transpose((n, c, d, h, w))
+
+            reshape = operand.reshape
+            _slice = operand.slice
+            ref_data = ref[operand.name]
+            origin_shape = ref_data.shape
+            if reshape:
+                reshape = eval(reshape[1:-1].replace("x", ","))
+            else:
+                break
+
+            slice_list = _slice[1:-1].split(",")
+            slices = [
+                slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
+                for s in slice_list
+            ]
+            if operand.name not in self.ref_data_from_inference[idx]:
+                tmp = np.zeros(reshape)
+                tmp[tuple(slices)] = actual
+                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
+                    origin_shape
+                )
+            else:
+                tmp = self.ref_data_from_inference[idx][operand.name]
+                tmp = tmp.reshape(reshape)
+                tmp[tuple(slices)] = actual
+                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
+                    origin_shape
+                )
+            return
+        return
+
     def check_data(
         self, point_index, is_operand, value_view: ValueView
     ) -> ComparedResult:
@@ -519,6 +568,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         desired = self.get_ref_data(value)
+        if self.dump_mode == DumpMode.COMB:
+            self.get_combined_inference_data(value, actual, desired)
         if desired is None:
             value_res = ComparedResult(value_view, None)
             name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
@@ -609,5 +660,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
-        self.failed_tensor.close()
+        if self.dump_mode == DumpMode.COMB:
+            for idx, tensor_dict in enumerate(self.ref_data_from_inference):
+                np.savez(f"bmodel_inference_{idx}.npz", **tensor_dict)
+        else:
+            self.failed_tensor.close()
         return super().after_stop(tdb)
