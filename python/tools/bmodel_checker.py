@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--dump_mode",
         type=str,
-        choices=["failed", "all", "never"],
+        choices=["failed", "all", "never", "COMB"],
         default="failed",
         help="dump mode",
     )
