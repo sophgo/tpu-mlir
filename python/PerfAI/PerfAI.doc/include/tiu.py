@@ -199,10 +199,9 @@ class Tiu(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             continous_gap = 200
-            if int(reg_dict['Cmd Id']) < continous_gap:
+            if i < continous_gap - 1 :
                 reg_dict['Avg Cycle Last 200'] = round(int(reg_dict['End Cycle']) / int(reg_dict['Cmd Id']))
             else:
-                assert(i >= continous_gap - 1)
                 reg_dict['Avg Cycle Last 200'] = round((reg_dict['End Cycle'] - self.reg_list[i-199]['Start Cycle']) / continous_gap)
             if not (reg_dict['des_tsk_typ'] == 15 and reg_dict['des_tsk_eu_typ'] == 9):
                 # wait msg time do not add to tiu cycles
