@@ -305,17 +305,17 @@ class TotalLayerInfo:
                         layer.ddr_bytes += gdma_node.datasize
                     else:
                         layer.lmem_bytes += gdma_node.datasize
-                if 'matmul' in layer.layer_name.lower():
-                    layer.g_m_secs_o, layer.g_n_secs_o, layer.g_k_secs_o, layer.g_m_slice, \
-                        layer.g_n_slice, layer.g_k_slice, layer.g_cost = get_golden_slice(layer.m, layer.k, layer.n, layer.data_type)
-                    layer.a_m_secs_o, layer.a_n_secs_o, layer.a_k_secs_o, \
-                        layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = 1, 1, 1, 1, 1, 1, \
-                        get_trans_cost(layer.ddr_bytes, layer.lmem_bytes, ddr_bw, l2_bw)
-                else:
-                    layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = '-', '-', '-', '-'
-                    layer.g_m_slice, layer.g_n_slice, layer.g_k_slice, layer.g_cost = '-', '-', '-', '-'
-                    layer.a_m_secs_o, layer.a_n_secs_o, layer.a_k_secs_o = '-', '-', '-'
-                    layer.g_m_secs_o, layer.g_n_secs_o, layer.g_k_secs_o = '-', '-', '-'
+                # if 'matmul' in layer.layer_name.lower():
+                #     layer.g_m_secs_o, layer.g_n_secs_o, layer.g_k_secs_o, layer.g_m_slice, \
+                #         layer.g_n_slice, layer.g_k_slice, layer.g_cost = get_golden_slice(layer.m, layer.k, layer.n, layer.data_type)
+                #     layer.a_m_secs_o, layer.a_n_secs_o, layer.a_k_secs_o, \
+                #         layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = 1, 1, 1, 1, 1, 1, \
+                #         get_trans_cost(layer.ddr_bytes, layer.lmem_bytes, ddr_bw, l2_bw)
+                # else:
+                layer.a_m_slice, layer.a_n_slice, layer.a_k_slice, layer.a_cost = '-', '-', '-', '-'
+                layer.g_m_slice, layer.g_n_slice, layer.g_k_slice, layer.g_cost = '-', '-', '-', '-'
+                layer.a_m_secs_o, layer.a_n_secs_o, layer.a_k_secs_o = '-', '-', '-'
+                layer.g_m_secs_o, layer.g_n_secs_o, layer.g_k_secs_o = '-', '-', '-'
                 layer_id_map[layer_info.layer_id] = layer
             else:
                 for n in layer_info.bd_nodes:
