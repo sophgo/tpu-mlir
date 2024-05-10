@@ -1840,6 +1840,23 @@ public:
     return success();
   }
 };
+
+class RemoveUnuseOutput : public OpRewritePattern<top::TopKOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::TopKOp op,
+                                PatternRewriter &rewriter) const override {
+    module::getModuleOp()->dump();
+    for (Value out : op.getResults()) {
+      if (out.getUsers().empty()) {
+        out.setType(mlir::NoneType::get(rewriter.getContext()));
+      }
+    }
+    module::getModuleOp()->dump();
+    return success();
+  }
+};
+
 } // namespace cv18xx
 
 namespace top {
@@ -1857,7 +1874,7 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
       ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
       patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
       patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-      ConvertClipOp>(patterns->getContext(), 8);
+      ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
