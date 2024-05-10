@@ -201,6 +201,7 @@ class ONNX_IR_TESTER(object):
             "Trilu":        (self.test_Trilu,         N, Y, N, N, N),
             "TopK":         (self.test_TopK,          N, Y, Y, N, Y),
             "TopK2":        (self.test_TopK2,         N, Y, N, N, Y),
+            "TopK4":        (self.test_TopK4,         N, N, N, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y),
             # Only 1D shape is supported currently
@@ -5443,6 +5444,21 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
+
+    def test_TopK4(self, case_name):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                x = x + x
+                v, _ = torch.topk(x, 256, 2)
+                v = v + v
+                return v
+
+        x = torch.randn(15, 5, 256).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_ReduceFuse(self, case_name):
 

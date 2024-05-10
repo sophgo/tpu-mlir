@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -360,10 +359,12 @@ std::vector<float> output_tensor_data(output_size, 0);
       std::vector<std::pair<int, float>> result;
       topk_indices(result, ptr, axis_dim, K, is_largest);
       for (int k = 0; k < K; k++) {
+        if (p.outputs.size() > 1) {
           auto indices_ptr = p.outputs[1] + i * K + k;
           *indices_ptr = (float)result[k].first;
-          auto values_ptr = p.outputs[0] + i * K + k;
-          *values_ptr = result[k].second;
+        }
+        auto values_ptr = p.outputs[0] + i * K + k;
+        *values_ptr = result[k].second;
       }
     }
   } else if (func_name == "gathernd_tf") {
