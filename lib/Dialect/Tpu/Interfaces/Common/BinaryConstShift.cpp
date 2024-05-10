@@ -63,12 +63,14 @@ LogicalResult tpu::BinaryConstShiftOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::BinaryConstShiftOp::canonicalize(BinaryConstShiftOp op,
                                             PatternRewriter &rewriter) {
+  bool is_type_match = module::getStorageType(op.getInput()) ==
+                       module::getStorageType(op.getResult());
   bool is_identity = ((std::abs(op.getScale()) == 0 && op.getMode().str() == "Add") ||
                       (std::abs(op.getScale()) == 0 && op.getMode().str() == "Sub" && op.getIsReverse() == false) ||
                       (std::abs(op.getScale()) == 1 && op.getMode().str() == "Mul")) &&
                      op.getShift() == 0;
 
-  if (is_identity) {
+  if (is_type_match && is_identity) {
     rewriter.replaceOp(op, op.getInput());
     return success();
   }

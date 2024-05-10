@@ -71,6 +71,33 @@ struct ConvertExpand : public OpRewritePattern<ExpandOp> {
       std::string name = module::getName(op.getOutput()).str();
       auto consF_loc =
           NameLoc::get(rewriter.getStringAttr(name + "_constFill"));
+      auto storage_type = module::getStorageType(op.getOutput());
+      if (storage_type.isIntOrIndex()) {
+        std::vector<NamedAttribute> attrs_consF;
+        attrs_consF.push_back(
+            rewriter.getNamedAttr("value", rewriter.getF64FloatAttr(1.0)));
+        auto p_type =
+            UnrankedTensorType::get(module::getElementType(op.getOutput()));
+        auto consF_op = rewriter.create<ConstantFillOp>(
+            consF_loc, p_type, ValueRange(op.getShapeT()), attrs_consF);
+        consF_op.shape_inference();
+        auto right = consF_op.getResult();
+
+        auto mul_loc = NameLoc::get(rewriter.getStringAttr(name));
+        std::vector<Value> operands;
+        operands.push_back(op.getInput());
+        operands.push_back(right);
+        std::vector<NamedAttribute> attrs;
+        attrs.push_back(
+            rewriter.getNamedAttr("mode", rewriter.getStringAttr("Mul")));
+        attrs.push_back(
+            rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
+        auto mul = rewriter.create<BinaryShiftOp>(mul_loc, op.getOutput().getType(),
+                                          operands, attrs);
+        op.getOutput().replaceAllUsesWith(mul);
+        rewriter.eraseOp(op);
+        return success();
+      }
       std::vector<NamedAttribute> attrs_consF;
       attrs_consF.push_back(
           rewriter.getNamedAttr("value", rewriter.getF64FloatAttr(1.0)));

@@ -64,7 +64,10 @@ void AbsLowering::LoweringF8(PatternRewriter &rewriter,
 void AbsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::AbsOp absOp) const {
   // llvm_unreachable("Not Implemented");
-  LoweringINT8(rewriter, absOp, true);
+  auto op = absOp.getOperation();
+  op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
+                                               tpu::ActiveMode::ABSVAL));
+  lowering_common<tpu::ActiveOp>(rewriter, op, op->getResult(0).getType());
 }
 
 } // namespace bm1684x

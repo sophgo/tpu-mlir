@@ -178,9 +178,10 @@ class Tensor:
         self.is_preprocess = False
         Tensor.ID += 1
 
-    def __del__(self):
+    def reset(self):
         if self.name in Tensor.name_list:
             Tensor.name_list.remove(self.name)
+        self.buffer = None
 
     def quantization(self,
                      scale: Union[float, List[float]] = None,

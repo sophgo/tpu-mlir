@@ -47,7 +47,7 @@ void ReluLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::ReluOp op) const {
-  lowering_common_int8<tpu::ReluOp>(rewriter, op, true);
+  lowering_common<tpu::ReluOp>(rewriter, op, op->getResult(0).getType());
 }
 
 } // namespace bm1684x
