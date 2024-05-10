@@ -186,6 +186,10 @@ def init(device: str):
 
 
 def deinit():
+    for op in TpuLang.graph.operators:
+        for tensor in op.inputs + op.outputs:
+            if isinstance(tensor, Tensor):
+                tensor.reset()
     TpuLang.graph = None
     TpuLang.device = None
 
@@ -790,7 +794,7 @@ def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_
         TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
     else:
         if isinstance(tensor_i0, Tensor):
-            del output
+            output.reset()
             tensor_i1.value = 1 / tensor_i1.value
             return _base_binary(tensor_i0, tensor_i1, "top.Mul", out_dtype=o_dtype, out_name=out_name)
         else:

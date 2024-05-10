@@ -47,7 +47,8 @@ void ConstantFillLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ConstantFillLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::ConstantFillOp op) const {
-  llvm_unreachable("Not implemented");
+  lowering_common<tpu::ConstantFillOp>(
+      rewriter, op.getOperation(), op.getOutput().getType());
 }
 
 } // namespace bm1684x
