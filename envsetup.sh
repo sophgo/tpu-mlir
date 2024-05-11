@@ -48,3 +48,13 @@ function use_chip(){
     export USING_CMODEL=False
     export LD_LIBRARY_PATH=$CHIP_LD_LIBRARY_PATH
 }
+function use_8ch(){
+    export CMODEL_GLOBAL_MEM_SIZE=137438953472
+    export USING_8CH=1
+    sysctl vm.overcommit_memory=1
+}
+function use_32ch(){
+    unset CMODEL_GLOBAL_MEM_SIZE
+    unset USING_8CH
+    sysctl vm.overcommit_memory=0
+}
