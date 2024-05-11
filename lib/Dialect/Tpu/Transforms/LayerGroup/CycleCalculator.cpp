@@ -6,13 +6,15 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_profiling.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include <llvm/Support/Debug.h>
+
+#define DEBUG_TYPE "layer-group"
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -96,6 +98,11 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       shape_secs.nsecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs;
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
+  bool enable_multi_core = false;
+  if (module::getCoreNum() == 2 && loop_num > 1) {
+    enable_multi_core = true;
+    loop_num = loop_num / 2 + loop_num % 2;
+  }
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
   int64_t total_layer_cycle = 0, total_gdma_cycle = 0;
@@ -114,6 +121,11 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t stage = time_step->get_layer_swpipl_stage(op);
       int64_t cycle =
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
+
+      LLVM_DEBUG({
+          llvm::errs()<< "local layer cycle = " << cycle << "\n";
+          op->dump();
+      });
       layer_cycle.push_back(layer_cycle_info_t(stage, cycle));
     }
     for (auto tensor : timestep_tensors) {
@@ -122,6 +134,16 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           this->getGdmaCycle(tensor.first, tensor.second, group_type);
       int64_t hold_in_lmem =
           time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
+      if(auto srcOp = tensor.first.getDefiningOp<top::WeightOp>()){
+        bool allow_split = (srcOp.getAllowSplitAttr() != nullptr);
+        if (!allow_split && enable_multi_core){
+          // consider BW conflict
+          cycle *= 1.67; // experimental value from mm_resnet50
+        }
+      }
+      LLVM_DEBUG({
+          llvm::errs()<< "local tensor cycle = " << cycle << "\n";
+      });
       gdma_cycle.push_back(gdma_cycle_info_t(stage, cycle, hold_in_lmem));
     }
 
@@ -147,6 +169,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         }
       }
       // max
+      LLVM_DEBUG({
+          if(total_layer_cycle > total_gdma_cycle){
+              llvm::errs()<< "[filling]take total_layer_cycle = " << total_layer_cycle << "\n";
+          }else{
+              llvm::errs()<< "[filling]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+          }
+      });
       filling_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
 
@@ -164,6 +193,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_gdma_cycle += tensor.cycle;
         }
       }
+      LLVM_DEBUG({
+          if(total_layer_cycle > total_gdma_cycle){
+              llvm::errs()<< "[kernel]take total_layer_cycle = " << total_layer_cycle << "\n";
+          }else{
+              llvm::errs()<< "[kernel]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+          }
+      });
       kernel_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
 
@@ -184,6 +220,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_gdma_cycle += tensor.cycle;
         }
       }
+      LLVM_DEBUG({
+          if(total_layer_cycle > total_gdma_cycle){
+              llvm::errs()<< "[draining]take total_layer_cycle = " << total_layer_cycle << "\n";
+          }else{
+              llvm::errs()<< "[draining]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+          }
+      });
       draining_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
   }

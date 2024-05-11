@@ -291,6 +291,23 @@ struct LgInfo {
       }
     }
   }
+  void const dump_lginfo() const {
+    llvm::errs() << "LgInfo Begin {" << "\n";
+
+    llvm::errs() << "ins" << "\n";
+    for( auto op: group_ins){
+      op.dump();
+    }
+    llvm::errs() << "ops" << "\n";
+    for( auto op: group_ops){
+      op->dump();
+    }
+    llvm::errs() << "outs" << "\n";
+    for( auto op: group_outs){
+      op.dump();
+    }
+    llvm::errs() << "} LgInfo End;" << "\n";
+  }
   // group layers
   std::vector<Operation *> group_ops;
   // std::vector<Operation *> edge_ops; //寻找所有preOp或nextOp都在组外的op，即组的边缘op

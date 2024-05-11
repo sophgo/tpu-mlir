@@ -83,10 +83,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
-  if(!(module::isBM1688() && !(BM168x::getDataType(getInput()) == DTYPE_FP32 && module::getShape(getInput())[0] == 1)))
-    spec.using_multicore = true;
-  else
-    spec.using_multicore = false;
+  spec.using_multicore = true;
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     auto out_etype = module::getStorageType(getOutput());

@@ -791,124 +791,153 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                << "=======================================================\n"
                << "***** Dynamic Programming layer group with cluster ****\n"
                << "=======================================================\n";
-  std::vector<LgInfo> sub_group(2);
+  LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   get_base_groups(base_groups, subnet_ops);
   llvm::errs() << llvm::format("total num of base_group is %d\n",
                                base_groups.size());
-  std::vector<std::vector<LgInfo>> lg_infos_s(2);
-  std::vector<int64_t> cost_sum_v(2);
-  int64_t group_cost = 0;
-  for (int idx = 0; idx < 2; idx++) {
-    cut_results_.clear();
-    if (!idx) opt_cost_all = false;
-    else opt_cost_all = true;
-    for (size_t i = 0; i < base_groups.size(); ++i) {
-      std::vector<std::pair<int64_t, int64_t>> clusters;
-      get_group_clusters(clusters, base_groups[i]);
-      size_t cluster_num = clusters.size();
-      llvm::errs() << llvm::format(
-          "process base group %d, layer_num=%d, cluster_num=%d\n", i,
-          base_groups[i].size(), cluster_num);
-      if (cluster_num > 1) {
-        auto cost_table = std::vector<std::vector<int64_t>>(
-            cluster_num, std::vector<int64_t>(cluster_num, 0));
-        auto cut_points = std::vector<std::vector<int64_t>>(
-            cluster_num, std::vector<int64_t>(cluster_num, 0));
-        for (size_t j = 0; j < cluster_num; ++j) {
-          int64_t start_idx = clusters[j].first;
-          int64_t end_idx = start_idx + clusters[j].second - 1;
-          get_layer_group(sub_group[idx], base_groups[i], start_idx, end_idx);
+  for (size_t i = 0; i < base_groups.size(); ++i) {
+    std::vector<std::pair<int64_t, int64_t>> clusters;
+    get_group_clusters(clusters, base_groups[i]);
+    size_t cluster_num = clusters.size();
+    llvm::errs() << llvm::format(
+        "process base group %d, layer_num=%d, cluster_num=%d\n", i,
+        base_groups[i].size(), cluster_num);
+    if (cluster_num > 1) {
+      auto cost_table = std::vector<std::vector<int64_t>>(
+          cluster_num, std::vector<int64_t>(cluster_num, 0));
+      auto cut_points = std::vector<std::vector<int64_t>>(
+          cluster_num, std::vector<int64_t>(cluster_num, 0));
+      for (size_t j = 0; j < cluster_num; ++j) {
+        int64_t start_idx = clusters[j].first;
+        int64_t end_idx = start_idx + clusters[j].second - 1;
+        get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
 
-          assert(is_layer_group_valid(sub_group[idx], true, &cost_table[j][j]));
-          cut_points[j][j] = j;
-        }
-        llvm::errs() << "Searching best group slices...\n";
-        progressbar bar(cluster_num - 1);
-        for (size_t len = 2; len <= cluster_num; ++len) {
-          bar.update();
-          // llvm::errs() << llvm::format("process cluster len = %d\n", len);
-          // #pragma omp parallel for private(sub_group)
-          for (int64_t start = 0; start <= cluster_num - len; ++start) {
-            int64_t end = start + len - 1;
-            // llvm::errs() << "start = " << start << ", end = " << end << "\n";
-            int64_t start_idx = clusters[start].first;
-            int64_t end_idx = clusters[end].first + clusters[end].second - 1;
-            get_layer_group(sub_group[idx], base_groups[i], start_idx, end_idx);
+        assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
 
-            int64_t group_cost = MAX_COST;
-            is_layer_group_valid(sub_group[idx], true, &group_cost);
+        LLVM_DEBUG({
+          llvm::errs() << "cluster[" << j << "] = " << start_idx << ", " << end_idx
+                      << ";" << "cost = " << cost_table[j][j] << "\n";
+          sub_group.dump_lginfo();
+        });
 
-            int64_t optimal_point = end;
-            // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
-            //                    cost_table);
-            for (int64_t sweep = start; sweep < end; ++sweep) {
-              int64_t temp_cost = cost_add(cost_table[start][sweep],
-                                           cost_table[sweep + 1][end]);
-              if (temp_cost < group_cost) {
-                group_cost = temp_cost;
-                optimal_point = sweep;
-              }
-            }
-            cost_table[start][end] = group_cost;
-            cut_points[start][end] = optimal_point;
-          }
-        }
-        llvm::errs() << "\n";
-        std::vector<int64_t> cut_result;
-        get_layer_cut_result(cut_result, clusters, cut_points, 0,
-                             cluster_num - 1);
-        cut_results_.push_back(std::move(cut_result));
-      } else {
-        cut_results_.push_back(std::vector<int64_t>(1, 0));
+        cut_points[j][j] = j;
       }
-    }
+      llvm::errs() << "Searching best group slices...\n";
+      progressbar bar(cluster_num - 1);
+      for (size_t len = 2; len <= cluster_num; ++len) {
+        bar.update();
+        // llvm::errs() << llvm::format("process cluster len = %d\n", len);
+        // #pragma omp parallel for private(sub_group)
+        for (int64_t start = 0; start <= cluster_num - len; ++start) {
+          int64_t end = start + len - 1;
+          // llvm::errs() << "start = " << start << ", end = " << end << "\n";
+          int64_t start_idx = clusters[start].first;
+          int64_t end_idx = clusters[end].first + clusters[end].second - 1;
+          get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
 
-    show_cut_results();
-    // some post process for cluster
+          int64_t group_cost = MAX_COST;
+          is_layer_group_valid(sub_group, true, &group_cost);
+
+          int64_t optimal_point = end;
+          // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
+          //                    cost_table);
+          LLVM_DEBUG({
+            llvm::errs() << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx
+                         << "; group_cost = " << group_cost << "\n";
+          });
+
+          for (int64_t sweep = start; sweep < end; ++sweep) {
+            int64_t temp_cost = cost_add(cost_table[start][sweep],
+                                         cost_table[sweep + 1][end]);
+            if (temp_cost < group_cost) {
+              group_cost = temp_cost;
+              optimal_point = sweep;
+              LLVM_DEBUG({
+                llvm::errs() << "; update better"
+                            << "; start = " << start
+                            << "; sweep = " << sweep
+                            << "; end = " << end
+                            << "; temp_cost = " << temp_cost << "\n";
+              });
+            }
+          }
+          LLVM_DEBUG({
+            llvm::errs() << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx
+                         << "; group_cost = " << group_cost << "\n";
+          });
+
+          cost_table[start][end] = group_cost;
+          cut_points[start][end] = optimal_point;
+        }
+      }
+      llvm::errs() << "\n";
+      std::vector<int64_t> cut_result;
+      get_layer_cut_result(cut_result, clusters, cut_points, 0,
+                           cluster_num - 1);
+      cut_results_.push_back(std::move(cut_result));
+      LLVM_DEBUG({
+        LgInfo sub_group;
+        int start = 0;
+        for (auto end : cut_result) {
+          get_layer_group(sub_group, base_groups[i], start, end);
+          int64_t group_cost = MAX_COST;
+          auto temp_status = is_layer_group_valid(sub_group, true, &group_cost);
+          llvm::errs() << temp_status << " ;start" << start << " - " << " end "
+                      << end << " = " << group_cost << "\n";
+          start = end + 1;
+        }
+
+        llvm::errs() << "\n";
+        llvm::errs() << "================FINAL GROUP================\n";
+        for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+          for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+            llvm::errs() << cut_points[cost_i][cost_j] << ", " << "";
+          }
+          llvm::errs() << "\n";
+        }
+        llvm::errs() << "================COST TABLE================\n";
+        for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+          for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+            llvm::errs() << cost_table[cost_i][cost_j] << ", " << "";
+          }
+          llvm::errs() << "\n";
+        }
+        llvm::errs() << "=============================================\n";
+        llvm::errs() << "\n";
+      });
+    } else {
+      cut_results_.push_back(std::vector<int64_t>(1, 0));
+    }
+  }
+
+  show_cut_results();
+  // some post process for cluster
+  llvm::errs() << "-------------------------------------------------------\n";
+  llvm::errs() << "Consider redundant computation and gdma cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
+  consider_redundant_computation_and_gdma_cost(base_groups);
+  show_cut_results();
+
+  llvm::errs() << "-------------------------------------------------------\n";
+  llvm::errs() << "Merge cut idx to reduce gdma cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
+  bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
+  show_cut_results();
+
+  if (take_effective) {
     llvm::errs() << "-------------------------------------------------------\n";
-    llvm::errs() << "Consider redundant computation and gdma cost\n";
+    llvm::errs() << "Consider redundant computation and gdma cost again\n"
+                 << "due to cut idx merged in the previous step\n";
     llvm::errs() << "-------------------------------------------------------\n";
     consider_redundant_computation_and_gdma_cost(base_groups);
     show_cut_results();
-
-    llvm::errs() << "-------------------------------------------------------\n";
-    llvm::errs() << "Merge cut idx to reduce gdma cost\n";
-    llvm::errs() << "-------------------------------------------------------\n";
-    bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
-    show_cut_results();
-
-    if (take_effective) {
-      llvm::errs() << "-------------------------------------------------------\n";
-      llvm::errs() << "Consider redundant computation and gdma cost again\n"
-                   << "due to cut idx merged in the previous step\n";
-      llvm::errs() << "-------------------------------------------------------\n";
-      consider_redundant_computation_and_gdma_cost(base_groups);
-      show_cut_results();
-    }
-    get_final_groups(lg_infos_s[idx], base_groups);
-    for (int i = 0; i < lg_infos_s[idx].size(); i++) {
-      if (lg_infos_s[idx][i].group_ops.size() > 1) {
-        bool status = is_layer_group_valid(lg_infos_s[idx][i], true, &group_cost);
-        assert(status);
-        cost_sum_v[idx] += group_cost;
-      }
-    }
   }
 
   // update lg_infos
-  if (lg_infos_s[0].size()*10 >= lg_infos_s[1].size() && ((cost_sum_v[0] > 5e6 && cost_sum_v[1] < cost_sum_v[0] * 1.05) ||
-        (cost_sum_v[0] <= 5e6 && cost_sum_v[1] < cost_sum_v[0]) || cost_sum_v[0] == cost_sum_v[1] && cost_sum_v[0] == 0)) {
-    lg_infos = lg_infos_s[1];
-    opt_cost_all = true;
-  } else {
-    lg_infos = lg_infos_s[0];
-    opt_cost_all = false;
-  }
-  llvm::errs() << "---opt_cost:" << opt_cost_all << "\n";
-  llvm::errs() << lg_infos_s[0].size() << "    " << lg_infos_s[1].size()
-               << "\n";
-  llvm::errs() << cost_sum_v[0] << "    " << cost_sum_v[1] << "\n";
+  get_final_groups(lg_infos, base_groups);
 }
 
 bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
@@ -1091,6 +1120,14 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
         lg_valid = is_layer_group_valid(sub_group, true, &combine_group_cost);
         if (lg_valid) {
           if (combine_group_cost < left_group_cost + right_group_cost) {
+            LLVM_DEBUG({
+                llvm::errs() << "; start_idx = " << start_cut_idx
+                            << "; end_idx = " << end_cut_idx
+                            << "; group_cost = " << combine_group_cost
+                            << "; base_group = " << i
+                            << "; action = " << "merge_cut_idx_to_reduce_gdma_cost"
+                            << "\n";
+            });
             cut_result.erase(cut_result.begin() + j);
             size_ = cut_result.size();
             take_effective = true;
@@ -1522,7 +1559,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
         }
         in_idx++;
       }
-	  
+
       bool first_group = true;
       bool have_valid_grp = false;
       for (int j = 0; j < in_idx; j++) {
@@ -2046,6 +2083,7 @@ void GroupMethod::get_final_groups(
       if (lg_info.group_ops.size() > 1 || false == LgPass::OPTIONS.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
+      LLVM_DEBUG({lg_info.dump_lginfo();});
       start_idx = end_idx + 1;
     }
   }
