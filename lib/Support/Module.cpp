@@ -11,6 +11,18 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
 
+static uint64_t core_addr[8] = {
+    // according to TPU1686/sgdnn_tmp/src/sgdnn_api_common.cpp
+    0x800000000 | (3UL << 40),  // region0 core0
+    0x900000000 | (3UL << 40),  // region0 core1
+    0x1000000000 | (3UL << 40), // region1 core2
+    0x1100000000 | (3UL << 40), // region1 core3
+    0x1200000000 | (3UL << 40), // region2 core4
+    0x1300000000 | (3UL << 40), // region2 core5
+    0x1900000000 | (3UL << 40), // region3 core6
+    0x1A00000000 | (3UL << 40)  // region3 core7
+};
+
 namespace tpu_mlir {
 namespace module {
 struct Attr {
@@ -305,8 +317,11 @@ int64_t getAddress(Value v) {
   }
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
   if (attr) {
-    assert(attr.isa<IntegerAttr>());
-    return attr.cast<IntegerAttr>().getInt();
+    if (isa<IntegerAttr>(attr)) {
+      return attr.cast<IntegerAttr>().getInt();
+    } else if (isa<tpu::CPInterleaveAttr>(attr)) {
+      return attr.cast<tpu::CPInterleaveAttr>().getAddress();
+    }
   }
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int index = block_arg.getArgNumber();
@@ -328,11 +343,30 @@ int64_t getAddress(Value v) {
 
 void setAddress(Value v, int64_t addr) {
   auto type = v.getType().cast<RankedTensorType>();
-  Builder builder(v.getContext());
-  auto addrAttr = builder.getI64IntegerAttr(addr);
-  auto new_type =
-      RankedTensorType::get(type.getShape(), type.getElementType(), addrAttr);
-  v.setType(new_type);
+  auto _8chAttr = dyn_cast_or_null<tpu::CPInterleaveAttr>(type.getEncoding());
+  if (!_8chAttr) {
+    Builder builder(v.getContext());
+    auto addrAttr = builder.getI64IntegerAttr(addr);
+    auto new_type =
+        RankedTensorType::get(type.getShape(), type.getElementType(), addrAttr);
+    v.setType(new_type);
+  } else {
+    auto index = _8chAttr.getRegionId();
+    if (index == -1)
+      addr = _8chAttr.getAddress();
+    set8chAddress(v, index, _8chAttr.getOffset(), addr);
+  }
+}
+
+void set8chAddress(Value v, size_t index, int64_t offset, int64_t addr) {
+  auto type = v.getType().cast<RankedTensorType>();
+  if (index != -1)
+    addr = offset + core_addr[index];
+  auto ddrAttr =
+      tpu::CPInterleaveAttr::get(v.getContext(), index, offset, addr);
+  auto ddrType = mlir::RankedTensorType::get(type.getShape(),
+                                             type.getElementType(), ddrAttr);
+  v.setType(ddrType);
 }
 
 size_t getBytes(Value v) {

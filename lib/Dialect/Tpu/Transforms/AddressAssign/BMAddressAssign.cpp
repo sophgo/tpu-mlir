@@ -10,8 +10,8 @@
 #include "BMAddressAssign.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "llvm/Support/Debug.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
+#include "llvm/Support/Debug.h"
 #define DEBUG_TYPE "addressAssgin"
 
 using namespace llvm;
@@ -143,6 +143,128 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   } while (l2memUsed > l2memSize);
   LLVM_DEBUG(llvm::dbgs() << "L2Memory usage: " << l2memUsed / 1024 << " KB\n");
   return std::move(L2MemMap);
+}
+
+std::set<ValueInfo> _8ChannelAssign(std::map<ValueInfo, TensorLive> &liveRange,
+                                    bool reuse_addr) {
+  if (!module::isBM1690Family())
+    return {};
+
+  std::set<ValueInfo> _8chOut;
+  std::set<ValueInfo> _32chIn;
+  std::map<ValueInfo, TensorLive> _8channelLiveRange;
+  std::set<ValueInfo> AllSplitOpAndJoinOp;
+  int64_t start_addr = 0;
+  ValueInfo last_value;
+
+  for (auto rit = liveRange.rbegin(); rit != liveRange.rend(); ++rit) {
+    auto value = (*rit).first;
+    auto live = (*rit).second;
+    auto op = (Operation *)value.op;
+    if (!isa<tpu::CoreParallelOp>(op)) {
+      continue;
+    }
+    int op_splits = 0;
+    for (auto &inner_op : op->getRegion(0).getOps()) {
+      if (!isa<tpu::JoinOp>(inner_op))
+        continue;
+      op_splits = inner_op.getNumOperands();
+      break;
+    }
+
+    auto result = op->getResult(0);
+    ValueInfo new_value;
+    int OnceFlag = 1;
+    for (auto &use : result.getUses()) {
+      if (isa<tpu::SplitOp>(use.getOwner())) {
+        // this break is used to hack for tpu::ConvOp, when there are too few to
+        // split into 8channels
+        if (use.getOwner()->getNumResults() != op_splits) {
+          break;
+        }
+
+        if (OnceFlag) {
+          _8chOut.insert(value);
+          op->walk([&](tpu::JoinOp join_op) {
+            uint32_t per_size = Arch::get_gmem_bytes(join_op.getOperand(0));
+            _8channelLiveRange.insert(std::pair<ValueInfo, TensorLive>(
+                value, TensorLive(live.start, live.end, per_size)));
+            AllSplitOpAndJoinOp.insert(value);
+          });
+          OnceFlag = 0;
+        }
+
+        int cur_id = -use.getOperandNumber() - 1;
+        new_value = ValueInfo(use.getOwner(), cur_id);
+        AllSplitOpAndJoinOp.insert(new_value);
+      }
+    }
+  }
+
+  auto getValues = [](std::map<ValueInfo, TensorLive> &valueMap) {
+    std::vector<ValueInfo> values;
+    values.reserve(valueMap.size());
+    for (auto &[key, v] : valueMap)
+      values.push_back(key);
+    return std::move(values);
+  };
+
+  auto ops = getValues(_8channelLiveRange);
+  std::map<ValueInfo, int64_t> _8ChannelMap;
+  if (!ops.empty()) {
+    // FitFirstAssign should make sure op's start liverange ascendingly
+    GmemAllocator::sortOpByLiveStart(ops, _8channelLiveRange);
+    GmemAllocator allocator(_8ChannelMap, BM168x::ALIGNMENT);
+    auto _8channelUsed =
+        allocator.assignGaddr(ops, _8channelLiveRange, reuse_addr, start_addr);
+    LLVM_DEBUG(llvm::dbgs() << "_8channel Memory Each usage(without weight): "
+                            << _8channelUsed / (1 << 20) << " MB\n");
+  }
+
+  for (auto &valueInfo : AllSplitOpAndJoinOp) {
+    auto op = (Operation *)valueInfo.op;
+    if (!isa<tpu::CoreParallelOp>(op))
+      continue;
+    int64_t offset;
+
+    auto setCPAttr = [&op](auto &OpValue, auto &offset) {
+      auto valueType =
+          dyn_cast_or_null<mlir::RankedTensorType>(OpValue.getType());
+      auto valueAttr = valueType.getEncoding();
+      if (isa_and_present<tpu::CPInterleaveAttr>(valueAttr)) {
+        return;
+      }
+      auto context = op->getContext();
+      auto index_init = -1;
+      auto ddrAttr = tpu::CPInterleaveAttr::get(context, index_init, offset, 0);
+      auto ddrType = mlir::RankedTensorType::get(
+          valueType.getShape(), valueType.getElementType(), ddrAttr);
+      OpValue.setType(ddrType);
+    };
+
+    auto getOffset = [&](auto valueInfo) {
+      if (_8ChannelMap.count(valueInfo) != 0) {
+        offset = _8ChannelMap[valueInfo];
+      } else {
+        offset = -1;
+      }
+      return offset;
+    };
+
+    if (valueInfo.index >= 0) {
+      auto result = op->getResult(0);
+      offset = getOffset(valueInfo);
+      setCPAttr(result, offset);
+    } else {
+      auto operand = op->getOperand(-valueInfo.index - 1);
+      auto prev_op = op->getPrevNode();
+      assert(isa<tpu::CoreParallelOp>(prev_op));
+      assert(prev_op->getResult(0) == operand);
+      offset = getOffset(ValueInfo(prev_op, -1));
+      setCPAttr(operand, offset);
+    }
+  }
+  return std::move(_8chOut);
 }
 
 static void fix_addr_for_io_tag(mlir::ModuleOp &m, int64_t start, int64_t limit,
@@ -334,6 +456,29 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     common_ops.swap(values);
   }
 
+  // 8 channel
+  // clang-format off
+  // Tested: test_onnx.py with bm1690 f32 mode multicore.
+  // Details: 8channel will only be activated when there are multiple
+  //          continuous CoreParallelOp. the input of the 1st CoreParallelOp
+  //          will be 32ch, the output of the final CoreParallelOp will
+  //          be 32ch, the connections of these CoreParallelOp will be 8ch.
+  // TODO: Support LayerGroupOp, single core and other mode<int8,f16,bf16>
+  // clang-format on
+  auto env_8ch = std::getenv("USING_8CH");
+  if (env_8ch) {
+    auto _8channelValueInfo = _8ChannelAssign(liveRange, reuse_addr);
+    if (!_8channelValueInfo.empty()) {
+      std::vector<ValueInfo> values;
+      values.reserve(common_ops.size());
+      for (auto v : common_ops) {
+        if (_8channelValueInfo.count(v) == 0)
+          values.push_back(v);
+      }
+      common_ops.swap(values);
+    }
+  }
+
   // 1.assign common_ops
   // key: the operation pointer + output index, convert the result to type
   // int64_t
@@ -451,25 +596,62 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
   // 5. set parallel Op address
+  auto If8channel = [](auto &checkOp, bool isSplitOp) {
+    mlir::RankedTensorType valueType;
+    if (isSplitOp) {
+      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
+          ((tpu::SplitOp)checkOp).getOperand().getType());
+    } else {
+      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
+          checkOp.getResult(0).getType());
+    }
+    auto ddrAttr =
+        dyn_cast_or_null<tpu::CPInterleaveAttr>(valueType.getEncoding());
+    return ddrAttr;
+  };
+
   for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
+      auto ifCPOut8ch = If8channel(parallelOp, false);
       for (auto &op : parallelOp.getRegion().getOps()) {
         llvm::TypeSwitch<Operation &>(op)
-            .Case([](tpu::SplitOp splitOp) {
-              int64_t address = module::getAddress(splitOp->getOperand(0));
-              for (auto v : splitOp->getResults()) {
-                module::setAddress(v, address);
-                address += module::getBytes(v);
+            .Case([&](tpu::SplitOp splitOp) {
+              auto ifSplitOp8ch = If8channel(splitOp, true);
+              if (!isa_and_present<tpu::CPInterleaveAttr>(ifSplitOp8ch)) {
+                int64_t address = module::getAddress(splitOp->getOperand(0));
+                for (auto v : splitOp->getResults()) {
+                  module::setAddress(v, address);
+                  address += module::getBytes(v);
+                }
+              } else {
+                for (auto [index, v] : llvm::enumerate(splitOp->getResults())) {
+                  int64_t offset = ifSplitOp8ch.getOffset();
+                  module::set8chAddress(v, index, offset, -1);
+                }
               }
             })
             .Case([&](tpu::YieldOp yieldOp) {
-              for (auto [joinOpValue, returnType] : llvm::zip(
-                       yieldOp->getOperands(), parallelOp->getResultTypes())) {
-                joinOpValue.setType(returnType);
-                int64_t address = module::getAddress(joinOpValue);
-                for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
-                  module::setAddress(v, address);
-                  address += module::getBytes(v);
+              if (!isa_and_present<tpu::CPInterleaveAttr>(ifCPOut8ch)) {
+                for (auto [joinOpValue, returnType] :
+                     llvm::zip(yieldOp->getOperands(),
+                               parallelOp->getResultTypes())) {
+                  joinOpValue.setType(returnType);
+                  int64_t address = module::getAddress(joinOpValue);
+                  for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                    module::setAddress(v, address);
+                    address += module::getBytes(v);
+                  }
+                }
+              } else {
+                for (auto [joinOpValue, returnType] :
+                     llvm::zip(yieldOp->getOperands(),
+                               parallelOp->getResultTypes())) {
+                  joinOpValue.setType(returnType);
+                  int64_t offset = ifCPOut8ch.getOffset();
+                  for (auto [index, v] : llvm::enumerate(
+                           joinOpValue.getDefiningOp()->getOperands())) {
+                    module::set8chAddress(v, index, offset, -1);
+                  }
                 }
               }
             });
@@ -543,14 +725,14 @@ void BMAddressAssign::updateLiveRangeofBMOps(
                 module::getOriValue(op->getOperand(1)).getDefiningOp())) {
           /* Loop mode 6 : the prehead block IR as below:
              %0 = "tpu.Compare"(%arg0, %arg1) {mode = "Less"} :
-                    (tensor<1xf32, 4295000064 : i64>, tensor<1xf32, 4294967296 :
+                    (tensor<1xf32, 4295000064 : i64>, tensor<1xf32, 4294967296:
              i64>)
                     -> tensor<1xf32, 4294995968 : i64> loc(#loc11)
-              %1 = "tpu.AutoIncrease"(%arg0) {const_val = 1.000000e+00 : f64} :
-                    (tensor<1xf32, 4295000064 : i64>)
+              %1 = "tpu.AutoIncrease"(%arg0) {const_val = 1.000000e+00 : f64}:
+             (tensor<1xf32, 4295000064 : i64>)
                     -> tensor<1xf32, 4295000064 : i64> loc(#loc12)
               %2 = "tpu.Compare"(%0, %arg2) {mode = "And"} :
-                    (tensor<1xf32, 4294995968 : i64>, tensor<1xf32, 4295012352 :
+                    (tensor<1xf32, 4294995968 : i64>, tensor<1xf32, 4295012352:
              i64>)
                     -> tensor<1xf32, 4294991872 : i64> loc(#loc13)*/
 
@@ -614,8 +796,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
   uint32_t loc = ops_loc[op];
   uint32_t endPosition = loc + 1;
   if (auto nextOp = op->getNextNode()) {
-    // This operation may have a region and the next operation can be treated as
-    // the end of a scope.
+    // This operation may have a region and the next operation can be treated
+    // as the end of a scope.
     endPosition = ops_loc[nextOp];
   }
   if (isa<top::InputOp>(op)) {
@@ -774,14 +956,14 @@ uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
                                             int64_t aligment_) {
   uint32_t size = Arch::get_gmem_bytes(op->getResult(index));
 
-  //assign address for nnvlc
+  // assign address for nnvlc
   bool do_compress = false;
   if (op != nullptr && isa<tpu::GroupOp>(op)) {
     auto yield_ = dyn_cast<GroupOp>(op).getOps<tpu::YieldOp>().begin();
     auto yieldop = *yield_;
-    auto pre_op  =yieldop->getOperand(index).getDefiningOp();
+    auto pre_op = yieldop->getOperand(index).getDefiningOp();
     if (isa<SliceMergeOp>(pre_op)) {
-      pre_op  =pre_op->getOperand(0).getDefiningOp();
+      pre_op = pre_op->getOperand(0).getDefiningOp();
     }
     auto storeop = dyn_cast<tpu::StoreOp>(pre_op);
     if (storeop->hasAttr("compress_info")) {

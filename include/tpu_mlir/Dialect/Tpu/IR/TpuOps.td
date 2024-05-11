@@ -344,6 +344,17 @@ def Tpu_RunModeAttr : EnumAttr<Tpu_Dialect, Tpu_RunMode, "run_mode">;
 
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
+def Tpu_CPInterleaveAttr : Tpu_Attr<"CPInterleave", "cp_interleave"> {
+  let summary = "Core Parallel interleave configuration.";
+  let parameters = (ins
+    "int32_t":$region_id,
+    "int64_t":$offset,
+    "int64_t":$address
+    );
+  let assemblyFormat =
+      "`<` `region_id` `=` $region_id`,` `offset` `=` $offset`,` `address` `=` $address `>`";
+}
+
 def Tpu_DDRInterleaveAttr : Tpu_Attr<"DDRInterleave", "ddr_interleave"> {
   let summary = "DDRC interleave configuration.";
   let parameters = (ins
