@@ -283,7 +283,15 @@ private:
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     RankedTensorType type;
-    type = RankedTensorType::get({n, c, resize_h, resize_w},
+
+    // permute shape inference;
+    std::vector<int64_t> in_shape = module::getShape(opd);
+    std::vector<int64_t> out_shape;
+    for (int64_t i = 0; i < in_shape.size(); ++i) {
+      out_shape.push_back(in_shape[order[i]]);
+    }
+
+    type = RankedTensorType::get(out_shape,
                                  module::getUniformQuantizedType(opd));
     auto newOp = rewriter.create<tpu::PermuteOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
