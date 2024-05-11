@@ -48,7 +48,7 @@ LogicalResult top::UpsampleOp::inference(InferenceParameter &p) {
 void top::UpsampleOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   int dim = input_shape.size();
-  assert(dim >= 2);
+  ASSERT_WITH_DUMP(dim >= 2);
   std::vector<int64_t> out_shape(dim);
   int64_t scale_h = this->getScaleH();
   int64_t scale_w = this->getScaleW();

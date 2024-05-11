@@ -20,6 +20,15 @@ using namespace mlir;
 using namespace mlir::func;
 using namespace tpu_mlir;
 
+#define ASSERT_WITH_DUMP(COND) \
+    do { \
+        if (!(COND)) { \
+            std::cerr << "Assertion failed: " << #COND << std::endl; \
+            dump(); \
+            std::abort(); \
+        } \
+    } while (false)
+
 namespace tpu_mlir {
 
 typedef enum {

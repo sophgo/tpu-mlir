@@ -135,15 +135,15 @@ void top::ConvOp::shape_inference() {
   // n, c, w | n, c, h, w | n, c, d, h, w
   auto input_shape = module::getShape(getInput());
   auto filter_shape = module::getShape(getFilter());
-  assert(input_shape.size() == filter_shape.size());
-  assert(input_shape.size() > 2);
+  ASSERT_WITH_DUMP(input_shape.size() == filter_shape.size());
+  ASSERT_WITH_DUMP(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
   if (spacial_rank != getKernelShape().size()) {
     // have 1d to 2d
-    assert(module::isUnranked(getOutput()) == false);
+    ASSERT_WITH_DUMP(module::isUnranked(getOutput()) == false);
     return;
   }
-  assert(getPads().size() == spacial_rank * 2);
+  ASSERT_WITH_DUMP(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
   out_shape.push_back(filter_shape[0]);

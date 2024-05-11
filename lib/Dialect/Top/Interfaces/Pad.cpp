@@ -97,7 +97,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
       }
     }
   } else {
-    assert(pads[0] == pads[4] && pads[1] == pads[5] && pads[0] == 0 &&
+    ASSERT_WITH_DUMP(pads[0] == pads[4] && pads[1] == pads[5] && pads[0] == 0 &&
            pads[1] == 0 && "only support hw pad");
 
     // comes from https://github.com/BVLC/caffe/pull/6506/files
@@ -217,7 +217,7 @@ void top::PadOp::shape_inference() {
     Builder builder(getContext());
     setPaddingsAttr(builder.getI64ArrayAttr(pads));
   } else {
-    assert(pads_origin->size() == dim * 2);
+    ASSERT_WITH_DUMP(pads_origin->size() == dim * 2);
     pads = *pads_origin;
   }
   std::vector<int64_t> out_shape(input_shape);

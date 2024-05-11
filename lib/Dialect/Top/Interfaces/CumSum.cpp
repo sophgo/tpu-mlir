@@ -32,7 +32,7 @@ LogicalResult top::CumSumOp::inference(InferenceParameter &p) {
   auto in_shape = module::getShape(getInput());
   int64_t dim = getAxis();
   int64_t num_dims = in_shape.size();
-  assert(dim < in_shape.size());
+  ASSERT_WITH_DUMP(dim < in_shape.size());
 
   int64_t length = in_shape[dim];
   // stride

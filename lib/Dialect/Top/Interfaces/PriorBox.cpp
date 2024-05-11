@@ -19,7 +19,7 @@ void top::PriorBoxOp::deinit(InferenceParameter &p) {}
 LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
   #if 0
   auto input_image_shape = module::getShape(this->getInputs()[1]);
-  assert(input_image_shape.size() == 4 && input_shape.size() == 4);
+  ASSERT_WITH_DUMP(input_image_shape.size() == 4 && input_shape.size() == 4);
 
   int layer_height = input_shape[2];
   int layer_width = input_shape[3];

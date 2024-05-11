@@ -12,7 +12,7 @@
 
 pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
-  assert(getKernelShape().size() == 2); // only support 2d now
+  ASSERT_WITH_DUMP(getKernelShape().size() == 2); // only support 2d now
   auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = getOutput().getType().dyn_cast<RankedTensorType>().getShape();
   auto kernel = module::getI64Array(getKernelShape());

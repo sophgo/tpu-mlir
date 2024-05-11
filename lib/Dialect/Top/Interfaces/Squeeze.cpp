@@ -42,7 +42,7 @@ void top::SqueezeOp::shape_inference() {
       if ((std::find(axes_.begin(), axes_.end(), i) == axes_.end()) || (in_shape[i] != 1)) {
         out_shape.push_back(in_shape[i]);
       } else {
-        assert(in_shape[i]);
+        ASSERT_WITH_DUMP(in_shape[i]);
       }
     }
   }

@@ -58,7 +58,7 @@ void top::TopKOp::shape_inference() {
   int64_t K = -1;
   if (module::isShape(getKT())) {
     auto kt_vec = module::getShapeTensorValue(getKT());
-    assert(kt_vec.size() == 1);
+    ASSERT_WITH_DUMP(kt_vec.size() == 1);
     K = kt_vec[0];
     setK(K);
   } else {

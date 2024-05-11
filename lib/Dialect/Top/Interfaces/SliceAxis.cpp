@@ -57,7 +57,7 @@ void top::SliceAxisOp::shape_inference() {
   float step = 1;
   float end;
   auto in_shape = module::getShape(getInput());
-  assert(module::isWeight(getAxis()));
+  ASSERT_WITH_DUMP(module::isWeight(getAxis()));
   auto axis_op = getAxis().getDefiningOp<top::WeightOp>();
   auto axis_data = axis_op.read<float>();
   auto axis = axis_data->at(0);
@@ -68,7 +68,7 @@ void top::SliceAxisOp::shape_inference() {
       end = end_data->at(0);
     } else if (module::isShape(getEnd())) {
       auto end_v = module::getShapeTensorValue(getEnd());
-      assert(end_v.size() == 1);
+      ASSERT_WITH_DUMP(end_v.size() == 1);
       end = end_v[0];
     } else {
       end = in_shape[(int)axis];
@@ -81,18 +81,18 @@ void top::SliceAxisOp::shape_inference() {
       start = start_data->at(0);
     } else if (module::isShape(getStart())) {
       auto start_v = module::getShapeTensorValue(getStart());
-      assert(start_v.size() == 1);
+      ASSERT_WITH_DUMP(start_v.size() == 1);
       start = start_v[0];
     } else {
       start = 0;
     }
   }
   if (module::isNone(getStep()) == false) {
-    assert(module::isWeight(getStep()));
+    ASSERT_WITH_DUMP(module::isWeight(getStep()));
     auto step_op = getStep().getDefiningOp<top::WeightOp>();
     auto step_data = step_op.read<float>();
     step = step_data->at(0);
-    assert(step != 0);
+    ASSERT_WITH_DUMP(step != 0);
   }
   auto dims = in_shape.size();
   if (axis < 0) {

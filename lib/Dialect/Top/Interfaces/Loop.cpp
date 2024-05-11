@@ -102,7 +102,7 @@ static inline void updateType(Value val, ArrayRef<int64_t> shape, Type elementTy
 
 void top::LoopOp::shape_inference() {
   auto &loopBody = getRegion();
-  assert(loopBody.getNumArguments() >= 2 &&
+  ASSERT_WITH_DUMP(loopBody.getNumArguments() >= 2 &&
          "Loop body must take at least 2 inputs.");
   loopBody.getArgument(0).setType(getM().getType());
   loopBody.getArgument(1).setType(getCond().getType());

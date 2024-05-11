@@ -245,7 +245,7 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
 Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
-  assert(dtype.isF32());
+  ASSERT_WITH_DUMP(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
   auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
@@ -263,7 +263,7 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_bf16->data(), new_type);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
@@ -275,7 +275,7 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto dtype = type.getElementType();
   if (dtype.isF16())
     return getResult();
-  assert(dtype.isF32());
+  ASSERT_WITH_DUMP(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
   auto data_f16 = std::make_shared<std::vector<uint16_t>>(count);
@@ -293,7 +293,7 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_f16->data(), new_type);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
@@ -304,7 +304,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   auto type = getType().cast<RankedTensorType>();
   auto shape = type.getShape();
   auto dtype = type.getElementType();
-  assert(dtype.isF32());
+  ASSERT_WITH_DUMP(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
   auto cnt_p_c = count / shape[0];
@@ -314,7 +314,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   if (per_channel_scale) {
     if (getScale().has_value()) {
       weight_scale_v = module::getF64Array(getScale().value());
-      assert(shape[0] == weight_scale_v->size());
+      ASSERT_WITH_DUMP(shape[0] == weight_scale_v->size());
     }
     else {
       // search for the max value and set scale to it
@@ -357,7 +357,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   auto new_type = RankedTensorType::get(type.getShape(),builder.getFloat8E4M3FNType()); // builder.getFloat8E5M2Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_f8->data(), new_type);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
@@ -371,7 +371,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
 Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
-  assert(dtype.isF32());
+  ASSERT_WITH_DUMP(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
   auto data_f8 = std::make_shared<std::vector<uint8_t>>(count);
@@ -390,7 +390,7 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   auto new_type = RankedTensorType::get(type.getShape(),builder.getFloat8E5M2Type()); // builder.getFloat8E5M2Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_f8->data(), new_type);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
@@ -401,7 +401,7 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
 Value WeightOp::clone_int(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
-  assert(dtype.isF32());
+  ASSERT_WITH_DUMP(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
   auto data_f16 = std::make_shared<std::vector<int32_t>>(count);
@@ -419,7 +419,7 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
   auto new_type = RankedTensorType::get(type.getShape(), builder.getI32Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_f16->data(), new_type);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
@@ -435,7 +435,7 @@ Value WeightOp::clone(llvm::StringRef suffix) {
   auto new_name = name.str() + "_" + suffix.str();
   auto nameAttr = builder.getStringAttr(new_name);
   auto ret = module::weightFile().cloneTensor(name, suffix);
-  assert(succeeded(ret));
+  ASSERT_WITH_DUMP(succeeded(ret));
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), getType(),
                                              ValueRange{});
   return newOp.getOutput();

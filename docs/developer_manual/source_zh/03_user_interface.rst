@@ -740,7 +740,13 @@ gen_rand_input.py
 model_tool
 ~~~~~~~~~~~~~~~~~~~~
 
-该工具用于处理最终的模型文件"bmodel"或者"cvimodel"，以下均以"xxx.bmodel"为例，介绍该工具的主要功能。
+该工具用于处理最终的模型文件"bmodel"或者"cvimodel"，所有参数及对应功能描述可通过执行以下命令查看：
+
+.. code-block:: shell
+
+   $ model_too
+
+以下均以"xxx.bmodel"为例，介绍该工具的主要功能。
 
 1) 查看bmodel的基本信息
 

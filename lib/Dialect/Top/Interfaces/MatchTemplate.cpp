@@ -15,10 +15,10 @@ int64_t top::MatchTemplateOp::getFLOPs() {
   auto input_shape = module::getShape(getInput());
   auto template_shape = module::getShape(getMatch());
 
-  assert(input_shape.size() == 2);
-  assert(template_shape.size() == 2);
-  assert(input_shape[0] >= template_shape[0]);
-  assert(input_shape[1] >= template_shape[1]);
+  ASSERT_WITH_DUMP(input_shape.size() == 2);
+  ASSERT_WITH_DUMP(template_shape.size() == 2);
+  ASSERT_WITH_DUMP(input_shape[0] >= template_shape[0]);
+  ASSERT_WITH_DUMP(input_shape[1] >= template_shape[1]);
   auto h = template_shape[0];
   auto w = template_shape[1];
   auto n = input_shape[0] - h + 1;
@@ -50,11 +50,11 @@ LogicalResult top::MatchTemplateOp::inference(InferenceParameter &p) {
   auto input_shape = module::getShape(getInput());
   auto template_shape = module::getShape(getMatch());
 
-  assert(mode == "TM_CCOEFF_NORMED" || mode == "TM_SQDIFF");
-  assert(input_shape.size() == 2);
-  assert(template_shape.size() == 2);
-  assert(input_shape[0] >= template_shape[0]);
-  assert(input_shape[1] >= template_shape[1]);
+  ASSERT_WITH_DUMP(mode == "TM_CCOEFF_NORMED" || mode == "TM_SQDIFF");
+  ASSERT_WITH_DUMP(input_shape.size() == 2);
+  ASSERT_WITH_DUMP(template_shape.size() == 2);
+  ASSERT_WITH_DUMP(input_shape[0] >= template_shape[0]);
+  ASSERT_WITH_DUMP(input_shape[1] >= template_shape[1]);
 
   auto n = input_shape[0] - template_shape[0] + 1;
   auto c = input_shape[1] - template_shape[1] + 1;
@@ -115,10 +115,10 @@ void top::MatchTemplateOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   auto template_shape = module::getShape(getMatch());
 
-  assert(input_shape.size() == 2);
-  assert(template_shape.size() == 2);
-  assert(input_shape[0] >= template_shape[0]);
-  assert(input_shape[1] >= template_shape[1]);
+  ASSERT_WITH_DUMP(input_shape.size() == 2);
+  ASSERT_WITH_DUMP(template_shape.size() == 2);
+  ASSERT_WITH_DUMP(input_shape[0] >= template_shape[0]);
+  ASSERT_WITH_DUMP(input_shape[1] >= template_shape[1]);
 
   auto n = input_shape[0] - template_shape[0] + 1;
   auto c = input_shape[1] - template_shape[1] + 1;

@@ -54,7 +54,7 @@ LogicalResult top::DequantIntOp::inference(InferenceParameter &p) {
   auto zero_point = qtype.getZeroPoint();
   auto raw_shift = *shift;
   auto raw_multi = *multi;
-  assert(raw_multi.size() == raw_shift.size() &&
+  ASSERT_WITH_DUMP(raw_multi.size() == raw_shift.size() &&
          "zero point & multi & shift size missmatch");
 
   if (qmode == "Normal") {

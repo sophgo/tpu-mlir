@@ -97,11 +97,11 @@ void top::ConcatOp::shape_inference() {
                  module::getShape(input)[0] == 0) {
         continue;
       } else {
-        auto input_shape_v = module::getShape(input); 
+        auto input_shape_v = module::getShape(input);
         input_shapes_v.push_back(input_shape_v);
       }
     }
-    assert(out_shape.size() == 1 || out_shape.size() == 0);
+    ASSERT_WITH_DUMP(out_shape.size() == 1 || out_shape.size() == 0);
     auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
     InferenceParameter p;
     std::vector<std::vector<float_t>> input_datas;
@@ -118,9 +118,9 @@ void top::ConcatOp::shape_inference() {
     p.outputs.push_back(output_data.data());
     auto inf_op = dyn_cast<InferenceInterface>(getOperation());
     inf_op.init(p);
-    assert(inf_op);
+    ASSERT_WITH_DUMP(inf_op);
     auto ret = inf_op.inference(p);
-    assert(mlir::succeeded(ret));
+    ASSERT_WITH_DUMP(mlir::succeeded(ret));
     inf_op.deinit(p);
     std::vector<int64_t> output_shape_v(real_out_size);
     std::transform(output_data.begin(), output_data.end(),
