@@ -92,6 +92,7 @@ public:
       auto layout = std::get<1>(attributes_map[pixel_format]);
       inputOp.getResult().setLoc(input_loc);
       inputOp.setPixelFormat(color);
+      auto oriLayout = inputOp.getChannelFormat();
       inputOp.setChannelFormat(layout);
       inputOp.setCustomizationFormat(pixel_format);
 
@@ -102,19 +103,9 @@ public:
       if ( inputOp.getDoPreprocess() )
       {
         auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
-        if (layout == "nhwc") {
-          int tmp = c;
-          c = w;
-          w = h;
-          h = tmp;
-        }
         if (resized_dims->size() == 2) {
           resize_h = resized_dims->at(0);
           resize_w = resized_dims->at(1);
-          arg_shape[2] = resize_h;
-          arg_shape[3] = resize_w;
-          input_shape[2] = resize_h;
-          input_shape[3] = resize_w;
         } else {
           resize_h = h;
           resize_w = w;
@@ -122,11 +113,23 @@ public:
         if (layout == "nhwc") {
           arg_shape[1] = resize_h;
           arg_shape[2] = resize_w;
-          arg_shape[3] = c;
           input_shape[1] = resize_h;
           input_shape[2] = resize_w;
-          input_shape[3] = c;
+        } else {
+          arg_shape[2] = resize_h;
+          arg_shape[3] = resize_w;
+          input_shape[2] = resize_h;
+          input_shape[3] = resize_w;
         }
+        if(layout == "nhwc" && oriLayout == "nchw"){
+          arg_shape[3] = c;
+          input_shape[3] = c;
+        } else if (layout == "nchw" && oriLayout == "nhwc"){
+          arg_shape[1] = w;
+          input_shape[1] = w;
+        }
+
+
         if (color == "gbrg" || color == "grbg" || color == "rggb" || color == "bggr") {
           assert ( c == 4 && "processed raw image should include 4 channel");
           arg_shape[1] = 1;
