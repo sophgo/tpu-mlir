@@ -12,7 +12,7 @@
 int64_t top::GRUOp::getFLOPs() {
   // flops： 2 * (3 * hidden_size * input_size + 3 * hidden_size * hidden_size)
   auto in_shape = module::getShape(getInput());
-  assert(in_shape.size() == 3);
+  ASSERT_WITH_DUMP(in_shape.size() == 3);
 
   int64_t batch_size;
   int64_t seq_len;
@@ -37,7 +37,7 @@ int64_t top::GRUOp::getFLOPs() {
 gru_attr_t top::GRUOp::parseParam() {
   gru_attr_t attr = {0};
   auto in_shape = module::getShape(getInput());
-  assert(in_shape.size() == 3);
+  ASSERT_WITH_DUMP(in_shape.size() == 3);
   if (getBatchFirst()) {
     attr.batch_size = in_shape[0];
     attr.seq_len = in_shape[1];
@@ -220,7 +220,7 @@ LogicalResult top::GRUOp::inference(InferenceParameter &p) {
 
 void top::GRUOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
-  assert(in_shape.size() == 3);
+  ASSERT_WITH_DUMP(in_shape.size() == 3);
   int64_t num_dir = 1;
   if (getBidirectional()) {
     num_dir = 2;

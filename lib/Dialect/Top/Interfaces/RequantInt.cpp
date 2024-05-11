@@ -50,14 +50,14 @@ LogicalResult top::RequantIntOp::inference(InferenceParameter &p) {
   if (module::isUniformQuantized(getInput())) {
     auto i_qtype = module::getUniformQuantizedType(getInput());
     zp_x = i_qtype.getZeroPoint();
-    assert(qmode == "MultiplierShift");
+    ASSERT_WITH_DUMP(qmode == "MultiplierShift");
   }
   auto shift = module::getI64Array(getRshift());
   auto multi = module::getI64Array(getMultiplier());
   auto zero_point = o_qtype.getZeroPoint();
   auto raw_shift = *shift;
   auto raw_multi = *multi;
-  assert(raw_multi.size() == raw_shift.size() &&
+  ASSERT_WITH_DUMP(raw_multi.size() == raw_shift.size() &&
          "zero point & multi & shift size missmatch");
 
   bool per_channel = raw_multi.size() != 1;

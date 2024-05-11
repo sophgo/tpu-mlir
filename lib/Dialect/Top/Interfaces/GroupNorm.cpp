@@ -26,7 +26,7 @@ LogicalResult top::GroupNormOp::inference(InferenceParameter &p) {
   const auto input_shape = module::getShape(getInput());
   const int channel = input_shape[1];
   const int num_groups = getNumGroups();
-  assert(channel % num_groups == 0);
+  ASSERT_WITH_DUMP(channel % num_groups == 0);
   const int channel_per_group = channel / num_groups;
 
   int outer_dim = input_shape[0] * num_groups;

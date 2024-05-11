@@ -32,10 +32,10 @@ void top::IfOp::shape_inference() {
   for (uint32_t i = 1; i < getNumRegions(); i++) {
     yield_op = getRegion(i).back().getTerminator();
     auto nof_inputs = yield_op->getNumOperands();
-    assert(nof_inputs == shapes.size() && "Regions have different num of output, fix me.");
+    ASSERT_WITH_DUMP(nof_inputs == shapes.size() && "Regions have different num of output, fix me.");
     for (uint32_t j = 0; j < nof_inputs; j++) {
       auto _shape = module::getShape(yield_op->getOperand(j)).vec();
-      assert((shapes[j] == _shape) && "Regions have different output shape, fix me.");
+      ASSERT_WITH_DUMP((shapes[j] == _shape) && "Regions have different output shape, fix me.");
     }
   }
   // set shape
@@ -65,7 +65,7 @@ static inline bool areCompatibleIfTypes(Type ifResultType, Type branchResultType
 
 LogicalResult top::IfOp::verify() {
   size_t ifNumResults = getNumResults();
-  assert(ifNumResults == getOutput().size() && "output() != all results");
+  ASSERT_WITH_DUMP(ifNumResults == getOutput().size() && "output() != all results");
   auto thenResults = getThenBranch().back().getTerminator()->getOperands();
   if (ifNumResults != thenResults.size())
     return emitOpError() << "then branch #results=" << thenResults.size()

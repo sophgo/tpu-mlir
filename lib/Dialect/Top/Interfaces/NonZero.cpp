@@ -34,7 +34,7 @@ LogicalResult top::NonZeroOp::inference(InferenceParameter &p) {
   const auto num_elem = module::getNumElements(getInput());
   const auto shape = module::getShape(getInput());
   const auto dims = shape.size();
-  assert(dims > 0);
+  ASSERT_WITH_DUMP(dims > 0);
   std::vector<int> indices_;
   indices_.reserve(num_elem);
   // --- step1 : calc nonzero indices ---

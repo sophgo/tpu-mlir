@@ -226,8 +226,8 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     int64_t n, c, ih, iw, oh, ow;
     module::getNCHW(getInput(), n, c, ih, iw, false);
     module::getNCHW(getOutput(), n, c, oh, ow, false);
-    
-    // dynamic 
+
+    // dynamic
     if(p.inputs[1]){
         float* target_shape_ = p.inputs[1];
         std::vector<int64_t> out_shape;
@@ -323,7 +323,7 @@ void top::InterpOp::shape_inference() {
             if (dyn_cast<top::WeightOp>(getTargetShape().getDefiningOp())){
                 auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
                 if (nof_dims == 5) {
-                    assert(target_shape->at(0) == in_shape[nof_dims - 3]); // upsample_nearest_3d only support scale_d = 1
+                    ASSERT_WITH_DUMP(target_shape->at(0) == in_shape[nof_dims - 3]); // upsample_nearest_3d only support scale_d = 1
                 }
                 out_shape[widx] = (int)target_shape->at(nof_dims - 2 - 1);
                 if (nof_dims >= 4) {

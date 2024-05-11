@@ -30,7 +30,7 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
   std::vector<int> in_dims_v(num_input);
   for (int i = 0; i < num_input; ++i) {
     auto shape = module::getShape(getInputs()[i]);
-    assert(shape.size() <= MAX_SHAPE_DIMS);
+    ASSERT_WITH_DUMP(shape.size() <= MAX_SHAPE_DIMS);
     in_dims_v[i] = shape.size();
     for (int j = 0; j < shape.size(); j++) {
       in_shapes_v[i][j] = shape[j];
@@ -46,7 +46,7 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
   std::string Err;
   auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
       custom_lib_name.data(), &Err);
-  assert(custom_dl.isValid() &&
+  ASSERT_WITH_DUMP(custom_dl.isValid() &&
          "Opening libplugin_custom.so failed while using custom op! Check and "
          "make a plugin first");
   if (getName().starts_with("ap.")) {
@@ -107,7 +107,7 @@ void top::CustomOp::shape_inference() {
   std::vector<int> out_dims_v(num_output);
   for (int i = 0; i < num_input; ++i) {
     auto shape = module::getShape(getInputs()[i]);
-    assert(shape.size() <= MAX_SHAPE_DIMS);
+    ASSERT_WITH_DUMP(shape.size() <= MAX_SHAPE_DIMS);
     in_dims_v[i] = shape.size();
     for (int j = 0; j < shape.size(); j++) {
       in_shapes_v[i][j] = shape[j];
@@ -122,7 +122,7 @@ void top::CustomOp::shape_inference() {
   llvm::StringRef custom_lib_name = "libplugin_custom.so";
   std::string Err;
   auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
-  assert(custom_dl.isValid() &&
+  ASSERT_WITH_DUMP(custom_dl.isValid() &&
          "Opening libplugin_custom.so failed while using custom op! Check and "
          "make a plugin first");
   if (getName().starts_with("ap.")) {

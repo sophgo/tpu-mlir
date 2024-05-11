@@ -748,7 +748,13 @@ model_tool
 ~~~~~~~~~~~~~~~~~~~~
 
 
-This tool is used to process the final model file "bmodel" or "cvimodel". The following uses "xxx.bmodel" as an example to introduce the main functions of this tool.
+This tool is used to process the final model file "bmodel" or "cvimodel". All arguments and corresponding function descriptions can be viewed by executing the following command:
+
+.. code-block:: shell
+
+   $ model_too
+
+The following uses "xxx.bmodel" as an example to introduce the main functions of this tool.
 
 1) show basic info of bmodel
 

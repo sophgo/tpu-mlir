@@ -32,11 +32,11 @@ void top::RangeOp::shape_inference() {
   if (!module::isNone(getStart())) {
     if (auto start_w = dyn_cast<top::WeightOp>(getStart().getDefiningOp())) {
       auto start_v = start_w.read_as_float();
-      assert(start_v->size() == 1);
+      ASSERT_WITH_DUMP(start_v->size() == 1);
       start = static_cast<float>(start_v->at(0));
     } else if (module::isShape(getStart())) {
       auto start_v = module::getShapeTensorValue(getStart());
-      assert(start_v.size() == 1);
+      ASSERT_WITH_DUMP(start_v.size() == 1);
       start = start_v[0];
     } else {
       llvm_unreachable("start must be a weight or a shape");
@@ -45,11 +45,11 @@ void top::RangeOp::shape_inference() {
   if (!module::isNone(getDelta())) {
     if (auto delta_w = dyn_cast<top::WeightOp>(getDelta().getDefiningOp())) {
       auto delta_v = delta_w.read_as_float();
-      assert(delta_v->size() == 1);
+      ASSERT_WITH_DUMP(delta_v->size() == 1);
       delta = static_cast<float>(delta_v->at(0));
     } else if (module::isShape(getDelta())) {
       auto delta_v = module::getShapeTensorValue(getDelta());
-      assert(delta_v.size() == 1);
+      ASSERT_WITH_DUMP(delta_v.size() == 1);
       delta = delta_v[0];
     } else {
       llvm_unreachable("delta must be a weight or a shape");
@@ -57,11 +57,11 @@ void top::RangeOp::shape_inference() {
   }
   if (auto limit_w = dyn_cast<top::WeightOp>(getLimit().getDefiningOp())) {
     auto limit_v = limit_w.read_as_float();
-    assert(limit_v->size() == 1);
+    ASSERT_WITH_DUMP(limit_v->size() == 1);
     limit = static_cast<float>(limit_v->at(0));
   } else if (module::isShape(getLimit())) {
     auto limit_v = module::getShapeTensorValue(getLimit());
-    assert(limit_v.size() == 1);
+    ASSERT_WITH_DUMP(limit_v.size() == 1);
     limit = limit_v[0];
   } else {
     llvm_unreachable("limit must be a weight or a shape");

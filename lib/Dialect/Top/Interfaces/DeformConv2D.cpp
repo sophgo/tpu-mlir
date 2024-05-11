@@ -25,7 +25,7 @@ deform_conv2d_attr_t top::DeformConv2DOp::parseParam() {
   attr.n = i_s[0];
   attr.ic = i_s[1];
   attr.oc = o_s[1];
-  
+
   attr.id = attr.od = attr.ofd = attr.mkd = attr.kd = attr.dd = attr.sd = 1;
   attr.ih = i_s.size() > 2 ? i_s[2] : 1;
   attr.iw = i_s.size() > 3 ? i_s[3] : 1;
@@ -91,16 +91,16 @@ void top::DeformConv2DOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   auto filter_shape = module::getShape(getFilter());
   auto offset_shape = module::getShape(getOffset());
-  assert(input_shape.size() == filter_shape.size());
+  ASSERT_WITH_DUMP(input_shape.size() == filter_shape.size());
   if (getUseMask()) {
    auto mask_shape = module::getShape(getMask());
-   assert(offset_shape.size() == mask_shape.size());
+   ASSERT_WITH_DUMP(offset_shape.size() == mask_shape.size());
   }
-  assert(input_shape.size() == offset_shape.size());
-  assert(input_shape.size() > 2);
+  ASSERT_WITH_DUMP(input_shape.size() == offset_shape.size());
+  ASSERT_WITH_DUMP(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
-  assert(spacial_rank == getKernelShape().size());
-  assert(getPads().size() == spacial_rank * 2);
+  ASSERT_WITH_DUMP(spacial_rank == getKernelShape().size());
+  ASSERT_WITH_DUMP(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
   out_shape.push_back(filter_shape[0]);

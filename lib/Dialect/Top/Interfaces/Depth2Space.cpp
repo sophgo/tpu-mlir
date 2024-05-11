@@ -28,7 +28,7 @@ LogicalResult top::Depth2SpaceOp::inference(InferenceParameter &p) {
   } else {
     module::getNCHW(getOutput(), on, oh, ow, oc, false);
   }
-  assert(in == on);
+  ASSERT_WITH_DUMP(in == on);
   bool crd = getIs_CRD();
   bool inversed = getIsInversed();
   int64_t bh = getBlockH();
