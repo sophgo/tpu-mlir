@@ -852,10 +852,46 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   std::vector<std::pair<Operation*, int>> vec_op_hsecs;
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info, vec_op_hsecs);
   update_data_split(time_step, lg_info, shape_secs);
-  //  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
-  //    return true;
-  //  }
-  //  update_shape_secs(shape_secs, max_shape_secs);
+
+
+  /**
+   * The `update_multi_core` function may result in an invalid `shape_secs`,
+   * leading to the failure of subsequent steps such as `assignTimeStep`,
+   * which in turn directly causes a previously potentially valid `LayerGroup` to become invalid.
+   *
+   * This reduces the original search space of the `LayerGroup`,
+   * resulting in the coexistence of positive and negative optimization.
+   *
+   * Therefore, it is necessary to determine through the following steps
+   * whether the change can still ensure the validity of `shape_sec`
+   * generated from `update_multi_core_secs`.
+  */
+  shape_secs_t multi_core_secs = shape_secs;
+  bool multi_core_status = false;
+  update_multi_core_secs(max_shape_secs, multi_core_secs);
+  while (multi_core_secs.nsecs <= max_shape_secs.nsecs &&
+         multi_core_secs.dsecs <= max_shape_secs.dsecs &&
+         multi_core_secs.hsecs <= max_shape_secs.hsecs &&
+         multi_core_secs.wsecs <= max_shape_secs.wsecs &&
+         multi_core_secs.csecs <= max_shape_secs.csecs) {
+    // reassign time step
+    multi_core_status =
+        time_step->assignTimeStep(lg_info, multi_core_secs, true);
+    if (multi_core_status == false) {
+      break;
+    }
+    multi_core_status = assignLmemAddr(lg_info, time_step, multi_core_secs);
+
+    if (multi_core_status == false) {
+      break;
+    }
+
+    break;
+  }
+
+  if (multi_core_status) {
+    shape_secs = multi_core_secs;
+  }
 
   int64_t try_num = 0;
   bool status = false;
@@ -882,6 +918,8 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
       return false;
     }
   }
+
+
   return status;
 }
 

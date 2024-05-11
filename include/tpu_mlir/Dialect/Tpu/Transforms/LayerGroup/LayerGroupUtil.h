@@ -30,6 +30,7 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs);
+void update_multi_core_secs(const shape_secs_t max_shape_secs, shape_secs_t &shape_secs);
 
 bool strip_back_judge(Value v, const LgInfo &lg_info,
                       const std::multiset<Operation *> &op_set,

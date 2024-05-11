@@ -176,8 +176,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info, std::vector<std::pair<Ope
                       .csecs = max_csecs};
 }
 
-static void update_multi_core_secs(const shape_secs_t max_shape_secs,
-                                   shape_secs_t &shape_secs) {
+void update_multi_core_secs(const shape_secs_t max_shape_secs, shape_secs_t &shape_secs) {
   auto core_num = module::getCoreNum();
   int64_t secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.hsecs;
   int64_t max_secs =
@@ -530,11 +529,6 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     }
   }
 
-  extern bool opt_cost_all;
-  if (status && opt_cost_all) {
-    // TODO: find out performance problem for mm_resnet50/inception_resnet_v2, ...
-    update_multi_core_secs(max_shape_secs, shape_secs);
-  }
 
   update_tensor_infos(lg_info, tensor_infos);
   return status;
