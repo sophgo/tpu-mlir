@@ -39,7 +39,9 @@ struct ReplaceWithWeightInput : public OpRewritePattern<TileOp> {
 
   LogicalResult matchAndRewrite(TileOp op,
                                 PatternRewriter &rewriter) const override {
-
+    if(op.getTileT()) {
+      return failure();
+    }
     if (isa<WeightOp>(op.getInput().getDefiningOp())) {
       auto storage_type = module::getStorageType(op.getOutput());
       auto weight = dyn_cast<WeightOp>(op.getInput().getDefiningOp());
