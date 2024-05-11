@@ -227,8 +227,12 @@ struct LgInfo {
       // update group_ins
       for (auto in : op->getOperands()) {
         auto src_op = in.getDefiningOp();
+        bool value_in;
+        if (src_op != nullptr){
+          value_in = module::isTrain() ? !isa<top::NoneOp>(src_op) : !isa<top::WeightOp, top::NoneOp>(src_op);
+        }
         if ((src_op == nullptr ||
-             (!isa<top::NoneOp>(src_op) &&
+             (value_in &&
               (std::find(group_ops.begin(), group_ops.end(), src_op) ==
                group_ops.end()))) &&
             std::find(group_ins.begin(), group_ins.end(), in) ==
