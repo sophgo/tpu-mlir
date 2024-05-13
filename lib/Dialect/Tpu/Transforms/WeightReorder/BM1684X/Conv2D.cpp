@@ -38,7 +38,7 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
     op.setOperand(1, new_reshape_op);
   }
 
-  if (attr.has_bias && isa<top::WeightOp>(op)) {
+  if (attr.has_bias && dyn_cast<top::WeightOp>(op.getBias().getDefiningOp())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto data_fp32 = biasOp.read<float>();
     auto count = data_fp32->size();
