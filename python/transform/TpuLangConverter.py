@@ -162,6 +162,8 @@ class Tensor:
         check_dtype(dtype)
         self.dtype = dtype.lower()
         if data is not None:
+            if self.dtype == "float16" and data.dtype == "float32":
+                data = data.astype("float16")
             assert data.dtype == self.dtype
         if data is not None and tuple(shape) != tuple(data.shape):
             num = 1
