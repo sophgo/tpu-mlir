@@ -34,6 +34,11 @@ static void WeightFolder(Operation *op) {
   if (!infer) {
     return;
   }
+  for (auto user:op->getUsers()){
+    if (isa<ReturnOp>(user)){
+      return;
+    }
+  }
   auto ins = op->getOperands();
   auto outs = op->getResults();
   auto num_in = ins.size();
