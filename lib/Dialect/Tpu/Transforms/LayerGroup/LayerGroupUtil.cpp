@@ -2162,7 +2162,7 @@ bool is_eu_align_bm168x(Value opd) {
       }
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
-    } else if (module::isBM1688()) {
+    } else if (module::isBM1688() || module::isBM1690Family()) {
       if (isa<tpu::RequantIntAxisOp>(op)) {
         if ((opd == op->getOperand(1))) {
           return false;
@@ -2197,7 +2197,7 @@ bool is_value_weight(Value opd) {
     if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return true;
     }
-  } else if (module::isBM1688()) {
+  } else if (module::isBM1688() || module::isBM1690Family()) {
     if (isa<tpu::RequantIntAxisOp>(op)) {
       if ((opd == op->getOperand(1))) {
         return true;
