@@ -2412,13 +2412,13 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.deconv = nn.ConvTranspose2d(in_channels=8,
-                                                 out_channels=8,
-                                                 kernel_size=2,
+                self.deconv = nn.ConvTranspose2d(in_channels=128,
+                                                 out_channels=128,
+                                                 kernel_size=4,
                                                  stride=2,
                                                  padding=0,
                                                  output_padding=0,
-                                                 groups=1,
+                                                 groups=128,
                                                  bias=False,
                                                  dilation=1)
 
@@ -2426,7 +2426,7 @@ class ONNX_IR_TESTER(object):
                 y = self.deconv(x)
                 return y
 
-        x = torch.randn(3, 8, 16, 32).float()
+        x = torch.randn(1, 128, 24, 44).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_DeconvDynW(self, case_name):

@@ -36,15 +36,15 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi, shift_val, zero_point;
-      if (module::isBM1688()) {
+      if (module::isBM1684X()) {
+        multi = p.inputs[1][c * 3];
+        shift_val = p.inputs[1][c * 3 + 1];
+        zero_point = p.inputs[1][c * 3 + 2];
+      } else {
         multi = p.inputs[1][c * 2];
         uint32_t tmp = p.inputs[1][c * 2 + 1];
         shift_val = (int64_t)((char)(tmp & 0xff));
         zero_point = (int64_t)(short)((tmp & 0xffff0000) >> 16);
-      } else {
-        multi = p.inputs[1][c * 3];
-        shift_val = p.inputs[1][c * 3 + 1];
-        zero_point = p.inputs[1][c * 3 + 2];
       }
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
@@ -61,15 +61,15 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi, rshift_val, zero_point;
-      if (module::isBM1688()) {
+      if (module::isBM1684X()) {
+        multi = p.inputs[1][c * 3];
+        rshift_val = -p.inputs[1][c * 3 + 1];
+        zero_point = p.inputs[1][c * 3 + 2];
+      } else {
         multi = p.inputs[1][c * 2];
         uint32_t tmp = p.inputs[1][c * 2 + 1];
         rshift_val = (int64_t)(-(char)(tmp & 0xff));
         zero_point = (int64_t)(short)((tmp & 0xffff0000) >> 16);
-      } else {
-        multi = p.inputs[1][c * 3];
-        rshift_val = -p.inputs[1][c * 3 + 1];
-        zero_point = p.inputs[1][c * 3 + 2];
       }
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
