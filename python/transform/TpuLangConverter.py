@@ -141,7 +141,6 @@ class Scalar:
 
 class Tensor:
     ID = 0
-    name_list = []
 
     def __init__(self,
                  shape: list = [],
@@ -155,8 +154,6 @@ class Tensor:
         shape = shape if isinstance(shape, list) else [shape]
         self.shape = shape
         self.name = "BMTensor" + str(self.id) if name is None else name
-        assert self.name not in Tensor.name_list, "Tensor name must be uinque. {} has been used".format(self.name)
-        Tensor.name_list.append(self.name)
         assert ttype.lower() in ["neuron", "coeff"]
         self.ttype = ttype.lower()
         check_dtype(dtype)
@@ -181,8 +178,6 @@ class Tensor:
         Tensor.ID += 1
 
     def reset(self):
-        if self.name in Tensor.name_list:
-            Tensor.name_list.remove(self.name)
         self.buffer = None
 
     def quantization(self,
@@ -256,7 +251,6 @@ class Tensor:
             modstr += [self.scale, self.zero_point]
         return s.format(modstr=_indent(modstr, 2))
 
-
 class Operator:
 
     def __init__(self,
@@ -277,6 +271,9 @@ class Operator:
         ])
         return s.format(type=self.op_name, modstr=_indent(modstr, 2))
 
+    def __del__(self):
+        del self.inputs
+        del self.outputs
 
 class Graph:
 
@@ -285,6 +282,30 @@ class Graph:
         self.operators: List[Operator] = []
         self._inputs = None
         self._outputs = None
+        self.tensors_dict = dict()
+
+    def __del__(self):
+        del self.operators
+
+    def check_tensors(self, op: Operator):
+        for tensor in op.inputs + op.outputs:
+            if tensor is None:
+                continue
+            if tensor.name in self.tensors_dict.keys():
+                assert tensor.id == self.tensors_dict[tensor.name], "Tensor name must be uinque. {} has been used".format(tensor.name)
+            else:
+                self.tensors_dict[tensor.name] = tensor.id
+
+    def insert_op(self, op):
+        # op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
+        self.check_tensors(op)
+        self.operators.append(op)
+
+    def reset(self):
+        for op in self.operators:
+            for tensor in op.inputs + op.outputs:
+                if isinstance(tensor, Tensor):
+                    tensor.reset()
 
     @property
     def inputs(self):
@@ -323,7 +344,6 @@ class Graph:
                            ["outputs (\n{}\n)".format(_indent(self.outputs, 2))] +
                            ["body (\n{}\n)".format(_indent(self.operators, 2))])
         return s.format(name=self.name, modstr=_indent(modstr, 2))
-
 
 class TpuLangConverter(BaseConverter):
     MLIRImporterTypeStr = {
