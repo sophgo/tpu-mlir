@@ -56,13 +56,14 @@ public:
 private:
   enum TagType {
     TAG_USERS = 0,
-    TAG_WEIGHT = (1ul << 36),
-    TAG_ACTIVATION = (2ul << 36),
-    TAG_IO0 = (3ul << 36),
-    TAG_IO1 = (4ul << 36),
-    TAG_IO2 = (5ul << 36),
-    TAG_IO3 = (6ul << 36),
-    TAG_IO4 = (7ul << 36),
+    TAG_WEIGHT = (1ul << 40),
+    TAG_ACTIVATION = (2ul << 40),
+    TAG_IO0 = (3ul << 40),
+    TAG_IO1 = (4ul << 40),
+    TAG_IO2 = (5ul << 40),
+    TAG_IO3 = (6ul << 40),
+    TAG_IO4 = (7ul << 40),
+
   };
 
 public:
@@ -80,7 +81,7 @@ protected:
     IC_PARALLEL = 32;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
-    GMEM_START_ADDR = 0x1ul << 39; // tag for global memory address
+    GMEM_START_ADDR = 0;
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     IO_ADDR[0] = GMEM_START_ADDR | TAG_IO0;
