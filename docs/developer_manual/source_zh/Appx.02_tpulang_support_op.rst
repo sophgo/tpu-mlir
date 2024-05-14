@@ -194,18 +194,139 @@ compile
 反初始化
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-在网络构建之后，需要进行反初始化结束。只有在反初始化后，之前所启动的
-Compile生成TPU可执行目标执行才会存盘到所指定的输出目录中。
+在网络构建之后，需要进行反初始化结束。只有在反初始化后，之前
+Tpulang的数据才会得到释放
 
     .. code-block:: python
 
        def deinit():
           #pass
 
+.. _reset_default_graph:
+
+重置默认图
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+在网络构建之前，需要进行重置默认图操作。如果输入graph为None，重置默认图后，当前graph为空图。
+如果设置输入graph，会设置graph为默认图。
+如果只有一个子图，可以不需要显示调用reset_default_graph。因为init函数会调用该函数。
+
+    .. code-block:: python
+
+       def reset_default_graph(graph = None):
+          #pass
+
+.. _get_default_graph:
+
+获取当前默认图
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+在网络构建之后，如果需要得到默认的子图，调用该函数可以得到默认的graph。
+
+    .. code-block:: python
+
+       def get_default_graph():
+          #pass
+
+.. _reset_graph:
+
+重置图
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+如果需要清除graph以及其保存的Tensor信息，可以调用该函数。graph为None时，清除当前默认图的信息。
+
+    .. code-block:: python
+
+       def reset_graph(graph = None):
+          #pass
+
+注意：如果graph中的Tensor还被其他graph使用，不要调用该函数清除graph信息
+
+.. _RoundingMode:
+
+舍入模式
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+舍入是指按照一定的规则舍去某些数字后面多余的尾数的过程，以得到更简短、明确的数字表示。
+给定 x，舍入结果是 y，有下面的舍入模式供选择。
+
+邻近偶数四舍五入(Half to Even)
+"""""""""""
+
+    四舍五入，当小数值为0.5时舍入到邻近的偶数，对应的值是 :cpp:enumerator:`half_to_even`。
+
+远离原点四舍五入(Half Away From Zero)
+"""""""""""
+
+    四舍五入，正数接近于正无穷，负数接近于负无穷，对应的值是 :cpp:enumerator:`half_away_from_zero`，公式如下
+
+    .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x| + 0.5\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x| - 0.5\right\rceil}
+
+截断取整(Towards Zero)
+"""""""""""
+
+    无条件舍去，接近于原点，对应的值是 :cpp:enumerator:`towards_zero`，公式如下
+
+    .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x|\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x|\right\rceil} = {\begin{cases}\mathsf{\lfloor x\rfloor}&{\text{if}}\mathsf{\ \ x > 0,}\\ \mathsf{\lceil x\rceil}&{\text{otherwise}}.\end{cases}}
+
+下取整(Down)
+"""""""""""
+
+    接近于负无穷，对应的值是 :cpp:enumerator:`down`，公式如下
+
+    .. math:: \mathsf{y = \lfloor x\rfloor = -\lceil-x\rceil}
+
+上取整(Up)
+"""""""""""
+
+    接近于正无穷，对应的值是 :cpp:enumerator:`up`，公式如下
+
+    .. math:: \mathsf{y = \lceil x\rceil = -\lfloor-x\rfloor}
+
+向上四舍五入(Half Up)
+"""""""""""
+
+    四舍五入，接近于正无穷，对应的值是 :cpp:enumerator:`half_up`，公式如下
+
+    .. math:: \mathsf{y = \lceil x + 0.5\rceil = -\lfloor-x - 0.5\rfloor = \left\lceil\frac{\lfloor 2x\rfloor}{2}\right\rceil}
+
+向下四舍五入(Half Down)
+"""""""""""
+
+    四舍五入，接近于正无穷，对应的值是 :cpp:enumerator:`half_down`，公式如下
+
+    .. math:: \mathsf{y = \lfloor x - 0.5\rfloor = -\lceil-x + 0.5\rceil = \left\lfloor\frac{\lceil 2x\rceil}{2}\right\rfloor}
+
+例子
+"""""""""""
+
+下表列出不同舍入模式下 x 与 y 的对应关系。
+
+.. math::
+    \begin{array}{|c|c|c|c|c|c|c|c|}
+    \hline
+    ~ & \textsf{Half to} & \textsf{Half Away} & \textsf{Towards} & \textsf{Down} & \textsf{ Up } & \textsf{Half Up} & \textsf{Half Down}\\
+    ~ & \textsf{Even}    & \textsf{From Zero} & \textsf{Zero}    & ~           & ~         & ~              & ~               \\ \hline
+    +1.8 & +2 & +2 & +1 & +1 & +2 & +2 & +2\\ \hline
+    +1.5 & +2 & +2 & +1 & +1 & +2 & +2 & +1\\ \hline
+    +1.2 & +1 & +1 & +1 & +1 & +2 & +1 & +1\\ \hline
+    +0.8 & +1 & +1 &  0 &  0 & +1 & +1 & +1\\ \hline
+    +0.5 &  0 & +1 &  0 &  0 & +1 & +1 &  0\\ \hline
+    +0.2 &  0 &  0 &  0 &  0 & +1 &  0 &  0\\ \hline
+    -0.2 &  0 &  0 &  0 & -1 &  0 &  0 &  0\\ \hline
+    -0.5 &  0 & -1 &  0 & -1 &  0 &  0 & -1\\ \hline
+    -0.8 & -1 & -1 &  0 & -1 &  0 & -1 & -1\\ \hline
+    -1.2 & -1 & -1 & -1 & -2 & -1 & -1 & -1\\ \hline
+    -1.5 & -2 & -2 & -1 & -2 & -1 & -1 & -2\\ \hline
+    -1.8 & -2 & -2 & -1 & -2 & -1 & -2 & -2\\ \hline
+    \end{array}
+
+.. _rounding mode of right-shift:
+
+
 .. _operator:
 
 Operator
----------------
+--------------------
 
 为了TpuLang编程时可以考虑到获取好的性能，下面会将Operator分成本地操作（Local Operator）、受限本地操作（Limited Local Operator）
 和全局操作（Global Operator）。

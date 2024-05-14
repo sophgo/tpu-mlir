@@ -23,7 +23,7 @@ logger = logging.getLogger("root")
 device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
 
 class TpuLang:
-    graph = None
+    graph: Graph = None
     device = None
     chip = None
 
@@ -36,13 +36,33 @@ class TpuLang:
         else:
             KeyError('TpuLang: unsupported device.')
         # self.model_name = model_name
-        TpuLang.graph = Graph()
+        reset_default_graph()
 
     @staticmethod
     def insert_op(op_name: str, inputs: List[Tensor], outputs: List[Tensor], params: dict = {}):
         op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
-        TpuLang.graph.operators.append(op)
+        TpuLang.graph.insert_op(op)
 
+def init(device: str):
+    TpuLang(device=device)
+
+def deinit():
+    if isinstance(TpuLang.graph, Tensor):
+        TpuLang.graph.reset()
+    TpuLang.graph = None
+    TpuLang.device = None
+
+def reset_default_graph(graph = None):
+    TpuLang.graph = Graph() if graph is None else graph
+
+def get_default_graph():
+    return TpuLang.graph
+
+def reset_graph(graph: Graph = None):
+    if graph is not None:
+        graph.reset()
+    else:
+        TpuLang.graph.reset()
 
 def compile(name: str,
             inputs: List[Tensor],
@@ -179,19 +199,6 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
         model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
-
-
-def init(device: str):
-    TpuLang(device=device)
-
-
-def deinit():
-    for op in TpuLang.graph.operators:
-        for tensor in op.inputs + op.outputs:
-            if isinstance(tensor, Tensor):
-                tensor.reset()
-    TpuLang.graph = None
-    TpuLang.device = None
 
 
 def ArrayAttr(data: list, data_type: str = 'int64'):
@@ -917,6 +924,8 @@ def cast(tensor_i: Tensor,
     attr = {
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
+    assert round_mode not in ["half_up", "half_down"], \
+            f"cast does not suooprt round mode {round_mode}"
     output = Tensor(shape, dtype=out_dtype, name=out_name)
     TpuLang.insert_op("top.Cast", [tensor_i], [output], params=attr)
     return output
@@ -947,6 +956,9 @@ def requant_fp_to_int(tensor_i: Tensor,
     attr = {
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
+    if isinstance(scale, List) and len(scale) > 1:
+        assert round_mode not in ["half_up", "half_down"], \
+                f"requant_fp_to_int per channel does not suooprt round mode {round_mode}"
     TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
@@ -964,12 +976,15 @@ def dequant_int_to_fp(tensor_i: Tensor,
     attr = {
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
     }
+    if out_dtype == "float16":
+        assert round_mode not in ["half_up", "half_down"], \
+                f"dequant_int_to_fp float16 does not suooprt round mode {round_mode}"
     TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output], params=attr)
     return output
 
 def round_mode_convert(rmode: str):
     round_mode = "".join([r.capitalize() for r in rmode.split('_')])
-    assert round_mode in ["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]
+    assert round_mode in ["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "TowardsZero", "Up", "Down"], f"do not support round mode {rmode}"
     return round_mode
 
 @auto_name()
@@ -1035,6 +1050,12 @@ def requant_fp(tensor_i: Tensor,
     scale = scale if isinstance(scale, List) else [scale]
     offset = offset if isinstance(offset, List) else [offset]
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=(int)(offset[0]))
+    if round_mode == "half_up": # half_up(x) = down(x + 0.5)
+        round_mode = "down"
+        offset = [of + 0.5 for of in offset]
+    elif round_mode == "half_down": # half_down(x) = up(x - 0.5)
+        round_mode = "up"
+        offset = [of - 0.5 for of in offset]
     attr = {
         "scale": ArrayAttr(scale, "float64"),
         "offset": ArrayAttr(offset, "float64"),
@@ -1808,6 +1829,51 @@ def interpolate(input: Tensor,
     assert scale_w > 0, f"scale_w:{scale_w} is not valid"
     assert method in ['nearest', 'linear'], f"method:{method} is not supported"
     assert coord_mode in ["align_corners", "pytorch_half_pixel", "half_pixel", "asymmetric"], f"coord_mode:{coord_mode} is not supported"
+    return interpolate_v2(input, None, None, [scale_h, scale_w], method=method, coord_mode=coord_mode, out_name=out_name)
+    # attr = {
+    #     "scale_h": Attr(scale_h, 'float64'),
+    #     "scale_w": Attr(scale_w, 'float64'),
+    #     "mode": Attr(method, 'string'),
+    #     "coord_mode": Attr(coord_mode, 'string'),
+    # }
+    # output = Tensor(dtype=input.dtype, name=out_name)
+    # TpuLang.insert_op("top.Interp", inputs=[input, None], outputs=[output], params=attr)
+    # return output
+
+@auto_name()
+@annotation_check
+def interpolate_v2(input: Tensor,
+                   roi: Tensor = None,
+                   sizes: Tensor = None,
+                   scale: List[float] = None,
+                   method: str = 'nearest',
+                   coord_mode: str = "pytorch_half_pixel",
+                   antialias: int = 0,
+                   axes: List[int] = None,
+                   cubic_coeff_a: float = -0.75,
+                   exclude_outside: int = 0,
+                   extrapolation_value: float = 0.0,
+                   keep_aspect_ratio_policy: str = "stretch",
+                   nearest_mode: str = "round_prefer_floor",
+                   out_name: str = None):
+
+    scale_h = scale[0] if scale != None else 0.0
+    scale_w = scale[0] if scale != None else 0.0
+    if sizes == None:
+        assert scale is not None, f"sizes and scale is not supported"
+    assert method in ['nearest', 'linear'], f"method:{method} is not supported"
+    assert coord_mode in ["align_corners", "pytorch_half_pixel", "half_pixel", "asymmetric"], f"coord_mode:{coord_mode} is not supported"
+    assert roi == None
+    assert antialias == 0
+    assert axes == None
+    assert exclude_outside == 0
+    if method == "cubic":
+        assert cubic_coeff_a == -0.75
+    assert extrapolation_value == 0.0
+    assert exclude_outside == 0
+    assert keep_aspect_ratio_policy == "stretch"
+    if method == 'nearest':
+        assert nearest_mode == "round_prefer_floor"
     attr = {
         "scale_h": Attr(scale_h, 'float64'),
         "scale_w": Attr(scale_w, 'float64'),
@@ -1815,7 +1881,7 @@ def interpolate(input: Tensor,
         "coord_mode": Attr(coord_mode, 'string'),
     }
     output = Tensor(dtype=input.dtype, name=out_name)
-    TpuLang.insert_op("top.Interp", inputs=[input, None], outputs=[output], params=attr)
+    TpuLang.insert_op("top.Interp", inputs=[input, sizes], outputs=[output], params=attr)
     return output
 
 

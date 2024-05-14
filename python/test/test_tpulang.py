@@ -321,40 +321,40 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def test_binary_shift(self, case_name, func, shape_x: List[int], shape_y: List[int], dtype_i0="int8", dtype_i1="int8", dtype_o="int8"):
         @tpulang(self.chip)
-        def binary_coeff():
-            x_data = rand_data(shape_x, dtype_i0)
-            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
-            y = self.coeff_tensor(shape_y, dtype_i1, scale=4.0)
-            out = func(y, x, shift=-1, out_dtype=dtype_o)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
-        @tpulang(self.chip)
-        def binary():
+        def _test_binary():
             x_data = rand_data(shape_x, dtype_i0)
             y_data = rand_data(shape_y, dtype_i1)
-            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
+            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data, name="input")
             y = tpul.Tensor(dtype=dtype_i1, shape=shape_y, data=y_data)
-            out = func(y, x, shift=-1, out_dtype=dtype_o)
-            self.compile_and_check(self.unique_name(case_name), [x, y], [out], is_quantized=True)
-        @tpulang(self.chip)
-        def binary_scalar():
-            x_data = rand_data(shape_x, dtype_i0)
-            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
-            out = func(tpul.Scalar(2, dtype_i1), x, shift=-1, out_dtype=dtype_o)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
-        @tpulang(self.chip)
-        def binary_quant():
-            x_data = rand_data(shape_x, dtype_i0)
-            y_data = rand_data(shape_y, dtype_i1)
-            x = tpul.Tensor(dtype=dtype_i0, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype_i1, shape=shape_y, data=y_data)
-            y_s = tpul.add_shift(y, 0, out_dtype="int32", shift=2)
-            out = func(y_s, x, shift=-1, out_dtype=dtype_o)
-            self.compile_and_check(self.unique_name(case_name), [x, y], [out], is_quantized=True)
+            y_const = self.coeff_tensor(shape_y, dtype_i1, scale=4.0)
 
-        binary_coeff()
-        binary()
-        binary_scalar()
-        binary_quant()
+            out0 = func(y_const, x, shift=-1, out_dtype=dtype_o)
+            binary_coeff = tpul.get_default_graph()
+
+            tpul.reset_default_graph()
+            out1 = func(y, x, shift=-1, out_dtype=dtype_o)
+            binary = tpul.get_default_graph()
+
+            tpul.reset_default_graph()
+            out2 = func(tpul.Scalar(2, dtype_i1), x, shift=-1, out_dtype=dtype_o)
+            binary_scalar = tpul.get_default_graph()
+
+            tpul.reset_default_graph()
+            y_s = tpul.add_shift(y, 0, out_dtype="int32", shift=2, out_name="shift")
+            out3 = func(y_s, x, shift=-1, out_dtype=dtype_o)
+            binary_quant = tpul.get_default_graph()
+
+            tpul.reset_default_graph(binary_coeff)
+            out0 = tpul.sub_shift(out0, 4, -1, "int8")
+            self.compile_and_check(self.unique_name(case_name), [x], [out0], is_quantized=True)
+            tpul.reset_default_graph(binary)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [out1], is_quantized=True)
+            tpul.reset_default_graph(binary_scalar)
+            self.compile_and_check(self.unique_name(case_name), [x], [out2], is_quantized=True)
+            tpul.reset_default_graph(binary_quant)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [out3], is_quantized=True)
+
+        _test_binary()
 
     def test_AddShift(self, case_name):
         """Add Shift"""
@@ -3272,6 +3272,9 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.interpolate(x, 2., 3., method=method, coord_mode=coord_mode)
+            # y = tpul.requant_int(y, 3000, -12, 0, 2, out_dtype="int8")
+            # y = tpul.add_shift(y, 1, 0, out_dtype="int8")
+            # y = tpul.dequant_int_to_fp(y, 0.34, 0)
             self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel')
@@ -3280,6 +3283,7 @@ class TPULANG_IR_TESTER(object):
         _test_interp([2, 3, 24, 28], 'linear', 'align_corners')
         _test_interp([2, 3, 24, 28], 'linear', 'align_corners', dtype="float16", is_quantized=True)
         _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel', dtype="float16", is_quantized=True)
+        _test_interp([2, 3, 24, 28], 'nearest', 'pytorch_half_pixel', dtype="int8", is_quantized=True)
 
     #######################################################################
     # Lut
