@@ -34,11 +34,20 @@ void tpu::GatherNDOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GatherNDOp::dyn_codegen_global_bm1684x(void *buffer) {
-  llvm_unreachable("Not Implemented");
-  return -1;
+  if (!buffer){
+    return sizeof(gather_nd_global_param_t);
+  }
+  auto batch_dims = getBatchDims();
+  if (batch_dims != 0) {
+    llvm_unreachable("Not Implemented");
+  }
+  gather_nd_global_param_t param;
+  param.batch_dims = batch_dims;
+  param.const_val = 0; // no use temporary
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::GatherNDOp::get_fw_type_bm1684x() {
-  llvm_unreachable("Not Implemented");
-  return -1;
+  // llvm_unreachable("Not Implemented");
+  return FW_BMNET_GATHERND;
 }

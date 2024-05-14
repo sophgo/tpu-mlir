@@ -32,9 +32,19 @@ void tpu::GatherElementsOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GatherElementsOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) {
+    return sizeof(gather_elements_global_param_t);
+  }
+  auto op = getOperation();
+  gather_elements_global_param_t param{0};
+  param.axis = getAxis();
+  param.index_is_coeff = false;
+  param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::GatherElementsOp::get_fw_type_bm1684x() {
-  return FW_LAYER_UNKNOWN;
+  return FW_BMNET_GATHERELEMENTS;
 }
