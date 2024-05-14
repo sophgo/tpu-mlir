@@ -21,6 +21,7 @@ void tpu::GatherOp::codegen_global_bm1684x() {
   index_select_global_spec_t param{0};
   param.common.axis = getAxis();
   param.common.index_is_coeff = false;
+  param.common.if_neg_index = getIfNegIndex();
   // assert(module::getStorageType(getIndices()).isInteger(32));
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -37,6 +38,7 @@ int64_t tpu::GatherOp::dyn_codegen_global_bm1684x(void *buffer) {
   index_select_global_spec_t param{0};
   param.common.axis = getAxis();
   param.common.index_is_coeff = false;
+  param.common.if_neg_index = getIfNegIndex();
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

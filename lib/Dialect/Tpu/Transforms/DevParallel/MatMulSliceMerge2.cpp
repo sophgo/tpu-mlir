@@ -503,5 +503,59 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
   module::removeUnusedOp();
 }
 
+
+LogicalResult EmbeddingSliceMerge::matchAndRewrite(tpu::GatherOp op, PatternRewriter &rewriter) const {
+  if (module::isOpInDevParallel(op)) {
+    return failure();
+  }
+  std::vector<Operation *> begin_ops{op};
+  std::vector<Operation *> end_ops{op};
+  std::vector<int64_t> begin_methods{1};
+  std::vector<int64_t> end_methods{1};
+
+  distribute(rewriter, begin_ops, end_ops,
+             tpu::DevPattern::EmbeddingSliceMerge,
+             begin_methods, end_methods, 0);
+  return success();
+}
+
+void embeddingMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
+                         int64_t num_devices){
+    auto gather_op = *op->getResult(0).user_begin();
+    if (auto gather = dyn_cast<tpu::GatherOp>(gather_op)) {
+      gather.setIfNegIndex(false);
+    }
+    auto src_op = gather_op->getOperand(0).getDefiningOp();
+    auto weight_op = dyn_cast_or_null<top::WeightOp>(src_op);
+    auto vocab_size = module::getShape(weight_op.getOutput())[0];
+    auto length = ceiling_func(vocab_size, num_devices);
+
+    std::vector<Value> end_operands;
+    Operation *end_op = nullptr;
+    Operation *next_op;
+    Value cur_out;
+    for (int cur_device = 0; cur_device < num_devices; ++cur_device) {
+      next_op = gather_op;
+      cur_out = next_op->getOperand(1);
+      if (cur_device) {
+        float sub_val = cur_device * length;
+        createSubConstOp(rewriter, cur_out, cur_device, sub_val);
+      }
+      next_op = cloneOpWithWeight(rewriter, next_op, cur_out, 0, num_devices, cur_device)[0];
+      end_operands.push_back(cur_out);
+      if (cur_device == 0) {
+        end_op = next_op;
+      } else {
+        assert(end_op == next_op);
+      }
+
+    }
+    assert(isa<tpu::DevEndOp>(end_op));
+    std::vector<Value> unused(end_op->operand_begin(), end_op->operand_end());
+    end_op->setOperands(end_operands);
+
+    module::removeUnusedOp();
+}
+
 } // namespace tpu
 } // namespace tpu_mlir

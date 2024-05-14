@@ -1459,8 +1459,8 @@ std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
  */
 std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
                                            Operation *next_op, Value &cur_out,
-                                           int weight_axis, int out_axis,
-                                           int num_devices, int cur_device) {
+                                           int axis, int num_devices,
+                                           int cur_device) {
   auto suffix = std::to_string(cur_device);
   rewriter.setInsertionPointAfter(next_op);
   auto new_op = rewriter.clone(*next_op);
@@ -1470,18 +1470,17 @@ std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
     auto src_op = opd.getDefiningOp();
     if (auto weight_op = dyn_cast_or_null<top::WeightOp>(src_op)) {
       auto weightShape = module::getShape(weight_op.getOutput());
-      auto N = weightShape[weight_axis];
+      auto N = weightShape[axis];
       auto length = ceiling_func(N, num_devices);
       auto offset = cur_device * length;
       length = std::min(length, N - offset);
 
       auto out = next_op->getResult(0);
       std::vector<int64_t> new_shape = module::getShape(out);
-      new_shape[out_axis] = length;
 
       // slice and clone the weight
       auto new_weight =
-          module::opSliceAxis(rewriter, weight_op, weight_axis, offset, length);
+          module::opSliceAxis(rewriter, weight_op, axis, offset, length);
       new_op->setOperand(idx, new_weight);
       module::setShape(new_op->getResult(0), new_shape);
     } else if (isa_and_nonnull<top::NoneOp>(src_op)) {
@@ -1973,6 +1972,23 @@ void createMulConstOp2(PatternRewriter &rewriter, Value &cur_out,
       rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
   auto new_type = cur_out.getType();
   auto new_op = rewriter.create<tpu::MulConstOp>(new_loc, new_type,
+                                                 ValueRange{cur_out}, attrs);
+
+  cur_out = new_op->getResult(0);
+}
+
+void createSubConstOp(PatternRewriter &rewriter, Value &cur_out,
+                      int cur_device, float const_val) {
+  auto suffix = "subconst_" + std::to_string(cur_device);
+  auto name = module::getName(cur_out);
+  std::string new_name = name.str() + "_" + suffix;
+  auto new_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  rewriter.setInsertionPointAfterValue(cur_out);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
+  auto new_type = cur_out.getType();
+  auto new_op = rewriter.create<tpu::SubConstOp>(new_loc, new_type,
                                                  ValueRange{cur_out}, attrs);
 
   cur_out = new_op->getResult(0);

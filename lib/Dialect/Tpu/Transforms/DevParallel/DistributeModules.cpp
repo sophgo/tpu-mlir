@@ -268,6 +268,9 @@ static void buildDistibution(tpu::DevBeginOp begin, tpu::DevEndOp end,
                              ModuleOp m, int64_t num_devices, int64_t step) {
   std::vector<Operation *> begins(begin->user_begin(), begin->user_end());
   std::vector<Value> ends(end->operand_begin(), end->operand_end());
+  if (begins.size() == num_devices) {
+      std::reverse(begins.begin(), begins.end());
+  }
   for (int i = 0; i < num_devices; i++) {
     auto subf = std::make_shared<SubFunction>(i, step);
     if (begins.size() == num_devices) {
