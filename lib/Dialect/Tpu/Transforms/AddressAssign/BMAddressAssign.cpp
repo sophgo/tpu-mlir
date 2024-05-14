@@ -9,6 +9,7 @@
 
 #include "BMAddressAssign.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
 #include "llvm/Support/Debug.h"
@@ -403,6 +404,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   // assign activation
   if (module::isBM1688() || module::isBM1690Family()) {
     addr = BM168x::CTX_START_ADDR;
+  } else if (module::isSG2380()) {
+    addr = SG2380::CTX_START_ADDR;
   }
   start_addr = addr;
   uint32_t loc = 0;
