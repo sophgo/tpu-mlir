@@ -81,8 +81,6 @@ public:
     std::string pixel_format = op.getCustomizationFormat().str();
     this->mean = *(module::getF64Array(op.getMean()));
     this->scale = *(module::getF64Array(op.getScale()));
-    this->white_level = op.getWhiteLevel().convertToDouble();
-    this->black_level = op.getBlackLevel().convertToDouble();
     this->sign = op.getSign();
 
     module::getNCHW(op.getResult(), n, c, h, w, false);
@@ -268,7 +266,6 @@ private:
   int64_t resize_h, resize_w;
   std::vector<double> mean, scale;
   std::vector<int64_t> channel_order;
-  double white_level, black_level;
   bool _asymmetric = module::isAsymmetric();
   bool sign;
   bool isInt8;
@@ -526,6 +523,8 @@ private:
   Value insertPackRawOp(PatternRewriter &rewriter, std::string &name, Value opd,
                         double threshold, Type qtype) {
     llvm::errs() << "Inserting PackRawOp.\n";
+    float white_level = 4095.;
+    float black_level = 112.;
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(rewriter.getNamedAttr(
         "white_level", rewriter.getF64FloatAttr(white_level)));

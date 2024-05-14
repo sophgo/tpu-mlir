@@ -213,13 +213,12 @@ void AddPostprocessPass::insertSsdOp(OpBuilder &builder) {
 void AddPostprocessPass::insertDepackRawOp(OpBuilder &builder) {
   auto mOp = getOperation();
   auto func = module::getMainFuncOp(mOp);
-  float white_level, black_level;
+  float white_level = 4095.;
+  float black_level = 112.;
   std::string pixel_format;
   func.walk([&](top::InputOp inputOp){
     if ( inputOp.getDoPreprocess() )
     {
-      white_level = inputOp.getWhiteLevel()->convertToDouble();
-      black_level = inputOp.getBlackLevel()->convertToDouble();
       pixel_format = inputOp.getPixelFormat()->str();
       return;
     }
