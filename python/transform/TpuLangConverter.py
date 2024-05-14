@@ -208,9 +208,7 @@ class Tensor:
                    keep_aspect_ratio : bool = False,
                    keep_ratio_mode : str = 'letterbox',
                    pad_value : int = 0,
-                   pad_type : str = 'center',
-                   white_level : float = 4095,
-                   black_level : float = 112):
+                   pad_type : str = 'center'):
         self.mean = mean
         self.scale = scale
         assert pixel_format in ['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb' ]
@@ -223,8 +221,6 @@ class Tensor:
         self.keep_ratio_mode = keep_ratio_mode
         self.pad_value = pad_value
         self.pad_type = pad_type
-        self.white_level = white_level
-        self.black_level = black_level
         self.is_preprocess = True
 
     def preprocess_to_dict(self):
@@ -238,9 +234,7 @@ class Tensor:
                 'mean': self.mean,
                 'scale': self.scale,
                 'pixel_format': self.pixel_format,
-                'channel_format': self.channel_format,
-                'white_level': self.white_level,
-                'black_level': self.black_level
+                'channel_format': self.channel_format
             }
         return {}
 

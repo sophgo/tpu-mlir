@@ -138,8 +138,6 @@ def add_preprocess_parser(parser):
                         help="pad value when resize ")
     parser.add_argument("--pad_type", type=str, choices=[
                         'normal', 'center'], default='center', help="type of pad when resize ")
-    parser.add_argument("--white_level", type=float, default='4095', help="preprocess param for raw image")
-    parser.add_argument("--black_level", type=float, default='112', help="preprocess param for raw image")
     parser.add_argument("--preprocess_list", type=str2list, default=list(),
                         help = "choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs")
     parser.add_argument("--debug_cmd", type=str, default='', help="debug cmd")
@@ -169,7 +167,7 @@ class preprocess(object):
     def config(self, resize_dims=None, keep_aspect_ratio=False, keep_ratio_mode = "letterbox",
                customization_format = None, fuse_pre = False, aligned = False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, chip = "",
-               channel_format='nchw', white_level='4095', black_level='112', preprocess_list: list = [], debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
+               channel_format='nchw', preprocess_list: list = [], debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
         if preprocess_list is not None and preprocess_list != []:
@@ -204,8 +202,6 @@ class preprocess(object):
         self.pad_type = pad_type
         self.pixel_format = pixel_format
         self.channel_format = channel_format
-        self.white_level = white_level
-        self.black_level = black_level
 
         self.input_name = 'input'
         self.channel_num = 3
@@ -353,9 +349,7 @@ class preprocess(object):
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format,
-            'channel_format': self.channel_format,
-            'white_level': self.white_level,
-            'black_level': self.black_level
+            'channel_format': self.channel_format
         }
 
     def __right_crop(self, img, crop_dim):

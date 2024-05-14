@@ -181,10 +181,7 @@ def Top_InputOp: Top_BaseOp<"Input", [
     OptionalAttr<F64ArrayAttr>:$mean,
     //for cv18xx fusepreprocess
     OptionalAttr<StrAttr>:$customization_format,
-    OptionalAttr<BoolAttr>:$aligned,
-    //for raw image preprocess
-    OptionalAttr<F64Attr>:$white_level,
-    OptionalAttr<F64Attr>:$black_level
+    OptionalAttr<BoolAttr>:$aligned
   );
 
   let results = (outs AnyTensor:$output);
@@ -2647,9 +2644,6 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
-    //for raw image preprocess
-    F64Attr:$white_level,
-    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
   );
   let results = (outs AnyTensor:$output);

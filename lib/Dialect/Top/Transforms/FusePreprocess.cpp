@@ -177,8 +177,6 @@ public:
         attrs.emplace_back(builder.getNamedAttr("resize_dims", inputOp.getResizeDimsAttr()));
         attrs.emplace_back(builder.getNamedAttr("scale", inputOp.getScaleAttr()));
         attrs.emplace_back(builder.getNamedAttr("mean", inputOp.getMeanAttr()));
-        attrs.emplace_back(builder.getNamedAttr("white_level", inputOp.getWhiteLevelAttr()));
-        attrs.emplace_back(builder.getNamedAttr("black_level", inputOp.getBlackLevelAttr()));
         attrs.emplace_back(builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
 
         auto loc = NameLoc::get(builder.getStringAttr(name + "_preprocess"));

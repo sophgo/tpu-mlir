@@ -734,9 +734,6 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
-    //for gbrg raw image preprocess
-    F64Attr:$white_level,
-    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
   );
   let hasCanonicalizeMethod = 1;
