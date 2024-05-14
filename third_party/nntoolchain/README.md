@@ -15,7 +15,11 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690 2024-5-14
 ``` bash
 
+<<<<<<< HEAD
 #bm1684x sha256: 53d534f7541c3bc0daacd5d25195721e064fd3cf
+=======
+#bm1684x sha256: a0da568949ef5263a798dcd79baf3b7de5eebece
+>>>>>>> dynamic support for gathernd/elements and grid_sampler
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**
@@ -26,7 +30,11 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
+<<<<<<< HEAD
 #bm1688 sha256: 53d534f7541c3bc0daacd5d25195721e064fd3cf
+=======
+#bm1688 sha256: a0da568949ef5263a798dcd79baf3b7de5eebece
+>>>>>>> dynamic support for gathernd/elements and grid_sampler
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
