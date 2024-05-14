@@ -198,7 +198,8 @@ def Tpu_DevPattern: I32EnumAttr<"DevPattern",
       I32EnumAttrCase<"MatMulSliceMerge2", 5>,
       I32EnumAttrCase<"MatMulSliceMerge3", 6>,
       I32EnumAttrCase<"AttentionSliceMerge", 7>,
-      I32EnumAttrCase<"AttentionSliceMerge2", 8>
+      I32EnumAttrCase<"AttentionSliceMerge2", 8>,
+      I32EnumAttrCase<"EmbeddingSliceMerge", 9>
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -2370,7 +2371,8 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
     AnyTensorOrNone:$buffer, //for BM1684
-    DefaultValuedAttr<SI32Attr, "0">:$axis
+    DefaultValuedAttr<SI32Attr, "0">:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$if_neg_index
   );
 
   let results = (outs AnyRankedTensor:$output);

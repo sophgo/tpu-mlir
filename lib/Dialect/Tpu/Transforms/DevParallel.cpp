@@ -79,17 +79,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   rewriter.setInsertionPointAfterValue(opd);
   auto begin =
       rewriter.create<tpu::DevBeginOp>(begin_loc, types, inputs, attrs);
-  // for (auto op : ops_begin) {
-  //   if (op != ops_begin[0]) {
-  //     auto in = op->getOperand(0);
-  //     if (isa<tpu::GatherOp>(op)) {
-  //       in = op->getOperand(1);
-  //     }
-  //     if (!isa<BlockArgument>(in)) {
-  //       in.getDefiningOp()->moveBefore(begin);
-  //     }
-  //   }
-  // }
+
   for (size_t i = 0; i < ops_begin.size(); ++i) {
     int index = 0;
     for (auto [idx, in] : llvm::enumerate(ops_begin[i]->getOperands())) {
@@ -288,6 +278,9 @@ public:
       case tpu::DevPattern::MatMulTopK:
         topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
         break;
+      case tpu::DevPattern::EmbeddingSliceMerge:
+        embeddingMergeSplit(rewriter, op, num_devices);
+        break;
       default:
         return failure();
       }
@@ -347,6 +340,7 @@ public:
         module::applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<EmbeddingSliceMerge>(mOp);
       } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                  mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
         module::applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);

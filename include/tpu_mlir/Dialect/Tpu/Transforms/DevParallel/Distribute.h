@@ -91,6 +91,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class EmbeddingSliceMerge : public OpRewritePattern<tpu::GatherOp> {
+public:
+  using OpRewritePattern<tpu::GatherOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::GatherOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
                      tpu::DevBeginOp op, int64_t num_devices);
@@ -121,12 +128,16 @@ template <typename MatMulTy>
 void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
                tpu::DevBeginOp op, int64_t num_devices);
 
+void embeddingMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
+                    int64_t num_devices);
+
 enum class DevEndMode {
   EndToUnknown = 0,
   EndToSum = 1,
   EndToTopK = 2,
   EndToConcat = 3
 };
+
 
 enum class DevBeginMethod {
   BeginFromUnknown = 0,

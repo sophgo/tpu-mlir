@@ -88,6 +88,9 @@ void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
 void createMulConstOp2(PatternRewriter &rewriter, Value &cur_out,
                        int num_devices, int cur_device);
 
+void createSubConstOp(PatternRewriter &rewriter, Value &cur_out,
+                      int cur_device, float const_val);
+
 Operation *createSliceOp(PatternRewriter &rewriter, Operation *next_op,
                          Value &cur_out, int axis, int num_devices,
                          int cur_device, int num_head);

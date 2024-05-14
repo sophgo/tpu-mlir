@@ -792,6 +792,7 @@ typedef struct scatter_elements_global_spec {
 typedef struct index_select_common_spec {
   int axis;
   int index_is_coeff; // use for dyn
+  int if_neg_index;
 } index_select_common_spec_t;
 
 typedef struct index_select_global_spec {
