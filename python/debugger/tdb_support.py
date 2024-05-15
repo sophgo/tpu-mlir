@@ -287,11 +287,13 @@ class TdbCmdBackend(cmd.Cmd):
 
     def _load_data(self):
         file = self.input_data_fn
-        if file is None or not os.path.isfile(file):
+        if file is None or (isinstance(file, str) and not os.path.isfile(file)):
             self.error(f"input data file `{file}` is invalid")
             return
 
-        if file.endswith(".dat"):
+        if isinstance(file, dict):
+            self.set_inputs_dict(file)
+        elif file.endswith(".dat"):
             inputs = np.fromfile(file, dtype=np.uint8)
             _offset = 0
 

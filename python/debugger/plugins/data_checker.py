@@ -32,6 +32,7 @@ from ..tdb_support import (
     TdbPluginCmd,
     codelike_format,
 )
+from utils.mlir_parser import MlirParser
 
 # from ..final_mlir import Value as MlirValue
 from dataclasses import dataclass
@@ -89,6 +90,7 @@ class DumpMode(Enum):
     FAILED = 1
     ALL = 2
     COMB = 3
+    TPULANG = 4
 
 
 class CmpState(Enum):
@@ -219,8 +221,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.ref_data = []
         self.ref_data_from_inference = []
         for ref_fn in tdb.reference_data_fns:
-            self.ref_data.append(np.load(ref_fn))
             self.ref_data_from_inference.append({})
+            if ref_fn.endswith(".mlir"):
+                self.ops = MlirParser(ref_fn).collect_op_name_dict()
+                self.mlir_ref = True
+            else:
+                self.ref_data.append(np.load(ref_fn))
+                self.mlir_ref = False
 
         self.tc = TensorCompare(
             cosine_similarity_tol=0.99,
@@ -491,10 +498,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
-    def get_combined_inference_data(self, operand: Value, actual, desired):
+    def collect_infer_data(self, operand: Value, actual, desired):
+        if not self.mlir_ref:
+            self.collect_infer_data_from_ref(operand, actual, desired)
+        else:
+            self.collect_infer_data_from_mlir(operand, actual)
+
+    def collect_infer_data_from_ref(self, operand: Value, actual, desired):
         for idx, ref in enumerate(self.ref_data):
             if operand.name not in ref:
                 continue
+            _slice = operand.slice
+            slice_list = _slice[1:-1].split(",")
             actual = actual.reshape(desired.shape)
 
             if operand.layout in (
@@ -508,15 +523,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 actual = actual.transpose((n, c, d, h, w))
 
             reshape = operand.reshape
-            _slice = operand.slice
-            ref_data = ref[operand.name]
-            origin_shape = ref_data.shape
+            origin_shape = ref[operand.name].shape
             if reshape:
                 reshape = eval(reshape[1:-1].replace("x", ","))
-            else:
-                break
-
-            slice_list = _slice[1:-1].split(",")
             slices = [
                 slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
                 for s in slice_list
@@ -536,6 +545,75 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 )
             return
         return
+
+    def cal_desired_shape(self, sliced_shape, layout):
+        if layout in (
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
+        ):
+            n, c, d, h, w = 0, 1, 2, 3, 4
+            # data = data.transpose((d, n, c, h, w))
+            return (
+                sliced_shape[d],
+                sliced_shape[n],
+                sliced_shape[c],
+                sliced_shape[h],
+                sliced_shape[w],
+            )
+        return sliced_shape
+
+    def collect_infer_data_from_mlir(self, operand: Value, actual):
+        if operand.name not in self.ops:
+            return
+
+        _slice = operand.slice
+        if _slice == "[...]":
+            slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
+            sliced_shape = tuple(int(i) for i in slice_list)
+            slices = [slice(None, None) for _ in slice_list]
+        else:
+            slice_list = _slice[1:-1].split(",")
+            sliced_shape = tuple(
+                [
+                    int(slice.split(":")[1]) - int(slice.split(":")[0])
+                    for slice in slice_list
+                ]
+            )
+            slices = [
+                slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
+                for s in slice_list
+            ]
+        actual = actual.reshape(self.cal_desired_shape(sliced_shape, operand.layout))
+
+        if operand.layout in (
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
+        ):
+            d, n, c, h, w = 0, 1, 2, 3, 4
+            actual = actual.transpose((n, c, d, h, w))
+
+        reshape = operand.reshape
+        origin_shape = self.ops[operand.name].shape
+        if reshape:
+            reshape = eval(reshape[1:-1].replace("x", ","))
+        else:
+            reshape = sliced_shape
+
+        if operand.name not in self.ref_data_from_inference[0]:
+            tmp = np.zeros(reshape)
+            tmp[tuple(slices)] = actual
+            self.ref_data_from_inference[0][operand.name] = tmp.reshape(origin_shape)
+        else:
+            tmp = self.ref_data_from_inference[0][operand.name]
+            tmp = tmp.reshape(reshape)
+            tmp[tuple(slices)] = actual
+            self.ref_data_from_inference[0][operand.name] = tmp.reshape(origin_shape)
 
     def check_data(
         self, point_index, is_operand, value_view: ValueView
@@ -568,8 +646,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         desired = self.get_ref_data(value)
-        if self.dump_mode == DumpMode.COMB:
-            self.get_combined_inference_data(value, actual, desired)
+        if self.dump_mode == DumpMode.COMB or self.dump_mode == DumpMode.TPULANG:
+            self.collect_infer_data(value, actual, desired)
         if desired is None:
             value_res = ComparedResult(value_view, None)
             name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
