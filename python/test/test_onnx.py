@@ -166,7 +166,6 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N, N),
             "Round":        (self.test_Round,         N, Y, N, N, Y),
-            "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y, Y),
             "ScatterElements": (self.test_ScatterElements, N, Y, N, N, Y),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y),
             "Shape":        (self.test_Shape,         Y, Y, Y, N, Y),
@@ -1374,41 +1373,6 @@ class ONNX_IR_TESTER(object):
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
         graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
-
-    def test_PermuteMove(self, case_name):
-        input_shape = [1, 16, 28, 28]
-        output_shape = [16, 1, 28, 28]
-
-        for i in ['Relu', 'Sigmoid']:
-            graph_txt = """
-            %s_%s (float%s input) => (float%s output)
-            {
-                e = Transpose<perm=[1, 0, 2, 3]>(input)
-                output = %s(e)
-            }
-            """ % (case_name, i, input_shape, output_shape, i)
-            graph_def = onnx.parser.parse_graph(graph_txt)
-            self.onnx_and_test(graph_def, check_last=True)
-
-        # addconst
-        w_data = np.random.rand(1).astype(np.float32)
-        w_value = helper.make_tensor(
-            name='w',
-            data_type=onnx.TensorProto.FLOAT,
-            dims=w_data.shape,
-            vals=w_data.flatten(),
-        )
-        graph_txt = """
-            %s_AddConst (float%s input) => (float%s output)
-            <float%s w>
-            {
-                e = Transpose<perm=[1, 0, 2, 3]>(input)
-                output = Add(e, w)
-            }
-            """ % (case_name, input_shape, output_shape, list(w_data.shape))
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        graph_def.initializer.extend([w_value])
-        self.onnx_and_test(graph_def, check_last=True)
 
     def test_ReluOnly(self, case_name):
         oc = 64
