@@ -742,20 +742,20 @@ def matmul_quant(input: Tensor,
 def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], op_type: str,
         scale: List[float]=None, zero_point: List[int]=None, is_reverse : bool = None, out_dtype: str = None, out_name: str = None):
     o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
+    output = Tensor(dtype=o_dtype, name=out_name)
     if scale is not None:
         zero_point = zero_point if zero_point is not None else [0, 0, 0]
-        tensor0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype), ttype="coeff")
-        tensor1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=np.array([tensor_i1.value]).astype(tensor_i1.dtype), ttype="coeff")
-        output = Tensor(dtype=o_dtype, name=out_name, scale=scale[2], zero_point=zero_point[2])
-        tensor0.quantization(scale=scale[0], zero_point=zero_point[0])
-        tensor1.quantization(scale=scale[1], zero_point=zero_point[1])
-        TpuLang.insert_op(op_type, [tensor0, tensor1], [output])
-        return output
-    else:
-        output = Tensor(dtype=o_dtype, name=out_name)
-        if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
+        if isinstance(tensor_i0, Tensor) or op_type != "top.Mul":
+            tensor_i0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype), ttype="coeff")
+            tensor_i0.quantization(scale=scale[0], zero_point=zero_point[0])
+        if isinstance(tensor_i1, Tensor) or op_type != "top.Mul":
+            tensor_i1 = tensor_i1 if isinstance(tensor_i1, Tensor) else Tensor(dtype=tensor_i1.dtype, shape=[1], data=np.array([tensor_i1.value]).astype(tensor_i1.dtype), ttype="coeff")
+            tensor_i1.quantization(scale=scale[1], zero_point=zero_point[1])
+        output.quantization(scale=scale[2], zero_point=zero_point[2])
+
+    if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
             TpuLang.insert_op(op_type, [tensor_i0, tensor_i1], [output])
-        else:
+    else:
             tensor = tensor_i0 if isinstance(tensor_i0, Tensor) else tensor_i1
             scalar = tensor_i0 if isinstance(tensor_i1, Tensor) else tensor_i1
 
@@ -767,7 +767,7 @@ def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scal
             if is_reverse is not None:
                 attr["is_reverse"] = Attr(is_reverse, 'bool')
             TpuLang.insert_op(op_type+"Const", [tensor], [output], params = attr)
-        return output
+    return output
 
 @to_scalar(2)
 @auto_name()
