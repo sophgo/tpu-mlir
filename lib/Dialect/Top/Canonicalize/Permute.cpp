@@ -376,51 +376,6 @@ struct PermuteFuse : public OpRewritePattern<PermuteOp> {
   }
 };
 
-// Permute can convert to Reshape in some situations.
-// For example:
-// [4,3,28,1] => [4,3,1,28]
-// [4,3,1,28] => [4,1,3,28]
-struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
-    // todo
-    std::vector<int64_t> shape = module::getShape(op.getInput());
-    int dim_size = shape.size();
-    int start = 0, end = dim_size - 1;
-    auto order = module::getI64Array(op.getOrder());
-    while (start < dim_size && start == order->at(start)) {
-      start++;
-    }
-    while (end > start && end == order->at(end)) {
-      end--;
-    }
-    bool do_reshape = true;
-    int64_t sum = 1;
-    for (int index = start; index <= end; index++) {
-      sum *= shape[index];
-      if (shape[index] != 1 && sum != shape[index]) {
-        do_reshape = false;
-        break;
-      }
-    }
-    if (do_reshape && order->size() == 2 && order->at(0) == 1 &&
-        order->at(1) == 0) {
-      auto nonzeroOp = dyn_cast<top::NonZeroOp>(op.getInput().getDefiningOp());
-      if (nonzeroOp && nonzeroOp.getOrder().str() == "RowMajor")
-        do_reshape = false;
-    }
-    if (do_reshape == false) {
-      return failure();
-    }
-    std::vector<Value> operands;
-    operands.emplace_back(op.getInput());
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getResult().getType(),
-                                                operands);
-    return success();
-  }
-};
-
 /**
  * Op1->NonZero->Permute->Op2 => Op1->NonZero->Op2
  **/
@@ -829,9 +784,26 @@ struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
   }
 };
 
+// permute 1-D tensor
+struct TopPermuteEliminate : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_shape = module::getShape(op.getInput());
+    if (in_shape.size() != 1) {
+      return failure();
+    }
+    op.getOutput().replaceAllUsesWith(op.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
-                 PermuteFuse, TopPermuteToReshape, NonZeroPermutePattern,
-                 TopDecomposedRelPosEmb>(context);
+                 PermuteFuse, NonZeroPermutePattern,
+                 TopDecomposedRelPosEmb,
+                 TopPermuteEliminate>(context);
 }

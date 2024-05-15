@@ -1848,7 +1848,6 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [
   let extraClassDeclaration = [{
     permute_attr_t parseParam();
   }];
-  let hasCanonicalizeMethod = 1;
 }
 
 def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {

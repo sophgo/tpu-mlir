@@ -21,6 +21,7 @@ class MatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
   // Case1: Permute -> MatMul <- Permute
   // Case2: Reshape -> MatMul <- Permute
   // Case3: Left    -> MatMul <- Permute
+  // Case4: Permute -> MatMul <- Tile <- Permute
 public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
@@ -50,6 +51,17 @@ public:
     auto r_op = right.getDefiningOp();
     if (!isa<tpu::PermuteOp>(l_op) && !isa<tpu::PermuteOp>(r_op)) {
       return failure();
+    }
+    // eliminate Tile
+    if (isa<tpu::TileOp>(r_op)) {
+      auto tile_op = dyn_cast<tpu::TileOp>(r_op);
+      if (!isa<tpu::PermuteOp>(tile_op.getOperand(0).getDefiningOp())) {
+        return failure();
+      }
+      auto permute_op = dyn_cast<tpu::PermuteOp>(tile_op.getOperand(0).getDefiningOp());
+      rewriter.replaceAllUsesWith(tile_op->getResult(0), permute_op->getResult(0));
+      rewriter.eraseOp(tile_op);
+      r_op = permute_op;
     }
 
     // 3. Convert MatMul to HdimBatch MatMul
