@@ -376,7 +376,15 @@ class MlirParser:
             initializer[name] = shape_type
         return initializer
 
+    def collect_op_name_dict(self):
+        op_dict = {}
+        for op in self.ops:
+            op_dict[op.name] = op
+        return op_dict
+
 
 if __name__ == "__main__":
     parser = MlirParser(sys.argv[1])
+    for op in parser.ops:
+        print(op.name, op.loc, op.shape)
     print(parser.module)

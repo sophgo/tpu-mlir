@@ -13,6 +13,8 @@ from tools.model_deploy import getCustomFormat
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark
 from tools.npz_tool import npz_compare
+from tools.tdb import TdbInterface
+from debugger.plugins.data_checker import DataCheck, DumpMode
 import pymlir
 
 import numpy as np
@@ -189,7 +191,7 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
     mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic)
 
     if inference:
-        #inference
+        # inference
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir + "_tpu_out.npz"
         input_data = np.load(in_f32_npz)
@@ -199,6 +201,63 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
         model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
+
+
+def bmodel_inference_combine(
+    bmodel_file,
+    final_mlir_fn,
+    input_data_fn,
+    tensor_loc_file,
+    reference_data_fn,
+    dump_file=True,
+    path="",
+):
+    # input_data_fn = {}
+    # input_data_fn["BMTensor0"] = np.load(reference_data_fn)["BMTensor0"]
+    # assert isinstance(input_data_fn, dict)
+
+    tdb = TdbInterface(
+        bmodel_file=bmodel_file,
+        final_mlir_fn=final_mlir_fn,
+        tensor_loc_file=tensor_loc_file,
+        input_data_fn=input_data_fn,
+        reference_data_fn=reference_data_fn,
+        extra_plugins=["progress"],
+        extra_check=[],
+        ddr_size=2**32,
+        checker=True,
+    )
+    plugin: DataCheck = tdb.get_plugin(DataCheck)
+    plugin.__init__(tdb)
+    plugin.set_tol(cosine_similarity_tol=0.99, euclidean_similarity_tol=0.99)
+    plugin.break_when_fail = True
+
+    plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.FAILED)
+    tdb.message(f"dump mode = {plugin.dump_mode}")
+    tdb.do_run("")
+    plugin.do_summary("table")
+
+    if dump_file:  # plugin.ref_data_from_inference -> [np_dict]
+        for idx, tensor_dict in enumerate(plugin.ref_data_from_inference):
+            os.makedirs(path, exist_ok=True)
+            file_name = os.path.basename(reference_data_fn).split(".")[0]
+            save_path = os.path.join(path, f"bmodel_inference_{file_name}_{idx}.npz")
+            np.savez(save_path, **tensor_dict)
+    else:
+        return plugin.ref_data_from_inference
+
+
+def init(device: str):
+    TpuLang(device=device)
+
+
+def deinit():
+    for op in TpuLang.graph.operators:
+        for tensor in op.inputs + op.outputs:
+            if isinstance(tensor, Tensor):
+                tensor.reset()
+    TpuLang.graph = None
+    TpuLang.device = None
 
 
 def ArrayAttr(data: list, data_type: str = 'int64'):
