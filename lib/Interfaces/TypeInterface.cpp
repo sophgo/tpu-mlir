@@ -10,6 +10,7 @@
 #include "tpu_mlir/Interfaces/TypeInterface.h"
 #include "tpu_mlir/Interfaces/TypeInterface.cpp.inc"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 namespace tpu_mlir {
 
@@ -87,10 +88,6 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
     return to_stype;
   }
 
-  if (from_stype.isIntOrIndex() && to_stype.isIntOrIndex()) {
-    return do_nothing(mode);
-  }
-
   // case to f8
   if (from_stype.isF32() || from_stype.isF16()) {
     if (to_stype.isFloat8E4M3FN() || to_stype.isFloat8E5M2())
@@ -129,6 +126,11 @@ mlir::Type type_verify_case_type(mlir::Operation *op, uint64_t opd_idx,
     llvm_unreachable("opd_idx is illegal.");
   }
   auto in = op->getOperand(opd_idx);
+  if (module::getStorageType(in).isIntOrIndex() && module::getStorageType(type).isIntOrIndex()) {
+    if (isa<tpu::AddOp, tpu::AddConstOp, tpu::SubOp, tpu::SubConstOp,
+            tpu::MulOp, tpu::MulConstOp, tpu::BinaryShiftOp, tpu::BinaryConstShiftOp>(op))
+      return do_nothing(mode);
+  }
   return verifyCompatibleType(in, type, mode);
 }
 
