@@ -457,10 +457,52 @@ struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
   }
 };
 
+/***
+ * Remove meaningless Struct
+ * Tile (tile = 0) -> Concat (0, n) --> out(n)
+ * ***/
+struct RemoveInvaidConcatSlice : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    auto inputs = concat_op.getInputs();
+    int num_inputs = inputs.size();
+
+    if (num_inputs != 2) {
+      return failure();
+    }
+    auto in_op0 = concat_op.getOperand(0).getDefiningOp();
+    auto in_op1 = concat_op.getOperand(1).getDefiningOp();
+
+    if (isOperationValid(in_op0) && isOperationValid(in_op1)) {
+      return failure();
+    }
+
+    concat_op.replaceAllUsesWith(isOperationValid(in_op0) ? in_op0 : in_op1);
+    rewriter.eraseOp(concat_op);
+
+    return success();
+  }
+
+private:
+  bool isOperationValid(Operation* op) const{
+    if (op) {
+      auto out_shape = module::getShape(op->getResult(0));
+      for (auto &e : out_shape) {
+        if (e == 0)
+          return false;
+      }
+    }
+    return true;
+  }
+};
+
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
                  MergeSliceConcatPattern,
+                 RemoveInvaidConcatSlice,
                  RemoveInvaidShapeConcatInput>(context);
 }

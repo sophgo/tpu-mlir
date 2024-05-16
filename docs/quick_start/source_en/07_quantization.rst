@@ -201,9 +201,6 @@ Use ``run_qtable`` to gen qtable, parameters as below:
    * - global_compare_layers
      - N
      - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
-   * - fp_type
-     - N
-     - float type of mix precision
    * - loss_table
      - N
      - Specify the name of the file that holds the loss values for all layers quantized to floating point type, default is ``full_loss_table.txt``
