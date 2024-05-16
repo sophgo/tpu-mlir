@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/Transforms/TopologicalSortUtils.h"
 #include <llvm/ADT/DenseSet.h>
+#include <unordered_set>
 
 namespace tpu_mlir {
 namespace tpu {
@@ -158,19 +159,22 @@ static void core_match(PatternRewriter &rewriter,
 }
 
 // check if there is a dataFlow from a to b.
-bool isReachable(Operation *a, Operation *b) {
+bool isReachable(Operation *a, Operation *b, std::unordered_set<Operation *> &visited) {
   if (a && a == b)
     return true;
   if (b->getNumOperands() == 0)
     return false;
+  if (visited.count(a))
+    return false;
+  visited.insert(a);
   if (a->getBlock() == b->getBlock()) {
     if (!a->isBeforeInBlock(b))
       return false;
   }
   if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
-    return isReachable(a->getParentOp(), b);
+    return isReachable(a->getParentOp(), b, visited);
   return llvm::any_of(a->getUsers(),
-                      [b](Operation *op) { return isReachable(op, b); });
+                      [b, &visited](Operation *op) { return isReachable(op, b, visited); });
 }
 
 bool isCircularDependency(std::vector<Operation *> &beginOps,
@@ -206,18 +210,41 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
     usedByOutside.erase(v);
     definedInOutside.erase(v);
   }
-
+  std::unordered_set<Operation *> visited;
   // check dataFlow form usedByOutside to definedInOutside.
   for (auto uOp : usedByOutside) {
     for (auto dOp : definedInOutside) {
-      if (isReachable(uOp, dOp)) {
+      if (isReachable(uOp, dOp, visited)) {
         return true;
       }
     }
   }
   return false;
 }
+bool checkDataDependencies(const std::vector<Operation *> &ops) {
+  bool hasDependency = false;
+  for (Operation *consumer : ops) {
 
+    for (auto operand : consumer->getOperands()) {
+      Operation *producer = operand.getDefiningOp();
+      if (producer && std::find(ops.begin(), ops.end(), producer) != ops.end()) {
+        hasDependency = true;
+      }
+    }
+  }
+  return hasDependency;
+}
+
+bool checkForReturnOpUser(const std::vector<Operation *> &ops) {
+  for (Operation *op : ops) {
+    for (auto *user : op->getUsers()) {
+      if (isa<ReturnOp>(user)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 static void group_distribute(PatternRewriter &rewriter,
                              std::vector<Operation *> beginOps,
                              std::vector<Operation *> endOps,
@@ -229,7 +256,8 @@ static void group_distribute(PatternRewriter &rewriter,
 
   if (isCircularDependency(beginOps, endOps))
     return;
-
+  if (checkDataDependencies(endOps))
+    return;
   for (auto op : endOps) {
     for (auto o : op->getResults()) {
       endValues.push_back(o);
@@ -279,16 +307,6 @@ static void group_distribute(PatternRewriter &rewriter,
   }
 }
 
-bool checkForReturnOpUser(const std::vector<Operation *> &ops) {
-  for (Operation *op : ops) {
-    for (auto *user : op->getUsers()) {
-      if (isa<ReturnOp>(user)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 static void common_match(PatternRewriter &rewriter,
                          std::vector<Operation *> &ops) {
   std::vector<Operation *> ops_begin = ops;
@@ -410,7 +428,7 @@ struct CommonMatch : public RewritePattern {
       return failure();
     }
     for (auto ops : same_ops) {
-      if (checkForReturnOpUser(ops)) {
+      if (checkDataDependencies(ops) || checkForReturnOpUser(ops)) {
       return failure();
     }
     }

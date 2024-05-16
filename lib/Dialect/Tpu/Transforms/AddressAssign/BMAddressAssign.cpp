@@ -641,6 +641,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                   joinOpValue.setType(returnType);
                   int64_t address = module::getAddress(joinOpValue);
                   for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                  if (v.getType().isa<NoneType>()) {
+                    continue;
+                  }
                     module::setAddress(v, address);
                     address += module::getBytes(v);
                   }
