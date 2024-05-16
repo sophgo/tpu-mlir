@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--fpfwd_blocks', nargs='+', type=str,
                         help='layers in blocks')
     parser.add_argument('--chip', '--processor', required=True, type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'bm1690'],
+                        choices=['bm1684x', 'bm1684','bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'bm1690','cv186x'],
                         help='chip platform name')
     parser.add_argument('--fp_type', default='auto', type=str,
                         choices=['auto', 'F16', 'F32', 'BF16'],
