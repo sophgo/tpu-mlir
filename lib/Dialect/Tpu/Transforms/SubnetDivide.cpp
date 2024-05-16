@@ -896,8 +896,9 @@ public:
       }
     }
     // remove the unused op
-    for (auto op : to_move_ops)
-      op->erase();
+    for (auto op : to_move_ops){
+      if (!op->getUsers().empty()){continue;}
+      op->erase();}
 
     return subnet_infos;
   }
