@@ -672,7 +672,7 @@ class TdbPlugin:
 
 
 class TdbPluginCmd(cmd.Cmd):
-    def complete_plugin(self, text="", line="", begidx=0, endidx=0) -> list[str]:
+    def complete_plugin(self, text="", line="", begidx=0, endidx=0) -> List[str]:
         i, n = 0, len(line)
         while i < n and line[i] in self.identchars:
             i = i + 1

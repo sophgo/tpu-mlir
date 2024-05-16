@@ -45,7 +45,6 @@ memmap = {
 }
 
 
-@staticmethod
 def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
     """
     Layout Canonicalize. Convert special layout to stride layout.
@@ -112,7 +111,6 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
     return memref.stride
 
 
-@staticmethod
 def get_memory_type(address: int) -> MType:
     # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
     # G/S/L : "r_addr"

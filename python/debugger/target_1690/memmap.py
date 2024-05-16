@@ -54,8 +54,6 @@ memmap = {
     MType.G: (0x0, 0x100000000),  # global memory 4G
 }
 
-
-@staticmethod
 def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
     """
     Layout Canonicalize. Convert special layout to stride layout.

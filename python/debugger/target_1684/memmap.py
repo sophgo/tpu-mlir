@@ -21,7 +21,6 @@ memmap = {
 }
 
 
-@staticmethod
 def get_memory_type(address: int) -> MType:
     # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
     # G/S/L : "r_addr"

@@ -10,7 +10,7 @@
 import math
 import numpy as np
 from numpy.lib import format
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Union
 import os
 import json
 import zipfile
@@ -449,12 +449,12 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         except Exception as e:
             self.tdb.error(e)
 
-    def complete_data(self, text="", line="", begidx=0, endidx=0) -> list[str]:
+    def complete_data(self, text="", line="", begidx=0, endidx=0) -> List[str]:
         return list(
             filter(lambda x: x.startswith(text), map(str, self.index_record.keys()))
         )
 
-    def complete_summary(self, text="", line="", begidx=0, endidx=0) -> list[str]:
+    def complete_summary(self, text="", line="", begidx=0, endidx=0) -> List[str]:
         cand = ["reduce", "table", "failed"]
         return [i for i in cand if i.startswith(text)]
 
@@ -468,7 +468,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 self.tdb.error(e)
         self.tdb.message(f"ignore failed = {self.break_when_fail}")
 
-    def complete_ignore_failed(self, text: str, state: int) -> list[str] | None:
+    def complete_ignore_failed(self, text: str, state: int) -> Union[List[str], None]:
         return ["True", "False"]
 
     def get_ref_data(self, operand: Value):
