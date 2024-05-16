@@ -1654,7 +1654,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
         i_tensor.quantization(scale=scales[index], zero_point=zero_points[index])
         input_list_.append(i_tensor)
     output = Tensor(dtype=inputs[0].dtype, name=out_name)
-    if dtype != "float32":
+    if dtype not in ["float32", "float16"]:
         output.quantization(scale=scales[len(scales) - 1], zero_point=zero_points[len(zero_points) - 1])
     TpuLang.insert_op("top.Concat", inputs=input_list_, outputs=[output], params=attr)
     return output
