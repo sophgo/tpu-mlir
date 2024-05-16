@@ -177,6 +177,8 @@ class TPULANG_IR_TESTER(object):
             "VitL16": (self.test_Vit_L_f16,             Y, Y),
             "VitB": (self.test_Vit_B,                   Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
+            #### error case ####
+            "ErrorCase": (self.test_ErrorCase,          Y, Y),
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -624,7 +626,7 @@ class TPULANG_IR_TESTER(object):
             return matm
 
         def model_conv_int(x):
-            rq0 = tpul.requant_fp_to_int(x, 0.875, 0, 0, 'int8')
+            rq0 = tpul.requant_fp_to_int(x, 0.078125, 0, 0, 'int8')
             kshape = [64, 3, 7, 7]
             data = rand_data(kshape, 'int8')
             weight0 = tpul.Tensor(dtype='int8', shape=kshape, data=data, ttype="coeff")
@@ -636,7 +638,7 @@ class TPULANG_IR_TESTER(object):
             # mul, shift = quantization(input_scale * weight_scale / output_scale)
             # https://tpumlir.org/docs/developer_manual/06_quantization.html
             mul = [2030043136] * 64
-            shift = [-13] * 64
+            shift = [-38] * 64
             rq1 = tpul.requant_int(conv1, mul, shift, 0, 2, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')
             rq1.quantization(0.875)
             relu1 = tpul.relu(rq1)
@@ -3514,6 +3516,27 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [z, u, y], is_quantized=True)
 
         _test_keep_output_order([4, 11])
+
+    #######################################################################
+    # Error Case: some error case
+    # ------------
+    def test_ErrorCase(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_concat_conv():
+            xshape = [1, 64, 68, 120]
+            yshape = [1, 64, 68, 120]
+            x_data = rand_data(xshape, "int16")
+            y_data = rand_data(yshape, "int16")
+            x = tpul.Tensor(dtype="int16", shape=xshape, data=x_data)
+            y = tpul.Tensor(dtype="int16", shape=yshape, data=y_data)
+            concat = tpul.concat([x,y])
+            add = tpul.add_shift(concat, 0, 0, "int8")
+            conv = self.conv_int_op(add, [64, 128, 1, 1], [1,1])
+            requant = tpul.requant_int(conv, 6853, 21, 0, 2)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [requant], is_quantized=True)
+
+        _test_concat_conv()
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     import traceback
