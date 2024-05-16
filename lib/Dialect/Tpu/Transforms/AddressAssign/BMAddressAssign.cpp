@@ -558,8 +558,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
         ;
       size_t offset_bytes = 0;
       if (axis != 4) {
+        auto _offset = p.offset_4[axis] < 0 ? p.offset_4[axis] + p.is_4[axis]
+                                            : p.offset_4[axis];
         offset_bytes =
-            p.offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
+            _offset * module::getDtypeSize(sliceOp.getOutput());
         for (int i = axis + 1; i < 4; ++i) {
           offset_bytes *= p.is_4[i];
         }

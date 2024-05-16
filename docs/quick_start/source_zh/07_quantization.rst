@@ -205,9 +205,6 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
    * - global_compare_layers
      - 否
      - 指定用于替换最终输出层的层，并用于全局比较,例如： ``layer1,layer2`` 或 ``layer1:0.3,layer2:0.7``
-   * - fp_type
-     - 否
-     - 指定混合精度的浮点类型
    * - loss_table
      - 否
      - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为 ``full_loss_table.txt``
