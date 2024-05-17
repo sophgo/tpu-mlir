@@ -1273,6 +1273,293 @@ public:
     return success();
   }
 };
+
+/*
+Matmul-->Reshape-->Softmax-->Reshape-->Transpose-->Reshape -->\
+                                                               Mul-->ReduceSum ==>
+                         ***-->Unsqueeze-->Concat-->Reshape-->/
+Matmul(slice weight)-->Softmax-->Reshape-->Concat-->Slice-->Reshape-->\
+                                                                        Mul-->Add-->ReduceSum
+                                                                ***-->/
+1)concat(8x32x76760x1x4->8x32x76760x5x4) to slice(8x76760x5x4->8x76760x1x4) to reduce data move
+2)eleminate permute
+*/
+class ConcatWithReduceSum2SliceWithAdd : public OpRewritePattern<top::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    // TODO: support quantized type
+    auto input = op.getInput();
+    auto mode = op.getMode();
+    if(mode != "ReduceSum")
+      return failure();
+    auto mul_op = dyn_cast<top::MulOp>(input.getDefiningOp());
+    if(!mul_op)
+      return failure();
+    auto mul_left = mul_op.getInputs()[1];
+    auto mul_right = mul_op.getInputs()[0];
+    auto mul_left_op = dyn_cast<top::ReshapeOp>(mul_left.getDefiningOp());
+    auto mul_right_op = dyn_cast<top::ReshapeOp>(mul_right.getDefiningOp());
+    if(!mul_left_op || !mul_right_op)
+      return failure();
+    auto permute_op = dyn_cast<top::PermuteOp>(mul_left_op.getInput().getDefiningOp());
+    if(!permute_op)
+      return failure();
+    auto reshape1_op = dyn_cast<top::ReshapeOp>(permute_op.getInput().getDefiningOp());
+    if(!reshape1_op)
+      return failure();
+    auto softmax_op = dyn_cast<top::SoftmaxOp>(reshape1_op.getInput().getDefiningOp());
+    if(!softmax_op)
+      return failure();
+    auto reshape2_op = dyn_cast<top::ReshapeOp>(softmax_op.getInput().getDefiningOp());
+    if(!reshape2_op)
+      return failure();
+    auto softmax_op_shape = module::getShape(softmax_op->getResult(0));
+    int matmul_slice_sec = softmax_op_shape[softmax_op_shape.size() -2];
+    auto matmul_op = dyn_cast<top::MatMulOp>(reshape2_op.getInput().getDefiningOp());
+    if(!matmul_op)
+      return failure();
+
+    auto concat_op = dyn_cast<top::ConcatOp>(mul_right_op.getInput().getDefiningOp());
+    if(!concat_op)
+      return failure();
+    int concat_input_num = concat_op.getInputs().size();
+
+    auto matmul_left = matmul_op.getOperand(0);
+    auto matmul_right = matmul_op.getOperand(1);
+    if(!module::isWeight(matmul_right))
+      return failure();
+    auto weight_op = matmul_right.getDefiningOp<top::WeightOp>();
+    if (!weight_op->hasOneUse())
+      return failure();
+
+    std::vector<Value> right_concat_operands;
+    for(auto input : concat_op.getInputs()){
+      auto unsqueeze_op = dyn_cast<top::UnsqueezeOp>(input.getDefiningOp());
+      if(!unsqueeze_op)
+        return failure();
+      right_concat_operands.emplace_back(unsqueeze_op.getInput());
+    }
+    // auto l_trans = matmul_op.getLeftTranspose();
+    // auto r_trans = matmul_op.getRightTranspose();
+    auto weight_type = module::getElementType(weight_op.getOutput());
+    auto weight_shape = module::getShape(weight_op.getOutput());
+    auto weight_f32 = weight_op.read<float>();
+    std::vector<int64_t>  new_weight_shape = weight_shape;
+    new_weight_shape[new_weight_shape.size() -1] /= matmul_slice_sec;
+
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    std::vector<Value> concat_operands;
+    int32_t new_weight_size = std::accumulate(new_weight_shape.begin(), new_weight_shape.end(), 1,
+                          std::multiplies<int32_t>());
+    int32_t outer_weight_num = std::accumulate(new_weight_shape.begin(), new_weight_shape.end() - 1, 1,
+                          std::multiplies<int32_t>());
+    int32_t weight_last_dim_size = weight_shape[weight_shape.size() -1];
+    int32_t inner_weight_num = new_weight_shape[weight_shape.size() -1];
+
+    Value bias = matmul_op.getBias();
+    bool with_bias = !module::isNone(bias);
+    auto bias_shape = module::getShape(bias);
+    std::vector<int64_t>  new_bias_shape = bias_shape;
+    new_bias_shape[new_bias_shape.size() - 1] /= matmul_slice_sec;
+    int32_t new_bias_size = std::accumulate(new_bias_shape.begin(), new_bias_shape.end(), 1,
+                          std::multiplies<int32_t>());
+    int32_t outer_bias_num = std::accumulate(new_bias_shape.begin(), new_bias_shape.end() - 1, 1,
+                          std::multiplies<int32_t>());
+    int32_t bias_last_dim_size = bias_shape[bias_shape.size() -1];
+    int32_t inner_bias_num = new_bias_shape[bias_shape.size() -1];
+    std::vector<int64_t> new_matmul_shape = module::getShape(matmul_op.getOutput());
+    new_matmul_shape[new_matmul_shape.size() - 1] /= matmul_slice_sec;
+    auto none_op = module::getNoneOp(op);
+
+    // do 8(matmul) -> 8(softmax) -> 8(reshape) instead of 8(matmul -> softmax ->reshape)
+    operands.clear();
+    for(int matmul_slice_idx =0; matmul_slice_idx < matmul_slice_sec; matmul_slice_idx ++){
+      // Matmul[1x76760x256,256x160,1x1x160] -> 8 * matmul[1x76760x256,256x20,1x1x20]
+      // [256x160] -> 8[256x20]
+      auto new_weight_f32 = std::make_shared<std::vector<float>>(new_weight_size);
+      for(int32_t outer_weight_idx = 0;outer_weight_idx < outer_weight_num; outer_weight_idx++)
+        for(int32_t inner_weight_idx = 0;inner_weight_idx < inner_weight_num;inner_weight_idx++)
+          new_weight_f32->at(outer_weight_idx*inner_weight_num + inner_weight_idx) = weight_f32->at(
+              outer_weight_idx*weight_last_dim_size + matmul_slice_idx*inner_weight_num +inner_weight_idx);
+      auto new_weight_type = RankedTensorType::get(new_weight_shape, weight_type);
+      auto new_filter = top::WeightOp::create<float>(matmul_op, "_filter_"
+          + std::to_string(matmul_slice_idx),*new_weight_f32, new_weight_type);
+
+      rewriter.setInsertionPointAfter(matmul_op);
+      auto new_matmul_op = rewriter.clone(*matmul_op);
+      module::setLocSuffix(new_matmul_op, std::to_string(matmul_slice_idx));
+      new_matmul_op->setOperand(0, matmul_left);
+      new_matmul_op->setOperand(1, new_filter);
+      module::setShape(new_matmul_op->getResult(0), new_matmul_shape);
+
+      // [1x1x160] -> 8[1x1x20]
+      if(with_bias){
+        auto bias_op = cast<top::WeightOp>(bias.getDefiningOp());
+        auto bias_f32 = bias_op.read<float>();
+        auto new_bias_f32 = std::make_shared<std::vector<float>>(new_bias_size);
+        for(int32_t outer_bias_idx = 0;outer_bias_idx < outer_bias_num; outer_bias_idx++)
+          for(int32_t inner_bias_idx = 0;inner_bias_idx < inner_bias_num;inner_bias_idx++)
+            new_bias_f32->at(outer_bias_idx*inner_bias_num + inner_bias_idx) = bias_f32->at(
+              outer_bias_idx*bias_last_dim_size + matmul_slice_idx*inner_bias_num +inner_bias_idx);
+        auto new_bias_type = RankedTensorType::get(
+            new_bias_shape,
+            llvm::cast<ShapedType>(bias.getType()).getElementType());
+        auto new_bias = top::WeightOp::create(matmul_op, "_bias_" + std::to_string(matmul_slice_idx),
+                                              *new_bias_f32, new_bias_type);
+        new_matmul_op->setOperand(2, new_bias);
+      } else {
+        new_matmul_op->setOperand(2, bias);
+      }
+      operands.emplace_back(new_matmul_op->getResult(0));
+    }
+
+    rewriter.setInsertionPointAfterValue(operands[0]);
+    for(int matmul_slice_idx =0; matmul_slice_idx < matmul_slice_sec; matmul_slice_idx ++){
+      // Softmax[1x76760x8x20,axis=3] -> Softmax[1x76760x20,axis=2]
+      attrs.clear();
+      attrs.emplace_back(
+          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(2)));
+      auto sftmax_name_loc = NameLoc::get(rewriter.getStringAttr(module::getName(
+          softmax_op.getOperation()).str() + "_" + std::to_string(matmul_slice_idx)));
+      auto new_softmax_op = rewriter.create<top::SoftmaxOp>(
+          sftmax_name_loc,
+          RankedTensorType::get(
+              {softmax_op_shape[0],softmax_op_shape[1],softmax_op_shape[3]}, module::getElementType(softmax_op.getOutput())),
+              ValueRange{operands[matmul_slice_idx]},
+                  attrs);
+      operands[matmul_slice_idx] = new_softmax_op->getResult(0);
+    }
+
+    rewriter.setInsertionPointAfterValue(operands[matmul_slice_sec-1]);
+    for(int matmul_slice_idx =0; matmul_slice_idx < matmul_slice_sec; matmul_slice_idx ++){
+      // Reshape[1x76760x20] -> [1x76760x5x4]
+      attrs.clear();
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "shape", rewriter.getI64ArrayAttr(
+                      {softmax_op_shape[0],softmax_op_shape[1], concat_input_num, softmax_op_shape[3] / concat_input_num})));
+      auto softmax_reshape_op = rewriter.create<top::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(module::getName(operands[matmul_slice_idx].getDefiningOp()).str() + "_reshape")),
+          RankedTensorType::get(
+              {softmax_op_shape[0],softmax_op_shape[1], concat_input_num, softmax_op_shape[3] / concat_input_num}, module::getElementType(operands[matmul_slice_idx])),
+          operands[matmul_slice_idx], attrs);
+
+      concat_operands.emplace_back(softmax_reshape_op->getResult(0));
+    }
+
+    // Concat [1x76760x5x4] -> [8x76760x5x4]
+    auto reshape_concat_shape = module::getShape(concat_operands[0]);
+    attrs.clear();
+    rewriter.setInsertionPointAfterValue(concat_operands[matmul_slice_sec-1]);
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
+    auto concat_type = RankedTensorType::get(
+        {reshape_concat_shape[0] * matmul_slice_sec, reshape_concat_shape[1], reshape_concat_shape[2], reshape_concat_shape[3]}, module::getElementType(concat_operands[0]));
+    auto new_concat_op = rewriter.create<top::ConcatOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(matmul_op.getOperation()).str() + "_concat")), concat_type,
+        concat_operands, attrs);
+
+    std::vector<Value> add_operands;
+    operands.clear();
+    std::vector<Value> slice_operands;
+    for(int slice_idx = 0;slice_idx<concat_input_num;slice_idx++){
+      // Slice [8x76760x5x4] -> [8x76760x1x4]
+      attrs.clear();
+      slice_operands.clear();
+      slice_operands.emplace_back(new_concat_op->getResult(0));
+      slice_operands.emplace_back(none_op);
+      slice_operands.emplace_back(none_op);
+      slice_operands.emplace_back(none_op);
+      attrs.emplace_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(2)));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({0, 0, slice_idx, 0})));
+      attrs.emplace_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr(
+                      {reshape_concat_shape[0] * matmul_slice_sec, reshape_concat_shape[1],slice_idx +1 , reshape_concat_shape[3]})));
+      auto slice_type = RankedTensorType::get(
+          {reshape_concat_shape[0] * matmul_slice_sec, reshape_concat_shape[1], 1 , reshape_concat_shape[3]}, module::getElementType(new_concat_op->getResult(0)));
+      auto slice_op = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(matmul_op.getOperation()).str() + "_slice_" + std::to_string(slice_idx))),
+        slice_type, slice_operands, attrs);
+      operands.emplace_back(slice_op->getResult(0));
+    }
+    for(int slice_idx = 0;slice_idx<concat_input_num;slice_idx++){
+      // Reshape [8x76760x1x4] -> [8x1x76760x4]
+      attrs.clear();
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "shape", rewriter.getI64ArrayAttr(
+                      {reshape_concat_shape[0] * matmul_slice_sec, 1, reshape_concat_shape[1], reshape_concat_shape[3]})));
+      auto slice_reshape_op = rewriter.create<top::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(module::getName(operands[slice_idx].getDefiningOp()).str() + "_reshape")),
+          RankedTensorType::get(
+              {reshape_concat_shape[0] * matmul_slice_sec, 1, reshape_concat_shape[1], reshape_concat_shape[3]}, module::getElementType(operands[slice_idx])),
+          operands[slice_idx], attrs);
+      operands[slice_idx] = slice_reshape_op->getResult(0);
+    }
+    rewriter.setInsertionPointAfterValue(right_concat_operands[concat_input_num-1]);
+    for(int slice_idx = 0;slice_idx<concat_input_num;slice_idx++){
+      // Mul [8x1x76760x4,8x32x76760x4]
+      attrs.clear();
+      auto new_mul_op = rewriter.clone(*mul_op);
+      module::setLocSuffix(new_mul_op, std::to_string(slice_idx));
+      new_mul_op->setOperand(0, operands[slice_idx]);
+      new_mul_op->setOperand(1, right_concat_operands[slice_idx]);
+      std::vector<int64_t> new_mul_shape = module::getShape(operands[slice_idx]);
+      new_mul_shape[1] = std::max(new_mul_shape[1], module::getShape(right_concat_operands[slice_idx])[1]);
+      module::setShape(new_mul_op->getResult(0), new_mul_shape);
+      add_operands.emplace_back(new_mul_op->getResult(0));
+    }
+
+    // Add [8x32xl76760x4,8x32x76760x4]
+    // rewriter.setInsertionPointAfterValue(operands[0]);
+    auto add_loc = NameLoc::get(
+        rewriter.getStringAttr(module::getName(mul_op.getOperation()).str() + "_add_" + std::to_string(0)));
+    auto add_op = rewriter.create<top::AddOp>(
+        add_loc, add_operands[0].getType(), mlir::ValueRange{add_operands[0], add_operands[1]});
+    for (int add_idx = 1; add_idx < add_operands.size() - 1; add_idx++) {
+      // if(operands[i+1].getDefiningOp()->getLoc() > add_op->getLoc())
+      //   insertpoint = operands[1];
+      // rewriter.setInsertionPointAfterValue(add_op);
+      add_loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(mul_op.getOperation()).str() + "_add_" + std::to_string(add_idx)));
+      add_op = rewriter.create<top::AddOp>(
+          add_loc, add_operands[add_idx].getType(),
+          mlir::ValueRange{add_op.getOutput(), add_operands[add_idx + 1]});
+    }
+
+    // Reduce [8x32x76760x4] -> [8x32x76760]
+    attrs.clear();
+    operands.clear();
+    std::vector<int64_t> reducesum_shape = module::getShape(op.getOutput());
+    auto reducesum_type = module::getTypeLike(op.getOutput(), reducesum_shape);
+    auto loc_reducesum =
+        NameLoc::get(rewriter.getStringAttr(module::getName(op.getOperation()).str() + "_new"));
+    operands.emplace_back(add_op.getOutput());
+    // for (int i = operands.size(); i < 3; i++) {
+    //   operands.emplace_back(none_op);
+    // }
+    attrs.emplace_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
+    attrs.emplace_back(rewriter.getNamedAttr("axes", op.getAxes()));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    auto reduce_op = rewriter.create<top::ReduceOp>(
+        loc_reducesum, reducesum_type, operands, attrs);
+
+    rewriter.setInsertionPointAfter(op);
+    rewriter.replaceAllUsesWith(op, reduce_op->getResult(0));
+    // rewriter.eraseOp(bias_op);
+    // rewriter.eraseOp(op);
+    // rewriter.eraseOp(weight_op);
+    return success();
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -1283,7 +1570,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
       ->add<ConvertGLMTilePermute, ConvertGLMTilePermute2, ConvertMatMulWithRightTranspose,
             ConvertMatMul2Attention, ReshapeReorderPattern,
             ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
-            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner>(
+            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd>(
           patterns->getContext(), 8);
 }
 } // namespace top
