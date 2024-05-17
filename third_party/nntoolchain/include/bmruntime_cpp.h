@@ -139,8 +139,7 @@ class Tensor {
 };
 
 struct api_info_t {
-  /// @brief api_id to be sent to driver
-  int32_t api_id;
+  std::vector<uint32_t> api_id;
   /// @brief api data to be sent to driver, {core_idx, core_api_data}
   std::vector<std::vector<uint8_t>> api_data;
   /// @brief offset of input tensors' addr in api_data
@@ -162,7 +161,7 @@ struct api_info_t {
  * @param [in]    input_tensors     Array of input tensor, defined like bm_tensor_t input_tensors[input_num],
  *                                  User should initialize each input tensor.
  * @param [in]    input_num         Input number
- * @param [out]   output_tensors    Array of output tensor, defined like bm_tensor_t output_tensors[output_num].
+ * @param [in]   output_tensors     Array of output tensor, defined like bm_tensor_t output_tensors[output_num].
  *                                  User can set device_mem or stmode of output tensors. If user_mem is true, this interface
  *                                  will use device mem of output_tensors to store output data, and not alloc device mem;
  *                                  Or it will alloc device mem to store output. If user_stmode is true, it will use stmode in
@@ -170,12 +169,12 @@ struct api_info_t {
  * @param [in]    output_num        Output number
  * @param [in]    user_mem          whether device_mem of output tensors are set
  * @param [in]    user_stmode       whether stmode of output tensors are set
- *
+ * @param [in]    core_ids          select which cores to uese
  */
 api_info_t get_bmodel_api_info(void *p_bmrt, const char *net_name,
                                const bm_tensor_t *input_tensors, int input_num,
                                bm_tensor_t *output_tensors, int output_num,
-                               bool user_mem, bool user_stmode);
+                               bool user_mem, bool user_stmode, uint32_t *core_ids);
 }  // namespace bmruntime
 
 #endif /* __BMRUNTIME_CPP_H__ */

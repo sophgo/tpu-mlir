@@ -160,6 +160,32 @@ typedef struct sg_mem_desc {
 
 typedef struct sg_mem_desc sg_device_mem_t;
 typedef struct sg_mem_desc sg_system_mem_t;
+
+typedef struct bm_mem_desc_u64 {
+  union {
+    struct {
+#ifdef __linux__
+      unsigned long device_addr;
+#else
+      unsigned long long device_addr;
+#endif
+      unsigned int reserved;
+      int dmabuf_fd;
+    } device;
+
+    struct {
+      void *system_addr;
+      unsigned int reserved0;
+      int reserved1;
+    } system;
+  } u;
+
+  bm_mem_flags_t flags;
+  unsigned long long size;
+} bm_mem_desc_u64_t;
+
+typedef struct bm_mem_desc_u64 bm_device_mem_u64_t;
+typedef struct bm_mem_desc_u64 bm_system_mem_u64_t;
 #endif
 
 struct bm_context;
@@ -191,6 +217,18 @@ typedef int tpu_kernel_function_t;
 tpu_kernel_module_t tpu_kernel_load_module_file(bm_handle_t handle, const char *module_file);
 
 /**
+ * @name    tpu_kernel_load_module_file_to_core
+ * @brief   To load dyn file
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  module_file     dyn file
+ * @param [in]  core_id
+ * @retval  dyn lib ptr
+ */
+tpu_kernel_module_t tpu_kernel_load_module_file_to_core(bm_handle_t handle, const char *module_file, int core_id);
+
+/**
  * @name    tpu_kernel_load_module_file_key
  * @brief   To load dyn file with key
  * @ingroup bmlib_runtime
@@ -214,6 +252,19 @@ tpu_kernel_module_t tpu_kernel_load_module_file_key(bm_handle_t handle, const ch
  *          Other code  Fails.
  */
 bm_status_t tpu_kernel_unload_module(bm_handle_t handle, tpu_kernel_module_t p_module);
+
+/**
+ * @name    tpu_kernel_unload_module_from_core
+ * @brief   To unload dyn file
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  p_module        dyn lib ptr
+ * @param [in]  core_id         core id
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+bm_status_t tpu_kernel_unload_module_from_core(bm_handle_t handle, tpu_kernel_module_t p_module, int core_id);
 
 /**
  * @name    tpu_kernel_free_module
@@ -240,6 +291,19 @@ bm_status_t tpu_kernel_free_module(bm_handle_t handle, tpu_kernel_module_t p_mod
 tpu_kernel_module_t tpu_kernel_load_module(bm_handle_t handle, const char *data, size_t length);
 
 /**
+ * @name    tpu_kernel_load_module_to_core
+ * @brief   To load dyn module
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  data            dyn module
+ * @param [in]  length          dyn module size
+ * @param [in]  core_id         core id
+ * @retval  dyn lib ptr
+ */
+tpu_kernel_module_t tpu_kernel_load_module_to_core(bm_handle_t handle, const char *data, size_t length, int core_id);
+
+/**
  * @name    tpu_kernel_get_function
  * @brief   To get function from lib
  * @ingroup bmlib_runtime
@@ -250,6 +314,19 @@ tpu_kernel_module_t tpu_kernel_load_module(bm_handle_t handle, const char *data,
  * @retval  function id
  */
 tpu_kernel_function_t tpu_kernel_get_function(bm_handle_t handle, tpu_kernel_module_t module, const char *function);
+
+/**
+ * @name    tpu_kernel_get_function_from_core
+ * @brief   To get function from lib
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  module          dyn module
+ * @param [in]  function        funtion name
+ * @param [in]  core_id         core id
+ * @retval  function id
+ */
+tpu_kernel_function_t tpu_kernel_get_function_from_core(bm_handle_t handle, tpu_kernel_module_t module, const char *function, int core_id);
 
 /**
  * @name    tpu_kernel_launch
@@ -266,6 +343,21 @@ tpu_kernel_function_t tpu_kernel_get_function(bm_handle_t handle, tpu_kernel_mod
 bm_status_t tpu_kernel_launch(bm_handle_t handle, tpu_kernel_function_t function, void *args, size_t size);
 
 /**
+ * @name    tpu_kernel_launch_from_core
+ * @brief   To launch function with sync
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  function        function id
+ * @param [in]  args            funtion args
+ * @param [in]  size            args size
+ * @param [in]  core_id         core id
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+bm_status_t tpu_kernel_launch_from_core(bm_handle_t handle, tpu_kernel_function_t function, void *args, size_t size, int core_id);
+
+/**
  * @name    tpu_kernel_launch_async
  * @brief   To launch function with async
  * @ingroup bmlib_runtime
@@ -278,6 +370,21 @@ bm_status_t tpu_kernel_launch(bm_handle_t handle, tpu_kernel_function_t function
  *          Other code  Fails.
  */
 bm_status_t tpu_kernel_launch_async(bm_handle_t handle, tpu_kernel_function_t function, void *args, size_t size);
+
+/**
+ * @name    tpu_kernel_launch_async_from_core
+ * @brief   To launch function with async
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  function        function id
+ * @param [in]  args            funtion args
+ * @param [in]  size            args size
+ * @param [in]  core_id         core_id
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+bm_status_t tpu_kernel_launch_async_from_core(bm_handle_t handle, tpu_kernel_function_t function, void *args, size_t size, int core_id);
 
 /**
  * @name    tpu_kernel_launch_async_multi_cores
@@ -427,6 +534,17 @@ DECL_EXPORT bm_mem_type_t bm_mem_get_type(struct bm_mem_desc mem);
 DECL_EXPORT bm_mem_type_t sg_mem_get_type(struct sg_mem_desc mem);
 
 /**
+ * @name    bm_mem_get_type_u64
+ * @brief   To get a memory descriptor's type
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  mem  The memory descriptor queried
+ * @retval  BM_MEM_TYPE_DEVICE  Device global memory
+ * @retval  BM_MEM_TYPE_SYSTEM  Host user memory
+ */
+DECL_EXPORT bm_mem_type_t bm_mem_get_type_u64(struct bm_mem_desc_u64 mem);
+
+/**
  * @name    bm_mem_get_device_addr
  * @brief   To get a device memory descriptor's address
  * @ingroup bmlib_runtime
@@ -445,6 +563,16 @@ DECL_EXPORT unsigned long long bm_mem_get_device_addr(struct bm_mem_desc mem);
  * @retval  unsigned long long  The device memory address
  */
 DECL_EXPORT unsigned long long sg_mem_get_device_addr(struct sg_mem_desc mem);
+
+/**
+ * @name    bm_mem_get_device_addr_u64
+ * @brief   To get a device memory descriptor's address
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  mem  The device memory descriptor queried
+ * @retval  unsigned long long  The device memory address
+ */
+DECL_EXPORT unsigned long long bm_mem_get_device_addr_u64(struct bm_mem_desc_u64 mem);
 
 /**
  * @name    bm_mem_set_device_addr
@@ -467,6 +595,16 @@ DECL_EXPORT void bm_mem_set_device_addr(struct bm_mem_desc* pmem, unsigned long 
 DECL_EXPORT void sg_mem_set_device_addr(struct sg_mem_desc* pmem, unsigned long long addr);
 
 /**
+ * @name    bm_mem_set_device_addr_u64
+ * @brief   To set a device memory descriptor's address
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  pmem   The device memory descriptor pointer
+ * @param ]in]  addr  The new device address of the device memory
+ */
+DECL_EXPORT void bm_mem_set_device_addr_u64(struct bm_mem_desc_u64* pmem, unsigned long long addr);
+
+/**
  * @name    bm_mem_get_device_size
  * @brief   To get a device memory descriptor's size
  * @ingroup bmlib_runtime
@@ -487,6 +625,16 @@ DECL_EXPORT unsigned int bm_mem_get_device_size(struct bm_mem_desc mem);
 DECL_EXPORT unsigned long long sg_mem_get_device_size(struct sg_mem_desc mem);
 
 /**
+ * @name    bm_mem_get_device_size_u64
+ * @brief   To get a device memory descriptor's size
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  mem      The device memory descriptor queried
+ * @retval unsigned int  The device memory's size in bytes
+ */
+DECL_EXPORT unsigned long long bm_mem_get_device_size_u64(struct bm_mem_desc_u64 mem);
+
+/**
  * @name    bm_mem_set_device_size
  * @brief   To set a device memory descriptor's size
  * @ingroup bmlib_runtime
@@ -505,6 +653,16 @@ DECL_EXPORT void bm_mem_set_device_size(struct bm_mem_desc* pmem, unsigned int s
  * @param [in]  size  The new device memory size (in bytes) of the device memory
  */
 DECL_EXPORT void sg_mem_set_device_size(struct sg_mem_desc* pmem, unsigned long long size);
+
+/**
+ * @name    bm_mem_set_device_size_u64
+ * @brief   To set a device memory descriptor's size
+ * @ingroup bmlib_runtime
+ *
+ * @param [out]  pmem  The device memory descriptor pointer
+ * @param [in]  size  The new device memory size (in bytes) of the device memory
+ */
+DECL_EXPORT void bm_mem_set_device_size_u64(struct bm_mem_desc_u64* pmem, unsigned long long size);
 
 /**
  * @name    bm_set_device_mem
@@ -528,6 +686,18 @@ DECL_EXPORT void bm_set_device_mem(bm_device_mem_t* pmem, unsigned int size,
  * @param [in]  addr  The device memory descriptor's address
  */
 DECL_EXPORT void sg_set_device_mem(sg_device_mem_t* pmem, unsigned long long size,
+                       unsigned long long addr);
+
+/**
+ * @name    bm_set_device_mem_u64
+ * @brief   To fill in a device memory descriptor with size and address
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] pmem  The device memory descriptor pointer
+ * @param [in]  size  The device memory descriptor's size
+ * @param [in]  addr  The device memory descriptor's address
+ */
+DECL_EXPORT void bm_set_device_mem_u64(bm_device_mem_u64_t* pmem, unsigned long long size,
                        unsigned long long addr);
 
 /**
@@ -555,6 +725,18 @@ DECL_EXPORT sg_device_mem_t sg_mem_from_device(unsigned long long device_addr,
                                    unsigned long long len);
 
 /**
+ * @name    bm_mem_from_device_u64
+ * @brief   To create a device memory descriptor from address and size
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] device_addr The device memory address
+ * @param [in] len         The device memory size
+ * @retval bm_device_mem_t The device memory descriptor created
+ */
+DECL_EXPORT bm_device_mem_u64_t bm_mem_from_device_u64(unsigned long long device_addr,
+                                   unsigned long long len);
+
+/**
  * @name    bm_mem_get_system_addr
  * @brief   To get a system memory descriptor's address
  * @ingroup bmlib_runtime
@@ -575,6 +757,16 @@ DECL_EXPORT void *bm_mem_get_system_addr(struct bm_mem_desc mem);
 DECL_EXPORT void *sg_mem_get_system_addr(struct sg_mem_desc mem);
 
 /**
+ * @name    bm_mem_get_system_addr_u64
+ * @brief   To get a system memory descriptor's address
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] mem  The system memory descriptor
+ * @retval void *   The system memory descriptor's address
+ */
+DECL_EXPORT void *bm_mem_get_system_addr_u64(struct bm_mem_desc_u64 mem);
+
+/**
  * @name    bm_mem_set_system_addr
  * @brief   To set a system memory descriptor's address
  * @ingroup bmlib_runtime
@@ -593,6 +785,16 @@ DECL_EXPORT void bm_mem_set_system_addr(struct bm_mem_desc* pmem, void *addr);
  * @param [in]   addr The system memory address
  */
 DECL_EXPORT void sg_mem_set_system_addr(struct sg_mem_desc* pmem, void *addr);
+
+/**
+ * @name    bm_mem_set_system_addr_u64
+ * @brief   To set a system memory descriptor's address
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  pmem  The system memory descriptor pointer
+ * @param [in]   addr The system memory address
+ */
+DECL_EXPORT void bm_mem_set_system_addr_u64(struct bm_mem_desc_u64* pmem, void *addr);
 
 /**
  * @name    bm_mem_from_system
@@ -647,6 +849,22 @@ DECL_EXPORT bm_status_t sg_malloc_neuron_device(bm_handle_t handle, sg_device_me
                                     unsigned long long h, unsigned long long w);
 
 /**
+ * @name    bm_malloc_neuron_device_u64
+ * @brief   To malloc device memory according to a tensor shape
+ *          (each neuron is 32 bits)
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  pmem   The result devcie memory descriptor
+ * @param [in]  n, c, h, w  The shape of the input tensor
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_malloc_neuron_device_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem,
+                                    unsigned long long n, unsigned long long c,
+                                    unsigned long long h, unsigned long long w);
+
+/**
  * @name    bm_malloc_device_dword
  * @brief   To malloc device memory in size of dword (32 bits)
  * @ingroup bmlib_runtime
@@ -675,6 +893,20 @@ DECL_EXPORT bm_status_t sg_malloc_device_dword(bm_handle_t handle, sg_device_mem
                                    unsigned long long count);
 
 /**
+ * @name    bm_malloc_device_dword_u64
+ * @brief   To malloc device memory in size of dword (32 bits)
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  pmem   The result device memory descriptor
+ * @param [in]   count  The number of dwords(32bits) to allocate
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_malloc_device_dword_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem,
+                                   unsigned long long count);
+
+/**
  * @name    bm_malloc_device_byte
  * @brief   To malloc device memory in size of byte
  * @ingroup bmlib_runtime
@@ -689,6 +921,20 @@ DECL_EXPORT bm_status_t bm_malloc_device_byte(bm_handle_t handle, bm_device_mem_
                                   unsigned int size);
 
 /**
+ * @name    bm_malloc_device_mem
+ * @brief   To malloc device memory in size of byte and output paddr
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  paddr  The result malloc device memory addr
+ * @param [in]  heap_id The heap where to allocate  0/1/2
+ * @param [in]  size    The number of bytes to allocate
+ * @retval  paddr
+ */
+DECL_EXPORT bm_status_t bm_malloc_device_mem(bm_handle_t handle, unsigned long long *paddr,
+                                              int heap_id, unsigned long long size);
+
+/**
  * @name    sg_malloc_device_byte
  * @brief   To malloc device memory in size of byte
  * @ingroup bmlib_runtime
@@ -700,6 +946,20 @@ DECL_EXPORT bm_status_t bm_malloc_device_byte(bm_handle_t handle, bm_device_mem_
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_malloc_device_byte(bm_handle_t handle, sg_device_mem_t *pmem,
+                                  unsigned long long size);
+
+/**
+ * @name    bm_malloc_device_byte_u64
+ * @brief   To malloc device memory in size of byte
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  pmem   The result device memory descriptor
+ * @param [in]   size   The number of bytes to allocate
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_malloc_device_byte_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem,
                                   unsigned long long size);
 
 /**
@@ -733,6 +993,21 @@ DECL_EXPORT bm_status_t sg_malloc_device_byte_heap(bm_handle_t handle, sg_device
                                   int heap_id, unsigned long long size);
 
 /**
+ * @name    bm_malloc_device_byte_heap_u64
+ * @brief   To malloc device memory in size of byte within the specified heap
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  pmem   The result device memory descriptor
+ * @param [in]  heap_id The heap where to allocate  0/1/2
+ * @param [in]   size   The number of bytes to allocate
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_malloc_device_byte_heap_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem,
+                                  int heap_id, unsigned long long size);
+
+/**
  * @name    bm_malloc_device_byte_heap_mask
  * @brief   To malloc device memory in size of byte within the specified heaps
  * @ingroup bmlib_runtime
@@ -763,6 +1038,31 @@ DECL_EXPORT bm_status_t sg_malloc_device_byte_heap_mask(bm_handle_t handle, sg_d
                                   int heap_id_mask, unsigned long long size);
 
 /**
+ * @name    bm_malloc_device_byte_heap_mask_u64
+ * @brief   To malloc device memory in size of byte within the specified heaps
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [out]  pmem   The result device memory descriptor
+ * @param [in]  heap_id_mask The mask which heaps allocate from. each bit indicate one heap
+ * @param [in]   size   The number of bytes to allocate
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_malloc_device_byte_heap_mask_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem,
+                                  int heap_id_mask, unsigned long long size);
+
+/**
+ * @name    bm_free_device_mem
+ * @brief   To free device memory and input paddr
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]  paddr   The device memory addr to free
+ */
+DECL_EXPORT void bm_free_device_mem(bm_handle_t ctx, unsigned long long paddr);
+
+/**
  * @name    bm_free_device
  * @brief   To free device memory
  * @ingroup bmlib_runtime
@@ -781,6 +1081,16 @@ DECL_EXPORT void bm_free_device(bm_handle_t handle, bm_device_mem_t mem);
  * @param [in]  mem     The device memory descriptor to free
  */
 DECL_EXPORT void sg_free_device(bm_handle_t handle, sg_device_mem_t mem);
+
+/**
+ * @name    bm_free_device_u64
+ * @brief   To free device memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]  mem     The device memory descriptor to free
+ */
+DECL_EXPORT void bm_free_device_u64(bm_handle_t handle, bm_device_mem_u64_t mem);
 
 /**
  * @name    bm_gmem_arm_reserved_request
@@ -816,6 +1126,35 @@ DECL_EXPORT void bm_gmem_arm_reserved_release(bm_handle_t handle);
 DECL_EXPORT bm_status_t bm_memcpy_s2d(bm_handle_t handle, bm_device_mem_t dst, void *src);
 
 /**
+ * @name    bm_memcpy_s2d_gather
+ * @brief   To copy data from system virtual memory to device memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in] dst     The destination memory (device memory descriptor )
+ * @param [in] argc    The number of system memory and len (system memory, a void* pointer)
+ * @param [in] ...     void *src and unsigned long long len
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_s2d_gather(bm_handle_t handle, bm_device_mem_t dst, int argc, ...);
+
+/**
+ * @name    bm_memcpy_d2s_scatter
+ * @brief   To copy data from  device memory to system virtual memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in] src     The destination memory (device memory descriptor )
+ * @param [in] argc    The number of system memory and len (system memory, a void* pointer)
+ * @param [in] ...     void *dst and unsigned long long len
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_d2s_scatter(bm_handle_t handle, bm_device_mem_t src, int argc, ...);
+/**
  * @name    bm_memcpy_p2p
  * @brief   To copy data from one chip to another chip
  * @ingroup bmlib_runtime
@@ -843,6 +1182,20 @@ DECL_EXPORT bm_status_t bm_memcpy_p2p(bm_handle_t handle_src, bm_device_mem_t sr
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_memcpy_s2d(bm_handle_t handle, sg_device_mem_t dst, void *src);
+
+/**
+ * @name    bm_memcpy_s2d_u64
+ * @brief   To copy data from system memory to device memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in] dst     The destination memory (device memory descriptor )
+ * @param [in] src     The source memory (system memory, a void* pointer)
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_s2d_u64(bm_handle_t handle, bm_device_mem_u64_t dst, void *src);
 
 /**
  * @name    bm_memcpy_s2d_partial_offset
@@ -885,6 +1238,26 @@ DECL_EXPORT bm_status_t sg_memcpy_s2d_partial_offset(bm_handle_t handle,
                                          unsigned long long offset);
 
 /**
+ * @name    bm_memcpy_s2d_partial_offset_u64
+ * @brief   To copy specified bytes of data from system memory to device memory
+ *          with an offset in device memory address.
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in]  dst    The destination memory (device memory descriptor)
+ * @param [in]  src    The source memory (system memory, a void* pointer)
+ * @param [in] size    The size of data to copy (in bytes)
+ * @param [in] offset  The offset of the device memory address
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_s2d_partial_offset_u64(bm_handle_t handle,
+                                         bm_device_mem_u64_t dst, void *src,
+                                         unsigned long long size,
+                                         unsigned long long offset);
+
+/**
  * @name    bm_memcpy_s2d_partial
  * @brief   To copy specified bytes of data from system memory to device memory
  * @ingroup bmlib_runtime
@@ -917,6 +1290,22 @@ DECL_EXPORT bm_status_t sg_memcpy_s2d_partial(bm_handle_t handle, sg_device_mem_
                                   void *src, unsigned long long size);
 
 /**
+ * @name    bm_memcpy_s2d_partial_u64
+ * @brief   To copy specified bytes of data from system memory to device memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in]  dst    The destination memory (device memory descriptor)
+ * @param [in]  src    The source memory (system memory, a void* pointer)
+ * @param [in] size    The size of data to copy (in bytes)
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_s2d_partial_u64(bm_handle_t handle, bm_device_mem_u64_t dst,
+                                  void *src, unsigned long long size);
+
+/**
  * @name    bm_memcpy_d2s
  * @brief   To copy data from device memory to system memory
  * @ingroup bmlib_runtime
@@ -943,6 +1332,20 @@ DECL_EXPORT bm_status_t bm_memcpy_d2s(bm_handle_t handle, void *dst, bm_device_m
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_memcpy_d2s(bm_handle_t handle, void *dst, sg_device_mem_t src);
+
+/**
+ * @name    bm_memcpy_d2s_u64
+ * @brief   To copy data from device memory to system memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in]  dst    The destination memory (system memory, a void* pointer)
+ * @param [in]  src    The source memory (device memory descriptor)
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_d2s_u64(bm_handle_t handle, void *dst, bm_device_mem_u64_t src);
 
 /**
  * @name    bm_memcpy_d2s_partial_offset
@@ -983,6 +1386,25 @@ DECL_EXPORT bm_status_t sg_memcpy_d2s_partial_offset(bm_handle_t handle, void *d
                                          unsigned long long offset);
 
 /**
+ * @name    bm_memcpy_d2s_partial_offset_u64
+ * @brief   To copy specified bytes of data from device memory to system memory
+ *          with an offset in device memory address.
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in]  dst    The destination memory (system memory, a void* pointer)
+ * @param [in]  src    The source memory (device memory descriptor)
+ * @param [in] size    The size of data to copy (in bytes)
+ * @param [in] offset  The offset of the device memory address
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_d2s_partial_offset_u64(bm_handle_t handle, void *dst,
+                                         bm_device_mem_u64_t src, unsigned long long size,
+                                         unsigned long long offset);
+
+/**
  * @name    bm_memcpy_d2s_partial
  * @brief   To copy specified bytes of data from device memory to system memory
  * @ingroup bmlib_runtime
@@ -1013,6 +1435,22 @@ DECL_EXPORT bm_status_t bm_memcpy_d2s_partial(bm_handle_t handle, void *dst,
  */
 DECL_EXPORT bm_status_t sg_memcpy_d2s_partial(bm_handle_t handle, void *dst,
                                   sg_device_mem_t src, unsigned long long size);
+
+/**
+ * @name    bm_memcpy_d2s_partial_u64
+ * @brief   To copy specified bytes of data from device memory to system memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in]  dst    The destination memory (system memory, a void* pointer)
+ * @param [in]  src    The source memory (device memory descriptor)
+ * @param [in] size    The size of data to copy (in bytes)
+ *
+ * @retval  BM_SUCCESS  Data transfer succeeds.
+ *          Other code  Data transfer fails.
+ */
+DECL_EXPORT bm_status_t bm_memcpy_d2s_partial_u64(bm_handle_t handle, void *dst,
+                                  bm_device_mem_u64_t src, unsigned long long size);
 
 /**
  * @name    bm_memcpy_d2d
@@ -1324,6 +1762,22 @@ DECL_EXPORT bm_status_t bm_mem_mmap_device_mem(bm_handle_t handle, bm_device_mem
 DECL_EXPORT bm_status_t sg_mem_mmap_device_mem(bm_handle_t handle, sg_device_mem_t *dmem,
         unsigned long long *vmem);
 
+/**
+ * @name    bm_mem_mmap_device_mem_u64
+ * @brief   To map a piece of device memory to user space with cache enabled.
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]  dev_mem The device memory to map
+ * @param [out] vmem    The virtual address of the mapped device memory
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_mmap_device_mem_u64(bm_handle_t handle, bm_device_mem_u64_t *dmem,
+        unsigned long long *vmem);
+
 /*******************memory map functions *************************************/
 /**
  * @name    bm_mem_mmap_device_mem_no_cache
@@ -1356,6 +1810,22 @@ DECL_EXPORT bm_status_t bm_mem_mmap_device_mem_no_cache(bm_handle_t handle, bm_d
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_mem_mmap_device_mem_no_cache(bm_handle_t handle, sg_device_mem_t *dmem,
+        unsigned long long *vmem);
+
+/**
+ * @name    bm_mem_mmap_device_mem_no_cache_u64
+ * @brief   To map a piece of device memory to user space with cache disabled.
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]  dev_mem The device memory to map
+ * @param [out] vmem    The virtual address of the mapped device memory
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_mmap_device_mem_no_cache_u64(bm_handle_t handle, bm_device_mem_u64_t *dmem,
         unsigned long long *vmem);
 
 /**
@@ -1408,6 +1878,23 @@ DECL_EXPORT bm_status_t sg_mem_invalidate_device_mem(bm_handle_t handle,
                                          sg_device_mem_t *dmem);
 
 /**
+ * @name    bm_mem_invalidate_device_mem_u64
+ * @brief   To invalidate a piece of mapped device memory to maintain
+ *          cache coherence
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]   dmem   The device memory to invalidate
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+
+DECL_EXPORT bm_status_t bm_mem_invalidate_device_mem_u64(bm_handle_t handle,
+                                         bm_device_mem_u64_t *dmem);
+
+/**
  * @name    bm_mem_invalidate_partial_device_mem
  * @brief   To invalidate part of mapped device memory to maintain
  *          cache coherence
@@ -1448,6 +1935,26 @@ DECL_EXPORT bm_status_t sg_mem_invalidate_partial_device_mem(bm_handle_t handle,
                                                  unsigned long long len);
 
 /**
+ * @name    bm_mem_invalidate_partial_device_mem_u64
+ * @brief   To invalidate part of mapped device memory to maintain
+ *          cache coherence
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]   dmem   The device memory to invalidate
+ * @param [in]  offset  The offset of device memory address
+ * @param [in]  len     The length of memory to invalidate in bytes
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_invalidate_partial_device_mem_u64(bm_handle_t handle,
+                                                 bm_device_mem_u64_t *dmem,
+                                                 unsigned long long offset,
+                                                 unsigned long long len);
+
+/**
  * @name    bm_mem_flush_device_mem
  * @brief   To flush a piece of mapped device memory to maintain
  *          cache coherence
@@ -1476,6 +1983,21 @@ DECL_EXPORT bm_status_t bm_mem_flush_device_mem(bm_handle_t handle, bm_device_me
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_mem_flush_device_mem(bm_handle_t handle, sg_device_mem_t *dmem);
+
+/**
+ * @name    bm_mem_flush_device_mem_u64
+ * @brief   To flush a piece of mapped device memory to maintain
+ *          cache coherence
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]   dmem   The device memory to flush
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_flush_device_mem_u64(bm_handle_t handle, bm_device_mem_u64_t *dmem);
 
 /**
  * @name    bm_mem_flush_partial_device_mem
@@ -1518,6 +2040,26 @@ DECL_EXPORT bm_status_t sg_mem_flush_partial_device_mem(bm_handle_t handle,
                                             unsigned long long len);
 
 /**
+ * @name    bm_mem_flush_partial_device_mem_u64
+ * @brief   To flush part of mapped device memory to maintain
+ *          cache coherence
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]   dmem   The device memory to flush
+ * @param [in]  offset  The offset of device memory address
+ * @param [in]  len     The length of memory to flush in bytes
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_flush_partial_device_mem_u64(bm_handle_t handle,
+                                            bm_device_mem_u64_t *dmem,
+                                            unsigned long long offset,
+                                            unsigned long long len);
+
+/**
  * @name    bm_mem_unmap_device_mem
  * @brief   To unmap a piece of mapped device memory
  *          (only valid in SoC mode; Not supported in PCIE mode).
@@ -1546,6 +2088,21 @@ DECL_EXPORT bm_status_t bm_mem_unmap_device_mem(bm_handle_t handle, void *vmem, 
  *          Other code  Fails.
  */
 DECL_EXPORT bm_status_t sg_mem_unmap_device_mem(bm_handle_t handle, void *vmem, unsigned long long size);
+
+/**
+ * @name    bm_mem_unmap_device_mem_u64
+ * @brief   To unmap a piece of mapped device memory
+ *          (only valid in SoC mode; Not supported in PCIE mode).
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]   vmem   The virtual address of the mapped device memory
+ * @param [in]  size    The size of unmapped memory
+ *
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_mem_unmap_device_mem_u64(bm_handle_t handle, void *vmem, unsigned long long size);
 
 /*******************api(kernel) functions *************************************/
 /**
@@ -1608,6 +2165,18 @@ DECL_EXPORT bm_status_t bm_handle_sync_from_core(bm_handle_t handle, int core_id
 DECL_EXPORT bm_status_t bm_thread_sync(bm_handle_t handle);
 
 /**
+ * @name    bm_set_sync_timeout
+ * @brief   To set sync timeout ms.
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ * @param [in] timeout Sync timeout
+ * @retval  BM_SUCCESS Succeeds.
+ *          Other code Fails.
+ */
+DECL_EXPORT bm_status_t bm_set_sync_timeout(bm_handle_t handle, int timeout);
+
+/**
  * @name    bm_thread_sync_from_core
  * @brief   To synchronize APIs of the current thread. The thread will block
  *          until all the outstanding APIs of the current thread are finished.
@@ -1628,6 +2197,7 @@ typedef struct bm_profile {
   unsigned long cdma_out_time;
   unsigned long cdma_out_counter;
   unsigned long tpu_process_time;
+  unsigned long tpu1_process_time;
   unsigned long sent_api_counter;
   unsigned long completed_api_counter;
 #else
@@ -1636,6 +2206,7 @@ typedef struct bm_profile {
   unsigned long long cdma_out_time;
   unsigned long long cdma_out_counter;
   unsigned long long tpu_process_time;
+  unsigned long long tpu1_process_time;
   unsigned long long sent_api_counter;
   unsigned long long completed_api_counter;
 #endif
@@ -2204,6 +2775,19 @@ DECL_EXPORT bm_status_t bm_get_gmem_heap_id(bm_handle_t handle, bm_device_mem_t 
 DECL_EXPORT bm_status_t sg_get_gmem_heap_id(bm_handle_t handle, sg_device_mem_t *pmem, unsigned int *heapid);
 
 /**
+ * @name    bm_get_gmem_heap_id_u64
+ * @brief   To get the heap id of allocated global memory
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle  The device handle
+ * @param [in]  pmem The allocted global memory
+ * @param [out] heapid The result of get heap id
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_status_t bm_get_gmem_heap_id_u64(bm_handle_t handle, bm_device_mem_u64_t *pmem, unsigned int *heapid);
+
+/**
  * @name    bm_get_gmem_total_heap_num
  * @brief   To get the total heap num of global memory
  * @ingroup bmlib_runtime
@@ -2256,6 +2840,7 @@ DECL_EXPORT bm_status_t tpu_kernel_launch_sync(
         const char   *func_name,
         const void   *args,
         unsigned int  size);
+
 
 DECL_EXPORT bm_status_t okkernel_sync(bm_handle_t handle);
 
@@ -2491,7 +3076,7 @@ DECL_EXPORT bm_status_t bm_get_tpu_power(bm_handle_t handle, float *tpu_power);
  * @ingroup device management api
  *
  * @param [in]   handle The device handle
- * @param [out]  tpu_volt
+ * @param [out]  The tpu current volt
  * @retval  BM_SUCCESS  Succeeds.
  *          Other code  Fails.
  */
@@ -2571,6 +3156,26 @@ DECL_EXPORT bm_status_t bm_change_dynfreq_status(bm_handle_t handle, int new_sta
 DECL_EXPORT bm_status_t bm_get_tpu_scalar_num(bm_handle_t handle, unsigned int *core_num);
 
 #define  bm_get_tpu_core_num bm_get_tpu_scalar_num
+
+typedef struct{
+	int core_id;
+	tpu_kernel_function_t func_id;
+	void *param_data;
+	unsigned int param_size;
+} tpu_launch_param_t;
+
+/**
+ * @name    tpu_kernel_launch_async_multi_cores
+ * @brief   To launch function with async for multi cores
+ * @ingroup bmlib_runtime
+ *
+ * @param [in]  handle          The device handle
+ * @param [in]  param_list      param_list
+ * @param [in]  param_num       param_num
+ * @retval  BM_SUCCESS  Succeeds.
+ *          Other code  Fails.
+ */
+bm_status_t tpu_kernel_launch_async_multicores(bm_handle_t handle, tpu_launch_param_t *param_list, int param_num);
 
 #if defined(__cplusplus)
 }
