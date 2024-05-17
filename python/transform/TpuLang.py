@@ -211,11 +211,8 @@ def bmodel_inference_combine(
     reference_data_fn,
     dump_file=True,
     path="",
+    out_fixed=False,
 ):
-    # input_data_fn = {}
-    # input_data_fn["BMTensor0"] = np.load(reference_data_fn)["BMTensor0"]
-    # assert isinstance(input_data_fn, dict)
-
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
         final_mlir_fn=final_mlir_fn,
@@ -233,9 +230,11 @@ def bmodel_inference_combine(
     plugin.break_when_fail = True
 
     plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.FAILED)
+    plugin.out_fixed = out_fixed
     tdb.message(f"dump mode = {plugin.dump_mode}")
     tdb.do_run("")
-    plugin.do_summary("table")
+    if not reference_data_fn.endswith(".mlir"):
+        plugin.do_summary("table")
 
     if dump_file:  # plugin.ref_data_from_inference -> [np_dict]
         for idx, tensor_dict in enumerate(plugin.ref_data_from_inference):

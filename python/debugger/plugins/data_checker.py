@@ -244,6 +244,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.failed_results_fn = "failed_bmodel_outputs.npz"
         self.excepts = set()
         self.dump_mode = DumpMode.FAILED
+        self.out_fixed = False
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
@@ -643,7 +644,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
         else:
             raw_data = context.memory.get_data(memref)
-        actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
+
+        if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
+            actual = raw_data.astype(np.float32)
+        else:
+            actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.COMB or self.dump_mode == DumpMode.TPULANG:
