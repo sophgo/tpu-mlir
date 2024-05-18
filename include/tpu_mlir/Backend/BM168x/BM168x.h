@@ -183,7 +183,11 @@ public:
                             int64_t &w);
   static int compare_mode(StringRef mode);
   static int binary_mode(StringRef mode);
-  static int64_t ic_num(double dbytes) { return IC_PARALLEL / dbytes; }
+  static int64_t ic_num(double dbytes) {
+     if(module::isSG2380() && dbytes == 2) {
+      return IC_PARALLEL;
+     }
+     return IC_PARALLEL / dbytes; }
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   static stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,

@@ -248,7 +248,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isBM1688() || module::isBM1690Family()) {
+    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -313,7 +313,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
-    if (!module::isBM1688() && !module::isBM1690Family()) {
+    if (!module::isBM1688() && !module::isBM1690Family() && !module::isSG2380()) {
       filter_align = 1;
     }
   }
