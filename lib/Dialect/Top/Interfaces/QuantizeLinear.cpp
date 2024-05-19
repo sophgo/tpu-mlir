@@ -43,7 +43,7 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
   auto raw_zero_point = *zero_point;
   auto scale = module::getF64Array(getYScale());
   auto raw_scale = *scale;
-  ASSERT_WITH_DUMP(raw_scale.size() == raw_zero_point.size() &&
+  ASSERT_THIS(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");
   if (raw_zero_point.size() == 1) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
@@ -52,8 +52,8 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = onnx_rounding(val / raw_scale[0] + raw_zero_point[0]);
     }
   } else {
-    ASSERT_WITH_DUMP(getAxis() == 0 && "Cannot handle axis!=0");
-    ASSERT_WITH_DUMP(raw_scale.size() == shape[getAxis()] &&
+    ASSERT_THIS(getAxis() == 0 && "Cannot handle axis!=0");
+    ASSERT_THIS(raw_scale.size() == shape[getAxis()] &&
            "zero point & input shape missmatch");
     int64_t res = 1;
     for (int i = 1; i < shape.size(); i++)

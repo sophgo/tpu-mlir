@@ -29,11 +29,11 @@ LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
   bool in_broadcast = false;
   bool brn_broadcast = false;
   if (in_num_element != num_element) {
-    ASSERT_WITH_DUMP(input_shape.size() == output_shape.size());
+    ASSERT_THIS(input_shape.size() == output_shape.size());
     in_broadcast = true;
   }
   if (brn_num_element != num_element) {
-    ASSERT_WITH_DUMP(brn_shape.size() == output_shape.size());
+    ASSERT_THIS(brn_shape.size() == output_shape.size());
     brn_broadcast = true;
   }
 

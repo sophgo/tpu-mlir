@@ -20,15 +20,6 @@ using namespace mlir;
 using namespace mlir::func;
 using namespace tpu_mlir;
 
-#define ASSERT_WITH_DUMP(COND) \
-    do { \
-        if (!(COND)) { \
-            std::cerr << "Assertion failed: " << #COND << std::endl; \
-            dump(); \
-            std::abort(); \
-        } \
-    } while (false)
-
 namespace tpu_mlir {
 
 typedef enum {
@@ -65,6 +56,14 @@ namespace module {
 
 // init module by ModuleOp in init pass
 void init(ModuleOp module);
+
+//-----------------------------------------------------------------
+// Helper for debug information
+//-----------------------------------------------------------------
+void assert_with_dump(bool cond, Operation *op, const char *info,
+                      const char *file = nullptr, unsigned line = 0);
+void unreachable(const char *info, Operation *op = nullptr,
+                 const char *file = nullptr, unsigned line = 0);
 
 //-----------------------------------------------------------------
 // Helper for get/set Attributes
@@ -232,7 +231,8 @@ void setGmemPrivateSize(ModuleOp submodule, int64_t size);
 // Helper Functions for op translate
 //-----------------------------------------------------------------
 mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
-                        int64_t offset, int64_t length, std::string mode = "default");
+                        int64_t offset, int64_t length,
+                        std::string mode = "default");
 
 //-----------------------------------------------------------------
 // Helper Functions for weight
@@ -320,4 +320,10 @@ commonShapeValInfer(mlir::Operation *op,
                     const std::vector<int64_t> &out_shape);
 
 } // namespace module
+
+#define ASSERT_OP(COND, OP)                                                    \
+  module::assert_with_dump(COND, OP, #COND, __FILE__, __LINE__)
+#define ASSERT_THIS(COND) ASSERT_OP(COND, this->getOperation()) // in Op inner functions
+#define UNREACHABLE_OP(INFO, OP) module::unreachable(INFO, OP, __FILE__, __LINE__)
+
 } // namespace tpu_mlir

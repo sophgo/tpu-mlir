@@ -26,7 +26,7 @@ LogicalResult top::EinsumOp::inference(InferenceParameter &p) {
 
 void top::EinsumOp::shape_inference() {
   auto mode = getMode().str();
-  ASSERT_WITH_DUMP(getInputs().size() == 2);
+  ASSERT_THIS(getInputs().size() == 2);
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
   if (mode == "a,b->ab")  {      // outer product

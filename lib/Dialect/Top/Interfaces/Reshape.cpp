@@ -60,10 +60,10 @@ void top::ReshapeOp::shape_inference() {
     } else {
       llvm_unreachable("shape is illegal");
     }
-    ASSERT_WITH_DUMP(std::count(out_shape.begin(), out_shape.end(), -1) <= 1);
+    ASSERT_THIS(std::count(out_shape.begin(), out_shape.end(), -1) <= 1);
     auto last_0_iter = std::find(out_shape.rbegin(), out_shape.rend(), 0);
     auto last_0_bias = std::distance(last_0_iter, out_shape.rend());
-    ASSERT_WITH_DUMP(last_0_bias <= in_shape.size());
+    ASSERT_THIS(last_0_bias <= in_shape.size());
     std::transform(out_shape.begin(), out_shape.begin() + last_0_bias,
                    in_shape.begin(), out_shape.begin(),
                    [](auto out, auto in) { return out == 0 ? in : out; });
@@ -83,7 +83,7 @@ void top::ReshapeOp::shape_inference() {
   if (!module::isUnranked(getOutput())) {
     auto num_input = module::getNumElements(getInput());
     auto num_output = module::getNumElements(getOutput());
-    ASSERT_WITH_DUMP(num_input == num_output);
+    ASSERT_THIS(num_input == num_output);
   }
 
   if (module::isShape(getInput())) {

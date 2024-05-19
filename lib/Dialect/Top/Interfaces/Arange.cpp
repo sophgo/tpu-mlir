@@ -26,11 +26,11 @@ void top::ArangeOp::shape_inference() {
   float end = 0;
   if (auto end_w = dyn_cast<top::WeightOp>(getEnd().getDefiningOp())) {
     auto end_v = end_w.read_as_float();
-    ASSERT_WITH_DUMP(end_v->size() == 1);
+    ASSERT_THIS(end_v->size() == 1);
     end = static_cast<float>(end_v->at(0));
   } else if (module::isShape(getEnd())) {
     auto end_v = module::getShapeTensorValue(getEnd());
-    ASSERT_WITH_DUMP(end_v.size() == 1);
+    ASSERT_THIS(end_v.size() == 1);
     end = end_v[0];
   } else if (auto end_min_op = dyn_cast<top::MinOp>(getEnd().getDefiningOp())){
       if(auto end_min_w = dyn_cast<top::WeightOp>(end_min_op.getInputs()[1].getDefiningOp())) {
@@ -58,11 +58,11 @@ void top::ArangeOp::shape_inference() {
     }
   }
   if (module::isNone(getStep()) == false) {
-    ASSERT_WITH_DUMP(module::isWeight(getStep()));
+    ASSERT_THIS(module::isWeight(getStep()));
     auto step_op = getStep().getDefiningOp<top::WeightOp>();
     auto step_data = step_op.read<float>();
     step = step_data->at(0);
-    ASSERT_WITH_DUMP(step != 0);
+    ASSERT_THIS(step != 0);
   }
   std::vector<float> data;
   for (int i = start; i < end; i += step) {

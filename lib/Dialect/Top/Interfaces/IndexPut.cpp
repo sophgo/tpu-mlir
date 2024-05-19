@@ -21,7 +21,7 @@ LogicalResult top::IndexPutOp::inference(InferenceParameter &p) {
   float *dst = p.outputs[0];
   auto input_shape = module::getShape(getInput());
   auto index_shape = module::getShape(getIndices());
-  ASSERT_WITH_DUMP(index_shape.size()==1);
+  ASSERT_THIS(index_shape.size()==1);
   int64_t input_num = module::getNumElements(getInput());
   int64_t num_indices = module::getNumElements(getIndices());
 

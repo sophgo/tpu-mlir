@@ -19,7 +19,7 @@ typedef enum {
   ARG_MIN,
 } arg_mode_t;
 
-template<typename T>
+template <typename T>
 std::function<bool(T, T)> get_compare_op(arg_mode_t mode, bool select_last) {
   if (select_last) {
     if (mode == ARG_MAX) {
@@ -42,7 +42,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
   const bool need_val = !module::isNone(getValues());
   float *output_val = need_val ? p.outputs[1] : nullptr;
   const auto type_val = getMode().str();
-  ASSERT_WITH_DUMP(type_val == "ArgMax" || type_val == "ArgMin");
+  ASSERT_THIS(type_val == "ArgMax" || type_val == "ArgMin");
   const arg_mode_t mode = (type_val == "ArgMax") ? ARG_MAX : ARG_MIN;
   int axis = getAxis();
   auto input_shape = module::getShape(getInput());
@@ -51,7 +51,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
     axis += input_dims;
     setAxis(axis);
   }
-  ASSERT_WITH_DUMP(0 <= axis && axis < input_dims);
+  ASSERT_THIS(0 <= axis && axis < input_dims);
   int outer_dims =
       std::accumulate(input_shape.begin(), input_shape.begin() + axis, 1,
                       std::multiplies<int64_t>());
@@ -65,7 +65,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
   for (int n = 0; n < num_iter; n++) {
     const int o = n / inner_dims;
     const int i = n % inner_dims;
-    const float* input_v_n = input_v + o * axis_dims * inner_dims + i;
+    const float *input_v_n = input_v + o * axis_dims * inner_dims + i;
     int target_idx = 0;
     float target_val = input_v_n[0];
     for (int a = 1; a < axis_dims; a++) {
@@ -88,8 +88,8 @@ void top::ArgOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   const int input_dims = input_shape.size();
   if (axis < 0) {
-      axis += input_dims;
-      setAxis(axis);
+    axis += input_dims;
+    setAxis(axis);
   }
   std::vector<int64_t> output_shape;
   output_shape.reserve(input_dims);
@@ -97,7 +97,8 @@ void top::ArgOp::shape_inference() {
   if (getKeepdims()) {
     output_shape.push_back(1);
   }
-  output_shape.insert(output_shape.end(), input_shape.begin() + axis + 1, input_shape.end());
+  output_shape.insert(output_shape.end(), input_shape.begin() + axis + 1,
+                      input_shape.end());
   module::setShapeOrVerify(getIndices(), output_shape);
   if (!module::isNone(getValues())) {
     module::setShapeOrVerify(getValues(), output_shape);

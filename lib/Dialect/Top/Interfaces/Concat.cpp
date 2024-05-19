@@ -101,7 +101,7 @@ void top::ConcatOp::shape_inference() {
         input_shapes_v.push_back(input_shape_v);
       }
     }
-    ASSERT_WITH_DUMP(out_shape.size() == 1 || out_shape.size() == 0);
+    ASSERT_THIS(out_shape.size() == 1 || out_shape.size() == 0);
     auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
     InferenceParameter p;
     std::vector<std::vector<float_t>> input_datas;
@@ -118,9 +118,9 @@ void top::ConcatOp::shape_inference() {
     p.outputs.push_back(output_data.data());
     auto inf_op = dyn_cast<InferenceInterface>(getOperation());
     inf_op.init(p);
-    ASSERT_WITH_DUMP(inf_op);
+    ASSERT_THIS(inf_op);
     auto ret = inf_op.inference(p);
-    ASSERT_WITH_DUMP(mlir::succeeded(ret));
+    ASSERT_THIS(mlir::succeeded(ret));
     inf_op.deinit(p);
     std::vector<int64_t> output_shape_v(real_out_size);
     std::transform(output_data.begin(), output_data.end(),

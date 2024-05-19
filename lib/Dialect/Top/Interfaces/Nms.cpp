@@ -17,7 +17,7 @@ void top::NmsOp::deinit(InferenceParameter &p) {}
 LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
   int input_size = getInputs().size();
-  ASSERT_WITH_DUMP(input_size >= 2);
+  ASSERT_THIS(input_size >= 2);
   if(input_size >= 3){
     param.max_output_boxes_per_class = p.inputs[2][0];
   } else{
@@ -56,14 +56,14 @@ LogicalResult top::NmsOp::inference(InferenceParameter &p) {
 
 void top::NmsOp::shape_inference() {
   int input_size = getInputs().size();
-  ASSERT_WITH_DUMP(input_size >= 2);
+  ASSERT_THIS(input_size >= 2);
   int num_batch = module::getShape(getInputs()[1])[0];
   int num_class = module::getShape(getInputs()[1])[1];
   int spatial_dimension = module::getShape(getInputs()[1])[2];
   int64_t max_output_size_per_class = 0;
   if (input_size >= 3 && module::isShape(getInputs()[2])) {
     auto vec = module::getShapeTensorValue(getInputs()[2]);
-    ASSERT_WITH_DUMP(vec.size() == 1);
+    ASSERT_THIS(vec.size() == 1);
     max_output_size_per_class = vec[0];
   } else {
     max_output_size_per_class = getMaxOutputSize();

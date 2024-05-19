@@ -26,7 +26,7 @@ void top::SliceOp::paramConvert() {
 
   auto input_dims = input_shapes.size();
   auto slice_n = axes_ori->size();
-  ASSERT_WITH_DUMP(offset_ori->size() == slice_n && steps_ori->size() == slice_n &&
+  ASSERT_THIS(offset_ori->size() == slice_n && steps_ori->size() == slice_n &&
          ends_ori->size() == slice_n);
   auto offset_v = std::make_shared<std::vector<int64_t>>(input_dims, 0);
   auto steps_v = std::make_shared<std::vector<int64_t>>(input_dims, 1);
