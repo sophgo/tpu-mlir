@@ -91,16 +91,16 @@ void top::DeformConv2DOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   auto filter_shape = module::getShape(getFilter());
   auto offset_shape = module::getShape(getOffset());
-  ASSERT_WITH_DUMP(input_shape.size() == filter_shape.size());
+  ASSERT_THIS(input_shape.size() == filter_shape.size());
   if (getUseMask()) {
    auto mask_shape = module::getShape(getMask());
-   ASSERT_WITH_DUMP(offset_shape.size() == mask_shape.size());
+   ASSERT_THIS(offset_shape.size() == mask_shape.size());
   }
-  ASSERT_WITH_DUMP(input_shape.size() == offset_shape.size());
-  ASSERT_WITH_DUMP(input_shape.size() > 2);
+  ASSERT_THIS(input_shape.size() == offset_shape.size());
+  ASSERT_THIS(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
-  ASSERT_WITH_DUMP(spacial_rank == getKernelShape().size());
-  ASSERT_WITH_DUMP(getPads().size() == spacial_rank * 2);
+  ASSERT_THIS(spacial_rank == getKernelShape().size());
+  ASSERT_THIS(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
   out_shape.push_back(filter_shape[0]);

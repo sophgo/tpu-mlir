@@ -24,7 +24,7 @@ LogicalResult top::LutOp::inference(InferenceParameter &p) {
     if (offset < 0) {
       offset += 256;
     }
-    ASSERT_WITH_DUMP(offset >= 0 && offset <= 255);
+    ASSERT_THIS(offset >= 0 && offset <= 255);
     p.outputs[0][i] = p.inputs[1][offset];
   }
   return success();

@@ -70,7 +70,7 @@ void top::TileOp::shape_inference() {
   } else{
     llvm_unreachable("tile_vec is illegal");
   }
-  ASSERT_WITH_DUMP(in0_shape.size() == tile_vec.size());
+  ASSERT_THIS(in0_shape.size() == tile_vec.size());
   std::vector<int64_t> out_shape(in0_shape.size());
   std::transform(tile_vec.begin(), tile_vec.end(), in0_shape.begin(), out_shape.begin(),
         [](int a, int b){return a * b;});

@@ -118,7 +118,7 @@ void top::AvgPoolOp::shape_inference() {
   if (kernel_shape->size() == 0) {
     // for onnx GlobalAvgPool
     auto num_dim = input_shape.size() - 2;
-    ASSERT_WITH_DUMP(num_dim > 0);
+    ASSERT_THIS(num_dim > 0);
     std::vector<int64_t> vkernel_shape;
     std::vector<int64_t> vstrides(num_dim, 1);
     std::vector<int64_t> vpads(2 * num_dim, 0);
@@ -131,10 +131,10 @@ void top::AvgPoolOp::shape_inference() {
     setPadsAttr(builder.getI64ArrayAttr(vpads));
     kernel_shape = module::getI64Array(getKernelShape());
   }
-  ASSERT_WITH_DUMP(input_shape.size() > 2);
+  ASSERT_THIS(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
-  ASSERT_WITH_DUMP(spacial_rank == getKernelShape().size());
-  ASSERT_WITH_DUMP(getPads().size() == spacial_rank * 2);
+  ASSERT_THIS(spacial_rank == getKernelShape().size());
+  ASSERT_THIS(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
   out_shape.push_back(input_shape[1]);

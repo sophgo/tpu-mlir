@@ -1207,11 +1207,9 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     return false;
   }
 
-  static inline void merge_two_dims(
-          std::vector<int64_t> & ashape,
-          std::vector<int64_t> & bshape,
-          int dims,
-          int d_th) {
+  static inline void merge_two_dims(std::vector<int64_t> &ashape,
+                                    std::vector<int64_t> &bshape, int dims,
+                                    int d_th) {
     ashape[d_th] *= ashape[d_th + 1];
     bshape[d_th] *= bshape[d_th + 1];
     for (int i = d_th + 1; i < dims - 1; i++) {
@@ -1233,7 +1231,8 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     if (shape_dim > 4) {
       int i = 0;
       while (i < shape_dim - 1) {
-        if (can_be_merged(ashape_[i], ashape_[i + 1], bshape_[i], bshape_[i + 1])) {
+        if (can_be_merged(ashape_[i], ashape_[i + 1], bshape_[i],
+                          bshape_[i + 1])) {
           merge_two_dims(ashape_, bshape_, shape_dim, i);
           --shape_dim;
         } else {
@@ -1279,26 +1278,31 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     weight_tile[axis] = tile;
     attrs.emplace_back(
         rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
-    auto tileOp =
-        rewriter.create<tpu::TileOp>(loc, newType, ValueRange{opd, module::getNoneOp(opd.getDefiningOp())}, attrs);
+    auto tileOp = rewriter.create<tpu::TileOp>(
+        loc, newType, ValueRange{opd, module::getNoneOp(opd.getDefiningOp())},
+        attrs);
     op->setOperand(idx, tileOp);
     std::vector<int64_t> output_shape = input_shape;
     output_shape[axis] = tile;
     module::setShape(tileOp.getOutput(), output_shape);
   }
 
-  static std::vector<int64_t> get_acscending_order_to_broadcast(const std::vector<int64_t> shape1, const std::vector<int64_t> shape2){
+  static std::vector<int64_t>
+  get_acscending_order_to_broadcast(const std::vector<int64_t> shape1,
+                                    const std::vector<int64_t> shape2) {
     std::vector<int64_t> broadcast_axes;
 
-    //to support different dims
+    // to support different dims
     for (size_t i = 0; i < shape1.size(); ++i) {
       if ((shape1[i] != shape2[i]) && (shape1[i] == 1 || shape2[i] == 1)) {
         broadcast_axes.push_back(i);
       }
     }
-    std::sort(broadcast_axes.begin(), broadcast_axes.end(), [&](int64_t a, int64_t b) {
-      return std::max(shape1[a],shape2[a]) < std::max(shape1[b],shape2[b]);
-    });
+    std::sort(broadcast_axes.begin(), broadcast_axes.end(),
+              [&](int64_t a, int64_t b) {
+                return std::max(shape1[a], shape2[a]) <
+                       std::max(shape1[b], shape2[b]);
+              });
     return broadcast_axes;
   }
 
@@ -1341,7 +1345,7 @@ public:
   LogicalResult matchAndRewrite(tpu::ConcatOp op,
                                 PatternRewriter &rewriter) const override {
     auto dims = module::getShape(op.getInputs()[0]).size();
-    if(dims !=5 || op.getAxis() != 3)
+    if (dims != 5 || op.getAxis() != 3)
       return failure();
     auto output = op.getOutput();
     auto output_shape = module::getShape(output);
@@ -1359,10 +1363,10 @@ public:
                                             input_shape[2], input_shape[4]};
       auto reshape_type = module::getTypeLike(output, reshape_shape);
       auto loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape" +
-                                                   std::to_string(i++)));
+                                                     std::to_string(i++)));
       rewriter.setInsertionPointAfterValue(input);
-      auto reshape_op = rewriter.create<tpu::ReshapeOp>(
-          loc, reshape_type, ValueRange{input});
+      auto reshape_op =
+          rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{input});
       // input.replaceAllUsesWith(reshape_op.getOutput());
       operands.push_back(reshape_op.getOutput());
     }
@@ -1371,25 +1375,28 @@ public:
     // int64_t = op.getAxis();
     std::vector<NamedAttribute> new_attrs;
     // Assert(op.getAxis()>=2);
-    std::vector<int64_t> concat_shape = {output_shape[0], output_shape[1],
-                                          output_shape[2], output_shape[4] * static_cast<long>(op.getInputs().size())};
+    std::vector<int64_t> concat_shape = {
+        output_shape[0], output_shape[1], output_shape[2],
+        output_shape[4] * static_cast<long>(op.getInputs().size())};
     auto concat_type = module::getTypeLike(output, concat_shape);
-    new_attrs.emplace_back(rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(op.getAxis())));
-    auto concat_loc = NameLoc::get(
-          rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_reshape_before"));
-    auto new_concat_op = rewriter.create<tpu::ConcatOp>(
-        concat_loc, concat_type, operands, new_attrs);
+    new_attrs.emplace_back(rewriter.getNamedAttr(
+        "axis", rewriter.getSI32IntegerAttr(op.getAxis())));
+    auto concat_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(op.getOutput()).str() + "_reshape_before"));
+    auto new_concat_op = rewriter.create<tpu::ConcatOp>(concat_loc, concat_type,
+                                                        operands, new_attrs);
     // rewriter.replaceOp(op, new_concat_op.getOutput());
     auto reshape_type = module::getTypeLike(output, output_shape);
     rewriter.setInsertionPointAfterValue(new_concat_op.getOutput());
     auto reshape_op = rewriter.create<tpu::ReshapeOp>(
         op.getLoc(), reshape_type, ValueRange{new_concat_op.getOutput()});
-    // rewriter.replaceAllUsesExcept(op.getOutput(), reshape_op.getOutput(), reshape_op);
+    // rewriter.replaceAllUsesExcept(op.getOutput(), reshape_op.getOutput(),
+    // reshape_op);
     rewriter.replaceAllUsesWith(op.getOutput(), reshape_op.getOutput());
     rewriter.eraseOp(op);
 
     return success();
- }
+  }
 };
 
 struct ScatterElementsPattern
@@ -1577,6 +1584,7 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
     rewriter.setInsertionPoint(add_op);
     auto mask_shape = module::getShape(add_op->getOperand(1));
     auto mask_name = module::getName(add_op->getOperand(1)).str();
+    auto add_name = module::getName(add_op.getOutput());
     if (mask_shape[1] != 1) {
       return failure();
     }
@@ -1587,7 +1595,7 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
       // nothing to do
     } else {
       auto reshape_op = rewriter.create<tpu::ReshapeOp>(
-          NameLoc::get(rewriter.getStringAttr(mask_name + "_reshape")),
+          NameLoc::get(rewriter.getStringAttr(mask_name + "_" + add_name)),
           new_mask_type, add_op->getOperand(1));
       add_op->setOperand(1, reshape_op->getResult(0));
     }
@@ -1605,7 +1613,6 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
     return success();
   }
 };
-
 
 // permute + (mulconst) + add + cast + softmax + cast + slice + permute
 // -> add + cast + softmax + cast + slice
@@ -1969,7 +1976,7 @@ struct ReshapePermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     }
     auto order = module::getI64Array(op.getOrder());
     if (!(order->size() == 4 && order->at(0) == 0 && order->at(1) == 2 &&
-         order->at(2) == 1 && order->at(3) == 3)) {
+          order->at(2) == 1 && order->at(3) == 3)) {
       return failure();
     }
     auto input_shape = module::getShape(in);
@@ -2025,9 +2032,10 @@ struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
   }
 };
 
-
-  // cast (int2float) + ... + cast (float2int) + gatherelements() -> ... + gatherelements
-struct EliminateCastBeforeGatherElements : public OpRewritePattern<tpu::CastOp> {
+// cast (int2float) + ... + cast (float2int) + gatherelements() -> ... +
+// gatherelements
+struct EliminateCastBeforeGatherElements
+    : public OpRewritePattern<tpu::CastOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tpu::CastOp op,
@@ -2038,18 +2046,19 @@ struct EliminateCastBeforeGatherElements : public OpRewritePattern<tpu::CastOp> 
       return failure();
     }
 
-    auto unsqueeze_op = dyn_cast_or_null<tpu::UnsqueezeOp>(
-        *op.getOutput().getUsers().begin());
-    if(!unsqueeze_op)
-        return failure();
+    auto unsqueeze_op =
+        dyn_cast_or_null<tpu::UnsqueezeOp>(*op.getOutput().getUsers().begin());
+    if (!unsqueeze_op)
+      return failure();
     auto tile_op = dyn_cast_or_null<tpu::TileOp>(
         *unsqueeze_op.getOutput().getUsers().begin());
     if (!tile_op) {
       return failure();
     }
-    auto cast_op = dyn_cast_or_null<tpu::CastOp>(
-        *tile_op.getOutput().getUsers().begin());
-    if (!cast_op || !module::getStorageType(cast_op->getResult(0)).isInteger(32)) {
+    auto cast_op =
+        dyn_cast_or_null<tpu::CastOp>(*tile_op.getOutput().getUsers().begin());
+    if (!cast_op ||
+        !module::getStorageType(cast_op->getResult(0)).isInteger(32)) {
       return failure();
     }
 
@@ -2059,7 +2068,8 @@ struct EliminateCastBeforeGatherElements : public OpRewritePattern<tpu::CastOp> 
     unsqueeze_op->getResult(0).setType(unsqueeze_new_type);
 
     auto tile_shape = module::getShape(tile_op->getResult(0));
-    auto tile_new_shape = module::getTypeLike(tile_op->getOperand(0), tile_shape);
+    auto tile_new_shape =
+        module::getTypeLike(tile_op->getOperand(0), tile_shape);
     tile_op->getResult(0).setType(tile_new_shape);
     cast_op->getResult(0).replaceAllUsesWith(tile_op->getResult(0));
     rewriter.eraseOp(op);
@@ -3402,7 +3412,7 @@ public:
   LogicalResult matchAndRewrite(tpu::ReduceOp op,
                                 PatternRewriter &rewriter) const override {
     /* ReduceL2(1x6x8x65536)->Reshape(1x48x256x256)+ReduceL2(1x48x256x1)+ReduceL2(1x48x1x1)+Reshape(1x6x8x1)
-    * ReduceL2(1x48x65536)->Reshape(48x256x256)+ReduceL2(48x256x1)+ReduceL2(48x1x1)+Reshape(1x48x1)
+     * ReduceL2(1x48x65536)->Reshape(48x256x256)+ReduceL2(48x256x1)+ReduceL2(48x1x1)+Reshape(1x48x1)
      */
     // TODO : support quant type; consider the divisor of the reduced dim;
     auto mode = op.getMode();
@@ -3417,14 +3427,15 @@ public:
     if (axes->size() != 1)
       return failure();
     int split_dim = axes->at(0);
-    if (input_dim < 3 || split_dim != (input_dim - 1) || input_shape[split_dim] != 65536)
+    if (input_dim < 3 || split_dim != (input_dim - 1) ||
+        input_shape[split_dim] != 65536)
       return failure();
 
     auto name = module::getName(input);
     std::vector<Value> operands;
     std::vector<int64_t> reshape0_shape = input_shape;
-    reshape0_shape[split_dim-2] *= reshape0_shape[split_dim-1];
-    reshape0_shape[split_dim-1] = reshape0_shape[split_dim] = 256;
+    reshape0_shape[split_dim - 2] *= reshape0_shape[split_dim - 1];
+    reshape0_shape[split_dim - 1] = reshape0_shape[split_dim] = 256;
     auto reshape0_type = module::getTypeLike(output, reshape0_shape);
     auto loc_reshape0 =
         NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape0"));
@@ -3455,7 +3466,7 @@ public:
     operands.clear();
     attrs.clear();
     std::vector<int64_t> reducel2_1_shape = reducel2_0_shape;
-    reducel2_1_shape[split_dim-1] = 1;
+    reducel2_1_shape[split_dim - 1] = 1;
     auto reducel2_type1 = module::getTypeLike(output, reducel2_1_shape);
     auto loc_reduce1 =
         NameLoc::get(rewriter.getStringAttr(name.str() + "_reduce1"));
@@ -3467,7 +3478,8 @@ public:
     attrs.push_back(
         rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
     // op.setAxesAttr(rewriter.getI64ArrayAttr({axes->at(0) - 1}));
-    attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axes->at(0) - 1})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "axes", rewriter.getI64ArrayAttr({axes->at(0) - 1})));
     attrs.push_back(rewriter.getNamedAttr(
         "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
     auto reducel2_op1 = rewriter.create<tpu::ReduceOp>(
@@ -3522,10 +3534,11 @@ public:
     auto l_trans = op.getLeftTranspose();
     auto r_trans = op.getRightTranspose();
 
-    if ((left_dim != 4 && left_dim != 3) || left_dim != right_dim || left_shape[left_dim-1] < 16384 || l_trans || !r_trans) {
+    if ((left_dim != 4 && left_dim != 3) || left_dim != right_dim ||
+        left_shape[left_dim - 1] < 16384 || l_trans || !r_trans) {
       return failure();
     }
-    int left_K_size = left_shape[left_dim-1];
+    int left_K_size = left_shape[left_dim - 1];
     std::vector<int64_t> left_offset(left_dim, 0);
     std::vector<int64_t> left_steps(left_dim, 1);
     std::vector<int64_t> left_ends(left_dim, -1);
@@ -3539,18 +3552,18 @@ public:
     std::vector<Value> operands;
 
     int secs = 8;
-    if(left_shape[left_dim-1] % 8 != 0)
+    if (left_shape[left_dim - 1] % 8 != 0)
       return failure();
     std::vector<int64_t> new_left_shapes = left_shape;
-    new_left_shapes[left_dim-1] /= secs;
+    new_left_shapes[left_dim - 1] /= secs;
     std::vector<int64_t> new_right_shapes = right_shape;
-    new_right_shapes[right_dim-1] /= secs;
+    new_right_shapes[right_dim - 1] /= secs;
     std::vector<NamedAttribute> attrs;
     for (int i = 0; i < secs; i++) {
-      left_offset[left_dim-1] = left_K_size * i / secs;
-      left_ends[left_dim-1] = left_K_size * (i + 1) / secs;
-      attrs.push_back(
-          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(left_dim-1)));
+      left_offset[left_dim - 1] = left_K_size * i / secs;
+      left_ends[left_dim - 1] = left_K_size * (i + 1) / secs;
+      attrs.push_back(rewriter.getNamedAttr(
+          "axes", rewriter.getI64ArrayAttr(left_dim - 1)));
       attrs.push_back(rewriter.getNamedAttr(
           "offset", rewriter.getI64ArrayAttr(left_offset)));
       attrs.push_back(
@@ -3567,10 +3580,10 @@ public:
           loc, left_type, ValueRange{left, none, none, none, none}, attrs);
 
       attrs.clear();
-      right_offset[right_dim-1] = left_K_size * i / secs;
-      right_ends[right_dim-1] = left_K_size * (i + 1) / secs;
-      attrs.push_back(
-          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(right_dim-1)));
+      right_offset[right_dim - 1] = left_K_size * i / secs;
+      right_ends[right_dim - 1] = left_K_size * (i + 1) / secs;
+      attrs.push_back(rewriter.getNamedAttr(
+          "axes", rewriter.getI64ArrayAttr(right_dim - 1)));
       attrs.push_back(rewriter.getNamedAttr(
           "offset", rewriter.getI64ArrayAttr(right_offset)));
       attrs.push_back(rewriter.getNamedAttr(
@@ -3619,7 +3632,6 @@ public:
     return success();
   }
 };
-
 
 struct GridSamplerFusePattern : public OpRewritePattern<tpu::GridSamplerOp> {
   using OpRewritePattern::OpRewritePattern;

@@ -39,7 +39,7 @@ void top::ExpandOp::shape_inference() {
   int dim_in = in_shape.size();
   int dim_out = expand_shape.size();
   int dim_pad = dim_out - dim_in;
-  ASSERT_WITH_DUMP(dim_pad >= 0);
+  ASSERT_THIS(dim_pad >= 0);
 
   std::vector<int64_t> out_shape(expand_shape.begin(), expand_shape.end());
   for(int i = dim_pad; i < dim_out; i++){

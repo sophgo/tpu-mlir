@@ -28,9 +28,9 @@ LogicalResult top::CopyOp::inference(InferenceParameter &p) {
   i_stride_4 = {0, 0, 0, 0};
   o_stride_4 = {0, 0, 0, 0};
   int num_dims = shape->size();
-  ASSERT_WITH_DUMP(num_dims <= 4);
-  ASSERT_WITH_DUMP(i_stride->size() == shape->size());
-  ASSERT_WITH_DUMP(o_stride->size() == shape->size());
+  ASSERT_THIS(num_dims <= 4);
+  ASSERT_THIS(i_stride->size() == shape->size());
+  ASSERT_THIS(o_stride->size() == shape->size());
   for (int end = num_dims - 1, idx = 3; end >= 0 && idx >= 0; end--, idx--) {
     shape_4[idx] = shape->at(end);
     i_stride_4[idx] = i_stride->at(end);

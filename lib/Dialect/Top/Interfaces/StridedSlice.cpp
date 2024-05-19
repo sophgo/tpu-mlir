@@ -45,7 +45,7 @@ LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
 
   // just support the dims of input & input is equal and Stride Slice at one
   // axis now.
-  ASSERT_WITH_DUMP(in_dims == out_dims);
+  ASSERT_THIS(in_dims == out_dims);
 
   if (in_dims == 2) {
 #pragma omp parallel for schedule(static, omp_schedule(out_num_elem))

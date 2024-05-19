@@ -274,7 +274,7 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
       shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
       if (shape_secs.wsecs > max_shape_secs.wsecs) {
-        llvm::errs() << "fail at op:"<<module::getName(op).str()<<"\n";
+        // llvm::errs() << "fail at op:"<<module::getName(op).str()<<"\n";
         return false;
       }
       shape_secs.hsecs = max_shape_secs.hsecs;

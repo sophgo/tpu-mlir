@@ -31,7 +31,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
   p.right_transpose = getRightTranspose();
   p.output_transpose = getOutputTranspose();
   if (b_dims == 1) {
-    ASSERT_WITH_DUMP(p.right_transpose == false);
+    ASSERT_THIS(p.right_transpose == false);
     b_s.push_back(1);
     o_s.push_back(1);
     b_dims += 1;
@@ -44,7 +44,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
     p.R_shape.push_back(b_s[i]);
   }
   if (a_dims == 1) {
-    ASSERT_WITH_DUMP(p.left_transpose == false);
+    ASSERT_THIS(p.left_transpose == false);
     a_s.insert(a_s.begin(), 1);
     o_s.insert(o_s.begin(), 1);
     a_dims += 1;
@@ -52,7 +52,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
   }
   p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
   if (!p.output_transpose) {
-    ASSERT_WITH_DUMP(p.N == o_s[o_dims - 1]);
+    ASSERT_THIS(p.N == o_s[o_dims - 1]);
   }
   p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   p.batch = 1;
@@ -62,7 +62,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
     else if (a_s[i] == 1 || b_s[i] == 1)
       p.batch *= std::max(a_s[i], b_s[i]);
     else
-      ASSERT_WITH_DUMP(a_s[i] == b_s[i] || a_s[i] == 1 || b_s[i] == 1);
+      ASSERT_THIS(a_s[i] == b_s[i] || a_s[i] == 1 || b_s[i] == 1);
   }
   p.dims_merge_2_M = 0;
   for (int i = b_dims - 3; i > 0; i--) {
@@ -158,7 +158,7 @@ void top::MatMulOp::shape_inference() {
     }
   }
   if (in1_dims == 1) {
-    ASSERT_WITH_DUMP(in1_shape[0] == k);
+    ASSERT_THIS(in1_shape[0] == k);
     out_shape.pop_back();
   } else if (in1_shape[k_idx] == k) {
     if (module::getPlatform() == module::Platform::CAFFE) {

@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include<fstream>
+#include <fstream>
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
@@ -1214,8 +1214,7 @@ bool isCV18xx() {
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
-          chip == Chip::CV186X || chip == Chip::MARS3 ||
-          chip == Chip::SG2380);
+          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380);
 }
 bool isBM1690Family() { return (chip == Chip::BM1690); }
 bool isSG2380() { return (chip == Chip::SG2380); }
@@ -1370,7 +1369,8 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
         outputs.push_back(return_op.getOperand(result.getResultNumber()));
 
         func_op.walk([&](tpu::OutBufferOp op) {
-          // llvm::errs() <<"ModuleOp dump OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
+          // llvm::errs() <<"ModuleOp dump
+          // OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
           bool need_dump = op.getNeedDump();
           if (need_dump) {
             outputs.push_back(op->getResult(0));
@@ -1425,7 +1425,8 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
     }
   });
   func.walk([&](tpu::OutBufferOp op) {
-    llvm::errs() <<"func dump OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
+    llvm::errs() << "func dump OutBufferOp:" << getName(op->getResult(0)).str()
+                 << " as outputs\n";
     bool need_dump = op.getNeedDump();
     if (need_dump) {
       outputs.push_back(op->getResult(0));
@@ -1609,23 +1610,28 @@ mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
     auto op = v.getDefiningOp<top::WeightOp>();
     if (stype.isBF16() || stype.isF16()) {
       auto data = op.read<uint16_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
+      auto new_data =
+          tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
     } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
       auto data = op.read<int8_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
+      auto new_data =
+          tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
     } else if (stype.isUnsignedInteger(8)) {
       auto data = op.read<uint8_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
+      auto new_data =
+          tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type);
     } else if (stype.isF32()) {
       auto data = op.read<float>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
+      auto new_data =
+          tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
     } else if (stype.isInteger(32)) {
       auto data = op.read<int32_t>();
-      auto new_data = tensor_slice(data->data(), shape, axis, offset, length, mode);
+      auto new_data =
+          tensor_slice(data->data(), shape, axis, offset, length, mode);
       return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type);
     }
     op.dump();
@@ -1700,10 +1706,7 @@ void saveWeight() {
                  tpu::IfOp, top::InputOp>(op)) {
           auto name = module::getName(op);
           // if op have more than two regions, it can have the same op Name
-          if (all_names.find(name) != all_names.end()) {
-            op->dump();
-            llvm_unreachable("op name conflict");
-          }
+          ASSERT_OP(all_names.find(name) == all_names.end(), op);
           all_names.insert(name);
         }
       });
@@ -1821,6 +1824,31 @@ commonShapeValInfer(mlir::Operation *op,
   std::transform(output_data.begin(), output_data.end(), output_shape_v.begin(),
                  [](float_t i) { return static_cast<int64_t>(i); });
   return output_shape_v;
+}
+
+void assert_with_dump(bool cond, Operation *op, const char *info,
+                      const char *file, unsigned line) {
+  if (cond) {
+    return;
+  }
+  unreachable(info, op, file, line);
+}
+
+void unreachable(const char *info, Operation *op, const char *file,
+                 unsigned line) {
+  std::cerr << "ASSERT executed at" << file << ":" << line << std::endl;
+  std::cerr << "ASSERT INFO:" << info << std::endl << "Operation:" << std::endl;
+  if (op != nullptr) {
+    if (auto prev = op->getPrevNode()) {
+      prev->dump();
+    }
+    std::cerr << "-> ";
+    op->dump();
+    if (auto next = op->getNextNode()) {
+      next->dump();
+    }
+  }
+  std::abort();
 }
 
 } // namespace module

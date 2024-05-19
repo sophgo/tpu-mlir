@@ -57,7 +57,7 @@ void top::SplitOp::shape_inference() {
   out_size[num - 1] = out_size[num - 1] + in_shape[axis] - length;
   OpBuilder builder(module::getCtx());
   setSplitSizeAttr(builder.getI64ArrayAttr(out_size));
-  ASSERT_WITH_DUMP(num == getOutputs().size());
+  ASSERT_THIS(num == getOutputs().size());
   std::vector<int64_t> out_shape = in_shape;
 
   for (int i = 0; i < num; ++i) {

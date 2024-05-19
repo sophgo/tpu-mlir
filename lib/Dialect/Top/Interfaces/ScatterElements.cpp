@@ -28,14 +28,14 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
   const int r = input_shape.size();
   const int _axis = getAxis();
   const int axis = _axis < 0 ? _axis + r : _axis;
-  ASSERT_WITH_DUMP(0 <= axis && axis < r);
+  ASSERT_THIS(0 <= axis && axis < r);
 
   for (int i = 0; i < r; ++i) {
     if (i != axis) {
-      ASSERT_WITH_DUMP(input_shape[i] >= indices_shape[i]);
-      ASSERT_WITH_DUMP(input_shape[i] >= updates_shape[i]);
+      ASSERT_THIS(input_shape[i] >= indices_shape[i]);
+      ASSERT_THIS(input_shape[i] >= updates_shape[i]);
     } else {
-      ASSERT_WITH_DUMP(indices_shape[i] == updates_shape[i]);
+      ASSERT_THIS(indices_shape[i] == updates_shape[i]);
     }
   }
 
@@ -51,7 +51,7 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
     std::vector<int64_t> list_(r);
     idx_to_list(n, updates_shape, list_);
     const int64_t p = (int64_t)indices[n];
-    ASSERT_WITH_DUMP(-s <= p && p < s);
+    ASSERT_THIS(-s <= p && p < s);
     list_[axis] = p;
     int64_t in_idx = list_to_idx(list_, in_stride);
     output[in_idx] = updates[n];
