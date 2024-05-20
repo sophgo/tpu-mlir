@@ -254,8 +254,18 @@ public:
   LogicalResult matchAndRewrite(tpu::Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
     auto prevOp = op->getOperand(0).getDefiningOp();
-    if (isa<top::InputOp>(prevOp)) {
-      if(op->use_empty()) return failure();
+    auto prevInputOp = prevOp;
+    if (!isa<top::InputOp>(prevOp)) {
+      // prevInputOp = prevOp->getOperand(0).getDefiningOp();
+      if (isa<tpu::CastOp>(prevOp) && prevOp->hasOneUse()) {
+        prevInputOp = prevOp->getOperand(0).getDefiningOp();
+      } else {
+        return failure();
+      }
+    }
+    if (isa<top::InputOp>(prevOp) || isa<top::InputOp>(prevInputOp)) {
+      if (op->use_empty())
+        return failure();
       auto in_type = module::getStorageType(op.getInput());
       if (!(module::isBM1684Family()) || in_type.isF32())
         return failure();
