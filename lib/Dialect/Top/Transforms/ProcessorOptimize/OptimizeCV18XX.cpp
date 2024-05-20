@@ -378,6 +378,10 @@ public:
         new_pad_v[7] = attr.pwr;
         input_shape[3] += attr.pwr;
       }
+      if (attr.pht > 15 && attr.pwl == 0 && attr.phb == attr.pht && attr.pwl == attr.pwr){
+        pad_v = {0,0,0,0};
+        new_pad_v = {0,0,attr.pht,0,0,attr.pht};
+      }
     } else if (kernel_size == 1) {
       if (attr.pht > 15) {
         assert(attr.pht == pad_v[0]);
