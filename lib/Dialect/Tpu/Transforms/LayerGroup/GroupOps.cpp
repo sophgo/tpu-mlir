@@ -312,7 +312,7 @@ void GroupOps::buildMlir() {
     Operation *pre_op = op.getInput().getDefiningOp();
     if (use_3ic > 0 && pre_op && !isa<tpu::LoadOp>(pre_op)) {
       // broadcast input using BDC rather than GDMA
-      use_3ic |= 0x10;
+      if(!module::isBM1684Family()) use_3ic |= 0x10;
       op.setUse_3icOptimize(use_3ic);
     }
   });
