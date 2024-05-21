@@ -29,20 +29,20 @@ void WeightReorderLowering::LoweringF16(PatternRewriter &rewriter,
 
 void WeightReorderLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::WeightReorderOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void WeightReorderLowering::LoweringINT8(PatternRewriter &rewriter, top::WeightReorderOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void WeightReorderLowering::LoweringINT4(PatternRewriter &rewriter, top::WeightReorderOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void WeightReorderLowering::LoweringQuantized(PatternRewriter &rewriter, top::WeightReorderOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

@@ -78,12 +78,12 @@ void RMSNormLowering::LoweringF16(PatternRewriter &rewriter,
 
 void RMSNormLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::RMSNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RMSNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::RMSNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

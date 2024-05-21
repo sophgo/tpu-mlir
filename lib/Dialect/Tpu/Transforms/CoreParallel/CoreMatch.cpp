@@ -435,14 +435,14 @@ public:
       return failure();
     }
     if (!op.getWTranspose()) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", op);
     }
     auto w = op.getWeight();
     auto s = op.getScale();
     auto zp = op.getZp();
     auto bias = op.getBias();
     if (module::isActive(bias)) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", op);
     }
     auto out = op.getOutput();
     auto w_shape = module::getShape(w);
@@ -451,7 +451,7 @@ public:
     auto N = w_shape[0];
     auto G = s_shape[1];
     if (N % num_cores != 0 || G % num_cores != 0) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", op);
     }
     auto N_slice = N / num_cores;
     auto G_slice = G / num_cores;

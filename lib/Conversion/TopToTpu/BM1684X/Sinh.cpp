@@ -52,12 +52,12 @@ void SinhLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SinhLowering::LoweringF8(PatternRewriter &rewriter,
                                top::SinhOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SinhLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SinhOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

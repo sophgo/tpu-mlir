@@ -98,7 +98,7 @@ void ScaleLutLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void ScaleLutLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::ScaleLutOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ScaleLutLowering::LoweringQuantized(PatternRewriter &rewriter,

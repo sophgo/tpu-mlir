@@ -58,12 +58,12 @@ void SiLULowering::LoweringF16(PatternRewriter &rewriter,
 
 void SiLULowering::LoweringF8(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SiLULowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SiLUOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

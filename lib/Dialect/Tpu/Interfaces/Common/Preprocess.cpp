@@ -19,7 +19,8 @@ LogicalResult tpu::PreprocessOp::init(InferenceParameter &p) {
 void tpu::PreprocessOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::PreprocessOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
+  return failure();
 }
 
 template <typename T>

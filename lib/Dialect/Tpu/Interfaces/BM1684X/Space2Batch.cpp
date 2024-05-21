@@ -13,11 +13,11 @@
 using namespace tpu_mlir::backend;
 
 void tpu::Space2BatchOp::codegen_global_bm1684x() {
-  llvm_unreachable("Space2BatchOp type error");
+  UNREACHABLE_THIS("Space2BatchOp type error");
 }
 
 int64_t tpu::Space2BatchOp::dyn_codegen_global_bm1684x(void *buffer) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 int64_t tpu::Space2BatchOp::get_fw_type_bm1684x() { return -1; }

@@ -52,7 +52,7 @@ void tpu::MaxUnpoolOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                              int64_t w_step,
                                              group_type_t group_type,
                                              local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 // dynamic codegen

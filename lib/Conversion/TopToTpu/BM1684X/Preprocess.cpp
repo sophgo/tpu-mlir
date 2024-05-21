@@ -43,12 +43,12 @@ void PreprocessLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PreprocessLowering::LoweringF8(PatternRewriter &rewriter,
                                      top::PreprocessOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PreprocessLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::PreprocessOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

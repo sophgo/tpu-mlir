@@ -57,7 +57,6 @@ void CoshLowering::LoweringF8(PatternRewriter &rewriter,
 
 void CoshLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CoshOp op) const {
-  // llvm_unreachable("Not Implemented");
   LoweringINT8(rewriter, op, true);
 }
 

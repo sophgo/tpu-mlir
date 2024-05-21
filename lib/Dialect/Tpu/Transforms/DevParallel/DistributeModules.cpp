@@ -35,7 +35,7 @@ struct OpReorderPattern : public RewritePattern {
     }
     llvm::SmallVector<Operation *, 8> opds;
     llvm::SmallVector<Operation *, 8> weights;
-    int is_before_num  = 0;
+    int is_before_num = 0;
     for (auto opd : op->getOperands()) {
       auto op_ = opd.getDefiningOp();
       if (op_ == nullptr || isa<top::NoneOp, FuncOp>(op_)) {
@@ -511,7 +511,7 @@ buildEndOp(tpu::DevEndOp end, ModuleOp m, int64_t num_devices, int64_t &step) {
       break;
     }
     default: {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", end);
       break;
     }
     }
@@ -613,7 +613,8 @@ static void updateFuncIONames(ModuleOp m) {
                       operands.begin();
             int num_result = end->getNumResults();
             idx = idx - device_id * num_result;
-            if (idx >= 0 && end_methods->at(idx) == (int)DevEndMethod::EndToConcat) {
+            if (idx >= 0 &&
+                end_methods->at(idx) == (int)DevEndMethod::EndToConcat) {
               auto next_result = user->getResult(idx);
               auto loc = module::getLocLike(next_result, suffix);
               outputs[i].setLoc(loc);

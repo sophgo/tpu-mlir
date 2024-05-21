@@ -29,20 +29,20 @@ void EmbDenseBwdLowering::LoweringF16(PatternRewriter &rewriter,
 
 void EmbDenseBwdLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::EmbDenseBwdOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void EmbDenseBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::EmbDenseBwdOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void EmbDenseBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::EmbDenseBwdOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void EmbDenseBwdLowering::LoweringQuantized(PatternRewriter &rewriter, top::EmbDenseBwdOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

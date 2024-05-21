@@ -54,12 +54,12 @@ void LeakyReluLowering::LoweringF16(PatternRewriter &rewriter,
 
 void LeakyReluLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::LeakyReluOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::LeakyReluOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   int multiplier, rshift;
   get_scale_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
 

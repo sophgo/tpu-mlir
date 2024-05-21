@@ -17,7 +17,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::AttentionOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 int64_t tpu::AttentionOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -35,12 +35,12 @@ void tpu::AttentionOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::AttentionOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
 int32_t tpu::AttentionOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 

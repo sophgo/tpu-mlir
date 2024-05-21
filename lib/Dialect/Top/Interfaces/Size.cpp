@@ -15,7 +15,7 @@ LogicalResult top::SizeOp::init(InferenceParameter &p) { return success(); }
 void top::SizeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SizeOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

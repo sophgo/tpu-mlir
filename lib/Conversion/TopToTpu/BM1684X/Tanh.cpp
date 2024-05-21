@@ -48,7 +48,7 @@ void TanhLowering::LoweringF16(PatternRewriter &rewriter, top::TanhOp op) const 
 }
 
 void TanhLowering::LoweringF8(PatternRewriter &rewriter, top::TanhOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void TanhLowering::LoweringQuantized(PatternRewriter &rewriter, top::TanhOp op) const {

@@ -33,7 +33,7 @@ void MinLowering::LoweringF16(PatternRewriter &rewriter, top::MinOp op) const {
 }
 
 void MinLowering::LoweringF8(PatternRewriter &rewriter, top::MinOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MinLowering::LoweringQuantized(PatternRewriter &rewriter,

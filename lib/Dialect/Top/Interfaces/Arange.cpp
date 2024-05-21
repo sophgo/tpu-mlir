@@ -15,7 +15,7 @@ LogicalResult top::ArangeOp::init(InferenceParameter &p) { return success(); }
 void top::ArangeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ArangeOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

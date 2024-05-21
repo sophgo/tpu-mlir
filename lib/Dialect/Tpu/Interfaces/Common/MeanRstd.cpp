@@ -10,14 +10,9 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
-LogicalResult tpu::MeanRstdOp::init(InferenceParameter &p) {
+LogicalResult tpu::MeanRstdOp::init(InferenceParameter &p) { return success(); }
 
-  return success();
-}
-
-void tpu::MeanRstdOp::deinit(InferenceParameter &p) {
-
-}
+void tpu::MeanRstdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MeanRstdOp::inference(InferenceParameter &p) {
   float *input = p.inputs[0];
@@ -43,12 +38,13 @@ LogicalResult tpu::MeanRstdOp::inference(InferenceParameter &p) {
     for (int i_n = 0; i_n < input_n; i_n++) {
       for (int i_h = 0; i_h < input_h; i_h++) {
         for (int i_w = 0; i_w < input_w; i_w++) {
-          int pos = i_n * input_c * input_h * input_w + i_c * input_h * input_w + i_h * input_w + i_w;
+          int pos = i_n * input_c * input_h * input_w +
+                    i_c * input_h * input_w + i_h * input_w + i_w;
           sum += input[pos];
         }
       }
     }
-    saved_mean[i_c] = sum/(input_n*input_h*input_w);
+    saved_mean[i_c] = sum / (input_n * input_h * input_w);
   }
   float *var = new float[input_c];
   for (int i_c = 0; i_c < input_c; i_c++) {
@@ -56,39 +52,39 @@ LogicalResult tpu::MeanRstdOp::inference(InferenceParameter &p) {
     for (int i_n = 0; i_n < input_n; i_n++) {
       for (int i_h = 0; i_h < input_h; i_h++) {
         for (int i_w = 0; i_w < input_w; i_w++) {
-          int pos = i_n * input_c * input_h * input_w + i_c * input_h * input_w + i_h * input_w + i_w;
-          sum_tmp += (input[pos] - saved_mean[i_c])*(input[pos] - saved_mean[i_c]);
+          int pos = i_n * input_c * input_h * input_w +
+                    i_c * input_h * input_w + i_h * input_w + i_w;
+          sum_tmp +=
+              (input[pos] - saved_mean[i_c]) * (input[pos] - saved_mean[i_c]);
         }
       }
     }
-    var[i_c] = sum_tmp/(input_n*input_h*input_w-1);
-    saved_rstd[i_c] = 1.0/std::sqrt((sum_tmp/(input_n*input_h*input_w))+eps);
+    var[i_c] = sum_tmp / (input_n * input_h * input_w - 1);
+    saved_rstd[i_c] =
+        1.0 / std::sqrt((sum_tmp / (input_n * input_h * input_w)) + eps);
   }
   for (int i_c = 0; i_c < input_c; i_c++) {
-    running_mean_update[i_c] = momentum*saved_mean[i_c]+(1-momentum)*running_mean[i_c];
-    running_var_update[i_c] = momentum*var[i_c]+(1-momentum)*running_var[i_c];
+    running_mean_update[i_c] =
+        momentum * saved_mean[i_c] + (1 - momentum) * running_mean[i_c];
+    running_var_update[i_c] =
+        momentum * var[i_c] + (1 - momentum) * running_var[i_c];
     scale[i_c] = gamma[i_c] * saved_rstd[i_c];
     bias[i_c] = beta[i_c] - saved_mean[i_c] * scale[i_c];
-}
-  delete [] var;
-  //llvm_unreachable("Not Implemented");
+  }
+  delete[] var;
   return success();
 }
 
-uint32_t tpu::MeanRstdOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+uint32_t tpu::MeanRstdOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-int64_t tpu::MeanRstdOp::dyn_codegen_global_bm1684x(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+int64_t tpu::MeanRstdOp::dyn_codegen_global_bm1684x(void *ir_layer_info) {
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-int64_t tpu::MeanRstdOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::MeanRstdOp::get_fw_type_bm1684() { return -1; }
 
-int64_t tpu::MeanRstdOp::get_fw_type_bm1684x() {
-  return -1;
-}
+int64_t tpu::MeanRstdOp::get_fw_type_bm1684x() { return -1; }

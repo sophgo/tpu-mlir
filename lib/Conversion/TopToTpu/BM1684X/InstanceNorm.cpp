@@ -81,12 +81,12 @@ void InstanceNormLowering::LoweringF16(PatternRewriter &rewriter,
 
 void InstanceNormLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::InstanceNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void InstanceNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::InstanceNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

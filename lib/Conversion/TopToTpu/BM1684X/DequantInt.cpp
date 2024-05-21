@@ -13,27 +13,27 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void DequantIntLowering::LoweringF32(PatternRewriter &rewriter, top::DequantIntOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DequantIntLowering::LoweringINT8(PatternRewriter &rewriter, top::DequantIntOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void DequantIntLowering::LoweringINT4(PatternRewriter &rewriter, top::DequantIntOp op,
                                    bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void DequantIntLowering::LoweringBF16(PatternRewriter &rewriter, top::DequantIntOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DequantIntLowering::LoweringF16(PatternRewriter &rewriter, top::DequantIntOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DequantIntLowering::LoweringF8(PatternRewriter &rewriter, top::DequantIntOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -56,7 +56,7 @@ void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
                    op.getLshift(), get_round_mode(round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
     // std::vector<int32_t> quant;
     // std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
     //                                  1l);

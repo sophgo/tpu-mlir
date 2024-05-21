@@ -25,12 +25,12 @@ LogicalResult tpu::LayerNormTrainOp::inference(InferenceParameter &p) {
 }
 
 uint32_t tpu::LayerNormTrainOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
 int64_t tpu::LayerNormTrainOp::dyn_codegen_global_bm1684x(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 

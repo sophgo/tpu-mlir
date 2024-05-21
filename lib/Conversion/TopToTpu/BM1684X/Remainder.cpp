@@ -62,7 +62,7 @@ void RemainderLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void RemainderLowering::LoweringF8(PatternRewriter& rewriter,
     top::RemainderOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RemainderLowering::LoweringINT8(PatternRewriter &rewriter,

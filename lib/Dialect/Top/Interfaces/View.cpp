@@ -15,7 +15,7 @@ LogicalResult top::ViewOp::init(InferenceParameter &p) { return success(); }
 void top::ViewOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ViewOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

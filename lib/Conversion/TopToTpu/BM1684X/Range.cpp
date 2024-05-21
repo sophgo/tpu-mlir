@@ -61,7 +61,7 @@ void RangeLowering::LoweringF32(PatternRewriter &rewriter,
 }
 void RangeLowering::LoweringINT4(PatternRewriter &rewriter, top::RangeOp op,
                                  bool asymmetric) const {
-  llvm_unreachable("Not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void RangeLowering::LoweringINT8(PatternRewriter &rewriter, top::RangeOp op,
                                  bool asymmetric) const {
@@ -80,12 +80,12 @@ void RangeLowering::LoweringF16(PatternRewriter &rewriter,
 
 void RangeLowering::LoweringF8(PatternRewriter &rewriter,
                                top::RangeOp op) const {
-  llvm_unreachable("Not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RangeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::RangeOp op) const {
-  llvm_unreachable("Not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

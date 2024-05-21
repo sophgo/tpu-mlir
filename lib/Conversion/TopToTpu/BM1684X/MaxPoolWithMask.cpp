@@ -30,22 +30,22 @@ void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void MaxPoolWithMaskLowering::LoweringBF16(PatternRewriter &rewriter,
                                            top::MaxPoolWithMaskOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
                                           top::MaxPoolWithMaskOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,
                                           top::MaxPoolWithMaskOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxPoolWithMaskLowering::LoweringQuantized(
     PatternRewriter &rewriter, top::MaxPoolWithMaskOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

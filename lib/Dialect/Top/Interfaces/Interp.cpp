@@ -342,7 +342,7 @@ void top::InterpOp::shape_inference() {
                 setScaleH(APFloat((double)out_shape[hidx] / in_shape[hidx]));
                 setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
             } else{
-                llvm_unreachable("Not Implemented");
+                UNREACHABLE_THIS("Not Implemented");
             }
 
         } else if (nof_dims >= 4 && scale_h_ > 0 && scale_w_ > 0) {

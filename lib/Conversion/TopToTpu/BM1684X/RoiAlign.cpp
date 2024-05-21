@@ -25,7 +25,7 @@ void RoiAlignLowering::LoweringF16(PatternRewriter &rewriter, top::RoiAlignOp op
 }
 
 void RoiAlignLowering::LoweringF8(PatternRewriter &rewriter, top::RoiAlignOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RoiAlignLowering::LoweringINT4(PatternRewriter &rewriter, top::RoiAlignOp op,
@@ -40,7 +40,7 @@ void RoiAlignLowering::LoweringINT8(PatternRewriter &rewriter, top::RoiAlignOp o
 
 void RoiAlignLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::RoiAlignOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

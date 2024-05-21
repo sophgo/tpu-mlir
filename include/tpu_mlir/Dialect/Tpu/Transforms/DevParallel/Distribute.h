@@ -181,7 +181,7 @@ static DevEndMode getEndMode(tpu::DevEndOp op) {
   case tpu::DevPattern::MatMulTopK:
     return DevEndMode::EndToTopK;
   default:
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
   }
   return DevEndMode::EndToUnknown;
 }

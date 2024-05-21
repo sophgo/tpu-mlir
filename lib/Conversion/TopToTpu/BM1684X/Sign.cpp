@@ -64,7 +64,7 @@ void SignLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SignLowering::LoweringF8(PatternRewriter &rewriter,
                                top::SignOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SignLowering::LoweringQuantized(PatternRewriter &rewriter,

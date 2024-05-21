@@ -71,7 +71,7 @@ void LogBLowering::LoweringF8(PatternRewriter &rewriter, top::LogBOp op) const {
 
 void LogBLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LogBOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

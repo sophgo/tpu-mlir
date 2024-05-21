@@ -101,7 +101,7 @@ void top::GatherOp::shape_inference() {
           {module::getShapeTensorValue(getInput()), indices_val}, out_shape);
       module::bindShapeTensorValue(getOutput(), out_shape_val);
     } else {
-      llvm_unreachable("not implemented");
+      UNREACHABLE_THIS("not implemented");
     }
   }
 }

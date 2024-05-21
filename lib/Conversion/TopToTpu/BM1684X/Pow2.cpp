@@ -57,12 +57,12 @@ void Pow2Lowering::LoweringF16(PatternRewriter &rewriter, top::Pow2Op op) const 
 }
 
 void Pow2Lowering::LoweringF8(PatternRewriter &rewriter, top::Pow2Op op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void Pow2Lowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::Pow2Op op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, true);
 }
 } // namespace bm1684x

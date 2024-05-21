@@ -19,7 +19,7 @@ LogicalResult top::BatchNormTrainOp::init(InferenceParameter &p) {
 void top::BatchNormTrainOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::BatchNormTrainOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

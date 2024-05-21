@@ -34,7 +34,7 @@ public:
   }
 
   virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
 };
 

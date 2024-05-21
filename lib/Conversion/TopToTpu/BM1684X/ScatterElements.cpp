@@ -123,7 +123,7 @@ void ScatterElementsLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ScatterElementsLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::ScatterElementsOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ScatterElementsLowering::LoweringQuantized(PatternRewriter &rewriter,

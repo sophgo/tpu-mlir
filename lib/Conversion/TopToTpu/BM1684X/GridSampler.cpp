@@ -90,12 +90,12 @@ void GridSamplerLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GridSamplerLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GridSamplerLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::GridSamplerOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 } // namespace bm1684x
 } // namespace tpu_mlir

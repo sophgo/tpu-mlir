@@ -48,13 +48,13 @@ void SinLowering::LoweringF16(PatternRewriter &rewriter, top::SinOp op) const {
 }
 
 void SinLowering::LoweringF8(PatternRewriter &rewriter, top::SinOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 
 void SinLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SinOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

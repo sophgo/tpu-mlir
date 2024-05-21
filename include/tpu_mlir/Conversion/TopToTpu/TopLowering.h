@@ -335,26 +335,26 @@ public:
 public:
   virtual void LoweringINT8(PatternRewriter &rewriter, OpTy opTy,
                             bool asymmetric) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
   virtual void LoweringINT4(PatternRewriter &rewriter, OpTy opTy,
                             bool asymmetric) const {
     LoweringINT8(rewriter, opTy, asymmetric);
   }
   virtual void LoweringBF16(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
   virtual void LoweringF16(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
   virtual void LoweringF32(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
   virtual void LoweringF8(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
   virtual void LoweringQuantized(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
 };
 
@@ -371,7 +371,7 @@ public:
 
 public:
   virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", opTy);
   }
 };
 

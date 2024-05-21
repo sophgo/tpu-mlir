@@ -15,11 +15,11 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::CumSumOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 uint32_t tpu::CumSumOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 

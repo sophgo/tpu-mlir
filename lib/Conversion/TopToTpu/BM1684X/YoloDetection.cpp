@@ -49,12 +49,12 @@ void YoloDetectionLowering::LoweringF16(PatternRewriter &rewriter,
 
 void YoloDetectionLowering::LoweringF8(PatternRewriter &rewriter,
                                         top::YoloDetectionOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void YoloDetectionLowering::LoweringQuantized(PatternRewriter &rewriter,
                                               top::YoloDetectionOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

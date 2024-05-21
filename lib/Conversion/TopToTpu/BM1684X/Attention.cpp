@@ -342,7 +342,7 @@ void AttentionLowering::LoweringF32(PatternRewriter &rewriter,
 void AttentionLowering::LoweringINT4(PatternRewriter &rewriter,
                                      top::AttentionOp op,
                                      bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void AttentionLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::AttentionOp op,
@@ -367,7 +367,7 @@ void AttentionLowering::LoweringF8(PatternRewriter &rewriter,
 
 void AttentionLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::AttentionOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

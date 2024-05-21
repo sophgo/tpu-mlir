@@ -63,7 +63,7 @@ void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
 }
 
 void PadLowering::LoweringF8(PatternRewriter &rewriter, top::PadOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PadLowering::LoweringQuantized(PatternRewriter &rewriter,

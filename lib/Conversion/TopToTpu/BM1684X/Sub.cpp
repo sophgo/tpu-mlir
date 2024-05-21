@@ -100,7 +100,7 @@ void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
 
 void SubLowering::LoweringF8(PatternRewriter &rewriter,
                              top::SubOp subOp) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   auto op = subOp.getOperation();
   const int numInputs = op->getNumOperands();
   if (module::getMode() == module::Mode::F8E5M2) {

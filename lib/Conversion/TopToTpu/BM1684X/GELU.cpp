@@ -60,7 +60,7 @@ void GELULowering::LoweringF16(PatternRewriter &rewriter,
 
 void GELULowering::LoweringF8(PatternRewriter &rewriter,
                                top::GELUOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GELULowering::LoweringQuantized(PatternRewriter &rewriter,

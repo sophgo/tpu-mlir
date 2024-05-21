@@ -48,7 +48,7 @@ static void LoweringConvBwdWeight(PatternRewriter &rewriter, top::ConvBwdWeightO
   } else {
     new_types.push_back(out.getType());
   }
-  
+
   printf("xxxx2, len:%d\n", (int)opds.size());
   rewriter.replaceOpWithNewOp<tpu::ConvBwdWeightOp>(op, new_types, opds, attrs);
   return;
@@ -61,12 +61,12 @@ void ConvBwdWeightLowering::LoweringF32(PatternRewriter &rewriter, top::ConvBwdW
 void ConvBwdWeightLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvBwdWeightOp op,
                                    bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void ConvBwdWeightLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvBwdWeightOp op,
                                bool asymmetric) const {
   // lowering_common_int8<tpu::ConvBwdWeightOp>(rewriter, op, asymmetric);
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ConvBwdWeightLowering::LoweringBF16(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
@@ -83,7 +83,7 @@ void ConvBwdWeightLowering::LoweringF8(PatternRewriter &rewriter, top::ConvBwdWe
 
 void ConvBwdWeightLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ConvBwdWeightOp op) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

@@ -13,27 +13,27 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void RequantFpLowering::LoweringF32(PatternRewriter &rewriter, top::RequantFpOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RequantFpLowering::LoweringINT8(PatternRewriter &rewriter, top::RequantFpOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void RequantFpLowering::LoweringINT4(PatternRewriter &rewriter, top::RequantFpOp op,
                                    bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void RequantFpLowering::LoweringBF16(PatternRewriter &rewriter, top::RequantFpOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RequantFpLowering::LoweringF16(PatternRewriter &rewriter, top::RequantFpOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RequantFpLowering::LoweringF8(PatternRewriter &rewriter, top::RequantFpOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,

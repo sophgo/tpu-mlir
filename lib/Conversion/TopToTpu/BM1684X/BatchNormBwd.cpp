@@ -30,21 +30,21 @@ void BatchNormBwdLowering::LoweringF16(PatternRewriter &rewriter,
 
 void BatchNormBwdLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::BatchNormBwdOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BatchNormBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::BatchNormBwdOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BatchNormBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::BatchNormBwdOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BatchNormBwdLowering::LoweringQuantized(PatternRewriter &rewriter, top::BatchNormBwdOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

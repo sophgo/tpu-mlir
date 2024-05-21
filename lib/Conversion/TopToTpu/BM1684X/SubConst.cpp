@@ -137,7 +137,7 @@ void SubConstLowering::LoweringF8(PatternRewriter &rewriter,
 
 void SubConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SubConstOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

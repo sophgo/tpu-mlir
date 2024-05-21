@@ -55,7 +55,7 @@ void DepackRawLowering::LoweringF8(PatternRewriter &rewriter,
 
 void DepackRawLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::DepackRawOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

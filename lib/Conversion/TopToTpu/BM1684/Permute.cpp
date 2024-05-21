@@ -19,8 +19,9 @@ void PermuteLowering::LoweringF32(PatternRewriter &rewriter,
 
 void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
                                    bool asymmetric) const {
-  if (asymmetric)
-    llvm_unreachable("Not Implemented");
+  if (asymmetric) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
   lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric, 2);
 }
 

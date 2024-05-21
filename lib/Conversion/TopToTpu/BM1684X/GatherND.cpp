@@ -85,12 +85,12 @@ void GatherNDLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GatherNDLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::GatherNDOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GatherNDLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::GatherNDOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 } // namespace bm1684x
 } // namespace tpu_mlir

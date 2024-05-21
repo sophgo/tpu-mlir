@@ -15,7 +15,7 @@ LogicalResult top::FlattenOp::init(InferenceParameter &p) { return success(); }
 void top::FlattenOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::FlattenOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

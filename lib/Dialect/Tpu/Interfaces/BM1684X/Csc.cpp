@@ -14,7 +14,7 @@
 using namespace tpu_mlir::backend;
 
 void tpu::CscOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 int64_t tpu::CscOp::dyn_codegen_global_bm1684x(void *buffer) {

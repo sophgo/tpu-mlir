@@ -90,7 +90,7 @@ void IndexPutLowering::LoweringF16(PatternRewriter &rewriter,
 
 void IndexPutLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::IndexPutOp op) const {
-  llvm_unreachable("not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void IndexPutLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -128,6 +128,6 @@ int64_t tpu::MatMulOp::get_fw_type_bm1684() {
 // ======================================
 
 int32_t tpu::MatMulOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }

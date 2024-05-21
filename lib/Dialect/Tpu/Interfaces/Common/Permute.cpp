@@ -24,8 +24,7 @@ permute_attr_t tpu::PermuteOp::parseParam() {
                         6);
   }
   if (ret == false) {
-    dump();
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   for (auto o : attr.order_fix) {
     attr.out_shape_fix.push_back(attr.in_shape_fix[o]);

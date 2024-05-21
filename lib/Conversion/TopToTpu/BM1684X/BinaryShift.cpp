@@ -14,32 +14,32 @@ namespace bm1684x {
 
 void BinaryShiftLowering::LoweringF32(
     PatternRewriter &rewriter, top::BinaryShiftOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BinaryShiftLowering::LoweringINT8(
     PatternRewriter &rewriter, top::BinaryShiftOp op,
     bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void BinaryShiftLowering::LoweringINT4(
     PatternRewriter &rewriter, top::BinaryShiftOp op,
     bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void BinaryShiftLowering::LoweringBF16(
     PatternRewriter &rewriter, top::BinaryShiftOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BinaryShiftLowering::LoweringF16(
     PatternRewriter &rewriter, top::BinaryShiftOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BinaryShiftLowering::LoweringF8(
     PatternRewriter &rewriter, top::BinaryShiftOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void BinaryShiftLowering::LoweringQuantized(

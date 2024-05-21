@@ -51,12 +51,11 @@ void ArctanhLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ArctanhLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::ArctanhOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ArctanhLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::ArctanhOp op) const {
-  // llvm_unreachable("Not Implemented");
   LoweringINT8(rewriter, op, true);
 }
 

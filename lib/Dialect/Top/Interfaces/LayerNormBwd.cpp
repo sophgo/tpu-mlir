@@ -19,7 +19,7 @@ LogicalResult top::LayerNormBwdOp::init(InferenceParameter &p) {
 void top::LayerNormBwdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::LayerNormBwdOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

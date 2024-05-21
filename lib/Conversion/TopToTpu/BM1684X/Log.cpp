@@ -46,12 +46,12 @@ void LogLowering::LoweringF16(PatternRewriter &rewriter, top::LogOp op) const {
 }
 
 void LogLowering::LoweringF8(PatternRewriter &rewriter, top::LogOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LogLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LogOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 
