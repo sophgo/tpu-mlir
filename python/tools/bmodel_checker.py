@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--dump_mode",
         type=str,
-        choices=["failed", "all", "never", "comb", "dict"],
+        choices=["failed", "all", "never", "comb", "tpulang"],
         default="failed",
         help="dump mode",
     )

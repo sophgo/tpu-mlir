@@ -510,7 +510,22 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if operand.name not in ref:
                 continue
             _slice = operand.slice
-            slice_list = _slice[1:-1].split(",")
+            if _slice == "[...]":
+                slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
+                sliced_shape = tuple(int(i) for i in slice_list)
+                slices = [slice(None, None) for _ in slice_list]
+            else:
+                slice_list = _slice[1:-1].split(",")
+                sliced_shape = tuple(
+                    [
+                        int(slice.split(":")[1]) - int(slice.split(":")[0])
+                        for slice in slice_list
+                    ]
+                )
+                slices = [
+                    slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
+                    for s in slice_list
+                ]
             actual = actual.reshape(desired.shape)
 
             if operand.layout in (
@@ -527,25 +542,19 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             origin_shape = ref[operand.name].shape
             if reshape:
                 reshape = eval(reshape[1:-1].replace("x", ","))
-            slices = [
-                slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
-                for s in slice_list
-            ]
+            else:
+                reshape = sliced_shape
+
             if operand.name not in self.ref_data_from_inference[idx]:
                 tmp = np.zeros(reshape)
                 tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
-                    origin_shape
-                )
+                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(origin_shape)
             else:
                 tmp = self.ref_data_from_inference[idx][operand.name]
                 tmp = tmp.reshape(reshape)
                 tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
-                    origin_shape
-                )
+                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(origin_shape)
             return
-        return
 
     def cal_desired_shape(self, sliced_shape, layout):
         if layout in (
