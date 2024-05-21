@@ -26,7 +26,9 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 105e1c1d684b95d64d2febae8deff32bfebe1342 --cherry-pick-> 097ecf4cca0a288dccc96acd84141fbae2839ec1
+#bm1688 sha256: 105e1c1d684b95d64d2febae8deff32bfebe1342
+# --cherry-pick-> 3296fa31438b5ecb85fe35f0a4b44c4e7b992b15   yolov5s postprocess prob
+# --cherry-pick-> 767d875df9b35c566ce502edf729668627d74b08   segformer compare failed
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
