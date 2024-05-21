@@ -63,7 +63,6 @@ LogicalResult top::MeanRstdOp::inference(InferenceParameter &p) {
     bias[i_c] = beta[i_c] - saved_mean[i_c] * scale[i_c];
 }
   delete [] var;
-  //llvm_unreachable("Not Implemented");
   return success();
 }
 

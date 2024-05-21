@@ -366,5 +366,6 @@ int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
 }
 
 int64_t tpu::MatMulOp::dyn_codegen_local_bm1684x(void *buffer) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
+  return 0;
 }

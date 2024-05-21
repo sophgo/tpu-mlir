@@ -87,12 +87,12 @@ void LSTMLowering::LoweringF16(PatternRewriter &rewriter,
 
 void LSTMLowering::LoweringF8(PatternRewriter &rewriter,
                                top::LSTMOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LSTMLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::LSTMOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

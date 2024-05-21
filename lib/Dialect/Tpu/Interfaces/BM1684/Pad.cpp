@@ -164,7 +164,7 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else if (dims == 5) {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
 }
 

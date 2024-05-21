@@ -12,7 +12,7 @@ LogicalResult top::VarianceOp::init(InferenceParameter &p) {
 void top::VarianceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::VarianceOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

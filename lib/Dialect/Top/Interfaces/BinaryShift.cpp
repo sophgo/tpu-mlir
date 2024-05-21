@@ -19,7 +19,7 @@ LogicalResult top::BinaryShiftOp::init(InferenceParameter &p) {
 void top::BinaryShiftOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::BinaryShiftOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

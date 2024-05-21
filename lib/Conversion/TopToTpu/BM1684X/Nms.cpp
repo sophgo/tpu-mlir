@@ -43,12 +43,12 @@ void NmsLowering::LoweringF16(PatternRewriter &rewriter, top::NmsOp op) const {
 }
 
 void NmsLowering::LoweringF8(PatternRewriter &rewriter, top::NmsOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void NmsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::NmsOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

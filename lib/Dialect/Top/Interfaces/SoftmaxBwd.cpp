@@ -19,7 +19,7 @@ LogicalResult top::SoftmaxBwdOp::init(InferenceParameter &p) {
 void top::SoftmaxBwdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SoftmaxBwdOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

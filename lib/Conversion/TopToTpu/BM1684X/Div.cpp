@@ -41,7 +41,7 @@ void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
 }
 
 void DivLowering::LoweringF8(PatternRewriter &rewriter, top::DivOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DivLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -19,7 +19,7 @@ LogicalResult top::RequantFpOp::init(InferenceParameter &p) {
 void top::RequantFpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::RequantFpOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

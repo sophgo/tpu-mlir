@@ -23,7 +23,7 @@ void ConstantFillLowering::LoweringF32(PatternRewriter &rewriter,
 }
 void ConstantFillLowering::LoweringINT4(PatternRewriter &rewriter, top::ConstantFillOp op,
                                  bool asymmetric) const {
-  llvm_unreachable("Not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void ConstantFillLowering::LoweringINT8(PatternRewriter &rewriter, top::ConstantFillOp op,
                                  bool asymmetric) const {
@@ -42,7 +42,7 @@ void ConstantFillLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ConstantFillLowering::LoweringF8(PatternRewriter &rewriter,
                                top::ConstantFillOp op) const {
-  llvm_unreachable("Not implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ConstantFillLowering::LoweringQuantized(PatternRewriter &rewriter,

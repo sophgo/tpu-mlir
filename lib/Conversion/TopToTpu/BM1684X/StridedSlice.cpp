@@ -39,7 +39,7 @@ void StridedSliceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void StridedSliceLowering::LoweringF8(PatternRewriter &rewriter,
                                        top::StridedSliceOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void StridedSliceLowering::LoweringQuantized(PatternRewriter &rewriter,

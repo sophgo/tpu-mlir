@@ -64,12 +64,12 @@ void NonZeroLowering::LoweringF16(PatternRewriter &rewriter,
 
 void NonZeroLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::NonZeroOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void NonZeroLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::NonZeroOp nonzeroOp) const {
-  llvm_unreachable("Not Implemented");
+                                    top::NonZeroOp op) const {
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

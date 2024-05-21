@@ -804,8 +804,10 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs['axis']
         operands = list()
         weight_data = None
+        last_name = None
         for x in onnx_node.inputs:
             if self.isWeight(x):
+                last_name = x
                 data = self.getWeight(x)
                 if len(data.shape) == 1 and data.shape[0] == 0:
                     continue
@@ -816,7 +818,7 @@ class OnnxConverter(BaseConverter):
                 continue
             else:
                 if weight_data is not None:
-                    w_name = x + "_weight"
+                    w_name = last_name + "_weight"
                     self.addWeight(w_name, weight_data)
                     operands.append(self.getWeightOp(w_name))
                     weight_data = None
@@ -1490,7 +1492,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_exp_op(self, onnx_node):
         assert (onnx_node.op_type == "Exp")
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0])
         new_op = top.ExpOp(self.unranked_type,
                            op,
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),

@@ -325,5 +325,6 @@ commonShapeValInfer(mlir::Operation *op,
   module::assert_with_dump(COND, OP, #COND, __FILE__, __LINE__)
 #define ASSERT_THIS(COND) ASSERT_OP(COND, this->getOperation()) // in Op inner functions
 #define UNREACHABLE_OP(INFO, OP) module::unreachable(INFO, OP, __FILE__, __LINE__)
+#define UNREACHABLE_THIS(INFO) UNREACHABLE_OP(INFO, this->getOperation())
 
 } // namespace tpu_mlir

@@ -55,7 +55,7 @@ LogicalResult tpu::BinaryConstShiftOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = saturate(sum, out_type, rmode);
     }
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
 
   return success();

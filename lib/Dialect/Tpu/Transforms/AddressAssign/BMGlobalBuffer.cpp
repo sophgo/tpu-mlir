@@ -118,7 +118,7 @@ public:
     }
     auto attr = reduceOp.parseParam();
     if (attr.simplified == false) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", reduceOp);
     }
     if (module::isBM1684XFamily() || module::isBM1690Family()) {
       auto type = module::getStorageType(reduceOp.getInput());
@@ -390,14 +390,13 @@ public:
             store_mode, 0, buffer_size_ptr,
             (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       } else {
-        llvm_unreachable("Not Implemented");
+        UNREACHABLE_OP("Not Implemented", permuteOp);
         return failure();
       }
       // release
       delete[] input_shape;
       delete[] order;
       buffer_size_ptr = NULL;
-      ;
     } else {
       return failure();
     }
@@ -582,14 +581,13 @@ public:
             0, 0, 0, &buffer_size, (int *)input_shape, input_dims, store_mode,
             store_mode, block_size, pad_sizes, NULL, NULL);
       } else {
-        llvm_unreachable("Not Implemented");
+        UNREACHABLE_OP("Not Implemented", space2batchOp);
         return failure();
       }
       // release
       delete[] input_shape;
-      ;
     } else {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", space2batchOp);
       return failure();
     }
     auto type = module::getStorageType(space2batchOp.getInput());
@@ -652,14 +650,13 @@ public:
             0, 0, 0, 0, &buffer_size, (int *)input_shape, input_dims,
             store_mode, store_mode, block_size, pad_sizes, NULL, NULL);
       } else {
-        llvm_unreachable("Not Implemented");
+        UNREACHABLE_OP("Not Implemented", batch2spaceOp);
         return failure();
       }
       // release
       delete[] input_shape;
-      ;
     } else {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", batch2spaceOp);
       return failure();
     }
     auto type = module::getStorageType(batch2spaceOp.getInput());
@@ -685,7 +682,7 @@ public:
     }
     if (!module::isBM1684Family() && (!module::isBM1684XFamily()) &&
         (!module::isBM1690Family())) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", TileOp);
       return failure();
     }
     auto input_shape = module::getShape(TileOp.getInput());

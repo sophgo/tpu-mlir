@@ -56,12 +56,12 @@ void ErfLowering::LoweringF16(PatternRewriter &rewriter, top::ErfOp op) const {
 }
 
 void ErfLowering::LoweringF8(PatternRewriter &rewriter, top::ErfOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ErfLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ErfOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, true);
 }
 

@@ -21,7 +21,8 @@ LogicalResult top::EinsumOp::init(InferenceParameter &p) {
 void top::EinsumOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::EinsumOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
+  return failure();
 }
 
 void top::EinsumOp::shape_inference() {

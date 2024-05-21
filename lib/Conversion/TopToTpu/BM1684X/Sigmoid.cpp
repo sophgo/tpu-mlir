@@ -55,7 +55,7 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,

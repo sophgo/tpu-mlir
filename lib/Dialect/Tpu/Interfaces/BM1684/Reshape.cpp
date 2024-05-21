@@ -88,6 +88,6 @@ int64_t tpu::ReshapeOp::get_fw_type_bm1684() { return FW_BMNET_RESHAPE; }
 
 int32_t tpu::ReshapeOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   // do nothing
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }

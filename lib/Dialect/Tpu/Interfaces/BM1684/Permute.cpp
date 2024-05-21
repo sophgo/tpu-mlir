@@ -49,7 +49,7 @@ void tpu::PermuteOp::codegen_global_bm1684() {
         store_mode, buffer_addr, NULL,
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
 
   // release

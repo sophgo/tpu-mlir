@@ -16,7 +16,7 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::GenericCpuOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 // ======================================

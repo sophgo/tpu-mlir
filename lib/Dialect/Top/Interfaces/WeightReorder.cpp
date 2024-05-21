@@ -19,7 +19,7 @@ LogicalResult top::WeightReorderOp::init(InferenceParameter &p) {
 void top::WeightReorderOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::WeightReorderOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

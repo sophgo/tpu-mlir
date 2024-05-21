@@ -35,12 +35,12 @@ void LRNLowering::LoweringF16(PatternRewriter &rewriter, top::LRNOp op) const {
 }
 
 void LRNLowering::LoweringF8(PatternRewriter &rewriter, top::LRNOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LRNLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LRNOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

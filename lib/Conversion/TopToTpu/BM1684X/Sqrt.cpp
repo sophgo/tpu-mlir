@@ -44,12 +44,12 @@ void SqrtLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SqrtLowering::LoweringF8(PatternRewriter &rewriter,
                                top::SqrtOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SqrtLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SqrtOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

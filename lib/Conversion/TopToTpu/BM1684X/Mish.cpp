@@ -45,7 +45,7 @@ void MishLowering::LoweringF16(PatternRewriter &rewriter,
 
 void MishLowering::LoweringF8(PatternRewriter &rewriter,
                                top::MishOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void MishLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::MishOp op) const {

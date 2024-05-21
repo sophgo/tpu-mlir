@@ -26,7 +26,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   }
   if (module::isUniformQuantized(getInput(), getOutput())) {
     if (getLog()) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_THIS("Not Implemented");
       return;
     }
     assert(has_table);
@@ -154,8 +154,7 @@ int64_t tpu::SoftmaxOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
   if (module::isUniformQuantized(getInput(), getOutput())) {
     if (getLog()) {
-      llvm_unreachable("Not Implemented");
-      assert(0);
+      UNREACHABLE_THIS("Not Implemented");
     }
     assert(has_table);
     auto out_qtype = module::getUniformQuantizedType(getOutput());

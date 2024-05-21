@@ -47,11 +47,10 @@ reduce_attr_t tpu::ReduceOp::parseParam() {
   bool neighbour = true;
   for (uint i = 1; i < num_axes; i++) {
     if (axes_->at(i) != axes_->at(i - 1) + 1) {
-      //llvm_unreachable("Not Implemented");
       neighbour = false;
     }
     if (axes_->at(i) >= num_dims) {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_THIS("Not Implemented");
     }
   }
   int start_axis = axes_->at(0);

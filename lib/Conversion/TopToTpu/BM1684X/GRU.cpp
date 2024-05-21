@@ -80,12 +80,12 @@ void GRULowering::LoweringF16(PatternRewriter &rewriter, top::GRUOp op) const {
 }
 
 void GRULowering::LoweringF8(PatternRewriter &rewriter, top::GRUOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GRULowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::GRUOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

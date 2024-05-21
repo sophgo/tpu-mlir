@@ -37,13 +37,13 @@ void ReduceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ReduceLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::ReduceOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   lowering_common_f16<tpu::ReduceOp>(rewriter, op, 3);
 }
 
 void ReduceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::ReduceOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

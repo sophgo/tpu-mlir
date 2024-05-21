@@ -79,20 +79,20 @@ void LayerNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
 
 void LayerNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::LayerNormTrainOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LayerNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormTrainOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void LayerNormTrainLowering::LoweringINT4(PatternRewriter &rewriter, top::LayerNormTrainOp op,
                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LayerNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter, top::LayerNormTrainOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

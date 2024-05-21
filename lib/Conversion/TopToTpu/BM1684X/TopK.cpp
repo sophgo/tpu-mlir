@@ -86,7 +86,7 @@ void TopKLowering::LoweringF8(PatternRewriter &rewriter,
 
 void TopKLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TopKOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

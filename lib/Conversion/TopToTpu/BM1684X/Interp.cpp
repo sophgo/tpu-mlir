@@ -92,7 +92,7 @@ void InterpLowering::LoweringF16(PatternRewriter &rewriter,
 
 void InterpLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::InterpOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,

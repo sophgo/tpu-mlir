@@ -47,12 +47,12 @@ void TanLowering::LoweringF16(PatternRewriter &rewriter, top::TanOp op) const {
 }
 
 void TanLowering::LoweringF8(PatternRewriter &rewriter, top::TanOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void TanLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::TanOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

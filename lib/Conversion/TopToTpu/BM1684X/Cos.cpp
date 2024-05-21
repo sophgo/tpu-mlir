@@ -53,7 +53,6 @@ void CosLowering::LoweringF8(PatternRewriter &rewriter, top::CosOp op) const {
 
 void CosLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::CosOp op) const {
-  // llvm_unreachable("Not Implemented");
   LoweringINT8(rewriter, op, true);
 }
 

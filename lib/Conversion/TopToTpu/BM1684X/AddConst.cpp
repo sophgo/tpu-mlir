@@ -14,7 +14,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void AddConstTryLowering::Lowering(PatternRewriter &rewriter,
-                                 top::AddConstOp op) const {
+                                   top::AddConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -69,11 +69,10 @@ void AddConstLowering::LoweringINT8(PatternRewriter &rewriter,
     }
   }
 
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
-    rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(multiplier)));
-  attrs.push_back(
-    rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
-
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
 
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType, op.getInput(),
@@ -96,7 +95,7 @@ void AddConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void AddConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::AddConstOp op) const {
+                                  top::AddConstOp op) const {
   std::vector<NamedAttribute> attrs;
   double const_v = op.getConstVal().convertToDouble();
   auto qtype_in = module::getCalibratedType(op.getInput());
@@ -112,28 +111,30 @@ void AddConstLowering::LoweringF8(PatternRewriter &rewriter,
   }
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "const_val") {
-      attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_v)));
+      attrs.push_back(rewriter.getNamedAttr("const_val",
+                                            rewriter.getF64FloatAttr(const_v)));
     } else {
       attrs.push_back(attr);
     }
   }
 
-  attrs.push_back(rewriter.getNamedAttr("f8_scale", rewriter.getF64FloatAttr(scale)));
+  attrs.push_back(
+      rewriter.getNamedAttr("f8_scale", rewriter.getF64FloatAttr(scale)));
 
   if (isE4) {
     auto newType = getQuantF8E4M3Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType,
-                                               op.getInput(), attrs);
+    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType, op.getInput(),
+                                                 attrs);
   } else {
     auto newType = getQuantF8E5M2Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType,
-                                               op.getInput(), attrs);
+    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType, op.getInput(),
+                                                 attrs);
   }
 }
 
 void AddConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::AddConstOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

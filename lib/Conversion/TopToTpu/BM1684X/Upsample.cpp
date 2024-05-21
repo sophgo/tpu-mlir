@@ -37,7 +37,7 @@ void UpsampleLowering::LoweringF16(PatternRewriter &rewriter,
 
 void UpsampleLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void UpsampleLowering::LoweringQuantized(PatternRewriter &rewriter,

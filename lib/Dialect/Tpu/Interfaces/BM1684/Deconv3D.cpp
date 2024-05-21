@@ -34,7 +34,7 @@ int64_t tpu::Deconv3DOp::getBufferSize_bm1684(
 
 void tpu::Deconv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                            local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 uint32_t tpu::Deconv3DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

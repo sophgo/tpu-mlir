@@ -21,8 +21,7 @@ void tpu::PadOp::codegen_global_bm1684x() {
   i64_array_t pads = module::getI64Array(getPaddings());
   auto ret = pad_reset(shape, *pads, shape_4, pads_4);
   if (ret == false) {
-    dump();
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   std::vector<int64_t> in_shape(shape_4.begin(), shape_4.end());
   std::vector<int64_t> out_shape(shape_4.begin(), shape_4.end());
@@ -55,8 +54,7 @@ int64_t tpu::PadOp::dyn_codegen_global_bm1684x(void *buffer) {
   i64_array_t pads = module::getI64Array(getPaddings());
   auto ret = pad_reset(shape, *pads, shape_4, pads_4);
   if (ret == false) {
-    dump();
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   std::vector<int64_t> in_shape(shape_4.begin(), shape_4.end());
   std::vector<int64_t> out_shape(shape_4.begin(), shape_4.end());
@@ -76,7 +74,7 @@ int64_t tpu::PadOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
@@ -84,7 +82,7 @@ void tpu::PadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                        int64_t h_step, int64_t d_step,
                                        int64_t w_step, group_type_t group_type,
                                        local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return;
 }
 

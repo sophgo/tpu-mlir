@@ -71,12 +71,12 @@ void WhereLowering::LoweringF16(PatternRewriter &rewriter,
 
 void WhereLowering::LoweringF8(PatternRewriter &rewriter,
                                 top::WhereOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void WhereLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::WhereOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

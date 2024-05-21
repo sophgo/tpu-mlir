@@ -62,7 +62,7 @@ void ArgLowering::LoweringF8(PatternRewriter &rewriter, top::ArgOp op) const {
 
 void ArgLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ArgOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

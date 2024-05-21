@@ -81,12 +81,12 @@ void GroupNormLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GroupNormLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::GroupNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GroupNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::GroupNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

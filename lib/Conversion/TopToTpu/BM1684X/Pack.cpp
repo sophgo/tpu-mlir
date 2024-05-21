@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void PackLowering::LoweringINT8(PatternRewriter &rewriter, top::PackOp op,
                                 bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void PackLowering::LoweringINT4(PatternRewriter &rewriter, top::PackOp op,
                                 bool asymmetric) const {
@@ -22,22 +22,22 @@ void PackLowering::LoweringINT4(PatternRewriter &rewriter, top::PackOp op,
 }
 void PackLowering::LoweringF32(PatternRewriter &rewriter,
                                top::PackOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PackLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::PackOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PackLowering::LoweringF16(PatternRewriter &rewriter,
                                top::PackOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PackLowering::LoweringF8(PatternRewriter &rewriter,
                                top::PackOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PackLowering::LoweringQuantized(PatternRewriter &rewriter,

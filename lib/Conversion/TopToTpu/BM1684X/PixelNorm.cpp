@@ -135,7 +135,7 @@ void PixelNormLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PixelNormLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::PixelNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -152,7 +152,7 @@ void PixelNormLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void PixelNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::PixelNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

@@ -52,12 +52,12 @@ void DetectionOutputLowering::LoweringF16(PatternRewriter &rewriter,
 
 void DetectionOutputLowering::LoweringF8(PatternRewriter &rewriter,
                                top::DetectionOutputOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DetectionOutputLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::DetectionOutputOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

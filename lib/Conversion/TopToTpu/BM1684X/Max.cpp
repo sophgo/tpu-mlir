@@ -33,7 +33,7 @@ void MaxLowering::LoweringF16(PatternRewriter &rewriter, top::MaxOp op) const {
 }
 
 void MaxLowering::LoweringF8(PatternRewriter &rewriter, top::MaxOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxLowering::LoweringQuantized(PatternRewriter &rewriter,

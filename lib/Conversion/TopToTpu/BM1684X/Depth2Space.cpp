@@ -39,7 +39,7 @@ void Depth2SpaceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void Depth2SpaceLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::Depth2SpaceOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void Depth2SpaceLowering::LoweringQuantized(PatternRewriter &rewriter,

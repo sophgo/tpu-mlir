@@ -15,7 +15,8 @@ LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
 void top::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CastOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
+  return failure();
 }
 
 void top::CastOp::shape_inference() { common_shape_inference(getOperation()); }

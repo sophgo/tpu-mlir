@@ -68,7 +68,7 @@ void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t c_step,
                                        int64_t h_step, int64_t d_step,
                                        int64_t w_step, group_type_t group_type,
                                        local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 LogicalResult tpu::MaxUnpoolOp::LocalGenSupport() { return failure(); }

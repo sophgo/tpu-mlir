@@ -20,7 +20,7 @@ void tpu::GatherNDOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   auto batch_dims = getBatchDims();
   if (batch_dims != 0) {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   gather_nd_global_param_t param;
   param.batch_dims = batch_dims;
@@ -39,7 +39,7 @@ int64_t tpu::GatherNDOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
   auto batch_dims = getBatchDims();
   if (batch_dims != 0) {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   gather_nd_global_param_t param;
   param.batch_dims = batch_dims;
@@ -48,6 +48,5 @@ int64_t tpu::GatherNDOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::GatherNDOp::get_fw_type_bm1684x() {
-  // llvm_unreachable("Not Implemented");
   return FW_BMNET_GATHERND;
 }

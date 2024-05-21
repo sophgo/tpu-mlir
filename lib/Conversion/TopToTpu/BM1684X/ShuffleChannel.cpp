@@ -39,7 +39,7 @@ void ShuffleChannelLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ShuffleChannelLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::ShuffleChannelOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ShuffleChannelLowering::LoweringQuantized(PatternRewriter &rewriter,

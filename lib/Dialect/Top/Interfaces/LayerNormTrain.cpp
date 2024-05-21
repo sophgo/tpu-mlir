@@ -20,7 +20,7 @@ LogicalResult top::LayerNormTrainOp::init(InferenceParameter &p) {
 void top::LayerNormTrainOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::LayerNormTrainOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

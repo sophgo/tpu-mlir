@@ -25,7 +25,7 @@ LogicalResult tpu::LayerNormBwdOp::inference(InferenceParameter &p) {
 }
 
 uint32_t tpu::LayerNormBwdOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 

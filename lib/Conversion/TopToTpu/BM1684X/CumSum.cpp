@@ -40,12 +40,12 @@ void CumSumLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void CumSumLowering::LoweringF8(PatternRewriter &rewriter,
                                         top::CumSumOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void CumSumLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::CumSumOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

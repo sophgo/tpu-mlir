@@ -12,11 +12,12 @@
 using namespace tpu_mlir::backend;
 
 void tpu::PreprocessOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 int64_t tpu::PreprocessOp::dyn_codegen_global_bm1684x(void *buffer) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
+  return 0;
 }
 
 int64_t tpu::PreprocessOp::get_fw_type_bm1684x() {

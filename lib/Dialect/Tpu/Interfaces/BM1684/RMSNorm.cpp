@@ -14,7 +14,7 @@
 using namespace tpu_mlir::backend;
 
 void tpu::RMSNormOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
 }
 
 int64_t tpu::RMSNormOp::getBufferSize_bm1684(
@@ -29,12 +29,12 @@ void tpu::RMSNormOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::RMSNormOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
 int32_t tpu::RMSNormOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 

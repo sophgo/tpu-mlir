@@ -36,7 +36,7 @@ void SwapChannelLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SwapChannelLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::SwapChannelOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SwapChannelLowering::LoweringQuantized(PatternRewriter &rewriter,

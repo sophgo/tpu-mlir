@@ -47,7 +47,7 @@ void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::SoftplusOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SoftplusLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -62,12 +62,12 @@ void MeanRstdLowering::LoweringF32(PatternRewriter &rewriter, top::MeanRstdOp op
 void MeanRstdLowering::LoweringINT4(PatternRewriter &rewriter, top::MeanRstdOp op,
                                    bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 void MeanRstdLowering::LoweringINT8(PatternRewriter &rewriter, top::MeanRstdOp op,
                                bool asymmetric) const {
   // lowering_common_int8<tpu::MeanRstdOp>(rewriter, op, asymmetric);
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MeanRstdLowering::LoweringBF16(PatternRewriter &rewriter, top::MeanRstdOp op) const {
@@ -84,7 +84,7 @@ void MeanRstdLowering::LoweringF8(PatternRewriter &rewriter, top::MeanRstdOp op)
 
 void MeanRstdLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MeanRstdOp op) const {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

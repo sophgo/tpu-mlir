@@ -57,7 +57,6 @@ void CeilLowering::LoweringF8(PatternRewriter &rewriter,
 
 void CeilLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::CeilOp ceilOp) const {
-  // llvm_unreachable("Not Implemented");
   LoweringINT8(rewriter, ceilOp, true);
 }
 

@@ -30,7 +30,7 @@ void tpu::ShuffleChannelOp::codegen_global_bm1684() {
 }
 
 uint32_t tpu::ShuffleChannelOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 int64_t tpu::ShuffleChannelOp::get_fw_type_bm1684() { return -1; }

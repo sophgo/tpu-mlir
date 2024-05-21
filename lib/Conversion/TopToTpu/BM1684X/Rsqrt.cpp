@@ -53,7 +53,7 @@ void RsqrtLowering::LoweringF8(PatternRewriter &rewriter, top::RsqrtOp op) const
 
 void RsqrtLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::RsqrtOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

@@ -202,7 +202,7 @@ void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ScaleLowering::LoweringF8(PatternRewriter &rewriter,
                                 top::ScaleOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ScaleLowering::LoweringQuantized(PatternRewriter &rewriter,

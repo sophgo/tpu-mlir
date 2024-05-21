@@ -122,7 +122,7 @@ void MulConstLowering::LoweringF8(PatternRewriter &rewriter,
 
 void MulConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::MulConstOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, true);
 }
 

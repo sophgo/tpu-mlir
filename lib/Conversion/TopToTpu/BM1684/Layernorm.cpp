@@ -40,7 +40,7 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
   } else if (axis == 3) {
     group_num = input_shape[1] * input_shape[2];
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
   }
 
   std::vector<NamedAttribute> attrs;

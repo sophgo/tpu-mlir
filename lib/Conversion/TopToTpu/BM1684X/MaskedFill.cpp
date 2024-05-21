@@ -37,12 +37,12 @@ void MaskedFillLowering::LoweringF16(PatternRewriter &rewriter,
 
 void MaskedFillLowering::LoweringF8(PatternRewriter &rewriter,
                                      top::MaskedFillOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaskedFillLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::MaskedFillOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

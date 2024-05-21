@@ -89,12 +89,12 @@ void LayerNormLowering::LoweringF16(PatternRewriter &rewriter,
 
 void LayerNormLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::LayerNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LayerNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::LayerNormOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

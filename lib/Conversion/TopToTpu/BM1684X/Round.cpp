@@ -51,13 +51,13 @@ void RoundLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void RoundLowering::LoweringF8(PatternRewriter &rewriter,
-                              top::RoundOp roundOp) const {
-  llvm_unreachable("Not Implemented");
+                              top::RoundOp op) const {
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RoundLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::RoundOp roundOp) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, roundOp, false);
 }
 

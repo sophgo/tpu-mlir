@@ -91,7 +91,7 @@ void tpu::Pool3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int pad_w = (in_gi.w_idx == 0 ? p.pad_w : 0);
   int pad_w_after = (in_gi.w_idx + in_gi.w_slice == p.iw ? p.pad_w_after : 0);
   if (module::isUniformQuantized(getInput())) {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   } else {
     BM1684::instance().dl_nodechip_pooling3d_local(
         in_gi.out_addr, out_gi.out_addr, out_gi.buffer_addr, (int)in_gi.n_slice,
@@ -104,12 +104,12 @@ void tpu::Pool3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::Pool3DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 int64_t tpu::Pool3DOp::get_fw_type_bm1684() { return -1; }
 
 int32_t tpu::Pool3DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }

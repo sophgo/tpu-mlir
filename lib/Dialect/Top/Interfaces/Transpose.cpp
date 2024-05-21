@@ -18,7 +18,7 @@ LogicalResult top::TransposeOp::init(InferenceParameter &p) {
 void top::TransposeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::TransposeOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 

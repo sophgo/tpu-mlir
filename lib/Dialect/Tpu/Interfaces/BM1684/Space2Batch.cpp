@@ -50,7 +50,7 @@ void tpu::Space2BatchOp::codegen_global_bm1684() {
 }
 
 uint32_t tpu::Space2BatchOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 int64_t tpu::Space2BatchOp::get_fw_type_bm1684() { return -1; }

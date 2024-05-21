@@ -23,7 +23,7 @@ LogicalResult top::PadOp::init(InferenceParameter &p) {
   auto ret = pad_reset(in_shape, *pads, info->shape_4, info->pads_4);
   if (ret == false) {
     dump();
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   p.handle = (void *)info;
   // set pads
@@ -190,7 +190,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
             std::copy(srcptr, srcptr + ow, dstptr + h * ow);
           }
         } else {
-          llvm_unreachable("Not Implemented");
+          UNREACHABLE_THIS("Not Implemented");
         }
       }
     }

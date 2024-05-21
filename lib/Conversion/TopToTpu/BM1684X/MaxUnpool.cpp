@@ -28,22 +28,22 @@ void MaxUnpoolLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void MaxUnpoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::MaxUnpoolOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxUnpoolLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::MaxUnpoolOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxUnpoolLowering::LoweringF8(PatternRewriter &rewriter,
                                     top::MaxUnpoolOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MaxUnpoolLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::MaxUnpoolOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

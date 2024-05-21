@@ -110,12 +110,12 @@ void PReluLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PReluLowering::LoweringF8(PatternRewriter &rewriter,
                                 top::PReluOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::PReluOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

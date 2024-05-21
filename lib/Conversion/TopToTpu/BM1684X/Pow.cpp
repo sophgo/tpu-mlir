@@ -126,12 +126,12 @@ void PowLowering::LoweringF16(PatternRewriter &rewriter, top::PowOp op) const {
 }
 
 void PowLowering::LoweringF8(PatternRewriter &rewriter, top::PowOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PowLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PowOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, true);
 }
 

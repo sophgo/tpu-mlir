@@ -46,7 +46,7 @@ void SoftsignLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftsignLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::SoftsignOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SoftsignLowering::LoweringQuantized(PatternRewriter &rewriter,

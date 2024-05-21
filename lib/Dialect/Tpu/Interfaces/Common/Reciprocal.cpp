@@ -34,7 +34,7 @@ LogicalResult tpu::ReciprocalOp::inference(InferenceParameter &p) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_THIS("Not Implemented");
   }
   return success();
 }

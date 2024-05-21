@@ -65,12 +65,12 @@ void HardSigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void HardSigmoidLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::HardSigmoidOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void HardSigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::HardSigmoidOp op) const {
-  // llvm_unreachable("Not Implemented");
+  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, true);
 }
 

@@ -40,7 +40,7 @@ void SwapDimInnerLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SwapDimInnerLowering::LoweringF8(PatternRewriter &rewriter,
                                        top::SwapDimInnerOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SwapDimInnerLowering::LoweringQuantized(PatternRewriter &rewriter,

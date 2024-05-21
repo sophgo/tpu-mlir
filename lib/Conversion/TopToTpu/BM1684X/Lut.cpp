@@ -14,28 +14,28 @@ namespace bm1684x {
 
 void LutLowering::LoweringINT8(PatternRewriter &rewriter, top::LutOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringINT4(PatternRewriter &rewriter, top::LutOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringF32(PatternRewriter &rewriter, top::LutOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringBF16(PatternRewriter &rewriter, top::LutOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringF16(PatternRewriter &rewriter, top::LutOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringF8(PatternRewriter &rewriter, top::LutOp op) const {
-  llvm_unreachable("Not Implemented");
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void LutLowering::LoweringQuantized(PatternRewriter &rewriter,

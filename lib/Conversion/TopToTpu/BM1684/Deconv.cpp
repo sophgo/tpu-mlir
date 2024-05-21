@@ -32,7 +32,7 @@ static void Deconv_Lowering_F32(PatternRewriter &rewriter, top::DeconvOp op) {
     rewriter.replaceOpWithNewOp<tpu::Deconv3DOp>(op, op.getOutput().getType(),
                                                  operands, attrs);
   } else {
-    llvm_unreachable("Not Implemented");
+    UNREACHABLE_OP("Not Implemented", op);
   }
 }
 
@@ -122,7 +122,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     if (op.getKernelShape().size() == 2) {
       rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
     } else {
-      llvm_unreachable("Not Implemented");
+      UNREACHABLE_OP("Not Implemented", op);
     }
   }
 }
