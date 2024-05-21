@@ -2932,6 +2932,7 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
+    // return failure();
     std::vector<Operation *> op_need_del;
     if (!module::isBM1684X())
       return failure();
@@ -2962,6 +2963,12 @@ public:
       qm_one = true;
     } else {
       if (!o_permute->hasOneUse()) {
+        return failure();
+      }
+      auto o_permute_order = module::getI64Array(o_permute.getOrder());
+      if (o_permute_order->size() != 4 || o_permute_order->at(0) != 0
+          || o_permute_order->at(1) != 2 || o_permute_order->at(2) != 3
+          || o_permute_order->at(3) != 1) {
         return failure();
       }
       reshape_op =
