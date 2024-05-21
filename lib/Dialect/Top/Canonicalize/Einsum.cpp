@@ -191,18 +191,31 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
       attrs.clear();
       rewriter.eraseOp(op);
 
-    }  else if (mode == "abcd,cde->abce"){
+    } else if (mode == "abc,adc->abd") {
+      auto loc = NameLoc::get(rewriter.getStringAttr(name));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], rshape[1]}, module::getElementType(op));
+      operands.push_back(lhs);
+      operands.push_back(rhs);
+      operands.push_back(none);
+      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      op.replaceAllUsesWith(matmulOp.getOperation());
+      attrs.clear();
+      rewriter.eraseOp(op);
 
-    // lhs :
-    //     abcd -> acbd(pemute)
-    // rhs :
-    //     cde  -> 1cde(reshape)
-    //     acde -> acde(tile)
-    // matmul:
-    //   lhs(acbd) * rhs(acde) = result(acbe)
-    // result:
-    //     acbe -> abce(pemute)
-    // success!
+    } else if (mode == "abcd,cde->abce") {
+
+      // lhs :
+      //     abcd -> acbd(pemute)
+      // rhs :
+      //     cde  -> 1cde(reshape)
+      //     acde -> acde(tile)
+      // matmul:
+      //   lhs(acbd) * rhs(acde) = result(acbe)
+      // result:
+      //     acbe -> abce(pemute)
+      // success!
 
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_trans"));
