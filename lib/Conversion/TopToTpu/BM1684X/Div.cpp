@@ -12,6 +12,22 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void DivTryLowering::Lowering(PatternRewriter &rewriter, top::DivOp op) const {
+  auto opds = op->getOperands();
+  auto with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
+  });
+  auto all_shape_wight = std::all_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>() ||
+           module::isWeight(opd);
+  });
+  if (with_shape && !all_shape_wight) {
+    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+      try_insert_host2device(op, idx);
+    }
+  }
+}
+
 void DivLowering::LoweringF32(PatternRewriter &rewriter, top::DivOp op) const {
   lowering_common_f32<tpu::DivOp>(rewriter, op);
 }

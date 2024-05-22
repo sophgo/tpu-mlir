@@ -74,7 +74,9 @@ void top::DivOp::shape_inference() {
         auto data = in_op.getDefiningOp<top::WeightOp>().read_as_float();
         std::vector<int64_t> data_v(data->begin(), data->end());
         input_shapes_v.push_back(data_v);
-      } else{
+      } else if(out_shape.size()>1){
+        break;
+      }else{
         llvm_unreachable("Dynamic type is illegal");
       }
     }
