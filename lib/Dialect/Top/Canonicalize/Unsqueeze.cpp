@@ -27,6 +27,8 @@ struct TopRemoveReshapeAndUnsqueezeWhenScalar : public OpRewritePattern<Unsqueez
         return failure();
       }
       op.getOutput().replaceAllUsesWith(former_op.getInput());
+      auto former_former_op = former_op.getInput().getDefiningOp();
+      former_former_op->setLoc(op.getLoc());
       rewriter.eraseOp(op);
       rewriter.eraseOp(former_op);
       return success();
@@ -174,6 +176,8 @@ struct TopUnsqueezeErase : public OpRewritePattern<UnsqueezeOp> {
       return failure();
     }
     op.getOutput().replaceAllUsesWith(op.getInput());
+    auto former_op = op.getInput().getDefiningOp();
+    former_op->setLoc(op.getLoc());
     rewriter.eraseOp(op);
     return success();
   }
