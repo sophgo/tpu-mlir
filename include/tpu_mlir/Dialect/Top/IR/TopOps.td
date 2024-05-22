@@ -3352,4 +3352,23 @@ def Top_MeanRstdOp: Top_Op<"MeanRstd">{
     AnyTensor:$bias_new
     );
 }
+
+def Top_GroupNormTrainOp : Top_Op<"GroupNormTrain"> {
+  let summary = "GroupNorm operation";
+  let description = [{
+    group normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    I64Attr:$num_groups,
+    F64Attr:$eps
+  );
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mean,
+    AnyTensor:$rstd
+  );
+}
 #endif // Top_OPS
