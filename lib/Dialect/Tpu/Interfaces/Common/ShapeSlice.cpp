@@ -25,10 +25,18 @@ LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
   std::vector<int64_t> in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
+  const size_t slice_dims = offset_v->size();
   // just support the dims of input & input is equal.
   while (out_dims < in_dims) {
     out_shape.insert(out_shape.begin(), 1);
     out_dims++;
+  }
+  for (int i = 0; i < slice_dims; ++i) {
+    if (offset_v->at(i) < 0) {
+      offset_v->at(i) += in_shape[i];
+    }
+    offset_v->at(i) = steps_v->at(i) > 0 ? std::clamp(offset_v->at(i), 0L, in_shape[i])
+                        : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
   }
 
   // slice[range] -> (offset + stride)

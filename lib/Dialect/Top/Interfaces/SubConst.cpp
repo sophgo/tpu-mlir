@@ -40,7 +40,7 @@ LogicalResult top::SubConstOp::inference(InferenceParameter &p) {
 
 void top::SubConstOp::shape_inference() {
   common_shape_inference(getOperation());
-    if (module::isShape(getInput())) {
+  if (module::isShape(getInput())) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     auto input_shape_v = module::getShapeTensorValue(getInput());
     input_shapes_v.push_back(input_shape_v);

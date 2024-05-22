@@ -309,7 +309,12 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
     rewriter.replaceAllUsesWith(nextOp->getResult(0), op->getResult(0));
     // next -> perm
     rewriter.updateRootInPlace(op, [&] {
-      op->setOperands(nextOp->getResults());
+      std::vector<Value> operands;
+      operands.push_back(nextOp->getResult(0));
+      if (op.getShapeT()) {
+        operands.push_back(op.getShapeT());
+      }
+      op->setOperands(operands);
       op->getResult(0).setType(outputType);
       // linear IR, tweak order
       op->moveAfter(nextOp);

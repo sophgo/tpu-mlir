@@ -47,6 +47,10 @@ int64_t tpu::ShapeArithOp::dyn_codegen_global_bm1684x(void *buffer) {
       return BM168x::dynamic_spec_to_buffer(buffer, BINARY_MAX);
     else if (op_type == "Equal")
       return BM168x::dynamic_spec_to_buffer(buffer, BINARY_EQ);
+    else if (op_type == "NotEqual")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_NE);
+    else
+      llvm_unreachable("Not supported now");
   }
   return sizeof(int);
 }

@@ -51,9 +51,17 @@ LogicalResult top::DivOp::inference(InferenceParameter &p) {
 
 void top::DivOp::shape_inference() {
   broadcast_shape_inference(getOperation());
+  bool has_scalar = false;
   for (int i = 0; i < getNumOperands(); i++) {
     auto value = getInputs()[i];
     broadcast_tensor_reshape(getOutput(), value);
+    has_scalar = has_scalar || module::isScalar(value.getDefiningOp());
+  }
+  auto out_shape = module::getShape(getOutput());
+  if (out_shape.size() == 1 && out_shape[0] == 1 && has_scalar) {
+    auto context = getContext();
+    mlir::Builder builder(context);
+    setIsScalarAttr(builder.getBoolAttr(true));
   }
   if (llvm::find_if(getOperands(), module::isShape) != getOperands().end()) {
     auto inputs = getInputs();
@@ -70,13 +78,12 @@ void top::DivOp::shape_inference() {
         llvm_unreachable("Dynamic type is illegal");
       }
     }
-    auto out_shape = module::getShape(getOutput());
     if(out_shape.size() == 1 || out_shape.size() == 0){
       auto output_shape_v =
           module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
-      module::setShapeOrVerify(getOutput(), out_shape);
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
     }
   }
 }
