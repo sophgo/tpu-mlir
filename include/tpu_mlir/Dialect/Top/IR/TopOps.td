@@ -562,7 +562,7 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, SupportConstant, ScalarProducer, 
   let hasCanonicalizer = 1;
 }
 
-def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu, SupportConstant]> {
+def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu, SupportConstant, ScalarProducer, ScalarConsumer]> {
   let summary = "sub operator";
 
   let description = [{
@@ -575,13 +575,14 @@ def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu, SupportConstant]> {
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<F64ArrayAttr>:$coeff
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, SupportConstant]> {
+def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, SupportConstant, ScalarProducer, ScalarConsumer]> {
   let summary = "Mul operator";
 
   let description = [{
@@ -591,7 +592,8 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, SupportConstant]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);
@@ -1599,7 +1601,7 @@ def Top_MishOp: Top_Op<"Mish"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_DivOp: Top_Op<"Div"> {
+def Top_DivOp: Top_Op<"Div", [ScalarProducer, ScalarConsumer]> {
   let summary = "Div operator";
 
   let description = [{
@@ -1610,7 +1612,8 @@ def Top_DivOp: Top_Op<"Div"> {
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
 
   let results = (outs AnyTensor:$output);

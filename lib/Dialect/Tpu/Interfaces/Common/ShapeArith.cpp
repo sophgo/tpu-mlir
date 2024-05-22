@@ -18,16 +18,25 @@ LogicalResult tpu::ShapeArithOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
-  auto type = getType();
   algorithm alg;
-  if (type == "Add") {
-    alg = algorithm::binary_add;
-  } else if (type == "Sub") {
-    alg = algorithm::binary_sub;
-  } else if (type == "Mul") {
-    alg = algorithm::binary_mul;
+  std::map<std::string, algorithm> map_mode = {
+    {"Add",            algorithm::binary_add},
+    {"Sub",            algorithm::binary_sub},
+    {"Mul",            algorithm::binary_mul},
+    {"Div",            algorithm::binary_div},
+    {"Less",           algorithm::binary_lt},
+    {"Greater",        algorithm::binary_gt},
+    {"LessOrEqual",    algorithm::binary_le},
+    {"GreaterOrEqual", algorithm::binary_ge},
+    {"Min",            algorithm::binary_min},
+    {"Max",            algorithm::binary_max},
+    {"Equal",          algorithm::binary_eq},
+    {"NotEqual",       algorithm::binary_ne}};
+  auto iter = map_mode.find(getType().str());
+  if (iter != map_mode.end()) {
+    alg = iter->second;
   } else {
-    return failure();
+    llvm_unreachable("Get unsupported arith type!");
   }
 
   (*binary)

@@ -102,11 +102,16 @@ int64_t tpu::TileOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
 
-  if((*input_spec).size() == 1){
+  auto input_num = (*input_spec).size();
+  if(input_num == 1 || (input_num == 2 && !module::isNone(getBuffer()))) {
     param.coeff_is_fixed = true;
     auto tile_vec = *module::getI64Array(getTile());
-    for(int i = 0; i < tile_vec.size(); ++i){
+    auto tile_vec_size = tile_vec.size();
+    for(int i = 0; i < tile_vec_size; ++i){
       param.spec.common.tile_coeff[i] = tile_vec[i];
+    }
+    for (int i = tile_vec_size; i < MAX_SHAPE_DIMS; ++i) {
+      param.spec.common.tile_coeff[i] = 1;
     }
   } else {
     param.coeff_is_fixed = false;
