@@ -3633,4 +3633,23 @@ def Tpu_MoveOp:Tpu_BaseOp<"Move"> {
                                                     std::vector<int64_t>& move_size);
   }];
 }
+
+def Tpu_GroupNormTrainOp : Tpu_Op<"GroupNormTrain"> {
+  let summary = "GroupNorm operation";
+  let description = [{
+    group normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    I64Attr:$num_groups,
+    F64Attr:$eps
+  );
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mean,
+    AnyTensor:$rstd
+  );
+}
 #endif // TPU_OPS
