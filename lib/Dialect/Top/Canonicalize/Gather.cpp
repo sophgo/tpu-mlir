@@ -58,12 +58,11 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       std::vector<int64_t> slice_shape = input_shape;
       slice_shape[ax] = 1;
       auto new_type = module::getTypeLike(op.getOutput(), slice_shape);
+      auto new_loc = module::getLocLike(op.getOutput(), "slice");
       auto slice_op =
-          rewriter.create<SliceOp>(op.getLoc(), new_type, operands, attrs);
-
-      auto new_loc = module::getLocLike(op.getOutput(), "_reshape");
+          rewriter.create<SliceOp>(new_loc, new_type, operands, attrs);
       auto reshape_op = rewriter.create<ReshapeOp>(
-          new_loc, op.getType(), ValueRange{slice_op.getOutput()});
+          op.getLoc(), op.getType(), ValueRange{slice_op.getOutput()});
       rewriter.replaceOp(op, {reshape_op.getOutput()});
       return success();
     } else if (inds_shape.size() == 1) {
