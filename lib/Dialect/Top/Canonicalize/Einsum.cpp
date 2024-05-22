@@ -192,16 +192,23 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
       rewriter.eraseOp(op);
 
     } else if (mode == "abc,adc->abd") {
+
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      auto type_permute = RankedTensorType::get({rshape[0], rshape[2], rshape[1]}, module::getElementType(rhs));
+      auto loc_permute = NameLoc::get(rewriter.getStringAttr(rname + "_permute"));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto permuteOp = rewriter.create<PermuteOp>(loc_permute, type_permute, ValueRange{rhs}, attrs);
+      attrs.clear();
+
+      rewriter.setInsertionPointAfter(op);
       auto loc = NameLoc::get(rewriter.getStringAttr(name));
+
       auto newType = RankedTensorType::get({lshape[0], lshape[1], rshape[1]}, module::getElementType(op));
       operands.push_back(lhs);
-      operands.push_back(rhs);
+      operands.push_back(permuteOp);
       operands.push_back(none);
-      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
-      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
-      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands);
       op.replaceAllUsesWith(matmulOp.getOperation());
-      attrs.clear();
       rewriter.eraseOp(op);
 
     } else if (mode == "abcd,cde->abce") {
