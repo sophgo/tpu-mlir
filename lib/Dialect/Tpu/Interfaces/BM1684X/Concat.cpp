@@ -17,12 +17,12 @@ using namespace tpu_mlir::backend;
 
 void tpu::ConcatOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  if (getOnlyMerge()) {
-    return;
-  }
   int num_input = getInputs().size();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  if (getOnlyMerge() && input_spec->at(0).addr == output_spec->at(0).addr) {
+    return;
+  }
   concat_global_spec_t spec = {0};
   spec.common.input_num = num_input;
   spec.common.concat_axis = getAxis();

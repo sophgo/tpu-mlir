@@ -108,7 +108,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   } else {
     g_addr = module::getAddress(getInput());
   }
-  llvm::errs() <<"loadOp g_addr:"<<g_addr<<"\n";
+  // llvm::errs() <<"loadOp g_addr:"<<g_addr<<"\n";
 #if 0
   //note: trick for imgToCol pattern
   const auto defBySliceOp = [&] (Value v) {
