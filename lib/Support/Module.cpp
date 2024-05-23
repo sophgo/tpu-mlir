@@ -117,7 +117,7 @@ static ModuleOp getModuleOp(Value v) {
   return cast<ModuleOp>(parent_op);
 }
 
-static ModuleOp getModuleOp(Operation *op) {
+ModuleOp getModuleOp(Operation *op) {
   while (op != nullptr && !isa<ModuleOp>(op)) {
     op = op->getParentOp();
   }

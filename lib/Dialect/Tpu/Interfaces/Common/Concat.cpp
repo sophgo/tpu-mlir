@@ -84,7 +84,9 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
     if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
       return success();
     }
-  } else if (module::isBM1684Family()) {
+    return failure();
+  }
+  if (module::isBM1684Family()) {
     auto status = success();
     auto runMode = getRunMode(getOperation());
     if (ax > 3 ||
@@ -95,10 +97,26 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
       status = failure();
     }
     return status;
-  } else {
-    return ax > 3 || ax == 0 ? failure() : success();
   }
-  return failure();
+  do {
+    // for LLM, concat output and input
+    if (module::getAddrMode() == module::AddrMode::IO_ALONE) {
+      auto m = module::getModuleOp(getOperation());
+      std::vector<mlir::Value> ios;
+      module::getInputsOutputs(m, ios, ios);
+      bool allIO = true;
+      for (auto v : getInputs()) {
+        if (std::find(ios.begin(), ios.end(), v) == ios.end()) {
+          allIO = false;
+          break;
+        }
+      }
+      if (allIO) {
+        return failure();
+      }
+    }
+  } while (false);
+  return ax > 3 || ax == 0 ? failure() : success();
 }
 
 void tpu::ConcatOp::assign_fw_param(void *param) {
