@@ -37,6 +37,12 @@ public:
     module::setDeviceNum(num_device);
     assert(num_core > 0);
     module::setCoreNum(num_core);
+    auto mode = module::AddrMode::BASIC;
+    if (addr_mode != "auto") {
+      mode = module::symbolizeAddrMode(addr_mode).value_or(
+          module::AddrMode::BASIC);
+    }
+    module::setAddrMode(mode);
     backend::Arch::init(0);
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {

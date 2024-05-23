@@ -24,6 +24,7 @@ from utils.log_setting import setup_logger
 
 logger = setup_logger("deploy")
 
+
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
@@ -138,11 +139,23 @@ class DeployTool:
             self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
             self.final_mlir = "{}_final.mlir".format(self.prefix)
-            patterns = mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device,
-                          self.num_core, self.cali_table, self.asymmetric, self.quantize_table,
-                          self.customization_format, self.fuse_preprocess, self.aligned_input,
-                          self.ignore_f16_overflow, self.do_winograd, self.q_group_size,
-                          True if self.patterns_count else False)
+            patterns = mlir_lowering(self.mlir_file,
+                                     self.tpu_mlir,
+                                     self.quantize,
+                                     self.chip,
+                                     self.num_device,
+                                     self.num_core,
+                                     self.cali_table,
+                                     self.asymmetric,
+                                     self.quantize_table,
+                                     self.customization_format,
+                                     self.fuse_preprocess,
+                                     self.aligned_input,
+                                     self.ignore_f16_overflow,
+                                     self.do_winograd,
+                                     self.q_group_size,
+                                     True if self.patterns_count else False,
+                                     addr_mode=self.addr_mode)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
@@ -234,11 +247,13 @@ class DeployTool:
         if not self.cache_skip:
             file_mark(self.model_npz)
         # dynamic layer output data dump
-        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ["NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
-            if self.chip in ("bm1684x","bm1688") and self.state != "TOP_QUANTIZED":
+        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ[
+                "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
+            if self.chip in ("bm1684x", "bm1688") and self.state != "TOP_QUANTIZED":
                 dyn_layer_out_data_path = "./.tmp"
                 os.system(f"export DYNAMIC_LAYER_OUTPUT_DATA_PATH={dyn_layer_out_data_path}")
-                os.system("export DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH={}".format(os.path.join(dyn_layer_out_data_path, "id_dict")))
+                os.system("export DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH={}".format(
+                    os.path.join(dyn_layer_out_data_path, "id_dict")))
                 if not os.path.exists(dyn_layer_out_data_path):
                     os.makedirs(dyn_layer_out_data_path)
                 else:
@@ -258,10 +273,11 @@ class DeployTool:
             return {}
         else:
             patterns = mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
-                          self.quant_input, self.quant_output, self.quant_input_list,
-                          self.quant_output_list, self.disable_layer_group, self.opt,
-                          self.merge_weight, self.op_divide, self.embed_debug_info, self.addr_mode,
-                          self.group_by_cores, self.model_version, True if self.patterns_count else False, self.compress_mode)
+                                     self.quant_input, self.quant_output, self.quant_input_list,
+                                     self.quant_output_list, self.disable_layer_group, self.opt,
+                                     self.merge_weight, self.op_divide, self.embed_debug_info,
+                                     self.group_by_cores, self.model_version,
+                                     True if self.patterns_count else False, self.compress_mode)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()

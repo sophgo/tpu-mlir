@@ -112,6 +112,7 @@ void setPostprocess(StringRef post);
 //-----------------------------------------------------------------
 
 ModuleOp getModuleOp();
+ModuleOp getModuleOp(Operation *op); // get moduleop that op belong to
 Location getLoc();
 MLIRContext *getCtx();
 
