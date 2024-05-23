@@ -26,12 +26,20 @@ class DmaCmd(BaseTpuCmd, Dma):
     def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
         super().__init__(reg, buf=buf, subnet_id=subnet_id)
         self.name = "dma"
-
+        self._cmd_id = None
+        self._cmd_id_dep = None
 
     def __repr__(self):
+        cmd_id_desc = self.cmd_id
+        cmd_id_dep_desc = self.cmd_id_dep
+        if self._cmd_id is not None:
+            cmd_id_desc = f"{cmd_id_desc}({self.reg.cmd_id})"
+        if self._cmd_id_dep is not None:
+            cmd_id_dep_desc = f"{cmd_id_dep_desc}({self.reg.cmd_id_dep})"
+
         if self.operands == []:
             op_name = dma_tensor.description
-            return f"%D{self.cmd_id} = {op_name}(%B{self.cmd_id_dep})"
+            return f"%D{cmd_id_desc} = {op_name}(%B{cmd_id_dep_desc})"
 
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
@@ -42,19 +50,31 @@ class DmaCmd(BaseTpuCmd, Dma):
         op_name = self.sp_fun[self.reg["cmd_special_function"]]
 
         return (
-            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
+            f"{', '.join(res_name)}, %D{cmd_id_desc} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %B{cmd_id_dep_desc})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
 
     @property
     def cmd_id_dep(self):
+        if self._cmd_id_dep is not None:
+            return self._cmd_id_dep
         return self.reg.cmd_id_dep
+
+    @cmd_id_dep.setter
+    def cmd_id_dep(self, v):
+        self._cmd_id_dep = v
 
     @property
     def cmd_id(self):
+        if self._cmd_id is not None:
+            return self._cmd_id
         return self.reg.cmd_id
+
+    @cmd_id.setter
+    def cmd_id(self, v):
+        self._cmd_id = v
 
 
 class TiuCmd(BaseTpuCmd, Tiu):
@@ -69,6 +89,8 @@ class TiuCmd(BaseTpuCmd, Tiu):
     def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
         super().__init__(reg, buf=buf, subnet_id=subnet_id)
         self.name = reg.OP_NAME
+        self._cmd_id = None
+        self._cmd_id_dep = None
 
     def __init_subclass__(cls) -> None:
         tiu_cls[cls.__name__] = {
@@ -79,9 +101,16 @@ class TiuCmd(BaseTpuCmd, Tiu):
         return cls
 
     def __repr__(self) -> str:
+        cmd_id_desc = self.cmd_id
+        cmd_id_dep_desc = self.cmd_id_dep
+        if self._cmd_id is not None:
+            cmd_id_desc = f"{cmd_id_desc}({self.reg.cmd_id})"
+        if self._cmd_id_dep is not None:
+            cmd_id_dep_desc = f"{cmd_id_dep_desc}({self.reg.cmd_id_dep})"
+
         if self.operands == []:
             op_name = tiu_cls[self.reg.OP_NAME]["description"]
-            return f"%B{self.cmd_id} = {op_name}(%D{self.cmd_id_dep})"
+            return f"%B{cmd_id_desc} = {op_name}(%D{cmd_id_dep_desc})"
 
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
@@ -97,19 +126,31 @@ class TiuCmd(BaseTpuCmd, Tiu):
             op_name = op_info["tsk_eu_typ"][eu_type_id]
 
         return (
-            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
+            f"{', '.join(res_name)}, %B{cmd_id_desc} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %D{cmd_id_dep_desc})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
 
     @property
     def cmd_id_dep(self):
+        if self._cmd_id_dep is not None:
+            return self._cmd_id_dep
         return self.reg.cmd_id_dep
+
+    @cmd_id_dep.setter
+    def cmd_id_dep(self, v):
+        self._cmd_id_dep = v
 
     @property
     def cmd_id(self):
+        if self._cmd_id is not None:
+            return self._cmd_id
         return self.reg.cmd_id
+
+    @cmd_id.setter
+    def cmd_id(self, v):
+        self._cmd_id = v
 
 
 class conv_op(TiuCmd):

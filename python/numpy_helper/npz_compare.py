@@ -193,9 +193,11 @@ def npz_compare(args_list):
         step = len(names_list) // 200
         if step > 1:
             names_list = names_list[::step]
-        if names[-1] not in names_list:
-            # last compare is very important
-            names_list.append(names[-1])
+
+        for i in range(1,10):
+            if names[-i] not in names_list:
+                # last n value may be outputs, these comparison is very important
+                names_list.append(names[-1])
     process_number = min(multiprocessing.cpu_count(), 8)
     if args.per_axis_compare >= 0:
         process_number = 1

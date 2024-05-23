@@ -21,7 +21,14 @@ from typing import List, Union, Dict
 from utils.log_setting import setup_logger
 
 logger = setup_logger("debugger")
-print = logger.print
+
+
+# print = logger.info
+def print(*args):
+    info = ", ".join([str(i) for i in args])
+    logger.info(info)
+
+
 debug = logger.debug
 
 
@@ -48,12 +55,12 @@ class MlirDebugger:
     middle_results, failed, counter = mlir.invoke_from(['ref.1','supp.1'],'358',ipt,torch_ref)
     """
 
-    def __init__(self, mlir_file: str):
+    def __init__(self, mlir_file: str, tc: TensorCompare = None):
         self.mlir_file = mlir_file
         self.parser = MlirParser(mlir_file)
 
         self.oldcwd = os.getcwd()
-        os.chdir(os.path.dirname(mlir_file))
+        os.chdir(os.path.dirname(os.path.realpath(mlir_file)))
 
         self.weight_file = self.parser.module_weight_file
         if os.path.exists(self.weight_file):
@@ -61,13 +68,15 @@ class MlirDebugger:
         else:
             raise KeyError(f"{self.weight_file} not exists in cwd: {os.getcwd()}")
 
-        self.tc = TensorCompare(
-            close_order_tol=3,
-            cosine_similarity_tol=0.99,
-            euclidean_similarity_tol=0.9,
-            signal_to_quantization_noise_tol=float("-inf"),
-            per_axis_compare=-1,
-        )
+        if tc is None:
+            tc = TensorCompare(
+                close_order_tol=3,
+                cosine_similarity_tol=0.99,
+                euclidean_similarity_tol=0.9,
+                signal_to_quantization_noise_tol=float("-inf"),
+                per_axis_compare=-1,
+            )
+        self.tc = tc
 
         self.module = pymlir.module()
         self.module.load(os.path.basename(mlir_file))
@@ -215,9 +224,9 @@ class MlirDebugger:
                                     print(
                                         f"inplace because shape not equal memo {memo[pre].shape} but ref {reference[pre].shape}"
                                     )
-                                    memo[pre].flatten()[
-                                        : reference[pre].size
-                                    ] = reference[pre].flatten()
+                                    memo[pre].flatten()[: reference[pre].size] = (
+                                        reference[pre].flatten()
+                                    )
                                 else:
                                     memo[pre] = reference[pre]
 
