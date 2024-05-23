@@ -27,7 +27,7 @@ def main():
         help="The reference data used for checking this BModel.",
     )
     parser.add_argument(
-        "--tolerance", default="0.99,0.90", help="tolerance for compare."
+        "--tolerance", default="0.99,0.99", help="tolerance for compare."
     )
     parser.add_argument(
         "--dump_mode",
@@ -101,7 +101,6 @@ if __name__ == "__main__":
         extra_plugins=extra_plugins,
         extra_check=[],
         ddr_size=args.ddr_size,
-        checker=True,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     if args.fail_fast:
