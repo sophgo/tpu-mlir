@@ -104,9 +104,14 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
       auto m = module::getModuleOp(getOperation());
       std::vector<mlir::Value> ios;
       module::getInputsOutputs(m, ios, ios);
+      std::vector<StringRef> names;
+      for (auto io : ios) {
+        names.push_back(module::getName(io));
+      }
       bool allIO = true;
       for (auto v : getInputs()) {
-        if (std::find(ios.begin(), ios.end(), v) == ios.end()) {
+        auto name = module::getName(v);
+        if (std::find(names.begin(), names.end(), name) == names.end()) {
           allIO = false;
           break;
         }
