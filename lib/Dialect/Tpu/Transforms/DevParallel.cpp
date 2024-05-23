@@ -340,7 +340,7 @@ public:
         module::applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
-        module::applyPatternOnce<EmbeddingSliceMerge>(mOp);
+        // module::applyPatternOnce<EmbeddingSliceMerge>(mOp);
       } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                  mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
         module::applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
