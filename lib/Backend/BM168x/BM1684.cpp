@@ -316,6 +316,8 @@ void BM1684::before_codegen() {
   BM168x::before_codegen();
   gdma_group_id.clear();
   gdma_group_id.push_back(0);
+  bdc_total_id = 0;
+  gdma_total_id = 0;
   bdc_group_id.clear();
   bdc_group_id.push_back(0);
   gdma_bytes.clear();
