@@ -251,6 +251,7 @@ class OnnxConverter(BaseConverter):
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Softplus": lambda node: self.convert_softplus_op(node),
+            "SpaceToDepth": lambda node: self.convert_space2depth_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
             "Sub": lambda node: self.convert_sub_op(node),
@@ -920,6 +921,22 @@ class OnnxConverter(BaseConverter):
                                    block_w=blocksize,
                                    is_CRD=(mode != b"DCR"),
                                    is_inversed=False,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_space2depth_op(self, onnx_node):
+        assert (onnx_node.op_type == "SpaceToDepth")
+        op = self.getOperand(onnx_node.inputs[0])
+        blocksize = onnx_node.attrs['blocksize']
+        mode = onnx_node.attrs.get("mode", b"DCR")
+        new_op = top.Depth2SpaceOp(self.unranked_type,
+                                   op,
+                                   block_h=blocksize,
+                                   block_w=blocksize,
+                                   is_CRD=(mode != b"DCR"),
+                                   is_inversed=True,
                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
