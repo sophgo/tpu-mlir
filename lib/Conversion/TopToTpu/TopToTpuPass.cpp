@@ -12,12 +12,12 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/Float8.h"
+#include "tpu_mlir/Backend/Arch.h"
 #include <regex>
 
 namespace tpu_mlir {
 
-template <typename OpTy>
-static void BackwardOp(OpTy op) {
+template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -36,8 +36,7 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy>
-static void ForwardOp(OpTy op) {
+template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -358,8 +357,7 @@ struct SetSubSignPattern : public OpRewritePattern<top::SubOp> {
       auto new_out_type = quant::CalibratedQuantizedType::get(
           module::getStorageType(out), out_qtype.getMax() * (-0.1),
           out_qtype.getMax());
-      auto new_type =
-          RankedTensorType::get(out_type.getShape(), new_out_type);
+      auto new_type = RankedTensorType::get(out_type.getShape(), new_out_type);
       out.setType(new_type);
       Forward(out);
       return success();
@@ -816,11 +814,9 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     return false;
   }
 
-  static inline void merge_two_dims(
-          std::vector<int64_t> & ashape,
-          std::vector<int64_t> & bshape,
-          int dims,
-          int d_th) {
+  static inline void merge_two_dims(std::vector<int64_t> &ashape,
+                                    std::vector<int64_t> &bshape, int dims,
+                                    int d_th) {
     ashape[d_th] *= ashape[d_th + 1];
     bshape[d_th] *= bshape[d_th + 1];
     for (int i = d_th + 1; i < dims - 1; i++) {
@@ -842,7 +838,8 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     if (shape_dim > 4) {
       int i = 0;
       while (i < shape_dim - 1) {
-        if (can_be_merged(ashape_[i], ashape_[i + 1], bshape_[i], bshape_[i + 1])) {
+        if (can_be_merged(ashape_[i], ashape_[i + 1], bshape_[i],
+                          bshape_[i + 1])) {
           merge_two_dims(ashape_, bshape_, shape_dim, i);
           --shape_dim;
         } else {
@@ -967,6 +964,108 @@ struct TryInsertTileMatMulPattern : public OpRewritePattern<top::MatMulOp> {
   }
 };
 
+// prepare for W4A16 MatMul
+struct W4A16MatMulPreparePattern : public OpRewritePattern<top::MatMulOp> {
+  using OpRewritePattern<top::MatMulOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto qmode = getOpQuantMode(op);
+    if (!module::isWeight(op.getRight())) {
+      return failure();
+    }
+    // W8A16
+    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8BF16) {
+      if (op.getWeightBits() == 8) {
+        return failure();
+      }
+      op.setWeightBits(8);
+      return success();
+    }
+    // W4A16
+    if (qmode != module::Mode::W4BF16 && qmode != module::Mode::W4F16) {
+      return failure();
+    }
+    if (op.getWeightBits() == 4) {
+      return failure();
+    }
+    op.setWeightBits(4);
+    if (module::getQuantGroupSize() <= 0) {
+      return success();
+    }
+    auto out = op.getOutput();
+    auto o_shape = module::getShape(out);
+    auto o_name = module::getName(out);
+    auto target_mode = (qmode == module::Mode::W4BF16 ? module::Mode::BF16
+                                                      : module::Mode::F16);
+    // if has q_group_size, means npu_num must be divided exactly by N
+    auto r_shape = module::getShape(op.getRight());
+    auto N = r_shape.back();
+    if (N % backend::Arch::NPU_NUM == 0) {
+      return success();
+    }
+    if (N < backend::Arch::NPU_NUM) {
+      LoweringConfig::quantize_map[o_name.str()] = target_mode;
+      return success();
+    }
+    if (!module::isWeight(op.getBias()) && !module::isNone(op.getBias())) {
+      UNREACHABLE_OP("op filter is weight, but bias is not weight", op);
+    }
+    auto N1 = N % backend::Arch::NPU_NUM;
+    auto N0 = N - N1;
+    rewriter.setInsertionPoint(op);
+    // op 0
+    std::vector<Value> opds0;
+    auto w0 = module::opSliceAxis(rewriter, op.getRight(), -1, 0, N0);
+    opds0.push_back(op.getInput());
+    opds0.push_back(w0);
+    if (module::isWeight(op.getBias())) {
+      auto b0 = module::opSliceAxis(rewriter, op.getBias(), -1, 0, N0);
+      opds0.push_back(b0);
+    } else {
+      opds0.push_back(op.getBias());
+    }
+    auto loc0 = module::getLocLike(out, "0");
+    std::vector<int64_t> shape0 = o_shape;
+    shape0[o_shape.size() - 1] = N0;
+    auto type0 = module::getTypeLike(out, shape0);
+    auto m0_op =
+        rewriter.create<top::MatMulOp>(loc0, type0, opds0, op->getAttrs());
+    auto name0 = module::getName(m0_op.getOutput());
+    LoweringConfig::quantize_map[name0.str()] = qmode;
+    // op 1
+    std::vector<Value> opds1;
+    auto w1 = module::opSliceAxis(rewriter, op.getRight(), -1, N0, N1);
+    opds1.push_back(op.getInput());
+    opds1.push_back(w1);
+    if (module::isWeight(op.getBias())) {
+      auto b1 = module::opSliceAxis(rewriter, op.getBias(), -1, N0, N1);
+      opds1.push_back(b1);
+    } else {
+      opds1.push_back(op.getBias());
+    }
+    auto loc1 = module::getLocLike(out, "1");
+    std::vector<int64_t> shape1 = o_shape;
+    shape1[o_shape.size() - 1] = N1;
+    auto type1 = module::getTypeLike(out, shape1);
+    auto m1_op =
+        rewriter.create<top::MatMulOp>(loc1, type1, opds1, op->getAttrs());
+    m1_op.removeWeightBitsAttr();
+    auto name1 = module::getName(m1_op.getOutput());
+    LoweringConfig::quantize_map[name1.str()] = target_mode;
+
+    // concat this two op
+    std::vector<Value> concat_operands = {m0_op.getOutput(), m1_op.getOutput()};
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axis", rewriter.getSI32IntegerAttr(o_shape.size() - 1)));
+    rewriter.replaceOpWithNewOp<top::ConcatOp>(op, op.getType(),
+                                               concat_operands, attrs);
+    LoweringConfig::quantize_map[o_name.str()] = target_mode;
+    return success();
+  }
+};
+
 // cast(u8->fp32) + active -> lut(u8->fp32)
 // cast(u8->fp32) + active(fp32) + cast(fp32->fp16) -> lut(u8->fp16)
 struct CastActivePattern : public OpRewritePattern<tpu::ActiveOp> {
@@ -1031,9 +1130,9 @@ void ConvertTopToTpu::runOnOperation() {
                TryInsertTileBinaryPattern<top::MinOp>,
                TryInsertTileBinaryPattern<top::CompareOp>,
                TryInsertTileMatMulPattern>(ctx_);
-  if(!module::isBM1684XFamily()){
+  if (!module::isBM1684XFamily()) {
     patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
-              TryInsertTileBinaryPattern<top::MulOp>>(ctx_);
+                 TryInsertTileBinaryPattern<top::MulOp>>(ctx_);
   }
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
@@ -1056,6 +1155,11 @@ void ConvertTopToTpu::runOnOperation() {
        module::getMode() == module::Mode::UINT8)) {
     qtable_process();
     module::updateModuleTypes();
+  }
+
+  // process W4A16 MatMul
+  if (!module::isState(module::State::TOP_QUANTIZED)) {
+    module::applyPatternOnce<W4A16MatMulPreparePattern>(module_);
   }
 
   // process shape related ops
@@ -1100,11 +1204,10 @@ void ConvertTopToTpu::runOnOperation() {
   applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
   // adjust reshape
   patterns.clear();
-  patterns.add<ForwardTypePattern<tpu::ReshapeOp>,
-               ForwardTypePattern<tpu::UnsqueezeOp>,
-               ForwardTypePattern<tpu::TileOp>,
-               ForwardInt32TypePattern<tpu::SqueezeOp>,
-               ForwardInt32TypePattern<tpu::SliceOp>>(ctx_);
+  patterns.add<
+      ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>,
+      ForwardTypePattern<tpu::TileOp>, ForwardInt32TypePattern<tpu::SqueezeOp>,
+      ForwardInt32TypePattern<tpu::SliceOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
   if (module::isBM1684XFamily()) {
@@ -1237,8 +1340,7 @@ void ConvertTopToTpu::calibration_process() {
   patterns.clear();
   patterns.add<KeepSignPattern<top::AvgPoolOp>,
                KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
-               KeepSignPattern<top::AbsOp>,
-               SetSubConstSignPattern>(ctx_);
+               KeepSignPattern<top::AbsOp>, SetSubConstSignPattern>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
   patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
@@ -1261,11 +1363,12 @@ void ConvertTopToTpu::device2host_process() {
   mainFunc_.walk([&](Operation *op) {
     if (!op->hasTrait<trait::ShapeProducer>())
       return;
-    if (isa<tpu::ShapeOp,tpu::Device2HostOp>(op))
+    if (isa<tpu::ShapeOp, tpu::Device2HostOp>(op))
       return;
     op->dump();
     for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-      if (module::isNone(op->getOperand(idx))) continue;
+      if (module::isNone(op->getOperand(idx)))
+        continue;
       try_insert_device2host(op, idx);
     }
   });
@@ -1698,7 +1801,7 @@ bool ConvertTopToTpu::convergence_with_sm_matmul_slice(
     if (isa<top::SoftmaxOp>(r))
       sm_cnt++;
     if (isa<top::MatMulOp>(r)) {
-      if (std::distance(r->getUsers().begin(),r->getUsers().end()) > 0) {
+      if (std::distance(r->getUsers().begin(), r->getUsers().end()) > 0) {
         mm_cnt++;
         matmul_cnt++;
       }
@@ -2146,7 +2249,8 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
 
 void ConvertTopToTpu::spread_q_config() {
   mainFunc_.walk([&](Operation *op) {
-    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp, top::SqueezeOp, top::UnsqueezeOp>(op)) {
+    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp, top::SqueezeOp,
+            top::UnsqueezeOp>(op)) {
       auto pre_op = op->getOperands()[0].getDefiningOp();
       if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
           LoweringConfig::quantize_map.end()) {
@@ -2319,6 +2423,7 @@ module::Mode ConvertTopToTpu::qmode(const std::string &mode) {
   llvm_unreachable("Unknown quantize mode");
   return module::Mode::F32;
 }
+
 void ConvertTopToTpu::init_qtable() {
   LoweringConfig::quantize_map.clear();
   if (ignore_f16_overflow == false && module::isF16Modes()) {

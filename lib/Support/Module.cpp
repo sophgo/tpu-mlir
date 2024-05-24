@@ -1601,6 +1601,9 @@ mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
                         int64_t offset, int64_t length, std::string mode) {
   auto stype = module::getStorageType(v);
   auto shape = module::getShape(v);
+  if (axis < 0) {
+    axis += shape.size();
+  }
   std::vector<int64_t> new_shape(shape);
   new_shape[axis] = length;
   assert(offset + length <= shape[axis]);
