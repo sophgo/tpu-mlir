@@ -2957,30 +2957,20 @@ public:
     }
 
     // forward
-    bool qm_one = false;
     tpu::ReshapeOp reshape_op;
     auto o_permute =
         dyn_cast<tpu::PermuteOp>(*(op.getOutput().getUsers().begin()));
     // (*(op.getOutput().getUsers().begin()))->dump();
     if (!o_permute) {
-      reshape_op =
-          dyn_cast<tpu::ReshapeOp>(*(op.getOutput().getUsers().begin()));
-      if (!reshape_op) {
-        return failure();
-      }
-      auto oshape = module::getShape(reshape_op.getOutput());
-      if (oshape.size() != 3 || oshape[1] != 1) {
-        return failure();
-      }
-      qm_one = true;
+      return failure();
     } else {
       if (!o_permute->hasOneUse()) {
         return failure();
       }
       auto o_permute_order = module::getI64Array(o_permute.getOrder());
       if (o_permute_order->size() != 4 || o_permute_order->at(0) != 0
-          || o_permute_order->at(1) != 2 || o_permute_order->at(2) != 3
-          || o_permute_order->at(3) != 1) {
+          || o_permute_order->at(1) != 2 || o_permute_order->at(2) != 1
+          || o_permute_order->at(3) != 3) {
         return failure();
       }
       reshape_op =
@@ -3041,23 +3031,13 @@ public:
     op_need_del.emplace_back(matmul0);
     // queries
     Value q_in;
-    if (!qm_one) {
-      auto q_permute =
-          dyn_cast<tpu::PermuteOp>(matmul0.getInput().getDefiningOp());
-      if (!q_permute || !q_permute->hasOneUse()) {
-        return failure();
-      }
-      op_need_del.emplace_back(q_permute);
-      q_in = q_permute.getInput();
-    } else {
-      auto q_reshape =
-          dyn_cast<tpu::ReshapeOp>(matmul0.getInput().getDefiningOp());
-      if (!q_reshape || !q_reshape->hasOneUse()) {
-        return failure();
-      }
-      op_need_del.emplace_back(q_reshape);
-      q_in = q_reshape.getInput();
+    auto q_permute =
+        dyn_cast<tpu::PermuteOp>(matmul0.getInput().getDefiningOp());
+    if (!q_permute || !q_permute->hasOneUse()) {
+      return failure();
     }
+    op_need_del.emplace_back(q_permute);
+    q_in = q_permute.getInput();
 
     // keys
     auto k_permute =
