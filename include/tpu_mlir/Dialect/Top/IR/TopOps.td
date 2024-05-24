@@ -78,6 +78,8 @@ def RoundModeAttr: AnyStrAttrOf<["HalfAwayFromZero", "HalfUp", "HalfDown", "Half
 def DequantModeAttr: AnyStrAttrOf<["Normal", "TFLite"]>;
 def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift", "OnlyShift", "QDM", "OnlyScale"]>;
 def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
+def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
+def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1665,6 +1667,30 @@ def Top_ClipOp: Top_Op<"Clip"> {
     AnyTensor:$inputs,
     F64Attr:$min,
     F64Attr:$max
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+
+def Top_Yuv2rgbFormulaOp: Top_Op<"Yuv2rgbFormula"> {
+  let summary = "Yuv2rgb formula operator";
+
+  let description = [{
+    Yuv2rgb formula Operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$Y,
+    AnyTensor:$U,
+    AnyTensor:$V,
+    UI32Attr:$width,
+    UI32Attr:$height,
+    UI32Attr:$src_format,
+    UI32Attr:$dst_format,
+    ImageOutFormatAttr:$image_format,
+    Yuv2rgbFormulaAttr:$formula_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
   let results = (outs AnyTensor:$output);

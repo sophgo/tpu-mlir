@@ -29,7 +29,7 @@ struct ShapeArithConvert : public OpRewritePattern<TyOp> {
     }
     // Check whether the next op is d2s, if so, delete the next d2s
     auto users = op->getUsers();
-    for(auto i = users.begin(); i != users.end(); ++ i){
+    for (auto i = users.begin(); i != users.end(); ++i) {
       auto user = *i;
       if (!isa<tpu::Device2HostOp>(user)) {
         continue;
@@ -44,11 +44,12 @@ struct ShapeArithConvert : public OpRewritePattern<TyOp> {
     int pos = op_name.find("top.");
     op_name = op_name.erase(pos, 4);
     attrs.emplace_back(
-      rewriter.getNamedAttr("type", rewriter.getStringAttr(op_name)));
+        rewriter.getNamedAttr("type", rewriter.getStringAttr(op_name)));
     for (auto &attr : op->getAttrs()) {
       attrs.push_back(attr);
     }
-    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, out.getType(), op.getOperands(), attrs);
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, out.getType(),
+                                                   op.getOperands(), attrs);
     return success();
   }
 };
@@ -81,7 +82,6 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
                 ShapeArithConvert<top::MulOp>, ShapeArithConvert<top::DivOp>>(
       patterns->getContext());
 }
-
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
@@ -214,7 +214,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       BinaryShiftLowering,
       BinaryConstShiftLowering,
       MeanRstdLowering,
-	  GroupNormTrainLowering
+	    GroupNormTrainLowering,
+      Yuv2rgbFormulaLowering
       // clang-format on
       >(patterns->getContext());
 }

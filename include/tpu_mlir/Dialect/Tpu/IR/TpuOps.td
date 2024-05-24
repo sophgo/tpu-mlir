@@ -339,6 +339,32 @@ def Tpu_RunMode: I32EnumAttr<"RunMode",
 }
 def Tpu_RunModeAttr : EnumAttr<Tpu_Dialect, Tpu_RunMode, "run_mode">;
 
+def Tpu_ImageOutFormat : I32EnumAttr<"ImageOutFormat",
+  "attr used for tpu.yuv2rgbformulaOp",
+  [
+    I32EnumAttrCase<"FLOAT32", 0>,
+    I32EnumAttrCase<"UINT8", 1>,
+  ]
+> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+
+def Tpu_ImageOutFormatAttr : EnumAttr<Tpu_Dialect, Tpu_ImageOutFormat, "image_out_format">;
+
+def Tpu_Yuv2rgbFormula : I32EnumAttr<"Yuv2rgbFormula",
+  "formula mode used for tpu.yuv2rgbformulaOp",
+  [
+    I32EnumAttrCase<"_601_limited", 0>,
+    I32EnumAttrCase<"_601_full", 1>,
+  ]
+> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+
+def Tpu_Yuv2rgbFormulaAttr : EnumAttr<Tpu_Dialect, Tpu_Yuv2rgbFormula, "yuv2rgb_formula_mode">;
+
 //===----------------------------------------------------------------------===//
 // Tpu Types.
 //===----------------------------------------------------------------------===//
@@ -1015,6 +1041,28 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
     F64Attr:$min,
     F64Attr:$max,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_Yuv2rgbFormulaOp: Tpu_Op<"Yuv2rgbFormula">{
+  let summary = "Yuv2rgbFormulaOp operator";
+  let description = [{
+     Yuv2rgbFormulaOp operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$Y,
+    AnyTensor:$U,
+    AnyTensor:$V,
+    UI32Attr:$width,
+    UI32Attr:$height,
+    UI32Attr:$src_format,
+    UI32Attr:$dst_format,
+    Tpu_ImageOutFormatAttr:$image_format,
+    Tpu_Yuv2rgbFormulaAttr:$formula_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
   );
 
   let results = (outs AnyRankedTensor:$output);

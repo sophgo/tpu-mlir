@@ -189,5 +189,6 @@ LOWERING_BM1684X(BinaryShift)
 LOWERING_BM1684X(BinaryConstShift)
 LOWERING_BM1684X(MeanRstd)
 LOWERING_BM1684X(GroupNormTrain)
+LOWERING_BM1684X(Yuv2rgbFormula)
 } // namespace bm1684x
 } // namespace tpu_mlir

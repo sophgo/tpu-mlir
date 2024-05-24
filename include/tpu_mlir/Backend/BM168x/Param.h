@@ -555,69 +555,69 @@ typedef struct {
 } deconv_local_param_t;
 
 typedef struct {
-    /* common param */
-    unsigned long long input_global_addr;
-    unsigned long long weight_global_addr;
-    unsigned long long bias_global_addr;
-    unsigned long long output_global_addr;
-    int input_shape[5];    // (n, ic, it, ih, iw)
-    int groups;
-    int output_c;
-    int kernel[3];         // (kt, kh, kw)
-    int stride[3];         // (t, h, w)
-    int dilation[3];       // (t, h, w)
-    int pad[6];            // (t0, t1, h0, h1, w0, w1)
-    int output_pad[3];     // (t, h, w)
-    int has_bias;
-    int input_dtype;
-    int weight_dtype;
-    int bias_dtype;
-    /* param for float */
-    int output_dtype;
-    int if_relu;
-    float upper_limit;
-    /* param for quant */
-    unsigned long long kzp_global_addr;
-    unsigned long long pad_insert_global_addr;
-    bool kzp_is_const;
-    bool pad_insert_is_const;
-    int kzp_val;
-    int pad_val;
-    int insert_val;
-    int kzp_dtype;
+  /* common param */
+  unsigned long long input_global_addr;
+  unsigned long long weight_global_addr;
+  unsigned long long bias_global_addr;
+  unsigned long long output_global_addr;
+  int input_shape[5]; // (n, ic, it, ih, iw)
+  int groups;
+  int output_c;
+  int kernel[3];     // (kt, kh, kw)
+  int stride[3];     // (t, h, w)
+  int dilation[3];   // (t, h, w)
+  int pad[6];        // (t0, t1, h0, h1, w0, w1)
+  int output_pad[3]; // (t, h, w)
+  int has_bias;
+  int input_dtype;
+  int weight_dtype;
+  int bias_dtype;
+  /* param for float */
+  int output_dtype;
+  int if_relu;
+  float upper_limit;
+  /* param for quant */
+  unsigned long long kzp_global_addr;
+  unsigned long long pad_insert_global_addr;
+  bool kzp_is_const;
+  bool pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+  int kzp_dtype;
 } deconv3d_global_param_t;
 
 typedef struct {
-    /* common param */
-    unsigned int input_local_addr;
-    unsigned int weight_local_addr;
-    unsigned int bias_local_addr;
-    unsigned int buffer_local_addr;
-    unsigned int output_local_addr;
-    int input_shape[5];    // (it, n, ic, ih, iw)
-    int groups;
-    int output_c;
-    int kernel[3];         // (kt, kh, kw)
-    int stride[3];         // (t, h, w)
-    int dilation[3];       // (t, h, w)
-    int pad[6];            // (t0, t1, h0, h1, w0, w1)
-    int has_bias;
-    int input_dtype;
-    int weight_dtype;
-    int bias_dtype;
-    /* param for float */
-    int output_dtype;
-    int if_relu;
-    float upper_limit;
-    /* param for quant */
-    unsigned int kzp_local_addr;
-    unsigned int pad_insert_local_addr;
-    bool kzp_is_const;
-    bool pad_insert_is_const;
-    int kzp_val;
-    int pad_val;
-    int insert_val;
-    int kzp_dtype;
+  /* common param */
+  unsigned int input_local_addr;
+  unsigned int weight_local_addr;
+  unsigned int bias_local_addr;
+  unsigned int buffer_local_addr;
+  unsigned int output_local_addr;
+  int input_shape[5]; // (it, n, ic, ih, iw)
+  int groups;
+  int output_c;
+  int kernel[3];   // (kt, kh, kw)
+  int stride[3];   // (t, h, w)
+  int dilation[3]; // (t, h, w)
+  int pad[6];      // (t0, t1, h0, h1, w0, w1)
+  int has_bias;
+  int input_dtype;
+  int weight_dtype;
+  int bias_dtype;
+  /* param for float */
+  int output_dtype;
+  int if_relu;
+  float upper_limit;
+  /* param for quant */
+  unsigned int kzp_local_addr;
+  unsigned int pad_insert_local_addr;
+  bool kzp_is_const;
+  bool pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+  int kzp_dtype;
 } deconv3d_local_param_t;
 
 typedef struct bcbinary_common_spec {
@@ -653,30 +653,30 @@ typedef struct bcbinary_global_param {
 } bcbinary_global_param_t;
 
 typedef struct binaryshift_spec {
-    int32_t binary_op;
-    int32_t rshift_num;
-    int32_t b_is_const;
-    int32_t b_const_val;
-    int32_t inversed;
-    int32_t round_mode;
-    bool is_saturate;
+  int32_t binary_op;
+  int32_t rshift_num;
+  int32_t b_is_const;
+  int32_t b_const_val;
+  int32_t inversed;
+  int32_t round_mode;
+  bool is_saturate;
 } binaryshift_spec_t;
 
 typedef struct binaryshift_local_spec {
-    binaryshift_spec_t common;
-    uint32_t buffer;
+  binaryshift_spec_t common;
+  uint32_t buffer;
 } binaryshift_local_spec_t;
 
 typedef struct binaryshift_local_param {
-    binaryshift_local_spec_t spec;
-    int32_t a_is_coeff;
-    int32_t b_is_coeff;
+  binaryshift_local_spec_t spec;
+  int32_t a_is_coeff;
+  int32_t b_is_coeff;
 } binaryshift_local_param_t;
 
 typedef struct binaryshift_global_param {
-    binaryshift_spec_t spec;
-    int32_t a_is_coeff;
-    int32_t b_is_coeff;
+  binaryshift_spec_t spec;
+  int32_t a_is_coeff;
+  int32_t b_is_coeff;
 } binaryshift_global_param_t;
 
 typedef struct {
@@ -771,14 +771,14 @@ typedef struct {
 } requant_int_param_t;
 
 typedef struct gather_elements_global {
-    int axis;
-    int index_is_coeff; // use for dyn
-    uint64_t intermediate_buffer_global_addr;
+  int axis;
+  int index_is_coeff; // use for dyn
+  uint64_t intermediate_buffer_global_addr;
 } gather_elements_global_param_t;
 
 typedef struct gather_nd_global {
-    int batch_dims;
-    int const_val; // fill_value if index not found in input
+  int batch_dims;
+  int const_val; // fill_value if index not found in input
 } gather_nd_global_param_t;
 
 typedef struct scatter_elements_global_spec {
@@ -799,10 +799,10 @@ typedef struct index_select_global_spec {
   index_select_common_spec_t common;
 } index_select_global_spec_t;
 
-typedef struct index_put_spec{
-    int mode;
-    int accumulate;
-    uint64_t buffer_addr;
+typedef struct index_put_spec {
+  int mode;
+  int accumulate;
+  uint64_t buffer_addr;
 } index_put_spec_t;
 
 typedef struct roi_align_spec {
@@ -1663,6 +1663,26 @@ typedef struct conv3d_common_spec {
   int32_t kzp_dtype;
 } conv3d_common_spec_t;
 
+typedef enum {
+  FLOAT32,
+  UINT8,
+} image_data_format_ext;
+
+typedef enum {
+  _601_limited,
+  _601_full,
+} formula_mode;
+
+typedef struct {
+  unsigned int width;
+  unsigned int height;
+  unsigned int src_format;
+  unsigned int dst_format;
+  image_data_format_ext output_data_format;
+  formula_mode formula_mode;
+  ROUND_MODE_T round_mode;
+} yuv2rgb_formula_spec_t;
+
 typedef struct dyn_conv3d_local_spec {
   conv3d_common_spec_t common;
   uint32_t kzp_local_addr;
@@ -1898,38 +1918,37 @@ typedef struct depack_raw_spec {
 }
 
 typedef struct softmax_backward_cast_param {
-  int           axis;
+  int axis;
 } softmax_backward_param_t;
 
 typedef struct weight_reorder_param {
-    int reorder_mode;
+  int reorder_mode;
 } weight_reorder_param_t;
 
 typedef struct batchnorm_train_param {
-    float momentum;
-    float eps;
+  float momentum;
+  float eps;
 } batchnorm_train_param_t;
 
 typedef struct batchnorm_backward_param {
-    int reserve;
+  int reserve;
 } batchnorm_backward_param_t;
 
 typedef struct layernorm_train_param {
-    int axis;
-    float eps;
+  int axis;
+  float eps;
 } layernorm_train_param_t;
 
 typedef struct layernorm_backward_param {
-    int axis;
+  int axis;
 } layernorm_backward_param_t;
 
 typedef struct embedding_backward_param {
-    int  window_size;
-    bool is_index_int64;
+  int window_size;
+  bool is_index_int64;
 } embedding_backward_param_t;
 
-typedef struct
-{
+typedef struct {
   int32_t groups;
   int32_t ic;
   int32_t n;
@@ -1949,34 +1968,31 @@ typedef struct
   int32_t pl;
   int32_t pr;
   bool has_bias;
-}ConvBwdWeight_common_spec_t;
+} ConvBwdWeight_common_spec_t;
 
-typedef struct
-{
+typedef struct {
   ConvBwdWeight_common_spec_t common;
-}ConvBwdWeight_global_spec_t;
+} ConvBwdWeight_global_spec_t;
 
 typedef struct {
   uint64_t buffer_addr;
-  int      axis;
-  int      descending;
-  int      is_argsort;
+  int axis;
+  int descending;
+  int is_argsort;
 } sort_per_dim_param_t;
 
-typedef struct
-{
+typedef struct {
   float eps;
   float momentum;
-}mean_rstd_param_t;
+} mean_rstd_param_t;
 
 typedef struct bdc_cpy_spec {
   int64_t reserved;
 } bdc_cpy_spec_t;
 
-typedef struct
-{
+typedef struct {
   ConvBwdWeight_common_spec_t common;
-}ConvBwdWeight_local_spec_t;
+} ConvBwdWeight_local_spec_t;
 
 typedef struct group_norm_train_global_param {
   group_norm_common_spec_t common;
