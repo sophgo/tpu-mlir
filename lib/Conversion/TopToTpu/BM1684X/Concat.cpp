@@ -88,7 +88,7 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   // auto round_mode = round_mode_convert(get_round_mode(concatOp.getRoundModeAttr().str()));
   auto out_stype = module::getStorageType(concatOp.getOutput());
-  if (out_stype.isUnsignedInteger(8)) {
+  if (out_stype.isInteger(8) || out_stype.isUnsignedInteger(8)) {
     for (auto in : concatOp.getInputs()) {
       auto new_in = do_transfer_fp(in, concatOp.getOutput(), true);
       operands.push_back(new_in);
