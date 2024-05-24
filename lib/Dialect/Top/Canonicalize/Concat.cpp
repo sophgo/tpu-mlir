@@ -300,6 +300,20 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
       const auto steps = module::getI64Array(slice_op.getSteps());
       const auto offset = module::getI64Array(slice_op.getOffset());
       const auto ends = module::getI64Array(slice_op.getEnds());
+      std::vector<int64_t> in_shape = module::getShape(slice_op.getInput());
+      const size_t slice_dims = offset->size();
+      for (int i = 0; i < slice_dims; ++i) {
+        if (offset->at(i) < 0) {
+          offset->at(i) += in_shape[i];
+        }
+        if (ends->at(i) < 0) {
+          ends->at(i) += in_shape[i];
+        }
+        offset->at(i) = steps->at(i) > 0 ? std::clamp(offset->at(i), 0L, in_shape[i])
+                            : std::clamp(offset->at(i), 0L, in_shape[i] - 1);
+        ends->at(axis) = steps->at(axis) > 0 ? std::clamp(ends->at(axis), 0L, in_shape[axis])
+                    : std::clamp(ends->at(axis), -1L, in_shape[axis] - 1);
+      }
       if (steps->at(axis) != 1) {
         return failure();
       }
