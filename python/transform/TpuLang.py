@@ -1711,6 +1711,56 @@ def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
     TpuLang.insert_op("top.Unsqueeze", inputs=[input], outputs=[output], params=attr)
     return output
 
+
+@auto_name()
+@annotation_check
+def yuv2rgb(
+    inputs: List[Tensor],
+    width: int,
+    height: int,
+    src_format: int,
+    dst_format: int,
+    ImageOutFormatAttr: str,
+    formula_mode: str,
+    round_mode: str,
+    out_name: str = None,
+):
+    # src_format/dst_format:
+    # {
+    #   FORMAT_MAPPING_YUV420P, 0
+    #   FORMAT_MAPPING_YUV422P, 1
+    #   FORMAT_MAPPING_YUV444P, 2
+    #   FORMAT_MAPPING_NV12, 3
+    #   FORMAT_MAPPING_NV21, 4
+    #   FORMAT_MAPPING_NV16, 5
+    #   FORMAT_MAPPING_NV61, 6
+    #   FORMAT_MAPPING_NV24, 7
+    #   FORMAT_MAPPING_RGB, 8
+    #   FORMAT_MAPPING_BGR, 9
+    # }
+    assert ImageOutFormatAttr in [
+        # "FLOAT32", bug remains in 'bmodel_inference' stage
+        "UINT8",
+    ]
+    assert formula_mode in ["_601_limited", "_601_full"]
+    assert round_mode in ["HalfAwayFromZero", "HalfUp", "HalfToEven"]
+    attr = {
+        "width": Attr(width, "uint32"),
+        "height": Attr(height, "uint32"),
+        "src_format": Attr(src_format, "uint32"),
+        "dst_format": Attr(dst_format, "uint32"),
+        "image_format": Attr(ImageOutFormatAttr, "string"),
+        "formula_mode": Attr(formula_mode, "string"),
+        "round_mode": Attr(round_mode, "string"),
+    }
+
+    output = Tensor(dtype=ImageOutFormatAttr, name=out_name)
+    TpuLang.insert_op(
+        "top.Yuv2rgbFormula", inputs=inputs, outputs=[output], params=attr
+    )
+    return output
+
+
 @auto_name()
 @annotation_check
 def split(input: Tensor,

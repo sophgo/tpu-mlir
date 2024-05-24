@@ -163,6 +163,7 @@ class TPULANG_IR_TESTER(object):
             "TopK": (self.test_TopK,                    Y, Y),
             "Upsample": (self.test_Upsample,            Y, Y),
             "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
+            "Yuv2rgb": (self.test_Yuv2rgb,              Y, N),
             #### model ####
             "AttenQuantBlock": (self.test_AttenQuant,   Y, Y),
             "Bert": (self.test_Bert,                    Y, Y),
@@ -427,7 +428,7 @@ class TPULANG_IR_TESTER(object):
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3, dtype="float16")
 
- #######################################################################
+    #######################################################################
     # Deconvolution
     # ------------
     def deconv_op(self,
@@ -767,7 +768,6 @@ class TPULANG_IR_TESTER(object):
             mat = self.matmul_op(reshape, mat_weight, mat_bias)
             return mat
 
-
         @tpulang(self.chip)
         def _test_model_def(in_shape, dtype='float32'):
             x_data = rand_data(in_shape, dtype, -10, 10)
@@ -779,7 +779,6 @@ class TPULANG_IR_TESTER(object):
 
         _test_model_def([1, 3, 224, 224])
         _test_model_def([1, 3, 224, 224], 'float16')
-
 
     def conv_int_op(self,
                 x,
@@ -893,7 +892,6 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([1, 3, 224, 224], resnet_mix_f16)
         _test_model_def([1, 3, 224, 224], resnet_quant_fp)
 
-
     def batch_norm_op(self, x, oc):
         mean = self.coeff_tensor([oc], x.dtype, scale=0.2)
         var = self.coeff_tensor([oc], x.dtype, data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
@@ -990,7 +988,6 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([1, 384, 1024], 64, 16, 2, 'float16')
         _test_model_def([1, 224, 768], 64, 12, 2, 'float16')
         _test_model_def([1, 384, 768], 64, 12, 2)
-
 
     #######################################################################
     # attention quant block
@@ -1091,7 +1088,6 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
 
         _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8")
-
 
     #######################################################################
     # vit
@@ -1366,7 +1362,6 @@ class TPULANG_IR_TESTER(object):
         _test_model_def([2, 3, 224, 224], 32, 3)
         _test_model_def([1, 3, 224, 224], 32, 3, 'float16')
 
-
     #######################################################################
     # Convolution
     # ------------
@@ -1420,8 +1415,6 @@ class TPULANG_IR_TESTER(object):
         _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3, dtype="float32", is_quantized=True)
         _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3, dtype="float16", is_quantized=True)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[0, 0, 1, 1], dtype="float16", is_quantized=True)
-
-
 
     #######################################################################
     # Lenet
@@ -1678,7 +1671,6 @@ class TPULANG_IR_TESTER(object):
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
 
-
     #######################################################################
     # Maxpool
     # ------------
@@ -1727,7 +1719,7 @@ class TPULANG_IR_TESTER(object):
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
-      #  _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
+    #  _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
 
     #######################################################################
     # Avgpool
@@ -2703,6 +2695,123 @@ class TPULANG_IR_TESTER(object):
         _test_unsqueeze([1, 3, 28, 28])
         _test_unsqueeze([1, 3, 28, 28], dtype="float16", is_quantized=True)
         _test_unsqueeze([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+
+    #######################################################################
+    # yuv2rgb
+    # ------------
+    def yuv2rgb_op(
+        self,
+        inputs,
+        width: int,
+        height: int,
+        src_format: int,
+        dst_format: int,
+        ImageOutFormatAttr: str,
+        formula_mode: str,
+        round_mode: str,
+    ):
+        yuv2rgb = tpul.yuv2rgb(
+            inputs, width, height, src_format, dst_format, ImageOutFormatAttr,formula_mode,round_mode
+        )
+        return yuv2rgb
+
+    def test_Yuv2rgb(self, case_name):
+        """yuv2rgb"""
+
+        def YCrCb2RGB_601_limited_f32(y, u, v):
+            Y = y - 16
+            U = u - 128
+            V = v - 128
+
+            r_fp = 1.16438 * Y + 1.59603 * V
+            g_fp = 1.16438 * Y - 0.39176 * U - 0.81297 * V
+            b_fp = 1.16438 * Y + 2.01723 * U
+
+            r_fp = np.clip(r_fp, 0.0, 255.0)
+            g_fp = np.clip(g_fp, 0.0, 255.0)
+            b_fp = np.clip(b_fp, 0.0, 255.0)
+
+            return r_fp, g_fp, b_fp
+
+        def YCrCb2RGB_601_full_f32(y, u, v):
+            Y = y
+            U = u - 128
+            V = v - 128
+
+            r_fp = Y + 1.40188 * V
+            g_fp = Y - 0.34581 * U - 0.71490 * V
+            b_fp = Y + 1.77098 * U
+
+            r_fp = np.clip(r_fp, 0.0, 255.0)
+            g_fp = np.clip(g_fp, 0.0, 255.0)
+            b_fp = np.clip(b_fp, 0.0, 255.0)
+
+            return r_fp, g_fp, b_fp
+
+
+        def YCrCb2RGB_601_limited_u8(y, u, v):
+            r_fp, g_fp, b_fp = YCrCb2RGB_601_limited_f32(y, u, v)
+            r = np.uint8(r_fp)
+            g = np.uint8(g_fp)
+            b = np.uint8(b_fp)
+            return r, g, b
+
+        def YCrCb2RGB_601_full_u8(y, u, v):
+            r_fp, g_fp, b_fp = YCrCb2RGB_601_full_f32(y, u, v)
+            r = np.uint8(r_fp)
+            g = np.uint8(g_fp)
+            b = np.uint8(b_fp)
+            return r, g, b
+
+
+        def np_yuv2rgb(Y, U, V, width, height):
+            # Assuming NV12 format for simplicity
+            bgr_data = np.zeros((3, height, width), dtype=np.uint8)
+
+            for i in range(height):
+                for j in range(width):
+                    # print(i, " , ", j)
+                    y = Y[i, j]
+                    u = U[i // 2, j // 2]
+                    v = V[i // 2, j // 2]
+                    # print(f"{y}, {u}, {v}")
+                    r, g, b = YCrCb2RGB_601_full_u8(y, u, v)
+                    bgr_data[0, i, j] = b
+                    bgr_data[1, i, j] = g
+                    bgr_data[2, i, j] = r
+                    # print(f"{b}, {g}, {r}\n")
+
+            return bgr_data
+
+        @tpulang(self.chip)
+        def _test_yuv2rgb(shape_y, shape_u, shape_v, scale=None, zero_point=None, dtype="uint8", is_quantized=False):
+            input_y = rand_data(shape_y, dtype)
+            input_u = rand_data(shape_u, dtype)
+            input_v = rand_data(shape_v, dtype)
+            
+            # generate python calculation
+            for n in range(1):
+                bgr_data = np_yuv2rgb(input_y[n, :, :], input_u[n, :, :], input_v[n, :, :],128,128)           # numpy 
+                # print(bgr_data.shape)
+                np.save(os.path.join(os.getcwd(),"Yuv2rgb"),bgr_data)
+
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=input_y, scale=scale, zero_point=zero_point)
+            u = tpul.Tensor(dtype=dtype, shape=shape_u, data=input_u, scale=scale, zero_point=zero_point)
+            v = tpul.Tensor(dtype=dtype, shape=shape_v, data=input_v, scale=scale, zero_point=zero_point)
+
+            yuv2rgb = self.yuv2rgb_op(
+                [y, u, v],
+                128,
+                128,
+                0, # yuv420P
+                9, # bgr
+                "UINT8", # output as float32
+                "_601_full",
+                "HalfToEven"
+            )
+            self.compile_and_check(self.unique_name(case_name), [y,u,v], [yuv2rgb], is_quantized=True)
+
+        _test_yuv2rgb([1, 128, 128], [1, 64, 64], [1, 64, 64])
 
     #######################################################################
     # groupnorm

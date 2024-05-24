@@ -259,13 +259,13 @@ public:
     if (isQuantized) {
       auto stype = module::getStorageType(opTy.getODSResults(0)[0]);
       if (stype.isF32()) {
-        if (!isa<top::CastOp>(op)) {
+        if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op)) {
           module::removeAttr(op, "round_mode");
           module::removeAttr(op, "first_round_mode");
         }
         LoweringF32(rewriter, opTy);
       } else if (stype.isF16()) {
-        if (!isa<top::CastOp>(op)) {
+        if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op)) {
           module::removeAttr(op, "round_mode");
           module::removeAttr(op, "first_round_mode");
         }
