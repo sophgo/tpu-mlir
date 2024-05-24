@@ -231,6 +231,22 @@ struct LoweringConfig {
   static std::map<std::string, module::Mode> quantize_map;
 };
 
+static module::Mode getOpQuantMode(Operation *op) {
+  auto real_mode = module::getMode();
+  auto op_name = module::getName(op);
+  auto iter = LoweringConfig::quantize_map.find(op_name.str());
+  if (iter != LoweringConfig::quantize_map.end()) {
+    real_mode = iter->second;
+  }
+  if (module::isCV18xx() && real_mode == module::Mode::F16) {
+    return module::Mode::BF16;
+  }
+  if (!isa<top::ConvOp, top::MatMulOp>(op) && real_mode == module::Mode::INT4) {
+    return module::Mode::INT8;
+  }
+  return real_mode;
+}
+
 template <typename OpTy> class TopLowering : public OpRewritePattern<OpTy> {
 public:
   using OpRewritePattern<OpTy>::OpRewritePattern;
@@ -238,11 +254,6 @@ public:
   LogicalResult matchAndRewrite(OpTy opTy,
                                 PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
-    // for WxF16 / WxBF16 mode
-    auto matmul_op = dyn_cast<top::MatMulOp>(op);
-    auto is_right_weight =
-        matmul_op ? isa<top::WeightOp>(op->getOperand(1).getDefiningOp())
-                  : false;
 
     bool isQuantized = LoweringConfig::isQuantized;
     if (isQuantized) {
@@ -264,12 +275,7 @@ public:
       }
       return success();
     }
-    auto real_mode = module::getMode();
-    auto op_name = module::getName(op);
-    auto iter = LoweringConfig::quantize_map.find(op_name.str());
-    if (iter != LoweringConfig::quantize_map.end()) {
-      real_mode = iter->second;
-    }
+    auto real_mode = getOpQuantMode(op);
     module::removeAttr(op, "round_mode");
     module::removeAttr(op, "first_round_mode");
     switch (real_mode) {
@@ -280,44 +286,16 @@ public:
       LoweringINT8(rewriter, opTy, module::isAsymmetric());
       break;
     case module::Mode::INT4:
-      if (isa<top::ConvOp, top::MatMulOp>(op)) {
-        LoweringINT4(rewriter, opTy, module::isAsymmetric());
-      } else {
-        LoweringINT8(rewriter, opTy, module::isAsymmetric());
-      }
+      LoweringINT4(rewriter, opTy, module::isAsymmetric());
       break;
     case module::Mode::F16:
-      if (module::isCV18xx()) {
-        LoweringBF16(rewriter, opTy);
-      } else {
-        LoweringF16(rewriter, opTy);
-      }
+    case module::Mode::W8F16:
+    case module::Mode::W4F16:
+      LoweringF16(rewriter, opTy);
       break;
     case module::Mode::BF16:
-      LoweringBF16(rewriter, opTy);
-      break;
-    case module::Mode::W8F16:
-      if (matmul_op && is_right_weight) {
-        matmul_op.setWeightBits(8);
-      }
-      LoweringF16(rewriter, opTy);
-      break;
     case module::Mode::W8BF16:
-      if (matmul_op && is_right_weight) {
-        matmul_op.setWeightBits(8);
-      }
-      LoweringBF16(rewriter, opTy);
-      break;
-    case module::Mode::W4F16:
-      if (matmul_op && is_right_weight) {
-        matmul_op.setWeightBits(4);
-      }
-      LoweringF16(rewriter, opTy);
-      break;
     case module::Mode::W4BF16:
-      if (matmul_op && is_right_weight) {
-        matmul_op.setWeightBits(4);
-      }
       LoweringBF16(rewriter, opTy);
       break;
     case module::Mode::F8:
@@ -412,7 +390,8 @@ static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
       operands.push_back(noneOp);
     }
   }
-  return rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands, from->getAttrs());
+  return rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands,
+                                           from->getAttrs());
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize
@@ -430,14 +409,12 @@ static OpTy lowering_common_int8(PatternRewriter &rewriter, Operation *from,
   return lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
-
 Type getQuantF8E4M3Type(Value v);
 Type getQuantF8E5M2Type(Value v);
 
-
 template <typename OpTy>
-static OpTy lowering_common_f8(PatternRewriter &rewriter, Operation *from, bool isE4,
-                                 int num_operands = 0) {
+static OpTy lowering_common_f8(PatternRewriter &rewriter, Operation *from,
+                               bool isE4, int num_operands = 0) {
   assert(from->getNumResults() == 1);
   if (isE4) {
     auto newType = getQuantF8E4M3Type(from->getResult(0));
@@ -496,7 +473,8 @@ static OpTy lowering_common_f32(PatternRewriter &rewriter, Operation *from,
 template <typename OpTy>
 static OpTy lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
                                  int num_operands = 0) {
-  return lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
+  return lowering_common_float<OpTy, BFloat16Type>(rewriter, from,
+                                                   num_operands);
 }
 
 template <typename OpTy>
@@ -505,7 +483,6 @@ static OpTy lowering_common_f16(PatternRewriter &rewriter, Operation *from,
   return lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
-
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 Value do_transfer_fp(Value in, Value out, bool asymmetric);
@@ -513,27 +490,30 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric);
 // from int8 to int32
 Value do_dequant(Location name_loc, Value input, Type to_type,
                  int64_t multiplier, int64_t rshift, tpu::DequantMode mode,
-                 int64_t lshift, tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+                 int64_t lshift,
+                 tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, tpu::RequantMode mode,
-                 tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+                 tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode,
-                 tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero);
+                 tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
-Value do_requantFp(Value input, double scale, double offset, Type to_type,
-                   std::string &to_name,
-                   tpu::RequantMode mode = tpu::RequantMode::MultiplierShift,
-                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero,
-                   tpu::RoundMode first_rmode=tpu::RoundMode::HalfAwayFromZero);
+Value do_requantFp(
+    Value input, double scale, double offset, Type to_type,
+    std::string &to_name,
+    tpu::RequantMode mode = tpu::RequantMode::MultiplierShift,
+    tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero,
+    tpu::RoundMode first_rmode = tpu::RoundMode::HalfAwayFromZero);
 
-Value do_requantFp(Value input, Value quant, Type to_type, bool tensorType,
-                   std::string &to_name, tpu::RequantMode mode,
-                   tpu::RoundMode rmode=tpu::RoundMode::HalfAwayFromZero,
-                   tpu::RoundMode first_rmode=tpu::RoundMode::HalfAwayFromZero);
+Value do_requantFp(
+    Value input, Value quant, Type to_type, bool tensorType,
+    std::string &to_name, tpu::RequantMode mode,
+    tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero,
+    tpu::RoundMode first_rmode = tpu::RoundMode::HalfAwayFromZero);
 
 tpu::RequantMode get_requant_mode(std::string mode);
 tpu::DequantMode get_dequant_mode(std::string mode);
@@ -560,7 +540,6 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
       builder.create<OpTy>(name_loc, newType, ValueRange{input}, attrs);
   return newOp.getOutput();
 }
-
 
 Value do_f8_relu(Value input, Type to_type, double relu_limit);
 Value do_reshape(Value input, RankedTensorType to_type);

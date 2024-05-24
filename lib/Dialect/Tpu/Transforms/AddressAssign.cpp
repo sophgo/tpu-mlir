@@ -55,13 +55,14 @@ public:
           }
         }
 
-        // if value is used by multiple ConcatOp, only one ConcatOp should be setOnlyMerge
-        for(auto user: in.getUsers()){
-            if (auto other_cat = dyn_cast<tpu::ConcatOp>(user)) {
-                if(other_cat.getOnlyMerge()){
-                  return failure();
-                }
+        // if value is used by multiple ConcatOp, only one ConcatOp should be
+        // setOnlyMerge
+        for (auto user : in.getUsers()) {
+          if (auto other_cat = dyn_cast<tpu::ConcatOp>(user)) {
+            if (other_cat.getOnlyMerge()) {
+              return failure();
             }
+          }
         }
 
         if (same_op_times > 1) {
@@ -93,6 +94,44 @@ public:
   }
 };
 
+// concat(concat(a,b),c) => concat(a,b,c)
+class ConcatMergePattern : public OpRewritePattern<tpu::ConcatOp> {
+public:
+  using OpRewritePattern<tpu::ConcatOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ConcatOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto relu = op.getDoRelu();
+    std::vector<Operation *> cat_ops;
+    std::vector<Value> operands;
+    bool fix = false;
+    for (auto in : op.getInputs()) {
+      auto concat_in = dyn_cast_or_null<tpu::ConcatOp>(in.getDefiningOp());
+      if (concat_in && concat_in->hasOneUse() &&
+          concat_in.getDoRelu() == relu) {
+        for (auto pre_in : concat_in.getInputs()) {
+          operands.push_back(pre_in);
+        }
+        cat_ops.push_back(in.getDefiningOp());
+        fix = true;
+      } else {
+        operands.push_back(in);
+      }
+    }
+    if (fix == false) {
+      return failure();
+    }
+    op->setOperands(operands);
+    for (auto cop : cat_ops) {
+      rewriter.eraseOp(cop);
+    }
+    return success();
+  }
+};
+
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
@@ -110,8 +149,9 @@ public:
       } else {
         RewritePatternSet patterns(s.getContext());
         populateGlobalBufferBM168xPatterns(&patterns);
-        patterns.add<ConcatFusePattern>(patterns.getContext());
         applyPatternsAndFoldGreedily(s, std::move(patterns));
+        module::applyPatternOnce<ConcatMergePattern>(s);
+        module::applyPatternOnce<ConcatFusePattern>(s);
         BMAddressAssign addr_assign;
         addr_assign.assign(s, reuse_addr);
       }

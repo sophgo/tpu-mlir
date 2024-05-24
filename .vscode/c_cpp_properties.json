@@ -6,7 +6,7 @@
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/build/include",
                 "${workspaceFolder}/../third-party/llvm-project/install/include",
-                "${workspaceFolder}/../third-party/oneDNN/include",
+                "${workspaceFolder}/../third-party/oneDNN/build/include",
                 "${workspaceFolder}/../third-party/flatbuffers/include",
                 "${workspaceFolder}/third_party/cnpy",
                 "${workspaceFolder}/third_party/nntoolchain/include",
