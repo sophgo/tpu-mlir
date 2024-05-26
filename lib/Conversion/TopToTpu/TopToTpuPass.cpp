@@ -975,7 +975,7 @@ struct W4A16MatMulPreparePattern : public OpRewritePattern<top::MatMulOp> {
       return failure();
     }
     // W8A16
-    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8BF16) {
+    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16) {
       if (op.getWeightBits() == 8) {
         return failure();
       }

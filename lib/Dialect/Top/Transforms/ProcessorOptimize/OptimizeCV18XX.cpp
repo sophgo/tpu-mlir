@@ -378,9 +378,10 @@ public:
         new_pad_v[7] = attr.pwr;
         input_shape[3] += attr.pwr;
       }
-      if (attr.pht > 15 && attr.pwl == 0 && attr.phb == attr.pht && attr.pwl == attr.pwr){
-        pad_v = {0,0,0,0};
-        new_pad_v = {0,0,attr.pht,0,0,attr.pht};
+      if (attr.pht > 15 && attr.pwl == 0 && attr.phb == attr.pht &&
+          attr.pwl == attr.pwr) {
+        pad_v = {0, 0, 0, 0};
+        new_pad_v = {0, 0, attr.pht, 0, 0, 0, attr.phb, 0};
       }
     } else if (kernel_size == 1) {
       if (attr.pht > 15) {
@@ -1657,9 +1658,9 @@ public:
     if (op.getYIsConst()) {
       add_weight(op.getYConstVal().convertToDouble(), "_y", 2);
     }
-    Value input0 = op.getOperand(0);  // cond
-    Value input1 = op.getOperand(1);  // true branch
-    Value input2 = op.getOperand(2);  // false branch
+    Value input0 = op.getOperand(0); // cond
+    Value input1 = op.getOperand(1); // true branch
+    Value input2 = op.getOperand(2); // false branch
     std::string name = module::getName(ori_out).str();
     std::vector<int64_t> input0_shape = module::getShape(input0);
     std::vector<int64_t> input1_shape = module::getShape(input1);
@@ -1873,8 +1874,8 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
       convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
       ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
       patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
-      patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-      ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
+      patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>, ConvertClipOp,
+      RemoveUnuseOutput>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
