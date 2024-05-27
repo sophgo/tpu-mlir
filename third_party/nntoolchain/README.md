@@ -15,7 +15,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690 2024-5-24
 ``` bash
 
-#bm1684x sha256: 5d4df9e9dc414c0cbc9a735849b919278785757e
+#bm1684x sha256: 89ae9ac44b765f966682441c11d17ccf582d4d64
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**
