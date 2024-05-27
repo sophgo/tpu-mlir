@@ -1162,6 +1162,17 @@ void ConvertTopToTpu::runOnOperation() {
     module::applyPatternOnce<W4A16MatMulPreparePattern>(module_);
   }
 
+  // kv_cache
+  if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
+      (module::getMode() == module::Mode::W8F16 ||
+       module::getMode() == module::Mode::W4F16 ||
+       module::getMode() == module::Mode::W8BF16 ||
+       module::getMode() == module::Mode::W4BF16 ||
+       module::getMode() == module::Mode::F16) &&
+       module::isState(module::State::TOP_CALIBRATED)) { // if calibration table presents
+    kv_cache_process();
+  }
+
   // process shape related ops
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
     bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
@@ -2273,6 +2284,94 @@ void ConvertTopToTpu::qtable_process() {
   detr_mix_precision();
   set_add_before_softmax_fp32();
   spread_q_config();
+}
+
+// match kv cache
+void ConvertTopToTpu::match_kv_cache(std::vector<Operation *> &kv_cache) {
+  mainFunc_.walk([&](Operation *op) {
+    if (auto addop = dyn_cast<top::AddOp>(op)) {
+      top::MulOp mulop = NULL;
+      top::ConcatOp ccop = NULL;
+      if (isa<ReturnOp>(*(addop.getResult().getUsers().begin()))) {
+        for (auto in : addop.getOperands()) {
+          if (isa<top::MulOp>(in.getDefiningOp())) {
+            mulop = dyn_cast_or_null<top::MulOp>(in.getDefiningOp());
+          }
+        }
+        for (auto user : addop.getResult().getUsers()) {
+          if (isa<top::ConcatOp>(user)) {
+            ccop = dyn_cast_or_null<top::ConcatOp>(user);
+          }
+        }
+      }
+      if (mulop == NULL || ccop == NULL)
+        return;
+      else  
+        kv_cache.push_back(addop);
+    }
+    if (auto reshapeop = dyn_cast<top::ReshapeOp>(op)) {
+      top::MatMulOp mmop = NULL;
+      top::ConcatOp ccop = NULL;
+      top::RMSNormOp rmsop = NULL;
+      if (isa<ReturnOp>(*(reshapeop.getResult().getUsers().begin()))) {
+        auto preOp = reshapeop->getOperands()[0].getDefiningOp();
+        if (isa<top::MatMulOp>(preOp)) {
+          mmop = dyn_cast_or_null<top::MatMulOp>(preOp);
+          auto premmop = mmop->getOperands()[0].getDefiningOp();
+          if (isa<top::RMSNormOp>(premmop)) {
+            rmsop = dyn_cast_or_null<top::RMSNormOp>(premmop);
+          }
+        }
+        for (auto user : reshapeop.getResult().getUsers()) {
+          if (isa<top::ConcatOp>(user)) {
+            ccop = dyn_cast_or_null<top::ConcatOp>(user);
+          }
+        }
+      }
+      if (mmop == NULL || rmsop == NULL || ccop == NULL)
+        return;
+      else
+        kv_cache.push_back(reshapeop);
+    }
+  });
+}
+
+bool ConvertTopToTpu::kv_cache_mix_precision() {
+  std::vector<Operation *> kv_cache;
+  match_kv_cache(kv_cache);
+  for (auto it = kv_cache.begin(); it != kv_cache.end(); ++it) {
+    if (auto addop = dyn_cast<top::AddOp>(*it)) {
+      if (LoweringConfig::quantize_map.find(
+              module::getName(addop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(addop.getOperation()).str(), module::Mode::INT8});
+      }
+    }
+    if (auto rsop = dyn_cast<top::ReshapeOp>(*it)) {
+      if (LoweringConfig::quantize_map.find(
+              module::getName(rsop.getOperation()).str()) ==
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(rsop.getOperation()).str(), module::Mode::INT8});
+      }
+      auto pre_reshape = rsop->getOperands()[0].getDefiningOp();
+      if (isa<top::MatMulOp>(pre_reshape)) {
+        auto pre_reshapeOp = dyn_cast<top::MatMulOp>(pre_reshape);
+        if (LoweringConfig::quantize_map.find(
+                module::getName(pre_reshapeOp.getOperation()).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          LoweringConfig::quantize_map.insert(
+              {module::getName(pre_reshapeOp.getOperation()).str(), module::Mode::INT8});
+        }
+      }
+    }
+  }
+  return false;
+}
+
+void ConvertTopToTpu::kv_cache_process() {
+  kv_cache_mix_precision();
 }
 
 Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,

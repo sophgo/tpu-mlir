@@ -72,6 +72,11 @@ protected:
   void float_till_output(Operation *start);
   bool detr_mix_precision();
   void qtable_process();
+  //kv cache 2024.05
+  void kv_cache_process();
+  bool kv_cache_mix_precision();
+  void match_kv_cache(std::vector<Operation *> &kv_cache);
+  //2024.05
   Value do_cast(Value v, Type to, TypeCastMode mode,
                 Operation *user_op = nullptr);
   Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
