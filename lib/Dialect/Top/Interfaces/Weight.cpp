@@ -13,6 +13,47 @@
 
 using namespace tpu_mlir::top;
 
+template <typename T>
+std::unique_ptr<std::vector<T>> readTensorFromBytesString(const std::string& byte_str,
+                                                          RankedTensorType &type,
+                                                          uint32_t store_mode, bool do_compress) {
+  /// {STORE_MODE_T, align_num}
+  std::map<uint32_t, int64_t> stmode_map = {
+      {0 /*STORE_MODE_1N*/, 1l},
+      {1 /*STORE_MODE_2N*/, 2l},
+      {2 /*STORE_MODE_4N*/, 4l},
+  };
+  size_t count = 1;
+  bool isINT4 = false;
+  auto s = type.getShape();
+  if (s.size() > 0 ) {
+    auto n = type.getShape()[0];
+    auto others = type.getNumElements() / n;
+    count = (n + stmode_map.at(store_mode) - 1) / stmode_map.at(store_mode) *
+                stmode_map.at(store_mode) * others;
+    isINT4 = type.getElementType().isInteger(4);
+    if (isINT4) {
+      auto dims = type.getShape().size();
+      if (dims == 2) { // for MatMul
+        count = type.getDimSize(0) * ((type.getDimSize(1) + 1) / 2);
+      } else if (dims == 4) { // for Conv2d
+                              /* count = type.getDimSize(0) *
+                                      type.getDimSize(1) *
+                                      ((type.getDimSize(2) * type.getDimSize(3) + 1)/2); */
+        count = (count + 1) / 2;
+      } else {
+        assert(0);
+      }
+    }
+  }
+
+  auto data = std::make_unique<std::vector<T>>(count);
+  assert(!do_compress);
+  int data_size = isINT4 ? 1 : count * sizeof(T);
+  std::memcpy(data->data(), byte_str.data(), data_size);
+  return data;
+}
+
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
   auto type = getOutput().getType().cast<RankedTensorType>();
@@ -25,8 +66,13 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
                      .Case("4N", 2)
                      .Default(0);
   }
-  return module::weightFile().readTensor<T>(module::getName(op).str(), type,
-                                            store_mode, do_compress);
+  if (!getInlineBytes().has_value() || getInlineBytes().value().str().empty()) {
+    return module::weightFile().readTensor<T>(module::getName(op).str(), type,
+                                              store_mode, do_compress);
+  } else {
+    return readTensorFromBytesString<T>(getInlineBytes().value().str(), type,
+                                        store_mode, do_compress);
+  }
 }
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {

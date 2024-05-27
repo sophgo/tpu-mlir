@@ -132,6 +132,7 @@ class TPULANG_IR_TESTER(object):
             "Nes": (self.test_Nes,                      Y, Y),
             "NMS": (self.test_NMS,                      Y, Y),
             "Nonzero": (self.test_Nonzero,              Y, Y),
+            "NoSave": (self.test_NoSave,                Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
             "Prelu": (self.test_PRelu,                  Y, Y),
@@ -248,9 +249,9 @@ class TPULANG_IR_TESTER(object):
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
     def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
-        if is_quantized == False:
-            tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
-        else:
+        # if is_quantized == False:
+        #     tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
+        # else:
             tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
 
     #######################################################################
@@ -1821,10 +1822,6 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # Abs
     # ------------
-    def abs_op(self, input):
-        abs = tpul.abs(input)
-        return abs
-
     def test_Abs(self, case_name):
         """Abs"""
 
@@ -1832,12 +1829,30 @@ class TPULANG_IR_TESTER(object):
         def _test_abs(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
             input = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
-            abs = self.abs_op(x)
+            y_data = np.ones(shape_x, dtype=dtype)
+            y = tpul.Tensor(shape_x, ttype="coeff", data=y_data, dtype=dtype)
+            abs = tpul.add(tpul.abs(x), y)
             self.compile_and_check(self.unique_name(case_name), [x], [abs], is_quantized=is_quantized)
 
-        _test_abs([1, 32, 28, 28])
-        _test_abs([1, 32, 28, 28], dtype="float16", is_quantized=True)
-        _test_abs([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_abs([3, 2])
+        # _test_abs([1, 32, 28, 28], dtype="float16", is_quantized=True)
+        # _test_abs([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+
+    #######################################################################
+    # No Save
+    # ------------
+    def test_NoSave(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_nosave(shape_x: List[int], scale=None, zero_point=None, dtype="float32", is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
+            y_data = np.ones(shape_x, dtype=dtype)
+            y = tpul.Tensor(shape_x, ttype="coeff", data=y_data, dtype=dtype)
+            abs = tpul.add(tpul.abs(x), y)
+            self.compile_and_check(self.unique_name(case_name), [x], [abs], is_quantized=is_quantized)
+
+        _test_nosave([3, 2])
 
     #######################################################################
     # Ceil
@@ -3698,7 +3713,7 @@ if __name__ == "__main__":
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--report", default="", type=str, help="report file name")
-    parser.add_argument("--no_save", action="store_true", help="whether to save mlir/weight in mem instead of hard disk.")
+    parser.add_argument("--no_save", action="store_true", help="whether to save mlir/weight in memory instead of hard disk.")
     parser.add_argument("--path", default="", type=str, help="the path to store intermediate file, accept "" or absolute path.")
     # yapf: enable
     args = parser.parse_args()

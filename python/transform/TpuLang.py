@@ -80,7 +80,7 @@ def compile(name: str,
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
     # convert to mlir
-    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized")
+    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized", no_save=no_save)
     ctm_format = None
     fuse = False
     for input in TpuLang.graph.inputs:
@@ -96,7 +96,8 @@ def compile(name: str,
                                      asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic)
     else:
-        originMlir_to_Model_without_quantize(converter=converter, model_name=name, mode="int8", chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
+        origin_mlir_txt_to_bmodel_without_quantize(converter=converter, model_name=name, mode="int8",
+                                                   chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
 
 
 def compile_f32(name: str,
@@ -116,13 +117,12 @@ def compile_f32(name: str,
     compare = cmp and refs != None
     model_top_inference(model_name=name, cmp=compare)
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
+    mode_list = [mode]
     if mode == 'all':
-        for m in ['f32', 'f16', 'bf16']:
-            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
-            bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic)
-    else:
-        model_lowering_and_inference(model_name=name, quant_mode=mode, chip=TpuLang.chip, cmp=cmp)
-        bmodel_generate_and_inference(model_name=name, quant_mode=mode, dynamic=dynamic)
+        mode_list = ['f32', 'f16', 'bf16']
+    for m in mode_list:
+        model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
+        bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic)
 
 
 def model_transform(model_name, converter: TpuLangConverter):

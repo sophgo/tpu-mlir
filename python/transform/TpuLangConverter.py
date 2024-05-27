@@ -356,8 +356,8 @@ class TpuLangConverter(BaseConverter):
         "dict": "DICT",
     }
 
-    def __init__(self, name: str, graph: Graph, mode: str):
-        super().__init__()
+    def __init__(self, name: str, graph: Graph, mode: str, no_save: bool = False):
+        super().__init__(no_save=no_save)
         self.model_name = name
         self.model = graph
         self.load_model()
@@ -377,7 +377,6 @@ class TpuLangConverter(BaseConverter):
             else:
                 self.output_types.append(self.MLIRImporterTypeStr[tensor.dtype])
         self.mlir.declare_func(self.input_types, self.output_types)
-        self.ctx = Context()
 
     def __del__(self):
         if self.mlir != None:
@@ -411,15 +410,21 @@ class TpuLangConverter(BaseConverter):
                                  self.model_name,
                                  platform=Platform.TPULANG,
                                  state=state,
-                                 do_declare=False)
+                                 do_declare=False,
+                                 no_save=self.no_save)
 
     def __create_weight_op(self, tensor: Tensor):
         # constant variable/op
         tensor_type = self.__get_tensor_type(tensor)
         name_loc = Location.name(tensor.name)
-        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc)
+        attrs = dict()
+        if self.no_save:
+            attrs["inline_bytes"] = StringAttr.get(tensor.buffer.tobytes())
+        else:
+            self.constant[tensor.name] = tensor.buffer
+        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc,
+                              attributes=attrs)
         self.mlir.insert_point.insert(op)
-        self.constant[tensor.name] = tensor.buffer
         return op.results[0]
 
     def attr_to_mlir(self, params: dict):
@@ -528,7 +533,7 @@ class TpuLangConverter(BaseConverter):
 
     def __get_tensor_loc(self, tensor: Tensor):
         if tensor is None:
-            return Location.unknown(self.ctx)
+            return Location.unknown(self.mlir.mlir_module.context)
         else:
             return Location.name(tensor.name)
 
@@ -602,15 +607,18 @@ class TpuLangConverter(BaseConverter):
 
         return return_op
 
-    def generate_mlir(self, mlir_file: str):
-        # self.quantized_type_assign(self.model)
+    def get_mlir_txt(self):
         return_op = self.convert_subgraph(self.model)
         self.mlir.create_return_op(return_op)
-        mlir_txt = self.mlir.print_module()
+        return self.mlir.print_module()
+
+    def generate_mlir(self, mlir_file: str):
+        mlir_txt = self.get_mlir_txt()
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
+        logger.info("Save mlir file: {}".format(mlir_file))
         for k,v in self.constant.items():
             if v.dtype == 'float16':
                 self.constant[k] = v.view('uint16')
         np.savez(self.weight_file, **self.constant)
-        logger.info("Save mlir file: {}".format(mlir_file))
+        logger.info("Save weight file: {}".format(self.weight_file))

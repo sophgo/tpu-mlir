@@ -38,12 +38,14 @@ class MLIRImporter(object):
                  output_types: list = [],
                  state: str = State.TOP_F32,
                  do_declare: bool = True,
-                 run_mode: str = "STATIC"):
+                 run_mode: str = "STATIC",
+                 no_save: bool = False):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
         """
         assert (len(model_name) > 0)
+        self.no_save = no_save
         self.model_name = model_name
         self.state = state
         self.chip = "ALL"
@@ -194,10 +196,14 @@ class MLIRImporter(object):
             if _shape != output_shape or _type != data_type:
                 raise RuntimeError("{} weight conflict".format(name))
             return _op
+        attrs = dict()
+        if self.no_save:
+            attrs["inline_bytes"] = StringAttr.get(tensor.buffer.tobytes())
         tensor_type = RankedTensorType.get(output_shape, self.mlir_type[data_type])
         op = Operation.create("top.Weight",
                               results=[tensor_type],
-                              loc=Location.fused([Location.name(name)]))
+                              loc=Location.fused([Location.name(name)]),
+                              attributes=attrs)
         self.insert_point.insert(op)
         result = op.results[0]
         self.load_weight[name] = (result, output_shape, data_type)
@@ -304,7 +310,7 @@ class MLIRImporter(object):
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
-                   weight_file=self.weight_file,
+                   weight_file="" if self.no_save else self.weight_file,
                    platform=self.platform,
                    state=self.state,
                    chip=self.chip,

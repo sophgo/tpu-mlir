@@ -9,12 +9,13 @@ import numpy as np
 
 class BaseConverter(object):
 
-    def __init__(self):
+    def __init__(self, no_save: bool = False):
         self.operands = dict()
         self.tensors = dict()
         self.shapes = dict()
         self.input_names = list()
         self.output_names = list()
+        self.no_save = no_save # do not save intermediate files in disk
 
     def generate_mlir(self, mlir_file: str):
         raise NotImplementedError('generate_mlir')
@@ -58,9 +59,9 @@ class BaseConverter(object):
             return self.getWeightOp(name)
         return self.getOperand(name)
 
-    def addWeight(self, name, data):
+    def addWeight(self, name, data: np.ndarray):
         if not isinstance(data, np.ndarray):
-            raise KeyError("tensor data must be numpy array")
+            raise KeyError("tensor data must be a numpy array")
         if data.dtype != np.float32:
             data = data.astype(np.float32)
         if name in self.tensors:

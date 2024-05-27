@@ -226,7 +226,7 @@ def mlir_to_model(tpu_mlir: str,
     return get_matched_patterns(log_file)
 
 
-def originMlir_to_Model_without_quantize(
+def origin_mlir_txt_to_bmodel_without_quantize(
     converter,
     model_name: str,
     mode: str,
@@ -257,48 +257,53 @@ def originMlir_to_Model_without_quantize(
     group_by_cores: str = "auto",
     model_version: str = "",
     count_patterns: bool = False,
-    compress_mode: str = "none",
-    mute=False,
+    compress_mode: str = "none"
 ):
-    mlir_origin = model_name + "_origin.mlir"
     bmodel = f"{model_name}_{mode}.bmodel"
 
-    converter.generate_mlir(mlir_origin)
-
-    cmd = [
-        "tpuc-opt",
-        mlir_origin,
+    options = [
+        "--init",
         "--shape-infer",
     ]
     if len(add_postprocess) > 0:
-        cmd.extend([f'--add-postprocess="type={add_postprocess}"'])
-    cmd.extend(["--canonicalize", "--extra-optimize"])
+        options.extend([f'--add-postprocess="type={add_postprocess}"'])
+    options.extend(["--canonicalize", "--extra-optimize"])
 
-    cmd.extend([
-        f'--processor-assign="chip={chip.lower()} num_device={num_device} num_core={num_core}" addr_mode={addr_mode}'
-    ])
+    options.extend(
+        [
+            f'--processor-assign="chip={chip.lower()} num_device={num_device} num_core={num_core} addr_mode={addr_mode}"'
+        ]
+    )
     mode = mode.upper()
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = '--import-calibration-table="file={} asymmetric={}"'.format(
-            cali_table, asymmetric)
-        cmd.extend([cali_param])
+            cali_table, asymmetric
+        )
+        options.extend([cali_param])
     # do extra conversion for differnet chips
-    cmd.extend(["--processor-top-optimize"])
+    options.extend(["--processor-top-optimize"])
     if fuse_preprocess:
         fuse_pre_param = ('--fuse-preprocess="mode={} customization_format={} align={}"'.format(
             mode, customization_format, aligned_input))
         cmd.extend([fuse_pre_param])
+        fuse_pre_param = (
+            '--fuse-preprocess="mode={} customization_format={} align={}"'.format(
+                mode, customization_format, aligned_input
+            )
+        )
+        options.extend([fuse_pre_param])
 
     lower_param = '--convert-top-to-tpu="mode={} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}"'.format(
-        mode, asymmetric, do_winograd, ignore_f16_overflow, q_group_size)
-    cmd.extend([
-        lower_param,
-        "--canonicalize",
-        "--weight-fold",
-        # "-o",
-        # tpu_mlir,
-    ])
+        mode, asymmetric, do_winograd, ignore_f16_overflow, q_group_size
+    )
+    options.extend(
+        [
+            lower_param,
+            "--canonicalize",
+            "--weight-fold",
+        ]
+    )
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
@@ -320,28 +325,34 @@ def originMlir_to_Model_without_quantize(
     # codegen based on final mlir
     codegen_param = f'--codegen="model_file={bmodel} embed_debug_info={str(embed_debug_info).lower()} model_version={str(model_version).lower()}"'
 
-    cmd.extend([
-        "--mlir-disable-threading",
-        strip_io_quant_param,
-        "--processor-tpu-optimize",
-        distribute_param,
-        "--weight-reorder",
-        op_divide_param,
-        subnet_param,
-        "--op-reorder",
-        lg_param,
-        parallel_param,
-        address_assign_param,
-        codegen_param,
-        f'--deinit="no_save_weight=True"',
-        "-o /dev/null",
-    ])
+    options.extend(
+        [
+            strip_io_quant_param,
+            "--processor-tpu-optimize",
+            distribute_param,
+            "--weight-reorder",
+            op_divide_param,
+            subnet_param,
+            "--op-reorder",
+            lg_param,
+            parallel_param,
+            address_assign_param,
+            codegen_param,
+            f'--deinit="no_save_weight=True"'
+        ]
+    )
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
-        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
+        options.extend(["--debug"])
 
-    _os_system(cmd, mute=mute)
+    import pymlir
+    mlir_txt = converter.get_mlir_txt()
+    print("origin_mlir: ")
+    print(mlir_txt)
+    print("options: ", options)
+    pymlir.run_pass_pipeline(mlir_txt, options)
+
     return get_matched_patterns(log_file)
 
 
