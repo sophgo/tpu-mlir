@@ -1251,6 +1251,8 @@ class OnnxConverter(BaseConverter):
                 return
 
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+        if coord_mode == b'tf_half_pixel_for_nn':       # different mode name in tf and pyt
+            coord_mode = 'half_pixel'
         self.resize_to_interp(onnx_node,
                               op,
                               scale_h,
