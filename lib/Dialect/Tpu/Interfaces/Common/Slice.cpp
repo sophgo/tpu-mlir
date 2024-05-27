@@ -158,10 +158,8 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
 
     out_shape[axis] =
         (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
-    out_num_elem = 1;
-    for (int i = 0; i < out_dims; i++) {
-      out_num_elem *= out_shape[i];
-    }
+    module::setShape(getOutput(), out_shape);
+    out_num_elem = module::getNumElements(getOutput());
   }
   for (int i = 0; i < slice_dims; ++i) {
     if (offset_v->at(i) < 0) {
