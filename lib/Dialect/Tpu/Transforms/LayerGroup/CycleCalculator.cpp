@@ -99,9 +99,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
   bool enable_multi_core = false;
-  if (module::getCoreNum() == 2 && loop_num > 1) {
+  auto num_core = module::getCoreNum();
+  if (num_core > 1 && (loop_num / shape_secs.wsecs) > 1) {
     enable_multi_core = true;
-    loop_num = loop_num / 2 + loop_num % 2;
+    loop_num = loop_num / num_core + loop_num % num_core;
   }
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
