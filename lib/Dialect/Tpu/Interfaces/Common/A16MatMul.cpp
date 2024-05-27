@@ -336,7 +336,7 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
                                              PatternRewriter &rewriter) {
   auto input_value = op.getInput();
   auto ele_type = module::getElementType(input_value);
-  if (!ele_type.isF16() && !ele_type.isBF16()) {
+  if (!ele_type.isF16() && !ele_type.isBF16() && !module::isCalibratedType(input_value)) {
     llvm_unreachable("input of A16MatMul has to be F16 or BF16");
   }
   auto weight_op = op.getWeight().getDefiningOp<top::WeightOp>();
