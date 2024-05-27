@@ -60,8 +60,14 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
     std::vector<Value> operands;
     operands.emplace_back(op.getInput());
     operands.emplace_back(module::getNoneOp(op));
-    rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
-                                                operands);
+    auto reshape_op = rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
+                                                                  operands);
+    for (auto next_op : reshape_op.getResult().getUsers()) {
+      if (isa<tpu::ConcatOp>(next_op)) {
+        auto concat_op = dyn_cast<tpu::ConcatOp>(next_op);
+        concat_op->setAttr("only_merge", rewriter.getBoolAttr(false));
+      }
+    }
     return success();
   }
 };
