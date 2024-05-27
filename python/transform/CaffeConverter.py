@@ -31,8 +31,9 @@ class CaffeConverter(BaseConverter):
                  input_shapes: list,
                  output_names: list,
                  preprocess_args: dict = {},
-                 inputs_is_shape: list = []):
-        super().__init__()
+                 inputs_is_shape: list = [],
+                 no_save: bool = False):
+        super().__init__(no_save=no_save)
         # yapf: disable
         # for caffe v1
         self.layer_type = {
@@ -61,7 +62,7 @@ class CaffeConverter(BaseConverter):
         self.blobs = self.net.blobs
         self.mlir = None
         self.layer_dict = self.net.layer_dict
-        self.weight_file = "{}_top_origin_weight.npz".format(model_name)
+        self.weight_file = "" if self.no_save else "{}_top_origin_weight.npz".format(model_name)
         self.init_shapes(input_shapes)
         self.init_MLIRImporter()
         self.location = self.resolve_alias()
@@ -191,7 +192,7 @@ class CaffeConverter(BaseConverter):
                     break
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, platform=Platform.CAFFE)
+        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, platform=Platform.CAFFE, no_save=self.no_save)
         self.weight_file = self.mlir.weight_file
 
     def layerType(self, layer):
@@ -200,7 +201,7 @@ class CaffeConverter(BaseConverter):
         else:
             return layer.type
 
-    def generate_mlir(self, mlir_file: str):
+    def convert_subgraph(self):
         # add input op
         for idx, _name in enumerate(self.input_names):
             is_shape = False
@@ -242,13 +243,20 @@ class CaffeConverter(BaseConverter):
         for name in final_output_names:
             op = self.getOperand(name)
             return_op.append(op)
+        return return_op
 
+    def get_mlir_txt(self):
+        return_op = self.convert_subgraph()
         self.mlir.create_return_op(return_op)
-        mlir_txt = self.mlir.print_module()
+        return self.mlir.print_module()
+
+    def generate_mlir(self, mlir_file: str):
+        mlir_txt = self.get_mlir_txt()
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        self.WeightToNpz(self.weight_file)
         logger.info("Save mlir file: {}".format(mlir_file))
+        self.WeightToNpz(self.weight_file)
+        logger.info("Save weight file: {}".format(self.weight_file))
 
     def blob_to_weight_op(self, layer, index, shape: list = [], permute_order=[]):
         name = layer.name + "_weight_{}".format(index)

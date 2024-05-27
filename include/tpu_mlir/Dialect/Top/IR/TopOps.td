@@ -105,13 +105,16 @@ def Top_NoneOp : Top_BaseOp<"None"> {
 }
 
 def Top_WeightOp : Top_BaseOp<"Weight"> {
-  let summary = "load weight operator";
+  let summary = "weight operator";
 
   let description = [{
-    Load weight from a file. The file should be a valid .npz format file.
-    This Op does not take any input, and the location captures the tensor name.
-    The Output is an n-dimensional tensor whose type matches
-    the tensor type in the .npz file.
+    If `inline_bytes` is not defined or `inline_bytes` is a null string:
+      Load weight from a file. The file should be a valid .npz format file.
+      This Op does not take any input, and the location captures the tensor name.
+      The Output is an n-dimensional tensor whose type matches
+      the tensor type in the .npz file.
+    Else:
+      Load weight from `inline_bytes`.
   }];
 
   let arguments = (ins
@@ -123,7 +126,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<I64Attr>:$bias0,
     OptionalAttr<I64Attr>:$bias1,
     OptionalAttr<BoolAttr>:$is_signed,
-    OptionalAttr<BoolAttr>:$zero_guard
+    OptionalAttr<BoolAttr>:$zero_guard,
+    OptionalAttr<StrAttr>:$inline_bytes // save weight data as bytes
   );
 
   let results = (outs AnyRankedTensor:$output);

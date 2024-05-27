@@ -20,10 +20,12 @@
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Transforms/Passes.h"
+#include "tpu_mlir/InitAll.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/ModuleInterpreter.h"
@@ -256,6 +258,48 @@ void debug(bool enable) { llvm::DebugFlag = enable; }
 
 std::string py_module::version = MLIR_VERSION;
 std::string py_module::gmem_mode_str_ = "";
+
+
+void run_pass_pipeline(std::string mlir_txt, std::vector<std::string> opts) {
+  tpu_mlir::registerAllPasses();
+
+  DialectRegistry registry;
+  tpu_mlir::registerAllDialects(registry);
+  MLIRContext context(registry);
+
+  for (auto name : registry.getDialectNames())
+    context.getOrLoadDialect(name);
+
+  OwningOpRef<ModuleOp> module = parseSourceString<ModuleOp>(mlir_txt, &context);
+  auto pm = PassManager::on<ModuleOp>(&context);
+  auto errorHandler = [&](const Twine &msg) {
+    emitError(UnknownLoc::get(pm.getContext())) << msg;
+    return failure();
+  };
+  for (auto opt: opts) {
+    auto n = opt.size();
+    if (opt[0] == '-' && opt[1] == '-' && n > 2) {
+      int i = opt.find_first_of("=");
+      if (i == -1) {
+        i = n;
+      } else if (opt[i + 1] != '\"' || opt[n - 1] != '\"') {
+        continue;
+      }
+      auto pass_name = opt.substr(2, i - 2);
+      const PassInfo *passInfo = Pass::lookupPassInfo(pass_name);
+      if (!passInfo) {
+        llvm::errs() << "unknown pass: " << pass_name << "\n";
+        continue;
+      } else {
+        auto pass_option = (i == n) ? "" : opt.substr(i + 2, n - i - 3);
+        passInfo->addToPipeline(pm, pass_option, errorHandler);
+      }
+    }
+  }
+
+  pm.run(*module);
+}
+
 // wrap as Python module
 PYBIND11_MODULE(pymlir, m) {
   m.doc() = "pybind11 for mlir";
@@ -263,6 +307,7 @@ PYBIND11_MODULE(pymlir, m) {
         "enable debugging information");
   m.def("debug", &debug_only, "configure debugging information");
   m.def("set_mem_mode", &set_mem_mode, "set_Gmem_mode_str");
+  m.def("run_pass_pipeline", &run_pass_pipeline, "run_pass_pipeline");
   py::class_<quant_brief_info>(m, "q_info", "simple tensor quant info")
       .def_readwrite("dtype", &quant_brief_info::dtype)
       .def_readwrite("shape", &quant_brief_info::shape)
