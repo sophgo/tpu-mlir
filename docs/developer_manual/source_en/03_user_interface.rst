@@ -229,7 +229,7 @@ Used to convert various neural network models into MLIR files, the supported par
      - If open debug, immediate model file will keep; or will remove after conversion done
    * - tolerance
      - N
-     - Minimum similarity tolerance to model transform
+     - Minimum Cosine and Euclidean similarity tolerance to model transform. 0.99,0.99 by default.
    * - cache_skip
      - N
      - skip checking the correctness when generate same mlir and bmodel
@@ -462,7 +462,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Operators with F16 overflow risk are still implemented according to F16; otherwise, F32 will be implemented by default, such as LayerNorm
    * - tolerance
      - N
-     - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
+     - Tolerance for the minimum Cosine and Euclidean similarity between MLIR quantized and MLIR fp32 inference results. 0.8,0.5 by default.
    * - test_input
      - N
      - The input file for verification, which can be an image, npy or npz. No verification will be carried out if it is not specified
