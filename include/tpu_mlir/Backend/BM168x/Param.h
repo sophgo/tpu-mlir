@@ -2003,4 +2003,19 @@ typedef struct
 {
   int length;
 }LogicalAnd_param_t;
+
+#define MAX_NUM_CHN (8)
+typedef struct
+{
+    int32_t num_of_chn;
+    double std[MAX_NUM_CHN];
+    double scale[MAX_NUM_CHN];
+    double mean[MAX_NUM_CHN];
+    int32_t multi[MAX_NUM_CHN];
+    int32_t rshift[MAX_NUM_CHN];
+    int32_t offset[MAX_NUM_CHN];
+    int32_t in_zp;
+    int32_t out_zp;
+    int32_t round_mode;
+} mean_std_scale_param_t;
 #endif

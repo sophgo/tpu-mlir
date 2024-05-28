@@ -13,6 +13,7 @@ import transform.TpuLang as tpul
 from typing import List
 import math
 from utils.timer import Timer
+import cv2
 
 def is_int(dtype, width = None):
     if width == None:
@@ -180,6 +181,7 @@ class TPULANG_IR_TESTER(object):
             "VitL16": (self.test_Vit_L_f16,             Y, Y),
             "VitB": (self.test_Vit_B,                   Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
+            "MeanStdScale": (self.test_MeanStdScale,    Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase,          Y, Y),
         }
@@ -3642,6 +3644,61 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [z, u, y], is_quantized=True)
 
         _test_keep_output_order([4, 11])
+
+    def test_MeanStdScale(self, case_name):
+        @tpulang(self.chip)
+        def _test_mean_std_scale(idtype="uint8", odtype="int8"):
+            mean = [128.0, 128.0, 128.0]
+            std = [1/0.017, 1/0.017, 1/0.017]
+            scale= [1.0, 1 / 2**6]
+            shape = [1, 1, 500, 400]
+
+            if idtype == "uint8":
+                # customer_layer_path = os.getenv("CUSTOM_LAYER_PATH")
+                # path = os.path.join(customer_layer_path, "test_if/unittest/data/picture/n02769748_5957.JPEG")
+                # path = os.path.abspath(path)
+                # img_rgb = cv2.imread(path)
+                # img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY).reshape((1,1,img_rgb.shape[0], img_rgb.shape[1]))
+                # data_in = np.array(img_bgr)
+                data_in = np.random.randint(0, 256, size=shape).astype(idtype)
+                input = tpul.Tensor(name="in", dtype=idtype, shape=shape, data=data_in)
+            else:
+                np.random.seed(123)
+                data_in = np.random.random(shape).astype(idtype)
+                # np.savez("random_input.npz", data_in)
+                input = tpul.Tensor(name="in", dtype=idtype, shape=shape, data=data_in)
+
+            output = tpul.mean_std_scale(input, std, mean, scale, zero_points=[0,0], odtype=odtype, round_mode="half_up")
+            self.compile_and_check(self.unique_name(case_name), [input], [output], is_quantized=True)
+
+        # output i8
+        def _test_int8_to_int8_():
+            _test_mean_std_scale("int8", "int8")
+
+        def _test_uint8_to_int8_():
+            _test_mean_std_scale("uint8", "int8")
+
+        def _test_f32_to_int8_():
+            _test_mean_std_scale("float32", "int8")
+
+        # output f16
+        def _test_int8_to_f16_():
+            _test_mean_std_scale("int8", "float16")
+
+        def _test_uint8_to_f16_():
+            _test_mean_std_scale("uint8", "float16")
+
+        def _test_f32_to_f16_():
+            _test_mean_std_scale("float32", "float16")
+
+        _test_int8_to_int8_()
+        _test_uint8_to_int8_()
+        _test_f32_to_int8_()
+
+        _test_int8_to_f16_()
+        _test_uint8_to_f16_()
+        _test_f32_to_f16_()
+
 
     #######################################################################
     # Error Case: some error case

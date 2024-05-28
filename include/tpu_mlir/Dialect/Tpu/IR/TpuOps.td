@@ -767,6 +767,30 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale", [DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "MeanStdScale, it's for preprocess.";
+  let description = [{
+    for preprocess, do multiplier&rshift quantize.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$quant_mode,
+    StrAttr:$customization_format,
+    StrAttr:$channel_order,
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$std,
+    F64ArrayAttr:$mean,
+    F64ArrayAttr:$zero_points,
+    I64ArrayAttr:$resize_dims,
+    I64ArrayAttr:$multi,
+    I64ArrayAttr:$rshift,
+    I64ArrayAttr:$offset,
+    StrAttr:$rounding_mode
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
   let summary = "Preprocess for raw image.";
   let description = [{

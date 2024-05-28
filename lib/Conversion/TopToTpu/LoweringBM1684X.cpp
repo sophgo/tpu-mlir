@@ -217,7 +217,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MeanRstdLowering,
 	  GroupNormTrainLowering,
       Yuv2rgbFormulaLowering,
-	  LogicalAndLowering
+	  LogicalAndLowering,
+      MeanStdScaleLowering
       // clang-format on
       >(patterns->getContext());
 }

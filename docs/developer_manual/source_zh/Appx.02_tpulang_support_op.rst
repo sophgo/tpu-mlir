@@ -4263,6 +4263,7 @@ cond_select
 * BM1688： `cond` / `tbrn` / `fbrn` 的数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X： `cond` / `tbrn` / `fbrn` 的输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
+
 bmodel_inference_combine
 :::::::::::::::::
 
@@ -4328,3 +4329,48 @@ bmodel_inference_combine
 """""""""""
 * BM1688：  cmodel模式。
 * BM1684X： cmodel/pcie/soc模式。
+
+
+Preprocess Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+mean_std_scale
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def mean_std_scale(input: Tensor,
+                         std: List[float],
+                         mean: List[float],
+                         scale: Optional[Union[List[float],List[int]]] = None,
+                         zero_points: Optional[List[int]] = None,
+                         out_name: str = None,
+                         odtype="float32",
+                         round_mode: str = "half_away_from_zero"):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor 进行预处理操作。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作Tensor。
+* std：List[float]类型，表示数据集的标准差。
+* mean: List[float]类型，表示数据集的均值。
+* scale: Optional[Union[List[float],List[int]]]类型或None，缩放系数。
+* zero_points: Optional[List[int]]类型或None，表示零点。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* odtype：String类型，表示接口输出Tensor数据类型。
+* round_mode：String类型，表示取整方法。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型为odtype。
+
+处理器支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32/UINT8/INT8,输出类型可以为INT8/FLOAT16。
