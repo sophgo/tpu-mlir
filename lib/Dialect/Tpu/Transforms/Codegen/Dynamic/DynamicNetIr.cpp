@@ -964,9 +964,10 @@ void SubnetIr::generate_compiler_ir(
   }
 
   // bool reverse_flag = check_output_order_swap(outputs);
-  order = align_model_output_order(outputs);
+  // order = align_model_output_order(outputs);
   for (int32_t i = 0; i < outputs.size(); i++) {
-    Value v = order.size() == outputs.size() ? outputs[order[i]] : outputs[i];
+    // Value v = order.size() == outputs.size() ? outputs[order[i]] : outputs[i];
+    Value v = outputs[i];
     net_output_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
