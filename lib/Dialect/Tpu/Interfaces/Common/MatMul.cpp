@@ -300,7 +300,8 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
   auto Rshape = module::getShape(ins[1]);
   int left_num_dims = module::getShape(ins[0]).size();
   int right_num_dims = module::getShape(ins[1]).size();
-  if (left_num_dims == 4 && right_num_dims == 4 && Lshape[0] == Rshape[0] &&
+  bool right_trans  =getRightTranspose();
+  if (left_num_dims == 4 && right_num_dims == 4 && !right_trans && Lshape[0] == Rshape[0] &&
        Lshape[1] != Rshape[1] && Lshape[2] == Rshape[2] && Lshape[3] == Rshape[3])
     return failure();
   if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
