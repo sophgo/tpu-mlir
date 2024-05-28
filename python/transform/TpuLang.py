@@ -2330,3 +2330,34 @@ def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name: str =
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Gather", inputs=[input, index], outputs=[output], params=attr)
     return output
+
+@auto_name()
+@annotation_check
+def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
+                scale: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None,
+                out_name: str = None, odtype="float32", round_mode: str = "half_away_from_zero"):
+    idtype = input.dtype
+    if idtype in ["float32", "uint8", "int8"] and odtype == "float16":
+        #Align with IEEE 754 standard
+        round_mode = "HALF_TO_EVEN"
+
+    assert len(std) == len(mean)
+    assert len(input.shape) == 4
+
+    h = input.shape[2]
+    w = input.shape[3]
+    op_params = {
+        "channel_order": Attr("nchw", "string"),
+        "resize_dims": ArrayAttr([h, w], "int64"),
+        "std": ArrayAttr(std, "float64"),
+        "mean": ArrayAttr(mean, "float64"),
+        "scale": ArrayAttr(scale, "float64"),
+        "zero_points": ArrayAttr(zero_points, "float64"),
+        "rounding_mode": Attr(round_mode_convert(round_mode), "string"),
+        "customization_format":Attr("RGB", "string"),
+        "quant_mode": Attr("MultiplierShift", "string")
+    }
+
+    output = Tensor(input.shape, dtype=odtype, name=out_name)
+    TpuLang.insert_op("top.MeanStdScale", [input], [output], params=op_params)
+    return output

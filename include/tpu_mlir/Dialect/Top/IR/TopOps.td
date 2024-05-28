@@ -2682,6 +2682,27 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_MeanStdScaleOp: Top_Op<"MeanStdScale"> {
+  let summary = "MeanStdScale, it's for preprocess.";
+  let description = [{
+    for preprocess, do multiplier&rshift quantize.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$quant_mode,
+    StrAttr:$customization_format,
+    StrAttr:$channel_order,
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$std,
+    F64ArrayAttr:$mean,
+    F64ArrayAttr:$zero_points,
+    I64ArrayAttr:$resize_dims,
+    StrAttr:$rounding_mode
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_DepackRawOp: Top_Op<"DepackRaw"> {
   let summary = "Postprocess for raw image.";
   let description = [{

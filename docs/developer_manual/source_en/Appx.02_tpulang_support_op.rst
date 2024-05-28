@@ -3249,3 +3249,48 @@ Processor Support
 """""""""""
 * BM1688:  only cmodel mode.
 * BM1684X: cmodel/pcie/soc mode.
+
+Preprocess Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+mean_std_scale
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def mean_std_scale(input: Tensor,
+                         std: List[float],
+                         mean: List[float],
+                         scale: Optional[Union[List[float],List[int]]] = None,
+                         zero_points: Optional[List[int]] = None,
+                         out_name: str = None,
+                         odtype="float32",
+                         round_mode: str = "half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Preproces input Tensor data.
+This operation is considered a **global operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, representing the input data.
+* std: List[float] type, representing the standard deviation(Std) of data.
+* mean: List[float] type, representing the mean value of data.
+* scale: Optional[Union[List[float],List[int]]] type or None, reprpesenting the scale factor.
+* zero_points: Optional[List[int]] type or None,representing the zero point.
+* out_name: string type or None, representing the name of Tensor, tpulang will auto generate name if out_name is None.
+* odtype: String type, representing data type of output Tensor.
+* round_mode: String type, representing rounding type.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the type of odtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8, the output data type can be INT8/FLOAT16.
