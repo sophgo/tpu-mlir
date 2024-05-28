@@ -229,7 +229,7 @@ model_transform.py
      - 保存可用于debug的模型
    * - tolerance
      - 否
-     - 模型转换相似度的误差容忍度
+     - 模型转换的余弦与欧式相似度的误差容忍度，默认为0.99,0.99
    * - cache_skip
      - 否
      - 是否在生成相同mlir/bmodel时跳过正确性的检查
@@ -463,7 +463,7 @@ model_deploy.py
      - 打开时则有F16溢出风险的算子依然按F16实现;否则默认会采用F32实现, 如LayerNorm
    * - tolerance
      - 否
-     - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
+     - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
