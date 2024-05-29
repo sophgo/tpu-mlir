@@ -51,9 +51,12 @@ class TorchConverter(BaseConverter):
                  input_types: list,
                  output_names: list,
                  preprocess_args: dict = {},
+                 dynamic=False,
                  inputs_is_shape: list = []):
         super().__init__()
         self.inputs_is_shape = inputs_is_shape
+        self.dynamic = dynamic
+        self.run_mode = "DYNAMIC" if dynamic else "STATIC"
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.model = None
@@ -344,7 +347,7 @@ class TorchConverter(BaseConverter):
     def init_MLIRImporter(self):
         # init importer
         self.mlir = MLIRImporter(self.input_shapes, self.output_shapes, self.model_name,
-                                 Platform.TORCH, self.input_types)
+                                 Platform.TORCH, self.input_types, run_mode=self.run_mode)
         self.weight_file = self.mlir.weight_file
 
     def generate_list_map(self):

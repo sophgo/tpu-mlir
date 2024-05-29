@@ -161,4 +161,8 @@ void top::SliceOp::shape_inference() {
         module::commonShapeValInfer(getOperation(), {input_v}, output_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);
   }
+  if (!module::isNone(getOffsetT())) {
+    // set top run mode to dynamic
+    module::setTopRunMode(module::TopRunMode::DYNAMIC);
+  }
 }

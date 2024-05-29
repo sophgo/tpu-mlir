@@ -79,6 +79,10 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
 
   LogicalResult matchAndRewrite(SliceOp op,
                                 PatternRewriter &rewriter) const override {
+    if (module::isDynamic()) {
+      // SliceOps with dynamic shapes are not allowed to be merged.
+      return failure();
+    }
     if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
         !module::isNone(op.getStepsT())) {
       return failure();

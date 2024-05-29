@@ -93,4 +93,12 @@ def Module_AddrMode: I32EnumAttr<"AddrMode", "address mode",[
   let cppNamespace = "::tpu_mlir::module";
 }
 
+def Module_TopRunMode: I32EnumAttr<"TopRunMode", "top run mode",[
+      I32EnumAttrCase<"STATIC",  0>,
+      I32EnumAttrCase<"DYNAMIC", 1>,
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::module";
+}
+
 #endif // TPU_MLIR_MODULE_ATTR

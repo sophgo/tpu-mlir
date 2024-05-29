@@ -50,6 +50,7 @@ struct Attr {
   static constexpr llvm::StringRef TRAIN = "module.train";
   static constexpr llvm::StringRef ADDR_MODE = "module.addr_mode";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
+  static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
 };
 
 static ModuleOp m = nullptr;
@@ -1125,6 +1126,24 @@ AddrMode getAddrMode() {
 }
 
 bool isAddrMode(AddrMode mode) { return mode == getAddrMode(); }
+
+void setTopRunMode(TopRunMode mode) {
+  auto s = stringifyTopRunMode(mode);
+  m->setAttr(Attr::TOP_RUN_MODE, StringAttr::get(ctx, s));
+}
+
+TopRunMode getTopRunMode() {
+  if (m->hasAttrOfType<StringAttr>(Attr::TOP_RUN_MODE)) {
+    auto s = m->getAttrOfType<StringAttr>(Attr::TOP_RUN_MODE);
+    return symbolizeTopRunMode(s).value_or(TopRunMode::STATIC);
+  }
+  return TopRunMode::STATIC;
+}
+
+bool isDynamic() {
+  return getTopRunMode() == TopRunMode::DYNAMIC;
+}
+
 bool isDebugCmdEnable(std::string cmd_str) {
   if (debug_cmd.find(cmd_str) != std::string::npos) {
     return true;

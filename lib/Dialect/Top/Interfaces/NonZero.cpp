@@ -82,4 +82,6 @@ void top::NonZeroOp::shape_inference() {
     output_shape.push_back(dims);
   }
   module::setShapeOrVerify(getOutput(), output_shape);
+  // set top run mode to dynamic
+  module::setTopRunMode(module::TopRunMode::DYNAMIC);
 }

@@ -37,7 +37,8 @@ class MLIRImporter(object):
                  input_types: list = [],
                  output_types: list = [],
                  state: str = State.TOP_F32,
-                 do_declare: bool = True):
+                 do_declare: bool = True,
+                 run_mode: str = "STATIC"):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
@@ -46,6 +47,7 @@ class MLIRImporter(object):
         self.model_name = model_name
         self.state = state
         self.chip = "ALL"
+        self.run_mode = run_mode
         self.platform = platform
         self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         self.ctx = Context()
@@ -294,7 +296,7 @@ class MLIRImporter(object):
             result_types = output_txt[1:-1]
             result_var_name = ",".join([f"%1#{var_id}" for var_id in range(self.num_output)])
         main_func = """
-            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
+            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\", module.top_run_mode=\"{run_mode}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                     %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}
@@ -306,6 +308,7 @@ class MLIRImporter(object):
                    platform=self.platform,
                    state=self.state,
                    chip=self.chip,
+                   run_mode=self.run_mode,
                    args=args_txt,
                    output=output_txt,
                    last_output_num=self.num_output,

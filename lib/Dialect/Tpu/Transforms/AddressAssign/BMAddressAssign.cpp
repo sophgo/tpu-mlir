@@ -902,6 +902,7 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 }
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
+  auto run_mode = tpu::getRunMode(op);
   if (auto ReshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     if (Arch::ALIGN_4N &&
         module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth() ==
@@ -915,9 +916,11 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     }
     return true;
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
+    if (run_mode == tpu::RunMode::TPU_DYNAMIC) return false;
     auto p = sliceOp.parseParam();
     return p.fusible;
   } else if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+    if (run_mode == tpu::RunMode::TPU_DYNAMIC) return false;
     return concatOp.getOnlyMerge();
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {

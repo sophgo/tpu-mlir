@@ -80,4 +80,6 @@ void top::ShapeOp::shape_inference() {
     module::setShapeOrVerify(getOutput(), output_shape);
     module::bindShapeTensorValue(getOutput(), module::getShape(getInput()));
   }
+  // set top run mode to dynamic
+  module::setTopRunMode(module::TopRunMode::DYNAMIC);
 }

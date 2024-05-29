@@ -172,11 +172,11 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
         else:
             outputs[i.name] = np.array(i.data)
         if not is_cv18xx:
-            if outputs[i.name].shape != dyn_output_shapes[dyn_idx]:
+            if list(outputs[i.name].shape) != dyn_output_shapes[dyn_idx]:
                 dyn_len = np.prod(dyn_output_shapes[dyn_idx])
                 outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(
                     *dyn_output_shapes[dyn_idx])
-                dyn_idx += 1
+            dyn_idx += 1
     try:
         next(pack_bmodel_context) # save output
     except StopIteration:
