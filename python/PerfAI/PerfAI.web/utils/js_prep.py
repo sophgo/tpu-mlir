@@ -10,13 +10,20 @@ from src.tiu import TIU
 from src.dma import DMA
 from src.summary import SummaryProcessor
 from src.mlir_json import *
+from src.mlir_json import GlobalProfileParser
 from utils.utils import *
 
 
 def generate_jsfile(dirpath, name, out_path, file_path):
     include_layer = False
     parser = GlobalProfileParser()
-    mlir_info = parser.parse(dirpath)
+    result = parser.parse(dirpath)
+    if result is not None:
+        mlir_info, file_line_dict = result
+        tiu_layer_map, dma_layer_map = get_engine_layer(mlir_info)
+    else:
+        mlir_info = None
+        file_line_dict = None
     tiu_layer_map, dma_layer_map = get_engine_layer(mlir_info)
     tiuProcessor = TIU(dirpath)
     tiu_instance = tiuProcessor.process_file(tiu_layer_map)
@@ -53,6 +60,7 @@ def generate_jsfile(dirpath, name, out_path, file_path):
     if tiu_layer_map or dma_layer_map:
         include_layer = True
         categories.append("TPU_LAYER")
+        categories.append("TPU_GROUP_LAYER")
         time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
         filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
     lmem_size = int(chipArchArgs['TPU Lmem Size(MiB)'])
@@ -83,6 +91,8 @@ def generate_jsfile(dirpath, name, out_path, file_path):
             prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index("TPU_CDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
 
     cycle_data_dict = merge_layer_data(cycle_data_dict, categories)
+    cycle_data_dict = merge_group_layer_data(cycle_data_dict, categories, file_line_dict)
+
     summary = SummaryProcessor(tiuProcessor, gdmaProcessor, sdmaProcessor,cdmaProcessor)
     summarydf = summary.make_summary()
     summary_data =[[str(x) if isinstance(x,Decimal) else x for x in lst] for lst in summarydf.values.tolist()]
@@ -138,7 +148,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             if 'L2M' in data['Direction'][i]:
                 height = round(pd.to_numeric(data['L2M Bandwidth(GB/s)'][i]) / bwlist[1], 2)
             else:
-                height = round(pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / bwlist[0], 2)
+                height = round(pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / (bwlist[0] +1e-6), 2)
         else:
             height = round(uarch_rate/100, 2)
         tmp = [
@@ -158,6 +168,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
                 data['Layer Name'][i],
                 data['Subnet Id'][i],
                 data['Subnet Type'][i],
+                data['File Line'][i],
         ])
         tmp.extend([
             data['uArch Rate'][i] if 'uArch Rate' in data else f"DDR:{data['DDR Bandwidth(GB/s)'][i]},L2M:{data['L2M Bandwidth(GB/s)'][i]}",
@@ -236,6 +247,51 @@ def merge_layer_data(cycle_data_dict, categories):
             data.append(merged_entry)
 
         cycle_data_dict[key] = data
+    return cycle_data_dict
+
+
+def merge_group_layer_data(cycle_data_dict, categories, file_line_dict):
+    if "TPU_GROUP_LAYER" not in categories:
+        return cycle_data_dict  # If the categories do not include TPU_GROUP-LAYER, no action will be taken
+
+    ip_type = categories.index("TPU_GROUP_LAYER")
+    for key in cycle_data_dict.keys():
+        data = cycle_data_dict[key]
+        group_data = {}
+        group_num = 1
+        # group by group
+        for entry in data:
+            file_line = entry[13]
+            if type(file_line) != str and file_line is not None and not math.isnan(file_line):
+                for file_line_dict_key in file_line_dict:
+                    if file_line in file_line_dict[file_line_dict_key]:
+                        if file_line_dict_key not in group_data:
+                            group_data[file_line_dict_key] = []
+                        group_data[file_line_dict_key].append(entry)
+
+        for group_id, entries in group_data.items():
+            start_times = [int(e[1]) for e in entries]
+            end_times = [int(e[2]) for e in entries]
+            earliest_start = min(start_times)
+            latest_end = max(end_times)
+            duration = latest_end - earliest_start
+            layer_name = f'Group{group_num}  %{group_id}'
+            subnet_id = entries[0][11]
+            subnet_type = entries[0][12]
+            group_num += 1
+
+            merged_entry = [
+                ip_type, earliest_start, latest_end, duration, '', layer_name, 0.5,
+                '', '', '', '', subnet_id, subnet_type,
+                '', '', '', '',''
+            ] ##info: to be filled
+            data.append(merged_entry)
+
+        cycle_data_dict[key] = data
+
+    for key in cycle_data_dict:
+        for entry in cycle_data_dict[key]:
+            del entry[13]
 
     return cycle_data_dict
 

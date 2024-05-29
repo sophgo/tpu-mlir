@@ -21,7 +21,7 @@ class TIU:
         self.total_alg_ops_list = []
         self.uArach_rate_list = []
         self.total_uarch_ops_list = []
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type',
+        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
                         'Function Type', 'Function Name',
                         'Alg Cycle', 'Alg Ops','Asic Cycle', 'Start Cycle', 'End Cycle',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
@@ -104,13 +104,14 @@ class TIU:
                 if "__TIU_REG_INFO__" in row:
                     if idx != 0:
                         k = int(tiuRegDict['Cmd Id'])
-                        layer_info = ['-', '-','-','-']
+                        layer_info = ['-', '-','-','-','-']
                         if (k,coreId) in layer_map.keys():
                             layer_info = layer_map[(k,coreId)]
                         tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
                         tiuRegDict['Layer Name'] = layer_info[1]
                         tiuRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
                         tiuRegDict['Subnet Type'] = layer_info[3]
+                        tiuRegDict['File Line'] = int(layer_info[4]) if layer_info[0] != '-' else '-'
                         new_regList.append(tiuRegDict)
                         tiuRegDict = dict.fromkeys(fieldList, '')
 
@@ -123,7 +124,7 @@ class TIU:
                     tiuRegDict[attr] = val
                 idx += 1
             k = int(tiuRegDict['Cmd Id'])
-            layer_info = ['-', '-','-','-']
+            layer_info = ['-', '-','-','-','-']
             if (k,coreId) in layer_map.keys():
                 layer_info = layer_map[(k,coreId)]
             tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
@@ -154,8 +155,8 @@ class TIU:
             # regDict['Start Time'] = get_realtime_from_cycle(regDict['Start Cycle'],self.frequency) #ns
             # regDict['End Time'] = get_realtime_from_cycle(regDict['End Cycle'],self.frequency) #ns
 
-            startTime = min(startTime, regDict['Start Cycle'])
-            endTime = max(endTime, regDict['End Cycle'])
+            startTime = min(startTime, get_time_by_cycle(regDict['Start Cycle'], self.frequency))
+            endTime = max(endTime, get_time_by_cycle(regDict['End Cycle'], self.frequency))
             totalInstRegList.append(regDict)
         self.total_time_dict["start"].append(startTime)
         self.total_time_dict["end"].append(endTime)

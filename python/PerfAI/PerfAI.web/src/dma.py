@@ -26,7 +26,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.total_burst_length = 0
         self.total_xact_cnt = 0
         self.frequency = 0
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type',
+        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
                         'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)','L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
@@ -101,11 +101,12 @@ class DMA(): #GDMA/SDMA/CDMA
                         if (k,coreId) in layer_map.keys():
                             layer_info = layer_map[(k,coreId)]
                         if all(map(lambda x: isinstance(x, float) and math.isnan(x), layer_info)):
-                            layer_info = ['-', '-', '-', '-']
+                            layer_info = ['-', '-', '-', '-', '-']
                         dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
                         dmaRegDict['Layer Name'] = layer_info[1]
                         dmaRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
                         dmaRegDict['Subnet Type'] = layer_info[3]
+                        dmaRegDict['File Line'] = int(layer_info[4]) if layer_info[0] != '-' else '-'
                         new_reglist.append(dmaRegDict)
                     dmaRegDict = dict.fromkeys(fieldList, '')
                 else:
@@ -115,7 +116,7 @@ class DMA(): #GDMA/SDMA/CDMA
                     dmaRegDict[attr] = val
                 idx += 1
             k = int(dmaRegDict['Cmd Id'])
-            layer_info = ['-', '-','-','-']
+            layer_info = ['-', '-', '-', '-', '-']
             if (k,coreId) in layer_map.keys():
                 layer_info = layer_map[(k,coreId)]
             dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
@@ -173,8 +174,8 @@ class DMA(): #GDMA/SDMA/CDMA
             # regDict['End Cycle'] = get_realtime_from_cycle(int(regDict['End Cycle']),self.frequency)
             regDict['DDR Bandwidth(GB/s)'] = round(float(regDict['DDR Bandwidth(GB/s)']), 2)
             regDict['L2M Bandwidth(GB/s)'] = round(float(regDict['L2M Bandwidth(GB/s)']), 2)
-            startTime = min(startTime, int(regDict['Start Cycle']))
-            endTime = max(endTime, int(regDict['End Cycle']))
+            startTime = min(startTime, get_time_by_cycle(regDict['Start Cycle'], self.frequency))
+            endTime = max(startTime, get_time_by_cycle(reg_dict['End Cycle'], self.frequency))
             totalInstRegList.append(regDict)
 
         self.regList.append(totalInstRegList)

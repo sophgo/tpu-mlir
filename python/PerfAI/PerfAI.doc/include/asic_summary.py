@@ -274,7 +274,7 @@ class AsicSummary(object):
                 elif float(ws.cell(h, uRate_pos).value[:-1]) < 75:
                     ws.cell(h, uRate_pos).fill = DetailsStyle.yellow_light
             # parallelismPos
-            if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
+            if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2', 'A2']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 205:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.yellow_light
             elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
@@ -318,7 +318,7 @@ class AsicSummary(object):
                 if float(ws.cell(h, cdma_ddr_avg_bl_pos).value) < ddr_max_bl:
                     ws.cell(h, cdma_ddr_avg_bl_pos).fill = DetailsStyle.red_light
         content_end_rows = chart_len
-        if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2']:
+        if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2', 'A2']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<205%'
         elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<105%'

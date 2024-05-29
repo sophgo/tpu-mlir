@@ -44,6 +44,7 @@ class LayerInfo:
         self.gdma_tensor = None
         self.gdma_nodes = []
         self.engine_type = None
+        self.file_line = 0
 
     def add_input(self, tensor):
         if tensor in self.in_tensors:
@@ -63,7 +64,7 @@ class LayerInfo:
 
 class jsonObj:
     def __init__(self):
-        self.flie_line = -1
+        self.file_line = -1
         self.subnet_id = 0
         self.core_id = 0
         self.opcode = None
