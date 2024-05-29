@@ -72,6 +72,53 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
   }
 };
 
+// slice + slice => slice
+struct StaticMergeSlicePattern : public OpRewritePattern<SliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
+        !module::isNone(op.getStepsT())) {
+      return failure();
+    }
+    auto in_op = op.getInput().getDefiningOp();
+    if (!in_op || !isa<SliceOp>(in_op) || in_op->hasOneUse() == false) {
+      return failure();
+    }
+    auto output_shape = module::getShape(op.getOutput());
+    auto num_dims = output_shape.size();
+    auto in_slice = cast<SliceOp>(in_op);
+    auto cur_offset = module::getI64Array(op.getOffset());
+    auto cur_ends = module::getI64Array(op.getEnds());
+    auto cur_steps = module::getI64Array(op.getSteps());
+    auto in_offset = module::getI64Array(in_slice.getOffset());
+    auto in_steps = module::getI64Array(in_slice.getSteps());
+
+    std::vector<int64_t> new_offset(num_dims, 0);
+    std::vector<int64_t> new_ends(num_dims, 0);
+    std::vector<int64_t> new_steps(num_dims, 1);
+    for (int i = 0; i < num_dims; i++) {
+      auto cur_off = cur_offset->at(i);
+      auto cur_end = cur_ends->at(i);
+      auto cur_s = cur_steps->at(i);
+      assert(cur_s > 0);
+      auto in_off = in_offset->at(i);
+      auto in_s = in_steps->at(i);
+      assert(in_s > 0);
+      new_offset[i] = in_off + cur_off * in_s;
+      new_ends[i] = new_offset[i] + (cur_end - cur_off) * in_s;
+      new_steps[i] = in_s * cur_s;
+    }
+    op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
+    op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));
+    op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
+    op->setOperand(0, in_slice.getInput());
+    rewriter.eraseOp(in_op);
+    return success();
+  }
+};
+
 static void getInputsOutputs(std::vector<Operation *> &ops,
                              std::vector<Value> &inputs,
                              std::vector<Value> &outputs, bool &has_NoneOp) {
@@ -228,7 +275,8 @@ public:
           patterns
               .add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
                    patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>,
-                   TopPermuteToReshape>(
+                   TopPermuteToReshape,
+                   StaticMergeSlicePattern>(
                   &ctx);
         }
         patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,

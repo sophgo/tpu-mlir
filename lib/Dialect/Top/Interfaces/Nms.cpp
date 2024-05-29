@@ -74,4 +74,6 @@ void top::NmsOp::shape_inference() {
   std::vector<int64_t> output_shape{0, 3};
   output_shape[0] = num_batch * num_class * max_output_size_per_class;
   module::setShapeOrVerify(getOutput(), output_shape);
+  // set top run mode to dynamic
+  module::setTopRunMode(module::TopRunMode::DYNAMIC);
 }

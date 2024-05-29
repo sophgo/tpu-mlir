@@ -117,6 +117,7 @@ class OnnxConverter(BaseConverter):
 
         self.dynamic_inputs = dynamic_inputs
         self.dynamic = dynamic
+        self.run_mode = "DYNAMIC" if dynamic else "STATIC"
         if self.dynamic_inputs:
             self.dynamic = True
         self.dynamic_shapes = dict()
@@ -638,7 +639,7 @@ class OnnxConverter(BaseConverter):
                 output_shapes[i] = self.getDynamicShape(o)
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, Platform.ONNX,
-                                 self.input_types)
+                                 self.input_types, run_mode=self.run_mode)
         self.weight_file = self.mlir.weight_file
 
     def get_shape_for_node(self, input, output, value_info, name):

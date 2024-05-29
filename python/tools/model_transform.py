@@ -219,11 +219,12 @@ class TorchTransformer(ModelTransformer):
                  input_types: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
+                 dynamic=False,
                  inputs_is_shape: list = []):
         super().__init__(model_name, model_def)
         from transform.TorchConverter import TorchConverter
         self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, input_types,
-                                        output_names, preprocessor, inputs_is_shape=inputs_is_shape)
+                                        output_names, preprocessor, dynamic=dynamic, inputs_is_shape=inputs_is_shape)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
@@ -258,7 +259,7 @@ def get_model_transform(args):
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict(),
-                                inputs_is_shape=args.inputs_is_shape)
+                                dynamic=args.dynamic, inputs_is_shape=args.inputs_is_shape)
     else:
         # TODO: support more deep learning model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
