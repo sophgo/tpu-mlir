@@ -358,22 +358,65 @@
 
     <script>
         function configsTable(configs) {
-            console.log("im calling")
-            console.log("configs:", configs)
             const table = document.getElementById('configsTable');
-            table.innerHTML = ''; // 清空表格
-            const keys = Object.keys(configs);
-            let row;
-            keys.forEach((key, index) => {
-                if (index % 2 === 0) {
-                    row = table.insertRow(-1);
-                }
-                const cell1 = row.insertCell(-1);
-                const cell2 = row.insertCell(-1);
-                cell1.innerHTML = key;
-                cell2.innerHTML = configs[key];
+            table.innerHTML = ''; // Clear Table
+
+            const orderedCategories = [
+                'Chip Arch',
+                'Platform',
+                'Spec',
+                'TPU Lmem Size',
+                'Bandwidth',
+                'Align',
+                'Frequnency'
+            ];
+
+            // Key for classification
+            const categories = {
+                'Align': ['Cube IC Align(8bits)', 'Cube OHOW Align(8bits)', 'Vector OHOW Align(8bits)'],
+                'Bandwidth': ['DDR Max BW(GB/s/Core)', 'L2 Max BW(GB/s)'],
+                'Frequnency': ['TIU Frequency(MHz)', 'DMA Frequency(MHz)'],
+                'Spec': ['Core Num', 'NPU Num', 'Execution Unit Number(int8)'],
+                'Chip Arch': ['Chip Arch'],
+                'Platform': ['Platform'],
+                'TPU Lmem Size': ['TPU Lmem Size(MiB)']
+            };
+
+            let keyValuePairs = [];
+            orderedCategories.forEach(category => {
+                categories[category].forEach(key => {
+                    if (configs.hasOwnProperty(key)) {
+                        let value = configs[key];
+                        // Format specific keys
+                        if (key === 'TPU Lmem Size(MiB)') {
+                            value = Math.round(value * Math.pow(10, -6));
+                        }
+                        keyValuePairs.push({ key: key, value: value });
+                    }
+                });
             });
-            console.log("table:", table)
+
+            const numCols = 2; // Number of columns per row
+            let numRows = Math.ceil(keyValuePairs.length / numCols); // Calculate the required number of rows
+
+            for (let i = 0; i < numRows; i++) {
+                table.insertRow(-1);
+            }
+
+            for (let i = 0; i < keyValuePairs.length; i++) {
+                let row = table.rows[i % numRows];
+                let cellKey = row.insertCell(-1);
+                let cellValue = row.insertCell(-1);
+                cellKey.innerHTML = keyValuePairs[i].key;
+                if (keyValuePairs[i].key === 'DDR Max BW(GB/s/Core)' && configs.hasOwnProperty('Core Num') && configs['Core Num'] !== 0) {
+                    let formattedValue = keyValuePairs[i].value / configs['Core Num'];
+                    // Check if the result is an integer, if not, retain one decimal place
+                    formattedValue = Number.isInteger(formattedValue) ? formattedValue : formattedValue.toFixed(1);
+                    cellValue.innerHTML = formattedValue;
+                } else {
+                    cellValue.innerHTML = keyValuePairs[i].value;
+                }
+            }
         }
 
         function sortData(data, is_asc) {
@@ -388,7 +431,7 @@
                 }
                 return -1;
             });
-            console.log("SortData计算时间为:", Date.now() - now) //原冒泡
+            console.log("SortData计算时间为:", Date.now() - now) // Primary bubbling
             return index
         }
 
@@ -398,7 +441,7 @@
                     if (value.includes('%')) {
                         return parseFloat(value.replace('%', '')) / 100;
                     }
-                    // 如果字符串不包含数字，则返回null以忽略
+                    // If the string does not contain numbers, return null to ignore
                     if (isNaN(Number(value))) {
                         return null;
                     }
@@ -1219,6 +1262,7 @@
             let category_count = new Array(categories.length).fill(0);
             let startTime = raw_data.length > 0 ? raw_data[0][1] : 0;
             let total_cycles = 0;
+            const group_colors = ['#02A676', '#008C72', '#007369', '#005A5B', '#003840'];
             for (let i = 0; i < raw_data.length; i++) {
                 if (startTime > raw_data[i][1]) startTime = raw_data[i][1];
                 category_time[raw_data[i][0]] += raw_data[i][3]; //duration
@@ -1226,16 +1270,22 @@
                 if (categories[raw_data[i][0]] !== 'TPU_LAYER') {
                     total_cycles += raw_data[i][3];
                 }
+                let itemColor;
+                if (categories[raw_data[i][0]] === 'TPU_GROUP_LAYER') {
+                    itemColor = group_colors[i % group_colors.length];
+                } else {
+                    itemColor = colors[calcColorIndex(raw_data[i][color_col], colors.length)];
+                }
                 data.push({
                     name: `${raw_data[i][funcTypeIndex]}`, //func_type
                     value: raw_data[i],
                     itemStyle: {
                         normal: {
-                            color: colors[calcColorIndex(raw_data[i][color_col], colors.length)],
+                            color: itemColor,
                             // borderColor: "#FFFFFF",
                         }
                     }
-                })
+                });
             }
             //console.log("data:", data)
             let new_categories = [];
@@ -1287,7 +1337,7 @@
                         return obj;
                     },
                     formatter: function(params) {
-                        if (!params.value || !params.value.length || params.value.length != header.length) return ""
+                        // if (!params.value || !params.value.length || params.value.length != header.length) return ""
                         let tip = params.marker + "Func_type: " + params.name
                         tip += `<br>Start Time: ${usec_str(params.value[1])}`
                         tip += `<br>End Time: ${usec_str(params.value[2])}`
@@ -3079,8 +3129,19 @@
         function parseBwInfo(bwInfo) {
             let result = {};
             bwInfo.split(',').forEach(part => {
-                let [key, value] = part.split(':');
-                result[key.trim()] = parseFloat(value.trim());
+                let splitPart = part.split(':');
+                if (splitPart.length === 2) {
+                    let key = splitPart[0];
+                    let value = splitPart[1];
+
+                    if (key.trim() !== '' && value.trim() !== '') {
+                        result[key.trim()] = parseFloat(value.trim());
+                    } else {
+                        console.error('Empty key or value detected:', key, value);
+                    }
+                } else {
+                    console.error('Invalid data format:', part);
+                }
             });
             return result;
         }

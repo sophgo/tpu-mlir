@@ -69,3 +69,9 @@ def get_layer_info_by_opcode(s):
     subnet_type = s.split('.')[0].upper()
     layer_name = s.split('.')[1]
     return subnet_type, layer_name
+
+def get_time_by_cycle(cycle, frequency):
+    frequency = int(frequency)
+    cycle = int(cycle)
+    # cycle to ns
+    return int(cycle / frequency * 1000)

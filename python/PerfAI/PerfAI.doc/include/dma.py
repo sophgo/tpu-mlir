@@ -78,6 +78,8 @@ class Dma(object):
         :return: None
         """
         if os.path.exists(reg_info_file) and os.path.getsize(reg_info_file) != 0:
+            last_underscore_index = reg_info_file.rfind('_')
+            core_id = int(reg_info_file[last_underscore_index + 1 : -4])
             with open(reg_info_file) as f:
                 rows = f.readlines()
                 field_set = set()
@@ -99,8 +101,8 @@ class Dma(object):
                         reg_count += 1
                         if idx != 0:
                             k = int(reg_dict['Cmd Id'])
-                            if k in dma_layer_map.keys():
-                                layer_id_name = dma_layer_map[k]
+                            if any(key[0] == k for key in dma_layer_map.keys()):
+                                layer_id_name = dma_layer_map[(k, core_id)]
                             else:
                                 layer_id_name = ['-', '-']
                             reg_dict['Layer Id'] = layer_id_name[0]
@@ -125,8 +127,8 @@ class Dma(object):
                         idx += 1
                 if idx != 0:
                     k = int(reg_dict['Cmd Id'])
-                    if k in dma_layer_map.keys():
-                        layer_id_name = dma_layer_map[k]
+                    if any(key[0] == k for key in dma_layer_map.keys()):
+                        layer_id_name = dma_layer_map[(k, core_id)]
                     else:
                         layer_id_name = ['-', '-']
                     reg_dict['Layer Id'] = layer_id_name[0]

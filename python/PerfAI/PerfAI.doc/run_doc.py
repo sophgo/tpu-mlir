@@ -9,13 +9,13 @@ import pandas as pd
 import argparse
 from openpyxl import load_workbook
 from tqdm import tqdm
-from src.generator.details import generate_details
+from src.generator.details import generate_details, generate_divided_details
 from src.generator.layer import generate_layer
 from src.generator.style import set_details_style, set_summary_style, set_layer_style, set_sim_summary_style
 from src.generator.summary import generate_summary
 from src.parser.exfile_parser import GlobalProfileParser
 
-def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0):
+def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0, divided=0):
     input_fold = input if input[-1] == '/' else input + '/'
     out_file = output if '/' in output else input_fold + output
     parser = GlobalProfileParser()
@@ -23,19 +23,36 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
     # PerfAI.doc do not support showing layer info without global.profile
     network = global_info.net_name if global_info and global_info.net_name else '--'
     with pd.ExcelWriter(out_file) as writer:
-        tiu_instance_map, gdma_instance_map, chip_arch = generate_details(input_fold, out_file, global_info, writer,
-                                                            core_num=cores, split_instr_world=speedup)
-        chip_arch['network'] = network
-        if global_info is not None:
-            layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
-            generate_summary(layer_info_map, writer, chip_arch)
-    if style:
+        if divided == 0:
+            tiu_instance_map, gdma_instance_map, chip_arch = generate_details(input_fold, out_file, global_info, writer,
+                                                                core_num=cores, split_instr_world=speedup)
+            chip_arch['network'] = network
+            if global_info is not None:
+                layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
+                generate_summary(layer_info_map, writer, chip_arch)
+        else:
+            tiu_instance_map, gdma_instance_map, chip_arch = generate_divided_details(input_fold, global_info,
+                                                                core_num=cores)
+
+    if style == 1 and divided == 0:
         print('Setting style for ' + out_file)
         set_details_style(out_file, cores, chip_arch)
         set_sim_summary_style(out_file, cores, chip_arch)
         if global_info is not None:
             set_summary_style(out_file)
             set_layer_style(out_file)
+    if style == 1 and divided == 1:
+        print('Setting style for ' + input_fold)
+        for root, dirs, files in os.walk(input_fold):
+            for file in files:
+                if file.endswith('.xlsx'):
+                    out_file = os.path.join(root, file)
+                    set_details_style(out_file, cores, chip_arch)
+                    set_sim_summary_style(out_file, cores, chip_arch)
+                    if global_info is not None:
+                        set_summary_style(out_file)
+                        set_layer_style(out_file)
+
     if split:
         xls = pd.ExcelFile(out_file)
         sheet_names = xls.sheet_names
@@ -52,16 +69,22 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
                     columns[i] = ' '
             df.columns = columns
             df.to_csv(output_file, index=False)
-    perfai_doc_dir = os.path.join(input_fold, 'PerfDoc')
-    if not os.path.exists(perfai_doc_dir):
-        os.makedirs(perfai_doc_dir)
-    for file in os.listdir(input_fold):
-        if file.endswith('.xlsx') or file.endswith('.csv'):
-            src_file = os.path.join(input_fold, file)
-            dst_file = os.path.join(perfai_doc_dir, file)
-            if os.path.exists(dst_file):
-                os.remove(dst_file)
-            shutil.move(src_file, dst_file)
+    if divided == 0:
+        perfai_doc_dir = os.path.join(input_fold, 'PerfDoc')
+        if not os.path.exists(perfai_doc_dir):
+            os.makedirs(perfai_doc_dir)
+        for file in os.listdir(input_fold):
+            if file.endswith('.xlsx') or file.endswith('.csv'):
+                src_file = os.path.join(input_fold, file)
+                dst_file = os.path.join(perfai_doc_dir, file)
+                if os.path.exists(dst_file):
+                    os.remove(dst_file)
+                shutil.move(src_file, dst_file)
+    if divided == 1:
+        for file in os.listdir(input_fold):
+            if file.endswith('.xlsx') or file.endswith('.csv'):
+                file_path = os.path.join(input_fold, file)
+                os.remove(file_path)
     # regInfo_dir = os.path.join(input_fold, 'RegInfo')
     # if not os.path.exists(regInfo_dir):
     #     os.makedirs(regInfo_dir)
@@ -107,5 +130,11 @@ if __name__ == "__main__":
         default=0,
         help="If separate the sheets to different excels, which will reduce the size of output.",
     )
+    parser.add_argument(
+        "--divided",
+        type=int,
+        default=0,
+        help="If write the output Excel into several Excel files separately, which will solve the problem of excessive memory",
+    )
     args = parser.parse_args()
-    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split)
+    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split, args.divided)

@@ -14,6 +14,7 @@ class GlobalProfileParser:
         self.mlir_filename = "final.mlir"
         self.subnet_list = []
         self.layer_list = []
+        self.file_line_dict = {}
 
 
     def parse(self, filename):
@@ -29,6 +30,31 @@ class GlobalProfileParser:
         self.mlir_filename = mlir_file
         assert os.path.isfile(json_file) and os.path.isfile(mlir_file)
 
+        with open(self.mlir_filename, 'r') as file:
+            lines = file.readlines()
+        group_indices = []
+        yield_indices = []
+        group_args = []
+        result_dict = {}
+        for i, line in enumerate(lines):
+            if 'Group' in line and 'Parallel' not in line:
+                group_indices.append(i)
+                group_arg = re.search(r'%(\w+)', line)
+                if group_arg:
+                    group_args.append(group_arg.group(1))
+            if 'Yield' in line:
+                yield_indices.append(i)
+        for group_index in group_indices:
+            first_yield_found = False
+            for yield_index in yield_indices:
+                if yield_index > group_index:
+                    first_yield_found = True
+                    result_dict[group_args[group_indices.index(group_index)]] = list(range(group_index + 2, yield_index + 1))
+                    break
+            if not first_yield_found:
+                result_dict[group_args[group_indices.index(group_index)]] = []
+        self.file_line_dict = result_dict
+
         ginfo = GlobalInfo()
         subnet_list = ginfo.subnet_list
         subnet_info = None
@@ -41,7 +67,7 @@ class GlobalProfileParser:
             data = json.load(f)
             for d in data:
                 json_layer = jsonObj()
-                json_layer.flie_line = d['file-line']
+                json_layer.file_line = d['file-line']
                 json_layer.subnet_id = d['subnet_id']
                 json_layer.opcode = d['opcode']
                 json_layer.core_id = d['core_id']
@@ -62,12 +88,13 @@ class GlobalProfileParser:
         for subnet_info in subnet_dict.values():
             ginfo.subnet_list.append(subnet_info)
 
-        return ginfo
+        return ginfo, self.file_line_dict
 
     def get_layer_info(self, index, j_layer,tensor_id,layer_ins,layer_outs):
         layer_info = LayerInfo()
         layer_info.layer_id = index + 1
         layer_info.core_id = j_layer.core_id
+        layer_info.file_line = j_layer.file_line
 
         for idx, in_tensor in enumerate(j_layer.operands):
             if len(in_tensor.keys()) <= 0:
@@ -121,8 +148,7 @@ def get_engine_layer(g_info):
                         print('ERROR! Tiu id is not unique.')
                         assert 0
                     else:
-                        tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type]
-                        #layer_id, layer_name = func_type, subnet_id, subnet_type
+                        tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line]
                 for gdma_node in layer_info.gdma_nodes:
                     k = gdma_node.gdma_id
                     c = gdma_node.core_id
@@ -130,5 +156,5 @@ def get_engine_layer(g_info):
                         print('ERROR! Gdma id is not unique.')
                         assert 0
                     else:
-                        gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type]
+                        gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line]
     return tiu_layer_map, gdma_layer_map
