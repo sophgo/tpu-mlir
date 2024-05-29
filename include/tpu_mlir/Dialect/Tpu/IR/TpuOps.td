@@ -3700,4 +3700,14 @@ def Tpu_GroupNormTrainOp : Tpu_Op<"GroupNormTrain"> {
     AnyTensor:$rstd
   );
 }
+def Tpu_LogicalAndOp :Tpu_Op<"LogicalAnd">{
+  let summary = "logical and operation";
+  let description = [{logical and operation between two variables}];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+}
 #endif // TPU_OPS
