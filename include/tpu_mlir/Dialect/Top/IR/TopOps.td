@@ -3397,4 +3397,14 @@ def Top_GroupNormTrainOp : Top_Op<"GroupNormTrain"> {
     AnyTensor:$rstd
   );
 }
+def Top_LogicalAndOp :Top_Op<"LogicalAnd">{
+  let summary = "logical and operation";
+  let description = [{logical and operation between two variables}];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+}
 #endif // Top_OPS

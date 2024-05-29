@@ -1998,4 +1998,8 @@ typedef struct group_norm_train_global_param {
   group_norm_common_spec_t common;
   int axis;
 } group_norm_train_global_param_t;
+typedef struct
+{
+  int length;
+}LogicalAnd_param_t;
 #endif
