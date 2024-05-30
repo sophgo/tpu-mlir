@@ -1,5 +1,6 @@
 import operator
 import torch
+import random
 from torch.fx import GraphModule
 import torch.nn.intrinsic as nni
 from sophgo_mq.utils import getitem2node
@@ -22,6 +23,9 @@ from typing import (
 )
 from sophgo_mq.utils import get_flattened_qconfig_dict
 
+def generate_random_string(length):
+    chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    return ''.join(random.choices(chars, k=length))
 
 @register_model_quantizer("BM1688")
 @register_model_quantizer("BM1690")
@@ -51,6 +55,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
                 qnni.ConvTransposeBn2d:qnniqat.ConvTransposeBn2d_sophgo,
             }
         self.exclude_module_name.append(nn.modules.dropout.Dropout)
+        self.quant_dict = quant_dict
 
     @property
     def module_type_to_quant_input(self) -> tuple:
@@ -122,7 +127,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
     @property
     def _passed_func_type(self):
         return (
-            torch.nn.functional.relu, 
+            torch.nn.functional.relu,
             torch.nn.functional.relu6,
             torch.flatten
         )
@@ -138,33 +143,39 @@ class SophgoTpuQuantizer(ModelQuantizer):
     def _layers_need_scale_form_input_fake_quantizer(self):
         return (
             qnniqat.ConvBnReLU2d_sophgo, #todo:add transposeConv support
-            qnniqat.ConvBn2d_sophgo, 
-            qnniqat.ConvReLU2d_sophgo, 
+            qnniqat.ConvBn2d_sophgo,
+            qnniqat.ConvReLU2d_sophgo,
             qnnqat.Conv2d_sophgo,
             qnniqat.LinearReLU_sophgo,
             qnniqat.Linear_sophgo,
             qnniqat.LinearBn1d_sophgo,
             qnniqat.ConvTransposeBnReLU2d_sophgo,
             qnniqat.ConvTransposeReLU2d_sophgo,
-            qnniqat.ConvTransposeBn2d_sophgo,			
+            qnniqat.ConvTransposeBn2d_sophgo,
         )
 
     @property
     def _layers_need_check_is_dw(self):
         return (
             qnniqat.ConvBnReLU2d_sophgo,
-            qnniqat.ConvBn2d_sophgo, 
-            qnniqat.ConvReLU2d_sophgo, 
+            qnniqat.ConvBn2d_sophgo,
+            qnniqat.ConvReLU2d_sophgo,
             qnnqat.Conv2d_sophgo,
         )
 
+    def insert_node(self, model, pre_node, new_next_node_name):
+        graph = model.graph
+        nodes = list(model.graph.nodes)
+        with graph.inserting_after(pre_node):
+            inserted_node = graph.create_node("call_module", new_next_node_name, (pre_node,), {})
+            for _node in nodes:
+                _node.args = self._fix_succ_recursivly(_node.args, pre_node, inserted_node)
 
     def _insert_fake_quantizer(self, model, graph, modules, flattened_qconfig_dict, node, next_layers, fp16 = False):
         if len(next_layers) > 0:
             layer = next_layers[0] #选其中第1个就能正确决定节点类型
             qconfig1 = flattened_qconfig_dict.get(layer.target, None) #首先根据层名去取，优先级最高
             if qconfig1 is None and layer.target in modules:
-                print(f'layer.target:{layer.target}, type:',type(modules[layer.target]))
                 qconfig1 = flattened_qconfig_dict.get(type(modules[layer.target]), None) #其次根据type去取
                 if isinstance(modules[layer.target], self._layers_need_check_is_dw):
                     if modules[layer.target].groups > 1:
@@ -173,11 +184,10 @@ class SophgoTpuQuantizer(ModelQuantizer):
                 qconfig1 = flattened_qconfig_dict.get('', None) #最后找全局qconfig，优先级最低
             fake_quantizer = qconfig1.activation()
             if fp16:
-                print(f'insert bf16 node')
                 fake_quantizer = BF16FakeQuantize(None)
             quantizer_name = layer.name + self.quantizer_prefix
             if hasattr(model, quantizer_name):
-                quantizer_name = layer.name +'_n2_br'+ self.quantizer_prefix
+                quantizer_name = layer.name + f'_{generate_random_string(15)}_'+ self.quantizer_prefix
             setattr(model, quantizer_name, fake_quantizer)
             logger.info("Insert act quant {}".format(quantizer_name))
             with graph.inserting_after(node):
@@ -204,7 +214,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
     def _insert_fake_quantize_for_act_quant_for_mix_precsion_train(
             self,
             model: GraphModule,
-            qconfig: Any):        
+            qconfig: Any):
         graph = model.graph
         nodes = list(model.graph.nodes)
         modules = dict(model.named_modules())
@@ -224,7 +234,8 @@ class SophgoTpuQuantizer(ModelQuantizer):
                 if user.op == "call_module" and isinstance(modules[user.target], self._layers_need_scale_form_input_fake_quantizer):
                     int8_layers.append(user)
                 else:
-                    f16_layers.append(user)
+                    if user.op != "output":
+                        f16_layers.append(user)
 
         for node in nodes:
             int8_layers, f16_layers = [],[] #找到node后的多个int4后继节点和多个int8后继节点，然后这多个int8或int4后继节点共享1个输入量化节点
@@ -270,14 +281,13 @@ class SophgoTpuQuantizer(ModelQuantizer):
             # Upsample
             torch.nn.Upsample
             )  + self._layers_need_scale_form_input_fake_quantizer
-        support_fuse_relu_function_type = (torch.matmul, operator.sub, torch.sub, operator.mul, torch.mul, operator.add, torch.add, torch.cat) 
-        relu_type = (torch.relu)       
+        support_fuse_relu_function_type = (torch.matmul, operator.sub, torch.sub, operator.mul, torch.mul, operator.add, torch.add, torch.cat)
         deleted_node = []
         for node in nodes:
             if node in deleted_node:
                 continue
             if (node.op == "call_module" and isinstance(modules[node.target],  torch.nn.ReLU)):
-                # ((node.op == 'call_function' or node.op == 'call_method') and node.target in relu_type)):
+                # ((node.op == 'call_function' or node.op == 'call_method') and node.target in (torch.relu))):
                 fake_quantizer_node = node.args[0]
                 if "_act_fake_quantizer" in fake_quantizer_node.name:
                     arg_node = fake_quantizer_node.args[0]
@@ -307,13 +317,16 @@ class SophgoTpuQuantizer(ModelQuantizer):
                                 del modules[user.target]
                                 print(f'del {user.name}, {node.name} left')
         model.recompile()
-        model.graph.lint()        
+        model.graph.lint()
         return model
 
     def _insert_fake_quantize_for_act_quant(
             self,
             model: GraphModule,
             qconfig: Any):
+        if 'bf16_mix_prec' in self.quant_dict and self.quant_dict['bf16_mix_prec']:
+            self._insert_fake_quantize_for_act_quant_for_mix_precsion_train(model, qconfig)
+            return model
         graph = model.graph
         nodes = list(model.graph.nodes)
         modules = dict(model.named_modules())
@@ -344,7 +357,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
                 for _node in nodes:
                     _node.args = self._fix_succ_recursivly(_node.args, node, inserted_node)
         model.recompile()
-        model.graph.lint()        
+        model.graph.lint()
         return model
 
     def prepare(self, model: GraphModule, qconfig):
@@ -400,7 +413,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
                     print(f'no tensor_meta, add placeholder {node.target} to node_need_to_quantize_output')
                     node_need_to_quantize_output.append(node)
                     print(">>>>> append node ", node)
-        
+
         return node_need_to_quantize_output
 
     def _find_act_quants_transformer(self, model: GraphModule) -> List:

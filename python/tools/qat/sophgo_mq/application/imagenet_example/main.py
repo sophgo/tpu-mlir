@@ -100,6 +100,7 @@ parser.add_argument('--pre_eval_and_export', action='store_true')
 parser.add_argument('--deploy_batch_size', default=1, type=int, help='deploy_batch_size.')
 parser.add_argument('--fp8_e4m3', action='store_true')
 parser.add_argument('--fp8_e5m2', action='store_true')
+parser.add_argument('--bf16_mix_prec', action='store_true')
 parser.add_argument('--export_onnx_before_training', action='store_true')
 parser.add_argument('--print_freq', default=5, type=int, help='print_freq')
 
@@ -155,10 +156,6 @@ def main():
     time_end = time.time()
     print('totally time is ', time_end-time_start)
 
-layer_names = []
-features_out_hook = {}
-save_all_tensor_for_cmp = True
-i = 0
 def generate_random_string(length):
     """
     生成指定长度的随机字符串，包含大小写字母和数字。
@@ -166,41 +163,24 @@ def generate_random_string(length):
     chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     return ''.join(random.choices(chars, k=length))
 
+features_out_hook = {}
 def hook(module, fea_in, fea_out):
-    if not save_all_tensor_for_cmp:
-        global i
-        if i >= len(layer_names):
-            return None
-        name = layer_names[i]
-        i += 1
-    else:
-        name = generate_random_string(10)
+    name = generate_random_string(15)
     global features_out_hook
     if name in features_out_hook:
-        name = generate_random_string(10)
-    features_out_hook[f'f_{name}'] = fea_out.cpu().numpy()
+        name = generate_random_string(15)
+    if isinstance(fea_out, torch.Tensor):
+        features_out_hook[f'f_{name}'] = fea_out.cpu().numpy()
     return None
 
 def gen_test_ref_data(cali_loader, model, args):
     model.eval()
-    global layer_names
     hook_handles = []
     input_data = {}
     data_num = 3
-    exclude_module = ['fake_quantize', 'weight_fake_quant', 'observer', 'torch.fx', 'batchnorm', 'torch.nn.modules.module.Module']
     for name, child in model.named_modules():
-        # print("layer name:", name, ",type:", str(type(child)))
-        if save_all_tensor_for_cmp or not any([i in str(type(child)) for i in exclude_module]):
-            # print("    add hook")
-            # if '_dup' in name:
-            #     name = name[:-5]
-            # layer_names.append(name.replace('.','_'))
-            if not save_all_tensor_for_cmp:
-                node_name = get_node_name_by_module_name(name, model)
-                layer_names.append(node_name)
-            hd = child.register_forward_hook(hook=hook)
-            hook_handles.append(hd)
-    # print('layer_names:', layer_names)
+        hd = child.register_forward_hook(hook=hook)
+        hook_handles.append(hd)
     if args.cpu:
         model = model.cpu()
     with torch.no_grad():
@@ -267,23 +247,23 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.cuda is not None:
         model = model.cuda(args.cuda)
     else:
-        model = model.cpu() 
+        model = model.cpu()
 
     if args.pre_eval_and_export:
         print('原始onnx模型精度')
         validate(val_loader, model.eval(), criterion, args)  #这里未执行model.cuda()，会报错
 
-        kwargs = {
-            'input_shape_dict': {'data': [args.deploy_batch_size, 3, 224, 224]},
-            'output_path': args.output_path,
-            'model_name':  args.arch,
-            'dummy_input': None, 
-            'onnx_model_path':  os.path.join(args.output_path, '{}_ori.onnx'.format(args.arch)),
-        }
-        module_tmp = copy.deepcopy(model)
-        module_tmp = module_tmp.cpu()
-        convert_onnx(module_tmp.eval(), **kwargs)
-        del module_tmp
+        # kwargs = {
+        #     'input_shape_dict': {'data': [args.deploy_batch_size, 3, 224, 224]},
+        #     'output_path': args.output_path,
+        #     'model_name':  args.arch,
+        #     'dummy_input': None,
+        #     'onnx_model_path':  os.path.join(args.output_path, '{}_ori.onnx'.format(args.arch)),
+        # }
+        # module_tmp = copy.deepcopy(model)
+        # module_tmp = module_tmp.cpu()
+        # convert_onnx(module_tmp.eval(), **kwargs)
+        # del module_tmp
         model = model.train() #prepare前一定要是train模式!!
 
     # quantize model
@@ -293,6 +273,7 @@ def main_worker(gpu, ngpus_per_node, args):
                         'chip': args.chip,
                         'quantmode': args.quantmode,
                         'strategy': 'CNN',
+                        'bf16_mix_prec': args.bf16_mix_prec
                        },
         }
         if args.fp8_e4m3:
@@ -468,7 +449,7 @@ def main_worker(gpu, ngpus_per_node, args):
             validate(val_loader, module_tmp2, criterion, args)
             del module_tmp2
             gen_test_ref_data(cali_loader, model, args)
-            convert_deploy(model.eval(), args.chip, val_loader, input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]}, 
+            convert_deploy(model.eval(), args.chip, val_loader, input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
                 model_name='{}'.format(args.arch), output_path=args.output_path)
         exit(0)
 
@@ -494,9 +475,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
     net_type = 'CNN'
     mlir_model_path = convert_deploy(model.eval(), args.chip, val_loader, net_type, input_shape_dict=
-        {'data': [args.deploy_batch_size, 3, 224, 224]}, 
+        {'data': [args.deploy_batch_size, 3, 224, 224]},
         model_name='{}'.format(args.arch),
-        output_path=args.output_path)
+        output_path=args.output_path, bf16_mix_prec = args.bf16_mix_prec)
     validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args)
 
 def prepare_dataloader(args):
@@ -649,7 +630,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         if i % args.print_freq == 0:
             progress.display(i)
 
-        # # 检查训练过程参数是否异常  
+        # # 检查训练过程参数是否异常
         # for param in model.named_parameters():
         #     sum = torch.isnan(param[1]).sum()
         #     if sum > 0:
@@ -720,7 +701,7 @@ def validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args
         len(bmodel_test_loader),
         [batch_time, losses, top1, top5],
         prefix='Test: ')
-    
+
     # switch to evaluate mode
     end = time.time()
     inputs = {}
