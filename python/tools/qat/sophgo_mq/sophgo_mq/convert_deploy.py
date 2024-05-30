@@ -85,7 +85,7 @@ def convert_onnx(model: GraphModule, input_shape_dict, dummy_input, onnx_model_p
     # Per-channel QuantizeLinear and DequantizeLinear is supported since opset 13
     opset_version = 13 if kwargs.get('deploy_to_qlinear', False) else 11
     # opset_version = 18
-    
+
     # open all fake quant node to export
     if isinstance(model, torch.fx.graph_module.GraphModule):
         print(">>>>> print graphmodule before export", model)
@@ -132,7 +132,7 @@ def convert_onnx(model: GraphModule, input_shape_dict, dummy_input, onnx_model_p
     os.system(f"rm -f {onnx_model_path}")
     onnx.save(model_onnx, onnx_model_path)
 
-     
+
 @register_deploy_function("Transformer")
 def convert_onnx(model: GraphModule, input_shape_dict, dummy_input, onnx_model_path, **kwargs):
     pt_file_name = onnx_model_path.split('.')
@@ -248,7 +248,9 @@ def export_qtable(context_filename, model_name, output_path, quant_mode):
             for name,value in blob_range.items():
                 if 'quant_type' in value:
                     quant_type = value['quant_type']
-                    if 'threshold' in value:
+                    if quant_type in ['None', 'BF16_to_INT8']:
+                        continue
+                    if 'threshold' in value and quant_type != 'BF16':
                         f.write("{} {}\n".format(name[:-2], quant_type))
                     else:
                         f.write("{} {}\n".format(name, quant_type))
@@ -262,8 +264,8 @@ def export_qtable(context_filename, model_name, output_path, quant_mode):
                     f.write("{} {}\n".format(name[:-2], dtype))
                 else:
                     f.write("{} {}\n".format(name, dtype))
-                    
-                    
+
+
 @register_deploy_function("Transformer")
 def deploy_qparams_Academic_NLP(model: GraphModule, onnx_model_path, model_name, **kwargs):
     logger.info("Extract qparams for Academic_NLP.")
@@ -271,7 +273,7 @@ def deploy_qparams_Academic_NLP(model: GraphModule, onnx_model_path, model_name,
     for name, submodule in model.named_modules():
         if isinstance(submodule, torch.quantization.FakeQuantizeBase):
             if submodule.only_enable_observer==True:
-                node_name_only_observer.append(name)  
+                node_name_only_observer.append(name)
     quant_mode = "INT8"
     for name, submodule in model.named_modules():
         class_of_submodule = submodule.__class__
@@ -300,7 +302,7 @@ def deploy_qparams_Academic_NLP(model: GraphModule, onnx_model_path, model_name,
                     else:
                         f.write("{}     {:.7f}     {:.7f}     {:.7f}\n".format(name, value['threshold'], value['min'], value['max']))
                 else:
-                    tmpstr = "{} {} {} {} {}\n".format(name, len(value['step']), ' '.join([str(i) for i in value['step']]), 
+                    tmpstr = "{} {} {} {} {}\n".format(name, len(value['step']), ' '.join([str(i) for i in value['step']]),
                             len(value['zero_point']), ' '.join([str(i) for i in value['zero_point']]))
                     if name.endswith('_weight_fp8') or name.endswith('_bias_fp8'):
                         weight_scale_fp8.append(tmpstr)
@@ -340,7 +342,7 @@ def deploy_qparams_Academic_NLP(model: GraphModule, onnx_model_path, model_name,
                     else:
                         f.write("{} {:.7f} {:.7f} {:.7f}\n".format(name, value['threshold'], value['min'], value['max']))
                 else:
-                    tmpstr = "{} {} {} {} {}\n".format(name, len(value['step']), ' '.join([str(i) for i in value['step']]), 
+                    tmpstr = "{} {} {} {} {}\n".format(name, len(value['step']), ' '.join([str(i) for i in value['step']]),
                             len(value['zero_point']), ' '.join([str(i) for i in value['zero_point']]))
                     if name.endswith('_weight') or name.endswith('_bias'):
                         weight_scale.append(tmpstr)
@@ -465,7 +467,7 @@ def convert_deploy(model: GraphModule, chip, val_loader, net_type='CNN',
     deploy_model = deepcopy_graphmodule(model)
     for convert_function in NET_DEPLOY_FUNCTION[net_type]:
         convert_function(deploy_model, **kwargs)
-   
+
     if chip != 'academic':
         mlir_scale = '1,1,1'
         mlir_mean = '0,0,0'
@@ -500,25 +502,26 @@ def convert_deploy(model: GraphModule, chip, val_loader, net_type='CNN',
         calibration_table = os.path.join(output_path, '{}_cali_table_from_sophgo_mq_sophgo_tpu'.format(model_name))
         test_input = os.path.join(output_path, 'input_data_0.npz')
         test_reference = os.path.join(output_path, 'layer_outputs_0.npz')
-        # quantize_table = os.path.join(output_path, '{}_q_table_from_sophgo_mq_sophgo_tpu'.format(model_name))
-        # --quantize_table {quantize_table} \
+        quantize_table = ''
+        quantize_mode = 'INT8'
+        quantize_str = 'int8_sym'
+        if 'bf16_mix_prec' in kwargs and kwargs['bf16_mix_prec']:
+            quantize_table = os.path.join(output_path, '{}_q_table_from_sophgo_mq_sophgo_tpu'.format(model_name))
+            quantize_table = f'--quantize_table {quantize_table}'
+            quantize_mode = 'BF16'
+            quantize_str = 'bf16'
         bmodel_ext = 'cvimodel' if chip == 'CV183X' else 'bmodel'
         os.system(f"model_deploy.py \
         --mlir {model_name}_qat.mlir \
-        --quantize INT8 \
-        --calibration_table {calibration_table} \
+        --quantize {quantize_mode} \
+        --calibration_table {calibration_table} {quantize_table} \
         --chip {chip} \
         --test_input {test_input} \
         --test_reference {test_reference} \
         --fazzy_match \
         --tolerance 0.99,0.90 --debug \
-        --model {model_name}_qat_{chip.lower()}_int8_sym.{bmodel_ext}")
-        return f'./{model_name}_qat_{chip.lower()}_int8_sym_tpu.mlir'
-
-        # os.system("model_eval.py --model_file resent18_qat_cv183x_bf16_tpu.mlir \
-        #         --count 0 --dataset_type imagenet --postprocess_type topx \
-        #         --dataset /workspace/data/imagenet/val/ --debug_cmd 'use_pil_resize'")
-        # tpu_mlir_cmodel_validate(val_loader, model, criterion)
+        --model {model_name}_qat_{chip.lower()}_{quantize_str}.{bmodel_ext}")
+        return f'./{model_name}_qat_{chip.lower()}_{quantize_str}_tpu.mlir'
 
 def export_onnx_with_fakequant_node(model: GraphModule, net_type='CNN',
                    input_shape_dict=None, dummy_input=None, output_path='./',

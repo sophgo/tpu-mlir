@@ -48,7 +48,7 @@ class Fp16FakeQuantize(QuantizeBase):
                'scale={}, zero_point={}'.format(
                    self.fake_quant_enabled, self.observer_enabled,
                    self.quant_min, self.quant_max,
-                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List', 
+                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List',
                    self.zero_point if self.ch_axis == -1 else 'List')
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
@@ -88,7 +88,7 @@ class Fp16FakeQuantize(QuantizeBase):
                 missing_keys.append(key)
         super(Fp16FakeQuantize, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
                                                              missing_keys, unexpected_keys, error_msgs)
-        
+
 class BF16FakeQuantize(QuantizeBase):
     """This is BF16 Quantization Emulator."""
     def __init__(self, observer, **observer_kwargs):
@@ -96,11 +96,11 @@ class BF16FakeQuantize(QuantizeBase):
         self.dtype = 'BF16'
 
     def forward(self, X):
-        if self.fake_quant_enabled[0] == 1:
+        if self.fake_quant_enabled[0] == 1 and isinstance(X, torch.Tensor):
             X_quant = X.to(torch.bfloat16)
             X = X_quant.to(torch.float)
         return X
-    
+
     @torch.jit.export
     def extra_repr(self):
         return 'fake_quant_enabled={}, observer_enabled={}'.format(
