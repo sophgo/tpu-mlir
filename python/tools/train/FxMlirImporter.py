@@ -123,6 +123,9 @@ class FxMIIRImportor(object):
             for user in node.users:
                 if user.target in ChanStyleOp:
                     return True
+                elif hasattr(node.meta['val'], 'size') and len(node.meta['val'].size())==1 and 'convolution' in user.name: #conv bias
+                    return True
+                # user.target in [torch.ops.aten.convolution]
         return False
 
     def get_output_shapes(self, node, exclude_num = 0):
@@ -227,7 +230,7 @@ class FxMIIRImportor(object):
             result_var_name = ",".join([f"%1#{var_id}" for var_id in range(num_output)])
             result_types = output_args_txt[1:-1]
         main_func = """
-            module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"TORCH\", module.state=\"{state}\", module.chip=\"{chip}\", module.train=\"{train}\"}} {{
+            module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"TORCH\", module.state=\"{state}\", module.chip=\"{chip}\", module.train={train}}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                     %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}

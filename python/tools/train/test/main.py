@@ -24,13 +24,15 @@ if __name__ == '__main__':
                         help="debug")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
-    parser.add_argument("--skip_tpu_mlir", action='store_true',
-                        help="skip_tpu_mlir")
+    parser.add_argument("--only_test_bwd", action='store_true',
+                        help="only_test_bwd")
     parser.add_argument("--model", default="",help="model name")
     start_time = time.time()
     args = parser.parse_args()
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
+    if args.chip == 'bm1690':
+        os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
     if args.model == "test":
         ## yolo ###
         # input = torch.randn((1,3,224,224))

@@ -3511,6 +3511,13 @@ class TORCH_IR_TESTER(object):
         model = resnet50()
         self.trace_and_test([(1,3,224,224)], model)
 
+        print('start test yolov5s')
+        from nets.yolo import YoloBody
+        anchors_mask    = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
+        num_classes = 80
+        phi = 's'
+        model = YoloBody(anchors_mask, num_classes, phi)
+        self.trace_and_test([(1,3,224,224)], model)
 
         # print('start test test_model6')
         # from tools.train.test_model import test_model6

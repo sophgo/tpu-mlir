@@ -14,6 +14,7 @@
 #include <llvm/Support/Debug.h>
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/IlpTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 
 #define DEBUG_TYPE "layer-group"
 using namespace tpu_mlir::backend;
@@ -194,7 +195,7 @@ static void get_layer_group(LgInfo &lg_info,
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
   }
-  lg_info.update_group_io();
+  lg_info.update_group_io(LgPass::OPTIONS.opt);
   set_group_type(lg_info);
 }
 
@@ -488,7 +489,7 @@ void GroupMethod::get_base_dfs_topo_groups(
     LgInfo lg_info;
     lg_info.group_ops.assign(group.begin(), group.end());
     // lg_info.update_group_io(true);
-    lg_info.update_group_io();
+    lg_info.update_group_io(LgPass::OPTIONS.opt);
     LgInfos.push_back(lg_info);
   }
 
@@ -1431,7 +1432,7 @@ void processWhenOpFail(LgPassIR *pass_ir, LgInfo &sub_group,
     pass_ir->map_l2m_load.push_back(
         std::map<std::pair<Value, int>, int, value_compare2>());
   }
-  sub_group.update_group_io();
+  sub_group.update_group_io(LgPass::OPTIONS.opt);
   set_group_type(sub_group);
 }
 
@@ -1603,9 +1604,8 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   int grp_num = pass_ir->tmp_base_groups.size();
   for (int64_t i = 0; i < grp_num; i++) {
     if (pass_ir->tmp_base_groups[i].size() > 1) {
-      sub_group.group_ops.assign(pass_ir->tmp_base_groups[i].begin(),
-                                 pass_ir->tmp_base_groups[i].end());
-      sub_group.update_group_io();
+      sub_group.group_ops.assign(pass_ir->tmp_base_groups[i].begin(), pass_ir->tmp_base_groups[i].end());
+      sub_group.update_group_io(LgPass::OPTIONS.opt);
       int in_idx = 0;
       std::map<Operation *, int> op_block_id;
       for (auto in : sub_group.group_ins) {
@@ -1685,7 +1685,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
     if (base_groups[i].size() > 1) {
       sub_group.group_id = i;
       sub_group.group_ops.assign(base_groups[i].begin(), base_groups[i].end());
-      sub_group.update_group_io();
+      sub_group.update_group_io(LgPass::OPTIONS.opt);
       set_group_type(sub_group);
       llvm::errs() << ">>>>>> process group" << grp_idx << ":\n";
       for (auto op : base_groups[i]) {

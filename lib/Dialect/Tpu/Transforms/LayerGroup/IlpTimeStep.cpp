@@ -1463,6 +1463,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         if (min_always_free_mem_size > itr.second) {
           reside_value_info tmp;
           addr -= itr.second;
+          addr = (addr/64)*64;
           tmp.addr = addr;
           tmp.size = itr.second;
           map_reside_value_info[itr.first] = tmp;

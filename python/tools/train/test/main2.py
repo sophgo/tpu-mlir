@@ -157,20 +157,22 @@ if __name__ == '__main__':
     parser.add_argument("--only_test_bwd", action='store_true',
                         help="only_test_bwd")
     args = parser.parse_args()
+    if args.chip == 'bm1690':
+        os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
     tpu_mlir_jit.args = args
     input = torch.randn((1, 3, 224, 224))
     input_d = input.to(device)
 
-    print('start test test_model1')
-    from tools.train.test_model import test_model1
-    mod = test_model1(for_train = True)
-    mod.to(device)
-    model_opt = torch.compile(mod, backend=aot_backend)
-    for i in range(1):
-        print(f"now run forward{i}")
-        res = model_opt(input_d)
-        print(f"now run backward{i}")
-        res.sum().backward()
+    # print('start test test_model1')
+    # from tools.train.test_model import test_model1
+    # mod = test_model1(for_train = True)
+    # mod.to(device)
+    # model_opt = torch.compile(mod, backend=aot_backend)
+    # for i in range(1):
+    #     print(f"now run forward{i}")
+    #     res = model_opt(input_d)
+    #     print(f"now run backward{i}")
+    #     res.sum().backward()
 
     # print('start test test_model2')
     # from tools.train.test_model import test_model2
@@ -194,16 +196,16 @@ if __name__ == '__main__':
     #     print(f"now run backward{i}")
     #     res.sum().backward()
 
-    # print('start test resnet50')
-    # from tools.train.resnet import resnet50
-    # mod = resnet50()
-    # mod.to(device)
-    # model_opt = torch.compile(mod, backend=aot_backend)
-    # for i in range(1):
-    #     print(f"now run forward{i}")
-    #     res = model_opt(input_d)
-    #     print(f"now run backward{i}")
-    #     res.sum().backward()
+    print('start test resnet50')
+    from tools.train.resnet import resnet50
+    mod = resnet50()
+    mod.to(device)
+    model_opt = torch.compile(mod, backend=aot_backend)
+    for i in range(1):
+        print(f"now run forward{i}")
+        res = model_opt(input_d)
+        print(f"now run backward{i}")
+        res.sum().backward()
 
     # print('start test resnet18')
     # from tools.train.resnet import resnet18

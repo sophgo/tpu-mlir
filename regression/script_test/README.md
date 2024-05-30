@@ -21,4 +21,6 @@
 
 * test10:        test model_tool update_weight
 
+* test11:        test ILP layergroup
+
 * test_llm:      test llm models

@@ -49,7 +49,7 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
       }
     }
     if (do_reshape && order->size() == 2 && order->at(0) == 1 &&
-        order->at(1) == 0) {
+        order->at(1) == 0 && op.getInput().getDefiningOp()!=nullptr) {
       auto nonzeroOp = dyn_cast<tpu::NonZeroOp>(op.getInput().getDefiningOp());
       if (nonzeroOp && nonzeroOp.getOrder().str() == "RowMajor")
         do_reshape = false;
