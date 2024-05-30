@@ -64,8 +64,7 @@ void computePerChannelParam(
       findMinMax(p_weight, col, &min_val, &max_val);
       scale->at(c) = std::max(max_val - min_val, (float)1e-5) / max_int;
       zp->at(c) =
-          std::clamp(-(int)std::round(min_val / scale->at(c)), min_int, max_int) *
-          scale->at(c);
+          std::clamp(-(int)std::round(min_val / scale->at(c)), min_int, max_int);
     }
   }
 }
@@ -108,8 +107,7 @@ void computePerGroupParam(
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
     scale->at(i) = std::max(max_val - min_val, (float)1e-5) / max_int;
     zp->at(i) =
-        std::clamp(-(int)std::round(min_val / scale->at(i)), min_int, max_int) *
-        scale->at(i);
+        std::clamp(-(int)std::round(min_val / scale->at(i)), min_int, max_int);
   }
 }
 
@@ -201,8 +199,9 @@ void weightQuantization(
   } else {
     for (auto i = 0; i < row * col; i++) {
       int quant_idx = i / q_group_size;
-      auto tmp_value = std::round((weight_f32_data->at(i) + zp->at(quant_idx)) /
-                                  scale->at(quant_idx));
+      auto tmp_value =
+          std::round(weight_f32_data->at(i) / scale->at(quant_idx)) +
+          zp->at(quant_idx);
       int real_weight_idx = i / 2;
       if (i % 2) {
         uint_weight_data->at(real_weight_idx) |= to_uint4(tmp_value) << 4;
@@ -272,13 +271,9 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         auto zp_i = zp[i];
         auto scale_i = scale[i];
         for (int j = 0; j < N; j++) {
-          new_weight[offset + j] = module::isSG2380() ?
-              ((int(weight[(offset + j) / 2]) & 0x0F) * scale_i - zp_i) :
-              (((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i);
+          new_weight[offset + j] = (((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i);
           j++;
-          new_weight[offset + j] = module::isSG2380() ?
-              ((int(weight[(offset + j) / 2]) >> 4) * scale_i - zp_i) :
-              (((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i);
+          new_weight[offset + j] = (((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i);
         }
       }
     } else {
@@ -286,13 +281,9 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
         auto scale_i = scale[quant_idx];
-        new_weight[i] = module::isSG2380() ?
-            ((int(weight[i / 2]) & 0x0F) * scale_i - zp_i) :
-            (((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i);
+        new_weight[i] =  (((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i);
         i++;
-        new_weight[i] =  module::isSG2380() ?
-            ((int(weight[i / 2]) >> 4) * scale_i - zp_i) :
-            (((int(weight[i / 2]) >> 4) - zp_i) * scale_i);
+        new_weight[i] =  (((int(weight[i / 2]) >> 4) - zp_i) * scale_i);
       }
     }
 
