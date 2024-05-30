@@ -41,10 +41,13 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewrite(
       for (auto j = 0; j < h; j++) {
         auto offset_new = 2 * (i * h * w + j * w);
         auto offset_ori = i * w + npu_num * j * w;
-        memcpy(scale_zp_data->data() + offset_new,
-                ori_scale_data->data() + offset_ori, w * sizeof(uint16_t));
-        memcpy(scale_zp_data->data() + offset_new + w,
-                ori_zp_data->data() + offset_ori, w * sizeof(uint16_t));
+        auto scale_zp_data_addr = scale_zp_data->data() + offset_new;
+        auto ori_scale_data_addr = ori_scale_data->data() + offset_ori;
+        auto ori_zp_data_addr = ori_zp_data->data() + offset_ori;
+        for (auto k = 0; k < w; k++) {
+          scale_zp_data_addr[2 * k] = ori_zp_data_addr[k];
+          scale_zp_data_addr[2 * k + 1] = ori_scale_data_addr[k];
+        }
       }
     }
 
