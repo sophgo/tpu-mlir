@@ -225,7 +225,22 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
     }
     return success();
   }
-  if (lhs_shape.size() >= 5) {
+  bool do_5dim = module::isBM1684X() &&
+                 (module::getStorageType(op->getResult(0)).isF16() ||
+                  module::getStorageType(op->getResult(0)).isF32() ||
+                  module::getStorageType(op->getResult(0)).isBF16());
+  if (do_5dim && lhs_shape.size() == 5) {
+    int bcast_3 = bcast_type(lhs_shape[3], rhs_shape[3]);
+    int bcast_4 = bcast_type(lhs_shape[4], rhs_shape[4]);
+    if (!(bcast_3 == bcast_4 ||
+          (bcast_3 == 1 && bcast_4 == -1 && lhs_shape[3] == rhs_shape[4]) ||
+          (bcast_3 == -1 && bcast_4 == 1 && lhs_shape[4] == rhs_shape[3]))
+          )
+    {
+      return failure();
+    }
+  }
+  if (lhs_shape.size() >= (do_5dim ? 6 : 5)) {
     const int wdim = 3;
     int bcast = bcast_type(lhs_shape[wdim], rhs_shape[wdim]);
     for (int i = wdim + 1; i < lhs_shape.size(); ++i) {

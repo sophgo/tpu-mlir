@@ -44,6 +44,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y),
+            "Add_5dim_bc":  (self.test_Add_5dim_bc,   N, Y, Y, N, N),
             "And":          (self.test_And,           N, Y, Y, N, Y),
             "AddBcast":     (self.test_AddBcast,      N, N, N, N, Y), # bm1684x has random error caused by 2.27 commit
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
@@ -204,6 +205,7 @@ class ONNX_IR_TESTER(object):
             "TopK4":        (self.test_TopK4,         N, N, N, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y),
+            "space2depth":  (self.test_space2depth,   Y, Y, Y, N, Y),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
@@ -767,7 +769,21 @@ class ONNX_IR_TESTER(object):
                 y = x.unsqueeze(0)
                 return y
 
-        x = torch.randn(1, 2, 3, 4).float()
+        x = torch.randn(76800,2).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_space2depth(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = F.pixel_unshuffle(x,2)
+                return y
+
+        x = torch.arange(48*4).reshape(1,3,8,8).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_AvgPool1d(self, case_name):
@@ -3633,23 +3649,19 @@ class ONNX_IR_TESTER(object):
                                               [a, b, c], [add2_out])
             self.onnx_and_test(graph_def)
 
-    def test_tmp(self, case_name):
-        shapes = ([16, 9, 67, 323], )
-        bcast_dims = ([[3]], )
-        for i, s in enumerate(shapes):
-            for dims in bcast_dims[i]:
-                bcast_s = s[::]
-                for dim in dims:
-                    bcast_s[dim] = 1
-                graph_txt = """
-                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
-                    {
-                        x = Add(a, b)
-                        output = Add(x, c)
-                    }
-                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
-                graph_def = onnx.parser.parse_graph(graph_txt)
-                self.onnx_and_test(graph_def)
+    def test_Add_5dim_bc(self, case_name):
+        shape_A = [25,196,12,14,1]
+        shape_B = [25,196,12,1,14]
+        shape_res = [25,196,12,14,14]
+        graph_txt = """
+                %s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Add(a, b)
+                    output = Sub(x, c)
+                }
+                """ % (case_name, shape_A, shape_B, shape_res, shape_res)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
 
     def test_AddBcast(self, case_name):
         shapes = (
