@@ -1888,64 +1888,91 @@ class fx2mlir(object):
         # self.operands[node] = new_op
 
     def convert_index_put_op(self, node):
-        dtype = self.mlir.get_output_dtypes(node)
-        input = self.operands[node.args[0]]
-        indices = self.operands[node.args[1][0]]
-        values = self.operands[node.args[2]]
-        if len(node.args)>3:
-            accumulate = node.args[3]
+        if len(node.args[1]) <= 1:
+            dtype = self.mlir.get_output_dtypes(node)
+            input = self.operands[node.args[0]]
+            indices = self.operands[node.args[1][0]]
+            values = self.operands[node.args[2]]
+            if len(node.args)>3:
+                accumulate = node.args[3]
+            else:
+                accumulate = False
+            new_op = top.IndexPutOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
+                                    input,
+                                    indices,
+                                    values,
+                                    accumulate = accumulate,
+                                    loc=self.get_loc(node.name),
+                                    ip=self.mlir.insert_point).output
+            self.operands[node] = new_op
         else:
-            accumulate = False
-        new_op = top.IndexPutOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
-                                input,
-                                indices,
-                                values,
-                                accumulate = accumulate,
-                                loc=self.get_loc(node.name),
-                                ip=self.mlir.insert_point).output
-        self.operands[node] = new_op
-
-        # op0 = self.operands[node.args[0]]
-        # value = self.operands[node.args[2]]
-        # accumulate = node.args[3]
-        # dtype = self.mlir.get_output_dtypes(node)
-        # idx_store = []
-        # for k,idx in enumerate(node.args[1]):
-        #     if idx is not None:
-        #         indices = [k,idx]
-        #         idx_store.append(indices)
-        # # shape process
-        # for i in range(len(idx_store)):
-        #     nd = idx_store[i]
-        #     if len(list(nd[1].meta['val'].size()))!= 1:
-        #         target_shape = list(nd[1].meta['val'].size())
-        #         pop_idx = target_shape.index(1)
-        #         target_shape.pop(pop_idx)
-        #         tmp_op = self.operands[nd[1]]
-        #         out = top.SqueezeOp(*self.mlir.get_tensor_type([target_shape], dtype),
-        #                             tmp_op,
-        #                             axes=[pop_idx],
-        #                             loc=self.get_loc(node.name+"_shape_update_"+str(i)),
-        #                             ip=self.mlir.insert_point).output
-        #         idx_store[i][1] = out
-        #     else:
-        #         target_shape = list(nd[1].meta['val'].size())
-        #         idx_store[i][1] = self.operands[nd[1]]
-        #     idx_store[i].append(target_shape[0])
-        # while idx_store:
-        #     info = idx_store[0]
-        #     axis = info[0]
-        #     indices = info[1]
-        #     new_op = top.IndexPutOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
-        #                       op0,
-        #                       indices,
-        #                       value,
-        #                       accumulate = accumulate,
-        #                       loc=self.get_loc(node.name+"_"+str(axis)),
-        #                       ip=self.mlir.insert_point).output
-        #     op0 = new_op
-        #     idx_store.pop(0)
-        # self.operands[node] = new_op
+            op0 = self.operands[node.args[0]]
+            value = self.operands[node.args[2]]
+            accumulate = node.args[3]
+            dtype = self.mlir.get_output_dtypes(node)
+            indices = node.args[1]
+            indices_store = []
+            input_shape = list(node.args[0].meta['val'].size())
+            start = self.mlir.create_weight_op(f'{node.name}_start',0)
+            step = self.mlir.none_op
+            end_num = input_shape[0]
+            end = self.mlir.create_weight_op(f'{node.name}_end', end_num)
+            # idx_op = self.mlir.create_constant_weight_op(f'{node.name}_indice',[end_num],np.arange(end_num))
+            idx_op = top.ArangeOp(*self.mlir.get_tensor_type([[end_num]], dtype),
+                        start,
+                        end,
+                        step,
+                        loc=self.get_loc(node.name+"arange"),
+                        ip=self.mlir.insert_point).output
+            new_op = top.IndexPutOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
+                    op0,
+                    idx_op,
+                    value,
+                    accumulate = accumulate,
+                    loc=self.get_loc(node.name),
+                    ip=self.mlir.insert_point).output
+            self.operands[node] = new_op
+            # op0 = self.operands[node.args[0]]
+            # value = self.operands[node.args[2]]
+            # accumulate = node.args[3]
+            # dtype = self.mlir.get_output_dtypes(node)
+            # idx_store = []
+            # for k,idx in enumerate(node.args[1]):
+            #     if idx is not None:
+            #         indices = [k,idx]
+            #         idx_store.append(indices)
+            # # shape process
+            # for i in range(len(idx_store)):
+            #     nd = idx_store[i]
+            #     if len(list(nd[1].meta['val'].size()))!= 1:
+            #         target_shape = list(nd[1].meta['val'].size())
+            #         pop_idx = target_shape.index(1)
+            #         target_shape.pop(pop_idx)
+            #         tmp_op = self.operands[nd[1]]
+            #         out = top.SqueezeOp(*self.mlir.get_tensor_type([target_shape], dtype),
+            #                             tmp_op,
+            #                             axes=[pop_idx],
+            #                             loc=self.get_loc(node.name+"_shape_update_"+str(i)),
+            #                             ip=self.mlir.insert_point).output
+            #         idx_store[i][1] = out
+            #     else:
+            #         target_shape = list(nd[1].meta['val'].size())
+            #         idx_store[i][1] = self.operands[nd[1]]
+            #     idx_store[i].append(target_shape[0])
+            # while idx_store:
+            #     info = idx_store[0]
+            #     axis = info[0]
+            #     indices = info[1]
+            #     new_op = top.IndexPutOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
+            #                     op0,
+            #                     indices,
+            #                     value,
+            #                     accumulate = accumulate,
+            #                     loc=self.get_loc(node.name+"_"+str(axis)),
+            #                     ip=self.mlir.insert_point).output
+            #     op0 = new_op
+            #     idx_store.pop(0)
+            # self.operands[node] = new_op
 
     def convert_group_norm_op(self,node):#(Tensor input, Tensor? weight, Tensor? bias, SymInt N, SymInt C, SymInt HxW, int group, float eps)
         dtype = self.mlir.get_output_dtypes(node)

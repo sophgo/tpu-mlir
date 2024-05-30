@@ -219,7 +219,8 @@ struct LgInfo {
     this->group_outs.clear();
     this->type = GROUP_NORMAL;
   }
-  void update_group_io() {
+
+  void update_group_io(int opt = 2) {
     this->group_ins.clear();
     this->group_outs.clear();
 
@@ -229,7 +230,12 @@ struct LgInfo {
         auto src_op = in.getDefiningOp();
         bool value_in;
         if (src_op != nullptr){
-          value_in = module::isTrain() ? !isa<top::NoneOp>(src_op) : !isa<top::WeightOp, top::NoneOp>(src_op);
+            if(opt == 2){
+              value_in = module::isTrain() ? !isa<top::NoneOp>(src_op) : !isa<top::WeightOp, top::NoneOp>(src_op);
+            }
+            if(opt == 3){
+              value_in = !isa<top::NoneOp>(src_op);
+            }
         }
         if ((src_op == nullptr ||
              (value_in &&

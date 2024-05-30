@@ -437,7 +437,7 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (in_op == node2.global_op) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -446,7 +446,7 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), in_op) != node_ops.end()) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -466,7 +466,7 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (user == node2.global_op) {
                 if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                  // LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                  LOG(INFO) <<"find next node: "<<module::getName(user).str();
                   node.next_nodes.push_back(&node2);
                   break;
                 }
@@ -475,7 +475,7 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), user) != node_ops.end()) {
                 if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                  // LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                  LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
                   node.next_nodes.push_back(&node2);
                   break;
                 }
@@ -486,6 +486,7 @@ void GroupOps::buildMlir_for_opt3() {
       }
     } else {
       // LOG(INFO) <<"check node: "<<module::getName(node.global_op).str();
+      node.show_info();
       for (auto in: node.global_op->getOperands()) {
         auto in_op = in.getDefiningOp();
         if (in_op && !isa<top::NoneOp>(in_op)) {
@@ -495,7 +496,7 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (in_op == node2.global_op) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -504,7 +505,7 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), in_op) != node_ops.end()) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -523,7 +524,7 @@ void GroupOps::buildMlir_for_opt3() {
           if (node2.global_op) {
             if (user == node2.global_op) {
               if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                // LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                LOG(INFO) <<"find next node: "<<module::getName(user).str();
                 node.next_nodes.push_back(&node2);
                 break;
               }
@@ -532,7 +533,7 @@ void GroupOps::buildMlir_for_opt3() {
             auto& node_ops = node2.lgInfo->group_ops;
             if (std::find(node_ops.begin(), node_ops.end(), user) != node_ops.end()) {
               if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                // LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
                 node.next_nodes.push_back(&node2);
                 break;
               }
