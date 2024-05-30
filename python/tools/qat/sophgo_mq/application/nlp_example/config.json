@@ -1,0 +1,26 @@
+{
+  "train_batch_size": 2,
+  "steps_per_print": 2000,
+  "optimizer": {
+    "type": "Adam",
+    "params": {
+      "lr": 2e-4,
+      "betas": [
+        0.8,
+        0.999
+      ],
+      "eps": 1e-8,
+      "weight_decay": 3e-7
+    }
+  },
+  "scheduler": {
+    "type": "WarmupLR",
+    "params": {
+      "warmup_min_lr": 0,
+      "warmup_max_lr": 0.001,
+      "warmup_num_steps": 500,
+      "warmup_type":"linear"
+    }
+  },
+  "wall_clock_breakdown": false
+}

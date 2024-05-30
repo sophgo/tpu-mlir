@@ -83,6 +83,7 @@ class DeployTool:
         self.embed_debug_info = args.debug
         self.model = args.model
         self.ref_npz = args.test_reference
+        self.fazzy_match = args.fazzy_match
         self.customization_format = args.customization_format
         self.fuse_preprocess = args.fuse_preprocess
         self.aligned_input = args.aligned_input
@@ -264,7 +265,7 @@ class DeployTool:
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
-        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
+        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
         self.cache_tool.mark_tpu_success()
 
     def build_model(self):
@@ -288,7 +289,7 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model, self.compare_all)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True, self.fazzy_match)
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
 
@@ -346,6 +347,8 @@ if __name__ == '__main__':
     parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
     parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
+    parser.add_argument("--fazzy_match", action="store_true",
+                        help="do fazzy match bettwen target and ref data")
     # ========== Fuse Preprocess Options ==============
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")

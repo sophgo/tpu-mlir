@@ -1,0 +1,5 @@
+from .deploy_linear import remove_fakequantize_and_collect_params
+from .deploy_sophgo import remove_fakequantize_and_collect_params_sophgo
+from .deploy_float import remove_fakequantize_and_collect_params_flt
+from .deploy_transformer import remove_fakequantize_and_collect_params_tf
+#from .deploy_academicnlp import remove_fakequantize_and_collect_params_academic

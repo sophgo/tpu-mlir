@@ -1,0 +1,4 @@
+torch==1.10.0
+torchvision
+pycuda
+transformers==4.17.0

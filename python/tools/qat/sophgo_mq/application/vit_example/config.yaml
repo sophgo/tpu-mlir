@@ -1,0 +1,78 @@
+quant: 
+    a_qconfig:
+        quantizer: FixedFakeQuantize
+        observer: EMAMSEObserver # EMAMSEObserver EMAMinMaxObserver EMAQuantileObserver EMAPruneMinMaxObserver
+        bit: 8
+        symmetric: False
+        ch_axis: -1 # perlayer -1
+    w_qconfig:
+        quantizer: FixedFakeQuantize
+        observer: MinMaxObserver
+        bit: 8
+        symmetric: False
+        ch_axis: 0 # perchannel 0 perlayer -1
+    calibrate: 1024
+    backend: academic
+data:
+    dataset_name: null
+    dataset_config_name: null
+    train_dir: /root/imagenet/ILSVRC/Data/CLS-LOC/train
+    validation_dir: /root/imagenet/ILSVRC/Data/CLS-LOC/val
+    train_val_split: null
+    max_train_samples: null
+    max_eval_samples: null
+
+model:
+    model_name_or_path: /root/pretrained-models/vit-base-patch16-224
+    model_type: null
+    config_name: null
+    cache_dir: null
+    model_revision: null
+    feature_extractor_name: null
+    use_auth_token: False
+    ignore_mismatched_sizes: False
+
+train:
+    seed: 42
+    output_dir: ptq-vit-base
+    overwrite_output_dir: True # use this to continue training if output_dir points to a checkpoint directory
+    do_train: False
+    do_eval: True
+    do_predict: False
+    evaluation_strategy: "epoch" #The evaluation strategy to use. "no"; "steps"; "epoch"
+    eval_steps: null # Run an evaluation every X steps.
+    per_device_train_batch_size: 32 # Batch size per GPU/TPU core/CPU for training.
+    per_device_eval_batch_size: 32 # Batch size per GPU/TPU core/CPU for evaluation
+    gradient_accumulation_steps: 1 # Number of updates steps to accumulate before performing a backward/update pass.
+    learning_rate: 1.0e-5 # The initial learning rate for AdamW.
+    weight_decay: 0.01 # Weight decay for AdamW if we apply some.
+    max_grad_norm: 1.0 # Max gradient norm.
+    num_train_epochs: 10.0 #Total number of training epochs to perform.
+    max_steps: -1  # If > 0: set total number of training steps to perform. Override num_train_epochs.
+    lr_scheduler_type: linear # The scheduler type to use.
+    warmup_ratio: 0.06 # Linear warmup over warmup_ratio fraction of total steps.
+    warmup_steps: 0 # Linear warmup over warmup_steps.
+    gradient_checkpointing: False  # If True, use gradient checkpointing to save memory at the expense of slower backward pass.
+    remove_unused_columns: False
+    label_names: ['labels']
+
+progress:
+    log_level: passive # Logger log level to use on the main node. Possible choices are the log levels as strings: 'debug', 'info', 'warning', 'error' and 'critical', plus a 'passive' level which doesn't set anything and lets the application set the level. Defaults to 'passive'.
+    log_level_replica: passive # Logger log level to use on replica nodes.
+    logging_dir: null # Tensorboard log dir.
+    logging_strategy: epoch # The logging strategy to use. "no"; "steps"; "epoch";
+    logging_steps: null # Log every X updates steps.
+    
+    save_strategy: "epoch" # The checkpoint save strategy to use. "no"; "steps"; "epoch";
+    save_steps: null # Save checkpoint every X updates steps.
+    save_total_limit: null # Limit the total amount of checkpoints.
+                           # Deletes the older checkpoints in the output_dir. Default is unlimited checkpoints
+    save_on_each_node: False #When doing multi-node distributed training, whether to save models and checkpoints on each node, or only on the main one
+    
+    no_cuda: False # Do not use CUDA even when it is available
+    run_name: null # An optional descriptor for the run. Notably used for wandb logging.
+    disable_tqdm: null # Whether or not to disable the tqdm progress bars. use False or True
+    
+    load_best_model_at_end: False  #Whether or not to load the best model found during training at the end of training.
+    metric_for_best_model: null # The metric to use to compare two different models."
+    greater_is_better: null # Whether the `metric_for_best_model` should be maximized or not.

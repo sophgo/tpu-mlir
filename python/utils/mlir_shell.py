@@ -345,12 +345,14 @@ def originMlir_to_Model_without_quantize(
     return get_matched_patterns(log_file)
 
 
-def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
+def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, fuzzy_match=False):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
         cmd.extend(["--except", excepts])
     if show_detail:
         cmd.append('-vv')
+    if fuzzy_match:
+        cmd.append('--fuzzy_match')
     _os_system(cmd)
 
 
