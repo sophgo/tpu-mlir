@@ -1,0 +1,1 @@
+from ..version import GITHUB_RES

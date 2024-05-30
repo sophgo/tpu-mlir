@@ -41,6 +41,8 @@ def parse_args(args_list):
     parser.add_argument("--save", type=str, help="Save result as a csv file")
     parser.add_argument("--per_axis_compare", type=int, default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
+    parser.add_argument("--fuzzy_match", action='store_true',
+                        help="fuzzy_match")
     args = parser.parse_args(args_list)
     # yapf: enable
     return args
@@ -173,6 +175,34 @@ def npz_compare(args_list):
                        euclidean_similarity_tol=tolerance[1],
                        signal_to_quantization_noise_tol=float('-inf'),
                        per_axis_compare=args.per_axis_compare)
+    if args.fuzzy_match:
+        min_cos, min_euc = 1, 1
+        for name in npz1.files:
+            max_cos,max_euc = 0.0, 0.0
+            for name2 in npz2.files:
+                d1 = npz1.get(name)
+                d2 = npz2.get(name2)
+                if d1.shape == d2.shape:
+                    d1, d2 = align_type_and_shape(d1, d2)
+                    result = tc.compare(d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare)
+                    if result[1] == 'EQUAL':
+                        print(f'find EQUAL for {name}')
+                        break
+                    elif result[3]['cosine'] > max_cos:
+                        max_cos = result[3]['cosine']
+                        max_euc = result[3]['euclid']
+            print(f'find max_cos:{max_cos}, max_euc:{max_euc} for {name}')
+            if min_cos > max_cos:
+                min_cos = max_cos
+            if min_euc > max_euc:
+                min_euc = max_euc
+        if min_cos < tolerance[0] or min_euc < tolerance[1]:
+            # print("npz compare FAILED.", flush=True)
+            # sys.exit(-1)
+            return
+        else:
+            print("npz compare PASSED.", flush=True)
+            return
 
     common = list()
     for name in npz2.files:

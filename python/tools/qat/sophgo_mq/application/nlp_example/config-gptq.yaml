@@ -1,0 +1,145 @@
+quant:
+    a_qconfig:
+        quantizer: FixedFakeQuantize
+        observer: MinMaxObserver
+        bit: 8
+        symmetric: False
+        per_channel: False
+    w_qconfig:
+        quantizer: GPTQFakeQuantize
+        observer: MinMaxObserver
+        bit: 8
+        symmetric: True
+        per_channel: False
+    calibrate: 128
+    pot_scale: False
+    backend: academic
+
+# quant:
+#     a_qconfig:
+#         quantizer: FixedFakeQuantize
+#         observer: MinMaxObserver
+#         bit: 8
+#         symmetric: False
+#         per_channel: False
+#     w_qconfig:
+#         quantizer: FixedFakeQuantize
+#         observer: MinMaxObserver
+#         bit: 8
+#         symmetric: True
+#         per_channel: False
+#     calibrate: 64
+#     pot_scale: False
+#     backend: academic
+
+
+# quant:
+#     a_qconfig:
+#         quantizer: GPTQFakeQuantize
+#         observer: MinMaxObserver
+#         bit: 8
+#         symmetric: False
+#         per_channel: False
+#     w_qconfig:
+#         quantizer: GPTQFakeQuantize
+#         observer: MinMaxObserver
+#         bit: 8
+#         symmetric: True
+#         per_channel: True
+#     calibrate: 64
+#     pot_scale: False
+#     backend: academic
+
+# quant:
+#     a_qconfig:
+#         quantizer: FixedFakeQuantize
+#         observer: EMAMinMaxObserver
+#         bit: 8
+#         symmetric: False
+#         per_channel: False
+#     w_qconfig:
+#         quantizer: FixedFakeQuantize
+#         observer: MinMaxObserver
+#         bit: 8
+#         symmetric: True
+#         per_channel: True
+#     calibrate: 64
+#     pot_scale: False
+#     backend: academic
+
+# quant:
+#     a_qconfig:
+#         quantizer: LearnableFakeQuantize
+#         observer: LSQObserver
+#         bit: 8
+#         symmetric: False
+#         per_channel: False
+#     w_qconfig:
+#         quantizer: LearnableFakeQuantize
+#         observer: LSQObserver
+#         bit: 8
+#         symmetric: True
+#         per_channel: True
+#     calibrate: 64
+#     pot_scale: False
+#     backend: academic
+
+data:
+    task_name: mrpc
+    dataset_name: mrpc
+    dataset_config_name: null
+    max_seq_length: 128
+    overwrite_cache: False # Overwrite the cached preprocessed datasets or not.
+    pad_to_max_length: True # Whether to pad all samples to 'max_seq_length'
+                            # If False, will pad the samples dynamically when batching to the maximum length in the batch."
+    max_train_samples: null
+    max_eval_samples: null
+    max_predict_samples: null
+    train_file: null 
+    validation_file: null
+    test_file: null
+
+model:
+    type: bert
+    model_name_or_path: Intel/bert-base-uncased-mrpc
+    config_name: null # pretrained config name or path if not the same as model_name
+    tokenizer_name: null
+    cache_dir: ./cache_dir 
+    use_fast_tokenizer: True # whether to use one of the fast tokenizer (backed by the tokenizers library) or not
+    model_revision: main # The specific model version to use (can be a branch name, tag name or commit id).
+    use_auth_token: Fasle # will use the token generated when running `transformers-cli login` (necessary to use this script "
+            # with private models)"
+
+train:
+    seed: 42
+    output_dir: output_dir_gptq
+    overwrite_output_dir: False # use this to continue training if output_dir points to a checkpoint directory
+    do_train: False
+    do_eval: True
+    do_predict: False
+    evaluation_strategy: "no" #The evaluation strategy to use. "no"; "steps"; "epoch"
+    eval_steps: null # Run an evaluation every X steps.
+    per_device_train_batch_size: 4 # Batch size per GPU/TPU core/CPU for training.
+    per_device_eval_batch_size: 4 # Batch size per GPU/TPU core/CPU for evaluation
+
+progress:
+    log_level: debug # Logger log level to use on the main node. Possible choices are the log levels as strings: 'debug', 'info', 'warning', 'error' and 'critical', plus a 'passive' level which doesn't set anything and lets the application set the level. Defaults to 'passive'.
+    log_level_replica: passive # Logger log level to use on replica nodes.
+    logging_dir: null # Tensorboard log dir.
+    logging_strategy: steps # The logging strategy to use. "no"; "steps"; "epoch";
+    logging_steps: 500 # Log every X updates steps.
+
+    save_strategy: "no" # The checkpoint save strategy to use. "no"; "steps"; "epoch";
+    save_steps: 500 # Save checkpoint every X updates steps.
+    save_total_limit: null # Limit the total amount of checkpoints.
+                           # Deletes the older checkpoints in the output_dir. Default is unlimited checkpoints
+    save_on_each_node: False #When doing multi-node distributed training, whether to save models and checkpoints on each node, or only on the main one
+
+    no_cuda: False # Do not use CUDA even when it is available
+    run_name: null # An optional descriptor for the run. Notably used for wandb logging.
+    disable_tqdm: null # Whether or not to disable the tqdm progress bars. use False or True
+
+    load_best_model_at_end: False  #Whether or not to load the best model found during training at the end of training.
+    metric_for_best_model: null # The metric to use to compare two different models."
+    greater_is_better: null # Whether the `metric_for_best_model` should be maximized or not.
+

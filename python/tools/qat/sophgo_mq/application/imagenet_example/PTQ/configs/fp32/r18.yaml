@@ -1,0 +1,14 @@
+model:                    # architecture details
+    type: resnet18        # model name
+    kwargs:
+        num_classes: 1000
+    path: /path-of-pretrained
+data:
+    path: /path-of-imagenet
+    batch_size: 64
+    num_workers: 4
+    pin_memory: True
+    input_size: 224
+    test_resize: 256
+process:
+    seed: 1005

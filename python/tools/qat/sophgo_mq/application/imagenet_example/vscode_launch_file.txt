@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: main.py",
+      "type": "python",
+      "request": "launch",
+      // "preLaunchTask": "clear", //???
+      //"program": "${file}",
+      "program": "imagenet_example/main.py",
+      // "program": "application/imagenet_example/PTQ/ptq/ptq.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      // "env": {"CUDA_VISIBLE_DEVICES":"0,1,2,3"},
+      "args": [
+              // "--arch=shufflenet_v2_x0_5", "--batch-size=320",
+              // "--arch=mobilenet_v2", "--batch-size=64",
+              // "--arch=resnet18", "--batch-size=128",
+              // "--arch=vgg11_bn", "--batch-size=32",
+              // "--arch=resnet50", "--batch-size=32",
+              // "--arch=squeezenet1_1", "--batch-size=128",
+              "--arch=mobilenet_v3_small", "--batch-size=128",
+              "--epochs=1","--lr=1e-4",
+               "--gpu=0",
+               "--pretrained", 
+               "--evaluate",
+              //  "--resume=tmp_path1/squeezenet1_1/checkpoint.pth.tar_best",
+               "--output_path=tmp_test",
+              //  "--output_path=/workspace/tmp_path_1008",
+               "--fast_test",
+               "--backend=sophgo_tpu", 
+               "--optim=sgd",
+              //  "--backend=tensorrt_nlp",               
+              //  "--deploy", 
+              //  "--cpu", 
+              // "--pre_eval_and_export",
+              "--train_data=/data/imagenet/for_train_val/",
+               "--val_data=/data/imagenet/for_train_val/"
+              ]
+      // "args": ["--config=application/imagenet_example/PTQ/configs/qdrop/r18_2_4.yaml"]
+    }
+  ]
+}
