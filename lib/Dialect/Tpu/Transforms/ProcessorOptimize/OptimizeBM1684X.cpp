@@ -3046,6 +3046,20 @@ public:
       return failure();
     op_need_del.emplace_back(k_permute);
 
+    //Avoid getting into wrong FAttention
+    auto k_permute_order = module::getI64Array(k_permute.getOrder());
+    if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
+        || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1
+        || k_permute_order->at(3) != 3) {
+      return failure();
+    }
+    auto q_permute_order = module::getI64Array(q_permute.getOrder());
+    if (q_permute_order->size() != 4 || q_permute_order->at(0) != 0
+        || q_permute_order->at(1) != 2 || q_permute_order->at(2) != 1
+        || q_permute_order->at(3) != 3) {
+      return failure();
+    }
+
     // values
     auto v_permute = dyn_cast<tpu::PermuteOp>(op.getRight().getDefiningOp());
     if (!v_permute || !v_permute->hasOneUse())
