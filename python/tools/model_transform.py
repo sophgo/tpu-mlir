@@ -308,7 +308,9 @@ if __name__ == '__main__':
     args, unknown_args = parser.parse_known_args()
     if unknown_args:
         args.unknown_params += unknown_args
-
+    if args.test_input:
+        for input in args.test_input:
+            assert os.path.exists(input), f"test_input {input} not exist!"
     cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
