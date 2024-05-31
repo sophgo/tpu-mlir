@@ -89,7 +89,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       TileLowering,
       UpsampleLowering,
       YoloDetectionLowering,
-      RMSNormLowering
+      RMSNormLowering,
+      ShapeLowering,
+      FloorLowering
       // clang-format on
       >(patterns->getContext());
 }

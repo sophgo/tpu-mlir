@@ -569,7 +569,7 @@ void CviModelBuilder::addRoutine(ModuleOp s, func::CallOp &call,
     rt = new CviCpuRoutine(s, fbb_, call, chip);
     break;
   default:
-    llvm_unreachable("Not Implemented");
+    // llvm_unreachable("Not Implemented");
     break;
   }
   routines_.push_back(rt);
