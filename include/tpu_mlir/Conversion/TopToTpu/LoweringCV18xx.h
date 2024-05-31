@@ -100,5 +100,7 @@ LOWERING_CV18XX(TopK)
 LOWERING_CV18XX(Tile)
 LOWERING_CV18XX(Upsample)
 LOWERING_CV18XX(YoloDetection)
+LOWERING_CV18XX(Shape)
+LOWERING_CV18XX(Floor)
 } // namespace cv18xx
 } // namespace tpu_mlir
