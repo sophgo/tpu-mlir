@@ -851,6 +851,9 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::WhereOp op,
                                 PatternRewriter &rewriter) const override {
+    if (module::isDynamic()) {
+      return failure();
+    }
     auto out_shape = module::getShape(op.getOutput());
     bool process = false;
 
