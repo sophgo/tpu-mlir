@@ -28,7 +28,7 @@ void tpu::SliceOp::codegen_global_bm1684() {
   // assign param and call func
   for (int i = 0; i < shape_dim; ++i) {
     input_shape[i] = p.is_4[i];
-    begin_index[i] = p.offset_4[i];
+    begin_index[i] = p.offset_4[i] < 0 ? p.offset_4[i] + p.is_4[i] : p.offset_4[i];
     end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
     stride[i] = p.step_4[i];
   }
@@ -75,6 +75,7 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto out_g_info = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   int begin_mask = 0, end_mask = 0;
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto input_dtype = BM1684::getDataType(getInput());
   auto output_shape = module::getShape(getOutput());
   auto offset = module::getI64Array(getOffset());
@@ -102,6 +103,9 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 
   for (int i = 0; i < num_dims; ++i) {
+    if (offset->at(i) < 0) {
+      offset->at(i) += in_shape[i];
+    }
     // ====== calculate begin_index and end_index ======
     begin_index[i] =
         (offset->at(i) >= idx[i] && offset->at(i) <= idx[i] + in_slice[i])
