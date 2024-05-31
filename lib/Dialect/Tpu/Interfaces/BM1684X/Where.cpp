@@ -83,6 +83,7 @@ int64_t tpu::WhereOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.sel1_is_const = getYIsConst();
   spec.sel0_const_val = getXConstVal().convertToDouble();
   spec.sel1_const_val = getYConstVal().convertToDouble();
+  spec.buffer_addr = module::getAddress(getBuffer());
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

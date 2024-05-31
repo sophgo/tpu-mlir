@@ -876,6 +876,7 @@ typedef struct {
   int sel1_is_const;
   float sel0_const_val;
   float sel1_const_val;
+  uint64_t buffer_addr;
 } select_common_spec_t;
 
 typedef struct {

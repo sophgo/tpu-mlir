@@ -135,6 +135,9 @@ struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
 
   LogicalResult matchAndRewrite(WhereOp op,
                                 PatternRewriter &rewriter) const override {
+    if (module::isDynamic()) {
+      return failure();
+    }
     auto out_shape = module::getShape(op.getOutput());
     bool process = false;
 

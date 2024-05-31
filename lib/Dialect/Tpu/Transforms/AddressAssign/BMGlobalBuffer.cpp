@@ -1072,6 +1072,65 @@ public:
   }
 };
 
+class WhereGlobalBuffer : public OpRewritePattern<tpu::WhereOp> {
+public:
+  using OpRewritePattern<tpu::WhereOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::WhereOp WhereOp,
+                                PatternRewriter &rewriter) const override {
+    if (tpu::getRunMode(WhereOp) != tpu::RunMode::TPU_DYNAMIC) {
+      return failure();
+    }
+    if (!module::isNone(WhereOp.getBuffer())) {
+      return failure();
+    }
+    auto out_shape = module::getShape(WhereOp.getOutput());
+    auto cond_shape = module::getShape(WhereOp.getCond());
+    auto out_dim = out_shape.size();
+    auto cond_reshape = shape_expand_dim(cond_shape, out_dim);
+    int buffer_num = 0;
+    for (int i = 0; i < out_dim; ++i) {
+      if (out_shape[i] != cond_reshape[i]) {
+        buffer_num ++;
+        break;
+      }
+    }
+    if (!WhereOp.getXIsConst()) {
+      auto tbrn = WhereOp.getTbrn();
+      auto tbrn_shape = module::getShape(tbrn);
+      auto tbrn_reshape = shape_expand_dim(tbrn_shape, out_dim);
+      for (int i = 0; i < out_dim; ++i) {
+        if (out_shape[i] != tbrn_reshape[i]) {
+          buffer_num ++;
+          break;
+        }
+      }
+    }
+    if (!WhereOp.getYIsConst()) {
+      auto fbrn = WhereOp.getFbrn();
+      auto fbrn_shape = module::getShape(fbrn);
+      auto fbrn_reshape = shape_expand_dim(fbrn_shape, out_dim);
+      for (int i = 0; i < out_dim; ++i) {
+        if (out_shape[i] != fbrn_reshape[i]) {
+          buffer_num ++;
+          break;
+        }
+      }
+    }
+    if (!buffer_num) {
+      return failure();
+    }
+    auto elment_num = module::getNumElements(WhereOp.getOutput());
+    auto type = module::getStorageType(WhereOp.getCond());
+    // add buffer
+    std::vector<int64_t> buffer_shape = {elment_num * 2 * buffer_num}; // double buffer for tile
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(WhereOp, buffer_type);
+    WhereOp.setOperand(WhereOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+};
+
 } // namespace bm168x
 
 namespace tpu {
@@ -1105,7 +1164,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       DetectionOutputGlobalBuffer,
       TopKGlobalBuffer,
       SortGlobalBuffer,
-      CustomGlobalBuffer
+      CustomGlobalBuffer,
+      WhereGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }
