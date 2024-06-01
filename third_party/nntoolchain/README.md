@@ -45,7 +45,7 @@ source  scripts/envsetup.sh sg2260
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.so
 
-#sg2380 sha256: 89ae9ac44b765f966682441c11d17ccf582d4d64
+#sg2380 sha256: cb657054f44ba99feba0ac269452c695966dca8e
 cd TPU1686
 source  scripts/envsetup.sh sg2380
 **debug: rebuild_backend_lib_cmodel**
