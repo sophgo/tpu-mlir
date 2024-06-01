@@ -119,7 +119,7 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
     // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
     inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
       return use.getOwner() != end &&
-             !isa<tpu::ConcatOp, tpu::MatMulOp, tpu::PermuteOp>(use.getOwner());
+             !isa<tpu::ConcatOp, tpu::MatMulOp, tpu::PermuteOp, tpu::UnsqueezeOp>(use.getOwner());
     });
   }
 }

@@ -243,7 +243,7 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
 
   std::vector<Operation *> attn_begin_ops, attn_end_ops;
   int num_head = 0;
-  if (!isAttentionPattern(op, attn_begin_ops, attn_end_ops, false, &num_head)) {
+  if (!isAttentionPattern(op, attn_begin_ops, attn_end_ops, true, &num_head)) {
     return failure();
   }
 
@@ -351,11 +351,11 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     auto muls0 = cloneOpWithWeight(rewriter, next_op, cur_out, suffix);
     if (muls0.size() == 1 && isa<tpu::UnsqueezeOp>(muls0[0])) {
       next_op = muls0[0];
-      if (isa<tpu::ReshapeOp>(*next_op->user_begin())) {
+      if (isa<tpu::ReshapeOp, tpu::PermuteOp>(*next_op->user_begin())) {
         next_op = *next_op->user_begin();
       }
-      muls0 = cloneCommonOp(rewriter, next_op, cur_out, -1, num_devices,
-                            cur_device);
+      createReshapeOp(rewriter, next_op, cur_out, num_devices, cur_device);
+      muls0 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
 
@@ -364,11 +364,11 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     auto muls1 = cloneOpWithWeight(rewriter, next_op, cur_out, suffix);
     if (muls1.size() == 1 && isa<tpu::UnsqueezeOp>(muls1[0])) {
       next_op = muls1[0];
-      if (isa<tpu::ReshapeOp>(*next_op->user_begin())) {
+      if (isa<tpu::ReshapeOp, tpu::PermuteOp>(*next_op->user_begin())) {
         next_op = *next_op->user_begin();
       }
-      muls1 = cloneCommonOp(rewriter, next_op, cur_out, -1, num_devices,
-                            cur_device);
+      createReshapeOp(rewriter, next_op, cur_out, num_devices, cur_device);
+      muls1 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
     if (!isa<tpu::ConcatOp>(muls0[0]->getOperand(0).getDefiningOp())) {
