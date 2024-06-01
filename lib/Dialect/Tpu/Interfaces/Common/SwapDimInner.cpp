@@ -46,4 +46,29 @@ LogicalResult tpu::SwapDimInnerOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::SwapDimInnerOp::LocalGenSupport() { return failure(); }
+LogicalResult tpu::SwapDimInnerOp::LocalGenSupport() {
+  if(module::isBM1684XFamily()) {
+    auto offset = module::getI64Array(getOffset());
+    int dims = offset->size();
+    if(dims != 4) {
+      return failure();
+    }
+    return   success();
+  } else {
+    return failure();
+  }
+}
+
+LogicalResult tpu::SwapDimInnerOp::AllowDataSplit(int64_t axis,
+                                             group_type_t group_type) {
+  auto offset = module::getI64Array(getOffset());
+  int dims = offset->size();
+  assert(dims == 4);
+  if(axis == 0) {
+    if (offset->at(0) != 0) {
+      return failure();
+    }
+    return success();
+  }
+  return failure();
+}

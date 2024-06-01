@@ -2895,7 +2895,7 @@ def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
 }
 
 def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
   InOutSameShape]> {
   let summary = "SwapDimInner operator.";
 

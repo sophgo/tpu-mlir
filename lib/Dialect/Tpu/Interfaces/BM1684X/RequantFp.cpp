@@ -19,16 +19,6 @@ void tpu::RequantFpOp::codegen_global_bm1684x() {
   requant_fp_param_t param = {0};
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
-  auto stype = module::getStorageType(getOutput());
-  bool isINT4 = stype.isInteger(4);
-  if (isINT4) {
-    for (auto user : getOutput().getUsers()) {
-      if (isa<tpu::MatMulOp>(user)) {
-        module::getNCHW(getInput(), n, c, h, w, GROUP_MM_INT4);
-        break;
-      }
-    }
-  }
   param.input_addr = module::getAddress(getInput());
   param.output_addr = module::getAddress(getOutput());
   param.n = (int)n;
@@ -79,25 +69,13 @@ void tpu::RequantFpOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step, c_step);
-
-  auto stype = module::getStorageType(getOutput());
-  bool isINT4 = stype.isInteger(4);
-  if (isINT4) {
-    for (auto user : getOutput().getUsers()) {
-      if (isa<tpu::MatMulOp>(user)) {
-        module::getNCDHW(getInput(), n, c, d, h, w, GROUP_MM_INT4);
-        break;
-      }
-    }
-  }
-
   requant_fp_param_t param = {0};
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   param.n = sec_info.out_n_slice * in_gi.d_slice;
   param.c = c;
-  param.h = isINT4 ? h : sec_info.out_h_slice; // to do for int4  split
+  param.h = sec_info.out_h_slice; // to do for int4  split
   param.w = sec_info.out_w_slice;
 
   param.scale_value = getScale().convertToDouble();
