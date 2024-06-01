@@ -400,6 +400,7 @@ static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
   int times = num_devices > 2 ? std::ceil(std::sqrt(num_devices)) : 1;
   std::vector<std::shared_ptr<tpu_mlir::tpu::SubFunction>> subf_v;
   std::vector<Value> new_operands;
+  auto none = module::getNoneOp(end.getOperation());
   for (int t = 0; t < times; t++) {
     for (int i = 0; i < operands.size(); i += 4) {
       if (i + 2 == operands.size()) {
@@ -427,7 +428,7 @@ static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
           "indice_" + std::to_string(cur_out_idx) + "_" + std::to_string(i);
       loc = module::getLocLike(operands[i + 1], suffix);
       auto indice_select = builder.create<tpu::WhereOp>(
-          loc, indice.getType(), ValueRange{cmp.getOutput(), indice, indice2});
+          loc, indice.getType(), ValueRange{cmp.getOutput(), indice, indice2, none});
       indice = indice_select.getOutput();
       insert_subop(subf, indice_select);
 
@@ -447,7 +448,7 @@ static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
       suffix = "value_" + std::to_string(cur_out_idx) + "_" + std::to_string(i);
       loc = module::getLocLike(operands[i], suffix);
       auto value_select = builder.create<tpu::WhereOp>(
-          loc, value.getType(), ValueRange{cmp.getOutput(), value, value2});
+          loc, value.getType(), ValueRange{cmp.getOutput(), value, value2, none});
       value = value_select.getOutput();
       insert_subop(subf, value_select);
 

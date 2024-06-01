@@ -145,16 +145,16 @@ std::vector<Value> cloneChatGLMPosInput(PatternRewriter &rewriter,
                                         int axis, int num_devices,
                                         int cur_device, std::string suffix);
 
-std::vector<Operation *> cloneChatGLMRotaryEmbedOp(PatternRewriter &rewriter, 
-                                                   Operation *next_op, 
-                                                   Value &cur_out, int axis, 
-                                                   std::vector<Value> pos_operands, 
+std::vector<Operation *> cloneChatGLMRotaryEmbedOp(PatternRewriter &rewriter,
+                                                   Operation *next_op,
+                                                   Value &cur_out, int axis,
+                                                   std::vector<Value> pos_operands,
                                                    int num_devices, int cur_device);
 
-std::vector<Operation *> cloneChatGLMAttentionQK(PatternRewriter &rewriter, 
-                                                 Operation *next_op, 
-                                                 Value &cur_out, int axis, 
-                                                 std::vector<Value> &pos_operands, 
+std::vector<Operation *> cloneChatGLMAttentionQK(PatternRewriter &rewriter,
+                                                 Operation *next_op,
+                                                 Value &cur_out, int axis,
+                                                 std::vector<Value> &pos_operands,
                                                  int num_devices, int cur_device, int num_head);
 
 std::vector<Operation *> cloneChatGLMAttentionValue(PatternRewriter &rewriter,
@@ -164,10 +164,10 @@ std::vector<Operation *> cloneChatGLMAttentionValue(PatternRewriter &rewriter,
                                                     int num_devices, int cur_device,
                                                     int num_head);
 
-std::vector<Operation *> cloneChatGLMAttentionQxK(PatternRewriter &rewriter, 
-                                                  std::vector<Operation *> query_next_ops, 
-                                                  std::vector<Operation *> key_next_ops, 
-                                                  Operation *next_op, Value &cur_out, 
+std::vector<Operation *> cloneChatGLMAttentionQxK(PatternRewriter &rewriter,
+                                                  std::vector<Operation *> query_next_ops,
+                                                  std::vector<Operation *> key_next_ops,
+                                                  Operation *next_op, Value &cur_out,
                                                   std::vector<Value> &operands, int num_devices, int cur_device);
 
 Operation *cloneChatGLMAttentionOutput(PatternRewriter &rewriter,
@@ -176,5 +176,8 @@ Operation *cloneChatGLMAttentionOutput(PatternRewriter &rewriter,
                                        Operation *next_op, Value &value_branch,
                                        Value &qk_out, Value &cur_out,
                                        int num_devices, int cur_device, int num_head);
+
+void createReshapeOp(PatternRewriter &rewriter, Operation *next_op,
+                    Value &cur_out, int num_devices, int cur_device);
 } // namespace tpu
 } // namespace tpu_mlir
