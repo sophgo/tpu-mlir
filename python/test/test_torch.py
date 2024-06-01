@@ -999,6 +999,10 @@ class TORCH_IR_TESTER(object):
                     return c
             self.trace_and_test([in0_shape], Model())
 
+        _test_Roll((6,8,4,4), 3, 0)
+        _test_Roll((1,1,1,8), 4, 3)
+        _test_Roll((1,69,8,7), 4, 2)
+        _test_Roll((2,8,4,4), 1, 0)
         _test_Roll((4,2), 1)
         _test_Roll((4,2), 1, 0)
         _test_Roll((4,2), -1, 0)
