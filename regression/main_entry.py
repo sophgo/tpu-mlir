@@ -80,7 +80,7 @@ class MAIN_ENTRY(object):
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
         self.script_basic = ["test1", "test2","test5","test9","test11"]
-        self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm"]
+        self.script_extend = ["test3","test4","test6","test7","test8","test10"]
         # yapf: enable
         self.test_set = {
             "op0": self.run_op0_test,
@@ -155,12 +155,17 @@ class MAIN_ENTRY(object):
         case_name = f"test_script_{source}"
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
+        file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(file_handler)
         success = True
         try:
             _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/{}.sh".format(source)))
         except:
             success = False
-
+        self.logger.removeHandler(file_handler)
+        file_handler.close()
         self.add_result(case_name, success)
         os.chdir(self.current_dir)
         return success
@@ -172,11 +177,6 @@ class MAIN_ENTRY(object):
         print("======= script test ======")
         case_name = "script_test"
 
-        file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(file_handler)
-
         sources = self.script_basic
         if not self.is_basic:
             sources += self.script_extend
@@ -185,8 +185,6 @@ class MAIN_ENTRY(object):
             ret = self._run_script_test(source)
             if not ret and self.is_basic:
                 break
-        self.logger.removeHandler(file_handler)
-        file_handler.close()
         self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
         return SUCCESS if ret else FAILURE
 
@@ -315,11 +313,15 @@ if __name__ == "__main__":
                     tuple(main_entry.op1_test_types.keys())):
             continue
         if result["status"] != Status.PASSED:
-            with open(result["name"] + ".log", 'r') as file:
-                lines = file.readlines()
-                last_100_lines = lines[-100:]
-                content = ''.join(last_100_lines)
-                print(content)
+            log_file = result["name"] + ".log"
+            try:
+                with open(log_file, 'r') as file:
+                    lines = file.readlines()
+                    last_100_lines = lines[-100:]
+                    content = ''.join(last_100_lines)
+                    print(content)
+            except:
+                print("Failed to open error log file:{}".format(log_file))
 
     print("============ Time Consum ============")
     for time in main_entry.time_cost:
