@@ -153,12 +153,12 @@ class MAIN_ENTRY(object):
     def _run_script_test(self, source):
         print(f"======= test script:{source}.sh ======")
         case_name = f"test_script_{source}"
-        os.makedirs(case_name, exist_ok=True)
-        os.chdir(case_name)
         file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(file_handler)
+        os.makedirs(case_name, exist_ok=True)
+        os.chdir(case_name)
         success = True
         try:
             _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/{}.sh".format(source)))
