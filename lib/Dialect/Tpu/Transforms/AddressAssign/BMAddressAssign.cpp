@@ -317,16 +317,21 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
   }
   auto io_limit = getIOLimit(m);
   if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+    assert(module::isBM1688());
     std::vector<Value> ios;
     module::getInputsOutputs(m, ios, ios);
-    if (ios.size() > 5) {
-      llvm_unreachable("io_tag only support input and output no more than 5");
-      return;
-    }
     // fix input and output address to IO_ADDR
     int io_index = 0;
-    for (auto &io : ios) {
-      module::setAddress(io, BM168x::IO_ADDR[io_index++]);
+    int tag_max = 5;
+    if (ios.size() > tag_max) {
+      for (io_index = 0; io_index < tag_max; io_index++) {
+        module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+      }
+    }
+    else {
+      for (auto &io : ios) {
+        module::setAddress(io, BM168x::IO_ADDR[io_index++]);
+      }
     }
     // fix other address
     module::setNeuronAddr(m, start_addr);
