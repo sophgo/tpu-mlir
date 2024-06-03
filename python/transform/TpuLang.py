@@ -74,7 +74,8 @@ def compile(name: str,
             mode='f32',         # unused
             dynamic=False,
             asymmetric=False,
-            no_save=False):
+            no_save=False,
+            opt=2):
     logger.info("TPU-MLIR {}".format(pymlir.module().version))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
@@ -94,7 +95,7 @@ def compile(name: str,
         compare = cmp and refs != None
         model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, \
                                      asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
-        bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic)
+        bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic, opt=opt)
     else:
         origin_mlir_txt_to_bmodel_without_quantize(converter=converter, model_name=name, mode="int8",
                                                    chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
@@ -106,7 +107,8 @@ def compile_f32(name: str,
             cmp=True,
             refs=None,
             mode='f32',
-            dynamic=False):
+            dynamic=False,
+            opt=2):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -122,7 +124,7 @@ def compile_f32(name: str,
         mode_list = ['f32', 'f16', 'bf16']
     for m in mode_list:
         model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
-        bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic)
+        bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic, opt=opt)
 
 
 def model_transform(model_name, converter: TpuLangConverter):
@@ -183,12 +185,14 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, as
                 top_npz = model_name + '_top_outputs.npz'
                 npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
 
-def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False):
+def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, opt: int=2):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
     bmodel = tpu_mlir + ".bmodel"
-    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic)
+    disable_layer_group = opt == 0
+    assert opt in [0, 1, 2]
+    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group)
 
     if inference:
         # inference
