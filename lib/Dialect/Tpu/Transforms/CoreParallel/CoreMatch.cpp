@@ -12,7 +12,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/Transforms/TopologicalSortUtils.h"
 #include <llvm/ADT/DenseSet.h>
-#include <unordered_set>
 
 namespace tpu_mlir {
 namespace tpu {
@@ -159,22 +158,19 @@ static void core_match(PatternRewriter &rewriter,
 }
 
 // check if there is a dataFlow from a to b.
-bool isReachable(Operation *a, Operation *b, std::unordered_set<Operation *> &visited) {
+bool isReachable(Operation *a, Operation *b) {
   if (a && a == b)
     return true;
   if (b->getNumOperands() == 0)
     return false;
-  if (visited.count(a))
-    return false;
-  visited.insert(a);
   if (a->getBlock() == b->getBlock()) {
     if (!a->isBeforeInBlock(b))
       return false;
   }
   if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
-    return isReachable(a->getParentOp(), b, visited);
+    return isReachable(a->getParentOp(), b);
   return llvm::any_of(a->getUsers(),
-                      [b, &visited](Operation *op) { return isReachable(op, b, visited); });
+                      [b](Operation *op) { return isReachable(op, b); });
 }
 
 bool isCircularDependency(std::vector<Operation *> &beginOps,
@@ -210,11 +206,10 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
     usedByOutside.erase(v);
     definedInOutside.erase(v);
   }
-  std::unordered_set<Operation *> visited;
   // check dataFlow form usedByOutside to definedInOutside.
   for (auto uOp : usedByOutside) {
     for (auto dOp : definedInOutside) {
-      if (isReachable(uOp, dOp, visited)) {
+      if (isReachable(uOp, dOp)) {
         return true;
       }
     }
