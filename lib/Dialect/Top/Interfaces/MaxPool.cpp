@@ -143,40 +143,35 @@ void top::MaxPoolOp::shape_inference() {
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
   // for AutoPad
-  std::vector<int64_t> new_pads;
-  new_pads.assign(pads->begin(), pads->end());
+  std::vector<int64_t> new_pads(pads->begin(), pads->end());
   if (getAutoPad().has_value()) {
     set_auto_pad(getAutoPad().value(), input_shape, *kernel_shape, *strides,
                  new_pads);
-    auto builder = OpBuilder(getContext());
-    setPadsAttr(builder.getI64ArrayAttr(new_pads));
     removeAutoPadAttr();
-    pads = module::getI64Array(getPads());
   }
 
-  for (int i = 0; i < spacial_rank; i++) {
-    auto input_dim_expanded = input_spacial_shape[i] + pads->at(i) +
-                              pads->at(i + spacial_rank) - kernel_shape->at(i);
-    auto out_dim = input_dim_expanded / strides->at(i) + 1;
-
-    // move ceil_mode to padding
-    auto need_fix_pad = input_dim_expanded % strides->at(i);
-    if (getCeilMode() && getCeilMode().value() && need_fix_pad) {
-      // https://pytorch.org/docs/stable/generated/torch.nn.AvgPool1d.html#torch.nn.AvgPool1d
-      // When ceil_mode=True, sliding windows are allowed to go off-bounds if
-      // they start within the left padding or the input. Sliding windows that
-      // would start in the right padded region are ignored.
-      auto new_pad = pads->at(i + spacial_rank) + strides->at(i) - need_fix_pad;
-      if (new_pad < kernel_shape->at(i)) {
-        pads->at(i + spacial_rank) = new_pad;
-        out_dim += 1;
+  // for CeilMode
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    auto kernel_len = kernel_shape->size();
+    for (uint32_t i = 0; i < kernel_len; i++) {
+      auto remain_pixel =
+          (input_shape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
+          strides->at(i);
+      if (remain_pixel > 0) {
+        new_pads[i + kernel_len] += (strides->at(i) - remain_pixel);
       }
     }
+    removeCeilModeAttr();
+  }
+  auto builder = OpBuilder(getContext());
+  setPadsAttr(builder.getI64ArrayAttr(new_pads));
+  pads = module::getI64Array(getPads());
 
+  for (int i = 0; i < spacial_rank; i++) {
+    auto out_dim = (input_spacial_shape[i] + pads->at(i) +
+                    pads->at(i + spacial_rank) - kernel_shape->at(i)) /
+                       strides->at(i) + 1;
     out_shape.push_back(out_dim);
   }
-  if (getCeilMode() && getCeilMode().value())
-    setPadsAttr(Builder(getContext()).getI64ArrayAttr(*pads));
-  removeCeilModeAttr();
   module::setShapeOrVerify(getOutput(), out_shape);
 }
