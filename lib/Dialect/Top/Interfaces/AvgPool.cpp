@@ -122,7 +122,7 @@ void top::AvgPoolOp::shape_inference() {
     std::vector<int64_t> vkernel_shape;
     std::vector<int64_t> vstrides(num_dim, 1);
     std::vector<int64_t> vpads(2 * num_dim, 0);
-    for(uint32_t i = 2; i < input_shape.size(); i++) {
+    for (uint32_t i = 2; i < input_shape.size(); i++) {
       vkernel_shape.push_back(input_shape[i]);
     }
     auto builder = OpBuilder(getContext());
@@ -148,11 +148,14 @@ void top::AvgPoolOp::shape_inference() {
                  new_pads);
     removeAutoPadAttr();
   }
+
   // for CeilMode
   if (getCeilMode().has_value() && getCeilMode().value()) {
     auto kernel_len = kernel_shape->size();
-    for(uint32_t i = 0; i < kernel_len; i++) {
-      auto remain_pixel = (input_shape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) % strides->at(i);
+    for (uint32_t i = 0; i < kernel_len; i++) {
+      auto remain_pixel =
+          (input_shape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
+          strides->at(i);
       if (remain_pixel > 0) {
         new_pads[i + kernel_len] += (strides->at(i) - remain_pixel);
       }
