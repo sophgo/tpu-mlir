@@ -773,6 +773,17 @@ bool isOpInDevParallel(Operation *op) {
   return false;
 }
 
+bool isOpInBlock(Operation *op) {
+  if (op == nullptr) {
+    return false;
+  }
+  auto parent = op->getParentOp();
+  if (isa<func::FuncOp>(parent)) {
+    return false;
+  }
+  return true;
+}
+
 FuncOp getFuncOp(ModuleOp mod, StringRef func_name) {
   for (auto func : mod.getOps<FuncOp>()) {
     if (func.getName() == func_name) {
@@ -1140,9 +1151,7 @@ TopRunMode getTopRunMode() {
   return TopRunMode::STATIC;
 }
 
-bool isDynamic() {
-  return getTopRunMode() == TopRunMode::DYNAMIC;
-}
+bool isDynamic() { return getTopRunMode() == TopRunMode::DYNAMIC; }
 
 bool isDebugCmdEnable(std::string cmd_str) {
   if (debug_cmd.find(cmd_str) != std::string::npos) {

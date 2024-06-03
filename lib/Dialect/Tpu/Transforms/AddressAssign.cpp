@@ -104,6 +104,9 @@ public:
     if (!module::isBM1684XFamily()) {
       return failure();
     }
+    if (module::isOpInBlock(op)) {
+      return failure();
+    }
     auto relu = op.getDoRelu();
     std::vector<Operation *> cat_ops;
     std::vector<Value> operands;
