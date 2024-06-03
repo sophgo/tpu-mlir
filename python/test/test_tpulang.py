@@ -249,9 +249,9 @@ class TPULANG_IR_TESTER(object):
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
     def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
-        # if is_quantized == False:
-        #     tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
-        # else:
+        if is_quantized == False:
+            tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
+        else:
             tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
 
     #######################################################################
@@ -2803,10 +2803,10 @@ class TPULANG_IR_TESTER(object):
             input_y = rand_data(shape_y, dtype)
             input_u = rand_data(shape_u, dtype)
             input_v = rand_data(shape_v, dtype)
-            
+
             # generate python calculation
             for n in range(1):
-                bgr_data = np_yuv2rgb(input_y[n, :, :], input_u[n, :, :], input_v[n, :, :],128,128)           # numpy 
+                bgr_data = np_yuv2rgb(input_y[n, :, :], input_u[n, :, :], input_v[n, :, :],128,128)           # numpy
                 # print(bgr_data.shape)
                 np.save(os.path.join(os.getcwd(),"Yuv2rgb"),bgr_data)
 
