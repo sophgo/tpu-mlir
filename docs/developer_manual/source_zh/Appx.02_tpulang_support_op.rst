@@ -169,7 +169,9 @@ compile
             refs=None,
             mode='f32',         # unused
             dynamic=False,
-            save_in_mem=False)
+            asymmetric=False,
+            no_save=False,
+            opt=2)
 
 
 功能描述
@@ -187,7 +189,9 @@ compile
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
 * mode：string类型，废弃。
 * dynamic：bool类型，是否进行动态编译。
-* save_in_mem：bool类型，是否将中间文件暂存到共享内存并随进程释放，启用该项时Compile会返回生成的bmodel文件的bytes-like object，用户需要自行接收和处理，如使用f.write(bmodel_bin)保存。
+* no_save：bool类型，是否将中间文件暂存到共享内存并随进程释放，启用该项时Compile会返回生成的bmodel文件的bytes-like object，用户需要自行接收和处理，如使用f.write(bmodel_bin)保存。
+* asymmetric：bool类型，是否为非对称量化。
+* opt：int类型，表示编译器group优化级别。0，表示不需要进行group；1，表示尽可能进行group；2，表示根据动态规划进行group。默认值为2。
 
 .. _deinit:
 
@@ -3780,7 +3784,10 @@ avgpool2d
                     ceil_mode: bool = False,
                     scale: List[float] = None,
                     zero_point: List[int] = None,
-                    out_name: str = None):
+                    out_name: str = None,
+                    count_include_pad : bool = False,
+                    round_mode : str="half_away_from_zero",
+                    first_round_mode : str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -3798,6 +3805,9 @@ avgpool2d
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* count_include_pad：Bool类型，表示在计算平均值时，是否将pad值计算在内，默认值为False。
+* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
+* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。
 
 返回值
 """""""""""
