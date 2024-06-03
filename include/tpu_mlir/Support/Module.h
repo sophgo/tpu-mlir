@@ -180,6 +180,7 @@ bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
 bool isOpInCoreMatch(Operation *Op);
 bool isOpInCoreParallel(Operation *Op);
 bool isOpInDevParallel(Operation *Op);
+bool isOpInBlock(Operation *op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getName(Operation *op, int index = 0);

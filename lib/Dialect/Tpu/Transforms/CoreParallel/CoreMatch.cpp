@@ -15,16 +15,6 @@
 
 namespace tpu_mlir {
 namespace tpu {
-static bool isOpInBlock(Operation *op) {
-  if (op == nullptr) {
-    return false;
-  }
-  auto parent = op->getParentOp();
-  if (isa<func::FuncOp>(parent)) {
-    return false;
-  }
-  return true;
-}
 
 static bool isOpSameCalc(Operation *op0, Operation *op1) {
   auto compare = [&](mlir::ValueRange left, mlir::ValueRange right) -> bool {
@@ -222,7 +212,8 @@ bool checkDataDependencies(const std::vector<Operation *> &ops) {
 
     for (auto operand : consumer->getOperands()) {
       Operation *producer = operand.getDefiningOp();
-      if (producer && std::find(ops.begin(), ops.end(), producer) != ops.end()) {
+      if (producer &&
+          std::find(ops.begin(), ops.end(), producer) != ops.end()) {
         hasDependency = true;
       }
     }
@@ -349,12 +340,14 @@ struct CommonMatch : public RewritePattern {
       return failure();
     }
     if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-      if (matmulOp.supports_multi_core())
-      return failure();
+      if (matmulOp.supports_multi_core()) {
+        return failure();
+      }
     }
     if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-      if (a16matmulOp.supports_multi_core())
-      return failure();
+      if (a16matmulOp.supports_multi_core()) {
+        return failure();
+      }
     }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
@@ -424,8 +417,8 @@ struct CommonMatch : public RewritePattern {
     }
     for (auto ops : same_ops) {
       if (checkDataDependencies(ops) || checkForReturnOpUser(ops)) {
-      return failure();
-    }
+        return failure();
+      }
     }
     for (auto ops : same_ops) {
       common_match(rewriter, ops);
@@ -444,7 +437,7 @@ public:
     if (num_cores < 2 || module::isSG2380()) {
       return failure();
     }
-    if (isOpInBlock(op)) {
+    if (module::isOpInBlock(op)) {
       return failure();
     }
     if (!op.getWTranspose()) {
@@ -510,7 +503,7 @@ class MlpA16Match : public OpRewritePattern<tpu::A16MatMulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
   bool is_support(tpu::A16MatMulOp op) {
-    if (isOpInBlock(op)) {
+    if (module::isOpInBlock(op)) {
       return false;
     }
     if (!module::isWeight(op.getRight())) {
