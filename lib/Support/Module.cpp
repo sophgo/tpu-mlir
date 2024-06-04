@@ -1731,8 +1731,7 @@ void saveWeight() {
   for (auto s : *modules) {
     for (auto func : s.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
-            !module::isOpInCoreParallel(op) &&
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInBlock(op) &&
             !isa<func::ReturnOp, func::CallOp, func::FuncOp, tpu::YieldOp,
                  tpu::IfOp, top::InputOp>(op)) {
           auto name = module::getName(op);

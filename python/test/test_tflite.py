@@ -14,6 +14,7 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
+from utils.timer import Timer
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -947,12 +948,13 @@ class TFLITE_IR_TESTER(object):
 
 
 def test_one_case_in_all(tester: TFLITE_IR_TESTER, case, error_cases, success_cases):
+  t = Timer()
   try:
     tester.test_single(case)
   except:
-    error_cases.append(case)
+    error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
     return
-  success_cases.append(case)
+  success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
 
 def test_all(tester: TFLITE_IR_TESTER):
   import multiprocessing

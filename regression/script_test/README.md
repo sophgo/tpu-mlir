@@ -23,4 +23,6 @@
 
 * test11:        test ILP layergroup
 
-* test_llm:      test llm models
+* test_llm0:     test llm models basic
+
+* test_llm1:     test llm all

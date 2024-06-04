@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Patterns.h"
-
+#include "tpu_mlir/Support/CustomLayer.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/IR/Iterators.h"
 
@@ -49,7 +49,7 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
       }
     }
     if (do_reshape && order->size() == 2 && order->at(0) == 1 &&
-        order->at(1) == 0 && op.getInput().getDefiningOp()!=nullptr) {
+        order->at(1) == 0 && op.getInput().getDefiningOp() != nullptr) {
       auto nonzeroOp = dyn_cast<tpu::NonZeroOp>(op.getInput().getDefiningOp());
       if (nonzeroOp && nonzeroOp.getOrder().str() == "RowMajor")
         do_reshape = false;
@@ -60,8 +60,8 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
     std::vector<Value> operands;
     operands.emplace_back(op.getInput());
     operands.emplace_back(module::getNoneOp(op));
-    auto reshape_op = rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
-                                                                  operands);
+    auto reshape_op = rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(
+        op, op.getResult().getType(), operands);
     for (auto next_op : reshape_op.getResult().getUsers()) {
       if (isa<tpu::ConcatOp>(next_op)) {
         auto concat_op = dyn_cast<tpu::ConcatOp>(next_op);
@@ -250,6 +250,176 @@ static inline void LoopMode(Operation *op, int &mode) {
   return;
 }
 
+/* note: if subnet's output order is the reverse order of module's,
+   the final output's order is the reverse order of model. if static codegen,
+   do L2S firstly, then S2S(to the target addr), so it have no error.
+   but at dyn runtime, if it is the output tensor, it will L2S to the target
+   addr according to the tensor id, it will meet error. so it will check if need
+   to swap the order*/
+struct CallOpReorderPattern : public OpRewritePattern<CallOp> {
+  using OpRewritePattern::OpRewritePattern;
+  static bool isOrderValid(const std::vector<int> &order) {
+    for (int i = 0; i < order.size(); i++) {
+      if (i != order[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static void reorderFuncOpInput(func::FuncOp func,
+                                 const std::vector<int> &order) {
+    // Get the function's input types and arguments
+    auto &entryBlock = func.front();
+    auto numArgs = func.getNumArguments();
+
+    // Save the current input values
+    std::vector<Value> originalArgs;
+    for (auto &arg : entryBlock.getArguments()) {
+      originalArgs.push_back(arg);
+    }
+
+    // Create a new function type with reordered input types
+    SmallVector<Type, 4> reorderedInputTypes;
+    SmallVector<Location, 4> reorderedLocs;
+    for (auto i : order) {
+      reorderedInputTypes.push_back(func.getFunctionType().getInput(i));
+      reorderedLocs.push_back(entryBlock.getArgument(i).getLoc());
+    }
+
+    // Create the new function type with reordered inputs and the same outputs
+    auto newFuncType = FunctionType::get(func.getContext(), reorderedInputTypes,
+                                         func.getFunctionType().getResults());
+
+    // Set the new function type
+    func.setType(newFuncType);
+
+    // Reorder the arguments in the entry block
+    SmallVector<Value, 4> newArgs;
+    for (int i = 0; i < numArgs; i++) {
+      newArgs.push_back(
+          entryBlock.addArgument(reorderedInputTypes[i], reorderedLocs[i]));
+    }
+
+    // Replace old arguments with new arguments in the function body
+    for (int i = 0; i < numArgs; ++i) {
+      originalArgs[order[i]].replaceAllUsesWith(newArgs[i]);
+    }
+
+    // Remove the old arguments
+    for (int i = numArgs - 1; i >= 0; --i) {
+      entryBlock.eraseArgument(i);
+    }
+  }
+
+  static bool reorderCallOpInput(FuncOp main, CallOp call) {
+    auto num_input = call.getNumOperands();
+    if (main.getNumArguments() != num_input || num_input == 1) {
+      return false;
+    }
+    std::vector<int> input_order(num_input);
+    for (int i = 0; i < num_input; i++) {
+      auto in = call.getOperand(i);
+      if (!isa<top::InputOp>(in.getDefiningOp())) {
+        return false;
+      }
+      auto in_op = cast<top::InputOp>(in.getDefiningOp());
+      auto arg = cast<BlockArgument>(in_op.getInput());
+      input_order[arg.getArgNumber()] = i;
+    }
+    if (!isOrderValid(input_order)) {
+      return false;
+    }
+
+    SmallVector<Value, 4> inputs(call.getOperands());
+    for (int i = 0; i < input_order.size(); i++) {
+      call.setOperand(i, inputs[input_order[i]]);
+    }
+    auto m = module::getModuleOp(call);
+    auto func = module::getFuncOp(m, call.getCallee());
+    reorderFuncOpInput(func, input_order);
+    return true;
+  }
+
+  static void reorderFuncOpOutput(func::FuncOp func,
+                                  const std::vector<int> &order) {
+    // Get the function's output types
+    auto funcType = func.getFunctionType();
+
+    // Create a new function type with reordered output types
+    SmallVector<Type, 4> reorderedOutputTypes;
+    for (int index : order) {
+      reorderedOutputTypes.push_back(funcType.getResult(index));
+    }
+
+    // Create the new function type with reordered outputs and the same inputs
+    auto newFuncType = FunctionType::get(
+        func.getContext(), funcType.getInputs(), reorderedOutputTypes);
+
+    // Set the new function type
+    func.setType(newFuncType);
+
+    // Assume the last operation in the function body is the return operation
+
+    Operation &lastOp = func.getBody().front().back();
+    auto returnOp = dyn_cast_or_null<func::ReturnOp>(lastOp);
+    ASSERT_OP(returnOp, &lastOp);
+    // Save the current return values
+    SmallVector<Value, 4> originalResults(returnOp.getOperands());
+
+    // Create a new list of return values based on the new order
+    SmallVector<Value, 4> reorderedResults;
+    for (int index : order) {
+      reorderedResults.push_back(originalResults[index]);
+    }
+
+    // Set the new return operands
+    returnOp->setOperands(reorderedResults);
+  }
+
+  static bool reorderCallOpOutput(FuncOp main, CallOp call) {
+    auto num_output = call.getNumResults();
+    if (main.getNumResults() != num_output || num_output == 1) {
+      return false;
+    }
+    auto nextOp = call->getNextNode();
+    auto retOp = dyn_cast_or_null<ReturnOp>(nextOp);
+    if (!retOp || retOp.getNumOperands() != num_output) {
+      return false;
+    }
+    std::vector<int> output_order;
+    for (int i = 0; i < num_output; i++) {
+      auto v = cast<OpResult>(retOp.getOperand(i));
+      auto index = v.getResultNumber();
+      if (v != call.getResult(index)) {
+        return false;
+      }
+      output_order.push_back(index);
+    }
+    if (!isOrderValid(output_order)) {
+      return false;
+    }
+    for (int i = 0; i < num_output; ++i) {
+      retOp.setOperand(i, call.getResult(i));
+    }
+    auto m = module::getModuleOp(call);
+    auto func = module::getFuncOp(m, call.getCallee());
+    reorderFuncOpOutput(func, output_order);
+    return true;
+  }
+
+  LogicalResult matchAndRewrite(CallOp call,
+                                PatternRewriter &rewriter) const override {
+    auto main = dyn_cast_or_null<FuncOp>(call->getParentOp());
+    if (!main) {
+      return failure();
+    }
+    auto do_input = reorderCallOpInput(main, call);
+    auto do_output = reorderCallOpOutput(main, call);
+    return (do_input || do_output) ? success() : failure();
+  }
+};
+
 class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
   SubnetDividePass() {}
@@ -275,20 +445,20 @@ public:
           patterns
               .add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
                    patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>,
-                   TopPermuteToReshape,
-                   StaticMergeSlicePattern>(
-                  &ctx);
+                   TopPermuteToReshape, StaticMergeSlicePattern>(&ctx);
         }
         patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                      patterns::FuseSameOp>(&ctx);
         applyPatternsAndFoldGreedily(func, std::move(patterns));
       }
+      module::applyPatternOnce<CallOpReorderPattern>(s);
     }
+
     module::removeUnusedOp();
+    module::updateModuleTypes();
     module::setState(module::State::TPU_DIVIDED);
   }
 
-  #include "tpu_mlir/Support/CustomLayer.h"
   static bool force_dynamic_run(Operation *op) {
     if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
             NmsOp, SortOp>(op)) {
@@ -313,10 +483,8 @@ public:
       std::string api_name = "force_dynamic_run_" + op_name;
       bool ret = false;
       BM168x::call_custom_plugin_func(
-        kCustomPluginTypes::PLUGIN_FORCEDYNAMICRUN, &ret,
-        api_name.c_str(), values.data(),
-        values.size() * sizeof(custom_param_t),
-        nullptr);
+          kCustomPluginTypes::PLUGIN_FORCEDYNAMICRUN, &ret, api_name.c_str(),
+          values.data(), values.size() * sizeof(custom_param_t), nullptr);
       return ret;
     }
     return false;
@@ -563,20 +731,21 @@ public:
     return hdOp.getOutput();
   }
 
-  Value insert_device2host(Value v, Type to, Operation* user) {
-  auto ctx = v.getContext();
-  OpBuilder builder(ctx);
-  builder.setInsertionPointAfterValue(v);
-  auto name = module::getName(v).str();
-  if (user && !isa<ReturnOp>(user)) {
+  Value insert_device2host(Value v, Type to, Operation *user) {
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    builder.setInsertionPointAfterValue(v);
+    auto name = module::getName(v).str();
+    if (user && !isa<ReturnOp>(user)) {
       name += "_" + module::getName(user).str();
+    }
+    name += "_device2host";
+    auto newType =
+        RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
+    return hdOp.getOutput();
   }
-  name += "_device2host";
-  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
-  auto loc = NameLoc::get(builder.getStringAttr(name));
-  auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
-  return hdOp.getOutput();
-}
 
   InfoVec base_subnet_split(ModuleOp sub) {
     subnet_basic_info::reset_id();
@@ -700,7 +869,8 @@ public:
     /*  1. move the WeightOp and NoneOp's position between subnets
            and get the input and output of subnet
 
-        2. if subnet's output in host -> host2device  and  device2host (in next subnet)*/
+        2. if subnet's output in host -> host2device  and  device2host (in next
+       subnet)*/
 
     std::vector<Operation *> to_move_ops;
     for (int i = 0; i < subnet_infos.size(); i++) {
@@ -726,17 +896,21 @@ public:
                       // insert host2device
                       if (user->getOperand(idx) == output_op_p->getResult(k)) {
 
-                        d2hval = insert_device2host(user->getOperand(idx),
-                                                    user->getOperand(idx).getType(),user);
+                        d2hval = insert_device2host(
+                            user->getOperand(idx),
+                            user->getOperand(idx).getType(), user);
                         user->setOperand(idx, d2hval);
                         auto d2hop = d2hval.getDefiningOp();
 
-                        h2dval = insert_host2device(d2hop->getOperand(0),
-                                                    d2hop->getOperand(0).getType());
+                        h2dval =
+                            insert_host2device(d2hop->getOperand(0),
+                                               d2hop->getOperand(0).getType());
                         d2hop->setOperand(0, h2dval);
                         // find which subnet_info that d2hval add in
-                        for(int l = 0; l < subnet_infos.size(); l++){
-                          if(std::find(subnet_infos[l]->ops.begin(),subnet_infos[l]->ops.end(),user) != subnet_infos[l]->ops.end()){
+                        for (int l = 0; l < subnet_infos.size(); l++) {
+                          if (std::find(subnet_infos[l]->ops.begin(),
+                                        subnet_infos[l]->ops.end(),
+                                        user) != subnet_infos[l]->ops.end()) {
                             d2hvec.push_back({d2hval.getDefiningOp(), l});
                           }
                         }
@@ -747,7 +921,8 @@ public:
                   add_h2d_flag = true; // subnet_infos[i] can't updata now!
                   h2dvec.emplace_back(h2dval.getDefiningOp());
                   // h2dvec.emplace_back(d2hval.getDefiningOp());
-                  subnet_infos[i]->outs.emplace_back(h2dval); // h2dval is subnet output now
+                  subnet_infos[i]->outs.emplace_back(
+                      h2dval); // h2dval is subnet output now
                   break;
                 } else {
                   // subnet's output is in device,
@@ -803,11 +978,10 @@ public:
           subnet_infos[i]->ops.emplace_back(h2dOp);
         }
         // add device2host Op
-        for(auto d2hOp : d2hvec) {
+        for (auto d2hOp : d2hvec) {
           subnet_infos[d2hOp.second]->ops.emplace_back(d2hOp.first);
         }
       }
-
     }
 
     // eliminate empty subnet
@@ -843,22 +1017,24 @@ public:
           /* if Loop's Operand (such as cond, v_initial) is WeightOp,
              will create tensor for to replace it, because will change
             the value during iteration */
-          for (int i = 0; i< (*it)->ops[0]->getNumOperands() - 1; i++) {
-            if (isa<top::WeightOp>(module::getOriValue
-                  ((*it)->ops[0]->getOperand(i+1)).getDefiningOp())) {
-              //create a D2D op(but use Addconst instead)
+          for (int i = 0; i < (*it)->ops[0]->getNumOperands() - 1; i++) {
+            if (isa<top::WeightOp>(
+                    module::getOriValue((*it)->ops[0]->getOperand(i + 1))
+                        .getDefiningOp())) {
+              // create a D2D op(but use Addconst instead)
               attrs.clear();
-              attrs.push_back(
-                builder.getNamedAttr("const_val", builder.getF64FloatAttr(0.f)));
-              auto d2d_loc = module::getLocLike((*it)->ops[0], std::to_string(i));
+              attrs.push_back(builder.getNamedAttr(
+                  "const_val", builder.getF64FloatAttr(0.f)));
+              auto d2d_loc =
+                  module::getLocLike((*it)->ops[0], std::to_string(i));
               auto d2d_op = builder.create<tpu::D2DOp>(
-                    d2d_loc, (*it)->ops[0]->getOperand(i+1).getType(),
-                    ValueRange{(*it)->ops[0]->getOperand(i+1)}, attrs);
+                  d2d_loc, (*it)->ops[0]->getOperand(i + 1).getType(),
+                  ValueRange{(*it)->ops[0]->getOperand(i + 1)}, attrs);
               ops.emplace_back(d2d_op);
-              (*it)->ops[0]->getOperand(i+1)
-                      .replaceUsesWithIf(d2d_op->getResult(0),
-                                             [&](OpOperand &use) {
-                                               return isa<tpu::LoopOp>(use.getOwner());});
+              (*it)->ops[0]->getOperand(i + 1).replaceUsesWithIf(
+                  d2d_op->getResult(0), [&](OpOperand &use) {
+                    return isa<tpu::LoopOp>(use.getOwner());
+                  });
             }
           }
 
@@ -915,8 +1091,7 @@ public:
             // insert WeightOp & constFill op into previous subnet
             auto iit = std::prev(it, 1);
             if (!ops.empty()) {
-              (*iit)->ops.insert((*iit)->ops.end(),
-                               ops.begin(), ops.end());
+              (*iit)->ops.insert((*iit)->ops.end(), ops.begin(), ops.end());
             }
 
             (*iit)->ops.insert((*iit)->ops.end(),
@@ -928,8 +1103,7 @@ public:
                                      new subnet_basic_info);
             (*it)->type = dynamic ? RunMode::TPU_DYNAMIC : RunMode::TPU_STATIC;
             if (!ops.empty()) {
-              (*it)->ops.insert((*it)->ops.end(),
-                               ops.begin(), ops.end());
+              (*it)->ops.insert((*it)->ops.end(), ops.begin(), ops.end());
             }
 
             (*it)->ops.insert((*it)->ops.end(),
@@ -950,9 +1124,12 @@ public:
       }
     }
     // remove the unused op
-    for (auto op : to_move_ops){
-      if (!op->getUsers().empty()){continue;}
-      op->erase();}
+    for (auto op : to_move_ops) {
+      if (!op->getUsers().empty()) {
+        continue;
+      }
+      op->erase();
+    }
 
     return subnet_infos;
   }
@@ -1313,11 +1490,11 @@ public:
 
         for (int i = 0; i < fnInputs.size(); i++) {
           auto loc = module::getLocLike(module::getOriValue(fnInputs[i]),
-                     "_id_" + std::to_string(subnet->index));
+                                        "_id_" + std::to_string(subnet->index));
           locs.push_back(loc);
         }
 
-        auto  new_loc = FusedLoc::get(module::getCtx(), locs);
+        auto new_loc = FusedLoc::get(module::getCtx(), locs);
         auto identityOp =
             builder.create<tpu::IdentityOp>(new_loc, outType, fnInputs);
         subnet->ops.emplace_back(identityOp.getOperation());
@@ -1368,11 +1545,11 @@ public:
 
         for (int i = 0; i < fnInputs.size(); i++) {
           auto loc = module::getLocLike(module::getOriValue(fnInputs[i]),
-                     "_id_" + std::to_string(subnet->index));
+                                        "_id_" + std::to_string(subnet->index));
           locs.push_back(loc);
         }
 
-        auto  new_loc = FusedLoc::get(module::getCtx(), locs);
+        auto new_loc = FusedLoc::get(module::getCtx(), locs);
         auto identityOp =
             builder.create<tpu::IdentityOp>(new_loc, outType, fnInputs);
         subnet->ops.emplace_back(identityOp.getOperation());

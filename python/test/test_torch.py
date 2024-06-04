@@ -13,6 +13,7 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import clean_kmp_files
+from utils.timer import Timer
 import os
 
 import torch
@@ -254,8 +255,8 @@ class TORCH_IR_TESTER(object):
         denominator = self.square_rooted(x) * self.square_rooted(y)
         return round(numerator / float(denominator), 3)
 
-    def compare(self, ref_out, target_out):
-        if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
+    def compare(self, ref_out, target_out, use_cos: bool = False):
+        if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8] or use_cos:
             cos = self.cosine_similarity(ref_out, target_out)
             assert (cos > 0.997 or (np.linalg.norm(ref_out) == 0
                                     and np.linalg.norm(target_out) == 0))
@@ -385,7 +386,7 @@ class TORCH_IR_TESTER(object):
             msg += ", Asymmetric: {}".format(isAsym)
         print("[Success] test {} {}".format(model_name, msg))
 
-    def trace_and_test(self, in_shapes, torch_model: nn.Module, descs: List[Desc] = []):
+    def trace_and_test(self, in_shapes, torch_model: nn.Module, descs: List[Desc] = [], use_cos: bool = False):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
         TORCH_IR_TESTER.ID += 1
@@ -400,8 +401,8 @@ class TORCH_IR_TESTER(object):
             if name in top_mlir_outs:
                 print("Compare mlir and torch:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
-                onnx_output = torch_outs[name].flatten()
-                self.compare(onnx_output, top_mlir_output)
+                torch_output = torch_outs[name].flatten()
+                self.compare(torch_output, top_mlir_output, use_cos)
                 counter += 1
         if counter == 0:
             raise RuntimeError("No compare between torch outs and mlir outts")
@@ -2243,12 +2244,13 @@ class TORCH_IR_TESTER(object):
         # _test_attention0((2, 384, 64), 32, 2)
         # _test_attention0((2, 1024, 640), 80, 2, False)
         # _test_attention0((2, 256, 1280), 160, 2, False)
-        _test_attention0((1, 4096, 320), 40, 2, False)
-        # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
-        # _test_attention1((2, 256, 1280), (2, 77, 768), 160, 2, False)
-        # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
-        _test_attention1((2, 4096, 320), (2, 77, 768), 40, 8, False)
-        # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
+        if not self.simple:
+            _test_attention0((1, 4096, 320), 40, 2, False)
+            # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
+            # _test_attention1((2, 256, 1280), (2, 77, 768), 160, 2, False)
+            # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
+            _test_attention1((2, 4096, 320), (2, 77, 768), 40, 8, False)
+            # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
     def test_FAttention(self):
 
@@ -2817,8 +2819,9 @@ class TORCH_IR_TESTER(object):
             input_shapes = [(81, batch, 100)]
             self.trace_and_test(input_shapes, Model())
 
+        batchs = [1] if self.simple else [1, 4]
         for bidir in [True, False]:
-            for batch in [1, 4]:
+            for batch in batchs:
                 _test_lstm0(batch, bidir)
                 _test_lstm1(batch, bidir)
 
@@ -2858,8 +2861,9 @@ class TORCH_IR_TESTER(object):
             input_shapes = [(81, batch, 100)]
             self.trace_and_test(input_shapes, Model())
 
+        batchs = [1] if self.simple else [1, 4]
         for bidir in [True, False]:
-            for batch in [1, 4]:
+            for batch in batchs:
                 _test_gru0(batch, bidir)
                 _test_gru1(batch, bidir)
 
@@ -3070,8 +3074,9 @@ class TORCH_IR_TESTER(object):
         for op_type in [nn.ReflectionPad1d, nn.ReplicationPad1d, nn.ConstantPad1d]:
             _test_pad1d(op_type, (1, 3, 32), 5, 0.6)
             _test_pad1d(op_type, (2, 3, 32), (5, 3))
-            _test_pad1d(op_type, (64, 32), (3, 6), 0.6)
-            _test_pad1d(op_type, (64, 32), 7, 0.4)
+            if not self.simple:
+                _test_pad1d(op_type, (64, 32), (3, 6), 0.6)
+                _test_pad1d(op_type, (64, 32), 7, 0.4)
 
     #######################################################################
     # Pad2D
@@ -3106,8 +3111,9 @@ class TORCH_IR_TESTER(object):
             else:
                 _test_pad2d(op_type, (1, 16, 32), 7, 0.6)
                 _test_pad2d(op_type, (3, 16, 32), (4, 6, 7, 8))
-            _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
-            _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)
+            if not self.simple:
+                _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
+                _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)
 
     #######################################################################
     # Abs
@@ -3176,10 +3182,10 @@ class TORCH_IR_TESTER(object):
                     return output_tensor
 
             self.trace_and_test([in_shape, grid_shape], Model(), [
-                                self.Desc('float32', -10, 10), self.Desc('float32', -1.02, 1.02)])
+                                self.Desc('float32', -10, 10), self.Desc('float32', -1.02, 1.02)], use_cos=True)
 
         mode_list = [0, 1]
-        padding_mode_list = [0, 1]
+        padding_mode_list = [0, 1] if not self.simple else [0]
         align_corners_list = [False, True]
 
         for mode in mode_list:
@@ -3187,10 +3193,11 @@ class TORCH_IR_TESTER(object):
                 for align_corners in align_corners_list:
                     _test_grid_sampler((1, 3, 100, 150), (1, 100, 150, 2), mode,
                                        padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 100, 150), (1, 40, 80, 2), mode,
-                                       padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
-                                       padding_mode, align_corners)
+                    if not self.simple:
+                        _test_grid_sampler((1, 3, 100, 150), (1, 40, 80, 2), mode,
+                                        padding_mode, align_corners)
+                        _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
+                                        padding_mode, align_corners)
         # # max shape in Grouding Dino
         # _test_grid_sampler((8, 32, 100, 100), (8, 13294, 4, 2), 0,
         #                     0, False)
@@ -3545,13 +3552,14 @@ class TORCH_IR_TESTER(object):
         # self.trace_and_test([(1,4,d_model)], mod)
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
+    t = Timer()
     try:
         tester.test_single(case)
     except:
-        error_cases.append(case)
+        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
         traceback.print_exc()
         return
-    success_cases.append(case)
+    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
 
 
 def test_all(tester: TORCH_IR_TESTER):

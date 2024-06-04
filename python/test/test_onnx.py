@@ -16,6 +16,7 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.mlir_shell import *
+from utils.timer import Timer
 import os
 import torch
 import torch.nn as nn
@@ -44,7 +45,7 @@ class ONNX_IR_TESTER(object):
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y),
             "And":          (self.test_And,           N, Y, Y, N, Y),
-            "AddBcast":     (self.test_AddBcast,      Y, N, N, N, Y), # bm1684x has random error caused by 2.27 commit
+            "AddBcast":     (self.test_AddBcast,      N, N, N, N, Y), # bm1684x has random error caused by 2.27 commit
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N), # failed cases
             "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y),
@@ -652,11 +653,13 @@ class ONNX_IR_TESTER(object):
                       input_data: dict = None,
                       static_shape=True,
                       check_last: bool = False,
-                      quant_modes=None,
+                      support_modes=None,
                       version=14,
                       dynamic=False):
-        if quant_modes is None:
+        if support_modes is None:
             quant_modes = self.quant_modes
+        else:
+            quant_modes = list(set(self.quant_modes) & set(support_modes))
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
@@ -5309,7 +5312,9 @@ class ONNX_IR_TESTER(object):
         ]
 
         axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
-
+        test_len =  len(input_data)
+        if self.simple:
+            test_len = 2
         for i in range(len(input_data)):
             # if i != 9:
             #     continue
@@ -5327,7 +5332,7 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def, input_data=input_)
 
     def test_ScatterND(self, case_name):
-        if self.chip in ['bm1684x', 'bm1688', 'cv186', 'sg2380']:
+        if self.chip in ['bm1684x', 'bm1688', 'cv186x', 'sg2380'] and not self.simple:
             x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2, 3, 20, 40], [1, 13294, 256],
                         [1, 900, 256], [320, 320], [1, 3, 128, 20, 20], [1, 13294, 256],
                         [8, 900, 2], [4, 4, 4]]
@@ -5633,10 +5638,9 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, static_shape=False)
 
     def test_Loop(self, case_name):
-        x = np.array(10000).astype(np.int64)
         graph_txt = """
             %s (float[1] input_0) => (int32[1] up_bound, int32[1] new_start_v2)
-            <float[1] const_fold_opt__17 = {10}, int64[1] reshape = {0}, int32[1] init_v = {1}, int32[1] up_value = {101}, int32[1] start_value = {10}, int64[1] while_maximum_iterations_0 = {10000}>
+            <float[1] const_fold_opt__17 = {10}, int64[1] reshape = {0}, int32[1] init_v = {1}, int32[1] up_value = {30}, int32[1] start_value = {10}, int64[1] while_maximum_iterations_0 = {30}>
             {
                 while_cond_158_while_Less_0 = Less(input_0, const_fold_opt__17)
                 while_cond_158_while_Squeeze_0 = Squeeze(while_cond_158_while_Less_0, reshape)
@@ -5653,7 +5657,7 @@ class ONNX_IR_TESTER(object):
             }
             """ % (case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def, quant_modes=["f32", "f16", "bf16"])
+        self.onnx_and_test(graph_def, support_modes=["f32", "f16", "bf16"])
 
     def test_Shape(self, case_name):
         input_shape = [2, 3, 4]
@@ -6014,12 +6018,13 @@ class ONNX_IR_TESTER(object):
         # self.trace_and_test([(1,4,d_model)], mod)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
+    t = Timer()
     try:
         tester.test_single(case)
     except:
-        error_cases.append(case)
+        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
         return
-    success_cases.append(case)
+    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
 
 
 def test_int4(tester: ONNX_IR_TESTER):

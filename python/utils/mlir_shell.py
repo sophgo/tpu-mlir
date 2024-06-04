@@ -215,7 +215,7 @@ def mlir_to_model(tpu_mlir: str,
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(final_mlir, os.path.join(out_dir, 'final.mlir'))
     try:
-        if model.endswith(".bmodel"):
+        if model.endswith(".bmodel") and not dynamic:
             # The suffix of the profile file is not consistent.
             # bm1684 uses ".dat", bm1684x uses ".txt".
             _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
