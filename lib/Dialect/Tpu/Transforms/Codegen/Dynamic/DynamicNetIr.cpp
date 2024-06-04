@@ -640,7 +640,7 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
             sub_group.group_ops.push_back(op);
             id++;
           }
-        } else if (!isa<tpu::YieldOp>(op)){
+        } else if (!isa<tpu::YieldOp>(op)) {
           op->dump();
           llvm_unreachable("such op need support dynamic local");
         }
@@ -655,18 +655,17 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
 
     // get and push fw_timestep_base_info_t
     fw_timestep_base_info_t timestep_base_info = {
-      .ts_num_and_split_tensor_num = (timestep_num << 16),
-      .max_nslice_deprecated = 255, // 255 means invalid
-      .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
-      .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-      .flags =
-          (uint8_t)((1 << 5) | (sub_group.type << 2) |
-                    ((1 << 1) |
-                     (hsecs >
-                      1))), // group_type, using max_nslice, h_is_split or not
-      .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
-      .max_nslice = max_nslice
-    };
+        .ts_num_and_split_tensor_num = (timestep_num << 16),
+        .max_nslice_deprecated = 255, // 255 means invalid
+        .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
+        .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
+        .flags =
+            (uint8_t)((1 << 5) | (sub_group.type << 2) |
+                      ((1 << 1) |
+                       (hsecs >
+                        1))), // group_type, using max_nslice, h_is_split or not
+        .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
+        .max_nslice = max_nslice};
     ir_group_timestep_base_info.push_back(timestep_base_info);
     fw_ir_length += sizeof(fw_timestep_base_info_t);
 
@@ -676,12 +675,11 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
     if (hsecs == 1) {
       for (int i = 0; i < sub_group.group_ins.size(); i++) {
         fw_input_tensor_info_t input_tensor_info = {
-          .tensor_id_and_max_hslice =
-              ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16),
-          .stride_h_and_kh = 0,
-          .pad_h_top_and_bottom = 0,
-          .min_pool_kh = 0
-        };
+            .tensor_id_and_max_hslice =
+                ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16),
+            .stride_h_and_kh = 0,
+            .pad_h_top_and_bottom = 0,
+            .min_pool_kh = 0};
 
         input_tensor_info_v.push_back(input_tensor_info);
         // because firmware only need tensor id actually, so the length of IR
@@ -702,16 +700,15 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
         uint32_t global_down_pad_h = dynamic_tensor_info.global_down_pad_h;
 
         fw_input_tensor_info_t input_tensor_info = {
-          .tensor_id_and_max_hslice =
-                  ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16) |
-              (max_hslice & 0xffff),
-          .stride_h_and_kh = (global_stride_h << 16) | (global_kh & 0xffff),
-          .pad_h_top_and_bottom =
-                  (global_up_pad_h << 16) | (global_down_pad_h & 0xffff),
-          .min_pool_kh = (u32)get_group_global_pooling_kh(
-              sub_group, sub_group.group_ins[i], global_kh, global_up_pad_h,
-              global_down_pad_h)
-        };
+            .tensor_id_and_max_hslice =
+                ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16) |
+                (max_hslice & 0xffff),
+            .stride_h_and_kh = (global_stride_h << 16) | (global_kh & 0xffff),
+            .pad_h_top_and_bottom =
+                (global_up_pad_h << 16) | (global_down_pad_h & 0xffff),
+            .min_pool_kh = (u32)get_group_global_pooling_kh(
+                sub_group, sub_group.group_ins[i], global_kh, global_up_pad_h,
+                global_down_pad_h)};
 
         input_tensor_info_v.push_back(input_tensor_info);
         fw_ir_length += sizeof(fw_input_tensor_info_t);
@@ -810,8 +807,8 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       ir_group_timestep_layer_param.push_back(layer_info_v2);
     ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_info_v2);
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (module::isBM1684XFamily() || module::isBM1684Family()
-        || module::isBM1690Family()) {
+    if (module::isBM1684XFamily() || module::isBM1684Family() ||
+        module::isBM1690Family()) {
       // global layer
       LgInfo sub_group;
       sub_group.group_ops.push_back(op);
@@ -825,16 +822,16 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       m_layer_groups_.push_back(sub_group);
       // get and push fw_timestep_base_info_t
       fw_timestep_base_info_t timestep_base_info = {
-        .ts_num_and_split_tensor_num = 1 << 16,
-        // 252 is aligned to 4, because it may meet 4N
-        .max_nslice_deprecated = 255, // 255 means invalid
-        .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
-        .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-        .flags = (uint8_t)((1 << 5) | (sub_group.type << 2) |
-                          ((1 << 1) | 0)), // using max_nslice, h is not split
-        .swpipl_stage_num = 1,
-        .max_nslice = (uint32_t)batch_num
-      };
+          .ts_num_and_split_tensor_num = 1 << 16,
+          // 252 is aligned to 4, because it may meet 4N
+          .max_nslice_deprecated = 255, // 255 means invalid
+          .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
+          .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
+          .flags =
+              (uint8_t)((1 << 5) | (sub_group.type << 2) |
+                        ((1 << 1) | 0)), // using max_nslice, h is not split
+          .swpipl_stage_num = 1,
+          .max_nslice = (uint32_t)batch_num};
       ir_group_timestep_base_info.push_back(timestep_base_info);
       fw_ir_length += sizeof(fw_timestep_base_info_t);
 
@@ -842,12 +839,11 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       vector<fw_input_tensor_info_t> input_tensor_info_v;
       for (int i = 0; i < sub_group.group_ins.size(); i++) {
         fw_input_tensor_info_t input_tensor_info = {
-          .tensor_id_and_max_hslice =
-                  (uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16,
-          .stride_h_and_kh = 0,
-          .pad_h_top_and_bottom = 0,
-          .min_pool_kh = 0
-        };
+            .tensor_id_and_max_hslice =
+                (uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16,
+            .stride_h_and_kh = 0,
+            .pad_h_top_and_bottom = 0,
+            .min_pool_kh = 0};
 
         input_tensor_info_v.push_back(input_tensor_info);
         // because firmware only need tensor id actually, so the length of IR
@@ -891,83 +887,18 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
   }
 }
 
-/* note: if subnet's output order is the reverse order of module's,
-   the final output's order is the reverse order of model. if static codegen,
-   do L2S firstly, then S2S(to the target addr), so it have no error.
-   but at dyn runtime, if it is the output tensor, it will L2S to the target
-   addr according to the tensor id, it will meet error. so it will check if need
-   to swap the order*/
-bool SubnetIr::check_output_order_swap(const vector<Value> &sub_out) {
-  const vector<Value> &net_output = get_net_output();
-  bool reoder_flag = (sub_out.size() == net_output.size());
-  if (sub_out.size() == net_output.size()) {
-    // need to check if the net's output order is the same as subnet's
-    for (int32_t i = 0; i < sub_out.size(); i++) {
-      if (module::getName(net_output[i]).str() !=
-          module::getName(sub_out[net_output.size() - 1 - i]).str()) {
-        reoder_flag = false;
-        break;
-      }
-    }
-  }
-  return reoder_flag;
-}
-
-/* note: Error might occurs when subnet input order differ from model's input.
-    Is slightly similiar to case when output order differ */
-vector<int32_t> SubnetIr::align_model_input_order(const vector<Value> &sub_in) {
-  const vector<Value> &net_input = get_net_input();
-  vector<int32_t> order;
-  std::map<std::string, int> sub_in_order_map;
-  for (int32_t i = 0; i < sub_in.size(); i++) {
-    sub_in_order_map[module::getName(sub_in[i]).str()] = i;
-  }
-  for (int32_t i = 0; i < net_input.size(); i++) {
-    std::string net_in_name = module::getName(net_input[i]).str();
-    if (sub_in_order_map.count(net_in_name))
-      order.push_back(sub_in_order_map[net_in_name]);
-  }
-  return order;
-}
-
-vector<int32_t> SubnetIr::align_model_output_order(const vector<Value> &sub_out) {
-  const vector<Value> &net_output = get_net_output();
-  vector<int32_t> order;
-  std::map<std::string, int> sub_out_order_map;
-  for (int32_t i = 0; i < sub_out.size(); i++) {
-    sub_out_order_map[module::getName(sub_out[i]).str()] = i;
-  }
-  for (int32_t i = 0; i < net_output.size(); i++) {
-    std::string net_out_name = module::getName(net_output[i]).str();
-    if (sub_out_order_map.count(net_out_name))
-      order.push_back(sub_out_order_map[net_out_name]);
-  }
-  return order;
-}
-
 void SubnetIr::generate_compiler_ir(
     ModuleOp &s, func::CallOp &call,
     std::function<void(Operation *, SubnetIr *)> task) {
-
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-
-  subnet_ = &call;
-  net_input_tensor_id.clear();
-  net_output_tensor_id.clear();
-  vector<int32_t> order = align_model_input_order(inputs);
-  for (int32_t i = 0; i < inputs.size(); i++) {
-    Value v = order.size() == inputs.size() ? inputs[order[i]] : inputs[i];
+  for (auto v : inputs) {
     net_input_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
 
-  // bool reverse_flag = check_output_order_swap(outputs);
-  // order = align_model_output_order(outputs);
-  for (int32_t i = 0; i < outputs.size(); i++) {
-    // Value v = order.size() == outputs.size() ? outputs[order[i]] : outputs[i];
-    Value v = outputs[i];
+  for (auto v : outputs) {
     net_output_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
@@ -1421,7 +1352,8 @@ void SubnetIr::write_binary_ir_to_buffer(std::unique_ptr<Context> &context) {
                      (subnet_ir_len + sizeof(uint32_t) - 1) / sizeof(uint32_t));
   uint32_t cur_net_ir_len = context->get_cur_net_ir_len();
   // context->set_cur_net_ir_len(cur_net_ir_len + subnet_ir_len);
-  uint32_t aligned_net_ir_length = (subnet_ir_len + sizeof(uint32_t) - 1) / sizeof(uint32_t) * sizeof(uint32_t);
+  uint32_t aligned_net_ir_length = (subnet_ir_len + sizeof(uint32_t) - 1) /
+                                   sizeof(uint32_t) * sizeof(uint32_t);
   context->set_cur_net_ir_len(cur_net_ir_len + aligned_net_ir_length);
   return;
 }

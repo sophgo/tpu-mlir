@@ -16,27 +16,14 @@ namespace tpu_mlir {
 namespace tpu {
 // global information for multisubnet
 int g_tensor_id = 0;
-vector<Value> net_input_tensors;
-vector<Value> net_output_tensors;
 map<Value, int, value_cmp> tensor_ID;
 // llvm::DenseMap<Value, int> tensor_ID;
 
 void DynCodegenInit() {
   g_tensor_id = 0;
   tensor_ID.clear();
-  net_input_tensors.clear();
-  net_output_tensors.clear();
 }
 
-void SetNetIO(vector<Value> &inputs, vector<Value> &outputs) {
-  for (auto v : inputs)
-    net_input_tensors.emplace_back(v);
-  for (auto v : outputs)
-    net_output_tensors.emplace_back(v);
-}
-
-vector<Value> &get_net_output() { return net_output_tensors; }
-vector<Value> &get_net_input() { return net_input_tensors; }
 bool is_net_input(Value v) { return v.isa<BlockArgument>(); }
 
 bool is_net_output(Value v) {

@@ -15,7 +15,8 @@ sys.path.append(test_dir)
 test_custom_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
-import time
+
+from utils.timer import Timer
 from chip import *
 from run_model import MODEL_RUN
 import test_tpulang
@@ -29,7 +30,6 @@ from utils.mlir_shell import _os_system_log
 
 SUCCESS = 0
 FAILURE = 1
-
 
 class Status:
     PASSED = 'PASSED'
@@ -47,15 +47,6 @@ def timeit(func):
         return result
 
     return wrapper
-
-
-class Timer:
-
-    def __init__(self):
-        self.start_time = time.time()
-
-    def elapsed_time(self):
-        return time.time() - self.start_time
 
 
 class MAIN_ENTRY(object):
@@ -79,8 +70,8 @@ class MAIN_ENTRY(object):
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
-        self.script_basic = ["test1", "test2","test5","test9","test11"]
-        self.script_extend = ["test3","test4","test6","test7","test8","test10"]
+        self.script_basic = ["test1", "test2","test5","test9","test11","test_llm0"]
+        self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm1"]
         # yapf: enable
         self.test_set = {
             "op0": self.run_op0_test,
@@ -94,11 +85,12 @@ class MAIN_ENTRY(object):
         self.time_cost = []
         self.logger = logging.getLogger()
 
-    def add_result(self, test_name: str, status: bool, error_cases: list = []):
+    def add_result(self, test_name: str, status: bool, time: int = 0, error_cases: list = []):
         self.results.append({
             "name": test_name,
             "status": Status.PASSED if status else Status.FAILED,
-            "error_cases": error_cases
+            "error_cases": error_cases,
+            "time": time
         })
 
     def run_regression_net(self, model_name, chip, num_core, finished_list):
@@ -114,6 +106,7 @@ class MAIN_ENTRY(object):
         print(
             f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} ====="
         )
+        t = Timer()
         target_dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(target_dir, exist_ok=True)
         os.chdir(target_dir)
@@ -127,7 +120,8 @@ class MAIN_ENTRY(object):
         finished_list.append({
             "name": case_name,
             "status": Status.PASSED if ret == 0 else Status.FAILED,
-            "error_cases": []
+            "error_cases": [],
+            "time":int(t.elapsed_time())
         })
         os.chdir(self.current_dir)
         shutil.rmtree(target_dir)
@@ -138,6 +132,7 @@ class MAIN_ENTRY(object):
     def _run_op_test(self, op_source, tester, test_all_func, chip):
         print(f"======= test_{op_source}.py ======")
         case_name = f"{op_source}_test_{chip}"
+        t = Timer()
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
         if op_source == "tflite":
@@ -145,9 +140,9 @@ class MAIN_ENTRY(object):
         else:
             tester = tester(chip=chip, simple=self.is_basic)
         error_cases = test_all_func(tester)
-        self.add_result(case_name, not error_cases, error_cases)
+        self.add_result(case_name, not error_cases, int(t.elapsed_time()), error_cases)
         os.chdir(self.current_dir)
-
+        shutil.rmtree(case_name) # too large
         return not error_cases
 
     def _run_script_test(self, source):
@@ -157,6 +152,7 @@ class MAIN_ENTRY(object):
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(file_handler)
+        t = Timer()
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
         success = True
@@ -166,8 +162,9 @@ class MAIN_ENTRY(object):
             success = False
         self.logger.removeHandler(file_handler)
         file_handler.close()
-        self.add_result(case_name, success)
+        self.add_result(case_name, success, int(t.elapsed_time()))
         os.chdir(self.current_dir)
+        shutil.rmtree(case_name) # too large
         return success
 
     def run_script_test(self):
@@ -257,7 +254,8 @@ class MAIN_ENTRY(object):
                         finished_list.append({
                             "name": error,
                             "status": Status.TIMEOUT,
-                            "error_cases": []
+                            "error_cases": [],
+                            "time": -1
                         })
                 self.results.extend(finished_list)
                 if self.is_basic:
@@ -330,12 +328,12 @@ if __name__ == "__main__":
     print("============ Passed Cases ============")
     for result in main_entry.results:
         if result["status"] == Status.PASSED:
-            print("{} {}".format(result["name"], result["status"]))
+            print("{} {} [{} s]".format(result["name"], result["status"], result["time"]))
 
     print("============ Failed Cases ============")
     for result in main_entry.results:
         if result["status"] != Status.PASSED:
-            print("{} {}".format(result["name"], result["status"]))
+            print("{} {} [{} s]".format(result["name"], result["status"], result["time"]))
             if result["error_cases"]:
                 print("Failed cases: ", result["error_cases"])
 

@@ -12,6 +12,7 @@ import os, sys
 import transform.TpuLang as tpul
 from typing import List
 import math
+from utils.timer import Timer
 
 def is_int(dtype, width = None):
     if width == None:
@@ -3663,14 +3664,15 @@ class TPULANG_IR_TESTER(object):
         _test_concat_conv()
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
-    import traceback
+    t = Timer()
     try:
         tester.test_single(case)
     except:
-        error_cases.append(case)
+        import traceback
+        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
         traceback.print_exc()
         return
-    success_cases.append(case)
+    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
 
 def test_all_base(tester: TPULANG_IR_TESTER):
     import multiprocessing
