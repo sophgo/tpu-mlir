@@ -1872,7 +1872,6 @@ def arg(input: Tensor,
         keep_dims: bool = True,
         out_name: str = None):
     dims = len(input.shape)
-    assert -dims <= axis and axis < dims, "axis is invalid"
     if input.dtype == "float32":
         o_dtype = input.dtype
     else:
@@ -1899,7 +1898,6 @@ def sort(input: Tensor,
          descending: bool = True,
          out_name: str = None):
     dims = len(input.shape)
-    assert -dims <= axis and axis < dims, "axis is invalid"
     attr = {
         "axis": Attr(axis),
         "descending": Attr(descending, "bool"),
@@ -1917,7 +1915,6 @@ def argsort(input: Tensor,
             descending: bool = True,
             out_name: str = None):
     dims = len(input.shape)
-    assert -dims <= axis and axis < dims, "axis is invalid"
     attr = {
         "axis": Attr(axis),
         "descending": Attr(descending, "bool"),
@@ -1935,7 +1932,6 @@ def sort_by_key(input: Tensor,
                 descending: bool = True,
                 out_name: str = None):
     dims = len(input.shape)
-    assert -dims <= axis and axis < dims, "axis is invalid"
     assert len(key.shape) == 1, "dims of key should be 1"
     assert key.shape[0] == input.shape[axis], "number of keys should be same as input.shape[axis]"
     attr = {
@@ -2350,7 +2346,6 @@ def topk(input: Tensor,
          k: int,
          out_name: str = None):
     dims = len(input.shape)
-    assert -dims <= axis and axis < dims, "axis is invalid"
     assert k > 0, f"k:{k} is not valid"
     attr = {
         "axis": Attr(axis),
