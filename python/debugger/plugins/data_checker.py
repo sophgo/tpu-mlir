@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 
+import collections
 import math
 import numpy as np
 from numpy.lib import format
@@ -22,7 +23,9 @@ from rich import box
 from rich.json import JSON
 from rich.table import Table
 from rich.panel import Panel
-from ..final_mlir import Value
+
+from debugger.target_common.op_support import Scalar
+from ..final_mlir import Pickled_Value, Value
 from numpy_helper.npz_compare import TensorCompare as _TensorCompare
 from ..target_common import MType
 from ..tdb_support import (
@@ -214,6 +217,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     name = "data-check"
     func_names = ["check"]
+    soc_values_in = collections.defaultdict(list)
+    soc_values_out = []
 
     def __init__(self, tdb: TdbCmdBackend) -> None:
         super().__init__(tdb)
@@ -245,6 +250,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.excepts = set()
         self.dump_mode = DumpMode.FAILED
         self.out_fixed = False
+        self.is_soc = False
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
@@ -662,6 +668,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.COMB or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
+
         if desired is None:
             value_res = ComparedResult(value_view, None)
             name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
@@ -687,6 +694,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             elif self.dump_mode == DumpMode.FAILED and cmd_failed:
                 self.failed_tensor[f"{name}_actual"] = actual
                 self.failed_tensor[f"{name}_desired"] = desired
+
+        # only used for soc mode
+        if self.is_soc:
+            if is_operand:
+                DataCheck.soc_values_in[point_index].append(
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                )
+            else:
+                # memref_type = 0 if isinstance(memref, Scalar) else 1
+                DataCheck.soc_values_out.append(
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                )
 
         return value_res
 

@@ -173,6 +173,26 @@ class Value:
         return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.type}, memory_type={self.memory_type}}})"
 
 
+class Pickled_Value:
+    def __init__(self, value: Value, Memref, Type, Zero_point, Scale):
+        self.address: int = value.address
+        self.layout: str = value.layout
+        self.memory_type: str = value.memory_type
+        self.name: str = value.name
+        self.reshape: str = value.reshape
+        self.slice: str = value.slice
+        self._type: Type = value._type
+        self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
+
+        self.memref = Memref
+        self.mlir_type = str(Type)
+        self.zero_point = Zero_point
+        self.scale = Scale
+
+    def __repr__(self) -> str:
+        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type}, memory_type={self.memory_type}}})"
+
+
 class CMD:
     def __init__(self, dic: dict, index: int) -> None:
         self.loc_index = index
