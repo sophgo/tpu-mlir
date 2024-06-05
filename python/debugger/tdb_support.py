@@ -165,6 +165,7 @@ class TdbCmdBackend(cmd.Cmd):
         stdout=None,
         ddr_size=2**32,
         checker=False,
+        is_soc=False,  # this option is valid only when USING_CMODEL = False
     ):
         super().__init__(completekey, stdin, stdout)
         self.bmodel_file = bmodel_file
@@ -180,6 +181,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.status = TdbStatus.UNINIT
         builtins.tdb = self
         self.bmodel_checker_enable = checker
+        self.is_soc = is_soc
 
         # should be import locally to avoid circular import
         from .static_check import Checker
@@ -255,6 +257,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.runner = context.get_runner(self.ddr_size)
         if self.bmodel_checker_enable and hasattr(self.runner, "fast_checker"):
             self.runner.fast_checker = True
+            if self.is_soc:
+                self.runner.use_soc()
 
         self.context = context
         self.memory = context.memory
@@ -432,6 +436,14 @@ class TdbCmdBackend(cmd.Cmd):
                                     self.cmd_point, self.cmditer
                                 )
                                 assert forward_cmds == 1
+                        elif getattr(self.runner, "is_soc", False):
+                            if getattr(self.runner, "fast_checker", False):
+                                forward_cmds = self.runner.checker_fast_compute_soc(
+                                    self.cmd_point, self.cmditer
+                                )
+                                assert forward_cmds != 0
+                            else:
+                                raise RuntimeError("Tdb in SOC mode is not supported!")
                         else:
                             if cmd_type == CMDType.tiu:
                                 self.runner.tiu_compute(cmd)

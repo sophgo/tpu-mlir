@@ -23,8 +23,19 @@ from .memmap import *
 from ..plugins.common import FinalMlirIndexPlugin
 
 
+class soc_launch_struct:
+    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf):
+        self.tiu_num = tiu_num
+        self.dma_num = dma_num
+        self.tiu_buf = tiu_buf
+        self.dma_buf = dma_buf
+        self.tiu_buf_len = len(tiu_buf)
+        self.dma_buf_len = len(dma_buf)
+
+
 class BM1684XRunner(DeviceRunner):
     lib_name = "libatomic_exec.so"
+    soc_structs = []
 
     def __init__(self, _):
         super().__init__()
@@ -48,7 +59,17 @@ class BM1684XRunner(DeviceRunner):
         self.init_memory(_)
         self.reserved_offset = self.memory.reserved_offset
         self.is_pcie = True
+        self.is_soc = False
+        assert self.is_pcie ^ self.is_soc == True
         self.fast_checker = False
+
+    def use_pcie(self):
+        self.is_pcie = True
+        self.is_soc = False
+
+    def use_soc(self):
+        self.is_pcie = False
+        self.is_soc = True
 
     def trans_cmds_to_buf(self, cmds, engine_type):
         buf_list = []
@@ -116,6 +137,16 @@ class BM1684XRunner(DeviceRunner):
             buf_cmds += 1
 
         return tiu, dma
+
+    def checker_fast_compute_soc(self, cur_cmd_point, cmditer):
+        tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
+        tiu_buf = self.trans_cmds_to_buf(tiu, 0)
+        dma_buf = self.trans_cmds_to_buf(dma, 1)
+
+        BM1684XRunner.soc_structs.append(
+            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf)
+        )
+        return len(tiu) + len(dma)
 
     def checker_fast_compute(self, cur_cmd_point, cmditer):
         tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
