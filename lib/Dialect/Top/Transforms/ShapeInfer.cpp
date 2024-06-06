@@ -6,7 +6,6 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include <llvm/Support/Debug.h>
@@ -101,7 +100,8 @@ public:
 // if all inputs is weight, convert to weight op
 static void WeightFolder(Operation *op) {
   // if the op is in the region of other op, don't do WeightFolder
-  if (isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp()))
+  if (isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
+          op->getBlock()->getParentOp()))
     return;
   if (module::isAllWeight(op) == false) {
     return;
@@ -113,8 +113,8 @@ static void WeightFolder(Operation *op) {
   if (!infer) {
     return;
   }
-  for (auto user:op->getUsers()){
-    if (isa<ReturnOp>(user)){
+  for (auto user : op->getUsers()) {
+    if (isa<ReturnOp>(user)) {
       return;
     }
   }
@@ -137,7 +137,7 @@ static void WeightFolder(Operation *op) {
       continue;
     }
     auto in_op = cast<top::WeightOp>(ins[i].getDefiningOp());
-    auto d = in_op.read<float>();
+    auto d = in_op.read_as_float();
     inputs.push_back(d);
   }
   InferenceParameter p;
@@ -212,9 +212,9 @@ public:
 private:
   bool removeIfNoUse(Operation *op) {
     // if the op is in the region of other op, don't do removeIfNoUse
-    if (op->getUsers().empty()
-        && !isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
-                                op->getBlock()->getParentOp())) {
+    if (op->getUsers().empty() &&
+        !isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
+            op->getBlock()->getParentOp())) {
       op->erase();
       return true;
     }
