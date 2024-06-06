@@ -185,7 +185,7 @@ def Top_InputOp: Top_BaseOp<"Input", [
     OptionalAttr<PadModeAttr>:$pad_type,
     OptionalAttr<F64ArrayAttr>:$scale,
     OptionalAttr<F64ArrayAttr>:$mean,
-    //for cv18xx fusepreprocess
+    // for fusepreprocess
     OptionalAttr<StrAttr>:$customization_format,
     OptionalAttr<BoolAttr>:$aligned
   );

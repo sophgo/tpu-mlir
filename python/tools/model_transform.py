@@ -21,6 +21,7 @@ from utils.preprocess import get_preprocess_parser, preprocess
 from utils.cache_tool import CacheTool
 from utils.log_setting import setup_logger
 import pymlir
+import warnings
 
 logger = setup_logger("transform")
 
@@ -51,8 +52,11 @@ class ModelTransformer(object):
     def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
-        file_mark(mlir_origin)
-        self.converter.generate_mlir(mlir_origin)
+        if self.converter:
+            file_mark(mlir_origin)
+            self.converter.generate_mlir(mlir_origin)
+        else:
+            mlir_origin = self.model_def # skip frontend conversion if model_def is origin.mlir
         patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False)
         if patterns_count:
             for k, v in patterns_count.items():
@@ -230,6 +234,18 @@ class TorchTransformer(ModelTransformer):
         from tools.model_runner import torch_inference
         return torch_inference(inputs, self.model_def)
 
+class MlirTransformer(ModelTransformer):
+
+    def __init__(self,
+                 model_name, model_def):
+        super().__init__(model_name, model_def)
+        parser = MlirParser(model_def)
+        state = parser.module_state
+        assert state == "TOP_F32" or state == "TOP_QUANTIZED", f"unsupport model: {model_def}"
+        assert model_name == parser.module_name, f"model_name is inconsistent with module_name in {model_def}"
+        weight_file = parser.module_weight_file
+        assert os.path.exists(weight_file), f"{weight_file} not exist, please check!"
+        self.converter = None # origin.mlir model no need converter
 
 def get_model_transform(args):
     preprocessor = preprocess()
@@ -260,6 +276,8 @@ def get_model_transform(args):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict(),
                                 dynamic=args.dynamic, inputs_is_shape=args.inputs_is_shape)
+    elif args.model_def.endswith('.mlir'):
+        tool = MlirTransformer(args.model_name, args.model_def)
     else:
         # TODO: support more deep learning model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))

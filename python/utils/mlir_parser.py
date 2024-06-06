@@ -126,7 +126,7 @@ class Operation:
         for result in op.results:
             if str(result.type) != "none":
                 shape_type = mlir.ir.ShapedType(result.type)
-                shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
+                shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)] if shape_type.has_rank else []
                 break
         return shape
 
