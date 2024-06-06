@@ -103,7 +103,6 @@ bool backward_gen_ilp_var2(const LgInfo &lg_info,
                            TensorInfo &tensor_infos, std::shared_ptr<CycleCalculator> cycle_calculator_, ILPTimeStep& ilp_timeStep,
                            const std::vector<int64_t>& ncdhw_idx, int ts_offset,
                            std::vector<op_var_pos_info>& op_var_bound, Operation* returnOp, int64_t& load_bytes_for_next_ts,
-                           std::shared_ptr<dot_graph> dot_graph_log,
                            std::vector<std::pair<Value, int64_t>> tmp_value_size, Operation*& failOp,
                            bool l2m_en = true, bool last_slice = false, bool train = false, int max_ahead_or_delay_ts = 4);
 bool isLgSupport(Operation *op);

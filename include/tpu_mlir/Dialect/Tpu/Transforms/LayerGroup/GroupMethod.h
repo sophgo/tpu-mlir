@@ -89,6 +89,12 @@ public:
   std::vector<int> get_sec_per_cores(const shape_secs_t& shape_secs,
                                                   std::vector<std::vector<int64_t>>& vec_ncdhw,
                                                   int core_num, TensorInfo& tensor_infos);
+  int64_t get_group_cycle(LgInfo *sub_group);
+  Operation* cut_this_group_is_better(LgInfo *sub_group);
+  void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups);
+  Operation* ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train);
+  void init_ilp_base_groups(LgPassIR* pass_ir, LgInfo& sub_group, std::vector<std::vector<Operation *>> &base_groups);
+
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;

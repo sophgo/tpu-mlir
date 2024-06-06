@@ -1313,7 +1313,7 @@ inline int64_t align_64(int64_t input) {
 
 int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
                    const std::vector<int64_t> &ncdhw_idx, const LgInfo &lg_info,
-                   int &buffer_size, std::shared_ptr<dot_graph> dot_graph_log) {
+                   int &buffer_size) {
   int in_n, in_c, in_d, in_h, in_w, out_n, out_c, out_d, out_h, out_w;
   auto ins = get_input_values(op);
   auto outs = get_output_values(op);
@@ -1326,9 +1326,7 @@ int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
   auto shape = "n:" + std::to_string(in_n) + " c:" + std::to_string(in_c) +
                " d:" + std::to_string(in_d) + " h:" + std::to_string(in_h) +
                " w:" + std::to_string(in_w);
-  dot_graph_log->add_node_label(
-      op_name + "_ori",
-      "in0_lmem_bytes:" + std::to_string(in0_lmem_bytes) + ", shape:" + shape);
+
   int64_t in_lmem_bytes = align_64(in0_lmem_bytes);
   LLVM_DEBUG(llvm::dbgs() << "ncdhw, n:" << in_n << " c:" << in_c
                           << " d:" << in_d << " h:" << in_h << " w:" << in_w
@@ -1346,15 +1344,11 @@ int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
           align_64(getTensorLmemBytes(ins[i], info, ncdhw_idx, lg_info.type));
       in_lmem_bytes += tmp;
       LLVM_DEBUG(llvm::dbgs() << "tensor_in" << i << ", size:" << tmp << "\n";);
-      dot_graph_log->add_node_label(op_name + "_ori",
-                                    "tensor_in:" + std::to_string(tmp));
     } else {
       int64_t tmp =
           align_64(Arch::get_weight_lmem_bytes(ins[i], lg_info.type, false));
       in_lmem_bytes += tmp;
       LLVM_DEBUG(llvm::dbgs() << "weight_in" << i << ", size:" << tmp << "\n";);
-      dot_graph_log->add_node_label(op_name + "_ori",
-                                    "weight_in:" + std::to_string(tmp));
     }
   }
 
@@ -1363,8 +1357,6 @@ int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
       getTensorLmemBytes(outs[0], info, ncdhw_idx, lg_info.type, &out_n, &out_c,
                          &out_d, &out_h, &out_w);
   LLVM_DEBUG(llvm::dbgs() << "out0_size:" << out0_lmem_bytes << "\n";);
-  dot_graph_log->add_node_label(
-      op_name + "_ori", "out0_lmem_bytes:" + std::to_string(out0_lmem_bytes));
   int64_t out_lmem_bytes = align_64(out0_lmem_bytes);
   for (int i = 1; i < outs.size(); i++) {
     info = tensor_infos[outs[i]].slice_info;
@@ -1372,16 +1364,13 @@ int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
         align_64(getTensorLmemBytes(outs[i], info, ncdhw_idx, lg_info.type));
     out_lmem_bytes += tmp;
     LLVM_DEBUG(llvm::dbgs() << "out" << i << ", size:" << tmp << "\n";);
-    dot_graph_log->add_node_label(op_name + "_ori",
-                                  "out_lmem_bytes:" + std::to_string(tmp));
+
   }
 
   auto lg_op = cast<LocalGenInterface>(op);
   buffer_size = lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n, in_c,
                                     in_h, in_d, in_w, out_n, out_c, out_h,
                                     out_d, out_w, lg_info.type);
-  dot_graph_log->add_node_label(op_name + "_ori",
-                                "buffer_size:" + std::to_string(buffer_size));
   return backend::Arch::LMEM_BYTES - in_lmem_bytes - out_lmem_bytes -
          align_64(buffer_size);
 }
@@ -1540,7 +1529,6 @@ bool backward_gen_ilp_var2(
     ILPTimeStep &ilp_timeStep, const std::vector<int64_t> &ncdhw_idx,
     int slice_idx, std::vector<op_var_pos_info> &op_var_bound,
     Operation *returnOp, int64_t &load_bytes_for_next_ts,
-    std::shared_ptr<dot_graph> dot_graph_log,
     std::vector<std::pair<Value, int64_t>> tmp_value_size, Operation *&failOp,
     bool l2m_en, bool last_slice, bool train, int max_ahead_or_delay_ts) {
   auto ops = lg_info.group_ops;
@@ -1559,21 +1547,10 @@ bool backward_gen_ilp_var2(
                             << ", op: " << op_name << " ----\n";);
 
     auto dot_node_name = op_name + "_slice" + std::to_string(slice_idx);
-    dot_graph_log->add_node_label(dot_node_name,
-                                  "op_idx:" + std::to_string(cur_op_idx));
-    dot_graph_log->add_node_label(op_name + "_ori",
-                                  "op_idx:" + std::to_string(cur_op_idx));
-    dot_graph_log->add_node_label(
-        dot_node_name, "ts_idx:" + std::to_string(var_pos_info.ts_id));
-    dot_graph_log->add_node_label(
-        op_name + "_ori", "ts_idx:" + std::to_string(var_pos_info.ts_id));
 
     int buffer_size = 0;
     int64_t mem_size_for_load = getOpLmemBytes(
-        op, tensor_infos, ncdhw_idx, lg_info, buffer_size, dot_graph_log);
-    dot_graph_log->add_node_label(op_name + "_ori",
-                                  "mem_size_for_load:" +
-                                      std::to_string(mem_size_for_load));
+        op, tensor_infos, ncdhw_idx, lg_info, buffer_size);
     if (mem_size_for_load - load_bytes_for_next_ts < 0) {
       failOp = op;
       LLVM_DEBUG(llvm::dbgs()
@@ -1589,9 +1566,6 @@ bool backward_gen_ilp_var2(
                             << ", buffer_size: " << buffer_size << "\n";);
     ilp_timeStep.addOpInfo(var_pos_info.ts_id, op, buffer_size,
                            mem_size_for_load, bdc_cycle);
-    dot_graph_log->add_node_label(
-        op_name + "_ori", "buffer_size:" + std::to_string(buffer_size) +
-                              ", bdc_cycle:" + std::to_string(bdc_cycle));
 
     load_bytes_for_next_ts = 0;
     for (OpOperand &opd : op->getOpOperands()) {
@@ -1663,8 +1637,6 @@ bool backward_gen_ilp_var2(
           var_names.push_back(var_name);
           ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
           ilp_timeStep.addTimestepMemUse(ts_idx, lmem_bytes, var_names);
-          dot_graph_log->add_node_label(op_name + "_ori",
-                                        "var_name:" + var_name);
         }
 
         if (small_tensor) { // 1???������?��?D?����??����?��?��?������???��??��??����D��?������?can_merge��??����������??����o?
@@ -1782,8 +1754,6 @@ bool backward_gen_ilp_var2(
               store_var_names.push_back(std::make_pair(var_name, ts_idx));
               all_store_varnames.push_back(var_name);
               ilp_timeStep.addTimestepMemUse(ts_idx, lmem_bytes, var_names2);
-              dot_graph_log->add_node_label(op_name + "_ori",
-                                            "var_name:" + var_name);
               if (!first_user) {
                 for (auto itr = map_x_var_items.begin();
                      itr != map_x_var_items.end(); ++itr) {
@@ -1821,8 +1791,6 @@ bool backward_gen_ilp_var2(
               ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
               ilp_timeStep.addTimestepMemUse(ts_idx, full_slice_bytes,
                                              var_names);
-              dot_graph_log->add_node_label(op_name + "_ori",
-                                            "var_name:" + var_name);
             }
 
             std::set<int> ada_var_pos_set;
@@ -1849,16 +1817,10 @@ bool backward_gen_ilp_var2(
             }
             ilp_timeStep.addConstraint(
                 0, 0, coeff_var_items); //?����?sum(store_var) == sum(load_var)
-            dot_graph_log->add_node_label(op_name + "_ori",
-                                          "sum(store_var) == sum(load_var)");
-
             for (auto itr = map_x_var_items.begin();
                  itr != map_x_var_items.end(); ++itr) {
               itr->second.push_back(std::make_pair(-1, itr->first));
               ilp_timeStep.addConstraint(0, 0, itr->second);
-              dot_graph_log->add_node_label(
-                  op_name + "_ori",
-                  itr->first->name() + "ada_var == sum(next_ts_stores)");
             }
 
             coeff_var_items.clear();
@@ -1869,8 +1831,6 @@ bool backward_gen_ilp_var2(
             coeff_var_items.push_back(std::make_pair(1, x));
             ilp_timeStep.addConstraint(
                 1, 1, coeff_var_items); //?����?sum(store_var) + ada_var = 1
-            dot_graph_log->add_node_label(op_name + "_ori",
-                                          "sum(store_var) + ada_var = 1");
 
             coeff_var_items.clear();
             for (auto load_var : load_var_names) {
@@ -1887,9 +1847,6 @@ bool backward_gen_ilp_var2(
             //?����?2*ada_var + sum(pos*load_var) - sum(pos*store_var) >= 2
             ilp_timeStep.addConstraint(2, MPSolver::infinity(),
                                        coeff_var_items);
-            dot_graph_log->add_node_label(
-                op_name + "_ori",
-                "2*ada_var + sum(pos*load_var) - sum(pos*store_var) >= 2");
           } else {
             if (idx != map_user_pos.size() - 1) {
               ilp_timeStep.resideOpInValue(user, res);
@@ -1973,8 +1930,6 @@ bool backward_gen_ilp_var2(
           ilp_timeStep.addBinaryVar(ts_idx, slice_idx, -1, var_name, res, info,
                                     lmem_bytes);
           ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
-          dot_graph_log->add_node_label(op_name + "_ori",
-                                        "var_name: " + var_name);
           std::vector<std::string> var_names2;
           for (int n = offset++; n < var_names.size(); n++) {
             var_names2.push_back(var_names[n]);
