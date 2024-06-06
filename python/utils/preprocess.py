@@ -286,9 +286,17 @@ class preprocess(object):
             self.batch_size = shape[0]
         else:
             return
+
+        # ignore those non preprocess attrs
         attrs = input_op.attributes
+        non_preprc_attr = ["is_shape", "do_preprocess", "customization_format", "aligned"]
+        for attr in non_preprc_attr:
+            if attr in attrs:
+                del attrs[attr]
+
         if len(attrs) <= 1:
             return
+
         self.pixel_format = Operation.str(attrs['pixel_format'])
         self.channel_num = 3
         if self.pixel_format == 'gray':

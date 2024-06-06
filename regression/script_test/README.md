@@ -23,6 +23,8 @@
 
 * test11:        test ILP layergroup
 
+* test12:        test origin mlir model transform
+
 * test_llm0:     test llm models basic
 
 * test_llm1:     test llm all
