@@ -3183,3 +3183,69 @@ Processor Support
 """""""""""
 * BM1688:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+
+bmodel_inference_combine
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def bmodel_inference_combine(
+            bmodel_file: str,
+            final_mlir_fn: str,
+            input_data_fn: Union[str, dict],
+            tensor_loc_file: str,
+            reference_data_fn: str,
+            dump_file: bool = True,
+            save_path: str = "",
+            out_fixed: bool = False,
+            is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+            tmp_path: str = "/tmp",  # should config when is_soc=True
+            trans_tools: bool = True,  # should config when is_soc=True
+            tools_path: str = "/soc_infer",  # should config when is_soc=True
+            hostname: str = "",  # should config when is_soc=True
+            port: int = 22,  # should config when is_soc=True
+            username: str = "",  # should config when is_soc=True
+            password: str = "",  # should config when is_soc=True
+        ):
+
+Description
+"""""""""""
+Dump tensors layer by layer according to the bmodel, which help to verify the correctness of bmodel.
+
+Parameters
+"""""""""""
+* bmodel_file: String type, representing the abs path of bmodel.
+* final_mlir_fn: String type, representing the abs path of final.mlir.
+* input_data_fn: String type or Dict type, representing the input data, supporting Dict/.dat/.npz.
+* tensor_loc_file: String type, representing the abs path of tensor_location.json.
+* reference_data_fn: String type, representing the abs path of .mlir/.npz with `module.state = "TPU_LOWERED"`. Used to restore the shape during bmodel infer.
+* dump_file: Bool type, representing whether save results as file.
+* save_path: String type, representing the abs path of saving results on host.
+* out_fixed: Bool type, representing whether to get results in fixed number.
+* is_soc: Bool type, representing whether to use in soc mode.
+* tmp_path: String type, representing the abs path of tmp files on device in soc mode.
+* trans_tools: Bool type, representing whether to transfer soc_infer tools to device in soc mode, only set to True at the first calling.
+* tools_path: String type, representing the dir of soc_infer tools on device in soc mode.
+* hostname: String type, representing the ip address of device in soc mode.
+* port: Int type, representing the port of device in soc mode.
+* username: String type, representing the username of device in soc mode.
+* password: String type, representing the password of device in soc mode.
+
+Attention:
+
+* When the funciton is called in cmodel/pcie mode, functions `use_cmodel/use_chip` from `/tpu-mlir/envsetup.sh` is required.
+* When the funciton is called in soc mode, use `use_chip` and `reference_data_fn` must be .npz.
+* When `trans_tools=True`, dir `tools_path` must not exist. Ensure that `tools_path` remains unchanged when calling this interface subsequently.
+
+Returns
+"""""""""""
+* cmodel/pcie mode: if `dump_file=True`, then bmodel_infer_xxx.npz will be generated in `save_path`, otherwise return python dict.
+* soc mode: soc_infer_xxx.npz will be generated in `save_path`.
+
+Processor Support
+"""""""""""
+* BM1688:  only cmodel mode.
+* BM1684X: cmodel/pcie/soc mode.

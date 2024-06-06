@@ -233,22 +233,22 @@ def _soc_upload_dir(sftp, local_dir, remote_dir):
 
 
 def bmodel_inference_combine(
-    bmodel_file,
-    final_mlir_fn,
-    input_data_fn,
-    tensor_loc_file,
-    reference_data_fn,
-    dump_file=True,
-    path="",
-    out_fixed=False,
-    is_soc=False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-    dump_path="/tmp",  # should config when is_soc=True
-    trans_tools=True,  # should config when is_soc=True
-    tools_path="/soc_infer",  # should config when is_soc=True
-    hostname="",  # should config when is_soc=True
-    port=22,  # should config when is_soc=True
-    username="",  # should config when is_soc=True
-    password="",  # should config when is_soc=True
+    bmodel_file: str,
+    final_mlir_fn: str,
+    input_data_fn: Union[str, dict],
+    tensor_loc_file: str,
+    reference_data_fn: str,
+    dump_file: bool = True,
+    save_path: str = "",
+    out_fixed: bool = False,
+    is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+    tmp_path: str = "/tmp",  # should config when is_soc=True
+    trans_tools: bool = True,  # should config when is_soc=True
+    tools_path: str = "/soc_infer",  # should config when is_soc=True
+    hostname: str = "",  # should config when is_soc=True
+    port: int = 22,  # should config when is_soc=True
+    username: str = "",  # should config when is_soc=True
+    password: str = "",  # should config when is_soc=True
 ):
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
@@ -277,16 +277,16 @@ def bmodel_inference_combine(
         plugin.do_summary("table")
 
     if dump_file or is_soc:
-        os.makedirs(path, exist_ok=True)
+        os.makedirs(save_path, exist_ok=True)
 
     if is_soc:
         # prepare the cmds and values_info
-        os.makedirs(os.path.join(path, "soc_tmp"), exist_ok=True)
-        with open(os.path.join(path, "soc_tmp", "cmds.pkl"), "wb") as cmds_pkl:
+        os.makedirs(os.path.join(save_path, "soc_tmp"), exist_ok=True)
+        with open(os.path.join(save_path, "soc_tmp", "cmds.pkl"), "wb") as cmds_pkl:
             pickle.dump(BM1684XRunner.soc_structs, cmds_pkl)
-        with open(os.path.join(path, "soc_tmp", "values_in.pkl"), "wb") as values_in_pkl:
+        with open(os.path.join(save_path, "soc_tmp", "values_in.pkl"), "wb") as values_in_pkl:
             pickle.dump(DataCheck.soc_values_in, values_in_pkl)
-        with open(os.path.join(path, "soc_tmp", "values_out.pkl"), "wb") as values_out_pkl:
+        with open(os.path.join(save_path, "soc_tmp", "values_out.pkl"), "wb") as values_out_pkl:
             pickle.dump(DataCheck.soc_values_out, values_out_pkl)
 
         # connect remote ssh server
@@ -312,10 +312,10 @@ def bmodel_inference_combine(
             print()
 
         sftp = paramiko.SFTPClient.from_transport(client.get_transport())
-        sftp.chdir(dump_path)
-        progress_put("cmds.pkl", os.path.join(path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
-        progress_put("values_in.pkl", os.path.join(path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
-        progress_put("values_out.pkl", os.path.join(path, "soc_tmp", "values_out.pkl"), "values_out.pkl", progress)
+        sftp.chdir(tmp_path)
+        progress_put("cmds.pkl", os.path.join(save_path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
+        progress_put("values_in.pkl", os.path.join(save_path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
+        progress_put("values_out.pkl", os.path.join(save_path, "soc_tmp", "values_out.pkl"), "values_out.pkl", progress)
         progress_put("bmodel file", bmodel_file, os.path.basename(bmodel_file), progress)
         progress_put("input data", input_data_fn, os.path.basename(input_data_fn), progress)
         progress_put("ref data", reference_data_fn, os.path.basename(reference_data_fn), progress)
@@ -331,7 +331,7 @@ def bmodel_inference_combine(
         remote_bmodel = os.path.basename(bmodel_file)
         remote_input = os.path.basename(input_data_fn)
         remote_ref = os.path.basename(reference_data_fn)
-        exec_command = f"cd {tools_path} && source envsetup.sh && python3 soc_bmodel_infer.py --path {dump_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
+        exec_command = f"cd {tools_path} && source envsetup.sh && python3 soc_bmodel_infer.py --path {tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
         if out_fixed:
             exec_command += " --out_fixed"
         stdin, stdout, stderr = client.exec_command(exec_command)
@@ -340,7 +340,7 @@ def bmodel_inference_combine(
 
         # retrieve results
         remote_infer_combine_path = os.path.join(tools_path, f"soc_infer_{remote_ref}")
-        local_infer_combine_path = os.path.join(path, f"soc_infer_{remote_ref}")
+        local_infer_combine_path = os.path.join(save_path, f"soc_infer_{remote_ref}")
         progress_get(
             "Inference_combine file",
             local_infer_combine_path,
@@ -353,8 +353,8 @@ def bmodel_inference_combine(
     if dump_file:  # plugin.ref_data_from_inference -> [np_dict]
         for idx, tensor_dict in enumerate(plugin.ref_data_from_inference):
             file_name = os.path.basename(reference_data_fn).split(".")[0]
-            save_path = os.path.join(path, f"bmodel_inference_{file_name}_{idx}.npz")
-            np.savez(save_path, **tensor_dict)
+            out_path = os.path.join(save_path, f"bmodel_infer_{file_name}_{idx}.npz")
+            np.savez(out_path, **tensor_dict)
     else:
         return plugin.ref_data_from_inference
 

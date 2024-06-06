@@ -4262,3 +4262,69 @@ cond_select
 """""""""""
 * BM1688： `cond` / `tbrn` / `fbrn` 的数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X： `cond` / `tbrn` / `fbrn` 的输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+
+bmodel_inference_combine
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def bmodel_inference_combine(
+            bmodel_file: str,
+            final_mlir_fn: str,
+            input_data_fn: Union[str, dict],
+            tensor_loc_file: str,
+            reference_data_fn: str,
+            dump_file: bool = True,
+            save_path: str = "",
+            out_fixed: bool = False,
+            is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+            tmp_path: str = "/tmp",  # should config when is_soc=True
+            trans_tools: bool = True,  # should config when is_soc=True
+            tools_path: str = "/soc_infer",  # should config when is_soc=True
+            hostname: str = "",  # should config when is_soc=True
+            port: int = 22,  # should config when is_soc=True
+            username: str = "",  # should config when is_soc=True
+            password: str = "",  # should config when is_soc=True
+        ):
+
+功能描述
+"""""""""""
+根据生成的bmodel进行推理和逐层Tensor数据打印，配合 `npz_tool.py` 进行bmodel正确性验证。
+
+参数说明
+"""""""""""
+* bmodel_file: String类型，表示bmodel绝对路径。
+* final_mlir_fn: String类型，表示bmodel对应的final.mlir的绝对路径。
+* input_data_fn: String类型或dict类型，表示输入数据的格式，支持 字典格式、.dat格式、.npz格式。
+* tensor_loc_file: String类型，表示bmodel对应的tensor_location.json文件的绝对路径。
+* reference_data_fn: String,类型，表示 `module.state = "TPU_LOWERED"`的.mlir文件或对应的.npz推理结果的绝对路径。bmodel推理时会将原本一个算子的shape拆散，该参数用于恢复原本的shape。
+* dump_file: Bool类型，表示逐层Tensor数据是否以.npz文件形似保存，或直接返回字典。
+* save_path: String类型，表示 `dump_file=True` 时的主机(host)端保存逐层推理的.npz文件的绝对路径。
+* out_fixed: Bool类型，表示逐层Tensor数据输出是否保持为定点格式。
+* is_soc: Bool类型，表示是否启用soc模式进行推理。
+* tmp_path: String类型，表示soc模式下，板卡(device)端存放临时文件的绝对路径。
+* trans_tools: Bool类型，表示soc模式下，是否将主机(host)端的 `soc_infer` 工具自动发送到device端。仅首次使用设置为True。
+* tools_path: String类型，表示soc模式下，device端存放工具的文件夹名称。
+* hostname: String类型，表示soc模式下，device端的ip地址。
+* port: Int类型，表示soc模式下，device端的端口号。
+* username: String类型，表示soc模式下，device端的用户名。
+* password: String类型，表示soc模式下，device端的密码。
+
+注意:
+
+* 当使用cmodel和pcie模式进行逐层dump时，需分别先使用 `/tpu-mlir/envsetup.sh` 中的use_cmodel/use_chip切换环境变量。当使用soc模式时，使用use_chip。
+* 当使用soc模式时：reference_data_fn必须是.npz格式。
+* 当 `trans_tools=True` 时 `tools_path`不能已存在，后续调用该接口时要保证 `tools_path`不变。
+
+返回值
+"""""""""""
+* cmodel/pcie模式下：如果 `dump_file=True`，则在save_path下生成bmodel_infer_xxx.npz文件，否则返回python字典。
+* soc模式下：在save_path下生成soc_infer_xxx.npz文件。
+
+处理器支持
+"""""""""""
+* BM1688：  cmodel模式。
+* BM1684X： cmodel/pcie/soc模式。
