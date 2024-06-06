@@ -58,3 +58,17 @@ function use_32ch(){
     unset USING_8CH
     sysctl vm.overcommit_memory=0
 }
+
+# only used to build libatomic_exec_aarch64.so for soc_infer
+export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
+export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
+function rebuild_atomic_exec_alone(){
+    export ATOMIC_EXEC_ALONE=1
+    pushd ./bindings/chiprunner/
+    rm -rf build
+    mkdir build && cd build
+    cmake ..
+    make -j
+    popd
+    unset ATOMIC_EXEC_ALONE
+}
