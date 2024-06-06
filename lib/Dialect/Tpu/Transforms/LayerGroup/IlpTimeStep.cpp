@@ -1018,7 +1018,7 @@ void ILPTimeStep::setVarExpectValue(std::string var_name, int expect_value) {
   addConstraint(expect_value, expect_value, coeff_var_items);
 }
 
-bool ILPTimeStep::run(std::shared_ptr<dot_graph> dot_graph_log) {
+bool ILPTimeStep::run() {
   assert(solver != nullptr);
   // int max_int = (int)MPSolver::infinity();
   // int min_int = (int)-MPSolver::infinity();
@@ -1115,7 +1115,7 @@ void ILPTimeStep::showTimeStepInfo(int debug_cmd) {
   }
 }
 
-bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log) {
+bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos) {
   return true;
   // llvm::errs() << "-------------------mem_contrains_info, before merge--------------------\n";;
   // for(int i = 0; i < ts_count; i++) {
@@ -1185,13 +1185,11 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
             if (min_pos > 0) {
               llvm::errs() << "find min_pos:"<<min_pos<<"\n";
               auto op_name = replaceChars_for_dot(module::getName(op).str());
-              dot_graph_log->add_node_label(op_name + "_ori", "min_pos:"+std::to_string(min_pos));
               for (int m = 1; m <= min_pos; m++) { //load类型变量，保留融合op中最后一个ts(merge_start)的变量设置，其他ts的变量固定为0
                 for (auto it3: cycle_contrains[merge_start - m]) {
                   int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
                   if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].mode == 1)) {
                     llvm::errs() << "for loadVar, setVarExpectValue:"<<it3.second<<" to const_0\n";
-                    dot_graph_log->add_node_label(op_name + "_ori", "setVarExpectValue: "+it3.second + " to const_0");
                     setVarExpectValue(it3.second, 0);
                   }
                 }
@@ -1201,7 +1199,6 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
                   int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
                   if (mode2&TIMESTEP2_STORE || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].mode == 0)) {
                     llvm::errs() << "for storeVar, setVarExpectValue:"<<it3.second<<" to const_0\n";
-                    dot_graph_log->add_node_label(op_name + "_ori", "setVarExpectValue: "+it3.second + " to const_0");
                     setVarExpectValue(it3.second, 0);
                   }
                 }
@@ -1304,7 +1301,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
   return true;
 }
 
-bool ILPTimeStep::prepare(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log) {
+bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
   if (timestep_table_new.size() == 0) {
     timestep_table_new.clear();
     cycle_contrains_new.clear();
@@ -1427,8 +1424,7 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> d
   return true;
 }
 
-bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
-                            std::shared_ptr<dot_graph> dot_graph_log, TensorInfo& tensor_infos) {
+bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size, TensorInfo& tensor_infos) {
   llvm::errs() << "mem_alloc start:\n";
   AutoIndent auto_indent;
   lmem_alloc_ptr = std::make_shared<lmem_alloc>(_group_info.group_banked_tensors, this, ts_count);

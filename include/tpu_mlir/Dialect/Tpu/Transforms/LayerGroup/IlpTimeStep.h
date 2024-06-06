@@ -161,16 +161,16 @@ public:
   void addNewOutIntoReturnOp(std::vector<std::string> var_names, Value value);
   void addRowConstraint(int ts_idx, Value load_tensor, std::vector<std::string> var_names);
   void setVarExpectValue(std::string var_name, int expect_value);
-  bool run(std::shared_ptr<dot_graph> dot_graph_log);
+  bool run();
   bool mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
-                std::shared_ptr<dot_graph> dot_graph_log, TensorInfo& tensor_infos);
+                 TensorInfo& tensor_infos);
   void add_tpu_ts_field(int ts_idx, Operation* op);
   void add_gdma_ts_field(int ts_idx, const GdmaElt &field);
   // void timestep_assignment_by_ilp(BasicTimeStep *time_step, TensorInfo &tensor_infos);
   int get_tensor_load_pos(const tensor_info_t& tensor_info, std::string& var_name);
 
-  bool merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log);
-  bool prepare(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log);
+  bool merge_small_cycle_op(TensorInfo& tensor_infos);
+  bool prepare(TensorInfo& tensor_infos);
   void addTensorSize(int ts_idx, Value value, int lmem_size);
   void addTensorCycle(int ts_idx, Value value, int cycle);
   void addOpInfo(int ts_idx, Operation* op, int buffer_size, int mem_size_for_load, int bdc_cycle);
@@ -213,7 +213,6 @@ public:
   bool ada_load_store = true;
   int m_constraint_idx = 0;
   bool detail_log = false;
-  //std::shared_ptr<dot_graph> dot_graph_log;
 };
 
 using ILPTimeStepPtr = std::shared_ptr<ILPTimeStep>;
