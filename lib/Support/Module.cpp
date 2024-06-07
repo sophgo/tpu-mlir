@@ -1385,7 +1385,18 @@ StringRef getName(Value v) { return getLoc(v).getName().strref(); }
 void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
                       std::vector<Value> &outputs) {
   auto main_func = getMainFuncOp(s);
-  main_func.walk([&](top::InputOp op) { inputs.push_back(op.getOutput()); });
+  auto args = main_func.front().getArguments();
+  for (auto &arg : args) {
+    for (auto user : arg.getUsers()) {
+      if (auto op = dyn_cast<top::InputOp>(user)) {
+        inputs.push_back(op.getOutput());
+      } else {
+        llvm_unreachable("arg should only be used for InputOp.");
+        user->dump();
+      }
+    }
+  }
+  // main_func.walk([&](top::InputOp op) { inputs.push_back(op.getOutput()); });
   main_func.walk([&](ReturnOp op) {
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
