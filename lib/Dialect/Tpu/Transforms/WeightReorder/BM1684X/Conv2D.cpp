@@ -77,7 +77,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   bool stridew_gt_15 = stride_w > 15;
   bool stride_hw_gt_15 = strideh_gt_15 || stridew_gt_15;
   int cell_h = kh, cell_w = kw;
-  int IC_PARALLEL = BM168x::ic_num(1);
+  int64_t IC_PARALLEL = BM168x::ic_num(1);
 
   if (strideh_gt_15) {
     for (int i = 15; i > 1; i--) {
@@ -125,14 +125,17 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
 
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
+  // Note that input tensor should be broadcast loaded per ic,
+  //  so one should satisfy the load instruction limit: dst_C + dst_local_idx <= NPU_NUM
+  const int64_t limit = std::min(IC_PARALLEL, Arch::NPU_NUM);
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
+  if (attr.ic * attr.kh * attr.kw <= limit && attr.kh > 1 &&
       attr.kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
-  } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
-             (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
+  } else if (attr.ic * attr.kw <= limit && attr.kw > 1 &&
+             (attr.kh < attr.kw || attr.ic * attr.kh > limit)) {
     use_3ic_optimize = 2; // merge kw to ic
-  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+  } else if (attr.ic * attr.kh <= limit && attr.kh > 1) {
     use_3ic_optimize = 1; // merge kh to ic
   } else {
     use_3ic_optimize = 0;
