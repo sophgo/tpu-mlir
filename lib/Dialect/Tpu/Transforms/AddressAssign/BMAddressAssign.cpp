@@ -307,6 +307,13 @@ static void fix_addr_for_io_alone(mlir::ModuleOp &m, int64_t start,
   }
 }
 
+static void sort_ios(std::vector<Value> &ios) {
+  std::sort(ios.begin(), ios.end(),
+            [](const mlir::Value& a, const mlir::Value& b) {
+    return module::getBytes(a) > module::getBytes(b);
+  });
+}
+
 void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
                                               int64_t start_addr,
                                               int64_t addr_limit) {
@@ -324,6 +331,8 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
     int io_index = 0;
     int tag_max = 5;
     if (ios.size() > tag_max) {
+      // select IO with max 5 data size
+      sort_ios(ios);
       for (io_index = 0; io_index < tag_max; io_index++) {
         module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
       }
