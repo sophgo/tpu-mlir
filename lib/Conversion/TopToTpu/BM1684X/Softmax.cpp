@@ -251,9 +251,10 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   }
   auto table_opd = create_lookup_table(op, table);
 
+  auto axis = op.getAxis();
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    if (attr.getName() == "axis" && op.getAxis() != 1) {
+    if (attr.getName() == "axis" && axis != 1) {
       attrs.push_back(
           rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(1)));
     } else if (attr.getName() == "round_mode") {
@@ -263,7 +264,7 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     } else
       attrs.push_back(attr);
   }
-  if (op.getAxis() == 1) {
+  if (axis == 1) {
     rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
         op, op.getOutput().getType(),
         ValueRange{op.getInput(), table_opd,
@@ -272,12 +273,19 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                    module::getNoneOp(op.getOperation()),
                    module::getNoneOp(op.getOperation())},
         attrs);
-  } else {
+  } else if (axis > 1) {
     // transpose
+    auto dims = module::getShape(op.getInput()).size();
     std::string new_name = module::getName(op.getInput()).str() + "__transpose";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    int64_t odr[] = {0, 3, 1, 2};
-    std::vector<int64_t> order(odr, odr + 4);
+    std::vector<int64_t> order(1, 0);
+    order.push_back(axis);
+    for (int i = 1; i < axis; i++) {
+      order.push_back(i);
+    }
+    for (int i = axis + 1; i < dims; i++) {
+      order.push_back(i);
+    }
     auto TransOp = do_transpose(name_loc, op.getInput(), order);
     // softmax
     rewriter.setInsertionPointAfter(op);
@@ -293,10 +301,18 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                    module::getNoneOp(op.getOperation())},
         attrs);
     // transpose
-    int64_t odr1[] = {0, 2, 3, 1};
-    std::vector<int64_t> order1(odr1, odr1 + 4);
+    std::vector<int64_t> order1(1, 0);
+    for (int i = 1; i < axis; i++) {
+      order1.push_back(i + 1);
+    }
+    order1.push_back(1);
+    for (int i = axis + 1; i < dims; i++) {
+      order1.push_back(i);
+    }
     auto v = do_transpose(op->getLoc(), newOp, order1);
     rewriter.replaceOp(op, {v});
+  } else {
+    UNREACHABLE_OP("Not Implemented", op);
   }
 }
 
