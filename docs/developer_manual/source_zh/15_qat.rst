@@ -15,25 +15,40 @@ tpu-mlir QAT实现方案及特点
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 特点1：基于pytorch；QAT是训练pipeline的一个附加finetune环节，只有与训练环境深度集成才能方便用户各种使用场景，考虑pytorch具有最广泛的使用率，故目前方案仅基于pytorch，若qat后续要支持其他框架，方案会大不相同，其trace、module替换等机制深度依赖原生训练平台的支持.
 
-特点2：客户基本无感；区别于早期需人工深度介入模型转换的方案，本方案基于pytorch fx，能实现自动的完成模型trace、伪量化节点插入、自定义模块替换等操作，大多数情况下，客户使用默认配置即可一键式完成模型转换.
+特点2：客户基本无感；区别于早期需人工深度介入模型转换的方案，本方案基于pytorch fx，能较方便实现模型trace、伪量化节点插入、自定义模块替换等操作，大多数情况下，客户使用较少的用户配置即可完成量化感知训练.
 
-特点3：基于sophgo-mq训练框架，该框架由商汤开源的mqbench改进而来.
+特点3：基于SOPHGO-mq训练框架，该框架基于商汤开源的mqbench修改，增加了对SOPHGO芯片量化特性的支持.
 
 
 安装方法
 -------------------------------------
+建议在SOPHGO提供的docker镜像中使用SOPHGO-mq，镜像可以使用docker pull命令获取：
+
+.. code-block:: shell
+
+    docker pull sophgo/tpuc_dev:v3.3-cuda
+
+此镜像预装了torc2.3.0版本和cuda12.1,为SOPHGO-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到芯片.
+
+
+使用安装包安装
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1、在SOPHGO-mq开源项目https://github.com/sophgo/sophgo-mq.git的release区获取最新的安装包，比如 sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl
+2、使用pip安装： pip3 install sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl
+
+
 从源码安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 1、执行命令获取github上最新代码:git clone https://github.com/sophgo/sophgo-mq.git
 
-2、进入sophgo-mq目录后执行:
+2、进入SOPHGO-mq目录后执行:
 
 .. code-block:: shell
 
-    pip install -r requirements.txt #注:当前要求torch版本为2.0.1
+    pip install -r requirements.txt #注:当前要求torch版本为2.3.0
     python setup.py install
 
-3、执行python -c 'import sophgo_mq'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall sophgo_mq卸载后再尝试；
+3、执行python -c 'import sophgo_mq'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall sophgo_mq卸载后再尝试.
 
 
 
@@ -54,10 +69,12 @@ tpu-mlir QAT实现方案及特点
     from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
     from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
     from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
-    
+	import tpu_mlir			#tpu_mlir模块，引入之后可以实现一键式转换bmodel在芯片上部署
+	from tools.model_runner import mlir_inference  #tpu_mlir的推理模块，可以在量化感知训练阶段使用tpu_mlir的推理直接看到训练模型在芯片上的精度表现
+
     #使用torchvision model zoo里的预训练resnet18模型
     model = models.__dict__['resnet18'](pretrained=True)
-    
+
     #1.trace模型，使用字典来指定芯片类型为BM1690，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
     extra_prepare_dict = {
     'quant_dict': {
@@ -71,7 +88,7 @@ tpu-mlir QAT实现方案及特点
 
 当上面接口选择芯片为BM1690时，此时默认的量化配置如下图所示：
 
-.. figure:: ../assets/sg2260_default_para.png
+.. figure:: ../assets/bm1690_default_para.png
    :align: center
 
 上图量化配置中各项从上到下依次意义为：
@@ -87,6 +104,12 @@ tpu-mlir QAT实现方案及特点
 
 步骤2：用于量化参数初始化的校准及量化训练
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+设置好合理的训练超参数，就可以开始量化感知训练，建议如下:
+      --epochs=1：约在1~3即可；
+
+      --lr=1e-4：学习率应该是fp32收敛时的学习率，甚至更低些；
+
+      --optim=sgd：默认使用sgd；
 
 .. code-block:: python
 
@@ -120,19 +143,26 @@ tpu-mlir QAT实现方案及特点
     convert_deploy(model_quantized, net_type, input_shape)
 
 
-步骤4：启动训练
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-设置好合理的训练超参数，建议如下:
-      --epochs=1：约在1~3即可；
-
-      --lr=1e-4：学习率应该是fp32收敛时的学习率，甚至更低些；
-
-      --optim=sgd：默认使用sgd；
-
-步骤5：转换部署
+步骤4：转换部署
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-使用tpu-mlir的model_transform.py及model_deploy.py脚本完成到sophg-tpu硬件的转换部署；
+使用tpu-mlir的model_transform.py及model_deploy.py脚本完成到sophg-tpu硬件的转换部署。
+在训练阶段引入tpu_mlir，可以直接使用tpu_mlir的推理接口直接模拟模型在芯片上的运行，从而了解训练进展，如果使用此接口，则在训练过程中就已经转化部署了模型文件，生成了bmodel。一般可以在传统的验证流程中将模型推理替换为mlir_inference，输入输出为numpy数组，调用tpu_mlir推理的示例接口如下：
+
+.. code-block:: python
+
+    import tpu_mlir
+    from tools.model_runner import mlir_inference
+    ...
+    for i, (images, target) in enumerate(bmodel_test_loader):
+        images = images.cpu()
+        target = target.cpu()
+        inputs['data'] = images.numpy()
+        output = mlir_inference(inputs, mlir_model_path, dump_all = False)
+        output = torch.from_numpy(list(output.values())[0])
+        loss = criterion(output, target)
+
+
 
 
 使用样例-resnet18
@@ -201,6 +231,9 @@ c、上面的min、max是非对称量化时根据激活的qat调优过的scale�
 
 QAT测试环境
 ---------------------------
+量化感知训练输出的网络最终要在SOPHGO芯片上运行，其精度可以使用端到端的推理验证程序来验证，一般在模型部署的环境中测试即可。
+在单机上也可以在tpu_mlir阶段使用tpu_mlir提供的模型验证程序在CPU上模拟验证，特别是简单的分类网络可以比较方便的验证其精度。一般步骤如下：
+
 添加cfg文件
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 进入tpu-mlir/regression/eval目录，在qat_config子目录下增加{model_name}_qat.cfg，比如如下为resnet18_qat.cfg文件内容：

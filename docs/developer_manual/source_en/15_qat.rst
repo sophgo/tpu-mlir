@@ -15,22 +15,41 @@ Features of the Scheme
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Feature 1: Based on pytorch;QAT is an additional finetune part of the training pipeline, and only deep integration with the training environment can facilitate users to use various scenarios. Considering pytorch has the most extensive usage rate, the current scheme is based on pytorch only. If qat supports other frameworks in the future, the scheme will be very different.Its trace and module replacement mechanisms are deeply dependent on the support of the native training platform.
 
-Feature 2: Users basically have no sense;Different from earlier schemes that require deep manual intervention in model transformation, this scheme based on pytorch fx can automatically complete model trace, pseudo-quantization node insertion, custom module replacement and other operations. In most cases, users can complete model transformation with one click using the default configuration.
+Feature 2: Users basically have no sense;Different from earlier schemes that require deep manual intervention in model transformation, this scheme is based on pytorch fx which helps automatically model tracing, pseudo-quantization node insertion, custom module replacement and other operations. In most cases, users can complete model transformation with minus change of the default configuration.
 
-Feature 3: Based on the sophgo-mq training framework, this framework is an improvement on the mqbench open-sourced by SenseTime.
+Feature 3: Based on the open-sourced mqbench training framework by SenseTime, SOPHGO-mq include particular quantization configuration for SOPHGO ASICs.
 
 
 Installation Method
 ---------------------------------------------------
+
+SOPHGO-mq is recommanded to be used in docker container, the docker image can be pulled by:
+
+
+.. code-block:: shell
+
+    docker pull sophgo/tpuc_dev:v3.3-cuda
+	
+The docker image includes pytorch 2.3.0 and cuda 12.1, and intergrated the environment for tpu-mlir.
+
+Install with setup package
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Download setup package from download area of open-source project https://github.com/sophgo/sophgo-mq.git, for example, sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl, install with:
+
+.. code-block:: shell
+
+    pip3 install sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl
+
+
 Install from source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 1、Run the command to get the latest code on github: git clone https://github.com/sophgo/sophgo-mq.git
 
-2、Execute after entering the sophgo-mq directory:
+2、Execute after entering the SOPHGO-mq directory:
 
 .. code-block:: shell
 
-       pip install -r requirements.txt  #Note: torch version 2.0.1 is currently required
+       pip install -r requirements.txt  #Note: torch version 2.3.0 is currently required
        python setup.py install
 
 3、Execute python -c 'import sophgo_mq' and if it does not return any errors, it indicates that the installation is correct. If there is an error with the installation, execute pip uninstall sophgo_mq to uninstall it and then try again.
@@ -50,9 +69,11 @@ Add the following python module import interface to the training file:
 
     import torch
     import torchvision.models as models
-    from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
-    from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
-    from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
+    from sophgo_mq.prepare_by_platform import prepare_by_platform   # init module
+    from sophgo_mq.utils.state import enable_quantization, enable_calibration    #calibration and quantization switch
+    from sophgo_mq.convert_deploy import convert_deploy                          #deploy interface
+	import tpu_mlir			# with tpu-mlir introduced, bmodel can be generated in SOPHGO-mq environment
+	from tools.model_runner import mlir_inference  #tpu-mlir inference module, accuracy can be checked by tpu-mlir inference module
     
     #Use the pre-trained ResNet18 model from the torchvision model zoo.
     model = models.__dict__['resnet18'](pretrained=True)
@@ -70,7 +91,7 @@ Add the following python module import interface to the training file:
 
 When the above interface selects the BM1690 chip, the default quantization configuration is as shown in the following figure:
 
-.. figure:: ../assets/sophgo_tpu_default_para.png
+.. figure:: ../assets/bm1690_default_para.png
    :align: center
 
 The meanings of the quantization configuration items in the above figure, from top to bottom, are as follows:
@@ -109,6 +130,14 @@ Step 2: Calibration and quantization training
 Step 3: Export tuned fp32 model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Set reasonable training hyperparameters. The suggestions are as follows:
+      --epochs=1:About 1~3 can be；
+
+      --lr=1e-4:The learning rate should be the learning rate when fp32 converges, or even lower；
+
+      --optim=sgd:The default is sgd；
+	  
+
 .. code-block:: python
 
     #Here the batch-size can be adjusted according to the need, do not have to be consistent with the training batch-size
@@ -121,17 +150,22 @@ Step 3: Export tuned fp32 model
 
 Step 4: Initiate the training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Set reasonable training hyperparameters. The suggestions are as follows:
-      --epochs=1:About 1~3 can be；
-
-      --lr=1e-4:The learning rate should be the learning rate when fp32 converges, or even lower；
-
-      --optim=sgd:The default is sgd；
-
-Step 5: Transform deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The transformation deployment to sophg-tpu hardware was completed using the model_transform.py and model_deploy.py scripts of tpu-mlir；
 
+By introducing tpu-mlir in SOPHGO-mq, user can use tpu-mlir inference interface to simulate the running of model on ASIC. By using this interface, model is generated and while trainning. User can replace traditional evaluation module with tpu-mlir inference, input and output to this interface are in numpy format, example code is as following:
+
+.. code-block:: python
+
+    import tpu_mlir
+    from tools.model_runner import mlir_inference
+    ...
+    for i, (images, target) in enumerate(bmodel_test_loader):
+        images = images.cpu()
+        target = target.cpu()
+        inputs['data'] = images.numpy()
+        output = mlir_inference(inputs, mlir_model_path, dump_all = False)
+        output = torch.from_numpy(list(output.values())[0])
+        loss = criterion(output, target)
 
 Use Examples-resnet18
 ------------------------------
@@ -198,6 +232,9 @@ c、In the case of asymmetric quantization, min and max above are calculated acc
 
 Tpu-mlir QAT test environment
 --------------------------------
+QAT model is targeted to SOPHGO ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on chip. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convinence, sample code as following:
+
+
 Adding a cfg File
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Go to the tpu-mlir/regression/eval directory and add {model_name}_qat.cfg to the qat_config subdirectory. For example, the contents of the resnet18_qat.cfg file are as follows:
