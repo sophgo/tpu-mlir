@@ -322,7 +322,7 @@ def test_all_base(tester: CUSTOM_TPULANG_TESTER):
         success_cases = multiprocessing.Manager().list()
         for case in tester.test_cases:
             if tester.check_support(case):
-                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(
+                print("====== test_custom_tpulang.py --case {} --chip {} TEST START PROCESSING ======".format(
                     case, tester.chip))
                 p = multiprocessing.Process(target=test_one_case_in_all,
                                             name=case,
@@ -342,10 +342,10 @@ def test_all_base(tester: CUSTOM_TPULANG_TESTER):
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
-        print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
+        print("====== test_custom_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
         # exit(1)
     else:
-        print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+        print("====== test_custom_tpulang.py --chip {} TEST Success ======".format(tester.chip))
     clean_kmp_files()
     return error_cases, success_cases
 

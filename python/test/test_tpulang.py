@@ -251,7 +251,8 @@ class TPULANG_IR_TESTER(object):
 
     def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
         if is_quantized == False:
-            tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=self.mode)
+            for mode in self.quant_modes:
+                tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode)
         else:
             tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
 
