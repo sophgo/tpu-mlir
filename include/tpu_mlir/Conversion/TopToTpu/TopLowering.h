@@ -485,7 +485,8 @@ static OpTy lowering_common_f16(PatternRewriter &rewriter, Operation *from,
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
-Value do_transfer_fp(Value in, Value out, bool asymmetric);
+Value do_transfer_fp(Value in, Value out, bool asymmetric,
+                     tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 // from int8 to int32
 Value do_dequant(Location name_loc, Value input, Type to_type,

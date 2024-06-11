@@ -65,7 +65,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
   }
 }
 
-Value do_transfer_fp(Value in, Value out, bool asymmetric) {
+Value do_transfer_fp(Value in, Value out, bool asymmetric, tpu::RoundMode rmode) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   module::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
@@ -112,6 +112,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   attrs.push_back(builder.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(
                         op->getContext(), tpu::RequantMode::MultiplierShift)));
+  attrs.push_back(
+      builder.getNamedAttr("round_mode", tpu::RoundModeAttr::get(op->getContext(), rmode)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
   return rqOp.getOutput();
