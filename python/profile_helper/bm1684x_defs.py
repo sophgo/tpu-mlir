@@ -536,14 +536,17 @@ class BaseCommandParser:
     def __get_mem_records(self, cmd):
         import copy
 
-        def get_size(memref):
-            num = 1
-            for dim in memref.shape:
-                num *= dim
-            return memref.itemsize * num
-
         def _get_size(shape, stride):
             return sum(((x - 1) * y for x, y in zip(shape, stride))) + 1
+
+        def get_size(memref):
+            num = 1
+            if memref.stride:
+                num = _get_size(memref.shape, memref.stride)
+            else:
+                for dim in memref.shape:
+                    num *= dim
+            return memref.itemsize * num
 
         def get_address(memref):
             if memref.mtype == opparam_1684x.MType.R:
