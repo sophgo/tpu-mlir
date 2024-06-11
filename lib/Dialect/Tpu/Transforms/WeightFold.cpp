@@ -10,8 +10,8 @@
 #include "AddressAssign/CVAddressAssign.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace llvm;
 
 namespace tpu_mlir {
@@ -34,8 +34,8 @@ static void WeightFolder(Operation *op) {
   if (!infer) {
     return;
   }
-  for (auto user:op->getUsers()){
-    if (isa<ReturnOp>(user)){
+  for (auto user : op->getUsers()) {
+    if (isa<ReturnOp>(user)) {
       return;
     }
   }
@@ -100,17 +100,13 @@ static void WeightFolder(Operation *op) {
       new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
     } else if (dtype.isF16()) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
-      std::transform(datas[i].begin(), datas[i].end(),
-                   (*castData).begin(),
-                   [](float c) {
-                     return f32_to_f16(c); });
+      std::transform(datas[i].begin(), datas[i].end(), (*castData).begin(),
+                     [](float c) { return f32_to_f16(c); });
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
     } else if (dtype.isBF16()) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
-      std::transform(datas[i].begin(), datas[i].end(),
-                   (*castData).begin(),
-                   [](float c) {
-                     return f32_to_bf16(c); });
+      std::transform(datas[i].begin(), datas[i].end(), (*castData).begin(),
+                     [](float c) { return f32_to_bf16(c); });
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
     } else if (dtype.isUnsignedInteger(16)) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
@@ -124,8 +120,35 @@ static void WeightFolder(Operation *op) {
     } else if (dtype.isInteger(32)) {
       auto castData = std::make_shared<std::vector<int32_t>>(datas[i].size());
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
+    } else if (auto quantType =
+                   dtype.dyn_cast<mlir::quant::UniformQuantizedType>()) {
+      auto o_storageType_ = quantType.getStorageType();
+      if (o_storageType_.isUnsignedInteger(8)) {
+        auto castData = std::make_shared<std::vector<uint8_t>>(datas[i].size());
+        float scale = quantType.getScale();
+        int64_t zeroPoint = quantType.getZeroPoint();
+        std::transform(datas[i].begin(), datas[i].end(), castData->begin(),
+                       [scale, zeroPoint, o_storageType_](float value) {
+                         return static_cast<uint8_t>(saturate<float>(
+                             (float)(value / scale + zeroPoint), o_storageType_));
+                       });
+        new_op = top::WeightOp::create(op, "folder", *castData, out_type);
+      } else {
+          auto castData =
+              std::make_shared<std::vector<int8_t>>(datas[i].size());
+          float scale = quantType.getScale();
+          int64_t zeroPoint = quantType.getZeroPoint();
+          std::transform(datas[i].begin(), datas[i].end(), castData->begin(),
+                         [scale, zeroPoint, o_storageType_](float value) {
+                           return static_cast<int8_t>(saturate<float>(
+                               (float)(value / scale + zeroPoint), o_storageType_));
+                         });
+          new_op = top::WeightOp::create(op, "folder", *castData, out_type);
+      }
+    } else {
+      UNREACHABLE_OP("Not supported type for weight folding", out.getDefiningOp());
     }
-    new_op.getDefiningOp()->dump();
+
     out.replaceAllUsesWith(new_op);
   }
 }
