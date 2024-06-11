@@ -334,6 +334,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
+  common.weight_is_coeff = attr.weight_is_coeff;
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     common.ipad_value = in_qtype.getZeroPoint();
@@ -390,6 +391,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
+  common.weight_is_coeff = attr.weight_is_coeff;
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     common.ipad_value = in_qtype.getZeroPoint();
