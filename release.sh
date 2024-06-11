@@ -47,13 +47,26 @@ export PATH=${TPUC_ROOT}/python/utils:$PATH
 export PATH=${TPUC_ROOT}/python/test:$PATH
 export PATH=${TPUC_ROOT}/python/samples:$PATH
 export PATH=${TPUC_ROOT}/customlayer/python:$PATH
-export LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
+# export LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
+export USING_CMODEL=True
 export PYTHONPATH=${TPUC_ROOT}/python:$PYTHONPATH
 export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=${TPUC_ROOT}/customlayer/python:$PYTHONPATH
 export MODEL_ZOO_PATH=${TPUC_ROOT}/../model-zoo
 export REGRESSION_PATH=${TPUC_ROOT}/regression
 export CUSTOM_LAYER_PATH=${TPUC_ROOT}/customlayer
+
+export CMODEL_LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
+export CHIP_LD_LIBRARY_PATH=/opt/sophon/libsophon-current/lib/:$TPUC_ROOT/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
+function use_cmodel(){
+    export USING_CMODEL=True
+    export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
+}
+function use_chip(){
+    export USING_CMODEL=False
+    export LD_LIBRARY_PATH=$CHIP_LD_LIBRARY_PATH
+}
 //MY_CODE_STREAM
 # ------------------------------------------------------------------------------
 
