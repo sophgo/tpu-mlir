@@ -26,12 +26,13 @@ void tpu::RequantFpOp::codegen_global_bm1684x() {
   param.h = (int)h;
   param.w = (int)w;
   param.scale_value = getScale().convertToDouble();
-  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
-    param.offset_value = 0.0;
-  } else {
-    auto oqtype = module::getUniformQuantizedType(getOutput());
-    param.offset_value = oqtype.getZeroPoint();
-  }
+  param.offset_value = getOffset().convertToDouble();
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  //   param.offset_value = 0.0;
+  // } else {
+  //   auto oqtype = module::getUniformQuantizedType(getOutput());
+  //   param.offset_value = oqtype.getZeroPoint();
+  // }
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }
@@ -79,12 +80,13 @@ void tpu::RequantFpOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.w = sec_info.out_w_slice;
 
   param.scale_value = getScale().convertToDouble();
-  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
-    param.offset_value = 0.0f;
-  } else {
-    auto oqtype = module::getUniformQuantizedType(getOutput());
-    param.offset_value = oqtype.getZeroPoint();
-  }
+  param.offset_value = getOffset().convertToDouble();
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  //   param.offset_value = 0.0f;
+  // } else {
+  //   auto oqtype = module::getUniformQuantizedType(getOutput());
+  //   param.offset_value = oqtype.getZeroPoint();
+  // }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   if (getQuantMode() == RequantMode::MultiplierShift) {
@@ -107,12 +109,13 @@ int64_t tpu::RequantFpOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   param.scale_value = getScale().convertToDouble();
-  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
-    param.offset_value = 0.0f;
-  } else {
-    auto oqtype = module::getUniformQuantizedType(getOutput());
-    param.offset_value = oqtype.getZeroPoint();
-  }
+  param.offset_value = getOffset().convertToDouble();
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  //   param.offset_value = 0.0f;
+  // } else {
+  //   auto oqtype = module::getUniformQuantizedType(getOutput());
+  //   param.offset_value = oqtype.getZeroPoint();
+  // }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   if (getQuantMode() == RequantMode::MultiplierShift) {
@@ -133,12 +136,13 @@ int64_t tpu::RequantFpOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.input_addr = module::getAddress(getInput());
   param.output_addr = module::getAddress(getOutput());
   param.scale_value = getScale().convertToDouble();
-  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
-    param.offset_value = 0.0f;
-  } else {
-    auto oqtype = module::getUniformQuantizedType(getOutput());
-    param.offset_value = oqtype.getZeroPoint();
-  }
+  param.offset_value = getOffset().convertToDouble();
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  //   param.offset_value = 0.0f;
+  // } else {
+  //   auto oqtype = module::getUniformQuantizedType(getOutput());
+  //   param.offset_value = oqtype.getZeroPoint();
+  // }
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }

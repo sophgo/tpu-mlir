@@ -86,15 +86,13 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
 
-  // auto round_mode = round_mode_convert(get_round_mode(concatOp.getRoundModeAttr().str()));
-  auto out_stype = module::getStorageType(concatOp.getOutput());
-  if (out_stype.isInteger(8) || out_stype.isUnsignedInteger(8)) {
-    for (auto in : concatOp.getInputs()) {
-      auto new_in = do_transfer_fp(in, concatOp.getOutput(), true);
+  auto round_mode = get_round_mode(concatOp.getRoundModeAttr().str());
+  for (auto in : concatOp.getInputs()) {
+    if (module::isUniformQuantized(in) &&
+        module::isUniformQuantized(concatOp.getOutput())) {
+      auto new_in = do_transfer_fp(in, concatOp.getOutput(), true, round_mode);
       operands.push_back(new_in);
-    }
-  } else {
-    for (auto in : concatOp.getInputs()) {
+    } else {
       operands.push_back(in);
     }
   }

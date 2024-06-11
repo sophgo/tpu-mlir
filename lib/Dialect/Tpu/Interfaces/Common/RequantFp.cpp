@@ -50,7 +50,7 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   case RequantMode::MultiplierShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
-      int32_t v = to_int((float)(p.inputs[0][i]) * scale_v - offset_v, round_mode);
+      int32_t v = to_int((float)(p.inputs[0][i]) * scale_v + offset_v, round_mode);
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
