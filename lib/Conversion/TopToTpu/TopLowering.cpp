@@ -99,6 +99,14 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric, tpu::RoundMode rmode)
     offset = 0;
   }
 
+  if (rmode == tpu::RoundMode::HalfUp) {
+    offset += 0.5;
+    rmode = tpu::RoundMode::Down;
+  } else if (rmode == tpu::RoundMode::HalfDown) {
+    offset -= 0.5;
+    rmode = tpu::RoundMode::Up;
+  }
+
   auto out_name = module::getName(op).str();
   auto new_name = in_name + "_to_" + out_name;
 
