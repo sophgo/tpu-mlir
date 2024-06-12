@@ -5,7 +5,6 @@
 #
 # ==============================================================================
 
-import pickle, paramiko
 from typing import List, Union, Tuple, Optional
 
 from debugger.tdb_support import TdbCmdBackend
@@ -265,8 +264,6 @@ def bmodel_inference_combine(
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     plugin.__init__(tdb)
     plugin.set_tol(cosine_similarity_tol=0.99, euclidean_similarity_tol=0.99)
-    if not is_soc:
-        plugin.break_when_fail = True
     plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.FAILED)
     plugin.out_fixed = out_fixed
     plugin.is_soc = is_soc
@@ -280,6 +277,8 @@ def bmodel_inference_combine(
         os.makedirs(save_path, exist_ok=True)
 
     if is_soc:
+        import pickle, paramiko
+
         # prepare the cmds and values_info
         os.makedirs(os.path.join(save_path, "soc_tmp"), exist_ok=True)
         with open(os.path.join(save_path, "soc_tmp", "cmds.pkl"), "wb") as cmds_pkl:
