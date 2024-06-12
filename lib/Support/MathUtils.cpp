@@ -164,8 +164,10 @@ template <typename T> int64_t to_int(T v, RoundingMode round_mode) {
   int64_t i64_val;
   if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
     i64_val = std::round(v);
+  } else if (round_mode == ROUNDING_UP) {
+    i64_val = std::ceil(v);
   } else if (round_mode == ROUNDING_DOWN) {
-    i64_val = (int64_t)v;
+    i64_val = std::floor(v);
   } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
     float fraction, integer;
     float abs_v = std::abs(v);
