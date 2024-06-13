@@ -230,7 +230,7 @@ struct LgInfo {
         auto src_op = in.getDefiningOp();
         bool value_in;
         if (src_op != nullptr){
-            if(opt == 2){
+            if(opt == 2 || opt == 1){
               value_in = module::isTrain() ? !isa<top::NoneOp>(src_op) : !isa<top::WeightOp, top::NoneOp>(src_op);
             }
             if(opt == 3){
