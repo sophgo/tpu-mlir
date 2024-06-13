@@ -255,12 +255,14 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(f"static_mode = {self.static_mode}")
 
         self.runner = context.get_runner(self.ddr_size)
+        self.context = context
+        if self.is_soc:
+            return
+
+        if hasattr(self.runner, "use_pcie"):
+            self.runner.use_pcie()
         if self.bmodel_checker_enable and hasattr(self.runner, "fast_checker"):
             self.runner.fast_checker = True
-            if self.is_soc:
-                self.runner.use_soc()
-
-        self.context = context
         self.memory = context.memory
         self.decoder = context.decoder
 
@@ -290,6 +292,8 @@ class TdbCmdBackend(cmd.Cmd):
         # self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
 
     def _load_data(self):
+        if self.is_soc:
+            return
         file = self.input_data_fn
         if file is None or (isinstance(file, str) and not os.path.isfile(file)):
             self.error(f"input data file `{file}` is invalid")
@@ -437,13 +441,10 @@ class TdbCmdBackend(cmd.Cmd):
                                 )
                                 assert forward_cmds == 1
                         elif getattr(self.runner, "is_soc", False):
-                            if getattr(self.runner, "fast_checker", False):
-                                forward_cmds = self.runner.checker_fast_compute_soc(
-                                    self.cmd_point, self.cmditer
-                                )
-                                assert forward_cmds != 0
-                            else:
-                                raise RuntimeError("Tdb in SOC mode is not supported!")
+                            forward_cmds = self.runner.checker_fast_compute_soc(
+                                self.cmd_point, self.cmditer
+                            )
+                            assert forward_cmds != 0
                         else:
                             if cmd_type == CMDType.tiu:
                                 self.runner.tiu_compute(cmd)
