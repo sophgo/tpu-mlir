@@ -8,8 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
-
+#include <iostream>
 
 namespace tpu_mlir {
 constexpr llvm::StringRef LocalGenInterface::kLayerGroupAttrName;
@@ -225,18 +224,21 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
     }
     return success();
   }
-  bool do_5dim = module::isBM1684X() &&
+  bool do_5dim = module::isBM1684X() && lhs_shape.size() == 5 &&
                  (module::getStorageType(op->getResult(0)).isF16() ||
                   module::getStorageType(op->getResult(0)).isF32() ||
                   module::getStorageType(op->getResult(0)).isBF16());
-  if (do_5dim && lhs_shape.size() == 5) {
-    int bcast_3 = bcast_type(lhs_shape[3], rhs_shape[3]);
-    int bcast_4 = bcast_type(lhs_shape[4], rhs_shape[4]);
-    if (!(bcast_3 == bcast_4 ||
-          (bcast_3 == 1 && bcast_4 == -1 && lhs_shape[3] == rhs_shape[4]) ||
-          (bcast_3 == -1 && bcast_4 == 1 && lhs_shape[4] == rhs_shape[3]))
-          )
-    {
+  if (do_5dim) {
+    int bcast[5] = {0, 0, 0, 0, 0};
+    int bcast_ref_0[5] = {0, 0, 0, -1, 1};
+    int bcast_ref_1[5] = {0, 0, 0, 1, -1};
+    for (int i=0; i<5; ++i){
+      bcast[i] = bcast_type(lhs_shape[i], rhs_shape[i]);
+    }
+    if (!(bcast[3] == bcast[4] ||
+          std::equal(std::begin(bcast), std::end(bcast), std::begin(bcast_ref_0)) ||
+          std::equal(std::begin(bcast), std::end(bcast), std::begin(bcast_ref_1))
+          )) {
       return failure();
     }
   }
