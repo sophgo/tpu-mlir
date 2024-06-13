@@ -120,6 +120,10 @@ public:
         }
         cat_ops.push_back(in.getDefiningOp());
         fix = true;
+        if (concat_in.getAxis()!= op.getAxis()) {
+          fix = false;
+          break;
+        }
       } else {
         operands.push_back(in);
       }
