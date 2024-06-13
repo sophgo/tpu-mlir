@@ -58,18 +58,35 @@ public:
     return reinterpret_cast<FPtrTy>(fPtr);
   }
 
+  // the cast function only for dq custom op
+  template <typename FPtrTy> FPtrTy CastToDQFPtr(const char *libName, const char *symbolName) {
+    std::string Err;
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(libName, &Err);
+    if (!custom_dl.isValid()) {
+      llvm::errs() << "[FATAL] lib name: " << libName << " is not valid\n";
+      llvm_unreachable(libName);
+    }
+    auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
+    if (fPtr == nullptr) {
+      llvm::errs() << "[FATAL] can't find symbol: " << symbolName << "\n";
+      llvm_unreachable(symbolName);
+    }
+    return reinterpret_cast<FPtrTy>(fPtr);
+  }
+
   // the cast function only for custom op
   template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName, bool fatal=true) {
     llvm::StringRef custom_lib_name = "libbackend_custom.so";
     std::string Err;
     auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
-    assert(custom_dl.isValid());
+    if (!custom_dl.isValid()) {
+      llvm::errs() << "[FATAL] lib name: " << custom_lib_name.str() << " is not valid\n";
+      llvm_unreachable("");
+    }
     auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
-    if (fPtr == nullptr) {
-      if (fatal) {
-        llvm::errs() << "[FATAL] can't find symbol: " << symbolName << "\n";
-        llvm_unreachable(symbolName);
-      }
+    if (fPtr == nullptr && fatal) {
+      llvm::errs() << "[FATAL] can't find symbol: " << symbolName << "\n";
+      llvm_unreachable(symbolName);
     }
     return reinterpret_cast<FPtrTy>(fPtr);
   }

@@ -149,6 +149,8 @@ public:
   static int call_local_bfsz_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
+  static void call_dq_custom_global_func(const char *libName, const char *symbolName, void *params,
+                                         int param_size, void *input, void *output);
   static void call_global_custom_func(const char *symbolName, void *params,
                                       int param_size, void *input,
                                       void *output);
