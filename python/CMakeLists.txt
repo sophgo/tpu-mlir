@@ -92,6 +92,7 @@ install(
   PATTERN "__pycache__" EXCLUDE
   PATTERN ".pytest_cache" EXCLUDE
   PATTERN "tpu_mlir" EXCLUDE
+  PATTERN "tools/soc_infer" EXCLUDE
 )
 install(
   DIRECTORY ./ DESTINATION python FILES_MATCHING

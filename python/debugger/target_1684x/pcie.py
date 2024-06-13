@@ -37,18 +37,27 @@ class BM1684XRunner(DeviceRunner):
     lib_name = "libatomic_exec.so"
     soc_structs = []
 
-    def __init__(self, _):
+    def __init__(self, memory_size, use_pcie=False):
         super().__init__()
         lib = lib_wrapper(open_lib(self.lib_name))
 
         self.lib = lib
-        kernel_fn = os.path.join(
+        self.kernel_fn = os.path.join(
             os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so"
         )
-        lib.init_handle.restype = ctypes.c_void_p
-        lib.init_handle_b.restype = ctypes.c_void_p
+        self.fast_checker = False
+        if use_pcie:
+            self.use_pcie()
+        else:
+            self.use_soc()
 
-        runner = lib.init_handle(kernel_fn.encode(), 0)
+    def use_pcie(self):
+        self.is_pcie = True
+        self.is_soc = False
+        self.lib.init_handle.restype = ctypes.c_void_p
+        self.lib.init_handle_b.restype = ctypes.c_void_p
+
+        runner = self.lib.init_handle(self.kernel_fn.encode(), 0)
 
         self.runner = ctypes.c_void_p(runner)
 
@@ -56,16 +65,8 @@ class BM1684XRunner(DeviceRunner):
             ctypes.POINTER(ctypes.c_uint32),
             ctypes.c_uint64,
         ]
-        self.init_memory(_)
+        self.init_memory()
         self.reserved_offset = self.memory.reserved_offset
-        self.is_pcie = True
-        self.is_soc = False
-        assert self.is_pcie ^ self.is_soc == True
-        self.fast_checker = False
-
-    def use_pcie(self):
-        self.is_pcie = True
-        self.is_soc = False
 
     def use_soc(self):
         self.is_pcie = False
@@ -83,6 +84,18 @@ class BM1684XRunner(DeviceRunner):
                 buf = bytes(reg)
             buf_list.append(buf)
         return b"".join(buf_list)
+
+    def trans_cmds_to_buf_soc(self, cmds, engine_type):
+        buf_list = []
+        for cmd in cmds:
+            reg = copy(cmd.reg)
+            if engine_type == 1:  # dma
+                u32_buf = (ctypes.c_uint32 * (len(cmd.buf) // 4)).from_buffer_copy(reg)
+                buf = bytes(u32_buf)
+            else:
+                buf = bytes(reg)
+            buf_list.append(buf)
+        return buf_list
 
     def __del__(self):
         self.lib.deinit(self.runner)
@@ -107,7 +120,7 @@ class BM1684XRunner(DeviceRunner):
             len(buf),
         )
 
-    def init_memory(self, memory_size: int, _=None):
+    def init_memory(self):
         self.memory = Memory(self.lib, self.runner)
 
     def tiu_compute(self, command: TiuCmd):
@@ -140,8 +153,8 @@ class BM1684XRunner(DeviceRunner):
 
     def checker_fast_compute_soc(self, cur_cmd_point, cmditer):
         tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
-        tiu_buf = self.trans_cmds_to_buf(tiu, 0)
-        dma_buf = self.trans_cmds_to_buf(dma, 1)
+        tiu_buf = self.trans_cmds_to_buf_soc(tiu, 0)
+        dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
 
         BM1684XRunner.soc_structs.append(
             soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf)

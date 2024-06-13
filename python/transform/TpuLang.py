@@ -311,6 +311,10 @@ def bmodel_inference_combine(
             print()
 
         sftp = paramiko.SFTPClient.from_transport(client.get_transport())
+        try:
+            sftp.stat(tmp_path)
+        except:
+            sftp.mkdir(tmp_path)
         sftp.chdir(tmp_path)
         progress_put("cmds.pkl", os.path.join(save_path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
         progress_put("values_in.pkl", os.path.join(save_path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
@@ -318,14 +322,17 @@ def bmodel_inference_combine(
         progress_put("bmodel file", bmodel_file, os.path.basename(bmodel_file), progress)
         progress_put("input data", input_data_fn, os.path.basename(input_data_fn), progress)
         progress_put("ref data", reference_data_fn, os.path.basename(reference_data_fn), progress)
-        if (trans_tools):  # Make sure soc_infer tools not exist on device when `trans_tools=True`
+        if trans_tools:  # Make sure soc_infer tools not exist on device when `trans_tools=True`
             print("Transfering Soc_infer Tools...")
+            local_tools_path = os.getenv("PROJECT_ROOT", None)
+            if not local_tools_path:
+                local_tools_path = os.getenv("TPUC_ROOT")
+                assert local_tools_path
             _soc_upload_dir(
                 sftp,
-                os.path.join(os.getenv("PROJECT_ROOT"), "python/tools/soc_infer/"),
+                os.path.join(local_tools_path, "python/tools/soc_infer/"),
                 tools_path,
             )
-
         # execute soc_bmodel_infer
         remote_bmodel = os.path.basename(bmodel_file)
         remote_input = os.path.basename(input_data_fn)

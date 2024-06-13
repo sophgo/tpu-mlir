@@ -649,12 +649,27 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         context = self.tdb.context
         memref = value.get_memref(context)
-        if not context.memory.using_cmodel:
+        # only used for pcie mode
+        if not self.is_soc and not context.memory.using_cmodel:
             if memref.mtype != MType.G and memref.mtype != MType.R:
                 value_res = ComparedResult(value_view, None, msg="ignore")
                 return value_res
 
         cmd = self.tdb.cmditer[point_index]
+
+        # only used for soc mode
+        if self.is_soc:
+            if is_operand:
+                DataCheck.soc_values_in[point_index].append(
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                )
+            else:
+                # memref_type = 0 if isinstance(memref, Scalar) else 1
+                DataCheck.soc_values_out.append(
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                )
+            return ComparedResult(value_view, None, msg="ignore")
+
         if isinstance(context, BM1690Context) or isinstance(context, BM1688Context):
             raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
         else:
@@ -694,18 +709,6 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             elif self.dump_mode == DumpMode.FAILED and cmd_failed:
                 self.failed_tensor[f"{name}_actual"] = actual
                 self.failed_tensor[f"{name}_desired"] = desired
-
-        # only used for soc mode
-        if self.is_soc:
-            if is_operand:
-                DataCheck.soc_values_in[point_index].append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
-                )
-            else:
-                # memref_type = 0 if isinstance(memref, Scalar) else 1
-                DataCheck.soc_values_out.append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
-                )
 
         return value_res
 

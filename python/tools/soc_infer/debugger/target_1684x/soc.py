@@ -36,9 +36,6 @@ class BM1684XRunner(DeviceRunner):
         ]
         self.init_memory(_)
         self.reserved_offset = self.memory.reserved_offset
-        self.is_pcie = False
-        self.is_soc = True
-        assert self.is_pcie ^ self.is_soc == True
         self.fast_checker = False
 
     def __del__(self):
@@ -47,13 +44,29 @@ class BM1684XRunner(DeviceRunner):
     def init_memory(self, memory_size: int, _=None):
         self.memory = Memory(self.lib, self.runner)
 
+    def trans_cmds_to_buf(self, cmd_bufs, engine_type):
+        buf_list = []
+        for cmd_buf in cmd_bufs:
+            if engine_type == 1:  # dma
+                cmd_buf_array = (ctypes.c_uint32 * (len(cmd_buf) // 4))()
+                ctypes.memmove(ctypes.addressof(cmd_buf_array), cmd_buf, len(cmd_buf))
+                c_uint32_obj = (ctypes.c_uint32 * (len(cmd_buf) // 4)).from_buffer_copy(
+                    cmd_buf_array
+                )
+                self.lib.convert_addr(c_uint32_obj, self.reserved_offset)
+                cmd_buf = bytes(c_uint32_obj)
+            buf_list.append(cmd_buf)
+        return b"".join(buf_list)
+
     def checker_fast_compute(self, tiu_num, dma_num, tiu_buf, dma_buf):
+        rt_tiu_buf = self.trans_cmds_to_buf(tiu_buf, 0)
+        rt_dma_buf = self.trans_cmds_to_buf(dma_buf, 1)
         ret = self.lib.launch_cmds_in_pio(
             self.runner,
-            ctypes.byref(ctypes.create_string_buffer(tiu_buf)),
-            ctypes.byref(ctypes.create_string_buffer(dma_buf)),
-            ctypes.c_size_t(len(tiu_buf)),
-            ctypes.c_size_t(len(dma_buf)),
+            ctypes.byref(ctypes.create_string_buffer(rt_tiu_buf)),
+            ctypes.byref(ctypes.create_string_buffer(rt_dma_buf)),
+            ctypes.c_size_t(len(rt_tiu_buf)),
+            ctypes.c_size_t(len(rt_dma_buf)),
             ctypes.c_int(tiu_num),
             ctypes.c_int(dma_num),
         )
