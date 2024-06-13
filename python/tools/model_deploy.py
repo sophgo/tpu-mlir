@@ -120,6 +120,7 @@ class DeployTool:
         self._prepare_input_npz()
         self.patterns_count = args.patterns_count
         self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
+        self.mute = args.not_gen_bmodel
 
     def cleanup(self):
         file_clean()
@@ -156,7 +157,8 @@ class DeployTool:
                                      self.do_winograd,
                                      self.q_group_size,
                                      True if self.patterns_count else False,
-                                     addr_mode=self.addr_mode)
+                                     addr_mode=self.addr_mode,
+                                     mute=self.mute)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
@@ -316,6 +318,8 @@ if __name__ == '__main__':
                                  'W4F16', 'W4BF16', "F8E4M3", "F8E5M2", 'QDQ'],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
+    parser.add_argument("--not_gen_bmodel", action="store_true",
+                        help="for qat intergation")
     # ========== Quantization Options ==============
     parser.add_argument("--calibration_table",
                         help="calibration table for int8 quantization")
@@ -407,8 +411,12 @@ if __name__ == '__main__':
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu/tosa
+    if args.not_gen_bmodel:
+        tool.do_validate = False
     lowering_patterns = tool.lowering()
     # generate model
+    if args.not_gen_bmodel:
+        exit(0)
     tpu_patterns = tool.build_model()
     if not args.debug:
         tool.cleanup()
