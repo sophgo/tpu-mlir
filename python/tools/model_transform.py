@@ -283,6 +283,17 @@ def get_model_transform(args):
         raise RuntimeError("unsupport model:{}".format(args.model_def))
     return tool
 
+def model_transform_func(model_name, model_def, input_shapes, mlir_scale, mlir_mean, output_mlir):
+    preprocessor = preprocess()
+    preprocessor.config(mean=mlir_mean , scale=mlir_scale, pixel_format='rgb', keep_aspect_ratio=True)
+    if not output_mlir.endswith('.mlir'):
+        raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
+    tool = OnnxTransformer(model_name,
+                            model_def,
+                            input_shapes,
+                            [], '',
+                            preprocessor.to_dict())
+    tool.model_transform(output_mlir)
 
 if __name__ == '__main__':
     logger.info("TPU-MLIR {}".format(pymlir.module().version))

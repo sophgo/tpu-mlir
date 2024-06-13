@@ -98,7 +98,8 @@ def mlir_lowering(top_mlir: str,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
                   count_patterns: bool = False,
-                  addr_mode: str = "auto"):
+                  addr_mode: str = "auto",
+                  mute: bool = False):
     cmd = [
         "tpuc-opt", top_mlir,
         "--processor-assign=\"chip={} num_device={} num_core={} addr_mode={}\"".format(
@@ -134,7 +135,7 @@ def mlir_lowering(top_mlir: str,
     if count_patterns:
         log_file = "lowering_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+    _os_system(cmd, mute=mute)
     return get_matched_patterns(log_file)
 
 
