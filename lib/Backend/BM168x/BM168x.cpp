@@ -373,6 +373,14 @@ void BM168x::call_custom_plugin_func(kCustomPluginTypes plugin_type, void* ret,
   }
 }
 
+typedef int (*global_dq_custom_api_t)(void *params, int param_size, void *input,
+                                   void *output, void *pid_node);
+void BM168x::call_dq_custom_global_func(const char *libName, const char *symbolName, void *params,
+                                        int param_size, void *input, void *output) {
+  auto func = instance()->CastToDQFPtr<global_dq_custom_api_t>(libName, symbolName);
+  func(params, param_size, input, output, (*instance())->cmdid_node);
+}
+
 typedef int (*global_custom_api_t)(void *params, int param_size, void *input,
                                    void *output, void *pid_node);
 void BM168x::call_global_custom_func(const char *symbolName, void *params,
