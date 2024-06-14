@@ -73,7 +73,7 @@ def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
-def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abc,adc->abd", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde"]>;
+def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abc,adc->abd", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde", "abc,bd->abcd", "abc,abdc,abc->abcd", "abc,abc->ab"]>;
 def RoundModeAttr: AnyStrAttrOf<["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]>;
 def DequantModeAttr: AnyStrAttrOf<["Normal", "TFLite"]>;
 def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift", "OnlyShift", "QDM", "OnlyScale"]>;

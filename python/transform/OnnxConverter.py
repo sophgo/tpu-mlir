@@ -1514,11 +1514,21 @@ class OnnxConverter(BaseConverter):
         equation = normalize_equation(equation)
         lhs = self.getOp(onnx_node.inputs[0])
         rhs = self.getOp(onnx_node.inputs[1])
-        new_op = top.EinsumOp(self.unranked_type,
-                              [lhs, rhs],
-                              mode=StringAttr.get(equation),
-                              loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                              ip=self.mlir.insert_point).output
+        if len(onnx_node.inputs) == 2:
+            new_op = top.EinsumOp(self.unranked_type,
+                                [lhs, rhs],
+                                mode=StringAttr.get(equation),
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        elif len(onnx_node.inputs) == 3:
+            dhs = self.getOp(onnx_node.inputs[2])
+            new_op = top.EinsumOp(self.unranked_type,
+                                [lhs, rhs, dhs],
+                                mode=StringAttr.get(equation),
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        else:
+            raise RuntimeError("This mode not support yet: {}".format(mode))
         self.addOperand(onnx_node.name, new_op)
 
     def convert_exp_op(self, onnx_node):
