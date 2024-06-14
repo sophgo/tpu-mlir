@@ -33,6 +33,7 @@ static void usage(void) {
        << "      --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel" << endl
        << "      --kernel_dump model_file -o kernel_file_name : dump kernel_module file" << endl
        << "      --kernel_update model_file kernel_name : add/update kernel_module file" << endl
+       << "      --kernel_remove model_file : remove kernel_module file" << endl
        << endl
        << "    [cvimodel]:" << endl
        << "      --info model_file : show model info" << endl
@@ -171,9 +172,9 @@ static void combine(int argc, char **argv) {
 }
 
 static void update_kernel(ModelGen &model_gen,
-                          shared_ptr<MODEL_CTX_T> &model_info,
-                          uint8_t *module_binary, size_t binary_size,
-                          string module_name) {
+                          shared_ptr<MODEL_CTX_T> &model_info, bool kernel_remove,
+                          uint8_t *module_binary = nullptr, size_t binary_size = 0,
+                          string module_name = "") {
   model_gen.AddChip(model_info->model_ctx->model()->chip()->str());
   model_gen.AddNumDevice(model_info->model_ctx->model()->device_num());
   auto &builder = model_gen.Builder();
@@ -199,8 +200,10 @@ static void update_kernel(ModelGen &model_gen,
       model_info->net_index_v.push_back(net_idx);
     }
   }
-  auto kernel_module = model_gen.WriteBinary(binary_size, module_binary);
-  model_gen.AddKernelModule(module_name, kernel_module);
+  if(!kernel_remove){
+    auto kernel_module = model_gen.WriteBinary(binary_size, module_binary);
+    model_gen.AddKernelModule(module_name, kernel_module);
+  }
   model_gen.Finish();
   for (auto &net_index : model_info->net_index_v) {
     update_net(model_gen, *model_info->model_ctx, net_index->net_idx,
@@ -233,12 +236,29 @@ static void update_kernel_module(int argc, char **argv) {
   string module_name = kernel_path.substr(kernel_path.find_last_of('/') + 1);
 
   ModelGen model_gen;
-  update_kernel(model_gen, model_info, (uint8_t *)module_binary.get(),
+  update_kernel(model_gen, model_info, false, (uint8_t *)module_binary.get(),
                 binary_size, module_name);
   model_gen.Save(model_path);
   cout << "Success: update to [" << module_name << "]." << endl;
 
   f_kernel.close();
+}
+
+static void remove_kernel_module(int argc, char **argv) {
+  // tpu_model --kernel_remove xx.bmodel
+  if (argc != 3) {
+    FATAL("--remove_kernel parameter error.");
+  }
+  string model_path = argv[2];
+  shared_ptr<MODEL_CTX_T> model_info(new MODEL_CTX_T);
+  model_info->model_ctx = make_shared<ModelCtx>(model_path);
+  if (model_info->model_ctx == NULL || !(*model_info->model_ctx)) {
+    FATAL("file[%s] is not correct", model_path.c_str());
+  }
+  ModelGen model_gen;
+  update_kernel(model_gen, model_info, true);
+  model_gen.Save(model_path);
+  cout << "Success remove kernel module." << endl;
 }
 
 static void dump_kernel_module(int argc, char **argv) {
@@ -340,6 +360,8 @@ int main(int argc, char **argv) {
     dump_kernel_module(argc, argv);
   } else if (cmd == "--kernel_update") {
     update_kernel_module(argc, argv);
+  } else if (cmd == "--kernel_remove") {
+    remove_kernel_module(argc, argv);
   } else {
     usage();
     exit(-1);
