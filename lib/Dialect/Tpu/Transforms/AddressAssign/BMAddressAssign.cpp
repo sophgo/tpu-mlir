@@ -525,6 +525,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       group_ops.emplace_back(op_value.first);
     }
   }
+  // update io address by basic and io_tag
+  if (!module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    updateAddressByAddrMode(m, start_addr, addr);
+  }
 
   // 2.set inplace_ops address
   // inplace_ops' order should be from input to output,thus reverse
@@ -681,7 +685,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     });
   }
   module::updateModuleTypes();
-  updateAddressByAddrMode(m, start_addr, addr);
+  // update io address by io_alone
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    updateAddressByAddrMode(m, start_addr, addr);
+  }
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
