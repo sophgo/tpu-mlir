@@ -10,6 +10,7 @@
 
 import pymlir
 pymlir.set_mem_mode("value_mem")
+# pymlir.set_mem_mode("reused_mem")
 import numpy as np
 import os
 import math
@@ -103,21 +104,117 @@ class MixQuantModel:
         self.weight_file = self.parser.module_weight_file
 
     def infer(self, data: list, global_compare_layers: list = None):
-        for k, v in zip(self.module.input_names, data):
-            self.module.set_tensor(k, v)
-        self.module.invoke()
+        def set_func(layer_name):
+            if layer_name in self.module.input_names:
+                index = self.module.input_names.index(layer_name)
+                self.module.set_tensor(layer_name, data[index])
+
         outputs = {}
-        if global_compare_layers is None:
-            for name in self.module.output_names:
-                outputs[name] = self.module.get_tensor(name).copy()
-        else:
-            for name in global_compare_layers:
-                outputs[name] = self.module.get_tensor(name).copy()
+
+        def get_func(layer_name):
+            if global_compare_layers is None and layer_name in self.module.output_names:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+            elif global_compare_layers is not None and layer_name in global_compare_layers:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+
+        self.module.before_invoke(set_func)
+        self.module.after_invoke(get_func)
+        self.module.invoke()
+        self.module.clear_hooks()
         return outputs
 
     def infer_from(self, top_op_name, input_data_dict: dict, extra_input_data_dict: dict,
                    global_compare_layers: list = None):
+        outputs = {}
+
+        def set_func_idd(layer_name):
+            if layer_name in input_data_dict:
+                self.module.set_tensor_from_int(layer_name, input_data_dict[layer_name])
+
+        def set_func_eidd(layer_name):
+            if layer_name in extra_input_data_dict:
+                self.module.set_tensor_from_int(layer_name, extra_input_data_dict[layer_name])
+
+        def get_func_on(layer_name):
+            if layer_name in self.module.output_names:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+
+        def get_func_gcl(layer_name):
+            if layer_name in global_compare_layers:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+
+        for k in input_data_dict:
+            self.module.set_tensor_from_int(k, input_data_dict[k])
+            next_ops = self.parser.get_next_op_by_op_name(k)
+            for next_op in next_ops:
+                op = self.parser.get_op_by_op_name(next_op)
+                if op.type == "tpu.Cast":
+                    self.module.before_invoke(set_func_idd)
+                    self.module.invoke_at(next_op)
+                    self.module.clear_hooks()
+
+        for k in extra_input_data_dict:
+            self.module.set_tensor_from_int(k, extra_input_data_dict[k])
+            next_ops = self.parser.get_next_op_by_op_name(k)
+            for next_op in next_ops:
+                op = self.parser.get_op_by_op_name(next_op)
+                if op.type == "tpu.Cast":
+                    self.module.before_invoke(set_func_eidd)
+                    self.module.invoke_at(next_op)
+                    self.module.clear_hooks()
+
+        if global_compare_layers is None:
+            self.module.after_invoke(get_func_on)
+        else:
+            self.module.after_invoke(get_func_gcl)
+        self.module.invoke_from(top_op_name)
+        self.module.clear_hooks()
+        return outputs
+
+    def infer_from_getInt8_activations(self, top_op_name, idx, counts, next_top_ops, int8_activations:dict,  input_data_dict: dict, extra_input_data_dict: dict,
+                   global_compare_layers: list = None):
         # print('mix model op list:', self.parser.get_op_name_list())
+        outputs = {}
+        mix_layer_out = 0
+        tmp_int8_activations = int8_activations.copy()
+
+        def get_func_on(layer_name):
+            nonlocal mix_layer_out
+            if layer_name == top_op_name :
+                mix_layer_out = self.module.get_fp32_tensor(layer_name)
+            if layer_name in self.module.output_names:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+            for count, next_top_op in zip(counts,next_top_ops):
+                next_ops = self.parser.get_next_op_by_op_name(next_top_op)
+                for next_op in next_ops:
+                    if self.parser.get_op_by_op_name(next_op).type == "tpu.Cast":
+                        if layer_name == next_op:
+                            int8_activations[idx][next_top_op] = [None, count, None]
+                            tmp_int8_activations[idx][next_top_op][0] = self.module.get_tensor(next_op).copy()
+                            tmp_int8_activations[idx][next_top_op][2] = self.module.get_fp32_tensor(next_op).copy()
+
+        def get_func_gcl(layer_name):
+            if layer_name == top_op_name:
+                nonlocal mix_layer_out
+                mix_layer_out = self.module.get_fp32_tensor(layer_name)
+            if layer_name in global_compare_layers:
+                outputs[layer_name] = self.module.get_tensor(layer_name).copy()
+            for count,next_top_op in zip(counts,next_top_ops):
+                next_ops = self.parser.get_next_op_by_op_name(next_top_op)
+                for next_op in next_ops:
+                    if self.parser.get_op_by_op_name(next_op).type == "tpu.Cast":
+                        if layer_name == next_op:
+                            int8_activations[idx][next_top_op] = [None, count, None]
+                            tmp_int8_activations[idx][next_top_op][0] = self.module.get_tensor(next_op).copy()
+                            tmp_int8_activations[idx][next_top_op][2] = self.module.get_fp32_tensor(next_op).copy()
+
+        def set_func_idd(layer_name):
+            if layer_name in input_data_dict:
+                self.module.set_tensor_from_int(layer_name, input_data_dict[layer_name])
+        def set_func_eidd(layer_name):
+            if layer_name in extra_input_data_dict:
+                self.module.set_tensor_from_int(layer_name, extra_input_data_dict[layer_name])
+
         for k in input_data_dict:
             self.module.set_tensor_from_int(k, input_data_dict[k])
             print(f'infer_from set_tensor:{k}')
@@ -128,7 +225,9 @@ class MixQuantModel:
                 op = self.parser.get_op_by_op_name(next_op)
                 if op.type == "tpu.Cast":
                     print(f'invoke_at CastOp:{next_op}')
+                    self.module.before_invoke(set_func_idd)
                     self.module.invoke_at(next_op)
+                    self.module.clear_hooks()
         for k in extra_input_data_dict:
             print(f'infer_from set_extra_tensor:{k}')
             self.module.set_tensor_from_int(k, extra_input_data_dict[k])
@@ -138,17 +237,17 @@ class MixQuantModel:
                 op = self.parser.get_op_by_op_name(next_op)
                 if op.type == "tpu.Cast":
                     print(f'invoke_at CastOp:{next_op}')
+                    self.module.before_invoke(set_func_eidd)
                     self.module.invoke_at(next_op)
+                    self.module.clear_hooks()
+        if global_compare_layers is None:
+            self.module.after_invoke(get_func_on)
+        else:
+            self.module.after_invoke(get_func_gcl)
         print(f'invoke_from {top_op_name}')
         self.module.invoke_from(top_op_name)
-        outputs = {}
-        if global_compare_layers is None:
-            for name in self.module.output_names:
-                outputs[name] = self.module.get_tensor(name).copy()
-        else:
-            for name in global_compare_layers:
-                outputs[name] = self.module.get_tensor(name).copy()
-        return outputs
+        self.module.clear_hooks()
+        return outputs, tmp_int8_activations, mix_layer_out
 
     def clean(self):
         try:
@@ -410,11 +509,18 @@ class MixPrecSearcher:
             else:
                 model.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
-            value = model.module.invoke_at(op_name).copy()
-            self.logger.print_dbg(f'invoke_at {op_name}')
             fp32_v = None
-            if is_int8_data:
-                fp32_v = model.module.get_fp32_tensor(op_name)
+            value = None
+            def get_func(layername):
+                nonlocal fp32_v
+                nonlocal value
+                value = model.module.get_tensor(op_name).copy()
+                if op_name == layername:
+                    if is_int8_data:
+                        fp32_v = model.module.get_fp32_tensor(op_name).copy()
+            model.module.clear_hooks()
+            model.module.after_invoke(get_func)
+            model.module.invoke_at(op_name)
             count = model.parser.get_user_count_by_op_name(op_name)
             if fp32_v is None:
                 data_dict[i][op_name] = [value.copy(), count]
@@ -691,7 +797,11 @@ class MixPrecSearcher:
         mix_table = self._gen_mix_table(fp_layer_list)
         mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table, self.args.fp_type)
         extra_input = self.get_extra_input_tensor(op.name, self.parser)
+        tmp_int8_activations = {}
+        counts = []
         for idx in range(self.num_sample):
+            for i in range(len(next_top_ops)):
+                counts.append(self.parser.get_user_count_by_op_name(next_top_ops[i]))
             input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, op.name, extra_input,
                                                                                   fp_layer_list)
             tmp1 = ','.join(list(input_data_dict.keys()))
@@ -699,24 +809,23 @@ class MixPrecSearcher:
                 list(extra_input_data_dict.keys()))
             if idx == 0:
                 self.dot_log.add_node_label(op.name, f'input_data_dict:{tmp1}{tmp2}, call infer_from')
-            outputs = mix_model.infer_from(op.name, input_data_dict, extra_input_data_dict, global_compare_layers)
-            mix_layer_out = mix_model.module.get_fp32_tensor(op.name)
+
+            outputs, tmp_int8_activations, mix_layer_out = mix_model.infer_from_getInt8_activations(op.name, idx,counts, next_top_ops, self.int8_activations, input_data_dict, extra_input_data_dict, global_compare_layers)
+
             fp32_out = self.get_input_fp32_tensor(idx, op.name)
             cos = cos_sim(mix_layer_out.reshape(-1), fp32_out.reshape(-1))
             if idx == 0:
                 self.dot_log.add_node_label(op.name, f'first {self.mix_mode} layer:{op.name} cos:{cos:.6f}')
             outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
             for next_top_op in next_top_ops:
-                count = self.parser.get_user_count_by_op_name(next_top_op)
-                self.int8_activations[idx][next_top_op] = [None, count, None]
                 next_ops = mix_model.parser.get_next_op_by_op_name(next_top_op)
                 print(f'{next_top_op}\'s next_ops:', ','.join(next_ops))
                 for next_op in next_ops:
                     if mix_model.parser.get_op_by_op_name(next_op).type == "tpu.Cast":
                         if idx == 0:
                             self.dot_log.add_node_label(op.name, f'use {next_op} to replace {next_top_op}')
-                        self.int8_activations[idx][next_top_op][0] = mix_model.module.get_tensor(next_op).copy()
-                        self.int8_activations[idx][next_top_op][2] = mix_model.module.get_fp32_tensor(next_op)
+                        self.int8_activations[idx][next_top_op][0] = tmp_int8_activations[idx][next_top_op][0]
+                        self.int8_activations[idx][next_top_op][2] = tmp_int8_activations[idx][next_top_op][2]
         outputs_cos = outputs_cos / self.num_sample
         return outputs_cos, mix_model
 
@@ -732,7 +841,7 @@ class MixPrecSearcher:
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
         int8_op_names = int8_model.parser.get_op_name_list()
         full_op_list = self.get_full_op_list(float_model, int8_model, fp_op_names, int8_op_names)
-        try:
+        if True:
             pbar = tqdm(list(full_op_list.values()))
             for op in pbar:
                 pbar.set_description("Processing {}".format(op.name))
@@ -768,9 +877,9 @@ class MixPrecSearcher:
                                 self.int8_activations[idx].pop(next_top_op)
                 self.clear_ref_tensor(op.name, self.parser, self.ref_activations)
                 self.clear_ref_tensor2(op.name, self.parser, int8_model.parser, self.int8_activations)
-        except Exception as err:
-            self.logger.print_info('An exception happened: ' + str(err))
-            pass
+        # except Exception as err:
+        #     self.logger.print_info('An exception happened: ' + str(err))
+        #     pass
         self.dot_log.gen_dot_graph()
         int8_model.clean()
         float_model.clean()
