@@ -10,6 +10,18 @@ SOPHGO aims to become a leading global provider of general-purpose computing pow
 
 Currently, supported Deep Learning frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
 
+
+# Prebuilt TPU-MLIR Python Package
+
+We provide the TPU-MLIR python package for a quick installation.
+Prerequisite: python == 3.10 and ubuntu:22.04.
+
+To install:
+
+``` shell
+pip install tpu_mlir
+```
+
 # Resources
 
 Here are some resources to help you better understand the project:
