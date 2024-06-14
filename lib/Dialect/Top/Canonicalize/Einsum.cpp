@@ -332,7 +332,122 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
       op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
-    } else {
+    } else if (mode == "abc,bd->abcd") {
+
+      // lhs :
+      //     abc -> abc1(reshape)
+      // rhs :
+      //     bd -> 1b1d(reshape)
+      //     1b1d -> ab1d(tile)
+      // matmul:
+      //   lhs(abc1) * rhs(ab1d) = result(abcd)
+      // success!
+
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to4dim"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], lshape[2], 1}, module::getElementType(op));
+      auto lhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lhsOp.getOutput());
+
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to4dim"));
+      newType = RankedTensorType::get({1, rshape[0], 1, rshape[1]}, module::getElementType(op));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
+      attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({lshape[0], 1, 1, 1})));
+      newType = RankedTensorType::get({lshape[0], rshape[0], 1, rshape[1]}, module::getElementType(rhs));
+      auto rhs_tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
+      attrs.clear();
+      operands.push_back(rhs_tileOp);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      newType = RankedTensorType::get({lshape[0], lshape[1], lshape[2], rshape[1]}, module::getElementType(op));
+      loc = NameLoc::get(rewriter.getStringAttr(name));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if (mode == "abc,abc->ab") {
+
+      // einsum('abc, abc -> ab', L, H) => sum(L * H, dim = -1)
+      rewriter.setInsertionPointAfter(op);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_Mul"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], lshape[2]}, module::getElementType(op));
+      std::vector<Value> mul_operands;
+      mul_operands.clear();
+      mul_operands.push_back(lhs);
+      mul_operands.push_back(rhs);
+      auto mul_op = rewriter.create<MulOp>(loc, newType,
+                                        mul_operands, attrs);
+
+      rewriter.setInsertionPointAfter(mul_op);
+      loc = NameLoc::get(rewriter.getStringAttr(name));
+
+      newType = RankedTensorType::get({lshape[0], lshape[1]}, module::getElementType(op));
+      attrs.clear();
+      attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({2})));
+      attrs.push_back(rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(false)));
+      attrs.push_back(rewriter.getNamedAttr("mode", rewriter.getStringAttr("Reducesum")));
+      auto sumOp = rewriter.create<ReduceOp>(loc, newType, mul_op.getOutput(), attrs);
+      op.getOutput().replaceAllUsesWith(sumOp);
+      rewriter.eraseOp(op);
+    } else if (mode == "abc,abdc,abc->abcd") {
+
+      // einsum('abc, abdc, abc -> abcd', L, N, D) => (L.unsqueeze(2) * N * D.unsqueeze(2)).permute(0,1,3,2)
+      //
+      // lhs :
+      //     abc -> ab1c(reshape)
+      // rhs :
+      //     do nothing
+      // dhs:
+      //     abc -> ab1c(reshape)
+      //
+      // lhs(ab1c) * rhs(abdc) * dhs(ab1c) => result0(abdc).permute(0,1,3,2) ==> result1(abcd)
+      // success!
+
+      auto dhs = op.getInputs()[2];
+      auto dshape = module::getShape(dhs);
+      std::string dname = module::getName(dhs).str();
+
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to4dim"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], 1, lshape[2]}, module::getElementType(op));
+      auto lhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+
+      rewriter.setInsertionPointAfter(dhs.getDefiningOp());
+      loc = NameLoc::get(rewriter.getStringAttr(dname + "_to4dim"));
+      newType = RankedTensorType::get({dshape[0], dshape[1], 1, dshape[2]}, module::getElementType(op));
+      auto dhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{dhs});
+
+      rewriter.setInsertionPointAfter(op);
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_LN_Mul"));
+      std::vector<Value> mul_operands;
+      mul_operands.push_back(lhsOp.getOutput());
+      mul_operands.push_back(rhs);
+      std::vector<NamedAttribute> attrs;
+      newType = RankedTensorType::get({rshape[0], rshape[1], rshape[2], rshape[3]}, module::getElementType(op));
+      auto mul_op = rewriter.create<MulOp>(loc, newType,
+                                        mul_operands, attrs);
+
+      rewriter.setInsertionPointAfter(mul_op);
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_ND_Mul"));
+      mul_operands.clear();
+      mul_operands.push_back(mul_op.getOutput());
+      mul_operands.push_back(dhsOp.getOutput());
+      auto mul_op2 = rewriter.create<MulOp>(loc, newType,
+                                        mul_operands, attrs);
+
+      rewriter.setInsertionPointAfter(mul_op2);
+      loc = NameLoc::get(rewriter.getStringAttr(name));
+      newType = RankedTensorType::get({rshape[0], rshape[1], rshape[3], rshape[2]}, module::getElementType(op));
+      attrs.clear();
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 3, 2})));
+      auto tranOp = rewriter.create<PermuteOp>(loc, newType, mul_op2.getOutput(), attrs);
+      op.getOutput().replaceAllUsesWith(tranOp);
+      rewriter.eraseOp(op);
+    }
+      else {
       llvm_unreachable("Einsum not support this mode now");
     }
     return success();

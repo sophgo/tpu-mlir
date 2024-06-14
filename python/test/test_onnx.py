@@ -103,6 +103,7 @@ class ONNX_IR_TESTER(object):
             "Einsum7":      (self.test_Einsum7,       N, Y, Y, N, Y),
             "Einsum8":      (self.test_Einsum8,       N, Y, Y, N, Y),
             "Einsum9":      (self.test_Einsum9,       N, Y, Y, N, Y),
+            "Einsum10":      (self.test_Einsum10,       N, Y, Y, N, Y),
             "Elu":          (self.test_Elu,           Y, Y, Y, N, Y),
             "Erf":          (self.test_Erf,           N, Y, Y, N, Y),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y),
@@ -4872,6 +4873,23 @@ class ONNX_IR_TESTER(object):
             <float%s weight>
             {
                 output = Einsum<equation="bqc,bqhw->bchw">(input, weight)
+            }
+            """ % (case_name, input_shape, output_shape, filter_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([weight])
+        self.onnx_and_test(graph_def)
+    def test_Einsum10(self, case_name):
+        input_shape = [12, 26, 13]
+        filter_shape = [26, 32]
+        output_shape = [12, 26, 13, 32]
+
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float%s weight>
+            {
+                output = Einsum<equation="abc,bd->abcd">(input, weight)
             }
             """ % (case_name, input_shape, output_shape, filter_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)

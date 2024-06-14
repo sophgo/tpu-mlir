@@ -27,7 +27,7 @@ LogicalResult top::EinsumOp::inference(InferenceParameter &p) {
 
 void top::EinsumOp::shape_inference() {
   auto mode = getMode().str();
-  ASSERT_THIS(getInputs().size() == 2);
+  ASSERT_THIS(getInputs().size() == 2 || getInputs().size() == 3);
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
   if (mode == "a,b->ab")  {      // outer product
@@ -50,6 +50,12 @@ void top::EinsumOp::shape_inference() {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[2], rhs_shape[3]});
   } else if (mode == "abc,abde->acde") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[2], rhs_shape[2], rhs_shape[3]});
+  } else if (mode == "abc,bd->abcd") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[1]});
+  } else if (mode == "abc,abdc,abc->abcd") {
+    module::setShapeOrVerify(getOutput(), {rhs_shape[0], rhs_shape[1], rhs_shape[3], rhs_shape[2]});
+  } else if (mode == "abc,abc->ab") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1]});
   } else {
     llvm_unreachable("Not support now.");
   }
