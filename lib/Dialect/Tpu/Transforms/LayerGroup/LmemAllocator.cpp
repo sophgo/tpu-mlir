@@ -479,7 +479,8 @@ void LmemAllocator::update_avail_lmems(
 
 MemBlock LmemAllocator::find_avail_lmem_location(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
-    const mem_buffer_value_t &buffer_value) {
+    const mem_buffer_value_t &buffer_value,
+    bool allow_bank_conflict) {
 
   // refine avail_lmems according to exclude_banks
   MemBlock bank_lmem;
@@ -501,6 +502,8 @@ MemBlock LmemAllocator::find_avail_lmem_location(
 
   // allow bank confict if could not find space not conflict
   if (alloc_lmem.first == -1 && !avail_space.avail_lmems.empty()) {
+    alloc_lmem = avail_space.avail_lmems.front();
+  } else if (allow_bank_conflict) {
     alloc_lmem = avail_space.avail_lmems.front();
   }
 
@@ -566,7 +569,8 @@ void LmemAllocator::update_exclude_banks(
 MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
     const mem_buffer_key_t &recent_buffer_allocated,
-    BasicTimeStepPtr &time_step, bool one_loop) {
+    BasicTimeStepPtr &time_step, bool one_loop,
+    bool allow_bank_conflict) {
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   auto &recent_buffer_value =
       time_step->get_lmem_buffer_value(recent_buffer_allocated);
@@ -579,7 +583,8 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
 
   // get the available local memory location
   auto alloc_mem =
-      find_avail_lmem_location(avail_space, buffer_key, buffer_value);
+      find_avail_lmem_location(avail_space, buffer_key, buffer_value,
+                               allow_bank_conflict);
 
   return alloc_mem;
 }
@@ -767,7 +772,8 @@ bool assignL2memAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step) {
 
 bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
-                                   const shape_secs_t &shape_secs) {
+                                   const shape_secs_t &shape_secs,
+                                   bool allow_bank_conflict) {
   time_step->update_all_mem_buffer_size(lg_info);
   bool one_loop =
       (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
@@ -812,7 +818,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
       } else {
         alloc_lmem = global_find_avail_lmem_localtion(
             buffer_avail_space[buflist_it->first], buflist_it->first,
-            recent_buffer_allocated, time_step, one_loop);
+            recent_buffer_allocated, time_step, one_loop, allow_bank_conflict);
         if (alloc_lmem.first != -1) {
           if (alloc_lmem.first < tgt_position) {
             tgt_position = alloc_lmem.first;
@@ -848,7 +854,8 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
 
 bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
-                                           shape_secs_t &shape_secs) {
+                                           shape_secs_t &shape_secs,
+                                           bool allow_bank_conflict) {
   std::vector<std::pair<Operation*, int>> vec_op_hsecs;
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info, vec_op_hsecs);
   update_data_split(time_step, lg_info, shape_secs);
@@ -907,7 +914,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
     if (status == false) {
       return false;
     }
-    status = assignLmemAddr(lg_info, time_step, shape_secs);
+    status = assignLmemAddr(lg_info, time_step, shape_secs, allow_bank_conflict);
 
     if (status == false) {
       update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs);
@@ -923,6 +930,37 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   return status;
 }
 
+void aggressive_slice_for_multicore(LmemAllocator &lmem_allocator,
+                                   const LgInfo &lg_info,
+                                   BasicTimeStepPtr &time_step,
+                                   shape_secs_t &ir_shape_secs,
+                                   shape_secs_t lg_shape_secs)
+{
+  // only apply at least 4 cores
+  auto core_num = module::getCoreNum();
+  if (core_num < 4 ||
+      ir_shape_secs.hsecs == lg_shape_secs.hsecs)
+    return;
+
+  // if bank align causes hsecs increased, allow bank conflict to
+  // improve DDR read bandwidth
+  if (ir_shape_secs.hsecs > core_num && lg_shape_secs.hsecs <= core_num) {
+    lg_shape_secs.hsecs = core_num;
+    auto ret = lmem_allocator.assignLmemAddrWithSecs(
+        lg_info, time_step, lg_shape_secs, true);
+    if (ret && (lg_shape_secs.hsecs == core_num)) {
+      llvm::errs() << "Aggresive slice for multicore: " << lg_info.group_ops.size()
+                   << ", nsecs: " << ir_shape_secs.nsecs
+                   << ", csecs: " << ir_shape_secs.csecs
+                   << ", hsecs: " << ir_shape_secs.hsecs
+                   << " -> " << lg_shape_secs.hsecs
+                   << ", wsecs: " << ir_shape_secs.wsecs
+                   << "\n";
+      ir_shape_secs.hsecs = lg_shape_secs.hsecs;
+    }
+  }
+}
+
 /// The pass for local memory allocation
 class LocalMemoryAllocationPass : public LgPass {
 public:
@@ -930,9 +968,18 @@ public:
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
       if (pass_ir->lg_infos[i].group_ops.size() > 1) {
         auto lmem_allocator = LmemAllocator();
+        auto shape_secs = pass_ir->shape_secs[i];
         auto ret = lmem_allocator.assignLmemAddrWithSecs(
             pass_ir->lg_infos[i], pass_ir->time_steps[i],
             pass_ir->shape_secs[i]);
+
+        if (ret) {
+          aggressive_slice_for_multicore(lmem_allocator, pass_ir->lg_infos[i],
+                                         pass_ir->time_steps[i],
+                                         pass_ir->shape_secs[i],
+                                         shape_secs);
+        }
+
         if (!ret) {
           llvm::errs() << "local memory allocate failed for group " << i
                        << "\n";

@@ -42,9 +42,11 @@ public:
   LmemAllocator() {}
   bool assignLmemAddrWithSecs(const LgInfo &lg_info,
                               BasicTimeStepPtr &time_step,
-                              shape_secs_t &shape_secs);
+                              shape_secs_t &shape_secs,
+                              bool allow_bank_conflict = false);
   bool assignLmemAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
-                      const shape_secs_t &shape_secs);
+                      const shape_secs_t &shape_secs,
+                      bool allow_bank_conflict = false);
 
   void find_used_banks(std::set<int64_t> &used_banks, int64_t local_addr,
                        int64_t local_size);
@@ -68,12 +70,14 @@ public:
 
   MemBlock find_avail_lmem_location(avail_space_t &avail_space,
                                     const mem_buffer_key_t &buffer_key,
-                                    const mem_buffer_value_t &buffer_value);
+                                    const mem_buffer_value_t &buffer_value,
+                                    bool allow_bank_conflit = false);
 
   MemBlock global_find_avail_lmem_localtion(
       avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
       const mem_buffer_key_t &recent_buffer_allocated,
-      BasicTimeStepPtr &time_step, bool one_loop);
+      BasicTimeStepPtr &time_step, bool one_loop,
+      bool allow_bank_conflict = false);
 
 protected:
   bool consider_inplace_;
