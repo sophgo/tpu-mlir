@@ -9,6 +9,16 @@
 
 目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
 
+# 预编译的 TPU-MLIR Python 包
+
+我们提供 TPU-MLIR Python 包以便快速安装。环境要求：python == 3.10 和 ubuntu:22.04。
+
+安装：
+
+``` shell
+pip install tpu_mlir
+```
+
 # 资源
 
 以下资源可以帮助你更好地了解TPU-MLIR：
