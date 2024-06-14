@@ -3513,6 +3513,81 @@ public:
   }
 };
 
+class Reduce2AxesPattern : public OpRewritePattern<tpu::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    /* ReduceL2(1x4x256x256,axes[2,3],keep_dims=false)->ReduceL2(1x4x256x256)+ReduceL2(1x4x256)
+     */
+    if (!module::isBM1688()) {
+      return failure();
+    }
+    auto mode = op.getMode();
+    auto input = op.getInput();
+    auto output = op.getOutput();
+    auto input_shape = module::getShape(input);
+    int input_dim = input_shape.size();
+    auto axes = module::getI64Array(op.getAxes());
+    if (op.getKeepdims() || axes->size() != 2 || input_dim < 3 || axes->at(0) != input_dim - 2 || axes->at(1) != input_dim - 1
+        || input_shape[axes->at(0)] * input_shape[axes->at(1)] < 65536)
+      return failure();
+
+    auto name = module::getName(input);
+    std::vector<Value> operands;
+
+    std::vector<int64_t> reducel2_0_shape = input_shape;
+    if (!reducel2_0_shape.empty()) {
+      reducel2_0_shape.resize(reducel2_0_shape.size() - 1);
+    }
+    auto reducel2_type0 = module::getTypeLike(output, reducel2_0_shape);
+    auto loc_reduce0 =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reduce0"));
+    // rewriter.setInsertionPointAfterValue(input);
+    operands.push_back(input);
+    auto noneOp = module::getNoneOp(op);
+    for (int i = operands.size(); i < 3; i++) {
+      operands.push_back(noneOp);
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
+    attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axes->at(1)})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    auto reducel2_op0 = rewriter.create<tpu::ReduceOp>(
+        loc_reduce0, reducel2_type0, operands, attrs);
+
+    operands.clear();
+    attrs.clear();
+    std::vector<int64_t> reducel2_1_shape = reducel2_0_shape;
+    if (!reducel2_1_shape.empty()) {
+      reducel2_1_shape.resize(reducel2_1_shape.size() - 1);
+    }
+    auto reducel2_type1 = module::getTypeLike(output, reducel2_1_shape);
+    auto loc_reduce1 =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reduce1"));
+    // rewriter.setInsertionPointAfterValue(reducel2_op0.getOutput());
+    operands.push_back(reducel2_op0.getOutput());
+    for (int i = operands.size(); i < 3; i++) {
+      operands.push_back(noneOp);
+    }
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "axes", rewriter.getI64ArrayAttr({axes->at(0)})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    auto reducel2_op1 = rewriter.create<tpu::ReduceOp>(
+        loc_reduce1, reducel2_type1, operands, attrs);
+
+    rewriter.replaceAllUsesWith(op.getOutput(), reducel2_op1.getOutput());
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 /**
  *                 Slice
  *  \                   \
@@ -3737,6 +3812,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ReshapeSliceSqueezePattern,
                 NoneZeroFixRowMajor,
                 SplitReduceL2Pattern,
+                Reduce2AxesPattern,
                 SplitMatmulPattern,
                 GridSamplerFusePattern,
                 TryInsertTileBinaryPattern<tpu::AddOp>,
