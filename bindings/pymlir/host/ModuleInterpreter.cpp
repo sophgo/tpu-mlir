@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/ModuleInterpreter.h"
+#include "ModuleInterpreter.h"
 #include "progressbar.hpp"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/GmemAllocator.h"
@@ -1343,7 +1343,8 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
   } else if (is_integer == false && module::isCalibratedType(value) &&
              module::getStorageType(value).isFloat8E4M3FN()) {
     double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
-    F8E4M3((const float *)data, act->data() + offset, tensor_size, 1 / scale, true);
+    F8E4M3((const float *)data, act->data() + offset, tensor_size, 1 / scale,
+           true);
   } else if (is_integer == false && module::isCalibratedType(value) &&
              module::getStorageType(value).isFloat8E4M3FN()) {
     F8E5M2((const float *)data, act->data() + offset, tensor_size, 1., true);

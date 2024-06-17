@@ -30,7 +30,7 @@ if __name__ == '__main__':
                         help='float type of mix precision')
     parser.add_argument('-o', '--quantize_free_table', required=True,
                         help='output searched fp layer table')
-
+    # yapf: enable
     args = parser.parse_args()
 
     searcher = FpLayerSearcher(args)

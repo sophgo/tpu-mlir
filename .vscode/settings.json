@@ -86,7 +86,8 @@
         "__split_buffer": "cpp",
         "__tree": "cpp",
         "ios": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "__config": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

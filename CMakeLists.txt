@@ -106,6 +106,17 @@ include_directories(${CUSTOM_PATH}/include)
 set(ORTOOLS_PATH ${PROJECT_SOURCE_DIR}/third_party/or-tools)
 include_directories(${ORTOOLS_PATH}/include)
 link_directories(${ORTOOLS_PATH}/lib)
+
+#-------------------------------------------------------------------------------
+# cuDNN Configuration
+#-------------------------------------------------------------------------------
+option(TPUMLIR_USE_CUDA "SUPPORT to use cuda to do inference")
+
+if(TPUMLIR_USE_CUDA)
+  include_directories(${CUDA_INCLUDE_DIRS} /usr/local/cuda/include)
+  link_directories(${CUDA_LIBRARY_DIRS} /usr/local/cuda/lib64)
+  add_definitions(-DUSE_CUDA)
+endif()
 #-------------------------------------------------------------------------------
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
@@ -156,7 +167,11 @@ else()
 endif()
 
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
-set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "tpu-mlir version" FORCE)
+if (TPUMLIR_USE_CUDA)
+  set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}_cuda" CACHE STRING "tpu-mlir version" FORCE)
+else ()
+  set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "tpu-mlir version" FORCE)
+endif()
 set(BUILD_TIME "${BUILD_TIME}" CACHE STRING "Build time" FORCE)
 message(STATUS "tpu-mlir version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
