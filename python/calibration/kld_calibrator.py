@@ -14,8 +14,11 @@ import gc
 import re
 import time
 import copy
+import math
 import numpy as np
 import pymlir
+import torch
+pymlir.set_mem_mode("value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime
@@ -497,7 +500,10 @@ class SimpleTuner:
         step = (abs_max - th_min) / self.tune_steps
         ranges = range(self.tune_steps + 1)
         if step > 0 and diff > min_tuned_diff:
-            for n in range(2):
+            r = 1
+            if 'find_lower_th' in self.debug_cmd :
+                r = 2
+            for n in range(r):
                 if n == 1 and 'find_lower_th' in self.debug_cmd:
                     th_min = best_threshold - step
                     th_max = best_threshold + step
@@ -508,6 +514,7 @@ class SimpleTuner:
                     #print(f'find_lower_th enable,tuned_op:{tuned_op},best_threshold:{best_threshold},step:{step},th_min:{th_min},th_max:{th_max}, times:{times}')
                 for i in ranges:
                     cur_threshold = th_min + step * i
+                    # print(1+((i-1-self.tune_steps/2)/self.tune_steps))
                     cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
                     if cur_distance is None and cur_cos_sim is None:
                         return False
@@ -518,7 +525,7 @@ class SimpleTuner:
                         prev_distance = cur_distance
                         init_cos_sim = cur_cos_sim
                         continue
-                    elif cur_distance < prev_distance:  # and cur_cos_sim > best_cos_sim:
+                    elif cur_distance < prev_distance:  # and cur_cos_sim > best_cos_sim
                         # self.print_dbg(
                         #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
                         #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
@@ -888,6 +895,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         if len(self.parser.get_pre_op_by_op_name(op_name)) > 0 or op_name in self.fuseop_list:
             self.module.invoke_at(op_name)
         self.module.clear_hooks()
+
     def find_threshold(self, histogram_data_map, histogram_width_map, dst_bins=128):
         thresholds = {}
         num = len(histogram_data_map)
@@ -895,12 +903,545 @@ class ActivationCalibrator(BaseKldCalibrator):
         for item in histogram_data_map:
             pbar.set_description("[{}] threshold: {}".format(self.histogram_bin_num, item))
             pbar.update(1)
+            remainder = len(histogram_data_map[item]) % dst_bins
+            padding_size = 0 if remainder == 0 else dst_bins - remainder
+            padding = np.zeros(padding_size,dtype=histogram_data_map[item].dtype)
+            histogram_data_map[item] = np.concatenate((histogram_data_map[item],padding))
             thresholds[item] = self.kld_threshold(histogram_data_map[item],
-                                                  histogram_width_map[item], self.histogram_bin_num, dst_bins)
+                                                  histogram_width_map[item],len(histogram_data_map[item]), dst_bins)
         pbar.close()
         return thresholds
 
+    def combine_histogram(self, old_hist, arr, new_min, new_max, new_th):
+        """ Collect layer histogram for arr and combine it with old histogram.
+        """
+        (old_hist, old_hist_edges, old_min, old_max, old_th) = old_hist
+        if new_th <= old_th:
+            hist,width = self.histogram(arr,old_th,len(old_hist))
+            return (old_hist + hist, old_hist_edges, min(old_min, new_min), max(old_max, new_max), old_th)
+        else:
+            # Need to generate new histogram with new_th
+            old_num_bins = len(old_hist)
+            old_step = old_th / old_num_bins
+            half_increased_bins = int((new_th - old_th) // old_step + 1)
+            new_num_bins = half_increased_bins  + old_num_bins
+            # if new_num_bins > 40000000 :
+            #     import warnings
+            #     warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
+            #     new_num_bins = 40000000
+            #     half_increased_bins = new_num_bins - old_num_bins
+            if new_num_bins > 10000000:
+                import warnings
+                warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
+                hist, hist_edges = self.histogram(arr, new_th, self.histogram_bin_num)
+                return (hist, hist_edges, min(old_min, new_min), max(old_max, new_max), new_th)
+            new_th = half_increased_bins * old_step + old_th
+            hist, hist_edges = self.histogram(arr, new_th,new_num_bins)
+            hist[0:new_num_bins - half_increased_bins] += old_hist
+            return (hist, hist_edges, min(old_min, new_min), max(old_max, new_max), new_th)
+
+    def _combine_histogram(self, old_hist, arr, new_min, new_max, new_th):
+        """ Collect layer histogram for arr and combine it with old histogram.
+        """
+        upsample_rate = 128
+        (old_hist, old_hist_edges, old_min, old_max, old_th) = old_hist
+        combined_min = 0
+        combined_max = new_th
+        downsample_rate = int(
+            torch.ceil(
+                ((combined_max - combined_min) / old_th) * upsample_rate
+            ).item()
+        )
+        e = downsample_rate / upsample_rate * old_th - (combined_max - combined_min)
+        start_idx = int(
+            torch.round((0 - combined_min) / (old_th) * 2048 * upsample_rate).item()
+        )
+        combined_max = combined_max + e
+        hist, hist_edges = self.histogram(arr,combined_max,2048)
+        if combined_max == old_th :
+            old_hist = old_hist + hist
+        else:
+            upsampled_histogram = old_hist.repeat_interleave(upsample_rate)
+            histogram_with_output_range = torch.zeros(
+                (2048 * downsample_rate)
+            )
+            histogram_with_output_range[
+                start_idx : 2048 * upsample_rate + start_idx
+            ] = upsampled_histogram
+            integral_histogram = torch.cumsum(
+                histogram_with_output_range, 0, dtype=torch.double
+            )[downsample_rate - 1 :: downsample_rate]
+            shifted_integral_histogram = torch.zeros((2048))
+            shifted_integral_histogram[1:2048] = integral_histogram[0:-1]
+            interpolated_histogram = (
+                integral_histogram - shifted_integral_histogram
+            ) / upsample_rate
+            old_hist = hist + interpolated_histogram.to(torch.float)
+        return (old_hist,hist_edges,min(old_min,new_min),max(old_max,new_max),combined_max)
+
+    def process_statistic(self,evaled_op, i,idx,all_tensors):
+        per = 99.99 + i * self.step
+        self.perd[evaled_op] = per
+        outputs = self.parser.get_outputs_by_op_name(evaled_op)
+        res_length = 0
+        for out in outputs:
+            if out not in all_tensors:
+                continue
+            abs_value = None
+            activation=self.module.get_tensor(out).copy()
+            if activation is None:
+                continue
+            self.size[out] = activation.size
+            res_length = int(self.args.input_num * self.size[out] * (1 - per / 100)) + 1
+            self.res_length_dict[out] = res_length
+            if 'use_torch_observer_for_cali' in self.debug_cmd:
+                from torch import Tensor
+                self.torchObserver_dict[out](Tensor(activation.astype(np.float32)))
+            else:
+                self.min_value[out] = min(np.min(activation), self.min_value[out])
+                self.max_value[out] = max(np.max(activation), self.max_value[out])
+                abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
+                if 'use_percentile9999' in self.debug_cmd:
+                    tmp = np.abs(activation.flatten())
+                    tmp = sort_distr(tmp, res_length)
+                    self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                elif 'use_mse' in self.debug_cmd :
+                    bit = 8
+                    if 'int4' in self.debug_cmd :
+                        bit = 4
+                    if out in self.last_five_tensors:
+                        tmp = np.abs(activation.flatten())
+                        tmp = sort_distr(tmp, res_length)
+                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                    if np.abs(np.min(activation) - 0) < 1e-6 :
+                        unsigned = 4
+                    else:
+                        unsigned = 1
+                    abs_x = np.abs(activation.flatten())
+                    s_n = abs_x.sum() / abs_x[abs_x > 0].size
+                    for _ in range(20):
+                        s_n_plus_1 = abs_x[abs_x > s_n].sum() / (1 / (4 ** bit) / 3 / unsigned * abs_x[abs_x <= s_n].size + abs_x[abs_x > s_n].size)
+                        if np.abs(s_n_plus_1 - s_n) < 1e-6:
+                            break
+                        s_n = s_n_plus_1
+                    if out not in self.mse:
+                        self.mse[out] = []
+                        self.mse[out].append(s_n)
+                    else:
+                        self.mse[out].append(s_n)
+                elif 'use_aciq_gauss' in self.debug_cmd:
+                    alpha = 3.92403337
+                    if 'int4' in self.debug_cmd:
+                        alpha = 2.55913642
+                    if out in self.last_five_tensors:
+                        tmp = np.abs(activation.flatten())
+                        tmp = sort_distr(tmp, res_length)
+                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                    gaussian_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
+                    N = activation.size
+                    std = ((np.max(activation) - np.min(activation)) * gaussian_const) / ((2 * math.log(N)) ** 0.5)
+                    if out not in self.aciq:
+                        self.aciq[out] = []
+                        self.aciq[out].append(alpha * std)
+                    else:
+                        self.aciq[out].append(alpha * std)
+                elif 'use_aciq_laplace' in self.debug_cmd:
+                    beta = 9.89675982
+                    if 'int4' in self.debug_cmd :
+                        beta = 5.02864014
+                    if out in self.last_five_tensors:
+                        tmp = np.abs(activation.flatten())
+                        tmp = sort_distr(tmp, res_length)
+                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                    b = np.mean(abs(activation-np.mean(activation)))
+                    if out not in self.aciq:
+                        self.aciq[out] = []
+                        self.aciq[out].append(beta * b)
+                    else:
+                        self.aciq[out].append(beta * b)
+                elif 'use_max' in self.debug_cmd:
+                    self.max_abs_value[out] = max(np.max(np.abs(activation)), self.max_abs_value[out])
+                if out not in self.histogram_data_map:
+                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                    self.histogram_data_map[out] = hist
+                    self.histogram_width_map[out] = width
+                    self.hist_dict[out] = (hist,width, self.min_value[out],self.max_value[out], abs_value)
+                else:
+                    self.hist_dict[out]=self.combine_histogram(self.hist_dict[out],activation,self.min_value[out],self.max_value[out],abs_value)
+                    self.histogram_data_map[out] = self.hist_dict[out][0]
+                    self.histogram_width_map[out] = self.hist_dict[out][1]
+        return
+
+    def process_compute_threshold(self,evaled_op,i,all_tensors):
+        abs_value = None
+        outputs = self.parser.get_outputs_by_op_name(evaled_op)
+        for out in outputs:
+            if out not in all_tensors:
+                continue
+            abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
+            if 'use_percentile9999' in self.debug_cmd:
+                res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                inter = self.args.input_num * self.size[out] - 1
+                idx = int((self.perd[evaled_op]/ 100) * inter)
+                ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                abs_value = res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
+            elif 'use_mse' in self.debug_cmd:
+                if out in self.last_five_tensors:
+                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                    inter = self.args.input_num * self.size[out] - 1
+                    idx = int((self.perd[evaled_op]/ 100) * inter)
+                    ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                mean_s_n = sum(self.mse[out])/len(self.mse[out])
+                mean_s_n = min(mean_s_n,abs_value)
+                abs_value = mean_s_n
+            elif 'use_aciq_gauss' in self.debug_cmd:
+                if out in self.last_five_tensors:
+                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                    inter = self.args.input_num * self.size[out] - 1
+                    idx = int((self.perd[evaled_op]/ 100) * inter)
+                    ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                mean_gauss = sum(self.aciq[out])/len(self.aciq[out])
+                if mean_gauss > abs_value :
+                    mean_gauss = abs_value
+                abs_value = mean_gauss
+            elif 'use_aciq_laplace' in self.debug_cmd:
+                if out in self.last_five_tensors:
+                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                    inter = self.args.input_num * self.size[out] - 1
+                    idx = int((self.perd[evaled_op]/ 100) * inter)
+                    ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                mean_laplace = sum(self.aciq[out])/len(self.aciq[out])
+                if mean_laplace > abs_value :
+                    mean_laplace = abs_value
+                abs_value = mean_laplace
+            elif 'use_max' in self.debug_cmd:
+                #t0 = time.time()
+                abs_value = self.max_abs_value[out]
+            if abs_value != None and abs_value <= 1e-5:
+                # if op's outputs are all close to zero, change it to 1e-5 for them.
+                self.min_value[out] = -1e-5 if self.min_value[out] < 0 else 0
+                self.max_value[out] = 1e-5
+                abs_value = 1e-5
+                print("WARNING: layer {} is all zeros. Please check the "
+                        "input data correctness.".format(out))
+            self.activations_statistics[out] = (self.min_value[out], self.max_value[out], abs_value)
+        return
+
+    def parallel_statistic(self, all_tensors,idx):
+        from concurrent.futures import ThreadPoolExecutor,as_completed
+        with ThreadPoolExecutor(max_workers=6) as executor:  # You can adjust max_workers as needed
+            future_to_tensor = {executor.submit(self.process_statistic, evaled_op, i,idx,all_tensors): evaled_op for i, evaled_op in enumerate(all_tensors)}
+        return
+
+    def parallel_compute_threshold(self, all_tensors):
+        from concurrent.futures import ThreadPoolExecutor,as_completed
+        with ThreadPoolExecutor(max_workers=6) as executor:  # You can adjust max_workers as needed
+            future_to_tensor = {executor.submit(self.process_compute_threshold, evaled_op, i,all_tensors): evaled_op for i, evaled_op in enumerate(all_tensors)}
+        return
+
+    def activation_collect_and_calc_th_new(self):
+        t0 = time.time()
+        all_tensors = self.parser.get_op_name_list()
+
+        thresholds_map = {}
+        thresholds_map_absmax = {}
+        thresholds_map_scale = {}
+        thresholds_map_zp = {}
+        thresholds_map4 = {}
+        thresholds_map_absmax4 = {}
+        thresholds_map_scale4 = {}
+        thresholds_map_zp4 = {}
+        thresholds_out = []
+        self.size = {}
+        self.hist_dict = {}
+        self.res_length_dict = {}
+        self.perd = {}
+        self.mse = {}
+        self.aciq = {}
+        self.last_five_tensors_threshold = {}
+        self.histogram_data_map = {}
+        self.histogram_width_map = {}
+        self.activations_statistics = {}
+        self.last_five_tensors = all_tensors[-5:][::-1]
+        self.min_value={tensor:float('inf') for tensor in all_tensors}
+        self.max_value={tensor:float('-inf') for tensor in all_tensors}
+        self.max_abs_value={tensor:float('-inf') for tensor in all_tensors}
+        self.all_data_test={tensor:[] for tensor in all_tensors}
+
+        self.step = (99.999999 - 99.99) / len(all_tensors)
+        input_number = [i for i in range(self.args.input_num)]
+        pbar = tqdm(input_number, total = self.args.input_num, position = 0, leave = True)
+        for idx in range(self.args.input_num):
+            pbar.set_description("activation_collect_and_calc_th for sample: {}".format(idx))
+            pbar.update(1)
+            data = []
+            for name in list(self.ref_activations[idx].keys()):
+                data.append(self.ref_activations[idx][name][0])
+            for k, v in zip(self.module.input_names, data):
+                self.module.set_tensor(k, v)
+            self.module.invoke()
+            self.parallel_statistic(all_tensors,idx)
+        pbar.close()
+
+        self.parallel_compute_threshold(all_tensors)
+        if 'use_torch_observer_for_cali' in self.debug_cmd:
+            for i, evaled_op in enumerate(all_tensors):
+                outputs = self.parser.get_outputs_by_op_name(evaled_op)
+                for out in outputs:
+                    if out not in all_tensors:
+                        continue
+                    qmin, qmax = -128, 127
+                    scale, zp = self.torchObserver_dict[out].calculate_qparams()
+                    threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                    threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
+                    thresholds_map[out] = threshold
+                    thresholds_map_absmax[out] = threshold
+                    thresholds_map_scale[out] = scale.numpy()[0]
+                    thresholds_map_zp[out] = zp.numpy()[0]
+
+        if 'use_mse' in self.debug_cmd or 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_laplace' in self.debug_cmd:
+            for tensor in self.last_five_tensors:
+                if self.last_five_tensors_threshold[tensor] != max(abs(self.activations_statistics[tensor][0]), abs(self.activations_statistics[tensor][1])):
+                    break
+                #self.last_five_tensors_threshold[tensor] = max(abs(self.activations_statistics[tensor][0]), abs(self.activations_statistics[tensor][1]))
+                thresholds_out.append(tensor)
+                if self.parser.get_op_type_by_op_name(tensor) == 'top.MatMul' or self.parser.get_op_type_by_op_name(tensor) == 'top.Conv':
+                    break
+        if 'use_torch_observer_for_cali' not in self.debug_cmd:
+            thresholds_map = self.find_threshold(self.histogram_data_map, self.histogram_width_map, 128)
+            if 'int4' in self.debug_cmd :
+                thresholds_map4 = self.find_threshold(self.histogram_data_map, self.histogram_width_map, 8)
+            for k, v in self.activations_statistics.items():
+                mi, ma, abs_val = v
+                thresholds_map_absmax[k] = abs_val
+                if thresholds_map[k] > abs_val:
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+                if 'use_percentile9999' in self.debug_cmd:
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+                elif 'use_mse' in self.debug_cmd:
+                    # thresholds_map_absmax[k] = max(abs(mi),abs(ma))
+                    if k in thresholds_out:
+                        thresholds_map[k] = self.last_five_tensors_threshold[k]
+                        thresholds_map4[k] = self.last_five_tensors_threshold[k]
+                        continue
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+                elif 'use_aciq_gauss' in self.debug_cmd:
+                    thresholds_map_absmax[k] = max(abs(mi),abs(ma))
+                    if k in thresholds_out:
+                        thresholds_map[k] = self.last_five_tensors_threshold[k]
+                        thresholds_map4[k] = self.last_five_tensors_threshold[k]
+                        continue
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+                elif 'use_aciq_laplace' in self.debug_cmd:
+                    thresholds_map_absmax[k] = max(abs(mi),abs(ma))
+                    if k in thresholds_out:
+                        thresholds_map[k] = self.last_five_tensors_threshold[k]
+                        thresholds_map4[k] = self.last_five_tensors_threshold[k]
+                        continue
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+                elif 'use_max' in self.debug_cmd:
+                    thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
+        time2 = time.time()
+        return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4
+
+    def _process_statistic(self,evaled_op, i,idx,all_tensors):
+        per = 99.99 + i * self._step
+        self._perd[evaled_op] = per
+        outputs = self.parser.get_outputs_by_op_name(evaled_op)
+        res_length = 0
+        for out in outputs:
+            if out not in all_tensors:
+                continue
+            abs_value = None
+            activation=self.module.get_tensor(out).copy()
+            if activation is None:
+                continue
+            self._size[out] = activation.size
+            res_length = int(self.args.input_num * self._size[out] * (1 - per / 100)) + 1
+            self._res_length_dict[out] = res_length
+            # parallel statistic minmax,octav,kl+tune,percentile9999
+            self._min_value[out] = min(np.min(activation), self._min_value[out])
+            self._max_value[out] = max(np.max(activation), self._max_value[out])
+            abs_value = max(abs(self._min_value[out]), abs(self._max_value[out]))
+
+            tmp = np.abs(activation.flatten())
+            tmp = sort_distr(tmp, res_length)
+            self._all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+
+            bit = 8
+            if 'int4' in self.debug_cmd :
+                bit = 4
+            if np.abs(np.min(activation) - 0) < 1e-6 :
+                unsigned = 4
+            else:
+                unsigned = 1
+            abs_x = np.abs(activation.flatten())
+            s_n = abs_x.sum() / abs_x[abs_x > 0].size
+            for _ in range(20):
+                s_n_plus_1 = abs_x[abs_x > s_n].sum() / (1 / (4 ** bit) / 3 / unsigned * abs_x[abs_x <= s_n].size + abs_x[abs_x > s_n].size)
+                if np.abs(s_n_plus_1 - s_n) < 1e-6:
+                    break
+                s_n = s_n_plus_1
+            if out not in self._mse:
+                self._mse[out] = []
+                self._mse[out].append(s_n)
+            else:
+                self._mse[out].append(s_n)
+
+            self._max_abs_value[out] = max(np.max(np.abs(activation)), self._max_abs_value[out])
+
+            if out not in self._histogram_data_map:
+                hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                self._histogram_data_map[out] = hist
+                self._histogram_width_map[out] = width
+                self._hist_dict[out] = (hist,width, self._min_value[out],self._max_value[out], abs_value)
+            else:
+                self._hist_dict[out]=self.combine_histogram(self._hist_dict[out],activation,self._min_value[out],self._max_value[out],abs_value)
+                self._histogram_data_map[out] = self._hist_dict[out][0]
+                self._histogram_width_map[out] = self._hist_dict[out][1]
+        return
+
+    def _process_compute_threshold(self,evaled_op,i,all_tensors):
+        abs_value = None
+        outputs = self.parser.get_outputs_by_op_name(evaled_op)
+        for out in outputs:
+            if out not in all_tensors:
+                continue
+            abs_value = max(abs(self._min_value[out]), abs(self._max_value[out]))
+            #percentile9999
+            res = np.sort(self._all_data_test[out])[-self._res_length_dict[out]:]
+            inter = self.args.input_num * self._size[out] - 1
+            idx = int((self._perd[evaled_op]/ 100) * inter)
+            ratio = (self._perd[evaled_op]/ 100) * inter - idx
+            percentile9999 = res[0] + ratio * (res[1] - res[0]) if self._res_length_dict[out] != 1 else res[0]
+            if percentile9999 != None and percentile9999 <= 1e-5:
+                percentile9999 = 1e-5
+            #mse
+            if out in self._last_five_tensors:
+                self._last_five_tensors_threshold[out] = percentile9999
+            mean_s_n = sum(self._mse[out])/len(self._mse[out])
+            mean_s_n = min(mean_s_n,abs_value)
+            mse = mean_s_n
+            if mse != None and mse <= 1e-5:
+                mse = 1e-5
+            #max
+            minmax = self._max_abs_value[out]
+            if abs_value != None and abs_value <= 1e-5:
+                # if op's outputs are all close to zero, change it to 1e-5 for them.
+                self._min_value[out] = -1e-5 if self._min_value[out] < 0 else 0
+                self._max_value[out] = 1e-5
+                abs_value = 1e-5
+                print("WARNING: layer {} is all zeros. Please check the "
+                        "input data correctness.".format(out))
+            self._activations_statistics[out] = (self._min_value[out], self._max_value[out], abs_value, percentile9999, mse)
+        return
+
+    def _parallel_statistic(self, all_tensors,idx):
+        from concurrent.futures import ThreadPoolExecutor,as_completed
+        with ThreadPoolExecutor(max_workers=6) as executor:  # You can adjust max_workers as needed
+            future_to_tensor = {executor.submit(self._process_statistic, evaled_op, i,idx,all_tensors): evaled_op for i, evaled_op in enumerate(all_tensors)}
+        return
+
+    def _parallel_compute_threshold(self, all_tensors):
+        from concurrent.futures import ThreadPoolExecutor,as_completed
+        with ThreadPoolExecutor(max_workers=6) as executor:  # You can adjust max_workers as needed
+            future_to_tensor = {executor.submit(self._process_compute_threshold, evaled_op, i,all_tensors): evaled_op for i, evaled_op in enumerate(all_tensors)}
+        return
+
+    def activation_collect_and_calc_th_parallel(self):
+        all_tensors = self.parser.get_op_name_list()
+
+        thresholds_map = {}
+        thresholds_map_absmax = {}
+        thresholds_map_scale = {}
+        thresholds_map_zp = {}
+        thresholds_map4 = {}
+        thresholds_map_absmax4 = {}
+        thresholds_map_scale4 = {}
+        thresholds_map_zp4 = {}
+        thresholds = {}
+        thresholds4 = {}
+        thresholds_max = {}
+        thresholds_percentile = {}
+        thresholds_mse = {}
+        self._size = {}
+        self._hist_dict = {}
+        self._res_length_dict = {}
+        self._perd = {}
+        self._mse = {}
+        self._aciq = {}
+        self._last_five_tensors_threshold = {}
+        self._histogram_data_map = {}
+        self._histogram_width_map = {}
+        self._activations_statistics = {}
+        self._last_five_tensors = all_tensors[-5:][::-1]
+        self._min_value={tensor:float('inf') for tensor in all_tensors}
+        self._max_value={tensor:float('-inf') for tensor in all_tensors}
+        self._max_abs_value={tensor:float('-inf') for tensor in all_tensors}
+        self._all_data_test={tensor:[] for tensor in all_tensors}
+
+        self._step = (99.999999 - 99.99) / len(all_tensors)
+        input_number = [i for i in range(self.args.input_num)]
+        pbar = tqdm(input_number, total = self.args.input_num, position = 0, leave = True)
+        for idx in range(self.args.input_num):
+            pbar.set_description("activation_collect_and_calc_th for sample: {}".format(idx))
+            pbar.update(1)
+            data = []
+            for name in list(self.ref_activations[idx].keys()):
+                data.append(self.ref_activations[idx][name][0])
+            for k, v in zip(self.module.input_names, data):
+                self.module.set_tensor(k, v)
+            self.module.invoke()
+            self._parallel_statistic(all_tensors,idx)
+        pbar.close()
+
+        self._parallel_compute_threshold(all_tensors)
+        tensors = []
+        for tensor in self._last_five_tensors:
+            if self._last_five_tensors_threshold[tensor] != max(abs(self._activations_statistics[tensor][0]), abs(self._activations_statistics[tensor][1])):
+                break
+            #self._last_five_tensors_threshold[tensor] = max(abs(self._activations_statistics[tensor][0]), abs(self._activations_statistics[tensor][1]))
+            # self._activations_statistics[tensor][4] = self._last_five_tensors_threshold[tensor]
+            tensors.append(tensor)
+            if self.parser.get_op_type_by_op_name(tensor) == 'top.MatMul' or self.parser.get_op_type_by_op_name(tensor) == 'top.Conv':
+                break
+
+        thresholds_map = self.find_threshold(self._histogram_data_map, self._histogram_width_map, 128)
+        if 'int4' in self.debug_cmd :
+            thresholds_map4 = self.find_threshold(self._histogram_data_map, self._histogram_width_map, 8)
+        for k, v in self._activations_statistics.items():
+            _, _, abs_val, percentile9999, mse = v
+            thresholds_map_absmax[k] = abs_val
+            if thresholds_map[k] > abs_val:
+                thresholds_map[k] = abs_val
+                thresholds_map4[k] = abs_val
+            thresholds_percentile[k] = percentile9999
+            thresholds_max[k] = abs_val
+            if k in tensors:
+                thresholds_mse[k] = self._last_five_tensors_threshold[k]
+            else:
+                thresholds_mse[k] = mse
+        thresholds['KL'] = thresholds_map
+        thresholds['MAX'] = thresholds_max
+        thresholds['MSE'] = thresholds_mse
+        thresholds['Percentile9999'] = thresholds_percentile
+        thresholds4['KL'] = thresholds_map4
+        thresholds4['MAX'] = thresholds_max
+        thresholds4['MSE'] = thresholds_mse
+        thresholds4['Percentile9999'] = thresholds_percentile
+        return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4, thresholds, thresholds4
+
     def activation_collect_and_calc_th(self):
+        t0 = time.time()
         histogram_data_map = {}
         histogram_width_map = {}
         self.activations_statistics = {}
@@ -931,7 +1472,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 if tensor is None:
                     continue
                 tensor_size = (self.get_ref_tensor(0, out)).size
-                all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
+                # all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
                 num = self.args.input_num
                 per = 99.99 + i * step
                 res_length = int(num * tensor_size * (1 - per / 100)) + 1
@@ -949,7 +1490,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         max_value = max(np.max(activation), max_value)
                         abs_value = max(abs(min_value), abs(max_value))
                         if 'use_percentile9999' in self.debug_cmd:
-                            all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
+                            # all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
                             tmp = np.abs(activation.flatten())
                             tmp = sort_distr(tmp, res_length)
                             all_data_test[idx * res_length : (idx + 1) * res_length] = tmp
@@ -1022,6 +1563,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 elif 'use_max' in self.debug_cmd:
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
+        t1 = time.time()
         return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4
 
     def run(self):
@@ -1041,7 +1583,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 print('input_calibration_table error')
                 exit(1)
         else:
-            thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4 = self.activation_collect_and_calc_th()
+            thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4 = self.activation_collect_and_calc_th_new()
             self._clean_resource()
             # step 3: dump threshold table of default histogram bins
             cali_table = self.args.calibration_table
@@ -1105,7 +1647,6 @@ class ActivationCalibrator(BaseKldCalibrator):
             #     exit(0)
         if self.args.tune_num <= 0 or 'int4' in self.debug_cmd:
             return
-
         # setp 4: tune to get better threshold of each layers.
         self.tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list, thresholds_map_absmax)
         thresholds = self.tunner.run()
@@ -1148,4 +1689,3 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.tunner.tune_steps)
             save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list,
                                      'before_tuned', 'after_tuned', file_prefix)
-
