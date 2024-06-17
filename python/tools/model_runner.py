@@ -213,15 +213,19 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
 
 
 g_mlir_module = None
+g_mlir_cuda = None
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False) -> dict:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, use_cuda: bool = False) -> dict:
     if mute:
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
-        return _mlir_inference(inputs, mlir_file, dump_all, out_fixed)
+        if not use_cuda:
+            return _mlir_inference(inputs, mlir_file, dump_all, out_fixed)
+        else:
+            return _mlir_inference_by_cuda(inputs, mlir_file, dump_all)
     finally:
         if mute:
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
@@ -272,10 +276,33 @@ def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, out_fix
                 outputs[pre_op] = tensors[pre_op]
     return outputs
 
+def _mlir_inference_by_cuda(inputs: dict, mlir_file: str, dump_all: bool = False) -> dict:
+    import pymlir
+    if not hasattr(pymlir, "cuda"):
+        raise RuntimeError("this version not support cuda")
+    global g_mlir_cuda
+    if g_mlir_cuda != None:
+        g_mlir_cuda = None
+    g_mlir_cuda = pymlir.cuda()
+    g_mlir_cuda.load(mlir_file)
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(g_mlir_cuda.input_names) == 1)
+    for name in g_mlir_cuda.input_names:
+        if not only_one:
+            assert (name in inputs)
+            input = inputs[name]
+        else:
+            input = list(inputs.values())[0]
+        g_mlir_cuda.set_tensor(name, input.astype(np.float32))
+    g_mlir_cuda.invoke(dump_all)
+    return g_mlir_cuda.get_all_tensor()
 
 def free_mlir_module():
     global g_mlir_module
     g_mlir_module = None
+    global g_mlir_cuda
+    g_mlir_cuda = None
 
 
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
@@ -495,13 +522,14 @@ if __name__ == '__main__':
                         help="configure the debugging information.")
     parser.add_argument("--out_fixed", action="store_true",
                         help="no float number transforming, only for int8/uint8.")
-
+    parser.add_argument("--cuda", action="store_true",
+                        help="use cuda to do inference")
     # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()
     if args.model.endswith(".mlir"):
-        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed)
+        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed, args.cuda)
     elif args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):

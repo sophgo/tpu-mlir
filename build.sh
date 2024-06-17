@@ -1,4 +1,5 @@
 #!/bin/bash
+# ./build.sh [DEBUG|RELEASE] [CUDA|CPU]
 set -e
 
 if [[ -z "$INSTALL_PATH" ]]; then
@@ -6,63 +7,70 @@ if [[ -z "$INSTALL_PATH" ]]; then
   exit 1
 fi
 
+# Function to show usage information
+usage() {
+  echo "Usage: $0 [RELEASE|DEBUG] [CPU|CUDA]"
+}
+
 echo "BUILD_PATH: $BUILD_PATH"
 echo "INSTALL_PATH: $INSTALL_PATH"
-echo "BUILD_FLAG: $BUILD_FLAG"
+#echo "BUILD_FLAG: $BUILD_FLAG"
 
-function config_debug()
-{
-    cmake -G Ninja \
-          -B ${BUILD_PATH} \
-          -DCMAKE_C_COMPILER=clang \
-          -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_CXX_FLAGS=-ggdb \
-          -DTPUMLIR_USE_LLD=ON \
-          -DTPUMLIR_INCLUDE_TESTS=ON \
-          -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} \
-          ${PROJECT_ROOT}
-}
+BUILD_TYPE=""
+CXX_FLAGS="-O2"
+USE_CUDA="OFF"
 
-function config_release()
-{
-    cmake -G Ninja \
-          -B ${BUILD_PATH} \
-          -DCMAKE_C_COMPILER=clang \
-          -DCMAKE_BUILD_TYPE="" \
-          -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_CXX_FLAGS=-O2 \
-          -DTPUMLIR_USE_LLD=ON \
-          -DTPUMLIR_INCLUDE_TESTS=ON \
-          -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH} \
-          ${PROJECT_ROOT}
-}
-
-
-# prepare install/build dir
-if [ "$1" = "DEBUG" ]; then
-    rm -rf ${INSTALL_PATH}
-    config_debug
-else
-    rm -rf ${INSTALL_PATH}
-    config_release
+if [ -n "$1" ]; then
+    if [ "$1" = "DEBUG" ]; then
+        BUILD_TYPE="Debug"
+        CXX_FLAGS="-ggdb"
+    elif [ "$1" != "RELEASE" ]; then
+        echo "Invalid build mode: $1"
+        usage
+        exit 1
+    fi
 fi
 
-cpu_num=`cat /proc/stat | grep cpu[0-9] -c`
+# Check for CUDA support
+if [ -n "$2" ]; then
+    if [ "$2" = "CUDA" ]; then
+        USE_CUDA="ON"
+    elif [ "$2" != "CPU" ]; then
+        echo "Invalid CUDA option: $2"
+        usage
+        exit 1
+    fi
+fi
+
+# prepare install/build dir
+rm -rf "${INSTALL_PATH}"
+cmake -G Ninja \
+  -B "${BUILD_PATH}" \
+  -DCMAKE_C_COMPILER=clang \
+  -DCMAKE_CXX_COMPILER=clang++ \
+  -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+  -DCMAKE_CXX_FLAGS="${CXX_FLAGS}" \
+  -DTPUMLIR_USE_LLD=ON \
+  -DTPUMLIR_INCLUDE_TESTS=ON \
+  -DTPUMLIR_USE_CUDA="${USE_CUDA}" \
+  -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
+  "${PROJECT_ROOT}"
+
+cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
 cmake --build $BUILD_PATH --target install -j${cpu_num}
 
 # Clean up some files for release build
 if [ "$1" != "DEBUG" ]; then
   # build doc
-  ./release_doc.sh > doc.log 2>&1
+  ./release_doc.sh >doc.log 2>&1
   if grep -i 'error' doc.log; then
-      exit 1
+    exit 1
   fi
   rm doc.log
 
   # strip mlir tools
   pushd $INSTALL_PATH
-  find ./ -name "*.so"  ! -name "*_kernel_module.so" ! -name "*_atomic_kernel.so" | xargs strip
+  find ./ -name "*.so" ! -name "*_kernel_module.so" ! -name "*_atomic_kernel.so" | xargs strip
   ls bin/* | xargs strip
   find ./ -name "*.a" ! -name "*_kernel_module.a" | xargs rm
   popd

@@ -107,7 +107,7 @@ if __name__ == '__main__':
                         help='only handle these layers, list of op names')
     parser.add_argument(
         "--quantweight", required=False, action='store_true', dest='quantweight', help="if update weight in npz or export weight-th-table")
-
+    # yapf: enable
     args = parser.parse_args()
     if args.chip != "bm1684x" and args.chip != "bm1688":
         print("only support bm1684x and bm1688 till now!")
