@@ -164,8 +164,10 @@ class MixPrecSearcher:
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.calib_table = args.calibration_table
-        self.loss_table = args.loss_table
-        self.quantize_table = args.quantize_table
+        if 'loss_table' in args:
+            self.loss_table = args.loss_table
+        if 'quantize_table' in args:
+            self.quantize_table = args.quantize_table
         self.chip = args.chip
         if args.fp_type == 'auto':
             self.mix_mode = FLOAT_MAP[self.chip]
@@ -181,11 +183,14 @@ class MixPrecSearcher:
         self.num_sample = 0
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
-        try:
-            if args.inference_num > 0:
-                self.logger = logger('SensitiveLayerSearcher', log_level=log_level)
-        except:
-            self.logger = logger('MixPrecSearcher', log_level=log_level)
+        if '_logger' in args:
+            self.logger = args._logger
+        else:
+            try:
+                if args.inference_num > 0:
+                    self.logger = logger('SensitiveLayerSearcher', log_level=log_level)
+            except:
+                self.logger = logger('MixPrecSearcher', log_level=log_level)
         self._init_inputs(args)
         try:
             if args.post_process is not None:
@@ -342,14 +347,44 @@ class MixPrecSearcher:
             i += 1
         return cos / sum(layers_rate)
 
+    def _snr_loss(self, preds, gt_preds, layers_rate):
+        snr,i=0,0
+        for name1, name2 in zip(gt_preds, preds):
+            a = gt_preds[name1]
+            b = preds[name2]
+            if a.dtype != b.dtype or a.shape != b.shape:
+                raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
+            a=a.flatten()
+            b=b.flatten()
+            noise_power=np.power(b-a,2).sum(axis=-1)
+            signal_power=np.power(a,2).sum(axis=-1)
+            snr=layers_rate[i]*(noise_power)/(signal_power+1e-7)
+            i+=1
+        return snr / sum(layers_rate)
+
+    # def _snr_loss(self, preds, gt_preds, layers_rate):
+    #     snr = 0
+    #     epsilon = 1e-15
+    #     for name1, name2 in zip(gt_preds, preds):
+    #         a = gt_preds[name1]
+    #         b = preds[name2]
+    #         if a.dtype != b.dtype or a.shape != b.shape:
+    #             raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
+    #         b = np.clip(b, epsilon, 1. - epsilon)
+    #         ce = -np.sum(a * np.log(b))
+    #         snr += ce / a.shape[0]
+    #     return snr / sum(layers_rate)
+
     def _loss(self, preds, gt_preds, layers_rate=None, type='cos'):
-        assert type == 'cos' or type == 'sqnr'
+        assert type == 'cos' or type == 'sqnr' or type=='snr'
         if layers_rate is None:
             layers_rate = len(preds) * [1]
         if type == 'cos':
             return self._cos_loss(preds, gt_preds, layers_rate)
         elif type == 'sqnr':
             return self._sqnr_loss(preds, gt_preds, layers_rate)
+        elif type=='snr':
+            return self._snr_loss(preds, gt_preds, layers_rate)
 
     def get_input_fp32_tensor(self, i, op_name):
         if op_name in self.ref_activations[i]:
@@ -533,8 +568,11 @@ class MixPrecSearcher:
 
     def collect_op_input_tensor(self, idx, op_name, extra_input, fp_layer_list=None):
         input_data_dict = {}
+        # for i, input in enumerate(self.parser.get_pre_op_by_op_name(op_name)):
         for i, input in enumerate(self.parser.get_pre_op_by_op_name(op_name)):
             self.logger.print_dbg(f'{op_name}\'s top input{i}:{input}')
+            # if self.parser.get_op_by_op_name(input).type in SKIP_OPERATION:
+            #     fp_layer_list.append(input)
             if fp_layer_list is not None and input in fp_layer_list:
                 input_data_dict[input] = self.get_input_fp32_tensor(idx, input)
             else:
@@ -601,6 +639,47 @@ class MixPrecSearcher:
                 outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
         outputs_cos = outputs_cos / self.num_sample
         return outputs_cos
+
+    def run_model_loss_snr(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):
+        outputs_cos = 0
+        if float_type:
+            self.disable_print()
+            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
+        else:
+            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
+        for idx in range(self.num_sample):
+            data = []
+            for name in list(self.ref_activations[idx].keys()):
+                data.append(self.ref_activations[idx][name][0])
+            outputs = model.infer(data, global_compare_layers)
+            if self.post_process_path:
+                module_path = self.post_process_path
+                module_name = self.post_process_name
+                spec = importlib.util.spec_from_file_location(module_name, module_path)
+                modulevar = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(modulevar)
+                outputs = modulevar.PostProcess(outputs)
+            if float_type:
+                predictions_gt.append(outputs)
+            else:
+                type='snr'
+                outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate,type)
+        outputs_cos = outputs_cos / self.num_sample
+        return outputs_cos
+
+    def get_fixed_float_layers(self,model,global_compare_layers, layers_rate, predictions_gt):
+        float_ops = []
+        self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
+        for idx in range(1):
+            data = []
+            for name in list(self.ref_activations[idx].keys()):
+                data.append(self.ref_activations[idx][name][0])
+            outputs = model.infer(data, global_compare_layers)
+        for op in model.module.all_tensor_names:
+            qinfo = model.module.get_tensor_qinfo(op)
+            if qinfo.dtype != "I8" and qinfo.dtype != "U8":
+                float_ops.append(op)
+        return float_ops
 
     def get_full_op_list(self, float_model, int8_model, fp_op_names, int8_op_names):
         full_op_list, cur_fp_op_idx = {}, 0
@@ -681,6 +760,22 @@ class MixPrecSearcher:
             return True
         return False
 
+    def check_input(self,op, next_top_ops, fp_layer_list):
+        fp_layer_list_copy=fp_layer_list.copy()
+        fp_layer_list_copy.append(op.name)
+        tmp = ','.join(next_top_ops)
+        fp_layer_list_copy.extend(next_top_ops)
+        mix_table = self._gen_mix_table(fp_layer_list_copy)
+        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table, self.args.fp_type)
+        for i, input in enumerate(mix_model.parser.get_pre_op_by_op_name(op.name)):
+            if input in fp_layer_list_copy:
+                if input not in self.ref_activations[0]:
+                    return False
+            else:
+                if input not in self.int8_activations[0]:
+                    return False
+        return True
+
     def set_curr_layer_and_the_next_layer_mix(self, op, next_top_ops, fp_layer_list, global_compare_layers, layers_rate,
                                               predictions_gt):
         outputs_cos = 0
@@ -744,6 +839,9 @@ class MixPrecSearcher:
                 layer_cos_list.append((op.name, avg_cos))
                 if avg_cos < self.args.min_layer_cos:
                     next_top_ops = self.parser.get_next_op_by_op_name(op.name)
+                    # have_input=self.check_input(op, next_top_ops, fp_layer_list)
+                    # if not have_input:
+                    #     continue
                     outputs_cos, mix_model = self.set_curr_layer_and_the_next_layer_mix(op, next_top_ops, fp_layer_list,
                                                                                         global_compare_layers,
                                                                                         layers_rate, predictions_gt)
@@ -956,8 +1054,8 @@ class MixPrecSearcher:
             layer_cos, int8_mean, fp32_mean = 0, 0, 0
             for idx in range(self.num_sample):
                 int8_out = self.get_input_int8_tensor(idx, top_op.name, True)
-                int8_mean += np.mean(int8_out, axis=(0, 2, 3))
                 fp32_out = self.get_input_fp32_tensor(idx, top_op.name)
+                int8_mean += np.mean(int8_out, axis=(0, 2, 3))
                 fp32_mean += np.mean(fp32_out, axis=(0, 2, 3))
                 layer_cos += cos_sim(int8_out, fp32_out)
             old_layer_cos = layer_cos / self.num_sample
@@ -1019,3 +1117,97 @@ class MixPrecSearcher:
                 f'  op:{item[0]}, old layer cos:{item[1]:.6f}, new layer cos:{item[2]:.6f}, new output cos:{item[3]:.6f}')
         self.logger.print_info(f'best mix model outputs_cos:{max_outputs_cos:.6f}')
         self.logger.print_info("total time:{}".format(time.time() - t0))
+
+    def find_successor(self,op):
+        # Conv -> Relu -> Conv or Conv -> Conv pattern supported.
+        result = []
+        nxt_op=self.parser.get_next_op_by_op_name(op)
+        for node in nxt_op:
+            if self.parser.get_op_type_by_op_name(node) in ['top.Relu', 'top.PRelu']:
+                nxt_nxt_op=self.parser.get_next_op_by_op_name(node)
+                for _node in nxt_nxt_op:
+                    if self.parser.get_op_type_by_op_name(_node) == 'top.Conv':
+                        result.append(_node)
+                    else:
+                        return []
+            elif self.parser.get_op_type_by_op_name(node) == 'top.Conv':
+                result.append(node)
+            else:
+                return []
+        return result
+
+    def converged(self,cur_weight, prev_weight, threshold=1e-4):
+        norm_sum = 0
+        norm_sum += np.linalg.norm(cur_weight[0] - prev_weight[0])
+        norm_sum += np.linalg.norm(cur_weight[1] - prev_weight[1])
+        self.logger.print_info('>>>loss:{}'.format(norm_sum))
+        return norm_sum < threshold
+
+    def weight_equalization(self):
+        weight_file_name = MlirParser(self.fp32_mlir).module_weight_file
+        module = pymlir.module()
+        module.load(self.fp32_mlir)
+        os.system('rm -rf tensor_diff_fp32_vs_int8;mkdir -p tensor_diff_fp32_vs_int8/')
+        all_ops = self.parser.ops
+        for op in all_ops:
+            if self.parser.get_op_type_by_op_name(op.name) == 'top.Conv':
+                succ = self.find_successor(op.name)
+                if len(succ) != 1:
+                    continue
+                iter = 1
+                weight_file_dict = {}
+                while True:
+                    weight_file = np.load(weight_file_name)
+                    for k in weight_file:
+                        weight_file_dict[k] = weight_file[k]
+                    weight_first = weight_file[op.opds[1]]
+                    weight_first_shape = module.get_tensor(op.opds[1]).shape
+                    if weight_first.shape != weight_first_shape:
+                        weight_first = weight_first.reshape(weight_first_shape)
+                    new_weight_first = copy.deepcopy(weight_first)
+                    if len(op.opds) > 2:
+                        bias_first = weight_file[op.opds[2]]
+                        new_bias_first = copy.deepcopy(bias_first)
+                    next_op_name = succ[0]
+                    next_op = self.parser.get_op_by_op_name(next_op_name)
+                    weight_second = weight_file[next_op.opds[1]]
+                    weight_second_shape = module.get_tensor(next_op.opds[1]).shape
+                    if weight_second.shape != weight_second_shape:
+                        weight_second = weight_second.reshape(weight_second_shape)
+                    new_weight_second = copy.deepcopy(weight_second)
+                    num_group = weight_first.shape[0] // weight_second.shape[1]
+                    self.logger.print_info('Cross Layer WE: {} --- {} Groups: {} Iter: {}'.format(op.name, next_op.name, num_group, iter))
+                    group_channels_i = weight_first.shape[0] // num_group
+                    group_channels_o = weight_second.shape[0] // num_group
+                    for g in range(num_group):
+                        c_start_i = g * group_channels_i
+                        c_end_i = (g + 1) * group_channels_i
+                        weight_first_group = weight_first[c_start_i:c_end_i]
+                        c_start_o = g * group_channels_o
+                        c_end_o = (g + 1) * group_channels_o
+                        weight_second_group = weight_second[c_start_o:c_end_o]
+                        for ii in range(weight_second_group.shape[1]):
+                            range_1 = np.abs(weight_first_group)[ii].max()
+                            range_2 = np.abs(weight_second_group)[:, ii].max()
+                            if range_1 < 1e-6:
+                                range_1 = 0.
+                            if range_2 < 1e-6:
+                                range_2 = 0.
+                            s = range_1 / np.sqrt(range_1 * range_2)
+                            if np.isinf(s) or np.isnan(s):
+                                s = 1.0
+                            new_weight_first[c_start_i + ii] /= s
+                            new_weight_second[c_start_o:c_end_o, ii] *= s
+                            if len(op.opds) > 2:
+                                new_bias_first[c_start_i + ii] /= s
+                    if self.converged([weight_first, weight_second], [new_weight_first, new_weight_second]):
+                        break
+                    iter += 1
+                    # Update layer.
+                    weight_file_dict[op.opds[1]] = new_weight_first
+                    weight_file_dict[next_op.opds[1]] = new_weight_second
+                    if len(op.opds) > 2:
+                        weight_file_dict[op.opds[2]] = new_bias_first
+                    os.system(f'rm -f {weight_file_name}')
+                    np.savez(weight_file_name, **weight_file_dict)
+                    weight_file_dict.clear()
