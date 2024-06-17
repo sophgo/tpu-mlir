@@ -187,6 +187,8 @@ template <typename T> int64_t to_int(T v, RoundingMode round_mode) {
     i64_val = std::floor(v + 0.5);
   } else if (round_mode == ROUNDING_HALF_DOWN) {
     i64_val = std::ceil(v - 0.5);
+  } else if (round_mode == ROUNDING_TOWARDS_ZERO) {
+    i64_val = (int64_t)v;
   } else {
     llvm_unreachable("not support round_mode.");
   }
