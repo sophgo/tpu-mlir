@@ -2107,7 +2107,7 @@ def interpolate_v2(input: Tensor,
                    out_name: str = None):
 
     scale_h = scale[0] if scale != None else 0.0
-    scale_w = scale[0] if scale != None else 0.0
+    scale_w = scale[1] if scale != None else 0.0
     if sizes == None:
         assert scale is not None, f"sizes and scale is not supported"
     assert method in ['nearest', 'linear'], f"method:{method} is not supported"
