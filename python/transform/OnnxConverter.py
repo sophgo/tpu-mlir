@@ -1450,7 +1450,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_transpose_op(self, onnx_node):
         assert (onnx_node.op_type == "Transpose")
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0])
         transpose_perm = onnx_node.attrs.get('perm', [])
         new_op = top.PermuteOp(self.unranked_type,
                                op,
