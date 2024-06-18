@@ -235,7 +235,7 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
     }
     if (count == size) {
       int s_bidx = free_addr / (total_size/16);
-      int e_bidx = (free_addr + size) / (total_size/16);
+      int e_bidx = (free_addr + size - 1) / (total_size/16);
       ret_bank_id.clear();
       std::map<int,int> bank_size;
       for (int i = s_bidx; i <= e_bidx; i++) {
@@ -636,7 +636,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
     ts_move_info tmp;
     for (int it : new_vec_move_mem_min) {
       auto i = new_vec_move_mem[it];
-      if (i != -1) {
+      if (i != -1 && new_vec_move_mem_old_addr[i]!=new_vec_move_mem_new_addr[i]) {
        tmp.move_value.push_back(new_vec_move_value[i]);
        tmp.move_src_add.push_back(new_vec_move_mem_old_addr[i]);
        tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);

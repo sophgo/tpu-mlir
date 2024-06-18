@@ -859,6 +859,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
         slice = 1;
       } else {
         bool end_reached = idx + slice == pre_end_idx;
+        // TMP
+        // if (failed(ret) || slice == 0 ){
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
           LLVM_DEBUG(llvm::dbgs()
                          << "BackwardH fail, ret:"
@@ -866,6 +868,17 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                          << ", end_reached:" << end_reached << ", i:" << i
                          << ", idx:" << idx << ", slice:" << slice
                          << " at op:" << module::getName(op).str() << "\n";);
+          // for debug
+          // llvm::dbgs()
+          //       << "BackwardH fail, ret:"
+          //       << (failed(ret) ? "failed" : "success")
+          //       << ", end_reached:" << end_reached << ", i:" << i
+          //       << ", idx:" << idx << ", slice:" << slice
+          //       << " at op:" << module::getName(op).str() << "\n";
+          // for(auto it:out_si.h){
+          //   llvm::dbgs() << it.first <<", "<<it.second <<"\n";
+          // }
+          // for debug
           return false;
         }
       }
@@ -1515,6 +1528,7 @@ bool stripe_mine_idx_slice2(const LgInfo &lg_info,
                                tensor_infos, op_set, out_tensor_set);
     if (!ret) {
       fail_op = out_tensor.first.getDefiningOp();
+      llvm::errs() << module::getName(fail_op).str() << " backward_update_slice2 fail"<<"\n";
       return false;
     }
   }

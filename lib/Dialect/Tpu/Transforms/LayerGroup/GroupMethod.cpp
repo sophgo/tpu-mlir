@@ -1304,6 +1304,47 @@ static inline void update_shape_secs2(const LgInfo &lg_info,
   }
 }
 
+static inline void update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,const shape_secs_t &max_shape_secs) {
+
+  //
+  // if (shape_secs.nsecs < max_shape_secs.nsecs) {
+  //   int64_t nsecs = shape_secs.nsecs;
+  //   int64_t batch_size = max_shape_secs.nsecs;
+  //   int64_t nslice = batch_size / nsecs + (batch_size % nsecs > 0);
+  //   int64_t new_nslice = nslice;
+  //   int64_t next_nsecs = nsecs;
+
+  //   do {
+  //     next_nsecs++;
+  //     new_nslice = batch_size / next_nsecs + (batch_size % next_nsecs > 0);
+  //   } while (new_nslice >= nslice && next_nsecs < batch_size);
+
+  //   shape_secs.nsecs = next_nsecs;
+  // } else if (shape_secs.hsecs < max_shape_secs.hsecs) {
+  //   int64_t hsecs = shape_secs.hsecs;
+  //   int64_t max_hsecs = max_shape_secs.hsecs;
+  //   int64_t hslice = max_hsecs / hsecs + (max_hsecs % hsecs > 0);
+  //   int64_t new_hslice = hslice;
+  //   int64_t next_hsecs = hsecs;
+
+  //   do {
+  //     next_hsecs++;
+  //     new_hslice = max_hsecs / next_hsecs + (max_hsecs % next_hsecs > 0);
+  //   } while (new_hslice >= hslice && next_hsecs < max_hsecs);
+
+  //     shape_secs.hsecs = next_hsecs;
+  //   }
+
+  //
+  if (shape_secs.nsecs < max_shape_secs.nsecs) {
+    shape_secs.nsecs++;
+  } else if (shape_secs.hsecs < max_shape_secs.hsecs) {
+    shape_secs.hsecs++;
+  }
+
+  return;
+}
+
 std::vector<int>
 GroupMethod::get_sec_per_cores(const shape_secs_t &shape_secs,
                                std::vector<std::vector<int64_t>> &vec_ncdhw,
@@ -1830,6 +1871,179 @@ void make_sure_all_group_could_be_load(LgPassIR *pass_ir, std::vector<std::vecto
   }
 }
 
+// void make_sure_enough_slice_for_multicore(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups, int corenum)
+// {
+//   int grp_num = base_groups.size();
+//   LgInfo sub_group;
+//   for (int64_t i = 0; i < grp_num; i++) {
+//     if (base_groups[i].size() > 1) {
+//       sub_group.group_id = i;
+//       sub_group.group_ops.assign(base_groups[i].begin(), base_groups[i].end());
+//       sub_group.update_group_io(LgPass::OPTIONS.opt);
+//       set_group_type(sub_group);
+
+//       std::vector<std::pair<Operation *, int>> vec_op_hsecs;
+//       shape_secs_t max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+//       std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
+
+//       llvm::errs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() << "\n";
+
+//       // 排除输出h为1的op
+//       if(max_shape_secs.nsecs*max_shape_secs.hsecs < corenum && vec_op_hsecs[0].second==1)
+//       {
+//         llvm::errs()<<" op "<<module::getName(vec_op_hsecs[0].first)<<" output h dim is 1, delete it!"<<"\n";
+//         processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, vec_op_hsecs[0].first);
+//         for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
+//           if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
+//               it = base_groups[i].erase(it);
+//           } else {
+//               ++it;
+//           }
+//         }
+//         vec_op_hsecs.clear();
+//         max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+//         std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
+//       }
+
+//       std::vector<std::pair<Operation *, int>> vec_op_idx;
+//       while(max_shape_secs.nsecs*max_shape_secs.hsecs < 0.5 * corenum){
+//         llvm::errs()<< "max_shape_secs n:" << max_shape_secs.nsecs
+//         << " c:" << max_shape_secs.csecs << " d:" << max_shape_secs.dsecs
+//         << " h:" << max_shape_secs.hsecs << " w:" << max_shape_secs.wsecs
+//         <<" corenum "<< corenum << "\n";
+//         // 删除h维度最小的算子以及其后面的算子
+//         Operation* fail_op = vec_op_hsecs[0].first;
+//         llvm::errs() << module::getName(fail_op).str() << "  output h dim " << vec_op_hsecs[0].second <<" too small, delete it from group!\n";
+
+//         auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
+//         for (; it!=sub_group.group_ops.end(); ++it) {
+//           int index = std::distance(sub_group.group_ops.begin(), it);
+//           vec_op_idx.push_back(std::make_pair(*it, index));
+//         }
+//         it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
+//         llvm::errs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         sub_group.group_ops.erase(it, sub_group.group_ops.end());
+//         sub_group.update_group_io(LgPass::OPTIONS.opt);
+//         set_group_type(sub_group);
+//         llvm::errs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+
+//         // auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
+//         // int index = std::distance(sub_group.group_ops.begin(), it);
+//         // vec_op_idx.push_back(std::make_pair(fail_op, index));
+//         // llvm::errs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() <<" erase idx "<< index << "\n";
+//         // llvm::errs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         // sub_group.group_ops.erase(std::remove(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op),sub_group.group_ops.end());
+//         // sub_group.update_group_io(LgPass::OPTIONS.opt);
+//         // set_group_type(sub_group);
+//         // llvm::errs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+
+//         // processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, fail_op);
+//         // for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
+//         //   if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
+//         //       it = base_groups[i].erase(it);
+//         //   } else {
+//         //       ++it;
+//         //   }
+//         // }
+
+//         if(sub_group.group_ops.size()==0){
+//           break;
+//         }
+//         vec_op_hsecs.clear();
+//         max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+//         std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
+//       }
+
+//       //h 维度比较小的分成一组
+//       if(vec_op_idx.size()>0){
+//         std::sort(vec_op_idx.begin(), vec_op_idx.end(), pair_op_int_Sort_by_int);
+
+//         std::vector<Operation*> tmp_group;
+//         for(auto op_with_index:vec_op_idx){
+//           tmp_group.push_back(op_with_index.first);
+//         }
+
+//         // 处理同一个tensor输入两个op的情况
+//         for(auto op : sub_group.group_ops)
+//         {
+//           int count = 0;
+//           for (auto user : op->getUsers())
+//           {
+//             if(std::find(tmp_group.begin(), tmp_group.end(), user)!=tmp_group.end())
+//               count++;
+//           }
+
+//           if(count>=2)
+//           {
+//             llvm::errs()<<" op "<<module::getName(op)<<" has multi user in new group"<<"\n";
+//             tmp_group.insert(tmp_group.begin(), op);
+//             auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), op);
+//             sub_group.group_ops.erase(it);
+//           }
+//         }
+
+//         base_groups.push_back(tmp_group);
+//         pass_ir->ILP_time_steps.push_back(std::vector<ILPTimeStepPtr>());
+//         pass_ir->map_l2m_load.push_back(
+//         std::map<std::pair<Value, int>, int, value_compare2>());
+
+//         for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
+//           if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
+//               it = base_groups[i].erase(it);
+//           } else {
+//               ++it;
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
+
+void make_sure_enough_slice_for_multicore(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups, int corenum)
+{
+  int grp_num = base_groups.size();
+  LgInfo sub_group;
+  for (int64_t i = 0; i < grp_num; i++) {
+    if (base_groups[i].size() > 1) {
+      sub_group.group_id = i;
+      sub_group.group_ops.assign(base_groups[i].begin(), base_groups[i].end());
+      sub_group.update_group_io(LgPass::OPTIONS.opt);
+      set_group_type(sub_group);
+
+      std::vector<std::pair<Operation *, int>> vec_op_hsecs;
+      shape_secs_t max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+      std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
+      llvm::errs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() << "\n";
+
+      while(max_shape_secs.nsecs*max_shape_secs.hsecs < corenum){
+        llvm::errs()<< "max_shape_secs n:" << max_shape_secs.nsecs
+        << " c:" << max_shape_secs.csecs << " d:" << max_shape_secs.dsecs
+        << " h:" << max_shape_secs.hsecs << " w:" << max_shape_secs.wsecs
+        <<" corenum "<< corenum << "\n";
+        // 删除h维度最小的算子
+        Operation* fail_op = vec_op_hsecs[0].first;
+        llvm::errs() << module::getName(fail_op).str() << "  output h dim " << vec_op_hsecs[0].second <<" too small, delete it from group!\n";
+
+        processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, fail_op);
+        for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
+          if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
+              it = base_groups[i].erase(it);
+          } else {
+              ++it;
+          }
+        }
+
+        if(sub_group.group_ops.size()==0){
+          break;
+        }
+        vec_op_hsecs.clear();
+        max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+        std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
+      }
+    }
+  }
+}
+
 Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train){
 
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
@@ -1839,6 +2053,55 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
   shape_secs_t shape_secs;
   std::vector<std::pair<Value, int64_t>> value_size;
   init_group_data_secs(sub_group, shape_secs, value_size);
+  llvm::errs() << "init shape_secs, n:" << shape_secs.nsecs
+                << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
+                << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs <<'\n';
+
+  if(core_num > 1){
+    std::vector<std::pair<Operation *, int>> vec_op_hsecs_tmp;
+    shape_secs_t max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs_tmp);
+    llvm::errs() << "max_shape_secs, n:" << max_shape_secs.nsecs
+              << " c:" << max_shape_secs.csecs << " d:" << max_shape_secs.dsecs
+              << " h:" << max_shape_secs.hsecs << " w:" << max_shape_secs.wsecs <<'\n';
+    int64_t secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
+    int64_t dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
+
+    int new_secs = (secs + core_num - 1)/core_num*core_num;
+    int sz = new_secs - secs;
+    if (sz > 0) {
+      llvm::errs() <<"algin secs:"<<secs<<" to "<<new_secs<<"\n";
+
+      std::vector<int> vec_secs;
+      std::vector<int> vec_dhw_secs;
+      std::vector<shape_secs_t> vec_shape_secs;
+      for (int m = 0; m < sz; m++) {
+        // update_shape_secs2(sub_group, shape_secs, dhw_secs, max_shape_secs);
+        update_shape_secs_for_ilp_group(shape_secs, max_shape_secs);
+
+        llvm::errs() << "update shape shape_secs, n:" << shape_secs.nsecs
+        << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
+        << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs <<'\n';
+
+        int tmp_secs = shape_secs.nsecs *shape_secs.csecs *shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
+        vec_secs.push_back(std::abs(tmp_secs - new_secs));
+        vec_shape_secs.push_back(shape_secs);
+        vec_dhw_secs.push_back(dhw_secs);
+        if (tmp_secs > new_secs) {
+            break;
+          }
+      }
+    if (vec_secs.size() > 0) {
+        auto closest_secs = *std::min_element(vec_secs.begin(), vec_secs.end()); //找到相差最小的
+        auto it2 = std::find(vec_secs.begin(), vec_secs.end(), closest_secs);
+        int pos = std::distance(vec_secs.begin(), it2);
+        shape_secs = vec_shape_secs[pos];
+        dhw_secs = vec_dhw_secs[pos];
+        llvm::errs() << "new shape_secs, n:" << shape_secs.nsecs
+              << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
+              << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs <<'\n';
+      }
+    }
+  }
 
   std::sort(value_size.begin(), value_size.end(), Sort_by_int);
   int try_count = 0, max_try_count = 10;
@@ -1861,6 +2124,7 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
 
     ret = stripe_mine_idx_slice2(sub_group, shape_secs, tensor_infos,fail_op);
     if(!ret){
+      llvm::errs() << module::getName(fail_op).str() << " stripe_mine_idx_slice2 fail"<<"\n";
       return fail_op;
     }
     update_tensor_infos(sub_group, tensor_infos);
@@ -1907,6 +2171,7 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
             pass_ir->returnOp, load_bytes_for_next_ts,
             tmp_value_size, failOp, l2m_en, secs_num == 0, train, 4);
         if(!ret){
+          llvm::errs() <<"backward_gen_ilp_var2 fail" <<" core_id "<<core_id<<"\n";
           return fail_op;
         }
         slice_idx++;
@@ -2047,16 +2312,21 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
                << "=======================================================\n";
   //------------------------part0: pre processing----------------------------------------------------
   auto start = std::chrono::high_resolution_clock::now();
+  int core_num = module::getCoreNum();
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   init_ilp_base_groups(pass_ir, sub_group, base_groups);
 
   make_sure_all_group_could_be_load(pass_ir, base_groups);
   try_cut_some_group(pass_ir, base_groups);
+  if(core_num > 1){
+    make_sure_enough_slice_for_multicore(pass_ir, base_groups, core_num);
+  }
 
   //------------------------part1: processing----------------------------------------------------
   int grp_num = base_groups.size();
-  int core_num = 1;
+  // module::setCoreNum(core_num);
+  // int core_num = 1;
   // if (dyn_cast<MultiCoreInterface>(BM168x::instance())) {
   //   core_num = 8;
   // }
@@ -2070,6 +2340,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   bool train = true;
   int grp_idx = 0;
 
+  std::cout<<"init grp_num is "<<grp_num<<std::endl;
   for (int64_t i = 0; i < grp_num; i++) {
     if (base_groups[i].size() > 1) {
       sub_group.group_id = i;
@@ -2092,7 +2363,10 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
               } else {
                   ++it;
               }
-            }
+          }
+          if(sub_group.group_ops.size()==1){
+            break;
+          }
         }else{
           grp_idx++;
           break;
