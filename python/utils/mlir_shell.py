@@ -227,7 +227,7 @@ def mlir_to_model(tpu_mlir: str,
     return get_matched_patterns(log_file)
 
 
-def origin_mlir_txt_to_bmodel_without_quantize(
+def origin_mlir_txt_to_bmodel(
     converter,
     model_name: str,
     mode: str,
@@ -287,7 +287,7 @@ def origin_mlir_txt_to_bmodel_without_quantize(
     if fuse_preprocess:
         fuse_pre_param = ('--fuse-preprocess="mode={} customization_format={} align={}"'.format(
             mode, customization_format, aligned_input))
-        cmd.extend([fuse_pre_param])
+        options.extend([fuse_pre_param])
         fuse_pre_param = (
             '--fuse-preprocess="mode={} customization_format={} align={}"'.format(
                 mode, customization_format, aligned_input

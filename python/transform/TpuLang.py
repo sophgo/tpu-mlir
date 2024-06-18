@@ -83,7 +83,6 @@ def compile(name: str,
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
-    # convert to mlir
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized", no_save=no_save)
     ctm_format = None
     fuse = False
@@ -100,8 +99,8 @@ def compile(name: str,
                                      asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic, opt=opt)
     else:
-        origin_mlir_txt_to_bmodel_without_quantize(converter=converter, model_name=name, mode="int8",
-                                                   chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
+        origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode="int8",
+                                  chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
 
 
 def compile_f32(name: str,
@@ -111,23 +110,28 @@ def compile_f32(name: str,
             refs=None,
             mode='f32',
             dynamic=False,
-            opt=2):
+            opt=2,
+            no_save=False):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
-    # convert to mlir
-    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32")
-    save_input_reference(model_name=name, refs=refs)
-    model_transform(name, converter)
-    compare = cmp and refs != None
-    model_top_inference(model_name=name, cmp=compare)
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
     mode_list = [mode]
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
-    for m in mode_list:
-        model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
-        bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic, opt=opt)
+    converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
+    if not no_save:
+        save_input_reference(model_name=name, refs=refs)
+        model_transform(name, converter)
+        compare = cmp and refs != None
+        model_top_inference(model_name=name, cmp=compare)
+        for m in mode_list:
+            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
+            bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic, opt=opt)
+    else:
+        for m in mode_list:
+            origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode=m,
+                                      chip=TpuLang.chip, dynamic=dynamic)
 
 
 def model_transform(model_name, converter: TpuLangConverter):
