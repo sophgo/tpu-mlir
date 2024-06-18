@@ -220,7 +220,7 @@ if __name__ == "__main__":
             _offset += size
     elif input_data_fn.endswith(".npz"):
         inputs = np.load(input_data_fn)
-        set_inputs_dict(atomic_mlir, input_data_fn, soc_runner.memory)
+        set_inputs_dict(atomic_mlir, inputs, soc_runner.memory)
 
     ref_data = np.load(reference_data_fn)
     infer_data = {}
