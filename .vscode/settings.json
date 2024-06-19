@@ -87,7 +87,8 @@
         "__tree": "cpp",
         "ios": "cpp",
         "ranges": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__locale": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

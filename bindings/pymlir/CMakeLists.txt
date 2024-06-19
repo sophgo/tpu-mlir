@@ -12,32 +12,26 @@ SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
 find_package(pybind11 REQUIRED CONFIG)
 
+file(GLOB _sources pymodule.cpp pymlir.cpp host/*.cpp)
+
 if (TPUMLIR_USE_CUDA)
   add_subdirectory(cuda)
-  file(GLOB _sources *.cpp cuda/*.cpp host/*.cpp)
-  pybind11_add_module(pymlir ${_sources})
+  file(GLOB cuda_sources pycuda.cpp cuda/*.cpp)
+  list(APPEND _sources ${cuda_sources})
+endif ()
 
-  target_link_libraries(pymlir PRIVATE
-    TPUMLIRInitAll
-    MLIRTransforms
-    MLIRParser
-    LLVMCore
-    LLVMSupport
-    cudnn
-    cudart
-    cuda_helper
-  )
-else ()
-  file(GLOB _sources pymodule.cpp pymlir.cpp host/*.cpp)
-  pybind11_add_module(pymlir ${_sources})
+pybind11_add_module(pymlir ${_sources})
 
-  target_link_libraries(pymlir PRIVATE
-    TPUMLIRInitAll
-    MLIRTransforms
-    MLIRParser
-    LLVMCore
-    LLVMSupport
-  )
+target_link_libraries(pymlir PRIVATE
+  TPUMLIRInitAll
+  MLIRTransforms
+  MLIRParser
+  LLVMCore
+  LLVMSupport
+)
+
+if (TPUMLIR_USE_CUDA)
+  target_link_libraries(pymlir PRIVATE cudnn cudart cuda_helper)
 endif()
 
 install(TARGETS pymlir DESTINATION python)
