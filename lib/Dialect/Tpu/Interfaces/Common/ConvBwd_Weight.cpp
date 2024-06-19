@@ -111,7 +111,9 @@ LogicalResult tpu::ConvBwdWeightOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
 }
 
 LogicalResult tpu::ConvBwdWeightOp::LocalGenSupport() {
-  
+  if (!module::isBM1690Family()){
+    return failure();
+  }
   return success();
 }
 
