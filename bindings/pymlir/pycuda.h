@@ -11,6 +11,7 @@
 
 #include "pymlir.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float16.h"
 
 #include <cudnn.h>
 #include <cuda_runtime.h>
@@ -60,6 +61,7 @@ public:
 private:
   void *getCudaData(Value v);
   // Op inference by cuda
+  void cudaAdd(tpu::AddOp op);
   void cudaConv2D(tpu::Conv2DOp op);
   void cudaCast(tpu::CastOp op);
   void cudaGenericCpu(tpu::GenericCpuOp op);
@@ -83,6 +85,5 @@ private:
   std::map<std::string, cuda_ptr> input_map_;
   std::map<std::string, cuda_ptr> weight_map_;
   std::map<std::string, cuda_ptr> activation_map_;
-  std::map<std::string, std::shared_ptr<std::vector<float>>>
-      buffer_map_; // only for output if not dump all
+  std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_;
 };

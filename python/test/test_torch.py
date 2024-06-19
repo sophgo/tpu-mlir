@@ -40,13 +40,15 @@ class TORCH_IR_TESTER(object):
                  quant_output: bool = False,
                  debug: bool = False,
                  num_core : int = 1,
-                 debug_cmd: str = ''):
+                 debug_cmd: str = '',
+                 cuda: bool = False):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
         self.debug = debug
         self.debug_cmd = debug_cmd
         self.group_opt = 2
+        self.test_cuda = cuda
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -380,6 +382,13 @@ class TORCH_IR_TESTER(object):
         np.savez(model_npz, **model_outs)
         file_mark(model_npz)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
+        # cuda inference and compare
+        if self.test_cuda:
+            cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+            cuda_npz = tpu_mlir.replace(".mlir", "_cuda_out.npz")
+            np.savez(cuda_npz, **cuda_outs)
+            file_mark(cuda_npz)
+            npz_compare([tpu_npz, cuda_npz, "--tolerance", "0.9999,0.9999", "-v"])
 
         msg = quant_mode.upper()
         if quant_mode == "int8":
@@ -3613,9 +3622,12 @@ if __name__ == "__main__":
     parser.add_argument("--quant_input", action="store_true", help='quant input')
     parser.add_argument("--quant_output", action="store_true", help='quant output')
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
+    parser.add_argument("--cuda", action="store_true", help="test cuda inference")
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread, args.quant_input, args.quant_output, args.debug, args.num_core, args.debug_cmd)
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread,
+                             args.quant_input, args.quant_output, args.debug, args.num_core,
+                             args.debug_cmd, args.cuda)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

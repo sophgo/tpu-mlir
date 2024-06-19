@@ -27,7 +27,7 @@ void py_cuda::cudaCast(tpu::CastOp op) {
     auto qtype = module::getUniformQuantizedType(op.getInput());
     auto scale = qtype.getScale();
     if (is_cv18xx) {
-      cudaCVScaleToF32(input, output, scale, num_elem);
+      cudaCVScaleToF32(input, output, BF16(scale), num_elem);
     } else {
       cudaScaleToF32(input, output, scale, num_elem);
     }

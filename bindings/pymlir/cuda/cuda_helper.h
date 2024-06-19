@@ -16,6 +16,12 @@
 // mode refer to RoundingMode defined in MathUtils.h
 void cudaQuantizeToInt8_0(void *input, void *output, float scale, int size);
 
-void cudaScaleToF32(void *input, void *output, float scale, int size); // for bm168x
+void cudaScaleToF32(void *input, void *output, float scale,
+                    int size); // for bm168x
 
-void cudaCVScaleToF32(void *input, void *output, float scale, int size); // for cv18xx
+void cudaCVScaleToF32(void *input, void *output, float scale,
+                      int size); // for cv18xx
+
+// for cv18xx add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
+void cudaAddInt8(void *input0, void *input1, void *output, int mul0,
+                 int mul1, int shift, int size);

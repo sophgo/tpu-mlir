@@ -154,7 +154,9 @@ void py_cuda::invoke(bool dump_all) {
           cuda_malloc(activation_map_, out);
         }
         // 2. inference
-        if (auto tpuOp = dyn_cast<tpu::Conv2DOp>(op)) {
+        if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
+          cudaAdd(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::Conv2DOp>(op)) {
           cudaConv2D(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
           cudaCast(tpuOp);
