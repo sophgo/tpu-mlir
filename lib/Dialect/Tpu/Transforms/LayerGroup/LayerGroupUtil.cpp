@@ -1544,7 +1544,7 @@ bool backward_gen_ilp_var2(
     int slice_idx, std::vector<op_var_pos_info> &op_var_bound,
     Operation *returnOp, int64_t &load_bytes_for_next_ts,
     std::vector<std::pair<Value, int64_t>> tmp_value_size, Operation *&failOp,
-    bool l2m_en, bool last_slice, bool train, int max_ahead_or_delay_ts) {
+    bool l2m_en, bool last_slice, int max_ahead_or_delay_ts) {
   auto ops = lg_info.group_ops;
   assert(ops.size() > 1);
   std::string slice_name =

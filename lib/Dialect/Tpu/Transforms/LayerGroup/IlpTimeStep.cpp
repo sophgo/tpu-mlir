@@ -42,7 +42,7 @@ bool SortByMemSize(const mem_alloc_req_info &v1, const mem_alloc_req_info &v2)
 inline int64_t align(int64_t input, int64_t align_size)
 {
     if (input % align_size != 0) {
-      printf("warning, input:%ld is not align %ld\n", input, align_size);
+      fprintf(stderr, "warning, input:%ld is not align %ld\n", input, align_size);
     }
     return (int64_t)((input + align_size - 1)/align_size*align_size);
 }
@@ -67,6 +67,90 @@ std::string vector_to_string(std::vector<int> vec_data) {
     tmp.pop_back();
   tmp = tmp + "]";
   return tmp;
+}
+
+l2mem_alloc::l2mem_alloc(){
+  total_size = 34217728; //128*1024*1024
+  lmem_buf = new bool[total_size];
+  for (int i = 0; i < total_size; i++) {
+    lmem_buf[i] = false;
+  }
+}
+
+l2mem_alloc::~l2mem_alloc() {
+  delete []lmem_buf;
+}
+
+bool l2mem_alloc::alloc(int slice_idx, const std::string& name, Value value, int size) {
+  int count = 0;
+  int free_addr = -1;
+  for (int i = 0; i < total_size; i++) {
+    if (lmem_buf[i]) {
+      free_addr = -1;
+      count = 0;
+    } else {
+      if (free_addr == -1) {
+        if (i%64 == 0) {
+          free_addr = i;
+        }
+      }
+      if (free_addr == -1)
+        continue;
+      count++;
+      if (count == size){
+        break;
+      }
+    }
+  }
+  if (count == size) {
+    for (int i = 0; i < size; i++) {
+      lmem_buf[free_addr+i] = true;
+    }
+    fprintf(stderr, "%s\n", llvm::formatv("        alloc ok for {0}, free_addr:{1}", name, free_addr).str().c_str());
+    mem_struct mem_s;
+    mem_s.addr = free_addr;
+    mem_s.size = size;
+    mem_s.value = value;
+    mem_s.slice_idx = slice_idx;
+    mem_s.type = 0;
+    std::string key = convert_name_to_key(name, slice_idx);
+    mem_dict[key] = mem_s;
+
+    reload_mem_struct tmp_mem_s;
+    tmp_mem_s.addr = free_addr;
+    his_mem_struct his_mem_s;
+    his_mem_s.size = size;
+    his_mem_s.value = value;
+    his_mem_s.slice_idx = slice_idx;
+    his_mem_s.vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
+    vec_mem_alloc_his[key] = his_mem_s;
+    return true;
+  }
+
+  return false;
+}
+
+bool l2mem_alloc::free(int slice_idx, const std::string& name) {
+  std::string key = convert_name_to_key(name, slice_idx);
+  if (mem_dict.find(key) != mem_dict.end()) {
+    auto mem_s = mem_dict[key];
+    fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
+    for (int i = 0; i < mem_s.size; i++) {
+      assert(lmem_buf[mem_s.addr + i]);
+      lmem_buf[mem_s.addr + i] = false;
+    }
+    mem_dict.erase(key);
+    return true;
+  }
+  return false;
+}
+
+void l2mem_alloc::clear() {
+  for (int i = 0; i < total_size; i++) {
+    lmem_buf[i] = false;
+  }
+  mem_dict.clear();
+  vec_mem_alloc_his.clear();
 }
 
 lmem_alloc::lmem_alloc(std::map<std::string, std::vector<std::string>>& banked_tensors, ILPTimeStep* pILPTimeStep, int ts_count)
@@ -101,8 +185,8 @@ std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> lmem_alloc::sho
       total_free_count++;
     } else {
       if (free_start_addr >= 0) {
-        end_bank = i / (total_size/16);
-        printf("        >>>free_start_addr:%d, end_addr:%d, size:%d, start_bank:%d, end_bank:%d\n",
+        end_bank = (i - 1) / (total_size/16);
+        fprintf(stderr, "        >>>free_start_addr:%d, end_addr:%d, size:%d, start_bank:%d, end_bank:%d\n",
               free_start_addr, free_start_addr + free_count - 1, free_count, start_bank, end_bank);
         free_start_addr = -1;
         free_count = 0;
@@ -110,16 +194,16 @@ std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> lmem_alloc::sho
     }
   }
   if (free_start_addr >= 0) {
-    printf("        >>>free_start_addr:%d, end_addr:%d, size:%d, start_bank:%d, end_bank:15\n",
+    fprintf(stderr, "        >>>free_start_addr:%d, end_addr:%d, size:%d, start_bank:%d, end_bank:15\n",
           free_start_addr, free_start_addr + free_count - 1, free_count, start_bank);
   }
-  printf("        >>>total_free_count:%d\n", total_free_count);
+  fprintf(stderr, "        >>>total_free_count:%d\n", total_free_count);
 
   std::vector<std::pair<std::string, mem_struct>> vec_mem_struct;
-  printf("        >>>mem_dict:\n");
+  fprintf(stderr, "        >>>mem_dict:\n");
   for (auto itr = mem_dict.begin(); itr != mem_dict.end(); ++itr) {
     vec_mem_struct.push_back(std::make_pair(itr->first.c_str(), itr->second));
-    printf("        name:%s, addr:%d, size:%d\n", itr->first.c_str(), itr->second.addr, itr->second.size);
+    fprintf(stderr, "        name:%s, addr:%d, size:%d\n", itr->first.c_str(), itr->second.addr, itr->second.size);
   }
   std::sort(vec_mem_struct.begin(), vec_mem_struct.end(), SortByMemStruct);
   int pre_s_addr = 0, free_mem_idx = 0;
@@ -161,17 +245,17 @@ std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> lmem_alloc::sho
     mem_s.type = 1;
     vec_mem_struct2->push_back(std::make_pair("free_mem "+std::to_string(free_mem_idx++), mem_s));
   }
-  printf("        >>>mem_dict:\n");
+  fprintf(stderr, "        >>>mem_dict:\n");
   int idx2 = 0;
   for (auto itr: *vec_mem_struct2) {
     start_bank = itr.second.addr / (total_size/16);
     int e_addr = itr.second.addr + itr.second.size - 1;
     end_bank = e_addr / (total_size/16);
-    printf("           idx:%3d, key:%40s, s_addr:%8d, e_addr:%8d, size:%8d, bank_id:%d, type:%d, start_bank:%d, end_bank:%d\n",
+    fprintf(stderr, "           idx:%3d, key:%40s, s_addr:%8d, e_addr:%8d, size:%8d, bank_id:%d, type:%d, start_bank:%d, end_bank:%d\n",
       idx2++, itr.first.c_str(), itr.second.addr, e_addr, itr.second.size,
       itr.second.bank_id.size() > 0?itr.second.bank_id[0]:-1, itr.second.type, start_bank, end_bank);
   }
-  printf("max_free_mem_idx:%d, max_free_mem_size:%d\n", max_free_mem_idx, max_free_mem_size);
+  fprintf(stderr, "max_free_mem_idx:%d, max_free_mem_size:%d\n", max_free_mem_idx, max_free_mem_size);
   return std::move(vec_mem_struct2);
 }
 
@@ -185,7 +269,7 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
       std::vector<int> bank_id = get_bank(key);
       all_conf_bank_id.insert(all_conf_bank_id.end(), bank_id.begin(), bank_id.end());
       if (bank_id.size() > 0) {
-        printf("        confict to %s, bank_id:%s\n", key.c_str(), vector_to_string(bank_id).c_str());
+        fprintf(stderr, "        confict to %s, bank_id:%s\n", key.c_str(), vector_to_string(bank_id).c_str());
         vec_bank_id.insert(vec_bank_id.end(), bank_id.begin(), bank_id.end());
         care_bank = true;
       }
@@ -206,13 +290,13 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
           }
       }
       if (bidx == -1) {
-        printf("warning: not find valid bank, force no bank\n");
+        fprintf(stderr, "warning: not find valid bank, force no bank\n");
         care_bank = false;
       }
     }
     free_addr = -1;
     int saddr = care_bank? bank_area_start_addr[bidx]:0;
-    // printf("saddr:%d\n", saddr);
+    // fprintf(stderr, "saddr:%d\n", saddr);
     int count = 0;
     for (int i = saddr; i < total_size; i++) {
       if (lmem_buf[i]) {
@@ -222,7 +306,7 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
         if (free_addr == -1) {
           if (i%64 == 0) {
             free_addr = i;
-            // printf("find free_addr:%d\n", free_addr); //todo, have a bug
+            // fprintf(stderr, "find free_addr:%d\n", free_addr); //todo, have a bug
           }
         }
         if (free_addr == -1)
@@ -251,12 +335,11 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
           //中间的bank不可能冲突
         }
       }
-      printf("        ret_bank_id:%s\n", vector_to_string(ret_bank_id).c_str());
 
       confict_size = 0;
       for (auto itr: bank_size) {
         if ((std::find(all_conf_bank_id.begin(), all_conf_bank_id.end(), itr.first) != all_conf_bank_id.end())) {
-          printf("          bank%d confilct size:%d\n", itr.first, itr.second);
+          fprintf(stderr, "          bank%d confilct size:%d\n", itr.first, itr.second);
           confict_size += itr.second;
         }
       }
@@ -265,7 +348,7 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
         lmem_buf[free_addr+i] = true;
       }
 
-      printf("%s\n", llvm::formatv("      alloc ok for {0}, free_addr:{1}, bank_id:{2}", name, free_addr, vector_to_string(ret_bank_id)).str().c_str());
+      fprintf(stderr, "%s\n", llvm::formatv("        alloc ok for {0}, free_addr:{1}, bank_id:{2}", name, free_addr, vector_to_string(ret_bank_id)).str().c_str());
       mem_struct mem_s;
       mem_s.addr = free_addr;
       mem_s.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
@@ -273,12 +356,13 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
       mem_s.value = value;
       mem_s.slice_idx = slice_idx;
       mem_s.type = 0;
-      std::string key = llvm::formatv("{0}_slice{1}", name, slice_idx).str();
+      std::string key = convert_name_to_key(name, slice_idx);
       mem_dict[key] = mem_s;
       if (!rehearsal) {
         reload_mem_struct tmp_mem_s;
         tmp_mem_s.addr = free_addr;
         tmp_mem_s.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
+        // llvm::errs() <<"vec_mem_alloc_his key:"<<key<<"\n";
         if (vec_mem_alloc_his.find(key) != vec_mem_alloc_his.end()) {
           vec_mem_alloc_his[key].vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
         } else {
@@ -304,22 +388,15 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
   int total_confict_size = 0, confict_size = 0, idx = 0, free_addr = -1;
   std::vector<int> new_vec_move_mem_min, ret_bank_id;
   if (sort_by_size) {
-    printf("    alloc_multi sort_by_size\n");
+    fprintf(stderr, "    alloc_multi sort_by_size\n");
     std::sort(vec_mem_req.begin(), vec_mem_req.end(), SortByMemSize);
     for (auto it : vec_mem_req) {
-      printf("      name:%s, size:%d\n", it.name.c_str(), it.size);
+      fprintf(stderr, "      name:%s, size:%d\n", it.name.c_str(), it.size);
     }
-    printf("    start alloc:\n");
+    fprintf(stderr, "\n");
     for (auto it : vec_mem_req) {
-      printf("      name:%s, size:%d\n", it.name.c_str(), it.size);
-      // if (it.name == "weight.6") {
-      //   int unused;
-      //   // (void)lmem_alloc_ptr->show_mem(unused, unused, unused);
-      //   show_mem(unused, unused, unused);
-      // }
-
       if (!alloc(ts_idx, it.slice_idx, it.name, it.value, it.size)) {
-        printf("_alloc fail\n");
+        fprintf(stderr, "_alloc fail\n");
         return false;
       }
     }
@@ -334,21 +411,21 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
   int min_confict_size = total_size;
 
   do {
-    printf("\ntest permutation:%d\n", idx);
+    fprintf(stderr, "\ntest permutation:%d\n", idx);
     for (auto i: new_vec_move_mem) {
       free(convert_name_to_key(vec_mem_req[i].name, vec_mem_req[i].slice_idx));
     }
     total_confict_size = 0;
     bool success = true;
     for (int i : new_vec_move_mem) {
-      printf("  alloc i:%d tensor\n", i);
+      fprintf(stderr, "  alloc i:%d tensor\n", i);
       if (!_alloc(vec_mem_req[i].slice_idx, vec_mem_req[i].name, vec_mem_req[i].value, vec_mem_req[i].size,
                   ret_bank_id, free_addr, confict_size)) {
-        printf("_alloc fail\n");
+        fprintf(stderr, "_alloc fail\n");
         success = false;
         break;
       }
-      printf("  free_addr:%d, confict_size:%d\n", free_addr, confict_size);
+      fprintf(stderr, "  free_addr:%d, confict_size:%d\n", free_addr, confict_size);
       total_confict_size += confict_size;
     }
 
@@ -356,7 +433,7 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
       min_confict_size = total_confict_size;
       new_vec_move_mem_min.assign(new_vec_move_mem.begin(), new_vec_move_mem.end());
       if (total_confict_size == 0) {
-        printf("   no confilct\n");
+        fprintf(stderr, "   no confilct\n");
         break;
       }
     }
@@ -366,21 +443,21 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
   rehearsal = false;
   total_confict_size = 0;
   std::map<int, int> new_vec_move_mem_new_addr;
-  printf("actually alloc the moved tensor again:\n");
+  fprintf(stderr, "actually alloc the moved tensor again:\n");
   for (auto i: new_vec_move_mem) {
     free(convert_name_to_key(vec_mem_req[i].name, vec_mem_req[i].slice_idx));
   }
   for (int i : new_vec_move_mem_min) {
-    printf("  i:%d\n", i);
+    fprintf(stderr, "  i:%d\n", i);
     if (!_alloc(vec_mem_req[i].slice_idx, vec_mem_req[i].name, vec_mem_req[i].value, vec_mem_req[i].size,
                   ret_bank_id, free_addr, confict_size)) {
-      printf("_alloc fail\n");
+      fprintf(stderr, "_alloc fail\n");
       return false;
     }
-    printf("  confict_size:%d\n", confict_size);
+    fprintf(stderr, "  confict_size:%d\n", confict_size);
     total_confict_size += confict_size;
   }
-  printf("  total_confict_size:%d, min_confict_size:%d\n",total_confict_size, min_confict_size);
+  fprintf(stderr, "  total_confict_size:%d, min_confict_size:%d\n",total_confict_size, min_confict_size);
   assert(total_confict_size == min_confict_size);
   return true;
 }
@@ -388,17 +465,17 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
 
 //refc：暂时只使用默认值1，考虑弃用
 bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size) {
-  printf("%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}", name, size, slice_idx).str().c_str());
+  fprintf(stderr, "%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}", name, size, slice_idx).str().c_str());
   assert(size > 0);
   int free_addr = -1, confict_size = -1;
   std::vector<int> ret_bank_id;
   if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, confict_size)) {
-    printf("      alloc fail, current mem status:\n");
+    fprintf(stderr, "      alloc fail, current mem status:\n");
     // return false;
     int total_free_size = 0, max_free_mem_idx = 0, max_free_mem_size = 0;
     auto vec_mem_struct2 = *show_mem(total_free_size, max_free_mem_idx, max_free_mem_size);
     if (total_free_size < size) {
-      printf("error! alloc total_free_size < size\n");
+      fprintf(stderr, "error! alloc total_free_size < size\n");
       return false;
     }
 
@@ -479,13 +556,13 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
       }
     }
     if (tmp_size - align_num < size) {
-      printf("error! can not find enough free mem block\n");
+      fprintf(stderr, "error! can not find enough free mem block\n");
       return false;
     }
     int min = 10000, max = -1;
-    printf("vec_merge_mem:\n");
+    fprintf(stderr, "vec_merge_mem:\n");
     for (auto i: vec_merge_mem) {
-      printf("  i:%d\n", i);
+      fprintf(stderr, "  i:%d\n", i);
       if (i < min) {
         min = i;
       }
@@ -498,7 +575,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
     std::map<int, int> new_vec_move_mem_old_addr;
     std::map<int, int> new_vec_move_size;
     std::map<int, int> new_vec_slice_idx;
-    printf("vec_move_mem:\n");
+    fprintf(stderr, "vec_move_mem:\n");
     for (auto i: vec_move_mem) {
       if (i > min && i < max) { //只对最上和最下空闲区域间的tensor进行移动
         new_vec_move_mem.push_back(i);
@@ -506,7 +583,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
         new_vec_move_size[i] =vec_mem_struct2[i].second.size;
         new_vec_move_value[i] = vec_mem_struct2[i].second.value;
         new_vec_slice_idx[i] = vec_mem_struct2[i].second.slice_idx;
-        printf("  i:%d\n", i);
+        fprintf(stderr, "  i:%d\n", i);
       }
     }
 
@@ -524,7 +601,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
       }
 
       do {
-        printf("\ntest permutation:%d\n", idx);
+        fprintf(stderr, "\ntest permutation:%d\n", idx);
         for (auto i: new_vec_move_mem) {
           if (i != -1)
               free(vec_mem_struct2[i].first);
@@ -538,10 +615,10 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
         bool success = true;
         for (int it : order_idx) {
           auto i = new_vec_move_mem[it];
-          printf("  start alloc %dth tensor\n", i);
+          fprintf(stderr, "  start alloc %dth tensor\n", i);
           if (i == -1) {
             if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, confict_size, force_not_care_bank)) {
-              printf("_alloc fail 1\n");
+              fprintf(stderr, "_alloc fail 1\n");
               int unused;
               // (void)lmem_alloc_ptr->show_mem(unused, unused, unused);
               show_mem(unused, unused, unused);
@@ -552,7 +629,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
             auto mem_s = vec_mem_struct2[i].second;
             auto name = module::getName(vec_mem_struct2[i].second.value).str();
             if (!_alloc(mem_s.slice_idx, name, mem_s.value, mem_s.size, ret_bank_id, free_addr, confict_size, force_not_care_bank)) {
-              printf("_alloc fail 2\n");
+              fprintf(stderr, "_alloc fail 2\n");
               int unused;
               // (void)lmem_alloc_ptr->show_mem(unused, unused, unused);
               show_mem(unused, unused, unused);
@@ -560,14 +637,14 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
               break;
             }
           }
-          printf("  free_addr:%d, confict_size:%d\n", free_addr, confict_size);
+          fprintf(stderr, "  free_addr:%d, confict_size:%d\n", free_addr, confict_size);
           total_confict_size += confict_size;
         }
         if (success && total_confict_size < min_confict_size) {
           min_confict_size = total_confict_size;
           new_vec_move_mem_min.assign(order_idx.begin(), order_idx.end());
           if (total_confict_size == 0) {
-            printf("   no confilct\n");
+            fprintf(stderr, "   no confilct\n");
             break;
           }
         }
@@ -577,13 +654,13 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
         break;
       }
       force_not_care_bank = true;
-      printf("   enable force_not_care_bank\n");
+      fprintf(stderr, "   enable force_not_care_bank\n");
     }
 
     rehearsal = false;
     total_confict_size = 0;
     std::map<int, int> new_vec_move_mem_new_addr;
-    printf("actually alloc the moved tensor again:\n");
+    fprintf(stderr, "actually alloc the moved tensor again:\n");
     for (auto i: new_vec_move_mem) {
       if (i != -1)
           free(vec_mem_struct2[i].first);
@@ -592,51 +669,28 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
     }
     for (int it : new_vec_move_mem_min) {
       auto i = new_vec_move_mem[it];
-      printf("  i:%d\n", i);
-      // mem_struct mem_s;
-      // std::string key;
+      fprintf(stderr, "  i:%d\n", i);
       if (i == -1) {
         if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, confict_size, force_not_care_bank)) {
           return false;
         }
-        // mem_s.size = size;
-        // mem_s.value = value;
-        // mem_s.slice_idx = slice_idx;
-        // key = llvm::formatv("{0}_slice{1}", name, slice_idx).str();
-        // reload_mem_struct tmp_mem_s;
-        // tmp_mem_s.addr = free_addr;
-        // tmp_mem_s.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
-        // if (vec_mem_alloc_his.find(key) != vec_mem_alloc_his.end()) {
-        //   vec_mem_alloc_his[key].vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
-        // } else {
-        //   his_mem_struct his_mem_s;
-        //   his_mem_s.size = size;
-        //   his_mem_s.value = value;
-        //   his_mem_s.slice_idx = slice_idx;
-        //   his_mem_s.vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
-        //   vec_mem_alloc_his[key] = his_mem_s;
-        // }
       } else {
         auto op_name = module::getName(vec_mem_struct2[i].second.value).str();
-        // key = vec_mem_struct2[i].first;
         auto mem_s = vec_mem_struct2[i].second;
         if (!_alloc(mem_s.slice_idx, op_name, mem_s.value, mem_s.size, ret_bank_id, free_addr, confict_size, force_not_care_bank)) {
           return false;
         }
         new_vec_move_mem_new_addr[i] = free_addr;
       }
-      // mem_s.addr = free_addr;
-      // mem_s.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
-      // mem_dict[key] = mem_s;
-      printf("  confict_size:%d\n", confict_size);
+      fprintf(stderr, "  confict_size:%d\n", confict_size);
       total_confict_size += confict_size;
     }
-    printf("  total_confict_size:%d, min_confict_size:%d\n",total_confict_size, min_confict_size);
+    fprintf(stderr, "  total_confict_size:%d, min_confict_size:%d\n",total_confict_size, min_confict_size);
     assert(total_confict_size == min_confict_size);
     ts_move_info tmp;
     for (int it : new_vec_move_mem_min) {
       auto i = new_vec_move_mem[it];
-      if (i != -1 && new_vec_move_mem_old_addr[i]!=new_vec_move_mem_new_addr[i]) {
+      if (i != -1) {
        tmp.move_value.push_back(new_vec_move_value[i]);
        tmp.move_src_add.push_back(new_vec_move_mem_old_addr[i]);
        tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);
@@ -646,7 +700,7 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
     }
     tmp.name = "lmem_tensor_move_at_ts"+std::to_string(ts_idx);
     m_pILPTimeStep->inserted_timestep_table_[ts_idx] = tmp;
-    printf("%s\n", llvm::formatv("      alloc ok for {0}, size:{1}",
+    fprintf(stderr, "%s\n", llvm::formatv("      alloc ok for {0}, size:{1}",
                                   name, size).str().c_str());
   }
 
@@ -654,9 +708,9 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
 }
 
 bool lmem_alloc::alloc2(int ts_idx, int slice_idx, const std::string& name, Value value, int addr, int size) {
-  printf("%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}, addr:{3}", name, size, slice_idx, addr).str().c_str());
+  fprintf(stderr, "%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}, addr:{3}", name, size, slice_idx, addr).str().c_str());
   int bidx = addr / (total_size/16);
-  int end_bidx = (addr + size) / (total_size/16);
+  int end_bidx = (addr + size - 1) / (total_size/16);
   std::vector<int> tmp_bank_id;
   for (int i = bidx; i <= end_bidx; i++) {
     tmp_bank_id.push_back(i);
@@ -675,7 +729,7 @@ bool lmem_alloc::alloc2(int ts_idx, int slice_idx, const std::string& name, Valu
   mem_s.value = value;
   mem_s.slice_idx = slice_idx;
   mem_s.type = 2;
-  std::string key = llvm::formatv("{0}_slice{1}", name, slice_idx).str();
+  std::string key = convert_name_to_key(name, slice_idx);
   mem_dict[key] = mem_s;
 
   his_mem_struct his_mem_s;
@@ -683,15 +737,16 @@ bool lmem_alloc::alloc2(int ts_idx, int slice_idx, const std::string& name, Valu
   his_mem_s.value = value;
   his_mem_s.slice_idx = slice_idx;
   his_mem_s.vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
+  // llvm::errs() <<"alloc2 vec_mem_alloc_his key:"<<key<<"\n";
   vec_mem_alloc_his[key] = his_mem_s;
   return true;
 }
 
 
-void lmem_alloc::free(const std::string& key, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem) {
+bool lmem_alloc::free(const std::string& key, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem) {
   if (mem_dict.find(key) != mem_dict.end()) {
     auto mem_s = mem_dict[key];
-    printf("      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
+    fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
     for (int i = 0; i < mem_s.size; i++) {
       assert(lmem_buf[mem_s.addr + i]);
       lmem_buf[mem_s.addr + i] = false;
@@ -700,7 +755,9 @@ void lmem_alloc::free(const std::string& key, std::vector<std::pair<int,int>>* v
     if (vec_pre_ts_free_mem) {
       (*vec_pre_ts_free_mem).push_back(std::make_pair(mem_s.addr, mem_s.addr + mem_s.size));
     }
+    return true;
   }
+  return false;
 }
 
 bool lmem_alloc::get_mem_struct(const std::string& key, mem_struct& mem_s) {
@@ -796,7 +853,7 @@ void ILPTimeStep::addTensorCycle(int ts_idx, Value value, int cycle) {
 }
 
 void ILPTimeStep::addTimestepGdmaCycle(int ts_idx, int cycle, std::string varName) {
-  llvm::errs() << "addTimestepGdmaCycle, ts_idx:"<<ts_idx<< ", cycle:"<<cycle<< ", varName: "<<varName<<"\n";
+  // llvm::errs() << "addTimestepGdmaCycle, ts_idx:"<<ts_idx<< ", cycle:"<<cycle<< ", varName: "<<varName<<"\n";
   cycle_contrains[ts_idx].push_back(std::make_pair(cycle, varName));
 }
 
@@ -812,9 +869,9 @@ void ILPTimeStep::addOpInfo(int ts_idx, Operation* op, int buffer_size, int mem_
 }
 
 void ILPTimeStep::addTimestepMemUse(int ts_idx, int mem_size, std::vector<std::string>& varNames) {
-  llvm::errs() << "addTimestepMemUse, ts_idx:"<<ts_idx<< ", mem_size:"<<mem_size<<"\n";
+  // llvm::errs() << "addTimestepMemUse, ts_idx:"<<ts_idx<< ", mem_size:"<<mem_size<<"\n";
   for (auto varName: varNames) {
-    llvm::errs() << "      varName: "<<varName<<"\n";
+    // llvm::errs() << "      varName: "<<varName<<"\n";
     mem_contrains[ts_idx].push_back(std::make_pair(mem_size, varName));
   }
 }
@@ -840,19 +897,20 @@ void ILPTimeStep::addNewOutIntoReturnOp(std::vector<std::string> var_names, Valu
   }
 }
 
-void ILPTimeStep::addConstraint(double lb, double ub, std::vector<std::pair<int, MPVariable*>> coeff_var_items, bool test) {
+void ILPTimeStep::addConstraint(double lb, double ub, std::vector<std::pair<int, MPVariable*>> coeff_var_items, std::string info_for_tips, bool test) {
   assert(coeff_var_items.size() > 0);
   MPConstraint* c0 = solver->MakeRowConstraint(lb, ub, "");
   constraint_info tmp;
   tmp.lb = lb;
   tmp.ub = ub;
   tmp.cons_var = c0;
+  tmp.info_for_tips = info_for_tips;
   for (auto it: coeff_var_items) {
     c0->SetCoefficient(it.second, it.first);
     tmp.coeff_var_items.push_back(it);
   }
   vec_constraints.push_back(tmp);
-  llvm::errs() <<"m_constraint_idx:"<<m_constraint_idx++<<"\n";
+  // llvm::errs() <<"m_constraint_idx:"<<m_constraint_idx++<<"\n";
   // if (test) {
   if (false) {
     MPSolver::ResultStatus result_status = solver->Solve();
@@ -912,7 +970,7 @@ void ILPTimeStep::showConstraintInfo(constraint_info& cons_info, std::map<MPVari
   std::string str;
   auto& it = cons_info;
   llvm::errs() <<"MakeRowConstraint, lb:"<<(int)it.lb<<" ub:"<<(int)it.ub<<", m_constraint_idx:"<<i
-                 <<", var num:"<<it.coeff_var_items.size()<<", coeff and var:\n";
+               <<", info_for_tips:"<<it.info_for_tips<<", var num:"<<it.coeff_var_items.size()<<", coeff and var:\n";
   if (it.lb == it.ub) {
     for (auto it2: it.coeff_var_items) {
       str = it2.second->name();
@@ -991,10 +1049,10 @@ void ILPTimeStep::addRowConstraint(int ts_idx, Value load_tensor, std::vector<st
   assert(solver != nullptr);
   assert(var_names.size() > 0);
 
-  llvm::errs() <<"ts_idx:"<<ts_idx<<", addRowConstraint:\n";
+  // llvm::errs() <<"ts_idx:"<<ts_idx<<", addRowConstraint:\n";
   std::vector<std::pair<int, MPVariable*>> coeff_var_items;
   for (auto var_name: var_names) {
-    llvm::errs() << "      var_name: "<<var_name<<"\n";
+    // llvm::errs() << "      var_name: "<<var_name<<"\n";
     coeff_var_items.push_back(std::make_pair(1, mapILPVarInfo[var_name].ilp_var));
   }
   // if (var_names.size() > 1) {
@@ -1116,7 +1174,8 @@ void ILPTimeStep::showTimeStepInfo(int debug_cmd) {
 }
 
 bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos) {
-  return true;
+  if (!module::isDebugCmdEnable("enable_small_cycle_op_merge"))
+    return true;
   // llvm::errs() << "-------------------mem_contrains_info, before merge--------------------\n";;
   // for(int i = 0; i < ts_count; i++) {
   //   llvm::errs() << "-------------------ts"<<i<<"--------------------\n";;
@@ -1379,7 +1438,7 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
             auto tensors = reside_in_tensor[it.op];
             if (find(tensors.begin(), tensors.end(), in) != tensors.end()) {
               if (detail_log)
-                printf("   reside_in_tensor\n");
+                fprintf(stderr, "   reside_in_tensor\n");
               op_reside_value_size += it.tensor_size[in];
               ts_reside_value_size += it.tensor_size[in];
             }
@@ -1418,13 +1477,15 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
       for (auto it: mem_contrains_new[i]) {
         coeff_var_items.push_back(std::make_pair(it.first, mapILPVarInfo[it.second].ilp_var));
       }
-      addConstraint(0, max_free_size, coeff_var_items, true);
+      std::string info = llvm::formatv("for_ts{0}", i).str();
+      addConstraint(0, max_free_size, coeff_var_items, info, true);
     }
   }
   return true;
 }
 
-bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size, TensorInfo& tensor_infos) {
+bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
+                            TensorInfo& tensor_infos) {
   llvm::errs() << "mem_alloc start:\n";
   AutoIndent auto_indent;
   lmem_alloc_ptr = std::make_shared<lmem_alloc>(_group_info.group_banked_tensors, this, ts_count);
@@ -1459,7 +1520,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         if (min_always_free_mem_size > itr.second) {
           reside_value_info tmp;
           addr -= itr.second;
-          addr = (addr/64)*64;
+          addr = addr/64*64;
           tmp.addr = addr;
           tmp.size = itr.second;
           map_reside_value_info[itr.first] = tmp;
@@ -1505,17 +1566,26 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
   }
 
   i = 0;
-  llvm::errs() << "gen map_l2m_load2:\n";
+  llvm::errs() << "gen vec_l2m_value_info:\n";
   for (auto &itr: timestep_table_new) {
     llvm::errs() << "-------------------ts"<<i<<"--------------------\n";;
+    int slice_idx = (i - 1)/_group_info.group_ops.size();
     for (auto itr2: itr.vec_op_infos) {
       for (auto itr3 = itr2.need_load_var.begin(); itr3 != itr2.need_load_var.end(); ++itr3) {
-        if (map_reside_value_info.find(itr3->first) == map_reside_value_info.end()) {
+        //第1个slice的驻留权重也预先加载到l2m
+        if (slice_idx == 0 || map_reside_value_info.find(itr3->first) == map_reside_value_info.end()) {
           for (auto var: itr3->second) {
             if (mapILPVarInfo[var].ilp_var->solution_value() == 1) {
               name = module::getName(itr3->first).str();
-              map_l2m_load2.insert(std::make_pair(std::make_pair(itr3->first, i), mapILPVarInfo[var].ts_idx));
-              llvm::errs() <<"tensor name:"<<name<<", compute at pos"<<i<<", load at ts" << mapILPVarInfo[var].ts_idx<<"\n";
+              l2m_value_info info;
+              info.slice_idx = slice_idx;
+              info.value = itr3->first;
+              assert(itr2.tensor_size.find(info.value) != itr2.tensor_size.end());
+              info.size = itr2.tensor_size[info.value];
+              info.free_ts = i + 1;
+              info.load_ts = mapILPVarInfo[var].ts_idx - 1;
+              vec_l2m_value_info.push_back(info);
+              llvm::errs() <<"tensor name:"<<name<<", compute at pos:"<<i<<", load at ts:" << mapILPVarInfo[var].ts_idx - 1<<"\n";
               break;
             }
           }
@@ -1524,6 +1594,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
     }
     i++;
   }
+  llvm::errs() << "  vec_l2m_value_info.size:"<<vec_l2m_value_info.size()<<"\n";
 
   if (map_reside_value_info.size() > 0) {
     llvm::errs() << "cancel reside_value load:\n";;
@@ -1540,7 +1611,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
     }
   }
 
-  printf("deal weight pre dma load:\n");
+  fprintf(stderr, "deal weight pre dma load:\n");
   for(int i = 0; i < ts_count; i++) {
     for (auto it: timestep_table_new[i].vec_ts_var) {
       name = module::getName(it.value).str();
@@ -1558,20 +1629,10 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
 
   std::vector<mem_alloc_req_info> vec_mem_req;
   std::vector<std::pair<int,int>> vec_pre_ts_free_mem, vec_pre_ts_free_mem_pre;
-  printf("start analog allocation\n");
+  fprintf(stderr, "start analog allocation\n");
   for(int i = 0; i < ts_count; i++) {
-    printf(">>>ts:%d\n", i);
-    // printf("  deal dma store for TIMESTEP2_STORE_ONLY_FREE:\n"); //为配合小op融合功能，改为在op执行后理解释放
-    // if (i >= 2) {
-    //   for (auto it: timestep_table_new[i].vec_ts_var) {//无需真的store搬出去，后面的其他load或op输出直接分配使用这些区域即可
-    //     name = module::getName(it.value).str();
-    //     if (it.info.mode2&TIMESTEP2_STORE_ONLY_FREE && it.var_value == 1) {
-    //       lmem_alloc_ptr->free(convert_name_to_key(name, it.slice_idx));
-    //     }
-    //   }
-    // }
-
-    printf("  deal dma load:\n");
+    fprintf(stderr, ">>>ts:%d\n", i);
+    fprintf(stderr, "  deal dma load:\n");
     if (i < ts_count - 2) {
       for (auto it: timestep_table_new[i].vec_ts_var) {
         name = module::getName(it.value).str();
@@ -1583,6 +1644,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
             tmp.value = it.value;
             tmp.size = it.lmem_bytes;
             vec_mem_req.push_back(tmp);
+
           }
         }
         if (it.info.mode2&TIMESTEP2_STORE_AND_LOAD && it.var_value == 1) {
@@ -1599,7 +1661,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
     }
 
     if (i > 0 && i < ts_count - 1) {
-      printf("  deal tpu:\n");
+      fprintf(stderr, "  deal tpu:\n");
       bool have_mem_dependent = false;
       for (auto it2: timestep_table_new[i].vec_op_infos) {
         auto outs = get_output_values(it2.op);
@@ -1629,7 +1691,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         bool sort_by_size = true;
         ret = lmem_alloc_ptr->alloc_multi(i, vec_mem_req, sort_by_size);
         if (!ret) {
-          printf("      alloc_multi fail\n");
+          fprintf(stderr, "      alloc_multi fail\n");
           return false;
         }
         if (i > 1 && !have_mem_dependent) { //复合op中某子op已与上一时戳有依赖，则不再重复检查
@@ -1655,14 +1717,14 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         }
         vec_mem_req.clear();
 
-        printf("    deal input free:\n");
+        fprintf(stderr, "    deal input free:\n");
         for (auto in : get_input_values(it2.op)) {
           bool to_be_used = false;
           if (reside_in_tensor.find(it2.op) != reside_in_tensor.end()) {
             auto tensors = reside_in_tensor[it2.op];
             if (find(tensors.begin(), tensors.end(), in) != tensors.end()) {
               to_be_used = true;
-              printf("       reside_in_tensor\n");
+              fprintf(stderr, "       reside_in_tensor\n");
             }
           }
           if (mapValueInfo.find(in) != mapValueInfo.end()) {
@@ -1675,25 +1737,25 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
               }
             }
             bool valid = i < max_ts;
-            for (auto it2:mapValueInfo[in][it2.slice_idx]) {
-              int64_t mode2 = mapILPVarInfo[it2].tensor_info.mode2; //back确保取到stay_free_var？？
+            for (auto it3:mapValueInfo[in][it2.slice_idx]) {
+              int64_t mode2 = mapILPVarInfo[it3].tensor_info.mode2; //back确保取到stay_free_var？？
               if (valid && (mode2&TIMESTEP2_STORE || mode2&TIMESTEP2_STORE_ONLY_FREE || //store应该是可以和op并行的？bank冲突吗? todo
-                (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2].mode == 0))) {
+                (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3].mode == 0))) {
                 to_be_used = true;
-                printf("       have store\n");
+                fprintf(stderr, "       have store\n");
                 break;
               }
             }
           }
           if (map_reside_value_info.find(in) != map_reside_value_info.end()) {
             to_be_used = true;
-            printf("       reside_value\n");
+            fprintf(stderr, "       reside_value\n");
           }
           name = module::getName(in).str();
           if (!to_be_used) {
             lmem_alloc_ptr->free(convert_name_to_key(name, it2.slice_idx), &vec_pre_ts_free_mem);
           } else {
-            printf("        not need to free:%s\n", name.c_str());
+            fprintf(stderr, "        not need to free:%s\n", name.c_str());
           }
         }
 
@@ -1711,12 +1773,12 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
       }
 
       if (vec_pre_ts_free_mem_pre.size() > 0 && !have_mem_dependent) {
-        printf("        ts:%d and ts:%d no mem dependent\n", i, i-1);
+        fprintf(stderr, "        ts:%d and ts:%d no mem dependent\n", i, i-1);
         // timestep_table_new[i].can_merge = true; //todo fix me
       }
     }
 
-    printf("  deal dma store:\n");
+    fprintf(stderr, "  deal dma store:\n");
     if (i > 1) {
       for (auto it: timestep_table_new[i].vec_ts_var) {//先store，后load //应该在最后store，本ts store时也不能给本时隙的load用
         name = module::getName(it.value).str();

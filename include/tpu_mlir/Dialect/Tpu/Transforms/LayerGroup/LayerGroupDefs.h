@@ -202,6 +202,16 @@ typedef struct op_var_pos_info
   op_var_pos_info():ts_id(-1), key(std::make_pair(-1, -1)) {}
 } op_var_pos_info;
 
+typedef struct l2m_value_info {
+  Value value;
+  int slice_idx;
+  int size;
+  int free_ts;
+  int load_ts;
+  bool valid;
+  l2m_value_info():slice_idx(0), size(0), free_ts(0), load_ts(0), valid(true) {}
+} l2m_value_info;
+
 typedef struct {
   int64_t nsecs;
   int64_t hsecs;

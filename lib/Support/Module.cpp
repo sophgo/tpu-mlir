@@ -1892,5 +1892,13 @@ void unreachable(const char *info, Operation *op, const char *file,
   std::abort();
 }
 
+bool startsWith(const std::string& fullString, const std::string& startingSubstring) {
+    if (fullString.length() >= startingSubstring.length()) {
+        return (0 == fullString.compare(0, startingSubstring.length(), startingSubstring));
+    } else {
+        return false;
+    }
+}
+
 } // namespace module
 } // namespace tpu_mlir

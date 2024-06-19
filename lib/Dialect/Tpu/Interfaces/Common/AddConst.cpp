@@ -86,7 +86,8 @@ LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
   bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-7 &&
                      op.getMultiplier() == 1 && op.getRshift() == 0;
 
-  if (is_type_match && is_identity) {
+  bool isTangents = module::isTrain() && module::startsWith(module::getName(op.getResult()).str(), "tangents_");
+  if (!isTangents && is_type_match && is_identity) {
     rewriter.replaceOp(op, op.getInput());
     return success();
   }

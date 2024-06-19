@@ -62,8 +62,9 @@ struct LgPassIR {
    */
   std::vector<BasicTimeStepPtr> time_steps;
   std::vector<std::vector<ILPTimeStepPtr>> ILP_time_steps;
-  std::vector<std::map<std::pair<Value, int>, int, value_compare2>> map_l2m_load;
+  std::vector<std::map<int, std::vector<l2m_value_info>>> map_l2m_load;
   std::vector<TensorInfo> lg_tensor_infos_;
+  std::vector<l2mem_alloc_Ptr> lg_l2mem_alloc_ptr;
 
   /**
    * @brief shape split sections of layer groups

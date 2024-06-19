@@ -104,7 +104,7 @@ bool backward_gen_ilp_var2(const LgInfo &lg_info,
                            const std::vector<int64_t>& ncdhw_idx, int ts_offset,
                            std::vector<op_var_pos_info>& op_var_bound, Operation* returnOp, int64_t& load_bytes_for_next_ts,
                            std::vector<std::pair<Value, int64_t>> tmp_value_size, Operation*& failOp,
-                           bool l2m_en = true, bool last_slice = false, bool train = false, int max_ahead_or_delay_ts = 4);
+                           bool l2m_en = true, bool last_slice = false, int max_ahead_or_delay_ts = 4);
 bool isLgSupport(Operation *op);
 void find_all_pre_ops(Operation * op, std::vector<Operation*>& glayer_pre_ops);
 void find_all_next_ops(Operation * op, std::vector<Operation*>& glayer_next_ops);

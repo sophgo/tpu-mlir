@@ -92,6 +92,10 @@ public:
   int64_t get_group_cycle(LgInfo *sub_group);
   Operation* cut_this_group_is_better(LgInfo *sub_group);
   void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups);
+  void l2m_process(LgPassIR *pass_ir, int grp_idx, std::vector<std::pair<Value, int64_t>>& value_size);
+  bool is_same_pipeline(LgPassIR *pass_ir, int core_id, int grp_idx, int& vec_ncdhw_idx,
+                        TensorInfo& tensor_infos, LgInfo &sub_group,
+                        std::vector<std::vector<int64_t>> vec_ncdhw, std::vector<int>& sec_per_cores);
   Operation* ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train);
   void init_ilp_base_groups(LgPassIR* pass_ir, LgInfo& sub_group, std::vector<std::vector<Operation *>> &base_groups);
 

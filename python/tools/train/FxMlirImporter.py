@@ -160,15 +160,22 @@ class FxMIIRImportor(object):
         init_args["input"] = func_arg
         init_args["output"] = RankedTensorType.get(output_shapes[0], F32Type.get())
         input_op = top.InputOp(**init_args).output
+        if len(node.users) > 0 and node.name.startswith('tangents_'):
+            op1 = np.atleast_1d(0).astype(np.float32)
+            dtype = self.get_output_dtypes(node)
+            input_op = top.AddConstOp(*self.get_tensor_type(output_shapes, dtype),
+                                    input_op,
+                                    const_val = op1,
+                                    do_relu=False,
+                                    loc=self.get_loc(node.name + '_add_zero'),
+                                    ip=self.insert_point).output
         if 'tensor_meta' in node.meta \
             and node.meta['tensor_meta'].requires_grad \
             and node.meta['tensor_meta'].dtype != torch.float32:
-            new_op2 = top.WeightReorderOp(*self.get_tensor_type(output_shapes, F32Type.get()),
+            input_op = top.WeightReorderOp(*self.get_tensor_type(output_shapes, F32Type.get()),
                                         input_op,
-                                        loc=self.get_loc(node),
+                                        loc=self.get_loc(node.name + '_reorder'),
                                         ip=self.insert_point).output
-            operands[node] = new_op2
-            return
         operands[node] = input_op
 
     def create_return_op(self, Operands):
