@@ -46,7 +46,7 @@ typedef struct mem_struct {
  std::vector<int> bank_id;
  int slice_idx;
  Value value;
- std::string mnemonic_name;
+//  std::string mnemonic_name;
 } mem_struct;
 
 typedef struct ilp_var_info {
@@ -91,12 +91,15 @@ typedef struct mem_alloc_req_info {
   int size;
   std::string name;
   Value value;
+  mem_alloc_req_info()
+      : slice_idx(0), size(0) {}
 } mem_alloc_req_info;
 
 typedef struct constraint_info {
   double lb;
   double ub;
   MPConstraint* cons_var;
+  std::string info_for_tips;
   std::vector<std::pair<int, MPVariable*>> coeff_var_items;
   bool operator==(const constraint_info &other) const {
     return this == &other;
@@ -112,7 +115,7 @@ public:
   std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> show_mem(int& total_free_size, int& max_free_mem_idx, int& max_free_mem_size);
   bool alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size);
   bool alloc2(int ts_idx, int slice_idx, const std::string& name, Value value, int addr, int size);
-  void free(const std::string& name, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem = nullptr);
+  bool free(const std::string& name, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem = nullptr);
   bool get_mem_struct(const std::string& key, mem_struct& mem_s);
 
 // private:
@@ -135,7 +138,25 @@ public:
   bool rehearsal = false;
 };
 
+class l2mem_alloc {
+public:
+  l2mem_alloc();
+  virtual ~l2mem_alloc();
+
+  bool alloc(int slice_idx, const std::string& name, Value value, int size);
+  bool free(int slice_idx, const std::string& name);
+  void clear();
+
+// private:
+  int total_size;
+  int m_ts_count;
+  bool* lmem_buf;
+  std::map<std::string, mem_struct> mem_dict;
+  std::map<std::string, his_mem_struct> vec_mem_alloc_his;
+};
+
 using lmem_alloc_Ptr = std::shared_ptr<lmem_alloc>;
+using l2mem_alloc_Ptr = std::shared_ptr<l2mem_alloc>;
 
 struct value_compare2 {
   bool operator()(std::pair<Value, int> v0, std::pair<Value, int> v1) const {
@@ -163,7 +184,7 @@ public:
   void setVarExpectValue(std::string var_name, int expect_value);
   bool run();
   bool mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
-                 TensorInfo& tensor_infos);
+                TensorInfo& tensor_infos);
   void add_tpu_ts_field(int ts_idx, Operation* op);
   void add_gdma_ts_field(int ts_idx, const GdmaElt &field);
   // void timestep_assignment_by_ilp(BasicTimeStep *time_step, TensorInfo &tensor_infos);
@@ -182,7 +203,7 @@ public:
   void showAllConstraint();
   void showRunInfo();
   void showConstraintInfo(constraint_info& cons_info, std::map<MPVariable*, std::string>& only_one_var_warning);
-  void addConstraint(double lb, double ub, std::vector<std::pair<int, MPVariable*>> coeff_var_items, bool test = false);
+  void addConstraint(double lb, double ub, std::vector<std::pair<int, MPVariable*>> coeff_var_items, std::string info_for_tips = "", bool test = false);
 // protected:
   LgInfo _group_info;
   std::unique_ptr<MPSolver> solver;
@@ -196,7 +217,7 @@ public:
   std::vector<std::vector<std::pair<int, std::string>>> mem_contrains_new;
   MPObjective* objective;
   lmem_alloc_Ptr lmem_alloc_ptr;
-  std::map<std::pair<Value, int>, int, value_compare2> map_l2m_load2;
+  std::vector<l2m_value_info> vec_l2m_value_info; //Value + ts_idx > 加载ts号
   std::map<Value, std::map<int, std::vector<std::string>>, value_compare> mapValueInfo;
   std::vector<constraint_info> vec_constraints;
 

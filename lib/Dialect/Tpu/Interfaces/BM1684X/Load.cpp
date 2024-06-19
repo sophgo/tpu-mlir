@@ -101,10 +101,14 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   // if (inputOp != nullptr && !input.isa<BlockArgument>()) {
   if (inputOp != nullptr && module::isOpInGroup(inputOp)) {
     //In the case of tensor store followed by load, the input to load is the output of the previous store
-    assert(isa<tpu::StoreOp>(inputOp));
-    auto input_gmem = inputOp->getOperand(1);
-    assert(!isa<top::NoneOp>(input_gmem.getDefiningOp()));
-    g_addr = module::getAddress(input_gmem);
+    if (isa<tpu::StoreOp>(inputOp)) {
+      auto input_gmem = inputOp->getOperand(1);
+      assert(!isa<top::NoneOp>(input_gmem.getDefiningOp()));
+      g_addr = module::getAddress(input_gmem);
+    }
+    if (isa<tpu::LoadToL2MOp>(inputOp)) {
+      g_addr = cast<LoadToL2MOp>(inputOp).getL2mAddr();
+    }
   } else {
     g_addr = module::getAddress(getInput());
   }

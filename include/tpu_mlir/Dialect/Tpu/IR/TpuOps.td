@@ -1490,6 +1490,24 @@ def Tpu_LoadOp:Tpu_Op<"Load",
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
+  let summary = "Load operation";
+  let description = [{
+    load weight from gmem to l2mem;
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64Attr:$id,
+    I64Attr:$l2m_addr
+  );
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void codegen_only_for_LoadToL2MOp();
+  }];
+}
+
 def Tpu_StoreOp:Tpu_Op<"Store",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {

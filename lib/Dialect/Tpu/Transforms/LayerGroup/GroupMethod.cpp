@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "progressbar.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
@@ -1524,7 +1525,7 @@ void processWhenOpFail(LgPassIR *pass_ir, LgInfo &sub_group,
     base_groups.push_back(new_grp);
     pass_ir->ILP_time_steps.push_back(std::vector<ILPTimeStepPtr>());
     pass_ir->map_l2m_load.push_back(
-        std::map<std::pair<Value, int>, int, value_compare2>());
+        std::map<int, std::vector<l2m_value_info>>());
   }
   sub_group.update_group_io(LgPass::OPTIONS.opt);
   set_group_type(sub_group);
@@ -2044,8 +2045,171 @@ void make_sure_enough_slice_for_multicore(LgPassIR *pass_ir, std::vector<std::ve
   }
 }
 
-Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train){
+void GroupMethod::l2m_process(LgPassIR *pass_ir, int grp_idx, std::vector<std::pair<Value, int64_t>>& value_size) {
+  llvm::errs() << "process l2m...\n";
+  auto& grp_time_step = pass_ir->ILP_time_steps[grp_idx];
+  auto& map_l2m_load = pass_ir->map_l2m_load[grp_idx];
+  int ts_count = grp_time_step[0]->ts_count;
+  int core_num_per_pipe0 = grp_time_step[0]->ncdhw_steps.size();
+  for (auto itr : grp_time_step[0]->vec_l2m_value_info) {
+    llvm::errs() << "check Value:" << module::getName(itr.value).str()
+                  << ", slice_idx:" <<itr.slice_idx
+                  << ", pipe0 load ts:" << itr.load_ts << "\n";
+    int parallel_core_num = core_num_per_pipe0;
+    int min = itr.load_ts;
+    for (int j = 1; j < grp_time_step.size(); j++) { //遍历除第1个流水外的其他流水，第1个流水最长
+      parallel_core_num += grp_time_step[j]->ncdhw_steps.size();
+      for (auto itr3 = grp_time_step[j]->vec_l2m_value_info.begin();
+                itr3 != grp_time_step[j]->vec_l2m_value_info.end(); ++itr3) {
+        if (itr3->value == itr.value && itr3->slice_idx == itr.slice_idx) {
+          llvm::errs() << "find in pipe:" <<j<< ", load ts:" << itr3->load_ts << "\n";
+          if (itr3->load_ts < min) {
+            min = itr3->load_ts;
+          }
+        }
+      }
+    }
+    if (parallel_core_num > 1) {
+      if (map_l2m_load.find(min) == map_l2m_load.end()) {
+        map_l2m_load[min] = std::vector<l2m_value_info>();
+      }
+      map_l2m_load[min].push_back(itr);
+    }
+  }
 
+  for (int m = -1; m < ts_count; m++) {
+    if (map_l2m_load.find(m) != map_l2m_load.end()) {
+      for (auto itr: map_l2m_load[m]) {
+        llvm::errs() << " Value:" << module::getName(itr.value).str()
+                    << " slice_idx:" << itr.slice_idx << " load ts:" << m<< " free ts:" << itr.free_ts << "\n";
+      }
+    }
+  }
+
+  int total_weight_size = 0, l2_mem_size = 128*1024*1024;
+  int weight_num = value_size.size();
+  for (auto it2: value_size) {
+    total_weight_size += it2.second;
+  }
+  l2mem_alloc_Ptr l2mem_alloc_ptr = std::make_shared<l2mem_alloc>();
+  std::vector<Value> value_l2m;
+  if (total_weight_size > l2_mem_size) {
+    int share_mem_size = 0;
+    for (int i = weight_num - 1; i > 0; i--) {
+      std::vector<std::pair<Value, int64_t>> value_size_l2m;
+      std::vector<int64_t> value_l2m_addr;
+      value_l2m.clear();
+      share_mem_size += value_size[i].second;
+      total_weight_size = 0;
+      int addr = 0;
+      for (auto it2: value_size) {
+        total_weight_size += it2.second;
+        if (total_weight_size > l2_mem_size - (int)(share_mem_size*1.5)) {
+          break;
+        }
+        value_size_l2m.push_back(it2);
+        value_l2m.push_back(it2.first);
+        value_l2m_addr.push_back(addr);
+        addr +=it2.second;
+      }
+      l2mem_alloc_ptr->clear();
+      for (auto it3: value_size_l2m) {
+        auto name = module::getName(it3.first).str();
+        l2mem_alloc_ptr->alloc(-1, name, it3.first, it3.second);
+      }
+
+      auto& map_l2m_load = pass_ir->map_l2m_load[grp_idx];
+      std::map<int, std::vector<l2m_value_info>> map_l2m_free;
+      bool failed = false;
+      for (int m = -1; m < ts_count; m++) {
+        //处理在该时隙需要释放的l2m tensor
+        if (map_l2m_free.find(m) != map_l2m_free.end()) {
+          for (auto it3:map_l2m_free[m]) {
+            auto name = module::getName(it3.value).str();
+            l2mem_alloc_ptr->free(it3.slice_idx, name);
+          }
+        }
+        //处理在该时隙需要分配的l2m tensor
+        if (map_l2m_load.find(m) != map_l2m_load.end()) {
+          for (auto it3:map_l2m_load[m]) {
+            if (std::find(value_l2m.begin(), value_l2m.end(), it3.value) == value_l2m.end()) {
+              auto name = module::getName(it3.value).str();
+              failed = l2mem_alloc_ptr->alloc(it3.slice_idx, name, it3.value, it3.size);
+              if (failed) {
+                break;
+              }
+              //记录当前分配的l2m tensor待释放的时隙
+              if (map_l2m_free.find(it3.free_ts) == map_l2m_free.end()) {
+                map_l2m_free[it3.free_ts] = std::vector<l2m_value_info>();
+              }
+              map_l2m_free[it3.free_ts].push_back(it3);
+            }
+          }
+        }
+        if (failed) {
+          break;
+        }
+      }
+    }
+  } else {
+    llvm::errs() << "l2m enough \n";
+    for (auto it3: value_size) {
+      value_l2m.push_back(it3.first);
+      auto name = module::getName(it3.first).str();
+      l2mem_alloc_ptr->alloc(-1, name, it3.first, it3.second);
+    }
+  }
+
+  for (int m = -1; m < ts_count; m++) {
+    if (map_l2m_load.find(m) != map_l2m_load.end()) {
+      for (auto& itr: map_l2m_load[m]) {
+        if (itr.slice_idx > 0 && std::find(value_l2m.begin(), value_l2m.end(), itr.value) != value_l2m.end()) {
+          llvm::errs() << "value:" << module::getName(itr.value).str() << ",set valid false\n";
+          itr.valid = false;
+        }
+      }
+    }
+  }
+  pass_ir->lg_l2mem_alloc_ptr.push_back(l2mem_alloc_ptr);
+}
+
+bool GroupMethod::is_same_pipeline(LgPassIR *pass_ir, int core_id, int grp_idx, int& vec_ncdhw_idx,
+                                  TensorInfo& tensor_infos, LgInfo &sub_group,
+                                  std::vector<std::vector<int64_t>> vec_ncdhw, std::vector<int>& sec_per_cores) {
+  bool all_slice_same = false;
+  for (int n = 0; n < pass_ir->ILP_time_steps[grp_idx].size(); n++) { // 遍历历史流水线
+    std::vector<std::vector<int64_t>> &ncdhw_steps = pass_ir->ILP_time_steps[grp_idx][n]->ncdhw_steps.begin()->second;
+    if (ncdhw_steps.size() == sec_per_cores[core_id]) { // 历史流水线与当前有相同slice数量
+      all_slice_same = true;
+      for (int m = 0; m < sec_per_cores[core_id]; m++) {
+        std::vector<int64_t>& his_steps = ncdhw_steps[m];
+        std::vector<int64_t> ncdhw = vec_ncdhw[vec_ncdhw_idx + m];
+        slice_info_t &slice_info = tensor_infos[sub_group.group_ops[0]->getOperand(0)] .slice_info; // todo 这里是使用于单分支
+        // for (auto itr = tensor_infos.begin(); itr != tensor_infos.end(); ++itr) {
+        if (slice_info.n[his_steps[0]].second != slice_info.n[ncdhw[0]].second ||
+            slice_info.c[his_steps[1]].second != slice_info.c[ncdhw[1]].second ||
+            slice_info.d[his_steps[2]].second != slice_info.d[ncdhw[2]].second ||
+            slice_info.h[his_steps[3]].second != slice_info.h[ncdhw[3]].second ||
+            slice_info.w[his_steps[4]].second != slice_info.w[ncdhw[4]].second) {
+            all_slice_same = false;
+            break;
+        }
+      }
+      if (all_slice_same) {
+        llvm::errs() << "core " << core_id << ",all slice shape same with pipeline " << n << ", skip ILP\n";
+        for (int m = 0; m < sec_per_cores[core_id]; m++) {
+          std::vector<int64_t> ncdhw = vec_ncdhw[vec_ncdhw_idx + m];
+          pass_ir->ILP_time_steps[grp_idx][n]->addSliceNcdhwSteps(core_id, ncdhw);
+        }
+        vec_ncdhw_idx += sec_per_cores[core_id];
+        break;
+      }
+    }
+  }
+  return all_slice_same?true:false;
+}
+
+Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train){
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   vec_op_hsecs.push_back(std::make_pair(nullptr, -1));
   std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(), pair_op_int_Sort_by_int);
@@ -2120,7 +2284,7 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
     llvm::errs() << "shape_secs, n:" << shape_secs.nsecs
                   << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
                   << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs
-                  << " try_count:" << try_count << "\n";
+                  << " try_count:" << try_count<< " l2m_en:" << l2m_en << "\n";
 
     ret = stripe_mine_idx_slice2(sub_group, shape_secs, tensor_infos,fail_op);
     if(!ret){
@@ -2132,7 +2296,7 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
 
     int vec_ncdhw_idx = 0;
     std::vector<std::vector<int64_t>> vec_ncdhw;
-    std::vector<int> sec_per_cores = get_sec_per_cores(shape_secs, vec_ncdhw, core_num, tensor_infos);
+    auto sec_per_cores = get_sec_per_cores(shape_secs, vec_ncdhw, core_num, tensor_infos);
     ILPTimeStepPtr ilp_timeStep;
     pass_ir->ILP_time_steps[grp_idx].clear();
 
@@ -2140,9 +2304,13 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
       if (sec_per_cores[core_id] == 0) {
         break;
       }
+
+      if (is_same_pipeline(pass_ir, core_id, grp_idx, vec_ncdhw_idx, tensor_infos, sub_group, vec_ncdhw, sec_per_cores)) {
+        continue;
+      }
+
       int slice_idx = 0;
       std::vector<op_var_pos_info> op_var_bound = createOverlapStrategy(sub_group, sec_per_cores[core_id]);
-
       std::vector<std::pair<Value, int64_t>> tmp_value_size;
       if (sec_per_cores[core_id] >
           0) { // 始终将小的权重提前加进来,放在lmem的最后区域，减少后续数据依赖，减少时隙间同步
@@ -2155,21 +2323,18 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
       }
 
       int64_t load_bytes_for_next_ts = 0;
-      int secs_num = sec_per_cores[core_id];
-      ilp_timeStep = std::make_shared<ILPTimeStep>(sub_group, secs_num);
-      int old_vec_ncdhw_idx = vec_ncdhw_idx;
-      while (secs_num-- > 0) {
-        std::vector<int64_t> ncdhw = vec_ncdhw[old_vec_ncdhw_idx++];
+      ilp_timeStep = std::make_shared<ILPTimeStep>(sub_group, sec_per_cores[core_id]);
+      while(sec_per_cores[core_id]-- > 0) {
+        std::vector<int64_t> ncdhw = vec_ncdhw[vec_ncdhw_idx++];
         ilp_timeStep->addSliceNcdhwSteps(core_id, ncdhw);
         llvm::errs() << "slice process, n:" << ncdhw[0]
                       << " c:" << ncdhw[1] << " d:" << ncdhw[2]
-                      << " h:" << ncdhw[3] << " w:" << ncdhw[4] << "\n";
-        Operation *failOp = nullptr;
+                      << " h:" << ncdhw[3] << " w:" << ncdhw[4]<< " ncdhw_idx:" << vec_ncdhw_idx - 1 << "\n";
         ret = backward_gen_ilp_var2(
             sub_group, shape_secs, tensor_infos, cycle_calculator_,
             *ilp_timeStep, ncdhw, slice_idx, op_var_bound,
             pass_ir->returnOp, load_bytes_for_next_ts,
-            tmp_value_size, failOp, l2m_en, secs_num == 0, train, 4);
+            tmp_value_size, fail_op, l2m_en, sec_per_cores[core_id] == 0, 4);
         if(!ret){
           llvm::errs() <<"backward_gen_ilp_var2 fail" <<" core_id "<<core_id<<"\n";
           return fail_op;
@@ -2208,28 +2373,7 @@ Operation* GroupMethod::ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_grou
     if(ret){
       llvm::errs() << "ilp_timeStep success\n";
       if (l2m_en) {
-        int core_num_per_pipe0 =
-            pass_ir->ILP_time_steps[grp_idx][0]->ncdhw_steps.size();
-        for (auto itr :
-              pass_ir->ILP_time_steps[grp_idx][0]->map_l2m_load2) {
-          int parallel_core_num = core_num_per_pipe0;
-          int min = itr.second;
-          for (int j = 1; j < pass_ir->ILP_time_steps[grp_idx].size();
-                j++) {
-            parallel_core_num +=
-                pass_ir->ILP_time_steps[grp_idx][j]->ncdhw_steps.size();
-            auto map_l2m_load2 =
-                pass_ir->ILP_time_steps[grp_idx][j]->map_l2m_load2;
-            if (map_l2m_load2.find(itr.first) != map_l2m_load2.end()) {
-              if (map_l2m_load2[itr.first] < min) {
-                min = map_l2m_load2[itr.first];
-              }
-            }
-          }
-          if (parallel_core_num > 1) {
-            pass_ir->map_l2m_load[grp_idx][itr.first] = min;
-          }
-        }
+        l2m_process(pass_ir, grp_idx, value_size);
       }
       break;
     }
@@ -2299,7 +2443,7 @@ void GroupMethod::init_ilp_base_groups(LgPassIR* pass_ir, LgInfo& sub_group, std
     if (base_groups[i].size() > 1) {
       pass_ir->ILP_time_steps.push_back(std::vector<ILPTimeStepPtr>());
       pass_ir->map_l2m_load.push_back(
-          std::map<std::pair<Value, int>, int, value_compare2>());
+          std::map<int, std::vector<l2m_value_info>>());
     }
   }
 
@@ -2312,7 +2456,10 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
                << "=======================================================\n";
   //------------------------part0: pre processing----------------------------------------------------
   auto start = std::chrono::high_resolution_clock::now();
-  int core_num = module::getCoreNum();
+  int core_num = 1;
+  if (dyn_cast<MultiCoreInterface>(BM168x::instance())) {
+   core_num = module::getCoreNum();
+  }
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   init_ilp_base_groups(pass_ir, sub_group, base_groups);
@@ -2325,11 +2472,6 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
 
   //------------------------part1: processing----------------------------------------------------
   int grp_num = base_groups.size();
-  // module::setCoreNum(core_num);
-  // int core_num = 1;
-  // if (dyn_cast<MultiCoreInterface>(BM168x::instance())) {
-  //   core_num = 8;
-  // }
   // module::setCoreNum(core_num);
   // if (use_all_hard_core_to_compile) {
   //   core_num = cycle_calculator_->getMultiCoreNum();

@@ -312,6 +312,7 @@ class ONNX_IR_TESTER(object):
         self.simple = simple
         self.multithread = not disable_thread
         self.num_core = num_core
+        self.opt = 2
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
@@ -461,6 +462,7 @@ class ONNX_IR_TESTER(object):
                       self.dynamic,
                       quant_input,
                       quant_output,
+                      opt = self.opt,
 					  debug_cmd = f'--debug_cmd={self.debug_cmd}')
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -5956,6 +5958,7 @@ class ONNX_IR_TESTER(object):
     def user_define_net(self, case_name):
         """user_define_net"""
 
+        self.opt = 2
         # from tools.train.resnet import resnet18
         # model = resnet18()
         # from tools.train.resnet import resnet50
