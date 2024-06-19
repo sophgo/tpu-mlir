@@ -462,7 +462,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
 }
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
-  bool bias_use_fp32 = module::isBM1688();
+  bool bias_use_fp32 = !module::isBM1684X();
   auto newType = getQuantBF16Type(op->getResult(0));
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
@@ -493,13 +493,18 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
     }
   }
 
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
+  auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
+  if (!module::isNone(operands[2]) && newOp.supports_multi_core() && bias_use_fp32) {
+    auto biasOp = dyn_cast<top::WeightOp>(newOp.getOperand(2).getDefiningOp());
+    auto bf16_bias = biasOp.clone_bf16(newOp);
+    newOp.setOperand(2, bf16_bias);
+  }
 }
 
 void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  bool bias_use_fp32 = module::isBM1688();
+  bool bias_use_fp32 = !module::isBM1684X();
   auto newType = getQuantF16Type(op->getResult(0));
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
@@ -529,8 +534,13 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
       operands.push_back(in);
     }
   }
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
+  auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
+  if (!module::isNone(operands[2]) && newOp.supports_multi_core() && bias_use_fp32) {
+    auto biasOp = dyn_cast<top::WeightOp>(newOp.getOperand(2).getDefiningOp());
+    auto f16_bias = biasOp.clone_f16(newOp);
+    newOp.setOperand(2, f16_bias);
+  }
 }
 
 void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
