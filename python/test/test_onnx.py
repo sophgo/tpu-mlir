@@ -1560,17 +1560,23 @@ class ONNX_IR_TESTER(object):
         input_shape = [4, 10, M, K]
         weight_shape = [K, N]
         output_shape = [4, 10, M, N]
+        bias_shape = [1, 1, 1, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+
         graph_txt = """
                 %s (float%s input) => (float%s output)
-                <float%s weight>
+                <float%s weight, float%s bias>
                 {
-                    output = MatMul(input, weight)
+                    mm = MatMul(input, weight)
+                    output = Add(mm, bias)
                 }
-                """ % (case_name, input_shape, output_shape, weight_shape)
+                """ % (case_name, input_shape, output_shape, weight_shape, bias_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
-        graph_def.initializer.extend([weight])
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_MatMul2(self, case_name):

@@ -476,8 +476,8 @@ bool tpu::MatMulOp::supports_multi_core() {
     return false;
   }
 
-  auto in_stype = module::getStorageType(getInput());
-  if (in_stype.isF16() || in_stype.isBF16()) {
+  auto out_stype = module::getStorageType(getOutput());
+  if (out_stype.isF16() || out_stype.isBF16()) {
     return true;
   }
   return false;
