@@ -439,7 +439,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isBM1684XFamily())
+    if (!module::isBM1684XFamily() && !module::isBM1690Family())
       return failure();
 
     if (!module::isNone(interpOp.getBuffer())) {
