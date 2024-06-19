@@ -658,7 +658,7 @@ class TdbPlugin:
 
     def __str__(self) -> str:
         if isinstance(self, cmd.Cmd):
-            return f"{self.name}*"
+            return "{}*".format(self.name)
         return self.name
 
     @classmethod
@@ -717,7 +717,7 @@ class PluginCompact:
         self.tdb = tdb
 
     def __repr__(self) -> str:
-        return f"{', '.join([str(i) for i in self.plugins.values()])}"
+        return ", ".join([str(i) for i in self.plugins.values()])
 
     def __getitem__(self, key):
         return self.plugins.get(key, None)

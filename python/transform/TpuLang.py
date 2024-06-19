@@ -162,7 +162,7 @@ def model_top_inference(model_name, cmp=False):
     input_data = np.load(in_f32_npz)
     top_npz = model_name + '_top_outputs.npz'
     show_fake_cmd(in_f32_npz, mlir_file, top_npz)
-    f32_outputs = mlir_inference(input_data, mlir_file)
+    f32_outputs = mlir_inference(dict(input_data), mlir_file)
     np.savez(top_npz, **f32_outputs)
     if cmp:
         ref_npz = model_name + '_ref_output.npz'
@@ -182,7 +182,7 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, as
         input_data = np.load(in_f32_npz)
         file_mark(tpu_npz)
         show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
-        tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
+        tpu_mlir_outs = mlir_inference(dict(input_data), tpu_mlir, dump_all=True)
         np.savez(tpu_npz, **tpu_mlir_outs)
         if cmp:
             if quant_mode == 'int8':
@@ -209,7 +209,7 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         file_mark(model_npz)
         show_fake_cmd(in_f32_npz, bmodel, model_npz)
-        model_outs = model_inference(input_data, bmodel)
+        model_outs = model_inference(dict(input_data), bmodel)
         np.savez(model_npz, **model_outs)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
