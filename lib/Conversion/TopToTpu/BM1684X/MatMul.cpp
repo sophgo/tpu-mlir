@@ -649,7 +649,7 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::MatMulOp op) const {
   if (!module::isUniformQuantized(op.getInput(), op.getRight())) {
-    llvm_unreachable("input output should be quantized");
+    UNREACHABLE_OP("input output should be quantized", op);
   }
   bool out_i32 = module::isUniformQuantized(op.getOutput()) == false;
   auto p = op.parseParam();

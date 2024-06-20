@@ -95,8 +95,7 @@ void top::LayerNormOp::shape_inference() {
   }
   if (!std::equal(normalized_shape->begin(), normalized_shape->end(),
                   in_shape.begin() + axis)) {
-    dump();
-    llvm_unreachable("normalized_shape is illegal");
+    UNREACHABLE_THIS("normalized_shape is illegal");
   }
   module::setShapeOrVerify(getOutput(), in_shape);
 

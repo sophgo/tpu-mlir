@@ -142,6 +142,7 @@ class TPULANG_IR_TESTER(object):
             "Relu": (self.test_Relu,                    Y, Y),
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
+            "RMSNorm": (self.test_RMSNorm,              Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
             "ShapeFetch": (self.test_Shape_fetch,       Y, Y),
@@ -252,6 +253,9 @@ class TPULANG_IR_TESTER(object):
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
     def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
+        for input in inputs:
+            assert input.ttype == "neuron", "invalid input {}".format(input.name)
+
         if is_quantized == False:
             for mode in self.quant_modes:
                 tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode)
@@ -2847,6 +2851,25 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = self.group_norm_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [out])
+
+        _test_model_def([1, 3, 224, 224])
+
+    #######################################################################
+    # rmsnorm
+    # ------------
+
+    def test_RMSNorm(self, case_name):
+        """rms_norm"""
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, dtype='float32'):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            norm_shape = [in_shape[-1]]
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            gamma = self.coeff_tensor(shape=norm_shape, dtype=dtype)
+
+            out = tpul.rms_norm(x, gamma)
             self.compile_and_check(self.unique_name(case_name), [x], [out])
 
         _test_model_def([1, 3, 224, 224])

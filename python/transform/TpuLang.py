@@ -2288,6 +2288,19 @@ def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
     TpuLang.insert_op("top.GroupNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output
 
+@auto_name()
+@annotation_check
+def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, out_name: str = None):
+    output = Tensor(dtype=input.dtype, name=out_name)
+    assert input.dtype == "float32", "invalid input dtype {}".format(out_name)
+    if gamma:
+        assert input.dtype == gamma.dtype, "invalid input and gamma dtype {}".format(out_name)
+        assert input.shape[-1] == gamma.shape[0] and len(gamma.shape) == 1, \
+            "invalid input/gamma shape: {}".format(out_name)
+    attr = {"eps": Attr(epsilon, 'float64')}
+    TpuLang.insert_op("top.RMSNorm", inputs=[input, gamma], outputs=[output], params=attr)
+    return output
+
 ######### Select Operator ############
 
 @auto_name()

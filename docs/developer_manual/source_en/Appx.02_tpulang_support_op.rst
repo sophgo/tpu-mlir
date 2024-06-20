@@ -2847,7 +2847,7 @@ Explanation of parameters
 
 Return value
 """""""""""
-Returns the Tensor type, representing the output to be normalized.
+Returns the Tensor type, representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
@@ -2882,15 +2882,15 @@ Explanation of parameters
 """""""""""
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
-* gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
-* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* gamma: A Tensor type or None, representing the scaling after layer normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
+* beta: A Tensor type or None, representing he translation after layer normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
 * axis: int type, the first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """""""""""
-Returns the Tensor type, representing the output to be normalized.
+Returns the Tensor type, representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
@@ -2901,7 +2901,7 @@ group_norm
 :::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -2915,25 +2915,65 @@ The interface definition
 
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""
 The group_norm op first completes group normalization of the input values, and then scales and shifts them.
 The group normalization operation can refer to the group_norm operator of each framework.
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-"""""""""""
+""""""""""""""""""""""""""
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
-* gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
-* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* gamma: A Tensor type or None, representing the scaling after group normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
+* beta: A Tensor type or None, representing he translation after group normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
 * num_groups:int type, The number of groups of channels. It should be a divisor of the number of channels `C`.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""
-Returns the Tensor type, representing the output to be normalized.
+"""""""""""""
+Returns the Tensor type, representing the normalized output.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
+
+
+rms_norm
+:::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def rms_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     epsilon: float = 1e-5,
+                     out_name: str = None):
+          #pass
+
+
+Description of the function
+"""""""""""""""""""""""""""""
+The rms_norm op first completes RMS normalization of the input values, and then scales them.
+The RMS normalization operation can refer to the RMSNorm operator of each framework.
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+""""""""""""""""""""""""""
+
+* input: A Tensor type, representing the input Tensor.The dimension of input is not limited.
+* gamma: A Tensor type or None, representing the scaling after RMS normalization. If the value is not None, shape is required to be equal with the last dimension of the input. If None is used, shape is equivalent to all 1 Tensor.
+* epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""
+Returns the Tensor type, representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
