@@ -724,6 +724,27 @@ def Top_MaxConstOp: Top_Op<"MaxConst", [ScalarProducer, ScalarConsumer]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_DivConstOp: Top_Op<"DivConst", [ScalarProducer, ScalarConsumer]> {
+  let summary = "Div Const operator";
+
+  let description = [{
+    Y = X/onst_val or const_val/X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$const_val,
+    // I64Attr:$const_val
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
+  );
+
+  let results = (outs AnyTensor:$output);
+  // let hasCanonicalizer = 1;
+}
+
 def Tpu_BinaryShiftOp: Top_Op<"BinaryShift"> {
   let summary = "Binary with shift operator";
 

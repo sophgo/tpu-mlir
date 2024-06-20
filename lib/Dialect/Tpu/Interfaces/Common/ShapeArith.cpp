@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -58,6 +59,20 @@ void tpu::ShapeArithOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::ShapeArithOp::inference(InferenceParameter &p) {
   auto binary = (Binary *)p.handle;
   binary->run();
+
+  std::string op_type = getType().str();
+  if (op_type == "Div"){
+    auto ops=getOperands();
+    if (backend::BM168x::getDataType(ops[0])==DTYPE_INT32 
+    && backend::BM168x::getDataType(ops[1])==DTYPE_INT32 ){
+      auto num_elem = module::getNumElements(getOutput());
+
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int64_t i = 0; i < num_elem; i++) {
+        p.outputs[0][i] = std::floor(p.outputs[0][i]);
+      }
+    }
+  }
 
   return success();
 }

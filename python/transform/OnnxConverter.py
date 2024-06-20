@@ -1595,25 +1595,33 @@ class OnnxConverter(BaseConverter):
                                       ip=self.mlir.insert_point).output
         elif self.isScalar(rhs):
             # lhs * (1 / rhs_const)
-            lhs_type = None
-            output_type = None
-            if self.get_value_info(lhs) != None:
-                lhs_type = self.get_value_info(lhs).type.tensor_type.elem_type
-            if self.get_value_info(onnx_node.name) != None:
-                output_type = self.get_value_info(onnx_node.name).type.tensor_type.elem_type
-            need_floor = (output_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64]) \
-                        or (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
             lhs_op = self.getOp(lhs)
-            new_op = top.MulConstOp(self.unranked_type,
-                                    lhs_op,
-                                    const_val=1 / self.getScalar(rhs),
-                                    loc=self.get_loc(name),
-                                    ip=self.mlir.insert_point).output
-            if (need_floor):
-                new_op = top.FloorOp(self.unranked_type,
-                                     new_op,
-                                     loc=self.get_loc(name + '_floor'),
-                                     ip=self.mlir.insert_point).output
+            if self.dynamic:
+                new_op=top.DivConstOp(self.unranked_type,
+                                      lhs_op,
+                                      const_val=self.getScalar(rhs),
+                                      loc=self.get_loc(name),
+                                      ip=self.mlir.insert_point).output
+            else:
+                lhs_type = None
+                output_type = None
+                if self.get_value_info(lhs) != None:
+                    lhs_type = self.get_value_info(lhs).type.tensor_type.elem_type
+                if self.get_value_info(onnx_node.name) != None:
+                    output_type = self.get_value_info(onnx_node.name).type.tensor_type.elem_type
+                need_floor = (output_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64]) \
+                            or (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
+                
+                new_op = top.MulConstOp(self.unranked_type,
+                                        lhs_op,
+                                        const_val=1 / self.getScalar(rhs),
+                                        loc=self.get_loc(name),
+                                        ip=self.mlir.insert_point).output
+                if (need_floor):
+                    new_op = top.FloorOp(self.unranked_type,
+                                        new_op,
+                                        loc=self.get_loc(name + '_floor'),
+                                        ip=self.mlir.insert_point).output
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
