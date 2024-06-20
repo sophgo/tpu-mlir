@@ -1252,7 +1252,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     DefaultValuedAttr<I64Attr, "1">:$left_reuse,
     OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multi_core
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1284,7 +1285,8 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
     DefaultValuedAttr<BoolAttr, "true">:$sign,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
     // do per-group quant if q_group_size > 0, otherwise per-channel
-    DefaultValuedAttr<I64Attr, "0">:$q_group_size
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size,
+    OptionalAttr<BoolAttr>:$multi_core
   );
 
   let hasCanonicalizeMethod = 1;

@@ -185,7 +185,7 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
   if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op.getOperation())) {
     auto l_shape = module::getShape(matmulOp.getInput());
     auto r_shape = module::getShape(matmulOp.getRight());
-    
+
     if (l_shape.size() == 4 && r_shape.size() == 4 && l_shape[0] == r_shape[0] &&
         l_shape[1] != r_shape[1] && l_shape[2] == r_shape[2] && l_shape[3] == r_shape[3])
         return nullptr;
@@ -378,12 +378,20 @@ public:
         if (isa<tpu::GroupOp>(op))
           return WalkResult::skip();
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-          if (matmulOp.supports_multi_core())
+          if (matmulOp.supports_multi_core()) {
+            if (module::getCoreNum() > 1) {
+              matmulOp.setMultiCore(true);
+            }
             return WalkResult::skip();
+          }
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-          if (a16matmulOp.supports_multi_core())
+          if (a16matmulOp.supports_multi_core()) {
+            if (module::getCoreNum() > 1) {
+              a16matmulOp.setMultiCore(true);
+            }
             return WalkResult::skip();
+          }
         }
         if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
           groupParallelDistribute(groupParallelOp, num_core);
