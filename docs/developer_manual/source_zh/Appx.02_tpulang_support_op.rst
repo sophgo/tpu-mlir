@@ -3924,11 +3924,11 @@ batch_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出待归一化的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor。
 
 芯片支持
 """""""""""
-* BM1684：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 layer_norm
@@ -3967,11 +3967,11 @@ layer_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出待归一化的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor。
 
 芯片支持
 """""""""""
-* BM1684：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
 group_norm
@@ -4010,14 +4010,50 @@ group_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出待归一化的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor。
 
 芯片支持
 """""""""""
-* BM1684：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+rms_norm
+:::::::::::::::::::
 
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def rms_norm(input: Tensor,
+                     gamma: Tensor = None,
+                     epsilon: float = 1e-5,
+                     out_name: str = None):
+          #pass
+
+
+功能描述
+"""""""""""
+该rms_norm算子先完成输入值最后一个维度的归一化，完成归一化之后再进行缩放。运算过程可参考各框架的RMSNorm算子。
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+
+* input：Tensor类型，表示输入待归一化的Tensor，维度不限。
+* gamma：Tensor类型或None，表示批归一化之后进行的缩放，不为None时要求shape与input最后一维 `w` 相等，取None时相当于shape为[w]的全1Tensor。
+* epsilon：FLOAT类型，表示为了除法运算数值稳定加在分母上的值。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回Tensor类型，表示输出归一化的后的Tensor。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。
 
 Vision Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

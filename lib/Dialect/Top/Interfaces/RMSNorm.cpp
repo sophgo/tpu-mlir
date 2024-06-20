@@ -58,5 +58,16 @@ LogicalResult top::RMSNormOp::inference(InferenceParameter &p) {
 }
 
 void top::RMSNormOp::shape_inference() {
-  common_shape_inference(getOperation());
+  auto in_shape = module::getShape(getInput());
+  auto dims = in_shape.size();
+  if (!module::isNone(getGamma())) {
+    auto normalized_shape = module::getShape(getGamma());
+    ASSERT_THIS(normalized_shape.size() == 1 &&
+                normalized_shape[0] == in_shape[dims - 1]);
+  }
+  module::setShapeOrVerify(getOutput(), in_shape);
+
+  if (module::isWeight(getGamma())) {
+    broadcast_tensor_reshape(getOutput(), getGamma());
+  }
 }
