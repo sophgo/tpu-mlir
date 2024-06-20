@@ -2966,6 +2966,8 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
+        if self.chip != "cv183x" :
+            _test_adaptive_avgpool2d((1, 32, 32, 32), (3, 3))
 
     #######################################################################
     # Adaptive AvgPool1d
