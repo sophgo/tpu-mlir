@@ -12,6 +12,13 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 
+inline static unsigned start_index(unsigned oidx, unsigned olen, unsigned ilen){
+    return oidx * ilen / olen;
+}
+
+inline static unsigned end_index(unsigned oidx, unsigned olen, unsigned ilen){
+    return ((oidx + 1) * ilen + olen - 1) / olen;
+}
 pool_attr_t tpu::Pool2DOp::parseParam() {
   pool_attr_t p = {0};
   p.id = 1;
@@ -38,6 +45,7 @@ pool_attr_t tpu::Pool2DOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
+  p.is_adaptive = getIsAdaptive();
   p.count_include_pad = getCountIncludePad();
   p.round_mode = round_mode_convert(getRoundMode());
   p.src_round_mode = round_mode_convert(getFirstRoundMode());
@@ -71,6 +79,62 @@ void tpu::Pool2DOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
+  }
+  if(getIsAdaptive() && getPoolMode() == tpu::PoolMode::Avg){
+    // Only consider adaptive_avgpool2d here, if encounter with other case, please fix it
+    auto input_shape = module::getShape(getInput());
+    auto output_shape = module::getShape(getOutput());
+    int input_dim = input_shape.size();
+    int output_dim = output_shape.size();
+    // auto input = input_.contiguous();
+    // auto output = output_.contiguous();
+
+    auto input_data = p.inputs[0];
+    auto output_data = p.outputs[0];
+
+    int64_t ndim = input_shape.size();
+    // treat batch size and channels as one dimension
+    // notice : 4D maybe (N, C, H, W)(pool2d) or (C, D, H, W)(pool3d)
+    ASSERT_THIS(ndim == 3 || ndim == 4);
+    int64_t channels = ndim == 3 ? input_shape[0] : input_shape[0] * input_shape[1];
+    int64_t input_height = input_shape[input_dim -2];
+    int64_t input_width = input_shape[input_dim - 1];
+    int64_t output_height = output_shape[output_dim -2];
+    int64_t output_width = output_shape[output_dim -1];
+
+    // parallel on dim of N8, C
+    #pragma omp parallel for schedule(static, omp_schedule(channels))
+      for (int c_idx = 0; c_idx < channels; c_idx++) {
+        int64_t input_idx =  c_idx * input_height * input_width;
+        int64_t output_idx = c_idx * output_height * output_width;
+
+        for (int oh_idx = 0; oh_idx < output_height; oh_idx++) {
+          int64_t ih0 = start_index(oh_idx, output_height, input_height);
+          int64_t ih1 = end_index(oh_idx, output_height, input_height);
+          int64_t kh = ih1 - ih0;
+
+          for (int ow_idx = 0; ow_idx < output_width; ow_idx++) {
+            int64_t iw0 = start_index(ow_idx, output_width, input_width);
+            int64_t iw1 = end_index(ow_idx, output_width, input_width);
+            int64_t kw = iw1 - iw0;
+
+            // compute local average
+            float sum = 0.f;
+            for(int ih_idx = ih0 ; ih_idx < ih1; ih_idx++)
+              for(int iw_idx = iw0 ; iw_idx < iw1; iw_idx++){
+                sum += input_data[input_idx + ih_idx * input_width + iw_idx];
+              }
+            output_data[output_idx + oh_idx * output_width + ow_idx] = (sum / kh / kw);
+          }
+        }
+      }
+    if (getDoRelu()) {
+      auto limit = getReluLimit().convertToDouble();
+      function_relu(p.outputs[0], p.outputs[0],
+                    module::getNumElements(getOutput()), limit,
+                    module::getStorageType(getOutput()));
+    }
+    return success();
   }
   auto pooling = (Pooling *)p.handle;
   pooling->run();
@@ -139,7 +203,7 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::Pool2DOp::LocalGenSupport() {
   auto stride = module::getI64Array(getStrides());
-  if ((stride->at(0) > 15 || stride->at(1) > 15)) {
+  if ((stride->at(0) > 15 || stride->at(1) > 15 || getIsAdaptive())) {
     return failure();
   }
   return success();

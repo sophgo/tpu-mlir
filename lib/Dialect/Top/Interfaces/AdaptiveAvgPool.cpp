@@ -38,11 +38,12 @@ void top::AdaptiveAvgPoolOp::shape_inference() {
   std::vector<int64_t> strides(spatial_rank, 0);
   std::vector<int64_t> kernel_shape(spatial_rank, 0);
   std::vector<int64_t> pads(2 * spatial_rank, 0);
-
+  bool is_adaptive = false;
   for (int i = 0; i < spatial_rank; i++) {
     if (output_size->at(i) == -1) {
       output_size->at(i) = input_spatial_shape[i];
     }
+    is_adaptive |= (input_spatial_shape[i] % output_size->at(i) != 0);
     strides[i] = std::floor(input_spatial_shape[i] / output_size->at(i));
     kernel_shape[i] =
         input_spatial_shape[i] - (output_size->at(i) - 1) * strides[i];
@@ -62,8 +63,9 @@ void top::AdaptiveAvgPoolOp::shape_inference() {
   attrs.emplace_back(
       builder.getNamedAttr("pads", builder.getI64ArrayAttr(pads)));
   attrs.emplace_back(
-      builder.getNamedAttr("count_include_pad", builder.getBoolAttr(true))
-  );
+      builder.getNamedAttr("is_adaptive", builder.getBoolAttr(is_adaptive)));
+  attrs.emplace_back(
+      builder.getNamedAttr("count_include_pad", builder.getBoolAttr(true)));
 
   auto new_op = builder.create<top::AvgPoolOp>(
       getLoc(), out.getType(), ArrayRef<Value>{getInput()}, attrs);

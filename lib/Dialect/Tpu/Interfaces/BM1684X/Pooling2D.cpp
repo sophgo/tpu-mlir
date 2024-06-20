@@ -23,6 +23,7 @@ static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
   spec.dh = 1;
   spec.dw = 1;
   spec.is_global_pooling = attr.is_global;
+  spec.is_adaptive_pooling = attr.is_adaptive;
   spec.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
   spec.if_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;

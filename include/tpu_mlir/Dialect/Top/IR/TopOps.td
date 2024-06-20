@@ -470,6 +470,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     I64ArrayAttr:$pads,
     OptionalAttr<BoolAttr>:$ceil_mode,
     OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
+    DefaultValuedAttr<BoolAttr, "false">:$is_adaptive, //when input_shape % output_shape != 0, indicating true
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,

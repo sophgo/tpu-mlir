@@ -1566,6 +1566,7 @@ typedef struct pooling_common_spec {
   int32_t dw;
   int32_t is_global_pooling;
   int32_t is_avg_pooling;
+  int32_t is_adaptive_pooling;
   int32_t avg_pooling_mode;
   /* for float */
   int32_t if_relu;

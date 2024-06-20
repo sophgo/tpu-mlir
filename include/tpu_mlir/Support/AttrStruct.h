@@ -124,6 +124,7 @@ typedef struct {
   bool do_relu;
   double relu_limit;
   bool is_global;
+  bool is_adaptive;
   bool count_include_pad;
   int64_t round_mode;
   int64_t src_round_mode;

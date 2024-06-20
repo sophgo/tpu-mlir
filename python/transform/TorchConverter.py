@@ -531,8 +531,8 @@ class TorchConverter(BaseConverter):
     def convert_adaptive_avgpool_op(self, torch_node: TorchNode, spatial_rank=1):
         op = self.getOp(torch_node.inputs[0])
         output_size = self.const_val[torch_node.inputs[1]]
-        assert (output_size == [1, 1] or output_size == [1]
-                and "Currently adaptive_avgpool2d/1d is only taken as global_avgpool")
+        # assert (output_size == [1, 1] or output_size == [1]
+        #         and "Currently adaptive_avgpool2d/1d is only taken as global_avgpool")
 
         new_op = top.AdaptiveAvgPoolOp(self.unranked_type,
                                        op,
