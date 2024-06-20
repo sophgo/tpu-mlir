@@ -477,7 +477,7 @@ class fx2mlir(object):
 
 
     def get_dtype(self, type1):
-        return F32Type.get()  #??? todo
+        # return F32Type.get()  #??? todo
         dtype = None
         if type1 == torch.float16:
             dtype = F16Type.get()

@@ -11,6 +11,7 @@ from argparse import Namespace
 MIN_BLOCK_SIZE = 5
 from mlir.ir import *
 import mlir.dialects.top as top
+import mlir.dialects.tpu as tpu
 from tools.train.TpuMlirModule import TpuMlirModule
 from utils.mlir_shell import mlir_opt_for_top, mlir_lowering, mlir_to_model, f32_blobs_compare
 from tools.model_runner import mlir_inference, free_mlir_module, model_inference
@@ -74,12 +75,14 @@ class fx2mlir(object):
         self.output_changed_shapes = {}
         self.return_none_count = 0
         self.operands = dict()
+        self.record_operands_ori_result = dict()
         self.name_map = dict()
         self.init_fxmlirimportor()
         # self.weights_data = dict()
         # self.load_weight = dict()
         # self.const_val = dict()
-        self.num_core = 1
+        # self.num_core = 1
+        self.num_core = 8
         if self.args.chip =="sg2260":
             self.num_core = 8
 
@@ -240,7 +243,11 @@ class fx2mlir(object):
             shape = list(node[1].meta['val'].size())
             shape = [1,shape[0],1,1] if self.nodeIsBelongToChanStyle(node[1]) and len(shape) == 1 else shape
             shape = [1] if shape == [] else shape
-            in_args_txt_list.append("%args{}: {} loc(unknown)".format(node[0], RankedTensorType.get(shape, F32Type.get()).__str__()))
+
+            if node[1].meta['tensor_meta'].dtype == torch.float16:
+                in_args_txt_list.append("%args{}: {} loc(unknown)".format(node[0], RankedTensorType.get(shape, F16Type.get()).__str__()))
+            else:
+                in_args_txt_list.append("%args{}: {} loc(unknown)".format(node[0], RankedTensorType.get(shape, F32Type.get()).__str__()))
 
         first_call_op = True
         for i, node in enumerate(module.graph.nodes):
@@ -248,7 +255,7 @@ class fx2mlir(object):
                 print(f'>>>> {i}th op, new op start:', node.name, 'val:', node.meta['val'] if 'val' in node.meta else 'None', 'tensor_meta:', node.meta['tensor_meta'] if 'tensor_meta' in node.meta else 'None')
                 if first_call_op:
                     output_args_txt = self.parseOutputNode([i for i in module.graph.nodes if i.op == 'output' and len(i.args) > 0][0])
-                    self.mlir.createMlirModuleAndInput(self.input_nodes, ', '.join(in_args_txt_list), output_args_txt,self.operands)
+                    self.mlir.createMlirModuleAndInput(self.input_nodes, ', '.join(in_args_txt_list), output_args_txt, self.operands, self.record_operands_ori_result)
                     first_call_op = False
                 op_type = torch.typename(node.target).split('.')[-1]
                 print(f'{i}th op, node.name:', node.name, 'target:',node.target, 'op_type:', op_type, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs)
@@ -259,7 +266,10 @@ class fx2mlir(object):
         output_tensor_names = []
         for idx, node in enumerate(self.output_nodes):
             if node is not None:
-                return_op.append(self.operands[node])
+                if node not in self.record_operands_ori_result:
+                    return_op.append(self.operands[node])
+                else:
+                    return_op.append(self.record_operands_ori_result[node])
                 new_name = node.name
                 if node in self.name_map:
                     new_name = self.name_map[node]
@@ -294,7 +304,15 @@ class fx2mlir(object):
 
         tpu_ir = 'tpu_'+mlir_file
         self.bmodel_path = os.path.join(self.work_dir, tpu_ir+'.bmodel')
-        mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip, num_core = self.num_core)
+        mix_dtype_input = False
+        for _, node in self.input_nodes:
+            if ('tensor_meta' in node.meta) and (node.meta['tensor_meta'].dtype == torch.float16):
+                mix_dtype_input = True
+                break
+        if mix_dtype_input:
+            mlir_lowering(mlir_file, tpu_ir, 'F16', self.args.chip, num_core = self.num_core)
+        else:
+            mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip, num_core = self.num_core)
         if self.args.cmp:
             tensors = mlir_inference(in_ref_data, tpu_ir, True)
             np.savez('tpu_ir_out_data.npz', **tensors)
@@ -639,7 +657,7 @@ class fx2mlir(object):
 	                                 1,
 	                                 loc=self.get_loc(node.name+'_transposed_gradout'),
 	                                 ip=self.mlir.insert_point).output
-            if shape[2]>56:
+            if shape[2]>32:
                 input_shape = list(node.args[1].meta['val'].size())
                 grad_out_shape = list(node.args[0].meta['val'].size())
                 transposed_grad_weight = top.ConvBwdWeightOp(*self.mlir.get_tensor_type([shape1], dtype),
@@ -944,18 +962,16 @@ class fx2mlir(object):
 
     def convert_copy_op(self,node):
         op0 = self.operands[node.args[0]]
-        # dtype = self.mlir.get_output_dtypes(node)
-        # input_stride = (1,)
-        # output_stride = (1,)
-        # new_op = top.CopyOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
-        #                     op0,
-        #                     node.args[0].meta['val'].size(),
-        #                     input_stride,
-        #                     output_stride,
-        #                     loc=self.get_loc(node.name),
-        #                     ip=self.mlir.insert_point).output
-        # self.operands[node] = new_op
         self.operands[node] = op0
+        if 'dtype' in node.kwargs: #copy op may change data type in FP16 mix precesion training
+            dtype = node.kwargs['dtype']
+            dtype = self.mlir.get_dtype(dtype)
+            new_op = top.DtypeCastOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
+                        op0,
+                        loc=self.get_loc(f'{node}_DtypeCast'),
+                        ip=self.mlir.insert_point).output
+            self.operands[node] = new_op
+
 
     def convert_rsqrt_op(self,node):
         dtype = self.mlir.get_output_dtypes(node)
@@ -1122,6 +1138,9 @@ class fx2mlir(object):
     def convert_transpose_op(self, node):
         op0 = self.operands[node.args[0]]
         dtype = self.mlir.get_output_dtypes(node)
+        # ouput has been tranlated to FP16
+        if node.args[0] in self.record_operands_ori_result:
+            dtype = [F16Type.get()]
         no_dims = len(node.args) == 1
         dim0 = node.args[1] if not no_dims else 0
         dim1 = node.args[2] if not no_dims else 1
@@ -1170,12 +1189,12 @@ class fx2mlir(object):
         rstd_shape = [1,list(node.meta['val'][4].size())[0],1,1]
         running_mean_shape = [1,list(node.meta['val'][1].size())[0],1,1]
         running_var_shape = [1,list(node.meta['val'][2].size())[0],1,1]
-        out = top.MeanRstdOp(*self.mlir.get_tensor_type([mean_shape], dtype),
-                             *self.mlir.get_tensor_type([rstd_shape], dtype),
-                             *self.mlir.get_tensor_type([running_mean_shape], dtype),
-                             *self.mlir.get_tensor_type([running_var_shape], dtype),
-                             *self.mlir.get_tensor_type([running_mean_shape], dtype),
-                             *self.mlir.get_tensor_type([running_var_shape], dtype),
+        out = top.MeanRstdOp(*self.mlir.get_tensor_type([mean_shape], dtype[1]),
+                             *self.mlir.get_tensor_type([rstd_shape], dtype[2]),
+                             *self.mlir.get_tensor_type([running_mean_shape], dtype[3]),
+                             *self.mlir.get_tensor_type([running_var_shape], dtype[4]),
+                             *self.mlir.get_tensor_type([running_mean_shape], dtype[3]),
+                             *self.mlir.get_tensor_type([running_var_shape], dtype[4]),
                              op0,
                              running_mean,
                              running_var,

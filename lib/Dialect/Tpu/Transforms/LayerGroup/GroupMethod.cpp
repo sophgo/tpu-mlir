@@ -1713,7 +1713,8 @@ Operation* GroupMethod::cut_this_group_is_better(LgInfo *sub_group)
   for(int i=0; i<sub_group->group_ops.size(); i++)
   {
     auto cur_op = sub_group->group_ops[i];
-    if(isa<tpu::Conv2DOp, tpu::DeconvOp>(cur_op))
+    // if(isa<tpu::Conv2DOp, tpu::DeconvOp>(cur_op))
+    if(isa<tpu::Conv2DOp>(cur_op))
     {
       cut_op_idx.push_back(std::make_pair(cur_op, i));
     }
@@ -2041,6 +2042,16 @@ void make_sure_enough_slice_for_multicore(LgPassIR *pass_ir, std::vector<std::ve
         }
         vec_op_hsecs.clear();
         max_shape_secs = get_group_max_secs(sub_group, vec_op_hsecs);
+        // for debug
+        if(vec_op_hsecs.size()==0){
+          break;
+        }
+        llvm::errs()<<"vec_op_hsecs.size() : "<<vec_op_hsecs.size()<<"\n";
+        for(auto it:vec_op_hsecs)
+        {
+          llvm::errs() << module::getName(it.first).str() << "\n";
+        }
+        // for debug
         std::sort(vec_op_hsecs.begin(), vec_op_hsecs.end(),pair_op_int_Sort_by_int);
       }
     }

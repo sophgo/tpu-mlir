@@ -270,6 +270,17 @@ def Top_CastOp:Top_Op<"Cast"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_DtypeCastOp:Top_Op<"DtypeCast"> {
+  let summary = "Cast F32 to F16";
+  let description = [{
+    Cast F32 to F16
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
   let summary = "Concat operator";
 

@@ -1460,6 +1460,24 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   }];
 }
 
+def Tpu_DtypeCastOp:Tpu_Op<"DtypeCast", [
+  InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Cast F32 to F16";
+  let description = [{
+    Cast F32 to F16
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    OptionalAttr<BoolAttr>:$extra_input,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_ShapeCastOp:Tpu_Op<"ShapeCast", [
     ShapeProducer, ShapeConsumer,
     DeclareOpInterfaceMethods<TypeInterface>]> {

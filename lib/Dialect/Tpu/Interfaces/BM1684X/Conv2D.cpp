@@ -186,7 +186,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   }
   auto Filter_type = BM168x::getDataType(getFilter());
   auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
-  if ((module::isWeight(getFilter()) == false)) {
+  if (!module::isTrain() && !module::isWeight(getFilter())) {
     if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 || Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8 || Filter_type == DTYPE_F8E4M3 || Filter_type == DTYPE_F8E5M2){
       sz += p.kh * p.kw * p.oc * align_up(p.ic / p.groups, eu_num) * Filter_type_len;
     }

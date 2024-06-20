@@ -261,6 +261,11 @@ std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> lmem_alloc::sho
 
 bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int size, std::vector<int>& ret_bank_id,
                         int& free_addr, int& confict_size, bool force_not_care_bank) {
+  // std::string key = llvm::formatv("{0}_slice{1}", name, slice_idx).str();
+  // if (mem_dict.find(key) != mem_dict.end()){
+  //   return true;
+  // }
+
   std::vector<int> vec_bank_id, all_conf_bank_id;
   bool care_bank = false;
   if (!force_not_care_bank) {
@@ -1520,7 +1525,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         if (min_always_free_mem_size > itr.second) {
           reside_value_info tmp;
           addr -= itr.second;
-          addr = addr/64*64;
+          addr = (addr/64)*64;
           tmp.addr = addr;
           tmp.size = itr.second;
           map_reside_value_info[itr.first] = tmp;

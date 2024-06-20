@@ -35,7 +35,9 @@ void MaxPoolWithMaskLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
                                           top::MaxPoolWithMaskOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(
+      op, op->getResultTypes(), op->getOperands(), op->getAttrs());
+  // llvm_unreachable("Not Implemented");
 }
 
 void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,

@@ -29,7 +29,8 @@ import mlir.dialects.top as top
 import torch._dynamo as td
 from torch.cuda.amp import autocast, GradScaler
 #from apex import amp
-tpu_dev = "privateuseone:0"
+# tpu_dev = "privateuseone:0"
+tpu_dev = "cpu"
 device = torch.device(tpu_dev)
 
 # td.config.log_level = logging.DEBUG

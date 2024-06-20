@@ -198,6 +198,27 @@ class test_model7(nn.Module):
             x = x.sum()
         return x
 
+class test_model8(nn.Module):
+    def __init__(self, for_train = False):
+        super(test_model8, self).__init__()
+        self.name = 'test_model8'
+        self.conv1 = nn.Conv2d(3, 128, 8, 8, 0, bias=False)
+        self.norm = nn.BatchNorm2d(128, eps=0, momentum=0.5, affine=True, track_running_stats=True)
+        self.conv2 = nn.Conv2d(128, 128, 8, 8, 0, bias=False)
+        self.relu = nn.ReLU()
+        self.fc = nn.Linear(128*3*3, 1000)
+        self.for_train = for_train
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.norm(x)
+        x = self.conv2(x)
+
+        x = x.reshape(1, 128*3*3)
+        x = self.fc(x)
+        if self.for_train:
+            x = x.sum()
+        return x
 
 # class test_model(nn.Module):
 #     def __init__(self, for_train = False):

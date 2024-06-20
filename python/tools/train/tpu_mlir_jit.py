@@ -17,8 +17,9 @@ from tools.train.TpuMlirModule import TpuMlirModule
 # from tools.train.fx2mlir import fx2mlir
 from tools.train.FxGraphConvertor import fx2mlir
 from tools.train.fx_pass import fx_pass_for_bmm_expand
-TPUC_ROOT = os.environ.get('TPUC_ROOT')
-torch.ops.load_library(f'{TPUC_ROOT}/lib/liblibtorch_plugin.so')
+
+# TPUC_ROOT = os.environ.get('TPUC_ROOT')
+# torch.ops.load_library(f'{TPUC_ROOT}/lib/liblibtorch_plugin.so')
 
 args = None
 graph_idx = 0
@@ -133,16 +134,18 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         graph_idx += 1
     os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
     print('run tpu_mlir_compiler, original graph:')
-    #fx_g.graph.print_tabular()
+    # fx_g.graph.print_tabular()
     save_fxgraph_dot(f"fx_g_{time_str}", fx_g)
 
 
     for i, node in enumerate(fx_g.graph.nodes):
         print(f'>>> {i}th op, name:', node.name, 'target:',node.target, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs,
               'val:', node.meta['val'] if 'val' in node.meta else 'None')
+
     if args.only_test_bwd:
         args.only_test_bwd = False
         return make_boxed_func(fx_g.forward)
+
 
     fx_g_bk = copy.deepcopy(fx_g)
 
@@ -225,9 +228,18 @@ def test_compiler(gm, example_inputs):
     # fwd_compiler(gm, example_inputs)
     return make_boxed_func(gm.forward)
 
-# tpu_dev = "cpu"
+### change start
+tpu_dev = "cpu"
 # tpu_dev = "cuda:0"
-tpu_dev = "privateuseone:0"
+# tpu_dev = "privateuseone:0"
 device = torch.device(tpu_dev)
+# import torch_tpu
+# device = (
+#     "tpu"
+#     if torch.tpu.is_available()
+#     else "cpu"
+# )
+
+### end
 #from functorch.compile import min_cut_rematerialization_partition
 aot_backend = aot_autograd(bw_compiler = tpu_mlir_compiler,fw_compiler=tpu_mlir_compiler,decompositions=_get_disc_decomp())#fw_compiler=skip_compiler,
