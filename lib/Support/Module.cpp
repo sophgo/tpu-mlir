@@ -1889,7 +1889,7 @@ void unreachable(const char *info, Operation *op, const char *file,
       next->dump();
     }
   }
-  std::abort();
+  exit(-1);
 }
 
 bool startsWith(const std::string& fullString, const std::string& startingSubstring) {

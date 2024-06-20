@@ -22,7 +22,13 @@ void py_cuda::cudaCast(tpu::CastOp op) {
   void *input = getCudaData(op.getInput());
   void *output = getCudaData(op.getOutput());
   if (isOutQuant && fInput) {
-    //auto qtype = module::getUniformQuantizedType(op.getOutput());
+    // auto qtype = module::getUniformQuantizedType(op.getOutput());
+    // auto scale = qtype.getScale();
+    // if (is_cv18xx) {
+    //   cudaCVQuantInt8(input, output, BF16(1./scale));
+    // } else {
+    //   cudaQuantInt8(input, output, 1./scale);
+    // }
   } else if (fOutput && isInQuant) {
     auto qtype = module::getUniformQuantizedType(op.getInput());
     auto scale = qtype.getScale();
