@@ -38,6 +38,7 @@ SHAPE_LOWERING_BM1684X(Div)
 SHAPE_LOWERING_BM1684X(AddConst)
 SHAPE_LOWERING_BM1684X(SubConst)
 SHAPE_LOWERING_BM1684X(MulConst)
+SHAPE_LOWERING_BM1684X(DivConst)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
