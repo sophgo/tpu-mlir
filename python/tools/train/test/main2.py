@@ -8,6 +8,9 @@ from tools.train.tpu_mlir_jit import device, aot_backend
 import tools.train.tpu_mlir_jit as tpu_mlir_jit
 from numpy_helper.npz_compare import npz_compare
 
+from torch import autocast
+import torch_tpu
+
 def enable_dynamo_debug_info():
     import torch._dynamo as td
     td.config.log_level = logging.DEBUG
@@ -156,9 +159,12 @@ if __name__ == '__main__':
                         help="enable cmp")
     parser.add_argument("--only_test_bwd", action='store_true',
                         help="only_test_bwd")
+
     args = parser.parse_args()
     if args.chip == 'bm1690':
         os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
+    if args.chip == 'bm1684x':
+        os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
     tpu_mlir_jit.args = args
     input = torch.randn((1, 3, 224, 224))
     input_d = input.to(device)
@@ -185,9 +191,9 @@ if __name__ == '__main__':
     #     print(f"now run backward{i}")
     #     res.sum().backward()
 
-    # print('start test test_model3')
-    # from tools.train.test_model import test_model3
-    # mod = test_model3(for_train = True)
+    # print('start test resnet50')
+    # from tools.train.resnet import resnet50
+    # mod = resnet50()
     # mod.to(device)
     # model_opt = torch.compile(mod, backend=aot_backend)
     # for i in range(1):
@@ -196,23 +202,45 @@ if __name__ == '__main__':
     #     print(f"now run backward{i}")
     #     res.sum().backward()
 
-    print('start test resnet50')
+    # # FP16 model
+    print('start test FP16 model')
+    # define model
+    # from tools.train.test_model import test_model1
+    # mod = test_model1(for_train = True)
+    # from tools.train.test_model import test_model2
+    # mod = test_model2(for_train = True)
     from tools.train.resnet import resnet50
     mod = resnet50()
     mod.to(device)
+    # mod.half()
     model_opt = torch.compile(mod, backend=aot_backend)
-    for i in range(1):
-        print(f"now run forward{i}")
+    # forward
+    scaler = torch.tpu.amp.GradScaler()
+    with autocast(device_type = device, dtype = torch.float16):
+        input_d = input.to(device, dtype=torch.float16)
         res = model_opt(input_d)
-        print(f"now run backward{i}")
-        res.sum().backward()
+        loss = res.sum()
+    scaler.scale(loss.float()).backward()
 
-    # print('start test resnet18')
-    # from tools.train.resnet import resnet18
-    # model = resnet18()
-    # self.trace_and_test([(1,3,224,224)], model)
-
-    # print('start test mobilenet_v2')
-    # import torchvision.models as models
-    # model = models.mobilenet_v2()
-    # self.trace_and_test([(1,3,224,224)], model)
+    # NEW FP16 model
+    # print('start test new FP16 model')
+    # input = torch.randn((1, 64, 224, 224))
+    # input_d = input.to(device)
+    # # define model
+    # # from tools.train.test_model import test_model_mine
+    # # mod = test_model_mine(for_train = True)
+    # # from tools.train.test_model import test_model_mine3
+    # # mod = test_model_mine3(for_train = True)
+    # from tools.train.resnet import resnet50
+    # mod = resnet50()
+    # mod.conv1 = torch.nn.Conv2d(64, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    # # import pdb;pdb.set_trace()
+    # mod.to(device)
+    # model_opt = torch.compile(mod, backend=aot_backend)
+    # # forward
+    # scaler = torch.tpu.amp.GradScaler()
+    # with autocast(device_type = device, dtype = torch.float16):
+    #     input_d = input.to(device, dtype=torch.float16)
+    #     res = model_opt(input_d)
+    #     loss = res.sum()
+    # scaler.scale(loss.float()).backward()

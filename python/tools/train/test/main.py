@@ -51,15 +51,15 @@ if __name__ == '__main__':
         # from resnet50 import resnet50
         # mod = resnet50()
 
-        # from tools.train.test_model import test_model
-        # mod = test_model() #.train()
-        # input = torch.randn((1, 3, 16, 16))
-        # # # input = torch.randn((20, 1024))
+        from tools.train.test_model import test_model1
+        mod = test_model1(for_train=True) #.train()
+        input = torch.randn((1, 3, 16, 16))
+        # # input = torch.randn((20, 1024))
 
-        d_model=10 #768  #test ok at 0918
-        from tools.train.gpt2 import TransformerBlocks #backward can not use this
-        mod = TransformerBlocks(d_model=d_model, nlayers=1) #.train()
-        input = torch.randn((1,4,d_model))
+        # d_model=10 #768  #test ok at 0918
+        # from tools.train.gpt2 import TransformerBlocks #backward can not use this
+        # mod = TransformerBlocks(d_model=d_model, nlayers=1) #.train()
+        # input = torch.randn((1,4,d_model))
 
         # from tools.train.gpt2 import GPT2
         # mod = GPT2()
@@ -91,8 +91,8 @@ if __name__ == '__main__':
         # )
         # print('loss_d:', loss_d.size(), loss_d.device)
 
-        # loss_d.backward() #for TransformerBlocks
-        loss_d[0,0].backward() #for resnet18
+        loss_d.backward() #for TransformerBlocks
+        # loss_d[0,0].backward() #for resnet18
         # optimizer.step()
         # exit(0)
         # with autocast(): #tpu device

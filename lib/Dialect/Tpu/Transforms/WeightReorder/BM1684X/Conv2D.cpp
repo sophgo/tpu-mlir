@@ -23,6 +23,29 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
   auto attr = op.parseParam();
   auto filter_type = module::getStorageType(op.getFilter());
 
+  if(module::isTrain() && !module::isWeight(op.getOperand(1)))
+  {
+    const int IC_PARALLEL = BM168x::ic_num(2);
+    int64_t oc_new = 1;
+    int64_t ic_new = attr.oc;
+    // int64_t kh_new = (align_up(attr.ic, IC_PARALLEL)) * attr.kh * attr.kw;
+    int64_t kh_new = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
+    int64_t kw_new = IC_PARALLEL;
+    std::vector<int64_t> filter_shape = {oc_new, ic_new, kh_new, kw_new};
+    llvm::errs()<<" attr.oc "<<attr.oc<<" attr.ic "<<attr.ic<<" attr.kh "<<attr.kh<<" attr.kw "<<attr.kw<<"\n";
+    llvm::errs()<<" oc_new: "<<oc_new<<" ic_new: "<<ic_new<<" kh_new: "<<kh_new<<" kw_new: "<<kw_new<<"\n";
+    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+
+    rewriter.setInsertionPointAfterValue(op.getOperand(1));
+    auto name = module::getName(op.getOutput());
+    auto reshape_loc =NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
+    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
+    new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(false));
+    op.setOperand(1, new_reshape_op);
+
+    return success();
+  }
+
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.groups,
                                        attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);

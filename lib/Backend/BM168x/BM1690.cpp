@@ -24,7 +24,9 @@ void BM1690::before_codegen() {
 }
 
 void BM1690::after_codegen(int64_t flops) {
-  BM168x::after_codegen(flops);
+  // for debug
+  // BM168x::after_codegen(flops);
+  // for debug
   for (int i = 0, n = multiCode.size(); i < n; i++) {
     useCore(i);
     dl_store_cmd_end();

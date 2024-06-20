@@ -3512,8 +3512,9 @@ class TORCH_IR_TESTER(object):
         # self.trace_and_test([[5,1,8,16],[5,1,8,16],[5,16,8,64]], Model0())
     def user_define_net(self):
         """user_define_net"""
-        self.group_opt = 3
+        # return
 
+        self.group_opt = 3
         # print('start test test_model1')
         # from tools.train.test_model import test_model1
         # model = test_model1()
