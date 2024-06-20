@@ -69,6 +69,13 @@ void py_cuda::cuda_malloc(std::map<std::string, cuda_ptr> &map, Value v) {
   value_map_[name] = v;
 }
 
+cuda_ptr py_cuda::cuda_malloc(size_t bytes) {
+  void *cuda_mem;
+  CHECK_CUDA(cudaMalloc(&cuda_mem, bytes));
+  cuda_ptr wrapper(cuda_mem);
+  return std::move(wrapper);
+}
+
 // data in activation_map_ copy to buffer_map_; if it not float, convert to
 // float first
 void py_cuda::cuda_to_host(const std::string &name) {
@@ -102,13 +109,14 @@ void py_cuda::cuda_to_host(const std::string &name) {
     CHECK_CUDA(cudaMemcpy(temp, cudaData, num, cudaMemcpyDeviceToHost));
     if (stype.isUnsignedInteger(8)) {
       for (int i = 0; i < num; i++) {
-        buffer[i] = (float)(temp[i] - qtype.getZeroPoint()) * qtype.getScale();
+        buffer[i] = ((float)temp[i] - (float)qtype.getZeroPoint()) *
+                    (float)qtype.getScale();
       }
     } else {
       int8_t *temp_i8 = (int8_t *)temp;
       for (int i = 0; i < num; i++) {
-        buffer[i] =
-            (float)(temp_i8[i] - qtype.getZeroPoint()) * qtype.getScale();
+        buffer[i] = ((float)temp_i8[i] - (float)qtype.getZeroPoint()) *
+                    (float)qtype.getScale();
       }
     }
     delete[] temp;
@@ -197,22 +205,6 @@ void py_cuda::invoke(bool dump_all) {
   for (auto &name : output_names_) {
     cuda_to_host(name);
   }
-}
-
-void *py_cuda::getCudaData(Value v) {
-  auto name = module::getName(v).str();
-  if (module::isWeight(v)) {
-    if (weight_map_.find(name) != weight_map_.end()) {
-      return weight_map_[name].get();
-    }
-    UNREACHABLE_OP("Can't find weight data", v.getDefiningOp());
-  } else {
-    if (activation_map_.find(name) != activation_map_.end()) {
-      return activation_map_[name].get();
-    }
-    UNREACHABLE_OP("Can't find activation data", v.getDefiningOp());
-  }
-  return nullptr;
 }
 
 py::array py_cuda::get_tensor(std::string name) {

@@ -59,14 +59,28 @@ public:
   py::dict get_all_tensor();
 
 private:
+  // -------------------------------------------------------------------
+  // -------------- helper functions -----------------------------------
+  // get data in cuda by activation_map_ and weight_map_; if not find, will
+  // assert
   void *getCudaData(Value v);
-  // Op inference by cuda
+  // get cudnn type from mlir type
+  cudnnDataType_t getCudnnType(Value v);
+  size_t getCudnnTypeBytes(cudnnDataType_t type);
+  // convert cuda data from one type to another type
+  cuda_ptr newCudaData(void *data, size_t num, cudnnDataType_t src_type,
+                       cudnnDataType_t dst_type);
+  // alloc new buffer to store new type
+  cuda_ptr newCudaData(Value v, cudnnDataType_t dst_type);
+  // -------------------------------------------------------------------
+  // -------------- op inference by cuda -------------------------------
   void cudaAdd(tpu::AddOp op);
   void cudaConv2D(tpu::Conv2DOp op);
   void cudaCast(tpu::CastOp op);
   void cudaGenericCpu(tpu::GenericCpuOp op);
 
 private:
+  cuda_ptr cuda_malloc(size_t bytes);
   void cuda_malloc(std::map<std::string, cuda_ptr> &map, Value v);
   void cuda_to_host(const std::string &name);
 

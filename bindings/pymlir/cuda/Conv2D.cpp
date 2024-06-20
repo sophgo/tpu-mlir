@@ -8,103 +8,88 @@
 //===----------------------------------------------------------------------===//
 
 #include "../pycuda.h"
+#include "cuda_helper.h"
 
 void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
   auto p = op.parseParam();
   if (!module::isUniformQuantized(op.getOutput())) {
     UNREACHABLE_OP("Not Implemented", op);
   }
+  auto num_out = module::getNumElements(op.getOutput());
+  auto out_stype = module::getStorageType(op.getOutput());
   // --------------------------------------------------------------------------
-  // 1. inference int8 => int32
+  // 1. inference int8 => float
+  auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
+  auto kernel_f32 = newCudaData(op.getFilter(), CUDNN_DATA_FLOAT);
   cudnnTensorDescriptor_t input_desc;
   cudnnCreateTensorDescriptor(&input_desc);
-  cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_INT8,
+  cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
                              p.n, p.ic, p.ih, p.iw);
   cudnnFilterDescriptor_t kernel_desc;
   cudnnCreateFilterDescriptor(&kernel_desc);
-  cudnnSetFilter4dDescriptor(kernel_desc, CUDNN_DATA_INT8, CUDNN_TENSOR_NCHW,
+  cudnnSetFilter4dDescriptor(kernel_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW,
                              p.oc, p.ic, p.kh, p.kw);
-  cudnnTensorDescriptor_t outi32_desc;
-  cudnnCreateTensorDescriptor(&outi32_desc);
-  cudnnSetTensor4dDescriptor(outi32_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_INT32,
+  cudnnTensorDescriptor_t outf32_desc;
+  cudnnCreateTensorDescriptor(&outf32_desc);
+  cudnnSetTensor4dDescriptor(outf32_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
                              p.n, p.oc, p.oh, p.ow);
   cudnnConvolutionDescriptor_t conv_desc;
   cudnnCreateConvolutionDescriptor(&conv_desc);
   ASSERT_OP(p.pdb == p.pdf, op); // other not supported
   ASSERT_OP(p.pwl == p.pwr, op); // other not supported
-  cudnnSetConvolution2dDescriptor(conv_desc, p.phb, p.pwl, p.sh, p.sw, p.dh,
-                                  p.dw, CUDNN_CONVOLUTION, CUDNN_DATA_INT32);
+  CHECK_CUDNN(cudnnSetConvolution2dDescriptor(
+      conv_desc, p.phb, p.pwl, p.sh, p.sw, p.dh, p.dw, CUDNN_CROSS_CORRELATION,
+      CUDNN_DATA_FLOAT));
   // prepare input output memory
-  void *input = getCudaData(op.getInput());
-  void *kernel = getCudaData(op.getFilter());
-  void *out_i32;
-  CHECK_CUDA(cudaMalloc(&out_i32, p.n * p.oc * p.oh * p.ow * sizeof(int32_t)));
+  auto out_f32 = cuda_malloc(num_out * sizeof(float));
+
+  cudnnConvolutionFwdAlgo_t algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
   // forward conv
+  size_t worksize = 0;
+  CHECK_CUDNN(cudnnGetConvolutionForwardWorkspaceSize(
+      cudnn_, input_desc, kernel_desc, conv_desc, outf32_desc, algo,
+      &worksize));
+  auto conv_buffer = cuda_malloc(worksize);
   float alpha = 1.0f, beta = 0.0f;
-  cudnnConvolutionForward(cudnn_, &alpha, input_desc, input, kernel_desc,
-                          kernel, conv_desc,
-                          CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
-                          nullptr, 0, &beta, outi32_desc, out_i32);
-  // --------------------------------------------------------------------------
+  CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc, in_f32.get(),
+                                      kernel_desc, kernel_f32.get(), conv_desc,
+                                      algo, conv_buffer.get(), worksize, &beta,
+                                      outf32_desc, out_f32.get()));
+  conv_buffer.reset();
+
+  // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
   if (p.has_bias) {
-    void *bias = getCudaData(op.getBias());
+    auto bias = newCudaData(op.getBias(), CUDNN_DATA_FLOAT);
     cudnnTensorDescriptor_t bias_desc;
     cudnnCreateTensorDescriptor(&bias_desc);
-    cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_INT32,
+    cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
                                1, p.oc, 1, 1);
     alpha = 1.0f, beta = 1.0f;
-    cudnnAddTensor(cudnn_, &alpha, bias_desc, bias, &beta, outi32_desc,
-                   out_i32);
+    CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias.get(), &beta,
+                               outf32_desc, out_f32.get()));
   }
-  // --------------------------------------------------------------------------
+  auto out_i32 =
+      newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
+  out_f32.reset();
+  //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 3. multiplier + shift i32 => i8
-  auto qmode = op.getQuantMode();
-  if (qmode != tpu::RequantMode::QDM &&
-      qmode != tpu::RequantMode::MultiplierShift) {
-    UNREACHABLE_OP("Not Implemented!", op);
-  }
+  auto output = getCudaData(op.getOutput());
+  auto cudaMults = cuda_malloc(p.oc * sizeof(int32_t));
+  auto cudaShifts = cuda_malloc(p.oc * sizeof(int32_t));
   auto rshift_v = module::getI64Array(op.getRshift().value());
   auto multiplier_v =
       module::getI64Array(op.getMultiplier(), rshift_v->size(), 1);
-  float *scale = new float[p.oc];
-  // TODO(pengchao.hu): need to fix quantization mode
-  if (qmode == tpu::RequantMode::QDM) {
-    for (int i = 0; i < p.oc; i++) {
-      scale[i] = multiplier_v->at(i) / (1 << (31 + rshift_v->at(i)));
-    }
-  } else {
-    for (int i = 0; i < p.oc; i++) {
-      scale[i] = multiplier_v->at(i) / (1 << rshift_v->at(i));
-    }
-  }
-  auto otype = module::getStorageType(op.getOutput());
-  cudnnTensorDescriptor_t trans_desc;
-  cudnnCreateTensorDescriptor(&trans_desc);
-  if (otype.isUnsignedInteger(8)) {
-    cudnnSetTensor4dDescriptor(trans_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_UINT8,
-                               p.n, p.oc, p.oh, p.ow);
-  } else {
-    cudnnSetTensor4dDescriptor(trans_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_INT8,
-                               p.n, p.oc, p.oh, p.ow);
-  }
-  void *output = getCudaData(op.getOutput());
-  cudnnTransformTensor(cudnn_, scale, outi32_desc, out_i32, scale, trans_desc,
-                       output);
-  delete[] scale;
-  // --------------------------------------------------------------------------
-  // 4. do relu
-  if (otype.isUnsignedInteger(8) || op.getDoRelu() == false) {
-    return;
-  }
-  cudnnActivationDescriptor_t relu_desc;
-  cudnnCreateActivationDescriptor(&relu_desc);
-  cudnnSetActivationDescriptor(relu_desc, CUDNN_ACTIVATION_RELU,
-                               CUDNN_PROPAGATE_NAN, 0.0);
-  alpha = 1.0, beta = 0.0;
-  cudnnActivationForward(cudnn_, relu_desc, &alpha, trans_desc, output, &beta,
-                         trans_desc, output);
-  // --------------------------------------------------------------------------
-  // 5. free mem
-  CHECK_CUDA(cudaFree(out_i32));
+  std::vector<int32_t> m(multiplier_v->begin(), multiplier_v->end());
+  std::vector<int32_t> rs(rshift_v->begin(), rshift_v->end());
+  CHECK_CUDA(cudaMemcpy(cudaMults.get(), m.data(), m.size() * sizeof(int32_t),
+                        cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(cudaShifts.get(), rs.data(),
+                        rs.size() * sizeof(int32_t), cudaMemcpyHostToDevice));
+  bool sign = !out_stype.isUnsignedInteger(8);
+  bool qdm = module::isCV18xx();
+  bool relu = sign && p.do_relu;
+  cudaRequantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
+                            cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign, qdm,
+                            relu);
 }
