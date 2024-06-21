@@ -66,7 +66,19 @@ After cloning the code of this project, it needs to be compiled in docker.
 
 ``` shell
 docker pull sophgo/tpuc_dev:latest
+```
 
+* If the pulling failed, you can download it in the following way:
+
+``` shell
+wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+
+docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+```
+
+* Create the container:
+
+``` shell
 # myname1234 is just an example, you can set your own name
 docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
