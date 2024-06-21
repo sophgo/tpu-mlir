@@ -27,6 +27,15 @@ Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_
    $ docker pull sophgo/tpuc_dev:v3.2
 
 
+If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
+
+.. code-block:: shell
+   :linenos:
+
+   $ wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+   $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+
+
 If you are using docker for the first time, you can execute the following commands to install and configure it (only for the first time):
 
 

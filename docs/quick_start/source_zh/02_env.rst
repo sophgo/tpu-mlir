@@ -13,6 +13,14 @@
 
    $ docker pull sophgo/tpuc_dev:v3.2
 
+若下载失败，可从官网开发资料 https://developer.sophgo.com/site/index/material/86/all.html 下载所需镜像文件，或使用下方命令下载镜像：
+
+.. code-block:: shell
+   :linenos:
+
+   $ wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+   $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+
 
 如果是首次使用Docker, 可执行下述命令进行安装和配置（仅首次执行）：
 
