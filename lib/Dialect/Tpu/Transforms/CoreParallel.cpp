@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "CoreParallel/CoreParallel.hpp"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace llvm;
 
@@ -122,7 +122,7 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 // [offset, offset+num_core)
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
                            int num_core = 1) {
-  if(getRunMode(op)==RunMode::TPU_DYNAMIC)
+  if (getRunMode(op) == RunMode::TPU_DYNAMIC)
     return nullptr;
   if (num_core < 2)
     return nullptr;
@@ -186,9 +186,10 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
     auto l_shape = module::getShape(matmulOp.getInput());
     auto r_shape = module::getShape(matmulOp.getRight());
 
-    if (l_shape.size() == 4 && r_shape.size() == 4 && l_shape[0] == r_shape[0] &&
-        l_shape[1] != r_shape[1] && l_shape[2] == r_shape[2] && l_shape[3] == r_shape[3])
-        return nullptr;
+    if (l_shape.size() == 4 && r_shape.size() == 4 &&
+        l_shape[0] == r_shape[0] && l_shape[1] != r_shape[1] &&
+        l_shape[2] == r_shape[2] && l_shape[3] == r_shape[3])
+      return nullptr;
   }
 
   { // This is a temporary fix for GroupNorm support; Try to refactor this out.
@@ -347,7 +348,8 @@ void groupParallelDistribute(tpu::GroupParallelOp op, int num_core) {
                [](auto &it) { return isa<tpu::CoreParallelOp>(*it[0]); })) {
       for (auto [index, coreRange] : llvm::enumerate(coresInRegion)) {
         auto &it = oPit[index];
-        if (!isa<tpu::CoreParallelOp>(*it[0])) {
+        if (!isa<tpu::CoreParallelOp>(*it[0]) &&
+            true == isa<IndexingMapsInterface>(*it[0])) {
           packOperation(cast<IndexingMapsInterface>(*it[0]), coreRange[0],
                         coreRange[1]);
         }
