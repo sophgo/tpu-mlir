@@ -100,7 +100,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     }
   }
 
-  if (module::getCoreNum() > 1 && supports_multi_core()) {
+  // CoreParallel setMultiCore(true)
+  if (module::getCoreNum() > 1 && supports_multi_core() && this->getMultiCore()) {
     return BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
                                     sizeof(spec), input_spec->data(),
                                     output_spec->data());
