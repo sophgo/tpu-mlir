@@ -194,6 +194,7 @@ __global__ void kernelRequantInt8Perchannel(int32_t *input, void *output,
       int index = z * (c * h * w) + channel * (h * w) + y * w + x;
       int32_t value;
       if (qdm == false) {
+        // half up
         int64_t data = input[index] * multipliers[channel];
         int64_t round = (int64_t)(1 << (shifts[channel] - 1));
         data = (data + round) >> shifts[channel];
@@ -205,9 +206,15 @@ __global__ void kernelRequantInt8Perchannel(int32_t *input, void *output,
         data = (data + (1ll << 30)) >> 31;
         value = static_cast<int32_t>(data);
         // half away from zero
-        int32_t rounding_offset = (value >= 0) ? (1 << (shifts[channel] - 1))
-                                               : -(1 << (shifts[channel] - 1));
-        value = (value + rounding_offset) >> shifts[channel];
+        int32_t offset = 1 << (shifts[channel] - 1);
+        bool negative = value < 0;
+        if (negative) {
+          value = -value;
+        }
+        value = (value + offset) >> shifts[channel];
+        if (negative) {
+          value = -value;
+        }
       }
       if (out_sign) {
         int32_t min_ = relu ? 0 : -128;
@@ -320,6 +327,7 @@ template <typename T> __global__ void kernelPrint(T *data, int size) {
 }
 
 void cudaPrint(void *data, int size, cudnnDataType_t type) {
+  cudaDeviceSynchronize();
   switch (type) {
   case CUDNN_DATA_FLOAT:
     kernelPrint<<<(size + 256) / 256, 256>>>((float *)data, size);
