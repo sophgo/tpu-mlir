@@ -118,7 +118,8 @@ __global__ void kernelAddInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
   if (idx < size) {
     int32_t temp = (int32_t)a[idx] * mul0 + (int32_t)b[idx] * mul1;
     temp = (temp + (1 << (shift - 1))) >> shift;
-    out[idx] = (int8_t)temp;
+    temp = max(-128, min(127, temp));
+    out[idx] = static_cast<int8_t>(temp);
   }
 }
 
