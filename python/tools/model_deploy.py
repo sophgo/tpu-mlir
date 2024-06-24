@@ -109,6 +109,7 @@ class DeployTool:
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
         self.addr_mode = args.addr_mode
+        self.cuda = args.cuda
         self.q_group_size = args.q_group_size if self.quantize in ["w4f16", "w4bf16"] else 0
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
@@ -264,7 +265,7 @@ class DeployTool:
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all)
-        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
+        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all, use_cuda=self.cuda)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
@@ -353,6 +354,7 @@ if __name__ == '__main__':
     parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
     parser.add_argument("--fazzy_match", action="store_true",
                         help="do fazzy match bettwen target and ref data")
+    parser.add_argument("--cuda", action="store_true", help="do inference by cuda")
     # ========== Fuse Preprocess Options ==============
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")

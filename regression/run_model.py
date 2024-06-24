@@ -53,7 +53,8 @@ class MODEL_RUN(object):
                  save_log: bool = False,
                  disable_thread: bool = True,
                  debug: bool = False,
-                 num_core: int = 1):
+                 num_core: int = 1,
+                 use_cuda: bool = False):
         self.model_name = model_name
         self.chip = chip
         self.mode = mode
@@ -68,6 +69,7 @@ class MODEL_RUN(object):
         self.model_type = chip_support[self.chip][-1]
         self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
         self.num_core = num_core
+        self.use_cuda = use_cuda
 
         config = configparser.ConfigParser(inline_comment_prefixes=('#', ))
         config.read(os.path.expandvars(f"$REGRESSION_PATH/config/{self.model_name}.ini"))
@@ -377,6 +379,8 @@ class MODEL_RUN(object):
             cmd += ["--debug"]
         if self.num_core != 1:
             cmd += [f"--num_core {self.num_core}"]
+        if self.use_cuda:
+            cmd += ["--cuda"]
         if self.tpu_patterns:
             cmd += ["--patterns_count {}".format(self.arch_content[f"{self.chip}_tpu_patterns"])]
         cmd += [f"--compress_mode {self.compress_mode}"]
@@ -581,6 +585,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
+    parser.add_argument("--cuda", action="store_true", help='use cuda to do inference')
     # yapf: enable
     args = parser.parse_args()
     out_dir = f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}_num_core_{args.num_core}" if args.out_dir == "" else args.out_dir
@@ -589,7 +594,7 @@ if __name__ == "__main__":
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.merge_weight,
                        args.fuse_preprocess, args.customization_format, args.aligned_input,
-                       args.save_log, args.disable_thread, args.debug, args.num_core)
+                       args.save_log, args.disable_thread, args.debug, args.num_core, args.cuda)
     runner.run_full()
 
     for quant_mode in runner.time_record.keys():

@@ -172,6 +172,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaGenericCpu(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
           cudaMatMul(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::Pool2DOp>(op)) {
+          cudaPool2D(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
           cudaReshape(tpuOp);
         } else {

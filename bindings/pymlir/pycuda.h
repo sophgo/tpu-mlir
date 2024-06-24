@@ -72,6 +72,7 @@ private:
                        cudnnDataType_t dst_type);
   // alloc new buffer to store new type
   cuda_ptr newCudaData(Value v, cudnnDataType_t dst_type);
+
   // -------------------------------------------------------------------
   // -------------- op inference by cuda -------------------------------
   void cudaAdd(tpu::AddOp op);
@@ -80,6 +81,7 @@ private:
   void cudaGenericCpu(tpu::GenericCpuOp op);
   void cudaMatMul(tpu::MatMulOp op);
   void cudaReshape(tpu::ReshapeOp op);
+  void cudaPool2D(tpu::Pool2DOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);
