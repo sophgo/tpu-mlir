@@ -4,21 +4,42 @@ Calibration
 General introduction
 --------------------
 
-Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer. Then aggregate them to obtain the overall minmax and histogram of the data point distribution. The appropriate symmetric quantization threshold is obtained based on algorithms such as KLD. Finally, the auto-tune algorithm will be enabled to tune the quantization threshold of the input activation of a certain int8 layer by making use of the Euclidean distance between the output activation of int8 and fp32 layers. The above processes are integrated together and executed in unison. The optimized threshold and min/max values for each op are saved in a text file for quantization parameters. Int8 quantization can be achieved by using this text file in ``model_deploy.py``. The overall process is shown in the figure (:ref:`cali_process_flow`).
+Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer.
 
-.. _cali_process_flow:
-.. figure:: ../assets/cali_process_en.png
+The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
+The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
+
+.. _quantization_process:
+.. figure:: ../assets/quant.png
+   :height: 22cm
    :align: center
 
    Overall process of quantization
 
-The following figure (:ref:`cali_table`) shows the final output of the calibration quantization parameters file
+Introduction to the Default Process
+-----------------------------------
+
+The current calibration process encompasses multiple methods and also provides a default calibration workflow, as illustrated in the figure referred to as (:ref:`cali_process_flow`).
+
+.. _cali_process_flow:
+.. figure:: ../assets/cali_process_cn.png
+   :align: center
+
+   Default Process
+
+As shown in the following figure (:ref:`cali_table`), the final output of the calibration is the cali_table.
 
 .. _cali_table:
 .. figure:: ../assets/cali_table.png
    :align: center
 
-   Example of quantization parameters file
+   cali_table
+
+If you use the search_qtable feature, it will also generate the mixed precision table qtable as shown in the following figure.
+
+.. _qtable:
+.. figure:: ../assets/qtable.png
+   :align: center
 
 
 .. _calibration_doc:
@@ -29,7 +50,7 @@ Calibration data screening and preprocessing
 Screening Principles
 ~~~~~~~~~~~~~~~~~~~~
 
-    Selecting about 100 to 200 images covering each typical scene style in the training set for calibration. Using a approach similar to training data cleaning to exclude some anomalous samples.
+Selecting about 100 to 200 images covering each typical scene style in the training set for calibration. Using a approach similar to training data cleaning to exclude some anomalous samples.
 
 
 Input format and preprocessing
@@ -68,13 +89,15 @@ There is no need to specify the preprocessing parameters for the above two forma
 
 .. _calibration_doc2:
 
-Algorithm Implementation
-------------------------
+Quantization Threshold Algorithm Implementation
+------------------------------------------------
+
+tpu-mlir currently implements seven quantization threshold calculation methods: Kullback-Leibler divergence with auto-tuning (kld+auto-tune), Octav (octav), MinMax, Percentile (percentile9999), ACIQ with Gaussian assumption and auto-tuning (aciq_gauss+auto-tune), ACIQ with Laplace assumption and auto-tuning (aciq_laplace+auto-tune), and a histogram-based algorithm derived from Torch. Below, we will introduce the KLD, Octav, ACIQ, and auto-tune algorithms.
 
 KLD Algorithm
 ~~~~~~~~~~~~~~~~
 
-The KLD algorithm implemented by tpu-mlir refers to the implementation of tensorRT. In essence, it cuts off some high-order outliers (the intercepted position is fixed at 128 bin, 256bin ... until 2048 bin) from the waveform of abs (fp32_tensor) (represented by the histogram of 2048 fp32 bins) to get the fp32 reference probability distribution P. This fp32 waveform is expressed in terms of 128 ranks of int8 type. By merging multiple adjacent bins (e.g., 256 bins are 2 adjacent fp32 bins) into 1 rank of int8 values, calculating the distribution probability, and then expanding bins to ensure the same length as P, the probability distribution Q of the quantized int8 values can be got. The KL divergences of P and Q are calculated for the interception positions of 128bin, 256bin, ..., and 2048 bin, respectively in each loop until the interception with the smallest divergence is found. Interception here means the probability distribution of fp32 can be best simulated with the 128 quantization levels of int8. Therefore, it is most appropriate to set the quantization threshold here. The pseudo-code for the implementation of the KLD algorithm is shown below:
+The KLD algorithm implemented by tpu-mlir refers to the implementation of tensorRT. In essence, it cuts off some high-order outliers (the intercepted position is fixed at 128 bin, 256bin ... until 2048 bin) from the distribution of abs (fp32_tensor) (represented by the histogram of 2048 fp32 bins) to get the fp32 reference probability distribution P. This fp32 distribution is expressed in terms of 128 ranks of int8 type. By merging multiple adjacent bins (e.g., 256 bins are 2 adjacent fp32 bins) into 1 rank of int8 values, calculating the distribution probability, and then expanding bins to ensure the same length as P, the probability distribution Q of the quantized int8 values can be got. The KL divergences of P and Q are calculated for the interception positions of 128bin, 256bin, ..., and 2048 bin, respectively in each loop until the interception with the smallest divergence is found. Interception here means the probability distribution of fp32 can be best simulated with the 128 quantization levels of int8. Therefore, it is most appropriate to set the quantization threshold here. The pseudo-code for the implementation of the KLD algorithm is shown below:
 
 
 .. code-block:: shell
@@ -103,9 +126,9 @@ The KLD algorithm implemented by tpu-mlir refers to the implementation of tensor
 Auto-tune Algorithm
 ~~~~~~~~~~~~~~~~~~~
 
-From the actual performance of the KLD algorithm, its candidate threshold is relatively coarse and does not take into account the characteristics of different scenarios, such as object detection and key point detection, in which tensor outliers may be more important to the performance. In these cases, a larger quantization threshold is required to avoid saturation which will affect the expression of distribution features. In addition, the KLD algorithm calculates the quantization threshold based on the similarity between the quantized int8 and the fp32 probability distribution, while there are other methods to evaluate the waveform similarity such as Euclidean distance, cos similarity, etc. These metrics evaluate the tensor numerical distribution similarity directly without the need for a coarse interception threshold, which most of the time has better performance. Therefore, with the basis of efficient KLD quantization threshold, tpu-mlir proposes the auto-tune algorithm to fine-tune these activations quantization thresholds based on Euclidean distance metric, which ensures a better accuracy performance of its int8 quantization.
+From the actual performance of the KLD algorithm, its candidate threshold is relatively coarse and does not take into account the characteristics of different scenarios, such as object detection and key point detection, in which tensor outliers may be more important to the performance. In these cases, a larger quantization threshold is required to avoid saturation which will affect the expression of distribution features. In addition, the KLD algorithm calculates the quantization threshold based on the similarity between the quantized int8 and the fp32 probability distribution, while there are other methods to evaluate the distribution similarity such as Euclidean distance, cos similarity, etc. These metrics evaluate the tensor numerical distribution similarity directly without the need for a coarse interception threshold, which most of the time has better performance. Therefore, with the basis of efficient KLD quantization threshold, tpu-mlir proposes the auto-tune algorithm to fine-tune these activations quantization thresholds based on Euclidean distance metric, which ensures a better accuracy performance of its int8 quantization.
 
-Implementation: firstly, uniformly pseudo-quantize layers with weights in the network, i.e., quantize their weights from fp32 to int8, and then de-quantize to fp32 for introducing quantization error. After that, tune the input activation quantization threshold of op one by one (i.e., uniformly select 10 candidates among the initial KLD quantization threshold and maximum absolute values of activations. Use these candidates to quantize fp32 reference activation values for introducing quantization error. Input op for fp32 calculation, calculating the Euclidean distance between the output and the fp32 reference activations. The candidate with a minimum Euclidean distance will be selected as the tuning threshold). For the case where the output of one op is connected to multiple subsequent ones, the quantization thresholds are calculated for the multiple branches according to the above method, and then the larger one is taken. For instance, the output of layer1 will be adjusted for layer2 and layer3 respectively as shown in the figure (:ref:`auto_tune_flow`).
+Implementation: firstly, uniformly pseudo-quantize layers with weights in the network, i.e., quantize their weights from fp32 to int8, and then de-quantize to fp32 for introducing quantization error. After that, tune the input activation quantization threshold of op one by one (i.e., uniformly select 20 candidates among the initial KLD quantization threshold and maximum absolute values of activations. Use these candidates to quantize fp32 reference activation values for introducing quantization error. Input op for fp32 calculation, calculating the Euclidean distance between the output and the fp32 reference activations. The candidate with a minimum Euclidean distance will be selected as the tuning threshold). For the case where the output of one op is connected to multiple subsequent ones, the quantization thresholds are calculated for the multiple branches according to the above method, and then the larger one is taken. For instance, the output of layer1 will be adjusted for layer2 and layer3 respectively as shown in the figure (:ref:`auto_tune_flow`).
 
 .. _auto_tune_flow:
 .. figure:: ../assets/auto_tune_en.png
@@ -113,12 +136,103 @@ Implementation: firstly, uniformly pseudo-quantize layers with weights in the ne
 
    Implementation of auto-tune
 
+Octav Algorithm
+~~~~~~~~~~~~~~~~
+
+The OCTAV algorithm implemented by tpu-mlir is based on the paper "Optimal Clipping and Magnitude-aware Differentiation for Improved Quantization-aware Training." It is commonly believed that quantization error stems from rounding error and truncation error. Computing the optimal truncation (threshold) for each tensor can minimize the quantization error. OCTAV uses mean squared error (MSE) to measure quantization error and employs a recursive approach based on the fast Newton-Raphson method to dynamically determine the optimal threshold that minimizes MSE. Below is the iterative formula for computing the optimal threshold using this method, as illustrated in figure (:ref:`octav`).
+
+.. _octav:
+.. figure:: ../assets/octav.png
+   :align: center
+
+   octav迭代公式
+
+It was initially designed for use in Quantization-Aware Training (QAT), but it is also effective in Post-Training Quantization (PTQ). Below is the pseudocode for its implementation:
+
+.. code-block:: shell
+   :linenos:
+
+   the pseudocode of computing int8 quantize threshold by octav:
+       Prepare T: Tensor to be quantized,
+               B: Number of quantization bits,
+               epsilon: Convergence threshold (e.g., 1e-5),
+               s_0: Initial guess for the clipping scalar (e.g., max absolute value in tensor T)
+       compute s_star: Optimal clipping scalar
+
+       for n in range(20):
+          Compute the indicator functions for the current clipping scalar:
+          I_clip = 1{|T| > s_n}  (applied element-wise to tensor T)
+          I_disc = 1{0 < |T| ≤ s_n}
+
+          Update the clipping scalar s_n to the next one s_(n+1) using:
+          s_(n+1) = (Σ|x| * I_clip) / ((4^{-B} / 3) * ΣI_disc + ΣI_clip)
+          where Σ denotes the summation over the corresponding elements
+
+          If |s_(n+1) - s_n| < epsilon, the algorithm is considered to have converged
+       end for
+       s_star = s_n
+
+Aciq Algorithm
+~~~~~~~~~~~~~~~~
+
+The ACIQ algorithm implemented in TPU-MLIR is based on the paper "ACIQ: Analytical Clipping for Integer Quantization of Neural Networks." This method assumes that the activation values follow a fixed distribution, then calculates the statistical measures of the corresponding distribution of the activation values, and derives the optimal threshold based on the theoretically calculated optimal clipping quantile.
+
+Implementation approach: TPU-MLIR provides two variants of the algorithm, aciq_gauss and aciq_laplace, which assume Gaussian and Laplace distributions for the activation values. Then, based on the optimal clipping quantile corresponding to 8-bit theoretically, the optimal threshold is calculated.
+
+optimization algorithms Implementation
+------------------------------------------------
+
+During the calibration process, to further enhance the precision of the quantized model, TPU-MLIR offers a variety of optimization algorithms, including Cross-Layer Weight Equalization (WE), Bias Correction (BC), search_qtable, and search_threshold. Below is an introduction to the aforementioned optimization algorithms.
+
+we Algorithm
+~~~~~~~~~~~~~~~~~~~~~~
+
+The cross-layer weight equalization algorithm implemented in TPU-MLIR is based on the paper "Data-Free Quantization Through Weight Equalization and Bias Correction." This method primarily targets model weights and equalizes weights that fit the patterns of conv-conv and conv-relu-conv, aiming to make the distribution of two adjacent weights as uniform as possible.
+
+Previous studies have found that in networks with a high number of depthwise separable convolutions, such as MobileNet, there is a significant variation in the data distribution across channels. This variation can lead to substantial quantization errors when per-layer quantization is used. The WE algorithm effectively addresses this issue by leveraging the linear characteristics of the ReLU function, allowing for the equalization of adjacent convolutional weights.
+This equalization reduces the distribution disparity between convolutional channels, enabling per-layer quantization to achieve results comparable to per-channel quantization. The technical principle is illustrated in the figure (:ref:`we`).
+
+.. _we:
+.. figure:: ../assets/weq.png
+   :align: center
+
+   weight_equalization
+
+bc Algorithm
+~~~~~~~~~~~~~~~~~~~~~~
+
+The bias correction algorithm implemented in TPU-MLIR is referenced from the paper "Data-Free Quantization Through Weight Equalization and Bias Correction." It's commonly assumed that the output error of a quantized model is unbiased, meaning its expected value is zero. However, in many practical scenarios, the output error of a quantized model is biased, indicating a deviation in the expected value between the outputs of the quantized model and the floating-point model. This deviation can impact the accuracy of the quantized model.
+
+The bias correction algorithm calculates the statistical deviation between the quantized model and the floating-point model on calibration data. It then compensates for this deviation by adjusting the bias term of Conv/Gemm operators in the model, aiming to minimize the expected value deviation between their outputs as much as possible. The effect is illustrated in the figure(:ref:`bc`).
+
+.. _bc:
+.. figure:: ../assets/bias.png
+   :align: center
+
+   bias_correction
+
+search_threshold Algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TPU-MLIR offers seven independent threshold calculation methods, and when we have a model that needs to be quantized, choosing the best threshold calculation method becomes an issue. search_threshold provides a solution for this problem.
+
+Implementation: search_threshold initially computes the threshold values using four methods: kld+tune, octav, max, and percentile9999. It then calculates the similarity between the outputs of the quantized model generated by different threshold values and the floating-point model. By comparing the similarity of the four threshold methods, the threshold value corresponding to the highest similarity is selected as the quantization parameter for the current model.
+During the use of search_threshold, the following points need to be noted: 1. search_threshold currently offers two similarity calculation methods, cos and snr, with cos being the default method. 2. If the cos similarity between the quantized model and the floating-point model is below 0.9, the accuracy of the quantized model may be significantly reduced. Search_threshold results may not be accurate. After performing actual accuracy validation, it is recommended to try mixed precision with search_qtable.
+
+search_qtable Algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. This algorithm inherits some functionalities of run_sensitive_layer but operates faster. It also offers the ability to mix custom threshold algorithms and automatically generate a qtable.
+
+Implementation: The output of search_qtable will generate mixed thresholds, meaning it performs optimal selection for the threshold of each layer of the model. That is, it chooses the best result from multiple threshold calculation methods specified by the user for each layer. This choice is based on the comparison of the similarity between the quantized model's current layer output and the original model's current layer output. In addition to generating mixed thresholds, search_qtable will also output the layers of the model that are mixed precision.
+When the user specifies the desired similarity between the mixed precision model and the original model's output, search_qtable will automatically output the minimum number of mixed precision layers required to achieve that similarity level.
+
 .. _calibration_doc3:
 
 Example: yolov5s calibration
 ----------------------------
 
-    In the docker environment of tpu-mlir, execute ``source envsetup.sh`` in the tpu-mlir directory to initialize the environment, then enter any new directory and execute the following command to complete the calibration process for yolov5s.
+In the docker environment of tpu-mlir, execute ``source envsetup.sh`` in the tpu-mlir directory to initialize the environment, then enter any new directory and execute the following command to complete the calibration process for yolov5s.
 
 .. code-block:: shell
    :linenos:
@@ -173,6 +287,7 @@ Example: yolov5s calibration
    * - --mlir
      - The output mlir file name (including path)
 
+Default process
 
 .. code-block:: shell
    :linenos:
@@ -183,30 +298,183 @@ Example: yolov5s calibration
       --tune_num 10 \
       -o yolov5s_cali_table
 
+Using different quantization threshold calculation methods.
+
+octav:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_mse \
+      -o yolov5s_cali_table
+
+minmax:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_max \
+      -o yolov5s_cali_table
+
+percentile9999:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_percentile9999 \
+      -o yolov5s_cali_table
+
+aciq_gauss:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_aciq_gauss \
+      -o yolov5s_cali_table
+
+aciq_laplace:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_aciq_laplace \
+      -o yolov5s_cali_table
+
+Using optimization methods:
+
+we:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --we \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --debug_cmd use_mse \
+      -o yolov5s_cali_table
+
+we+bc:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --we \
+      --bc \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --chip bm1684x \
+      --bc_inference_num 200 \
+      --debug_cmd use_mse \
+      -o yolov5s_cali_table
+
+we+bc+search_threshold:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --we \
+      --bc \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --chip bm1684x \
+      --bc_inference_num 200 \
+      --search search_threshold \
+      -o yolov5s_cali_table
+
+search_qtable:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --chip bm1684x \
+      --max_float_layers 5 \
+      --expected_cos 0.99 \
+      --transformer False \
+      --quantize_method_list KL,MSE \
+      --search search_qtable \
+      --quantize_table yolov5s_qtable \
+      -o yolov5s_cali_table
+
+
 .. list-table:: The arguments of run_calibration.py
-   :widths: 18 60
+   :widths: 25 60
    :header-rows: 1
 
    * - Argument
      - Description
    * - mlir_file
      - mlir file
+   * - --we
+     - open weight_equalization
+   * - --bc
+     - open bias_correction
    * - --dataset
      - dataset for calibration
    * - --data_list
      - Input list file contain all input
    * - --input_num
      - num of images for calibration
+   * - --inference_num
+     - The number of images required for the inference process of search_qtable and search_threshold
+   * - --bc_inference_num
+     - The number of images required for the inference process of bias_correction
    * - --tune_list
      - Tune list file contain all input for tune
    * - --tune_num
      - num of images for tune
    * - --histogram_bin_num
      - Specify histogram bin numer for kld calculate
+   * - --expected_cos
+     - The expected similarity between the mixed-precision model output and the floating-point model output in search_qtable, with a value range of [0,1]
+   * - --min_layer_cos
+     - The minimum similarity between the quantized output and the floating-point output of a layer in bias_correction. Compensation is required for the layer when the similarity is below this threshold, with a value range of [0,1]
+   * - --max_float_layers
+     - The number of floating-point layers in search_qtable
+   * - --chip
+     - Chip type
+   * - --fp_type
+     - The data type of floating-point layers in search_qtable
+   * - --post_process
+     - The path for post-processing
+   * - --global_compare_layers
+     - Specifies the global comparison layers, for example, layer1,layer2 or layer1:0.3,layer2:0.7
+   * - --search
+     - Specifies the type of search, including search_qtable, search_threshold, false. The default is false, which means search is not enabled
+   * - --transformer
+     - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
+   * - --quantize_method_list
+     - The threshold methods used for searching in search_qtable
+   * - --benchmark_method
+     - Specifies the method for calculating similarity in search_threshold
+   * - --quantize_table
+     - The mixed-precision quantization table output by search_qtable
    * - -o
      - output threshold table
    * - --debug_cmd
-     - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “use_max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. 
+     - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “use_max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. "use_mse" adopts Octav for calibration.
+   * - --debug_log
+     - Log output level
 
 The result is shown in the following figure (:ref:`yolov5s_cali`).
 

@@ -265,7 +265,7 @@ run_calibration.py
 支持的参数如下:
 
 .. list-table:: run_calibration 参数功能
-   :widths: 20 12 50
+   :widths: 25 12 50
    :header-rows: 1
 
    * - 参数名
@@ -274,6 +274,12 @@ run_calibration.py
    * - 无
      - 是
      - 指定mlir文件
+   * - we
+     - 否
+     - 跨层权重均衡
+   * - bc
+     - 否
+     - 偏差校正
    * - dataset
      - 否
      - 指定输入样本的目录, 该路径放对应的图片, 或npz, 或npy
@@ -283,6 +289,12 @@ run_calibration.py
    * - input_num
      - 否
      - 指定校准数量, 如果为0, 则使用全部样本
+   * - inference_num
+     - 否
+     - search_threshold 和 search_qtable 过程中所需推理图片数量，通常小于input_num
+   * - bc_inference_num
+     - 否
+     - 偏差校正过程中所需推理图片数量
    * - tune_num
      - 否
      - 指定微调样本数量, 默认为10
@@ -292,12 +304,51 @@ run_calibration.py
    * - histogram_bin_num
      - 否
      - 直方图bin数量, 默认2048
+   * - expected_cos
+     - 否
+     - 期望search_qtable混精模型输出与浮点模型输出的相似度,取值范围[0,1]
+   * - min_layer_cos
+     - 否
+     - bias_correction中该层量化输出与浮点输出的相似度下限,当低于该下限时需要对该层进行补偿,取值范围[0,1]
+   * - max_float_layers
+     - 否
+     - search_qtable 浮点层数量
+   * - chip
+     - 否
+     - 芯片类型
+   * - fp_type
+     - 否
+     - search_qtable浮点层数据类型
+   * - post_process
+     - 否
+     - 后处理路径
+   * - global_compare_layers
+     - 否
+     - 指定全局对比层，例如 layer1,layer2 或 layer1:0.3,layer2:0.7
+   * - search
+     - 否
+     - 指定搜索类型,其中包括search_qtable,search_threshold,false。其中默认为false,不开启搜索
+   * - transformer
+     - 否
+     - 是否是transformer模型,search_qtable中如果是transformer模型可分配指定加速策略
+   * - quantize_method_list
+     - 否
+     - search_qtable用来搜索的门限方法
+   * - benchmark_method
+     - 否
+     - 指定search_threshold中相似度计算方法
+   * - quantize_table
+     - 否
+     - search_qtable输出的混精度量化表
    * - o
      - 是
      - 输出calibration table文件
    * - debug_cmd
      - 否
      - debug cmd
+   * - debug_log
+     - 否
+     - 日志输出级别
 
 校准表的样板如下:
 
