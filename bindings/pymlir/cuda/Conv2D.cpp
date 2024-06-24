@@ -56,6 +56,11 @@ void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
                                       algo, conv_buffer.get(), worksize, &beta,
                                       outf32_desc, out_f32.get()));
   conv_buffer.reset();
+  in_f32.reset();
+  kernel_f32.reset();
+  cudnnDestroyTensorDescriptor(input_desc);
+  cudnnDestroyFilterDescriptor(kernel_desc);
+  cudnnDestroyConvolutionDescriptor(conv_desc);
 
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
@@ -68,10 +73,12 @@ void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
     alpha = 1.0f, beta = 1.0f;
     CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias.get(), &beta,
                                outf32_desc, out_f32.get()));
+    cudnnDestroyTensorDescriptor(bias_desc);
   }
   auto out_i32 =
       newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
   out_f32.reset();
+  cudnnDestroyTensorDescriptor(outf32_desc);
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 3. multiplier + shift i32 => i8
   auto output = getCudaData(op.getOutput());

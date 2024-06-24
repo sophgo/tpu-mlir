@@ -34,7 +34,7 @@ cudnnDataType_t py_cuda::getCudnnType(Value v) {
     return CUDNN_DATA_INT8;
   } else if (stype.isF32()) {
     return CUDNN_DATA_FLOAT;
-  } else if (stype.isSignlessInteger(32)) {
+  } else if (stype.isSignlessInteger(32) || stype.isSignedInteger(32)) {
     return CUDNN_DATA_INT32;
   }
   v.dump();
