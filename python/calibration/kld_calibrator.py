@@ -979,13 +979,30 @@ class ActivationCalibrator(BaseKldCalibrator):
             old_hist = hist + interpolated_histogram.to(torch.float)
         return (old_hist,hist_edges,min(old_min,new_min),max(old_max,new_max),combined_max)
 
-    def process_statistic(self,evaled_op, i,idx,all_tensors):
+    def get_no_fused_tensors(self, all_tensors):
+        tensor_list = []
+        for op in all_tensors:
+            if "fused" in op:
+                fused_ops = op.split('["')[1].split('"]')[0].split(', ')
+                tensor_list.extend([fused_op.strip('"') for fused_op in fused_ops])
+            else:
+                tensor_list.append(op)
+        return tensor_list
+
+    def process_statistic_muti(self, muti_output_tensor, idx):
+        if muti_output_tensor == []:
+            return
+        for i, evaled_op in enumerate(muti_output_tensor):
+            self.process_statistic(evaled_op, i, idx, muti_output_tensor)
+        return
+
+    def process_statistic(self, evaled_op, i, idx, all_tensors):
         per = 99.99 + i * self.step
         self.perd[evaled_op] = per
         outputs = self.parser.get_outputs_by_op_name(evaled_op)
         res_length = 0
         for out in outputs:
-            if out not in all_tensors:
+            if out not in all_tensors and out not in self.tensor_list:
                 continue
             abs_value = None
             activation=self.module.get_tensor(out).copy()
@@ -1072,11 +1089,18 @@ class ActivationCalibrator(BaseKldCalibrator):
                     self.histogram_width_map[out] = self.hist_dict[out][1]
         return
 
+    def process_compute_threshold_muti(self, muti_output_tensor):
+        if muti_output_tensor == []:
+            return
+        for i, evaled_op in enumerate(muti_output_tensor):
+            self.process_compute_threshold(evaled_op, i, muti_output_tensor)
+        return
+
     def process_compute_threshold(self,evaled_op,i,all_tensors):
         abs_value = None
         outputs = self.parser.get_outputs_by_op_name(evaled_op)
         for out in outputs:
-            if out not in all_tensors:
+            if out not in all_tensors and out not in self.tensor_list:
                 continue
             abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
             if 'use_percentile9999' in self.debug_cmd:
@@ -1155,22 +1179,36 @@ class ActivationCalibrator(BaseKldCalibrator):
         thresholds_map_scale4 = {}
         thresholds_map_zp4 = {}
         thresholds_out = []
+        muti_output_tensor = []
         self.size = {}
         self.hist_dict = {}
         self.res_length_dict = {}
         self.perd = {}
         self.mse = {}
         self.aciq = {}
+        self.input_op = []
         self.last_five_tensors_threshold = {}
         self.histogram_data_map = {}
         self.histogram_width_map = {}
         self.activations_statistics = {}
-        self.last_five_tensors = all_tensors[-5:][::-1]
-        self.min_value={tensor:float('inf') for tensor in all_tensors}
-        self.max_value={tensor:float('-inf') for tensor in all_tensors}
-        self.max_abs_value={tensor:float('-inf') for tensor in all_tensors}
-        self.all_data_test={tensor:[] for tensor in all_tensors}
+        self.tensor_list = []
+        self.tensor_list = self.get_no_fused_tensors(all_tensors)
+        # self.last_five_tensors = all_tensors[-5:][::-1]
+        # self.min_value={tensor:float('inf') for tensor in all_tensors}
+        # self.max_value={tensor:float('-inf') for tensor in all_tensors}
+        # self.max_abs_value={tensor:float('-inf') for tensor in all_tensors}
+        # self.all_data_test={tensor:[] for tensor in all_tensors}
+        self.last_five_tensors = self.tensor_list[-5:][::-1]
+        self.min_value={tensor:float('inf') for tensor in self.tensor_list}
+        self.max_value={tensor:float('-inf') for tensor in self.tensor_list}
+        self.max_abs_value={tensor:float('-inf') for tensor in self.tensor_list}
+        self.all_data_test={tensor:[] for tensor in self.tensor_list}
 
+        for op in all_tensors:
+            if len(self.parser.get_outputs_by_op_name(op)) > 1:
+                muti_output_tensor.append(op)
+            if self.parser.get_pre_op_by_op_name(op) == []:
+                self.input_op.append(op)
         self.step = (99.999999 - 99.99) / len(all_tensors)
         input_number = [i for i in range(self.args.input_num)]
         pbar = tqdm(input_number, total = self.args.input_num, position = 0, leave = True)
@@ -1184,9 +1222,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.module.set_tensor(k, v)
             self.module.invoke()
             self.parallel_statistic(all_tensors,idx)
+            self.process_statistic_muti(muti_output_tensor,idx)
         pbar.close()
 
         self.parallel_compute_threshold(all_tensors)
+        self.process_compute_threshold_muti(muti_output_tensor)
         if 'use_torch_observer_for_cali' in self.debug_cmd:
             for i, evaled_op in enumerate(all_tensors):
                 outputs = self.parser.get_outputs_by_op_name(evaled_op)
@@ -1229,6 +1269,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
                         thresholds_map4[k] = self.last_five_tensors_threshold[k]
                         continue
+                    if k in self.input_op:
+                        thresholds_map[k] = max(abs(mi),abs(ma))
+                        thresholds_map4[k] = max(abs(mi),abs(ma))
+                        continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
                 elif 'use_aciq_gauss' in self.debug_cmd:
@@ -1236,6 +1280,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                     if k in thresholds_out:
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
                         thresholds_map4[k] = self.last_five_tensors_threshold[k]
+                        continue
+                    if k in self.input_op:
+                        thresholds_map[k] = max(abs(mi),abs(ma))
+                        thresholds_map4[k] = max(abs(mi),abs(ma))
                         continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
@@ -1245,6 +1293,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
                         thresholds_map4[k] = self.last_five_tensors_threshold[k]
                         continue
+                    if k in self.input_op:
+                        thresholds_map[k] = max(abs(mi),abs(ma))
+                        thresholds_map4[k] = max(abs(mi),abs(ma))
+                        continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
                 elif 'use_max' in self.debug_cmd:
@@ -1253,13 +1305,20 @@ class ActivationCalibrator(BaseKldCalibrator):
         time2 = time.time()
         return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4
 
+    def _process_statistic_muti(self, muti_output_tensor, idx):
+        if muti_output_tensor == []:
+            return
+        for i, evaled_op in enumerate(muti_output_tensor):
+            self._process_statistic(evaled_op, i, idx, muti_output_tensor)
+        return
+
     def _process_statistic(self,evaled_op, i,idx,all_tensors):
         per = 99.99 + i * self._step
         self._perd[evaled_op] = per
         outputs = self.parser.get_outputs_by_op_name(evaled_op)
         res_length = 0
         for out in outputs:
-            if out not in all_tensors:
+            if out not in all_tensors and out not in self._tensor_list:
                 continue
             abs_value = None
             activation=self.module.get_tensor(out).copy()
@@ -1310,11 +1369,18 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self._histogram_width_map[out] = self._hist_dict[out][1]
         return
 
+    def _process_compute_threshold_muti(self, muti_output_tensor):
+        if muti_output_tensor == []:
+            return
+        for i, evaled_op in enumerate(muti_output_tensor):
+            self._process_compute_threshold(evaled_op, i, muti_output_tensor)
+        return
+
     def _process_compute_threshold(self,evaled_op,i,all_tensors):
         abs_value = None
         outputs = self.parser.get_outputs_by_op_name(evaled_op)
         for out in outputs:
-            if out not in all_tensors:
+            if out not in all_tensors and out not in self._tensor_list:
                 continue
             abs_value = max(abs(self._min_value[out]), abs(self._max_value[out]))
             #percentile9999
@@ -1373,22 +1439,36 @@ class ActivationCalibrator(BaseKldCalibrator):
         thresholds_max = {}
         thresholds_percentile = {}
         thresholds_mse = {}
+        muti_output_tensor = []
         self._size = {}
         self._hist_dict = {}
         self._res_length_dict = {}
         self._perd = {}
         self._mse = {}
         self._aciq = {}
+        self._input_op = []
         self._last_five_tensors_threshold = {}
         self._histogram_data_map = {}
         self._histogram_width_map = {}
         self._activations_statistics = {}
-        self._last_five_tensors = all_tensors[-5:][::-1]
-        self._min_value={tensor:float('inf') for tensor in all_tensors}
-        self._max_value={tensor:float('-inf') for tensor in all_tensors}
-        self._max_abs_value={tensor:float('-inf') for tensor in all_tensors}
-        self._all_data_test={tensor:[] for tensor in all_tensors}
+        self._tensor_list = []
+        self._tensor_list = self.get_no_fused_tensors(all_tensors)
+        # self._last_five_tensors = all_tensors[-5:][::-1]
+        # self._min_value={tensor:float('inf') for tensor in all_tensors}
+        # self._max_value={tensor:float('-inf') for tensor in all_tensors}
+        # self._max_abs_value={tensor:float('-inf') for tensor in all_tensors}
+        # self._all_data_test={tensor:[] for tensor in all_tensors}
+        self._last_five_tensors = self._tensor_list[-5:][::-1]
+        self._min_value={tensor:float('inf') for tensor in self._tensor_list}
+        self._max_value={tensor:float('-inf') for tensor in self._tensor_list}
+        self._max_abs_value={tensor:float('-inf') for tensor in self._tensor_list}
+        self._all_data_test={tensor:[] for tensor in self._tensor_list}
 
+        for op in all_tensors:
+            if len(self.parser.get_outputs_by_op_name(op)) > 1:
+                muti_output_tensor.append(op)
+            if self.parser.get_pre_op_by_op_name(op) == []:
+                self._input_op.append(op)
         self._step = (99.999999 - 99.99) / len(all_tensors)
         input_number = [i for i in range(self.args.input_num)]
         pbar = tqdm(input_number, total = self.args.input_num, position = 0, leave = True)
@@ -1402,9 +1482,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.module.set_tensor(k, v)
             self.module.invoke()
             self._parallel_statistic(all_tensors,idx)
+            self._process_statistic_muti(muti_output_tensor,idx)
         pbar.close()
 
         self._parallel_compute_threshold(all_tensors)
+        self._process_compute_threshold_muti(muti_output_tensor)
         tensors = []
         for tensor in self._last_five_tensors:
             if self._last_five_tensors_threshold[tensor] != max(abs(self._activations_statistics[tensor][0]), abs(self._activations_statistics[tensor][1])):
@@ -1428,6 +1510,8 @@ class ActivationCalibrator(BaseKldCalibrator):
             thresholds_max[k] = abs_val
             if k in tensors:
                 thresholds_mse[k] = self._last_five_tensors_threshold[k]
+            elif k in self._input_op:
+                thresholds_mse[k] = abs_val
             else:
                 thresholds_mse[k] = mse
         thresholds['KL'] = thresholds_map
