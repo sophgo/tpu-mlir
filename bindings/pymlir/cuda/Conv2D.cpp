@@ -28,7 +28,7 @@ void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
   cudnnFilterDescriptor_t kernel_desc;
   cudnnCreateFilterDescriptor(&kernel_desc);
   cudnnSetFilter4dDescriptor(kernel_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW,
-                             p.oc, p.ic, p.kh, p.kw);
+                             p.oc, p.ic / p.groups, p.kh, p.kw);
   cudnnTensorDescriptor_t outf32_desc;
   cudnnCreateTensorDescriptor(&outf32_desc);
   cudnnSetTensor4dDescriptor(outf32_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -40,6 +40,9 @@ void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
   CHECK_CUDNN(cudnnSetConvolution2dDescriptor(
       conv_desc, p.phb, p.pwl, p.sh, p.sw, p.dh, p.dw, CUDNN_CROSS_CORRELATION,
       CUDNN_DATA_FLOAT));
+  if (p.groups > 1) {
+    CHECK_CUDNN(cudnnSetConvolutionGroupCount(conv_desc, p.groups));
+  }
   // prepare input output memory
   auto out_f32 = cuda_malloc(num_out * sizeof(float));
 

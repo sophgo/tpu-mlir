@@ -79,6 +79,7 @@ private:
   void cudaCast(tpu::CastOp op);
   void cudaGenericCpu(tpu::GenericCpuOp op);
   void cudaMatMul(tpu::MatMulOp op);
+  void cudaReshape(tpu::ReshapeOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);
