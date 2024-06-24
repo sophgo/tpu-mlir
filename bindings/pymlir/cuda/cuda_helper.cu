@@ -131,6 +131,30 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                                             size);
 }
 
+__global__ void kernelMatMulF32(float *A, float *B, float *C, int m, int k,
+                                int n) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (row < m && col < n) {
+    float sum = 0.0;
+    for (int i = 0; i < k; i++) {
+      sum += A[row * k + i] * B[i * n + col];
+    }
+    C[row * n + col] = sum;
+  }
+}
+
+void cudaMatMulF32(void *input, void *right, void *output, int m, int k,
+                   int n) {
+  // Dimensions for blocks and grid
+  dim3 threadsPerBlock(16, 16);
+  dim3 blocksPerGrid((n + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                     (m + threadsPerBlock.y - 1) / threadsPerBlock.y);
+  kernelMatMulF32<<<blocksPerGrid, threadsPerBlock>>>(
+      (float *)input, (float *)right, (float *)output, m, k, n);
+}
+
 __global__ void kernelConvInt8(int8_t *input, int8_t *filter, int32_t *bias,
                                int8_t *output, int32_t *multipliers,
                                int32_t *shifts, int n, int ic, int ih, int iw,
@@ -238,6 +262,54 @@ void cudaRequantInt8Perchannel(void *input, void *output, void *multipliers,
   kernelRequantInt8Perchannel<<<numBlocks, threadsPerBlock>>>(
       (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
       h, w, out_sign, qdm, relu);
+}
+
+__global__ void kernelRequantInt8(int32_t *input, void *output,
+                                  int32_t multiplier, int32_t shift, int num,
+                                  bool out_sign, bool qdm, bool relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num) {
+    int32_t value;
+    if (qdm == false) {
+      // half up
+      int64_t data = input[idx] * multiplier;
+      int64_t round = (int64_t)(1 << (shift - 1));
+      data = (data + round) >> shift;
+      value = static_cast<int32_t>(data);
+    } else {
+      int64_t data =
+          static_cast<int64_t>(input[idx]) * static_cast<int64_t>(multiplier);
+      data = (data + (1ll << 30)) >> 31;
+      value = static_cast<int32_t>(data);
+      // half away from zero
+      int32_t offset = 1 << (shift - 1);
+      bool negative = value < 0;
+      if (negative) {
+        value = -value;
+      }
+      value = (value + offset) >> shift;
+      if (negative) {
+        value = -value;
+      }
+    }
+    if (out_sign) {
+      int32_t min_ = relu ? 0 : -128;
+      value = max(min_, min(127, value));
+      ((int8_t *)output)[idx] = static_cast<int8_t>(value);
+    } else {
+      value = max(0, min(255, value));
+      ((uint8_t *)output)[idx] = static_cast<uint8_t>(value);
+    }
+  }
+}
+
+void cudaRequantInt8(void *input, void *output, int32_t multiplier,
+                     int32_t shift, int num, bool out_sign, bool qdm,
+                     bool relu) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelRequantInt8<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu);
 }
 
 __global__ void kernelInt32ToFloat(int32_t *input, float *output, int size) {

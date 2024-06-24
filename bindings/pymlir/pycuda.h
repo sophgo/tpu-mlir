@@ -78,6 +78,7 @@ private:
   void cudaConv2D(tpu::Conv2DOp op);
   void cudaCast(tpu::CastOp op);
   void cudaGenericCpu(tpu::GenericCpuOp op);
+  void cudaMatMul(tpu::MatMulOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

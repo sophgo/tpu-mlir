@@ -170,6 +170,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaCast(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
           cudaGenericCpu(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
+          cudaMatMul(tpuOp);
         } else {
           UNREACHABLE_OP("Not Implemented", op);
         }
