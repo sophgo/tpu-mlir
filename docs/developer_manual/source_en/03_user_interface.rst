@@ -28,7 +28,7 @@ The basic procedure is transforming the model into a mlir file with ``model_tran
        --model somenet_f32.bmodel
 
 Support for Image Input
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 When using images as input, preprocessing information needs to be specified, as follows:
 
@@ -46,7 +46,7 @@ When using images as input, preprocessing information needs to be specified, as 
         --mlir img_input_net.mlir
 
 Support for Multiple Inputs
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the model has multiple inputs, you can pass in a single npz file or sequentially pass in multiple npy files separated by commas, as follows:
 
@@ -60,7 +60,7 @@ When the model has multiple inputs, you can pass in a single npz file or sequent
         --mlir multi_input_net.mlir
 
 Support for INT8 Symmetric and Asymmetric
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Calibration is required if you need to get the INT8 model.
 
@@ -86,7 +86,7 @@ Generating Model with Calibration Table Input.
        --model somenet_int8.bmodel
 
 Support for Mixed Precision
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the precision of the INT8 model does not meet business requirements, you can try using mixed precision. First, generate the quantization table, as follows:
 
@@ -111,7 +111,7 @@ Then pass the quantization table to generate the model
        --model somenet_mix.bmodel
 
 Support for Quantized TFLite Models
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 TFLite model conversion is also supported, with the following command:
 
@@ -158,7 +158,7 @@ Support for Caffe Models
 
 
 Introduction to Tool Parameters
--------------
+---------------------------------
 
 model_transform.py
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,7 +264,7 @@ Use a small number of samples for calibration to get the quantization table of t
 Supported parameters:
 
 .. list-table:: Function of run_calibration parameters
-   :widths: 20 12 50
+   :widths: 25 12 50
    :header-rows: 1
 
    * - Name
@@ -273,6 +273,12 @@ Supported parameters:
    * - (None)
      - Y
      - Mlir file
+   * - we
+     - N
+     - Open weight_equalization
+   * - bc
+     - N
+     - Open bias_correction
    * - dataset
      - N
      - Directory of input samples. Images, npz or npy files are placed in this directory
@@ -282,6 +288,12 @@ Supported parameters:
    * - input_num
      - N
      - The number of input for calibration. Use all samples if it is 0
+   * - inference_num
+     - N
+     - The number of images required for the inference process of search_qtable and search_threshold
+   * - bc_inference_num
+     - N
+     - The number of images required for the inference process of bias_correction
    * - tune_num
      - N
      - The number of fine-tuning samples. 10 by default
@@ -291,12 +303,51 @@ Supported parameters:
    * - histogram_bin_num
      - N
      - The number of histogram bins. 2048 by default
+   * - expected_cos
+     - N
+     - The expected similarity between the mixed-precision model output and the floating-point model output in search_qtable, with a value range of [0,1]
+   * - min_layer_cos
+     - N
+     - The minimum similarity between the quantized output and the floating-point output of a layer in bias_correction. Compensation is required for the layer when the similarity is below this threshold, with a value range of [0,1]
+   * - max_float_layers
+     - N
+     - The number of floating-point layers in search_qtable
+   * - chip
+     - N
+     - Chip type
+   * - fp_type
+     - N
+     - The data type of floating-point layers in search_qtable
+   * - post_process
+     - N
+     - The path for post-processing
+   * - global_compare_layers
+     - N
+     - Specifies the global comparison layers, for example, layer1,layer2 or layer1:0.3,layer2:0.7
+   * - search
+     - N
+     - Specifies the type of search, including search_qtable, search_threshold, false. The default is false, which means search is not enabled
+   * - transformer
+     - N
+     - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
+   * - quantize_method_list
+     - N
+     - The threshold methods used for searching in search_qtable
+   * - benchmark_method
+     - N
+     - Specifies the method for calculating similarity in search_threshold
+   * - quantize_table
+     - N
+     - The mixed-precision quantization table output by search_qtable
    * - o
      - Y
      - Name of output calibration table file
    * - debug_cmd
      - N
      - debug cmd
+   * - debug_log
+     - N
+     - Log output level
 
 A sample calibration table is as follows:
 
