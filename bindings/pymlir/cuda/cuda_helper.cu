@@ -1,3 +1,12 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "cuda_helper.h"
 #include "stdio.h"
 
@@ -11,12 +20,13 @@ __global__ void kernelQuantizeToInt8_0(float *input, int8_t *output,
     float scaled_value = input[idx] * scale;
     // Apply 'half away from zero' rounding
     float rounded_value;
-    if (scaled_value > 0) {
+    if (scaled_value >= 0) {
       rounded_value = floor(scaled_value + 0.5);
     } else {
       rounded_value = ceil(scaled_value - 0.5);
     }
-    output[idx] = (int8_t)rounded_value;
+    rounded_value = max(-128.0, min(127.0, rounded_value));
+    output[idx] = static_cast<int8_t>(rounded_value);
   }
 }
 
