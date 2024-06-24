@@ -545,16 +545,30 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
 }
 
 RoundingMode round_mode_convert(tpu::RoundMode mode) {
-  if (mode == tpu::RoundMode::HalfAwayFromZero) return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
-  else if (mode == tpu::RoundMode::HalfUp) return RoundingMode::ROUNDING_HALF_UP;
-  else if (mode == tpu::RoundMode::HalfDown) return RoundingMode::ROUNDING_HALF_DOWN;
-  else if (mode == tpu::RoundMode::HalfToEven) return RoundingMode::ROUNDING_HALF_TO_EVEN;
-  else if (mode == tpu::RoundMode::HalfToOdd) return RoundingMode::ROUNDING_HALF_TO_ODD;
-  else if (mode == tpu::RoundMode::HalfTowardsZero) return RoundingMode::ROUNDING_HALF_TOWARDS_ZERO;
-  else if (mode == tpu::RoundMode::TowardsZero) return RoundingMode::ROUNDING_TOWARDS_ZERO;
-  else if (mode == tpu::RoundMode::Up) return RoundingMode::ROUNDING_UP;
-  else if (mode == tpu::RoundMode::Down) return RoundingMode::ROUNDING_DOWN;
-  else llvm_unreachable("Not Implemented");
+  switch (mode) {
+  case tpu::RoundMode::HalfAwayFromZero:
+    return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+  case tpu::RoundMode::HalfUp:
+    return RoundingMode::ROUNDING_HALF_UP;
+  case tpu::RoundMode::HalfDown:
+    return RoundingMode::ROUNDING_HALF_DOWN;
+  case tpu::RoundMode::HalfToEven:
+    return RoundingMode::ROUNDING_HALF_TO_EVEN;
+  case tpu::RoundMode::HalfToOdd:
+    return RoundingMode::ROUNDING_HALF_TO_ODD;
+  case tpu::RoundMode::HalfTowardsZero:
+    return RoundingMode::ROUNDING_HALF_TOWARDS_ZERO;
+  case tpu::RoundMode::TowardsZero:
+    return RoundingMode::ROUNDING_TOWARDS_ZERO;
+  case tpu::RoundMode::Up:
+    return RoundingMode::ROUNDING_UP;
+  case tpu::RoundMode::Down:
+    return RoundingMode::ROUNDING_DOWN;
+  default:
+    break;
+  }
+  llvm_unreachable("Not Implemented");
+  return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
 }
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
@@ -1629,7 +1643,9 @@ void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
   }
 }
 
-void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices) {
+void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
+                  const float *input, float *sorted_values,
+                  float *sorted_indices) {
   using pair_t = std::pair<int, float>;
   auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
     return (item1.second > item2.second) ||
@@ -1656,7 +1672,8 @@ void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const f
     for (int k = 0; k < len; k++) {
       pairs[k] = std::make_pair(k, input[(i * len + k) * in_num + j]);
     }
-    std::stable_sort(pairs.begin(), pairs.end(), param.descending ? cmp_large : cmp_small);
+    std::stable_sort(pairs.begin(), pairs.end(),
+                     param.descending ? cmp_large : cmp_small);
     for (int k = 0; k < len; k++) {
       sorted_indices[(i * len + k) * in_num + j] = pairs[k].first;
       if (sorted_values) {

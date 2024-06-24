@@ -271,13 +271,15 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
         llvm_unreachable("should have out scale for conv2d in f8 mode");
       f64_array_t quant_scale_v = module::getF64Array(getOutF8Scales().value());
 
-      for (int i=0;i<quant_scale_v.get()->size();i++) {
+      for (int i = 0; i < quant_scale_v.get()->size(); i++) {
         size_t n = module::getShape(getOutput())[0];
-        size_t out_c_num = (num_elem/n)/quant_scale_v.get()->size();
-        for (int n_ = 0;n_<n;n_++) {
+        size_t out_c_num = (num_elem / n) / quant_scale_v.get()->size();
+        for (int n_ = 0; n_ < n; n_++) {
 #pragma omp parallel for schedule(static, omp_schedule(out_c_num))
-          for (int j=0;j<out_c_num;j++) {
-            p.outputs[0][n_*num_elem/n+i*out_c_num+j] = F8E4M3(p.outputs[0][n_*num_elem/n+i*out_c_num+j], 1.0/quant_scale_v.get()->at(i), true);
+          for (int j = 0; j < out_c_num; j++) {
+            p.outputs[0][n_ * num_elem / n + i * out_c_num + j] =
+                F8E4M3(p.outputs[0][n_ * num_elem / n + i * out_c_num + j],
+                       1.0 / quant_scale_v.get()->at(i), true);
           }
         }
       }
@@ -459,7 +461,7 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     auto attr = parseParam();
     if (attr.ic > MAX_TIU_CHL || attr.oc > MAX_TIU_CHL ||
-        attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL ) {
+        attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
       return failure();
     }
     if (attr.groups > 1 && false == attr.is_dw) {
@@ -535,7 +537,8 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
   auto &attr = getConv2DParam(*this);
-  bool is_depthwise = attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
+  bool is_depthwise =
+      attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
   auto in_etype = module::getStorageType(getInput());
   if (is_depthwise == false && in_etype.isIntOrIndex() == false) {
     return {};
