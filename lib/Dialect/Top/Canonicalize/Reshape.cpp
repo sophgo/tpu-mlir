@@ -383,7 +383,7 @@ struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
     }
     auto in = op.getInput();
     auto add_op = dyn_cast<AddOp>(in.getDefiningOp());
-    if (!add_op) {
+    if (!add_op || !add_op.getOutput().hasOneUse()) {
       return failure();
     }
     bool add_can_merge = false;
