@@ -1785,7 +1785,9 @@ Operation* GroupMethod::cut_this_group_is_better(LgInfo *sub_group)
 
 void GroupMethod::try_cut_some_group(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups)
 {
-
+  if (module::isDebugCmdEnable("disable_group_cut")) {
+    return;
+  }
   int grp_num = base_groups.size();
   LgInfo sub_group;
   for (int64_t i = 0; i < grp_num; i++) {
@@ -2478,7 +2480,11 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   // } else {
   //   core_num = module::getCoreNum();
   // }
-  bool l2m_switch = true;
+
+  bool l2m_switch = false;
+  if (module::isDebugCmdEnable("enable_l2m")) {
+    l2m_switch = true;
+  }
   bool train = true;
   int grp_idx = 0;
 

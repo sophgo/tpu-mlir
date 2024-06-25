@@ -17,7 +17,16 @@ class test_model0(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.conv2 = nn.Conv2d(64, 64, 3, 1, 1, bias=True)
         self.conv3 = nn.Conv2d(64, 64, 3, 1, 1, bias=False)
+        self.relu = nn.ReLU()
         self.for_train = for_train
+
+    # def forward(self, x): #残差分支
+    #     x = self.relu(x)
+    #     x = self.conv1(x)
+    #     # x = self.conv2(x)
+    #     if self.for_train:
+    #         x = x.sum()
+    #     return x
 
     def forward(self, x): #残差分支
         x = self.conv1(x)
