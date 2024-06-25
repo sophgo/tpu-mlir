@@ -19,8 +19,8 @@ requant(int32): `[1, oc, 1, 3]`
 
 * 非 depthwise
 
-filter(int8): `[1, oc, UP(ic/64), kh*kw*64]` => `[1, oc, 1, w1]`
-令：`w1 = UP(ic/64) * kh * kw * 64`
+filter(int8): `[1, oc, CEIL(ic/IC_PARALLEL), kh*kw*IC_PARALLEL]` => `[1, oc, 1, w1]`
+令：`w1 = CEIL(ic/IC_PARALLEL) * kh * kw * IC_PARALLEL`
 
 * depthwise
 
@@ -28,25 +28,25 @@ filter(int8): `[1, oc, UP(ic/64), kh*kw*64]` => `[1, oc, 1, w1]`
 
 #### step 3: broadcast channel
 
-filter(int8): `[1, 64, UP(oc/64), w1]` => `[1, 64, 1, w2]`
-令： `w2 = UP(oc/64) * w1`,
+filter(int8): `[1, NPU_NUM, CEIL(oc/NPU_NUM), w1]` => `[1, NPU_NUM, 1, w2]`
+令： `w2 = CEIL(oc/NPU_NUM) * w1`,
 
 
-bias(int32): `[1, 64, 1, UP(oc/64)]` => (int8)`[1, 64, 1, w3]`
-令： `w3 = UP(oc/64) * 4`,
+bias(int32): `[1, NPU_NUM, 1, CEIL(oc/NPU_NUM)]` => (int8)`[1, NPU_NUM, 1, w3]`
+令： `w3 = CEIL(oc/NPU_NUM) * 4`,
 
-requant(int32): `[1, 64, 1, UP(oc/64)*3]` => （int8)`[1, 64, 1, w4]`
-令：`w4 = (UP(oc/64)-1) * 64 + 12`
+requant(int32): `[1, NPU_NUM, 1, CEIL(oc/NPU_NUM)*REQUANT_WSIZE]` => （int8)`[1, NPU_NUM, 1, w4]`
+令：`w4 = (CEIL(oc/NPU_NUM)-1) * EU_NUM + REQUANT_WSIZE * 4`
 注意是中间需要align
 
 #### step 4: merge coeff
 w维度按照requant + bias + filter合并，
 
-coeff = `[1, 64, 1, w5]`
+coeff = `[1, NPU_NUM, 1, w5]`
 
-* 非detphwise
+* 非depthwise
 
-令: `w5 = align(w4 + w3, 64) + w2`
+令: `w5 = align(w4 + w3, EU_NUM) + w2`
 
 * depthwise
 
@@ -60,7 +60,7 @@ filter(int8): `[128, 64, 3, 3]`, bias(int32):`[128]`, requant(int32):`[1,128,1,3
 => filter(int8): `[1, 64, 1, 2*576`] = `[1, 64, 1, 1152]`
    bias(int8): `[1, 64, 1, 2*4]` = `[1, 64, 1, 8]`
    requant(int8): `[1, 64, 2, 12]` = `[1, 64, 1, 64+12]`
-=> merge(int8): w = up(up(88,4) + 8, 64) + 1152 = 1280
+=> merge(int8): w = CEIL(CEIL(88,4) + 8, 64) + 1152 = 1280
 => shape(int8): `[1, 64, 1, 1280]`
 
 ### DW Conv2d
@@ -89,8 +89,8 @@ bias(f32): `[oc]`
 
 #### step2 : 仅filter变化
 
-filter(int8): `[1, oc, UP(ic/32), kh*kw*32]` => `[1, oc, 1, w1]`
-令：`w1 = UP(ic/32) * kh * kw * 32`
+filter(int8): `[1, oc, CEIL(ic/32), kh*kw*32]` => `[1, oc, 1, w1]`
+令：`w1 = CEIL(ic/32) * kh * kw * 32`
 
 bias(f32): `[1, oc, 1, 1]`
 
