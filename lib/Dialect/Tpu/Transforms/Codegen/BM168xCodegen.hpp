@@ -21,7 +21,7 @@ namespace tpu {
 class BMCodegen {
 public:
   BMCodegen() {}
-  void init(ModuleOp m, const std::string &filename);
+  void init(ModuleOp m, const std::string &filename, bool bmodel_only);
   void run(ModuleOp s, bool embed_debug_info = false);
   void store();
 

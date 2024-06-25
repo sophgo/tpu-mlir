@@ -202,7 +202,7 @@ def mlir_to_model(tpu_mlir: str,
 
     # codegen based on final mlir
     codegen_param = (
-        f'--codegen="model_file={model} embed_debug_info={str(embed_debug_info).lower()} model_version={str(model_version).lower()}"'
+        f'--codegen="model_file={model} embed_debug_info={str(embed_debug_info).capitalize()} model_version={str(model_version).lower()}"'
     )
     cmd = [
         "tpuc-opt",
@@ -324,7 +324,7 @@ def origin_mlir_txt_to_bmodel(
     if op_divide:
         op_divide_param = "--op-divide"
     # codegen based on final mlir
-    codegen_param = f'--codegen="model_file={bmodel} embed_debug_info={str(embed_debug_info).lower()} model_version={str(model_version).lower()}"'
+    codegen_param = f'--codegen="model_file={bmodel} embed_debug_info={str(embed_debug_info).capitalize()} model_version={str(model_version).lower()} bmodel_only=True"'
 
     options.extend(
         [

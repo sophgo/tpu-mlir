@@ -65,7 +65,7 @@ void setupMultiCoreCodegen() {
   }
 }
 
-void BMCodegen::init(ModuleOp m, const std::string &filename) {
+void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only) {
   this->filename = filename;
   llvm::raw_null_ostream os;
   AsmState state(m, OpPrintingFlags(), &opToLineCol);
@@ -73,9 +73,10 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   auto chip_ = module::getChip();
   auto num_device = module::getDeviceNum();
   chip = module::stringifyChip(chip_).upper();
-  tensor_loc = TensorLocation(&opToLineCol, filename + ".json");
-  profile_ctx = ProfileCtx(&opToLineCol, true);
+  tensor_loc = TensorLocation(!bmodel_only, &opToLineCol, filename + ".json");
+  profile_ctx = ProfileCtx(&opToLineCol, !bmodel_only);
   bm168x = BM168x::instance();
+  bm168x->set_profile_dump(!bmodel_only);
   model_gen = std::make_shared<bmodel::ModelGen>();
   // add chip name
   model_gen->AddChip(chip);

@@ -101,6 +101,8 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
            "embed debug and profiling data to model file.">,
     Option<"model_version", "model_version", "std::string", /*default=*/"\"lastest\"",
            "model version.">,
+    Option<"bmodel_only", "bmodel_only", "bool", /*default=*/"false",
+           "dump bmodel only.">,
   ];
 }
 
