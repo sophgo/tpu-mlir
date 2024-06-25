@@ -1431,6 +1431,7 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
   if (map_old_grp_out_to_new_grp_out.find(input) != map_old_grp_out_to_new_grp_out.end()) {
     operands.push_back(map_old_grp_out_to_new_grp_out[input]);
   } else {
+    // map_old_to_new_value for moveOp, wxc todo
     if (map_store_to_load_value.find(input) != map_store_to_load_value.end()) {
       operands.push_back(map_store_to_load_value[input]);
     } else if (map_l2m_out_to_load_in.find(input) != map_l2m_out_to_load_in.end()){

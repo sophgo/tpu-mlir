@@ -10,6 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
+#include "tpu_mlir/Backend/BM168x/BM1690.h"
 
 using namespace tpu_mlir::backend;
 
@@ -107,7 +108,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       g_addr = module::getAddress(input_gmem);
     }
     if (isa<tpu::LoadToL2MOp>(inputOp)) {
-      g_addr = cast<LoadToL2MOp>(inputOp).getL2mAddr();
+      g_addr = BM1690::L2_SRAM_START_ADDR + cast<LoadToL2MOp>(inputOp).getL2mAddr();
     }
   } else {
     g_addr = module::getAddress(getInput());
