@@ -171,7 +171,9 @@ compile
             dynamic=False,
             asymmetric=False,
             no_save=False,
-            opt=2)
+            opt=2,
+            mlir_inference=True,
+            bmodel_inference=True)
 
 
 功能描述
@@ -185,13 +187,15 @@ compile
 * name：string类型。模型名称。
 * inputs：List[Tensor]，表示编译网络的所有输入Tensor；
 * outputs：List[Tensor]，表示编译网络的所有输出Tensor；
-* cmp：bool类型，True表示需要结果比对，False表示仅编译；
+* cmp：bool类型，True表示需要结果比对，False表示仅编译；如果mlir_inference为False，cmp参数无效。
 * refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
 * mode：string类型，废弃。
 * dynamic：bool类型，是否进行动态编译。
 * no_save：bool类型，是否将中间文件暂存到共享内存并随进程释放，启用该项时Compile会返回生成的bmodel文件的bytes-like object，用户需要自行接收和处理，如使用f.write(bmodel_bin)保存。
 * asymmetric：bool类型，是否为非对称量化。
 * opt：int类型，表示编译器group优化级别。0，表示不需要进行group；1，表示尽可能进行group；2，表示根据动态规划进行group。默认值为2。
+* mlir_inference: bool类型，是否执行mlir的推理，如果为False, cmp参数无效。
+* bmodel_inference: bool类型，是否执行bmodel的推理。
 
 .. _deinit:
 

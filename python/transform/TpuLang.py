@@ -78,7 +78,9 @@ def compile(name: str,
             dynamic=False,
             asymmetric=False,
             no_save=False,
-            opt=2):
+            opt=2,
+            mlir_inference=True,
+            bmodel_inference=True):
     logger.info("TPU-MLIR {}".format(pymlir.module().version))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
@@ -95,9 +97,11 @@ def compile(name: str,
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter)
         compare = cmp and refs != None
-        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, cmp=compare, \
-                                     asymmetric=asymmetric, ctm_format=ctm_format, fuse=fuse)
-        bmodel_generate_and_inference(model_name=name, quant_mode="int8", dynamic=dynamic, opt=opt)
+        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, \
+                                    inference=mlir_inference, cmp=compare, asymmetric=asymmetric,\
+                                    ctm_format=ctm_format, fuse=fuse)
+        bmodel_generate_and_inference(model_name=name, quant_mode="int8", inference=bmodel_inference,\
+                                    dynamic=dynamic, opt=opt)
     else:
         origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode="int8",
                                   chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
@@ -111,7 +115,9 @@ def compile_f32(name: str,
             mode='f32',
             dynamic=False,
             opt=2,
-            no_save=False):
+            no_save=False,
+            mlir_inference=True,
+            bmodel_inference=True):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -126,8 +132,10 @@ def compile_f32(name: str,
         compare = cmp and refs != None
         model_top_inference(model_name=name, cmp=compare)
         for m in mode_list:
-            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip, cmp=cmp)
-            bmodel_generate_and_inference(model_name=name, quant_mode=m, dynamic=dynamic, opt=opt)
+            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
+                                        inference=mlir_inference, cmp=cmp)
+            bmodel_generate_and_inference(model_name=name, quant_mode=m, inference=bmodel_inference,\
+                                        dynamic=dynamic, opt=opt)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode=m,
