@@ -58,9 +58,9 @@ void py_cuda::cudaPool2D(tpu::Pool2DOp op) {
                   getCudnnType(op.getOutput()));
     return;
   }
-
-  auto out_i32 =
-      newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
+  auto out_i32 = cuda_malloc(num_out * sizeof(int32_t));
+  cudaTransform(out_f32.get(), out_i32.get(), num_out, CUDNN_DATA_FLOAT,
+                CUDNN_DATA_INT32, CUDA_HALF_UP);
   out_f32.reset();
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. multiplier + shift i32 => i8

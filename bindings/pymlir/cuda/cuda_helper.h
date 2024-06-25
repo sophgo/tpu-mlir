@@ -12,12 +12,27 @@
 #include <cudnn.h>
 #include <cuda_runtime.h>
 
-// mode 0: 1.5 -> 2   -1.5 -> -2
-// mode refer to RoundingMode defined in MathUtils.h
-void cudaQuantizeToInt8_0(void *input, void *output, float scale, int size);
+// same RoundingMode defined in MathUtils.h
+typedef enum {
+  CUDA_HALF_AWAY_FROM_ZERO = 0, // 1.5 -> 2   -1.5 -> -2
+  CUDA_HALF_UP = 1,             // 1.5 -> 2   -1.5 -> -1
+  CUDA_HALF_DOWN = 2,           // 1.5 -> 1   -1.5 -> -2
+  CUDA_HALF_TO_EVEN = 3,        // 1.5 -> 2    2.5 -> 2
+  CUDA_HALF_TO_ODD = 4,         // 1.5 -> 1    0.5 -> 1
+  CUDA_HALF_TOWARDS_ZERO = 5,   // 1.5 -> 1   -1.5 -> -1
+  CUDA_TOWARDS_ZERO = 6,        // 1.6 -> 1   -1.6 -> -1
+  CUDA_AWAY_FROM_ZERO = 7,      // 1.4 -> 2   -1.4 -> -2
+  CUDA_UP = 8,                  // 1.4 -> 2   -1.6 -> -1
+  CUDA_DOWN = 9,                // 1.6 -> 1   -1.4 -> -2
+  CUDA_UNKNOWN = -1
+} cuda_rmode_t;
 
-void cudaScaleToF32(void *input, void *output, float scale,
-                    int size); // for bm168x
+// float input * scale = int8 output，if !sign, uint8 output
+void cudaF32ToInt8(void *input, void *output, float scale, int size, bool sign,
+                   cuda_rmode_t rmode);
+
+void cudaInt8ToF32(void *input, void *output, float scale, int size,
+                   bool sign); // for bm168x
 
 void cudaCVScaleToF32(void *input, void *output, float scale,
                       int size); // for cv18xx
@@ -41,6 +56,7 @@ void cudaRequantInt8(void *input, void *output, int32_t multiplier,
                      bool relu = false);
 
 cudaError_t cudaTransform(void *src, void *dst, int size,
-                          cudnnDataType_t src_type, cudnnDataType_t dst_type);
+                          cudnnDataType_t src_type, cudnnDataType_t dst_type,
+                          cuda_rmode_t rmode = CUDA_TOWARDS_ZERO);
 
 void cudaPrint(void *data, int size, cudnnDataType_t type);
