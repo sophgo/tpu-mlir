@@ -4162,6 +4162,46 @@ interpolate
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
 
+yuv2rgb
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def yuv2rgb(
+            inputs: Tensor,
+            src_format: int,
+            dst_format: int,
+            ImageOutFormatAttr: str,
+            formula_mode: str,
+            round_mode: str,
+            out_name: str = None,
+        ):
+
+功能描述
+"""""""""""
+对输入tensor进行yuv转rgb格式，输入的Tensor要求shape=[n,h*3/2,w]，其中n为批个数，h为图像的像素高，w为图像的像素宽。
+
+参数说明
+"""""""""""
+* inputs：Tensor类型，表示输入的yuv矩阵。必须是三维张量，第一维为批的个数，第二维为输入矩阵的高，第三维为输入矩阵的宽。
+* src_format：Int类型，表示输入的格式。FORMAT_MAPPING_YUV420P_YU12=0，FORMAT_MAPPING_YUV420P_YV12=1，FORMAT_MAPPING_NV12=2，FORMAT_MAPPING_NV21=3。
+* dst_format：Int类型，表示输出的格式。FORMAT_MAPPING_RGB=4，FORMAT_MAPPING_BGR=5。
+* ImageOutFormatAttr：str型，目前只支持"UINT8"。
+* formula_mode：string类型，表示使用的yuv2rgb转换公式，目前支持"_601_limited"、"_601_full"。
+* round_mode：string类型，表示使用的舍入模式，目前支持"HalfAwayFromZero", "HalfToEven"。
+* out_name：string类型，表示输出Tensor的名称，非必选，默认为None。
+
+返回值
+"""""""""""
+返回一个Tensor，表示转换出的rgb格式Tensor，shape=[n,3,h,w]，其中n为批个数，h为图像的像素高，w为图像的像素宽。
+
+处理器支持
+"""""""""""
+* BM1684X：输入数据类型是UINT8。
+
 
 Select Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

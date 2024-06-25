@@ -2725,8 +2725,6 @@ class TPULANG_IR_TESTER(object):
     def yuv2rgb_op(
         self,
         inputs,
-        width: int,
-        height: int,
         src_format: int,
         dst_format: int,
         ImageOutFormatAttr: str,
@@ -2734,7 +2732,12 @@ class TPULANG_IR_TESTER(object):
         round_mode: str,
     ):
         yuv2rgb = tpul.yuv2rgb(
-            inputs, width, height, src_format, dst_format, ImageOutFormatAttr,formula_mode,round_mode
+            inputs,
+            src_format,
+            dst_format,
+            ImageOutFormatAttr,
+            formula_mode,
+            round_mode,
         )
         return yuv2rgb
 
@@ -2771,7 +2774,6 @@ class TPULANG_IR_TESTER(object):
 
             return r_fp, g_fp, b_fp
 
-
         def YCrCb2RGB_601_limited_u8(y, u, v):
             r_fp, g_fp, b_fp = YCrCb2RGB_601_limited_f32(y, u, v)
             r = np.uint8(r_fp)
@@ -2786,55 +2788,106 @@ class TPULANG_IR_TESTER(object):
             b = np.uint8(b_fp)
             return r, g, b
 
-
-        def np_yuv2rgb(Y, U, V, width, height):
-            # Assuming NV12 format for simplicity
+        def np_yuv2rgb(YUV, height, width, mode="yu12", out_mode="bgr"):
             bgr_data = np.zeros((3, height, width), dtype=np.uint8)
-
             for i in range(height):
                 for j in range(width):
-                    # print(i, " , ", j)
-                    y = Y[i, j]
-                    u = U[i // 2, j // 2]
-                    v = V[i // 2, j // 2]
-                    # print(f"{y}, {u}, {v}")
+                    if mode == "yu12":
+                        y = YUV[i, j]
+                        u = YUV[
+                            (int((i // 2) * width / 2) + j // 2) // width + height,
+                            (int((i // 2) * width / 2) + j // 2) % width,
+                        ]
+                        v = YUV[
+                            (int((i // 2) * width / 2) + j // 2) // width
+                            + int(height * 5 / 4),
+                            (int((i // 2) * width / 2) + j // 2) % width,
+                        ]
+                    elif mode == "yv12":
+                        y = YUV[i, j]
+                        v = YUV[
+                            (int((i // 2) * width / 2) + j // 2) // width + height,
+                            (int((i // 2) * width / 2) + j // 2) % width,
+                        ]
+                        u = YUV[
+                            (int((i // 2) * width / 2) + j // 2) // width
+                            + int(height * 5 / 4),
+                            (int((i // 2) * width / 2) + j // 2) % width,
+                        ]
+                    elif mode == "nv12":
+                        y = YUV[i, j]
+                        u = YUV[
+                            i // 2 + height,
+                            (j // 2) * 2,
+                        ]
+                        v = YUV[
+                            i // 2 + height,
+                            (j // 2) * 2 + 1,
+                        ]
+                    elif mode == "nv21":
+                        y = YUV[i, j]
+                        v = YUV[
+                            i // 2 + height,
+                            (j // 2) * 2,
+                        ]
+                        u = YUV[
+                            i // 2 + height,
+                            (j // 2) * 2 + 1,
+                        ]
                     r, g, b = YCrCb2RGB_601_full_u8(y, u, v)
-                    bgr_data[0, i, j] = b
-                    bgr_data[1, i, j] = g
-                    bgr_data[2, i, j] = r
-                    # print(f"{b}, {g}, {r}\n")
-
+                    if out_mode == "bgr":
+                        bgr_data[0, i, j] = b
+                        bgr_data[1, i, j] = g
+                        bgr_data[2, i, j] = r
+                    elif out_mode == "rgb":
+                        bgr_data[0, i, j] = r
+                        bgr_data[1, i, j] = g
+                        bgr_data[2, i, j] = b
             return bgr_data
 
         @tpulang(self.chip)
-        def _test_yuv2rgb(shape_y, shape_u, shape_v, scale=None, zero_point=None, dtype="uint8", is_quantized=False):
-            input_y = rand_data(shape_y, dtype)
-            input_u = rand_data(shape_u, dtype)
-            input_v = rand_data(shape_v, dtype)
+        def _test_yuv2rgb(shape_yuv, scale=None, zero_point=None, dtype="uint8"):
+            input_yuv = rand_data(shape_yuv, dtype)
 
             # generate python calculation
-            for n in range(1):
-                bgr_data = np_yuv2rgb(input_y[n, :, :], input_u[n, :, :], input_v[n, :, :],128,128)           # numpy
-                # print(bgr_data.shape)
-                np.save(os.path.join(os.getcwd(),"Yuv2rgb"),bgr_data)
+            yuv2rgb_python = {}
+            in_mode = "nv12"
+            out_mode = "bgr"
+            for n in range(shape_yuv[0]):
+                bgr_data = np_yuv2rgb(
+                    input_yuv[n, :, :],
+                    int(shape_yuv[-2] / 3 * 2),
+                    shape_yuv[-1],
+                    mode=in_mode,
+                    out_mode=out_mode,
+                )  # numpy
+                yuv2rgb_python[f"Yuv2rgb_{n}"] = bgr_data
+            np.savez(
+                os.path.join(os.getcwd(), f"yuv2rgb_{in_mode}_{out_mode}"),
+                **yuv2rgb_python,
+            )
 
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=input_y, scale=scale, zero_point=zero_point)
-            u = tpul.Tensor(dtype=dtype, shape=shape_u, data=input_u, scale=scale, zero_point=zero_point)
-            v = tpul.Tensor(dtype=dtype, shape=shape_v, data=input_v, scale=scale, zero_point=zero_point)
+            yuv = tpul.Tensor(
+                dtype=dtype,
+                shape=shape_yuv,
+                data=input_yuv,
+                scale=scale,
+                zero_point=zero_point,
+            )
 
             yuv2rgb = self.yuv2rgb_op(
-                [y, u, v],
-                128,
-                128,
-                0, # yuv420P
-                9, # bgr
-                "UINT8", # output as float32
+                yuv,
+                2,  # nv12
+                5,  # bgr
+                "UINT8",  # output as fixed num
                 "_601_full",
-                "HalfToEven"
+                "HalfAwayFromZero",
             )
-            self.compile_and_check(self.unique_name(case_name), [y,u,v], [yuv2rgb], is_quantized=True)
+            self.compile_and_check(
+                self.unique_name(case_name), [yuv], [yuv2rgb], is_quantized=True
+            )
 
-        _test_yuv2rgb([1, 128, 128], [1, 64, 64], [1, 64, 64])
+        _test_yuv2rgb([3, 90, 60])
 
     #######################################################################
     # groupnorm
@@ -3721,7 +3774,6 @@ class TPULANG_IR_TESTER(object):
         _test_int8_to_f16_()
         _test_uint8_to_f16_()
         _test_f32_to_f16_()
-
 
     #######################################################################
     # Error Case: some error case

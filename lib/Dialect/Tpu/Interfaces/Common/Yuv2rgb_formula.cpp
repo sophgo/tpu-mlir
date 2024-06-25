@@ -8,6 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include <malloc.h>
+#include <string.h>
 
 LogicalResult tpu::Yuv2rgbFormulaOp::init(InferenceParameter &p) {
   return success();
@@ -25,14 +27,10 @@ typedef enum {
 } image_data_format_ext;
 
 typedef enum {
-  FORMAT_MAPPING_YUV420P,
-  FORMAT_MAPPING_YUV422P,
-  FORMAT_MAPPING_YUV444P,
+  FORMAT_MAPPING_YUV420P_YU12,
+  FORMAT_MAPPING_YUV420P_YV12,
   FORMAT_MAPPING_NV12,
   FORMAT_MAPPING_NV21,
-  FORMAT_MAPPING_NV16,
-  FORMAT_MAPPING_NV61,
-  FORMAT_MAPPING_NV24,
   FORMAT_MAPPING_RGB,
   FORMAT_MAPPING_BGR,
 } kernel_image_format_t;
@@ -97,9 +95,54 @@ inline void YCrCb2RGB(u8 y, u8 u, u8 v, float *r, float *g, float *b,
   }
 }
 
+std::vector<float *> split_YUV(float *yuv, unsigned int src_format,
+                               unsigned int width, unsigned int height) {
+  std::vector<float *> yuv_split;
+  float *y = yuv;
+  float *u;
+  float *v;
+
+  if (src_format == FORMAT_MAPPING_YUV420P_YU12) {
+    u = yuv + width * height;
+    v = yuv + width * height + width * height / 4;
+  } else if (src_format == FORMAT_MAPPING_YUV420P_YV12) {
+    v = yuv + width * height;
+    u = yuv + width * height + width * height / 4;
+  } else if (src_format == FORMAT_MAPPING_NV12) {
+    u = yuv + width * height;
+    float *u_buf = (float *)malloc(sizeof(float) * width * height / 4);
+    float *v_buf = (float *)malloc(sizeof(float) * width * height / 4);
+    for (int i = 0; i < width * height / 4; i++) {
+      memcpy(u_buf + i, u + 2 * i, sizeof(float));
+      memcpy(v_buf + i, u + 2 * i + 1, sizeof(float));
+    }
+    u = u_buf;
+    v = v_buf;
+  } else if (src_format == FORMAT_MAPPING_NV21) {
+    u = yuv + width * height;
+    float *u_buf = (float *)malloc(sizeof(float) * width * height / 4);
+    float *v_buf = (float *)malloc(sizeof(float) * width * height / 4);
+    for (int i = 0; i < width * height / 4; i++) {
+      memcpy(v_buf + i, u + 2 * i, sizeof(float));
+      memcpy(u_buf + i, u + 2 * i + 1, sizeof(float));
+    }
+    u = u_buf;
+    v = v_buf;
+  }
+  yuv_split.emplace_back(y);
+  yuv_split.emplace_back(u);
+  yuv_split.emplace_back(v);
+  return yuv_split;
+}
+
 LogicalResult tpu::Yuv2rgbFormulaOp::inference(InferenceParameter &p) {
-  auto width = static_cast<unsigned int>(getWidth());
-  auto height = static_cast<unsigned int>(getHeight());
+  // width and height must be even!
+  // auto width = static_cast<unsigned int>(getWidth());
+  // auto height = static_cast<unsigned int>(getHeight());
+  auto YUV_shape = module::getShape(getYUV());
+  auto width = static_cast<unsigned int>(YUV_shape[YUV_shape.size() - 1]);
+  auto height =
+      static_cast<unsigned int>(YUV_shape[YUV_shape.size() - 2] * 2 / 3);
   auto src_format = static_cast<unsigned int>(getSrcFormat());
   auto dst_format = static_cast<unsigned int>(getDstFormat());
   auto output_data_format =
@@ -107,48 +150,49 @@ LogicalResult tpu::Yuv2rgbFormulaOp::inference(InferenceParameter &p) {
   auto formula_mode = static_cast<::formula_mode>(getFormulaMode());
   auto round_mode = static_cast<RoundingMode>(getRoundMode());
 
-  auto Y_shape = module::getShape(getY());
-  assert(width == Y_shape[Y_shape.size() - 1]);
-  assert(height == Y_shape[Y_shape.size() - 2]);
   size_t product = 1;
-  for (auto it = Y_shape.begin(); it != Y_shape.end() - 2; it++) {
+  for (auto it = YUV_shape.begin(); it != YUV_shape.end() - 2; it++) {
     product *= *it;
   }
 
   auto fail_flag = false;
+  std::vector<float *> yuv_split;
+  float *current_batch_y, *current_batch_u, *current_batch_v;
+  float *y_begin = p.inputs[0];
+  float *rgb_begin = p.outputs[0];
   for (size_t n = 0; n < product; n++) {
-#pragma omp parallel for schedule(static, omp_schedule(height *width))
+    yuv_split = split_YUV(y_begin, src_format, width, height);
+    current_batch_y = yuv_split[0];
+    current_batch_u = yuv_split[1];
+    current_batch_v = yuv_split[2];
+    // #pragma omp parallel for schedule(static, omp_schedule(height *width))
     for (size_t i = 0; i < height * width; i++) {
       u8 y, u, v;
       size_t h_index = i / width;
       size_t w_index = i % width;
-      size_t uv_h_index, u_w_index, v_w_index;
-      if (src_format == FORMAT_MAPPING_NV12 ||
+
+      size_t y_offset = i;
+      size_t u_offset, v_offset;
+      if (src_format == FORMAT_MAPPING_YUV420P_YU12 ||
+          src_format == FORMAT_MAPPING_YUV420P_YV12 ||
+          src_format == FORMAT_MAPPING_NV12 ||
           src_format == FORMAT_MAPPING_NV21) {
-        uv_h_index = h_index / 2;
-        u_w_index = w_index / 2;
-        v_w_index = w_index / 2;
-      } else if (src_format == FORMAT_MAPPING_YUV420P) {
-        uv_h_index = 0;
-        u_w_index = w_index / 2 + h_index / 2 * width / 2;
-        v_w_index = w_index / 2 + h_index / 2 * width / 2;
+        u_offset = w_index / 2 + h_index / 2 * width / 2;
+        v_offset = w_index / 2 + h_index / 2 * width / 2;
       } else {
         fail_flag = true;
         continue;
       }
 
-      y = p.inputs[0][i + n * height * width];
-      u = p.inputs[1]
-                  [u_w_index + uv_h_index * u_w_index + n / 4 * height * width];
-      v = p.inputs[2]
-                  [v_w_index + uv_h_index * v_w_index + n / 4 * height * width];
+      y = current_batch_y[y_offset];
+      u = current_batch_u[u_offset];
+      v = current_batch_v[v_offset];
 
-      float *c0 = ((float *)p.outputs[0]) + n * height * width +
-                  h_index * width + w_index;
-      float *c1 = ((float *)p.outputs[0]) + (n + 1) * height * width +
-                  h_index * width + w_index;
-      float *c2 = ((float *)p.outputs[0]) + (n + 2) * height * width +
-                  h_index * width + w_index;
+      float *c0 = ((float *)rgb_begin) + h_index * width + w_index;
+      float *c1 =
+          ((float *)rgb_begin) + height * width + h_index * width + w_index;
+      float *c2 =
+          ((float *)rgb_begin) + 2 * height * width + h_index * width + w_index;
 
       if (dst_format == FORMAT_MAPPING_RGB) {
         YCrCb2RGB(y, u, v, c0, c1, c2, formula_mode,
@@ -161,6 +205,8 @@ LogicalResult tpu::Yuv2rgbFormulaOp::inference(InferenceParameter &p) {
       // std::cout << *c2 << ", " << *c1 << ", " << *c0 << std::endl;
       // std::cout << "\n" << std::endl;
     }
+    y_begin += width * height * 3 / 2;
+    rgb_begin += 3 * width * height;
     if (fail_flag)
       return failure();
   }

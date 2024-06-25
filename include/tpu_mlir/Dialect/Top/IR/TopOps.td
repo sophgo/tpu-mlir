@@ -1707,11 +1707,7 @@ def Top_Yuv2rgbFormulaOp: Top_Op<"Yuv2rgbFormula"> {
   }];
 
   let arguments = (ins
-    AnyTensor:$Y,
-    AnyTensor:$U,
-    AnyTensor:$V,
-    UI32Attr:$width,
-    UI32Attr:$height,
+    AnyTensor:$YUV,
     UI32Attr:$src_format,
     UI32Attr:$dst_format,
     ImageOutFormatAttr:$image_format,
