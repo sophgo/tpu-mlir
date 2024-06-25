@@ -1676,6 +1676,7 @@ typedef enum {
 } formula_mode;
 
 typedef struct {
+  unsigned int batch;
   unsigned int width;
   unsigned int height;
   unsigned int src_format;

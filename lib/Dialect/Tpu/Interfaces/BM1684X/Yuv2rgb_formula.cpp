@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include <cassert>
 
 using namespace tpu_mlir::backend;
 
@@ -21,8 +22,16 @@ void tpu::Yuv2rgbFormulaOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
 
   yuv2rgb_formula_spec_t spec = {0};
-  spec.width = static_cast<unsigned int>(getWidth());
-  spec.height = static_cast<unsigned int>(getHeight());
+  auto YUV_shape = module::getShape(getYUV());
+  size_t product = 1;
+  assert(YUV_shape.size() >= 2);
+  for (auto it = YUV_shape.begin(); it != YUV_shape.end() - 2; it++) {
+    product *= *it;
+  }
+  spec.batch = static_cast<unsigned int>(product);
+  spec.width = static_cast<unsigned int>(YUV_shape[YUV_shape.size() - 1]);
+  spec.height =
+      static_cast<unsigned int>(YUV_shape[YUV_shape.size() - 2] * 2 / 3);
   spec.src_format = static_cast<unsigned int>(getSrcFormat());
   spec.dst_format = static_cast<unsigned int>(getDstFormat());
   spec.output_data_format =

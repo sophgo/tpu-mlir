@@ -1078,11 +1078,7 @@ def Tpu_Yuv2rgbFormulaOp: Tpu_Op<"Yuv2rgbFormula">{
   }];
 
   let arguments = (ins
-    AnyTensor:$Y,
-    AnyTensor:$U,
-    AnyTensor:$V,
-    UI32Attr:$width,
-    UI32Attr:$height,
+    AnyTensor:$YUV,
     UI32Attr:$src_format,
     UI32Attr:$dst_format,
     Tpu_ImageOutFormatAttr:$image_format,

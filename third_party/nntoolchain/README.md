@@ -12,10 +12,10 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690 2024-6-3
+## TPU1684X/1688/BM1690 2024-6-26
 ``` bash
 
-#bm1684x sha256: 82e73d740ac32c5c9f434fce7e9bf6c8d3efa5db
+#bm1684x sha256: 45df62fdea3bef22325dbf5a67d293a561421e7c
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**

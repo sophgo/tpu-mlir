@@ -3094,6 +3094,47 @@ Processor support
 * BM1684X: The input data type can be FLOAT32/FLOAT16(TODO).
 
 
+yuv2rgb
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+        def yuv2rgb(
+            inputs: Tensor,
+            src_format: int,
+            dst_format: int,
+            ImageOutFormatAttr: str,
+            formula_mode: str,
+            round_mode: str,
+            out_name: str = None,
+        ):
+
+Description of the function
+"""""""""""
+Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n represents `batch`, h represents `pixels height`, w represents `pixels width`.
+
+Explanation of parameters
+"""""""""""
+* inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents `batch`, 2nd dim represents `pixels height`, 3rd dim represents `pixels width`.
+* src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12`=0, `FORMAT_MAPPING_YUV420P_YV12`=1, `FORMAT_MAPPING_NV12`=2, `FORMAT_MAPPING_NV21`=3.
+* dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB`=4, `FORMAT_MAPPING_BGR`=5.
+* ImageOutFormatAttr: string type, representing the output dtype, currently only support `UINT8`.
+* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support `_601_limited`, `_601_full`.
+* round_mode: string type, currently support `HalfAwayFromZero`, `HalfToEven`.
+* out_name: string type, representing the name of output tensor, default= `None`.
+
+Return value
+"""""""""""
+One rgb tensor will be output, with shape=[n,3,h,w], where n represents `batch`, h represents `pixels height`, w represents `pixels width`.
+
+Processor support
+"""""""""""
+* BM1684X: The input data type must be UINT8.
+
+
 Select Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
