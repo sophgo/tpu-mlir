@@ -31,15 +31,16 @@ typedef enum {
 void cudaF32ToInt8(void *input, void *output, float scale, int size, bool sign,
                    cuda_rmode_t rmode);
 
-void cudaInt8ToF32(void *input, void *output, float scale, int size,
-                   bool sign); // for bm168x
+// int8 or uint8 * scale => float output
+void cudaInt8ToF32(void *input, void *output, float scale, int size, bool sign);
 
-void cudaCVScaleToF32(void *input, void *output, float scale,
-                      int size); // for cv18xx
-
-// for cv18xx add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
+// add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int shift, int size);
+
+// add: i8 * i32 >> s0 + i8 * i32 >> s1 = int8 (half away from zero)
+void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                 int shift0, int shift1, int size, bool sign);
 
 void cudaConvInt8(void *input, void *filter, void *bias, void *output,
                   void *multipliers, void *shifts, int n, int ic, int ih,
@@ -60,3 +61,11 @@ cudaError_t cudaTransform(void *src, void *dst, int size,
                           cuda_rmode_t rmode = CUDA_TOWARDS_ZERO);
 
 void cudaPrint(void *data, int size, cudnnDataType_t type);
+
+// -------------------------------------------------------------------------
+// cv18xx only
+
+void cudaCVQuantInt8(void *input, void *output, float scale, int size);
+
+// int8 or uint8 * scale => float output, cv18xx only
+void cudaCVScaleToF32(void *input, void *output, float scale, int size);
