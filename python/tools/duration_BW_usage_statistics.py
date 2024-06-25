@@ -277,8 +277,7 @@ def plot_duration_and_bandwidth_usage_chart(
     ax1.set_ylabel(keyword_A, fontsize=60)
     ax1.tick_params(axis="y", labelsize=60)
     ax1.yaxis.get_offset_text().set_fontsize(50)
-    xmin, xmax = ax1.get_xlim()
-    ax1.set_xlim(xmin + int(str(x_labels[0])) / 2 - 2, xmax)
+    _, xmax = ax1.get_xlim()
     ax1.yaxis.grid(True, linestyle="--", linewidth=1, color="gray")
     ax1.text(xmax, 0, "———   file_line   ———", fontsize=40, ha="right", va="top")
 
@@ -314,8 +313,6 @@ def plot_duration_and_bandwidth_usage_chart(
     ax2.set_ylabel(keyword_B, fontsize=60)
     ax2.tick_params(axis="y", labelsize=60)
     ax2.yaxis.get_offset_text().set_fontsize(50)
-    xmin, xmax = ax2.get_xlim()
-    ax2.set_xlim(xmin + int(str(x_labels[0])) / 2 - 2, xmax)
     ax2.yaxis.grid(True, linestyle="--", linewidth=1, color="gray")
     ax2.xaxis.tick_top()
     ax2.invert_yaxis()
