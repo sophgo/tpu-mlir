@@ -35,7 +35,7 @@ void py_cuda::cudaCast(tpu::CastOp op) {
     if (is_cv18xx) {
       cudaCVScaleToF32(input, output, BF16(scale), num_elem);
     } else {
-      cudaScaleToF32(input, output, scale, num_elem);
+      cudaInt8ToF32(input, output, scale, num_elem, qtype.isUnsignedInteger(8));
     }
     return;
   }

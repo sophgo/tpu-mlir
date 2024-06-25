@@ -13,28 +13,42 @@
 #define CUDA_BLOCK_SIZE 256
 #define CUDA_NUM_BLOCKS(n) ((n + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE)
 
-__global__ void kernelQuantizeToInt8_0(float *input, int8_t *output,
-                                       float scale, int size) {
+__global__ void kernelF32ToInt8(float *input, void *output, float scale,
+                                int size, bool sign, cuda_rmode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     float scaled_value = input[idx] * scale;
-    // Apply 'half away from zero' rounding
-    float rounded_value;
-    if (scaled_value >= 0) {
-      rounded_value = floor(scaled_value + 0.5);
-    } else {
-      rounded_value = ceil(scaled_value - 0.5);
+    switch (rmode) {
+    case CUDA_AWAY_FROM_ZERO:
+      if (scaled_value >= 0) {
+        scaled_value = floor(scaled_value + 0.5);
+      } else {
+        scaled_value = ceil(scaled_value - 0.5);
+      }
+      break;
+    case CUDA_HALF_UP:
+      scaled_value = floor(scaled_value + 0.5);
+      break;
+    case CUDA_TOWARDS_ZERO:
+      scaled_value = floor(scaled_value);
+      break;
     }
-    rounded_value = max(-128.0, min(127.0, rounded_value));
-    output[idx] = static_cast<int8_t>(rounded_value);
+    if (sign) {
+      scaled_value = max(-128.0f, min(127.0f, scaled_value));
+      ((int8_t *)output)[idx] = static_cast<int8_t>(scaled_value);
+    } else {
+      scaled_value = max(0.0f, min(255.0f, scaled_value));
+      ((uint8_t *)output)[idx] = static_cast<uint8_t>(scaled_value);
+    }
   }
 }
 
-void cudaQuantizeToInt8_0(void *input, void *output, float scale, int size) {
+void cudaF32ToInt8(void *input, void *output, float scale, int size, bool sign,
+                   cuda_rmode_t rmode) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  kernelQuantizeToInt8_0<<<num_blocks, block_size>>>(
-      (float *)input, (int8_t *)output, scale, size);
+  kernelF32ToInt8<<<num_blocks, block_size>>>((float *)input, output, scale,
+                                              size, sign, rmode);
 }
 
 struct bfloat16 {
@@ -90,20 +104,25 @@ void cudaCVScaleToF32(void *input, void *output, float scale, int size) {
                                                  (float *)output, scale, size);
 }
 
-__global__ void kernelScaleToF32(int8_t *input, float *output, float scale,
-                                 int size) {
+__global__ void kernelInt8ToF32(void *input, float *output, float scale,
+                                int size, bool sign) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     // Convert int8 to float32 and scale
-    output[idx] = static_cast<float>(input[idx]) * scale;
+    if (sign) {
+      output[idx] = static_cast<float>(((int8_t *)input)[idx]) * scale;
+    } else {
+      output[idx] = static_cast<float>(((uint8_t *)input)[idx]) * scale;
+    }
   }
 }
 
-void cudaScaleToF32(void *input, void *output, float scale, int size) {
+void cudaInt8ToF32(void *input, void *output, float scale, int size,
+                   bool sign) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  kernelScaleToF32<<<num_blocks, block_size>>>((int8_t *)input, (float *)output,
-                                               scale, size);
+  kernelInt8ToF32<<<num_blocks, block_size>>>((int8_t *)input, (float *)output,
+                                              scale, size, sign);
 }
 
 __global__ void kernelQuantInt8(float *input, int8_t *output, float scale,
@@ -332,12 +351,27 @@ __global__ void kernelInt32ToFloat(int32_t *input, float *output, int size) {
   }
 }
 
-__global__ void kernelFloatToInt32(float *input, int32_t *output, int size) {
+__global__ void kernelFloatToInt32(float *input, int32_t *output, int size,
+                                   cuda_rmode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    output[idx] = static_cast<int32_t>(input[idx]);
-    // printf(">>floatToint32 i:%d, src:%f, dst:%d\n", idx, input[idx],
-    //        output[idx]);
+    float value = input[idx];
+    switch (rmode) {
+    case CUDA_AWAY_FROM_ZERO:
+      if (value >= 0) {
+        value = floor(value + 0.5);
+      } else {
+        value = ceil(value - 0.5);
+      }
+      break;
+    case CUDA_HALF_UP:
+      value = floor(value + 0.5);
+      break;
+    case CUDA_TOWARDS_ZERO:
+    default:
+      break;
+    }
+    output[idx] = static_cast<int32_t>(value);
   }
 }
 
@@ -345,17 +379,31 @@ __global__ void kernelInt8ToFloat(int8_t *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     output[idx] = static_cast<float>(input[idx]);
-    // printf(">>int8Tofloat i:%d, src:%d, dst:%f\n", idx, (int32_t)input[idx],
-    //        output[idx]);
   }
 }
 
-__global__ void kernelFloatToInt8(float *input, int8_t *output, int size) {
+__global__ void kernelFloatToInt8(float *input, int8_t *output, int size,
+                                  cuda_rmode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    output[idx] = static_cast<int8_t>(input[idx]);
-    // printf(">>floatToint8 i:%d, src:%f, dst:%d\n", idx, input[idx],
-    //        (int32_t)output[idx]);
+    float value = input[idx];
+    switch (rmode) {
+    case CUDA_AWAY_FROM_ZERO:
+      if (value >= 0) {
+        value = floor(value + 0.5);
+      } else {
+        value = ceil(value - 0.5);
+      }
+      break;
+    case CUDA_HALF_UP:
+      value = floor(value + 0.5);
+      break;
+    case CUDA_TOWARDS_ZERO:
+    default:
+      break;
+    }
+    value = max(-128.0f, min(127.0f, value));
+    output[idx] = static_cast<int8_t>(value);
   }
 }
 
@@ -366,32 +414,51 @@ __global__ void kernelUint8ToFloat(uint8_t *input, float *output, int size) {
   }
 }
 
-__global__ void kernelFloatToUint8(float *input, uint8_t *output, int size) {
+__global__ void kernelFloatToUint8(float *input, uint8_t *output, int size,
+                                   cuda_rmode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    output[idx] = static_cast<uint8_t>(input[idx]);
+    float value = input[idx];
+    switch (rmode) {
+    case CUDA_AWAY_FROM_ZERO:
+      if (value >= 0) {
+        value = floor(value + 0.5);
+      } else {
+        value = ceil(value - 0.5);
+      }
+      break;
+    case CUDA_HALF_UP:
+      value = floor(value + 0.5);
+      break;
+    case CUDA_TOWARDS_ZERO:
+    default:
+      break;
+    }
+    value = max(0.0f, min(255.0f, value));
+    output[idx] = static_cast<uint8_t>(value);
   }
 }
 
 cudaError_t cudaTransform(void *src, void *dst, int size,
-                          cudnnDataType_t src_type, cudnnDataType_t dst_type) {
+                          cudnnDataType_t src_type, cudnnDataType_t dst_type,
+                          cuda_rmode_t rmode) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_INT32) {
     kernelFloatToInt32<<<num_blocks, block_size>>>((float *)src, (int32_t *)dst,
-                                                   size);
+                                                   size, rmode);
   } else if (src_type == CUDNN_DATA_INT32 && dst_type == CUDNN_DATA_FLOAT) {
     kernelInt32ToFloat<<<num_blocks, block_size>>>((int32_t *)src, (float *)dst,
                                                    size);
   } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_INT8) {
     kernelFloatToInt8<<<num_blocks, block_size>>>((float *)src, (int8_t *)dst,
-                                                  size);
+                                                  size, rmode);
   } else if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_FLOAT) {
     kernelInt8ToFloat<<<num_blocks, block_size>>>((int8_t *)src, (float *)dst,
                                                   size);
   } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_UINT8) {
     kernelFloatToUint8<<<num_blocks, block_size>>>((float *)src, (uint8_t *)dst,
-                                                   size);
+                                                   size, rmode);
   } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_FLOAT) {
     kernelUint8ToFloat<<<num_blocks, block_size>>>((uint8_t *)src, (float *)dst,
                                                    size);
