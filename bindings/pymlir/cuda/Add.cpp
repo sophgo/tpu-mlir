@@ -12,9 +12,6 @@
 
 void py_cuda::cudaAdd(tpu::AddOp op) {
   auto out = op.getOutput();
-  if (!module::isCV18xx()) {
-    UNREACHABLE_OP("Not Implemented", op);
-  }
   if (!module::isUniformQuantized(out)) {
     UNREACHABLE_OP("Not Implemented", op);
   }
@@ -22,12 +19,25 @@ void py_cuda::cudaAdd(tpu::AddOp op) {
   if (2 != num_inputs) {
     UNREACHABLE_OP("Not Implemented", op);
   }
-  auto multiplier_v =
-      module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
-  auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
   auto input0 = getCudaData(op.getInputs()[0]);
   auto input1 = getCudaData(op.getInputs()[1]);
   auto output = getCudaData(out);
-  cudaAddInt8(input0, input1, output, multiplier_v->at(0), multiplier_v->at(1),
-              rshift_v->at(0), module::getNumElements(out));
+  auto out_stype = module::getStorageType(out);
+  auto out_sign = !out_stype.isUnsignedInteger(8);
+  auto num_out = module::getNumElements(out);
+  if (module::isCV18xx()) {
+    auto multiplier_v =
+        module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
+    auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
+    cudaAddInt8(input0, input1, output, multiplier_v->at(0),
+                multiplier_v->at(1), rshift_v->at(0), num_out);
+  } else {
+    auto multiplier_v =
+        module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
+    auto rshift_v =
+        module::getI64Array(op.getRshifts(), op.getInputs().size(), 0);
+    cudaAddInt8(input0, input1, output, multiplier_v->at(0),
+                multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1), num_out,
+                out_sign);
+  }
 }

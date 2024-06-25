@@ -22,5 +22,6 @@ void py_cuda::cudaGenericCpu(tpu::GenericCpuOp op) {
   void *input = getCudaData(op.getInputs()[0]);
   void *output = getCudaData(op.getOutputs()[0]);
   int num_elems = module::getNumElements(op.getInputs()[0]);
-  cudaF32ToInt8(input, output, scale, num_elems, true, CUDA_AWAY_FROM_ZERO);
+  cudaF32ToInt8(input, output, scale, num_elems, true,
+                CUDA_HALF_AWAY_FROM_ZERO);
 }
