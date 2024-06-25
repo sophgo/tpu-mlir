@@ -308,6 +308,10 @@ public:
     dl_forbid_store_cmd();
   }
 
+  void set_profile_dump(bool enable) {
+    dl_sg_set_profile_dump(enable);
+  }
+
   // for cpu layer
   void bmcpu_setup();
   // void set_net_cpu_mem_size(int32_t size) {
