@@ -121,7 +121,12 @@ The interface definition
             cmp=True,
             refs=None,
             mode='f32',
-            dynamic=False):
+            dynamic=False,
+            asymmetric=False,
+            no_save=False,
+            opt=2,
+            mlir_inference=True,
+            bmodel_inference=True):
             #pass
 
 
@@ -136,10 +141,15 @@ Explanation of parameters
 * name: A string. Model name.
 * inputs: List of Tensors, representing all input Tensors for compiling the network.
 * outputs: List of Tensors, representing all output Tensors for compiling the network.
-* cmp: A boolean. True indicates result verification is needed, False indicates compilation only.
+* cmp: A boolean. True indicates result verification is needed, False indicates compilation only. 'cmp' parameter is useless when 'mlir_inference' set to False.
 * refs: List of Tensors, representing all Tensors requiring verification in the compiled network.
 * mode: A string. Indicates the type of model, supporting "f32" and "int8".
 * dynamic: A boolean. Whether to do dynamic compilation.
+* no_save: A boolean. It indicates whether to temporarily store intermediate files in shared memory and release them along with the process. When this option is enabled, the compile function will return the generated 'bmodel' file as a bytes-like object, which the user needs to receive and do some further process, for example, by saving it using 'f.write(bmodel_bin).'.
+* asymmetric: A boolean. This parameter indicates whether it is for asymmetric quantization.
+* opt: An integer type representing the compiler group optimization level. 0 indicates no need for layer group; 1 indicates grouping as much as possible; 2 indicates grouping based on dynamic programming.
+* mlir_inference: A boolean. Whether to do mlir inference. 'cmp' parameter is useless when 'mlir_inference' set to False.
+* bmodel_inference: A boolean. Whether to do bmodel inference.
 
 .. _deinit:
 
