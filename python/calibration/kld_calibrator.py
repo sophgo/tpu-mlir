@@ -930,7 +930,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             #     warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
             #     new_num_bins = 40000000
             #     half_increased_bins = new_num_bins - old_num_bins
-            if new_num_bins > 10000000:
+            if new_num_bins > 8000000:
                 import warnings
                 warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
                 hist, hist_edges = self.histogram(arr, new_th, self.histogram_bin_num)
@@ -1748,6 +1748,10 @@ class ActivationCalibrator(BaseKldCalibrator):
             for i, op_name in enumerate(op_layers):
                 op_name = split_fuseop(op_name)
                 threshold = thresholds[op_name]
+                if threshold <= 1e-5:
+                    threshold = 1e-5
+                    print("WARNING: layer {} threshold is zero. Please check the "
+                        "input data correctness.".format(op_name))
                 layer_name_list.append('{}_{}'.format(i, op_name))
                 tuned_threshold_list.append(threshold)
                 if 'input_calibration_table' in self.debug_cmd:
