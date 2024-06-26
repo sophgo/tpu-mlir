@@ -166,6 +166,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaAdd(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Conv2DOp>(op)) {
           cudaConv2D(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ConcatOp>(op)) {
+          cudaConcat(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
           cudaCast(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
@@ -174,6 +176,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaMatMul(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Pool2DOp>(op)) {
           cudaPool2D(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
+          cudaPermute(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
           cudaReshape(tpuOp);
         } else {
