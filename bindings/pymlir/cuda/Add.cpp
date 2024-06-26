@@ -40,4 +40,7 @@ void py_cuda::cudaAdd(tpu::AddOp op) {
                 multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1), num_out,
                 out_sign);
   }
+  if (op.getDoRelu()) {
+    cudaRelu(output, num_out, getCudnnType(op.getOutput()));
+  }
 }

@@ -213,6 +213,78 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                                             size, sign);
 }
 
+__device__ void kernelCopyElement(void *src, int sidx, void *dst, int didx,
+                                  int tbytes) {
+  switch (tbytes) {
+  case 1:
+    static_cast<uint8_t *>(dst)[didx] = static_cast<uint8_t *>(src)[sidx];
+    break;
+  case 2:
+    static_cast<uint16_t *>(dst)[didx] = static_cast<uint16_t *>(src)[sidx];
+    break;
+  case 4:
+    static_cast<uint32_t *>(dst)[didx] = static_cast<uint32_t *>(src)[sidx];
+    break;
+  default:
+    break;
+  }
+}
+
+__global__ void kernelPermute4D(void *input, void *output, int n, int c, int h,
+                                int w, int o0, int o1, int o2, int o3,
+                                int tbytes) {
+  int oldIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (oldIdx < n * c * h * w) {
+    int dims[4] = {n, c, h, w};
+    int newDims[4] = {dims[o0], dims[o1], dims[o2], dims[o3]};
+    int ind[4];
+    ind[0] = oldIdx / (c * h * w);             // n index
+    ind[1] = (oldIdx % (c * h * w)) / (h * w); // c index
+    ind[2] = (oldIdx % (h * w)) / w;           // h index
+    ind[3] = oldIdx % w;                       // w index
+    int newInd[4] = {ind[o0], ind[o1], ind[o2], ind[o3]};
+    int newIdx =
+        ((newInd[0] * newDims[1] + newInd[1]) * newDims[2] + newInd[2]) *
+            newDims[3] +
+        newInd[3];
+    kernelCopyElement(input, oldIdx, output, newIdx, tbytes);
+  }
+}
+
+void cudaPermute4D(void *src, void *dst, int n, int c, int h, int w, int o0,
+                   int o1, int o2, int o3, int tbytes) {
+  int num = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelPermute4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, o0, o1, o2,
+                                              o3, tbytes);
+}
+
+__global__ void kernelCopyAxis(void *src, void *dst, int outer_dim,
+                               int axis_dim, int inner_dim, int offset, int num,
+                               int tbytes) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = outer_dim * num * inner_dim;
+  if (idx < total) {
+    int out_idx = idx / (num * inner_dim);
+    int axis_idx = (idx % (num * inner_dim)) / inner_dim;
+    int inner_idx = idx % inner_dim;
+    int dstIdx = out_idx * axis_dim * inner_dim +
+                 (axis_idx + offset) * inner_dim + inner_idx;
+    kernelCopyElement(src, idx, dst, dstIdx, tbytes);
+  }
+}
+
+void cudaCopyAxis(void *src, void *dst, int outer_dim, int axis_dim,
+                  int inner_dim, int offset, int num, int tbytes) {
+  int total = outer_dim * num * inner_dim;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelCopyAxis<<<num_blocks, block_size>>>(src, dst, outer_dim, axis_dim,
+                                             inner_dim, offset, num, tbytes);
+}
+
 __global__ void kernelMatMulF32(float *A, float *B, float *C, int m, int k,
                                 int n) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -396,6 +468,25 @@ void cudaRequantInt8(void *input, void *output, int32_t multiplier,
       (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu);
 }
 
+__global__ void kernelCVMultiShiftInt8(int8_t *input, int8_t *output,
+                                       int multiplier, int shift, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int32_t value = static_cast<int32_t>(input[idx]) * multiplier;
+    value = (value + 1 << (shift - 1)) >> shift; // half up
+    value = max(-128, min(127, value));
+    output[idx] = static_cast<int8_t>(value);
+  }
+}
+
+void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
+                          int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelCVMultiShiftInt8<<<num_blocks, block_size>>>(
+      (int8_t *)input, (int8_t *)output, multiplier, shift, size);
+}
+
 __global__ void kernelInt32ToFloat(int32_t *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
@@ -479,7 +570,6 @@ template <typename T> __global__ void kernelPrint(T *data, int size) {
 }
 
 void cudaPrint(void *data, int size, cudnnDataType_t type) {
-  cudaDeviceSynchronize();
   switch (type) {
   case CUDNN_DATA_FLOAT:
     kernelPrint<<<(size + 256) / 256, 256>>>((float *)data, size);
@@ -492,6 +582,29 @@ void cudaPrint(void *data, int size, cudnnDataType_t type) {
     break;
   case CUDNN_DATA_UINT8:
     kernelPrint<<<(size + 256) / 256, 256>>>((uint8_t *)data, size);
+    break;
+  }
+}
+
+template <typename T> __global__ void kernelRelu(T *data, int size) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < size) {
+    data[idx] = max(static_cast<T>(0), data[idx]);
+  }
+}
+
+void cudaRelu(void *data, int size, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (type) {
+  case CUDNN_DATA_FLOAT:
+    kernelRelu<<<num_blocks, block_size>>>((float *)data, size);
+    break;
+  case CUDNN_DATA_INT32:
+    kernelRelu<<<num_blocks, block_size>>>((int32_t *)data, size);
+    break;
+  case CUDNN_DATA_INT8:
+    kernelRelu<<<num_blocks, block_size>>>((int8_t *)data, size);
     break;
   }
 }

@@ -52,20 +52,32 @@ void cudaRequantInt8Perchannel(void *input, void *output, void *multipliers,
                                bool out_sign, bool qdm = false,
                                bool relu = false);
 
+// requant from int32 to int8
 void cudaRequantInt8(void *input, void *output, int32_t multiplier,
                      int32_t shift, int num, bool out_sign, bool qdm = false,
                      bool relu = false);
 
+// inplace relu
+void cudaRelu(void *data, int size, cudnnDataType_t type);
+
 cudaError_t cudaTransform(void *src, void *dst, int size,
                           cudnnDataType_t src_type, cudnnDataType_t dst_type,
                           cuda_rmode_t rmode = CUDA_TOWARDS_ZERO);
-
+void cudaPermute4D(void *src, void *dst, int n, int c, int h, int w, int o0,
+                   int o1, int o2, int o3, int tbytes);
+void cudaCopyAxis(void *src, void *dst, int outer_dim, int axis_dim,
+                  int inner_dim, int offset, int num, int tbytes);
 void cudaPrint(void *data, int size, cudnnDataType_t type);
 
 // -------------------------------------------------------------------------
 // cv18xx only
 
+// float * scale => int8 output
 void cudaCVQuantInt8(void *input, void *output, float scale, int size);
 
 // int8 or uint8 * scale => float output, cv18xx only
 void cudaCVScaleToF32(void *input, void *output, float scale, int size);
+
+// int8 * multi >> shift = i8 output
+void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
+                          int size);
