@@ -38,58 +38,56 @@ static void op_lowering_common(PatternRewriter &rewriter,
 
   MLIRContext *context = processOp->getContext();
 
-  if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
-    //multiplier & rshift
-    std::vector<Attribute> vector_multi;
-    std::vector<Attribute> vector_rshift;
-    std::vector<Attribute> vector_offset;
+  //multiplier & rshift
+  std::vector<Attribute> vector_multi;
+  std::vector<Attribute> vector_rshift;
+  std::vector<Attribute> vector_offset;
 
-    auto idtype = module::getStorageType(inputOp.getResult().getType());
-    auto odtype = module::getStorageType(processOp->getResult(0).getType());
-    auto scale_attr = op.getScale();
-    auto std_attr = op.getStd();
-    auto mean_attr = op.getMean();
-    auto scale = *module::getF64Array(scale_attr);
-    auto std = *module::getF64Array(std_attr);
-    auto mean = * module::getF64Array(mean_attr);
-    int chn_num = std.size();
+  auto idtype = module::getStorageType(processOp->getOperands()[0].getType());
+  auto odtype = module::getStorageType(processOp->getResult(0).getType());
+  auto scale_attr = op.getScale();
+  auto std_attr = op.getStd();
+  auto mean_attr = op.getMean();
+  auto scale = *module::getF64Array(scale_attr);
+  auto std = *module::getF64Array(std_attr);
+  auto mean = * module::getF64Array(mean_attr);
+  int chn_num = std.size();
 
-    if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) && odtype.isSignedInteger(8)) {
-      int multi = 0;
-      int rshift = 0;
-      for (int i = 0; i < chn_num; i++) {
-        QuantizeMultiplier(scale[0] / (std[i] * scale[1]), 1, 16, &multi, &rshift);
-        vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-        vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
-        int offset = (int)roundf(0 - mean[i] * (scale[0] / (std[i] * scale[1])) *pow(2, rshift));
-        vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), offset));
-      }
+  if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) && odtype.isSignedInteger(8)) {
+    int multi = 0;
+    int rshift = 0;
+    for (int i = 0; i < chn_num; i++) {
+      QuantizeMultiplier(scale[0] / (std[i] * scale[1]), 1, 16, &multi, &rshift);
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
+      int offset = (int)roundf(0 - mean[i] * (scale[0] / (std[i] * scale[1])) *pow(2, rshift));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), offset));
     }
-    else if (idtype.isF32() && odtype.isSignedInteger(8)) {
-      int multi = 0;
-      int rshift = 0;
-      for (int i = 0; i < chn_num; i++) {
-        QuantizeMultiplier(scale[0] / (1 / scale[1]), 1, 16, &multi, &rshift);
-        vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-        vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
-        vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
-      }
-    } else {
-      int multi = 1;
-      int rshift = 0;
-      for (int i = 0; i < chn_num; i++) {
-        vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-        vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
-        vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
-      }
-    }
-
-    processOp->setAttr("multi", ArrayAttr::get(context, vector_multi));
-    processOp->setAttr("rshift", ArrayAttr::get(context, vector_rshift));
-    processOp->setAttr("offset", ArrayAttr::get(context, vector_offset));
-
-    lowering_common<tpu::MeanStdScaleOp>(rewriter, processOp, processOp->getResult(0).getType(), 1);
   }
+  else if (idtype.isF32() && odtype.isSignedInteger(8)) {
+    int multi = 0;
+    int rshift = 0;
+    for (int i = 0; i < chn_num; i++) {
+      QuantizeMultiplier(scale[0] / (1 / scale[1]), 1, 16, &multi, &rshift);
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
+    }
+  } else {
+    int multi = 1;
+    int rshift = 0;
+    for (int i = 0; i < chn_num; i++) {
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
+    }
+  }
+
+  processOp->setAttr("multi", ArrayAttr::get(context, vector_multi));
+  processOp->setAttr("rshift", ArrayAttr::get(context, vector_rshift));
+  processOp->setAttr("offset", ArrayAttr::get(context, vector_offset));
+
+  lowering_common<tpu::MeanStdScaleOp>(rewriter, processOp, processOp->getResult(0).getType(), 1);
 }
 
 void MeanStdScaleLowering::LoweringINT8(PatternRewriter &rewriter,
