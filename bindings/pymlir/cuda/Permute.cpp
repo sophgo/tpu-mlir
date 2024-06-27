@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaPermute(tpu::PermuteOp op) {
+void py_cuda::cudaPermuteOp(tpu::PermuteOp op) {
   auto p = op.parseParam();
   if (p.in_shape_fix.size() != 4) {
     UNREACHABLE_OP("Not Implemented", op);

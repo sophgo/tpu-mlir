@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaConcat(tpu::ConcatOp op) {
+void py_cuda::cudaConcatOp(tpu::ConcatOp op) {
   auto out_shape = module::getShape(op.getOutput());
   int axis = op.getAxis();
   int outer_dim = 1, axis_dim = 1, inner_dim = 1;

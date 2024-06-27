@@ -37,7 +37,7 @@ cuda_rmode_t rmode_convert(tpu::RoundMode mode) {
   return CUDA_HALF_AWAY_FROM_ZERO;
 }
 
-void py_cuda::cudaCast(tpu::CastOp op) {
+void py_cuda::cudaCastOp(tpu::CastOp op) {
   auto num_elem = module::getNumElements(op.getOutput());
   auto in_type = module::getStorageType(op.getInput());
   auto out_type = module::getStorageType(op.getOutput());

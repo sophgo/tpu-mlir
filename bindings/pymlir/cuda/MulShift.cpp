@@ -10,9 +10,14 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaReshapeOp(tpu::ReshapeOp op) {
+void py_cuda::cudaMulShiftOp(tpu::MulShiftOp op) {
+  if (!module::isUniformQuantized(op.getInput())) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
   void *input = getCudaData(op.getInput());
   void *output = getCudaData(op.getOutput());
-  auto size = module::getBytes(op.getOutput());
-  CHECK_CUDA(cudaMemcpy(output, input, size, cudaMemcpyDeviceToDevice));
+  auto num = module::getBytes(op.getOutput());
+  int32_t m = op.getMultiplier();
+  int32_t s = op.getRshift();
+  cudaMulShift(input, output, m, s, num, getCudnnType(op.getInput()));
 }

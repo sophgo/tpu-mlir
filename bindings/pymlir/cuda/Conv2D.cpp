@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaConv2D(tpu::Conv2DOp op) {
+void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   auto p = op.parseParam();
   if (!module::isUniformQuantized(op.getOutput())) {
     UNREACHABLE_OP("Not Implemented", op);

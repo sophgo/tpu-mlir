@@ -163,23 +163,27 @@ void py_cuda::invoke(bool dump_all) {
         }
         // 2. inference
         if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
-          cudaAdd(tpuOp);
+          cudaAddOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Conv2DOp>(op)) {
-          cudaConv2D(tpuOp);
+          cudaConv2DOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ConcatOp>(op)) {
-          cudaConcat(tpuOp);
+          cudaConcatOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
-          cudaCast(tpuOp);
+          cudaCastOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
-          cudaGenericCpu(tpuOp);
+          cudaGenericCpuOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
-          cudaMatMul(tpuOp);
+          cudaMatMulOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MulShiftOp>(op)) {
+          cudaMulShiftOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Pool2DOp>(op)) {
-          cudaPool2D(tpuOp);
+          cudaPool2DOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
-          cudaPermute(tpuOp);
+          cudaPermuteOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
-          cudaReshape(tpuOp);
+          cudaReshapeOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
+          cudaSliceOp(tpuOp);
         } else {
           UNREACHABLE_OP("Not Implemented", op);
         }

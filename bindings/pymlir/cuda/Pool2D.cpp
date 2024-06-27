@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaPool2D(tpu::Pool2DOp op) {
+void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   auto p = op.parseParam();
   if (!module::isUniformQuantized(op.getOutput())) {
     UNREACHABLE_OP("Not Implemented", op);

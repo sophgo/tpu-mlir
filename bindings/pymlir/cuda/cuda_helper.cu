@@ -261,6 +261,36 @@ void cudaPermute4D(void *src, void *dst, int n, int c, int h, int w, int o0,
                                               o3, tbytes);
 }
 
+__global__ void kenrelSlice4D(void *src, void *dst, int n, int c, int h, int w,
+                              int off0, int off1, int off2, int off3, int s0,
+                              int s1, int s2, int s3, int on, int oc, int oh,
+                              int ow, int tbytes) {
+  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
+  int idx_c = blockIdx.z % oc;
+  int idx_n = blockIdx.z / oc;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int dst_idx = ((idx_n * oc + idx_c) * oh + idx_h) * ow + idx_w;
+    idx_n = off0 + idx_n * s0;
+    idx_c = off1 + idx_c * s1;
+    idx_h = off2 + idx_h * s2;
+    idx_w = off3 + idx_w * s3;
+    int src_idx = ((idx_n * c + idx_c) * h + idx_h) * w + idx_w;
+    kernelCopyElement(src, src_idx, dst, dst_idx, tbytes);
+  }
+}
+
+void cudaSlice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
+                 int off1, int off2, int off3, int s0, int s1, int s2, int s3,
+                 int on, int oc, int oh, int ow, int tbytes) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((ow + blockSize.x - 1) / blockSize.x,
+                 (oh + blockSize.y - 1) / blockSize.y, on * oc);
+  kenrelSlice4D<<<numBlocks, blockSize>>>(src, dst, n, c, h, w, off0, off1,
+                                          off2, off3, s0, s1, s2, s3, on, oc,
+                                          oh, ow, tbytes);
+}
+
 __global__ void kernelCopyAxis(void *src, void *dst, int outer_dim,
                                int axis_dim, int inner_dim, int offset, int num,
                                int tbytes) {
@@ -473,7 +503,7 @@ __global__ void kernelCVMultiShiftInt8(int8_t *input, int8_t *output,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     int32_t value = static_cast<int32_t>(input[idx]) * multiplier;
-    value = (value + 1 << (shift - 1)) >> shift; // half up
+    value = (value + (1 << (shift - 1))) >> shift; // half up
     value = max(-128, min(127, value));
     output[idx] = static_cast<int8_t>(value);
   }
@@ -485,6 +515,38 @@ void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
   int block_size = CUDA_BLOCK_SIZE;
   kernelCVMultiShiftInt8<<<num_blocks, block_size>>>(
       (int8_t *)input, (int8_t *)output, multiplier, shift, size);
+}
+
+template <typename T>
+__global__ void kernelMulShift(T *input, T *output, int multiplier, int shift,
+                               int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int32_t value = static_cast<int32_t>(input[idx]) * multiplier;
+    value = (value + (1 << (shift - 1))) >> shift; // half up
+    if (std::is_same<T, int8_t>::value) {
+      value = fmaxf(-128.0f, fminf(127.0f, value));
+    } else if (std::is_same<T, uint8_t>::value) {
+      value = fmaxf(0.0f, fminf(255.0f, value));
+    }
+    output[idx] = static_cast<T>(value);
+  }
+}
+
+void cudaMulShift(void *input, void *output, int multiplier, int shift,
+                  int size, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (type) {
+  case CUDNN_DATA_INT8:
+    kernelMulShift<<<num_blocks, block_size>>>(
+        (int8_t *)input, (int8_t *)output, multiplier, shift, size);
+    break;
+  case CUDNN_DATA_UINT8:
+    kernelMulShift<<<num_blocks, block_size>>>(
+        (uint8_t *)input, (uint8_t *)output, multiplier, shift, size);
+    break;
+  }
 }
 
 __global__ void kernelInt32ToFloat(int32_t *input, float *output, int size) {
