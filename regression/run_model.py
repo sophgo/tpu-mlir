@@ -396,7 +396,7 @@ class MODEL_RUN(object):
                         self.ini_content["use_quantize_table"]):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
                     cmd += [f"--quantize_table {qtable}"]
-            if self.ini_content["model_path"].endswith(".tflite"):
+            if self.ini_content["model_path"].endswith(".tflite") or self.mode.endswith("_asym"):
                 cmd += ["--asymmetric"]
             else:
                 if not ("quant_input" in self.ini_content

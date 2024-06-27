@@ -145,6 +145,14 @@ def sort_distr(array, length):
         return a_sort[-k:]
     return first_k(array, length)
 
+def sort_distr_per(array, length):
+    def first_k(a, k):
+        a_sort = np.sort(a)
+        f = a_sort[:k].copy()
+        r = a_sort[-k:].copy()
+        a = np.concatenate((f,r))
+        return a
+    return first_k(array, length)
 
 def cosine_sim(x, y):
     x[np.isnan(x)] = 0.0
@@ -1019,9 +1027,9 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.max_value[out] = max(np.max(activation), self.max_value[out])
                 abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
                 if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
-                    tmp = np.abs(activation.flatten())
-                    tmp = sort_distr(tmp, res_length)
-                    self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                    tmp = activation.flatten()
+                    tmp = sort_distr_per(tmp, res_length)
+                    self.all_data_test[out] = np.concatenate((self.all_data_test[out],tmp))
                 elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
                     bit = 8
                     if 'int4' in self.debug_cmd :
@@ -1104,18 +1112,24 @@ class ActivationCalibrator(BaseKldCalibrator):
                 continue
             abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
             if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
-                res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                res = np.sort(self.all_data_test[out])
+                res_max = res[-self.res_length_dict[out]:]
+                res_min = res[:self.res_length_dict[out]][::-1]
                 inter = self.args.input_num * self.size[out] - 1
                 idx = int((self.perd[evaled_op]/ 100) * inter)
                 ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                abs_value = res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
+                v_max = res_max[0] + ratio * (res_max[1] - res_max[0]) if self.res_length_dict[out] != 1 else res_max[0]
+                v_min = res_min[0] + ratio * (res_min[1] - res_min[0]) if self.res_length_dict[out] != 1 else res_min[0]
+                self.min_value[out] = v_min
+                self.max_value[out] = v_max
+                abs_value = max(abs(v_max),abs(v_min))
             elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
                 if out in self.last_five_tensors:
                     res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
                     inter = self.args.input_num * self.size[out] - 1
                     idx = int((self.perd[evaled_op]/ 100) * inter)
                     ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
                 mean_s_n = sum(self.mse[out])/len(self.mse[out])
                 mean_s_n = min(mean_s_n,abs_value)
                 abs_value = mean_s_n
@@ -1125,7 +1139,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     inter = self.args.input_num * self.size[out] - 1
                     idx = int((self.perd[evaled_op]/ 100) * inter)
                     ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
                 mean_gauss = sum(self.aciq[out])/len(self.aciq[out])
                 if mean_gauss > abs_value :
                     mean_gauss = abs_value
@@ -1136,7 +1150,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     inter = self.args.input_num * self.size[out] - 1
                     idx = int((self.perd[evaled_op]/ 100) * inter)
                     ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]   
+                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
                 mean_laplace = sum(self.aciq[out])/len(self.aciq[out])
                 if mean_laplace > abs_value :
                     mean_laplace = abs_value
@@ -1384,14 +1398,21 @@ class ActivationCalibrator(BaseKldCalibrator):
                 continue
             abs_value = max(abs(self._min_value[out]), abs(self._max_value[out]))
             #percentile9999
-            res = np.sort(self._all_data_test[out])[-self._res_length_dict[out]:]
+            res_max = np.sort(self._all_data_test[out])[-self._res_length_dict[out]:]
+            res_min = np.sort(self._all_data_test[out])[:-self._res_length_dict[out]][::-1]
             inter = self.args.input_num * self._size[out] - 1
             idx = int((self._perd[evaled_op]/ 100) * inter)
             ratio = (self._perd[evaled_op]/ 100) * inter - idx
-            percentile9999 = res[0] + ratio * (res[1] - res[0]) if self._res_length_dict[out] != 1 else res[0]
+            percentile9999_max = res_max[0] + ratio * (res_max[1] - res_max[0]) if self._res_length_dict[out] != 1 else res_max[0]
+            percentile9999_min = res_min[0] + (1-ratio) * (res_min[1] - res_min[0]) if self._res_length_dict[out] != 1 else res_min[0]
+            percentile9999 = max(abs(percentile9999_max),abs(percentile9999_min))
             if percentile9999 != None and percentile9999 <= 1e-5:
                 percentile9999 = 1e-5
             #mse
+            if 'use_percentile9999' in self.debug_cmd:
+                self._min_value[out] = percentile9999_min
+                self._max_value[out] = percentile9999_max
+
             if out in self._last_five_tensors:
                 self._last_five_tensors_threshold[out] = percentile9999
             mean_s_n = sum(self._mse[out])/len(self._mse[out])
@@ -1729,7 +1750,8 @@ class ActivationCalibrator(BaseKldCalibrator):
 
             # if 'use_torch_observer_for_cali' in self.debug_cmd:
             #     exit(0)
-        if self.args.tune_num <= 0 or 'int4' in self.debug_cmd:
+        if self.args.tune_num <= 0 or 'int4' in self.debug_cmd or 'use_percentile9999' in self.debug_cmd:
+            os.rename(cali_table, self.args.calibration_table)
             return
         # setp 4: tune to get better threshold of each layers.
         self.tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list, thresholds_map_absmax)
