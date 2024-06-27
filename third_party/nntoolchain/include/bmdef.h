@@ -53,6 +53,14 @@ typedef enum bm_runtime_flag_e {
   BM_RUNTIME_CHECK_MEM = 1 << 1     /*bit1: 0,no check; 1,check sha256*/
 } bm_runtime_flag_t;
 
+/* flags for addr_mode */
+typedef enum {
+  ADDR_MODE_BASIC       = 0,    /* basic mode, io and neuron mem alloc together by runtime */
+  ADDR_MODE_IO_ALONE    = 1,    /* io alone mode, io mem and neuron mem alloc seperated by runtime */
+  ADDR_MODE_IO_TAG      = 2,    /* io tag mode, select max 5 data size io to assign mem by address tag (others in neuron mem) */
+  ADDR_MODE_IO_TAG_FUSE = 3,    /* io tag fuse mode, fuse inputs to a io tag and fuse outputs to another io tag */
+} addr_mode_t;
+
 /* bm_shape_t holds the shape info */
 #define BM_MAX_DIMS_NUM 8
 typedef struct bm_shape_s {

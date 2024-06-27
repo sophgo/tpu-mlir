@@ -586,7 +586,7 @@ model_deploy.py
      - LayerGroup优化类型，可选1/2, 默认为2
    * - addr_mode
      - 否
-     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag'], 默认为auto
+     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'], 默认为auto
    * - disable_layer_group
      - 否
      - 是否关闭LayerGroup

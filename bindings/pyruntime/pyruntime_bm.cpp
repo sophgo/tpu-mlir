@@ -164,16 +164,58 @@ struct PythonNet {
     auto net_info = bmrt_get_network_info(p_bmrt, name.c_str());
     std::vector<bm_tensor_t> input_tensors(net_info->input_num);
     std::vector<bm_tensor_t> output_tensors(net_info->output_num);
-    for (int idx = 0; idx < net_info->input_num; idx++) {
-      auto &tensor = input_tensors[idx];
-      bmrt_tensor(&tensor, p_bmrt, net_info->input_dtypes[idx],
-                  input_shapes_[idx]);
-      bm_memcpy_s2d(bm_handle, tensor.device_mem, (void *)input_datas[idx]);
-    }
-    for (int idx = 0; idx < net_info->output_num; idx++) {
-      auto &tensor = output_tensors[idx];
-      bmrt_tensor(&tensor, p_bmrt, net_info->output_dtypes[idx],
-                  output_shapes_[idx]);
+    bm_device_mem_t all_input_device_mem;
+    bm_device_mem_t all_output_device_mem;
+    if (net_info->addr_mode == ADDR_MODE_IO_TAG_FUSE) {
+      /* prepare input */
+      // caculate all_input_size
+      size_t all_input_size = 0;
+      for (int input_idx = 0; input_idx < net_info->input_num; input_idx++) {
+        all_input_size += bmrt_shape_count(&input_shapes_[input_idx]) * bmrt_data_type_size(net_info->input_dtypes[input_idx]);
+      }
+      // malloc all_input_device_mem
+      bm_malloc_device_byte(bm_handle, &all_input_device_mem, all_input_size);
+      uint64_t all_input_addr = bm_mem_get_device_addr(all_input_device_mem);
+      // setup input tensors
+      size_t in_offset = 0;
+      for (int input_idx = 0; input_idx < net_info->input_num; input_idx++) {
+        auto &input_tensor = input_tensors[input_idx];
+        size_t tensor_size = bmrt_shape_count(&input_shapes_[input_idx]) * bmrt_data_type_size(net_info->input_dtypes[input_idx]);
+        auto tensor_mem = bm_mem_from_device(all_input_addr + in_offset, tensor_size);
+        bmrt_tensor_with_device(&input_tensor, tensor_mem, net_info->input_dtypes[input_idx], input_shapes_[input_idx]);
+        bm_memcpy_s2d(bm_handle, input_tensor.device_mem, (void *)input_datas[input_idx]);
+        in_offset += tensor_size;
+      }
+      /* prepare output */
+      // caculate all_output_size
+      size_t all_output_size = 0;
+      for (int output_idx = 0; output_idx < net_info->output_num; output_idx++) {
+        all_output_size += bmrt_shape_count(&output_shapes_[output_idx]) * bmrt_data_type_size(net_info->output_dtypes[output_idx]);
+      }
+      // malloc all_output_device_mem
+      bm_malloc_device_byte(bm_handle, &all_output_device_mem, all_output_size);
+      uint64_t all_output_addr = bm_mem_get_device_addr(all_output_device_mem);
+      // setup output tensors
+      size_t out_offset = 0;
+      for (int output_idx = 0; output_idx < net_info->output_num; output_idx++) {
+        auto &output_tensor = output_tensors[output_idx];
+        size_t tensor_size = bmrt_shape_count(&output_shapes_[output_idx]) * bmrt_data_type_size(net_info->output_dtypes[output_idx]);
+        auto tensor_mem = bm_mem_from_device(all_output_addr + out_offset, tensor_size);
+        bmrt_tensor_with_device(&output_tensor, tensor_mem, net_info->output_dtypes[output_idx], output_shapes_[output_idx]);
+        out_offset += tensor_size;
+      }
+    } else {
+      for (int idx = 0; idx < net_info->input_num; idx++) {
+        auto &tensor = input_tensors[idx];
+        bmrt_tensor(&tensor, p_bmrt, net_info->input_dtypes[idx],
+                    input_shapes_[idx]);
+        bm_memcpy_s2d(bm_handle, tensor.device_mem, (void *)input_datas[idx]);
+      }
+      for (int idx = 0; idx < net_info->output_num; idx++) {
+        auto &tensor = output_tensors[idx];
+        bmrt_tensor(&tensor, p_bmrt, net_info->output_dtypes[idx],
+                    output_shapes_[idx]);
+      }
     }
     auto ret = bmrt_launch_tensor_ex(p_bmrt, name.c_str(), input_tensors.data(),
                                      net_info->input_num, output_tensors.data(),
@@ -181,14 +223,24 @@ struct PythonNet {
     assert(true == ret);
     auto status = bm_thread_sync(bm_handle);
     assert(BM_SUCCESS == status);
-    for (int idx = 0; idx < net_info->output_num; idx++) {
-      auto &tensor = output_tensors[idx];
-      bm_memcpy_d2s(bm_handle, (void *)output_datas[idx], tensor.device_mem);
-      bm_free_device(bm_handle, tensor.device_mem);
-    }
-    for (int idx = 0; idx < num_inputs; idx++) {
-      auto &tensor = input_tensors[idx];
-      bm_free_device(bm_handle, tensor.device_mem);
+    // free mem
+    if (net_info->addr_mode == 3) {
+      for (int idx = 0; idx < net_info->output_num; idx++) {
+        auto &tensor = output_tensors[idx];
+        bm_memcpy_d2s(bm_handle, (void *)output_datas[idx], tensor.device_mem);
+      }
+      bm_free_device(bm_handle, all_input_device_mem);
+      bm_free_device(bm_handle, all_output_device_mem);
+    } else {
+      for (int idx = 0; idx < net_info->output_num; idx++) {
+        auto &tensor = output_tensors[idx];
+        bm_memcpy_d2s(bm_handle, (void *)output_datas[idx], tensor.device_mem);
+        bm_free_device(bm_handle, tensor.device_mem);
+      }
+      for (int idx = 0; idx < num_inputs; idx++) {
+        auto &tensor = input_tensors[idx];
+        bm_free_device(bm_handle, tensor.device_mem);
+      }
     }
     std::vector<std::vector<size_t>> dyn_output_shapes;
     for (auto &o : output_tensors) {
