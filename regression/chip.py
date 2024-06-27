@@ -15,7 +15,7 @@ Y, N = True, False
 chip_support = {
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, f8e4m3, f8e5m2, dynamic, model_type)
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,      N,      N,       "bmodel"),
-    "bm1684x":   (Y,   Y,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
+    "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,      N,      N,       "bmodel"),
     "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     # "mars3":     (Y,   Y,   Y,    Y,        N,         Y,       N,      N,       N,      "bmodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
@@ -73,6 +73,7 @@ full_model_list = {
     "ecanet50":                   (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "efficientdet-d0":            (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "efficientnet":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
+    "efficientnetv2":             (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N), # bm1690 f16, bf16 has problem
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
