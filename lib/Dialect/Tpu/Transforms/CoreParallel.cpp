@@ -385,6 +385,8 @@ public:
               matmulOp.setMultiCore(true);
             }
             return WalkResult::skip();
+          } else if (matmulOp.getHdimIsBatch()) {
+            return WalkResult::skip();
           }
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {

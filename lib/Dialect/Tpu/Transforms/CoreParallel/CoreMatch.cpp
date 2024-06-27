@@ -340,7 +340,7 @@ struct CommonMatch : public RewritePattern {
       return failure();
     }
     if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-      if (matmulOp.supports_multi_core()) {
+      if (matmulOp.supports_multi_core() || matmulOp.getHdimIsBatch()) {
         return failure();
       }
     }
@@ -377,7 +377,7 @@ struct CommonMatch : public RewritePattern {
           continue;
         }
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(left_op)) {
-          if (matmulOp.supports_multi_core())
+          if (matmulOp.supports_multi_core() || matmulOp.getHdimIsBatch())
             continue;
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(left_op)) {
