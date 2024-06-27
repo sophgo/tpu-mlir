@@ -42,6 +42,8 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int shift0, int shift1, int size, bool sign);
 
+void cudaNegative(void *input, void *output, int size, cudnnDataType_t type);
+
 void cudaConvInt8(void *input, void *filter, void *bias, void *output,
                   void *multipliers, void *shifts, int n, int ic, int ih,
                   int iw, int oc, int kh, int kw, int stride_h, int stride_w,
