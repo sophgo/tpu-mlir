@@ -18,9 +18,9 @@ void tpu::MeanStdScaleOp::codegen_global_bm1684x() {
   auto mean = module::getF64Array(getMean());
   auto zero_points = module::getF64Array(getZeroPoints());
   auto round_mode = round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
-  auto rshift = module::getI64Array(getRshift());
-  auto offset = module::getI64Array(getOffset());
-  auto multi = module::getI64Array(getMulti());
+  auto rshift = module::getI32Array(getRshift());
+  auto offset = module::getI32Array(getOffset());
+  auto multi = module::getI32Array(getMulti());
   std::vector<int64_t> in_shape = module::getShape(getInput());
 
   auto op = getOperation();

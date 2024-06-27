@@ -58,10 +58,10 @@ static void op_lowering_common(PatternRewriter &rewriter,
     int rshift = 0;
     for (int i = 0; i < chn_num; i++) {
       QuantizeMultiplier(scale[0] / (std[i] * scale[1]), 1, 16, &multi, &rshift);
-      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI32Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI32Type(), rshift));
       int offset = (int)roundf(0 - mean[i] * (scale[0] / (std[i] * scale[1])) *pow(2, rshift));
-      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), offset));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI32Type(), offset));
     }
   }
   else if (idtype.isF32() && odtype.isSignedInteger(8)) {
@@ -69,17 +69,17 @@ static void op_lowering_common(PatternRewriter &rewriter,
     int rshift = 0;
     for (int i = 0; i < chn_num; i++) {
       QuantizeMultiplier(scale[0] / (1 / scale[1]), 1, 16, &multi, &rshift);
-      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
-      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI32Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI32Type(), rshift));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI32Type(), 0));
     }
   } else {
     int multi = 1;
     int rshift = 0;
     for (int i = 0; i < chn_num; i++) {
-      vector_multi.push_back(IntegerAttr::get(rewriter.getI64Type(), multi));
-      vector_rshift.push_back(IntegerAttr::get(rewriter.getI64Type(), rshift));
-      vector_offset.push_back(IntegerAttr::get(rewriter.getI64Type(), 0));
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI32Type(), multi));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI32Type(), rshift));
+      vector_offset.push_back(IntegerAttr::get(rewriter.getI32Type(), 0));
     }
   }
 

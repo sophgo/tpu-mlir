@@ -784,9 +784,9 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale", [DeclareOpInterfaceMethods<TypeIn
     F64ArrayAttr:$mean,
     F64ArrayAttr:$zero_points,
     I64ArrayAttr:$resize_dims,
-    I64ArrayAttr:$multi,
-    I64ArrayAttr:$rshift,
-    I64ArrayAttr:$offset,
+    I32ArrayAttr:$multi,
+    I32ArrayAttr:$rshift,
+    I32ArrayAttr:$offset,
     StrAttr:$rounding_mode
   );
   let results = (outs AnyTensor:$output);

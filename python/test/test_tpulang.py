@@ -3674,7 +3674,7 @@ class TPULANG_IR_TESTER(object):
             mean = [128.0, 128.0, 128.0]
             std = [1/0.017, 1/0.017, 1/0.017]
             scale= [1.0, 1 / 2**6]
-            shape = [1, 1, 500, 400]
+            shape = [4, 3, 500, 400]
 
             if idtype == "uint8":
                 # customer_layer_path = os.getenv("CUSTOM_LAYER_PATH")
