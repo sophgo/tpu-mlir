@@ -11,7 +11,7 @@
 
 # 预编译的 TPU-MLIR Python 包
 
-我们提供 TPU-MLIR Python 包以便快速安装。环境要求：python == 3.10 和 ubuntu:22.04。
+我们提供 TPU-MLIR Python 包以便跳过编译工程的步骤快速安装。环境要求：python >= 3.10 和 ubuntu:22.04（推荐直接使用我们的docker镜像）。
 
 安装：
 
