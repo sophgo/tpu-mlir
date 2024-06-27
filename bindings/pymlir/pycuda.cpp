@@ -120,6 +120,15 @@ void py_cuda::cuda_to_host(const std::string &name) {
       }
     }
     delete[] temp;
+  } else if (stype.isInteger(32)) {
+    auto num = module::getNumElements(v);
+    int32_t *temp = new int32_t[num];
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(int32_t),
+                          cudaMemcpyDeviceToHost));
+    for (int i = 0; i < num; i++) {
+      buffer[i] = static_cast<float>(temp[i]);
+    }
+    delete[] temp;
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");

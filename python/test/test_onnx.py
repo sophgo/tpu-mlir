@@ -506,7 +506,7 @@ class ONNX_IR_TESTER(object):
             cuda_npz = tpu_mlir.replace(".mlir", "_cuda_out.npz")
             np.savez(cuda_npz, **cuda_outs)
             file_mark(cuda_npz)
-            npz_compare([tpu_npz, cuda_npz, "--tolerance", "0.9999,0.9999", "-v"])
+            npz_compare([cuda_npz, tpu_npz, "--tolerance", "0.9999,0.9999", "-v"])
         msg = quant_mode.upper()
         if quant_mode == "int8" or quant_mode == "int4":
             msg += ", Asymmetric: {}".format(isAsym)

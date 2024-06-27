@@ -213,6 +213,35 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                                             size, sign);
 }
 
+template <typename T>
+__global__ void kernelNegative(T *input, T *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = -input[idx];
+  }
+}
+
+void cudaNegative(void *input, void *output, int size, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (type) {
+  case CUDNN_DATA_INT32:
+    kernelNegative<<<num_blocks, block_size>>>((int32_t *)input,
+                                               (int32_t *)output, size);
+    break;
+  case CUDNN_DATA_FLOAT:
+    kernelNegative<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                               size);
+    break;
+  case CUDNN_DATA_INT8:
+    kernelNegative<<<num_blocks, block_size>>>((int8_t *)input,
+                                               (int8_t *)output, size);
+    break;
+  default:
+    break;
+  }
+}
+
 __device__ void kernelCopyElement(void *src, int sidx, void *dst, int didx,
                                   int tbytes) {
   switch (tbytes) {
