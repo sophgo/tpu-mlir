@@ -79,13 +79,17 @@ private:
   void cudaConv2DOp(tpu::Conv2DOp op);
   void cudaCastOp(tpu::CastOp op);
   void cudaConcatOp(tpu::ConcatOp op);
+  void cudaDeconvOp(tpu::DeconvOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
+  void cudaLutOp(tpu::LutOp op);
   void cudaMatMulOp(tpu::MatMulOp op);
   void cudaMulShiftOp(tpu::MulShiftOp op);
   void cudaReshapeOp(tpu::ReshapeOp op);
+  void cudaRequantIntAxisOp(tpu::RequantIntAxisOp op);
   void cudaPool2DOp(tpu::Pool2DOp op);
   void cudaPermuteOp(tpu::PermuteOp op);
   void cudaSliceOp(tpu::SliceOp op);
+  void cudaUpsampleOp(tpu::UpsampleOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

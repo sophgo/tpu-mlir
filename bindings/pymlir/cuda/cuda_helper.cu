@@ -670,3 +670,64 @@ void cudaRelu(void *data, int size, cudnnDataType_t type) {
     break;
   }
 }
+
+template <typename T0, typename T1>
+__global__ void kernelLut256(T0 *src, T1 *table, T1 *dst, int size) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < size) {
+    int32_t offset = static_cast<int32_t>(src[idx]);
+    if (offset < 0) {
+      offset += 256;
+    }
+    if (offset >= 0 && offset < 256) {
+      dst[idx] = table[offset];
+    }
+  }
+}
+
+void cudaLut256(void *src, void *table, void *dst, int size,
+                cudnnDataType_t src_type, cudnnDataType_t dst_type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_INT8) {
+    kernelLut256<<<num_blocks, block_size>>>((int8_t *)src, (int8_t *)table,
+                                             (int8_t *)dst, size);
+  } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_UINT8) {
+    kernelLut256<<<num_blocks, block_size>>>((uint8_t *)src, (uint8_t *)table,
+                                             (uint8_t *)dst, size);
+  } else if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_UINT8) {
+    kernelLut256<<<num_blocks, block_size>>>((int8_t *)src, (uint8_t *)table,
+                                             (uint8_t *)dst, size);
+  } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_INT8) {
+    kernelLut256<<<num_blocks, block_size>>>((uint8_t *)src, (int8_t *)table,
+                                             (int8_t *)dst, size);
+  }
+}
+
+__global__ void kernelUpsample4D(void *input, void *output, int n, int c,
+                                 int ih, int iw, int scale_h, int scale_w,
+                                 int tbytes) {
+  int dst_w = blockIdx.x * blockDim.x + threadIdx.x;
+  int dst_h = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_c = blockIdx.z % c; // Channel index
+  int dst_n = blockIdx.z / c; // Batch index
+  int oh = ih * scale_h;
+  int ow = iw * scale_w;
+  if (dst_w < ow && dst_h < oh && dst_c < c && dst_n < n) {
+    int dst_idx = ((dst_n * c + dst_c) * oh + dst_h) * ow + dst_w;
+    int src_w = dst_w / scale_w;
+    int src_h = dst_h / scale_h;
+    int src_idx = ((dst_n * c + dst_c) * ih + src_h) * iw + src_w;
+    kernelCopyElement(input, src_idx, output, dst_idx, tbytes);
+  }
+}
+
+void cudaUpsample4D(void *src, void *dst, int n, int c, int h, int w,
+                    int scale_h, int scale_w, int tbytes) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((scale_w * w + blockSize.x - 1) / blockSize.x,
+                 (scale_h * h + blockSize.y - 1) / blockSize.y, n * c);
+
+  kernelUpsample4D<<<numBlocks, blockSize>>>(src, dst, n, c, h, w, scale_h,
+                                             scale_w, tbytes);
+}

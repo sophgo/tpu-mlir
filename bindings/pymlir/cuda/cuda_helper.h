@@ -65,6 +65,8 @@ cudaError_t cudaTransform(void *src, void *dst, int size,
                           cuda_rmode_t rmode = CUDA_TOWARDS_ZERO);
 void cudaPermute4D(void *src, void *dst, int n, int c, int h, int w, int o0,
                    int o1, int o2, int o3, int tbytes);
+void cudaUpsample4D(void *src, void *dst, int n, int c, int h, int w,
+                    int scale_h, int scale_w, int tbytes);
 void cudaCopyAxis(void *src, void *dst, int outer_dim, int axis_dim,
                   int inner_dim, int offset, int num, int tbytes);
 void cudaPrint(void *data, int size, cudnnDataType_t type);
@@ -75,7 +77,8 @@ void cudaSlice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
                  int on, int oc, int oh, int ow, int tbytes);
 void cudaMulShift(void *input, void *output, int multiplier, int shift,
                   int size, cudnnDataType_t type);
-
+void cudaLut256(void *src, void *table, void *dst, int size,
+                cudnnDataType_t src_type, cudnnDataType_t dst_type);
 // -------------------------------------------------------------------------
 // cv18xx only
 
