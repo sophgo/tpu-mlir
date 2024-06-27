@@ -43,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--expected_cos', type=float, default=0.99, help='expected net output cos')
     parser.add_argument('--min_layer_cos', type=float, default=0.99, help='minimum cos of layer')
     parser.add_argument('--max_float_layers', type=int, default=5, help='num of float layers in search qtable')
+    parser.add_argument('--cali_method', type=str, default='use_kl',help='method of calibration')
     parser.add_argument('--chip', '--processor', default='bm1684x', type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1688', 'bm1690'],
                         help='chip platform name')
