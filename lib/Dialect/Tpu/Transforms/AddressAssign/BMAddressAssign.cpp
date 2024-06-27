@@ -327,7 +327,7 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
     assert(module::isBM1688());
     std::vector<Value> ios;
     module::getInputsOutputs(m, ios, ios);
-    // fix input and output address to IO_ADDR
+    // fix input and output address to IO_TAG
     int io_index = 0;
     int tag_max = 5;
     if (ios.size() > tag_max) {
@@ -341,6 +341,32 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
       for (auto &io : ios) {
         module::setAddress(io, BM168x::IO_ADDR[io_index++]);
       }
+    }
+    // fix other address
+    module::setNeuronAddr(m, start_addr);
+    module::setNeuronSize(m, addr_limit - start_addr);
+    module::updateModuleTypes();
+    return;
+  }
+  if (module::isAddrMode(module::AddrMode::IO_TAG_FUSE)) {
+    assert(module::isBM1688());
+    std::vector<Value> ins, outs;
+    module::getInputsOutputs(m, ins, outs);
+    // fix input and output address to IO_TAG
+    int io_index = 0;
+    int in_tag = 0, out_tag = 1;
+    int64_t in_offset = 0, out_offset = 0;
+    // fuse inputs onto in_tag
+    for (io_index = 0; io_index < ins.size(); io_index++) {
+      int64_t addr = BM168x::IO_ADDR[in_tag] + in_offset;
+      module::setAddress(ins[io_index], addr);
+      in_offset += module::getBytes(ins[io_index]);
+    }
+    // fuse outputs onto out_tag
+    for (io_index = 0; io_index < outs.size(); io_index++) {
+      int64_t addr = BM168x::IO_ADDR[out_tag] + out_offset;
+      module::setAddress(outs[io_index], addr);
+      out_offset += module::getBytes(outs[io_index]);
     }
     // fix other address
     module::setNeuronAddr(m, start_addr);

@@ -585,7 +585,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Optimization type of LayerGroup, 1 or 2, default is 2
    * - addr_mode
      - N
-     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag'], if not set, auto as default
+     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'], if not set, auto as default
    * - disable_layer_group
      - N
      - Whether to disable LayerGroup pass
