@@ -13,8 +13,8 @@ Currently, supported Deep Learning frameworks are PyTorch, ONNX, TFLite and Caff
 
 # Prebuilt TPU-MLIR Python Package
 
-We provide the TPU-MLIR python package for a quick installation.
-Prerequisite: python == 3.10 and ubuntu:22.04.
+We provide TPU-MLIR python package for quick installation by skipping the building step.
+Environment prerequisite: python >= 3.10 and ubuntu:22.04 (It is recommended to use our docker image directly).
 
 To install:
 
