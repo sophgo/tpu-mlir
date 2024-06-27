@@ -315,6 +315,9 @@ Supported parameters:
    * - chip
      - N
      - Chip type
+   * - cali_method
+     - N
+     - Choose quantization threshold calculation method
    * - fp_type
      - N
      - The data type of floating-point layers in search_qtable

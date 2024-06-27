@@ -316,6 +316,9 @@ run_calibration.py
    * - chip
      - 否
      - 芯片类型
+   * - cali_method
+     - 否
+     - 选择量化门限计算方法
    * - fp_type
      - 否
      - search_qtable浮点层数据类型

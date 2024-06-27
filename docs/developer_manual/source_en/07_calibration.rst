@@ -222,7 +222,7 @@ During the use of search_threshold, the following points need to be noted: 1. se
 search_qtable Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. This algorithm inherits some functionalities of run_sensitive_layer but operates faster. It also offers the ability to mix custom threshold algorithms and automatically generate a qtable.
+search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. This algorithm is faster compared to run_sensitive_lyer. It also offers the ability to mix custom threshold algorithms and automatically generate a qtable.
 
 Implementation: The output of search_qtable will generate mixed thresholds, meaning it performs optimal selection for the threshold of each layer of the model. That is, it chooses the best result from multiple threshold calculation methods specified by the user for each layer. This choice is based on the comparison of the similarity between the quantized model's current layer output and the original model's current layer output. In addition to generating mixed thresholds, search_qtable will also output the layers of the model that are mixed precision.
 When the user specifies the desired similarity between the mixed precision model and the original model's output, search_qtable will automatically output the minimum number of mixed precision layers required to achieve that similarity level.
@@ -308,7 +308,7 @@ octav:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 minmax:
@@ -319,7 +319,7 @@ minmax:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_max \
+      --cali_method use_max \
       -o yolov5s_cali_table
 
 percentile9999:
@@ -330,7 +330,7 @@ percentile9999:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_percentile9999 \
+      --cali_method use_percentile9999 \
       -o yolov5s_cali_table
 
 aciq_gauss:
@@ -341,7 +341,7 @@ aciq_gauss:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_aciq_gauss \
+      --cali_method use_aciq_gauss \
       -o yolov5s_cali_table
 
 aciq_laplace:
@@ -352,7 +352,7 @@ aciq_laplace:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_aciq_laplace \
+      --cali_method use_aciq_laplace \
       -o yolov5s_cali_table
 
 Using optimization methods:
@@ -366,7 +366,7 @@ we:
       --we \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 we+bc:
@@ -381,7 +381,7 @@ we+bc:
       --input_num 100 \
       --chip bm1684x \
       --bc_inference_num 200 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 we+bc+search_threshold:
@@ -453,6 +453,8 @@ search_qtable:
      - The number of floating-point layers in search_qtable
    * - --chip
      - Chip type
+   * - --cali_method
+     - Choose quantization threshold calculation method
    * - --fp_type
      - The data type of floating-point layers in search_qtable
    * - --post_process

@@ -257,8 +257,8 @@ tpu-mlir提供了七种独立的门限计算方法,当我们拿到一个需要�
 search_qtable算法
 ~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable是集成于校准过程中的自动混精功能,当全int8量化的模型精度无法满足需求时,可以尝试开启search_qtable算法,该算法继承了run_sensitive_lyer的部分功能,
-但速度更快,同时提供了自定义门限算法混合以及自动生成qtable功能。
+search_qtable是集成于校准过程中的自动混精功能,当全int8量化的模型精度无法满足需求时,可以尝试开启search_qtable算法,该算法相比run_sensitive_lyer,
+速度更快,同时提供了自定义门限算法混合以及自动生成qtable功能。
 
 实现方案:search_qtable的输出会生成混合门限,混合门限是指对模型每一层门限都进行择优选择，也就是从用户所指定的多种门限计算方法结果中选择效果最好的一个,这种选择的依据是
 量化模型当前层输出与原始模型当前层输出的相似度比较。除了输出混合门限,search_qtable还会输出模型的混精层,当用户指定混精模型与原始模型的输出相似度后,search_qtable
@@ -345,7 +345,7 @@ octav:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 minmax:
@@ -356,7 +356,7 @@ minmax:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_max \
+      --cali_method use_max \
       -o yolov5s_cali_table
 
 percentile9999:
@@ -367,7 +367,7 @@ percentile9999:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_percentile9999 \
+      --cali_method use_percentile9999 \
       -o yolov5s_cali_table
 
 aciq_gauss:
@@ -378,7 +378,7 @@ aciq_gauss:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_aciq_gauss \
+      --cali_method use_aciq_gauss \
       -o yolov5s_cali_table
 
 aciq_laplace:
@@ -389,7 +389,7 @@ aciq_laplace:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_aciq_laplace \
+      --cali_method use_aciq_laplace \
       -o yolov5s_cali_table
 
 使用优化方法：
@@ -403,7 +403,7 @@ we:
       --we \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 we+bc:
@@ -418,7 +418,7 @@ we+bc:
       --input_num 100 \
       --chip bm1684x \
       --bc_inference_num 200 \
-      --debug_cmd use_mse \
+      --cali_method use_mse \
       -o yolov5s_cali_table
 
 we+bc+search_threshold:
@@ -489,6 +489,8 @@ search_qtable:
      - search_qtable 浮点层数量
    * - --chip
      - 芯片类型
+   * - --cali_method
+     - 量化门限计算方法选择
    * - --fp_type
      - search_qtable浮点层数据类型
    * - --post_process
