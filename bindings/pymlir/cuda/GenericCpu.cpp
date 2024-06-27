@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaGenericCpu(tpu::GenericCpuOp op) {
+void py_cuda::cudaGenericCpuOp(tpu::GenericCpuOp op) {
   if (op.getCpuOpName() != "quant") {
     UNREACHABLE_OP("Not Implemented", op);
   }

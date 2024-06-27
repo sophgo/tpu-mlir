@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaAdd(tpu::AddOp op) {
+void py_cuda::cudaAddOp(tpu::AddOp op) {
   auto out = op.getOutput();
   if (!module::isUniformQuantized(out)) {
     UNREACHABLE_OP("Not Implemented", op);

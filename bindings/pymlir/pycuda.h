@@ -75,15 +75,17 @@ private:
 
   // -------------------------------------------------------------------
   // -------------- op inference by cuda -------------------------------
-  void cudaAdd(tpu::AddOp op);
-  void cudaConv2D(tpu::Conv2DOp op);
-  void cudaCast(tpu::CastOp op);
-  void cudaConcat(tpu::ConcatOp op);
-  void cudaGenericCpu(tpu::GenericCpuOp op);
-  void cudaMatMul(tpu::MatMulOp op);
-  void cudaReshape(tpu::ReshapeOp op);
-  void cudaPool2D(tpu::Pool2DOp op);
-  void cudaPermute(tpu::PermuteOp op);
+  void cudaAddOp(tpu::AddOp op);
+  void cudaConv2DOp(tpu::Conv2DOp op);
+  void cudaCastOp(tpu::CastOp op);
+  void cudaConcatOp(tpu::ConcatOp op);
+  void cudaGenericCpuOp(tpu::GenericCpuOp op);
+  void cudaMatMulOp(tpu::MatMulOp op);
+  void cudaMulShiftOp(tpu::MulShiftOp op);
+  void cudaReshapeOp(tpu::ReshapeOp op);
+  void cudaPool2DOp(tpu::Pool2DOp op);
+  void cudaPermuteOp(tpu::PermuteOp op);
+  void cudaSliceOp(tpu::SliceOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

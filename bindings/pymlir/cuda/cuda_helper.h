@@ -69,6 +69,13 @@ void cudaCopyAxis(void *src, void *dst, int outer_dim, int axis_dim,
                   int inner_dim, int offset, int num, int tbytes);
 void cudaPrint(void *data, int size, cudnnDataType_t type);
 
+// input4 , offset4, step4 => output4
+void cudaSlice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
+                 int off1, int off2, int off3, int s0, int s1, int s2, int s3,
+                 int on, int oc, int oh, int ow, int tbytes);
+void cudaMulShift(void *input, void *output, int multiplier, int shift,
+                  int size, cudnnDataType_t type);
+
 // -------------------------------------------------------------------------
 // cv18xx only
 

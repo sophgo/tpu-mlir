@@ -10,7 +10,7 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-void py_cuda::cudaMatMul(tpu::MatMulOp op) {
+void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   auto p = op.parseParam();
   if (!module::isUniformQuantized(op.getOutput())) {
     UNREACHABLE_OP("Not Implemented", op);
