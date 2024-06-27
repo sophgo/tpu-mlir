@@ -105,7 +105,7 @@ class SearchQtable:
                 f.write("# op_name   threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
                     threshold = thresholds_map[op_name]
-                    if threshold <= 1e-5:
+                    if threshold <= 1e-5 or np.isnan(threshold):
                         threshold = 1e-5
                         self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the "
                             "input data correctness.".format(op_name))
@@ -114,7 +114,7 @@ class SearchQtable:
                     min_value, max_value, _ = calibrator.activations_statistics[op_name]
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
             for op_name in all_op_names:
-                if thresholds_map[op_name] <= 1e-5:
+                if thresholds_map[op_name] <= 1e-5 or np.isnan(thresholds_map[op_name]):
                     thresholds_map[op_name] = 1e-5
                 tmp_th_dict[op_name] = [thresholds_map_absmax[op_name], thresholds_map[op_name]]
             layer_th_dicts[method_name] = tmp_th_dict
