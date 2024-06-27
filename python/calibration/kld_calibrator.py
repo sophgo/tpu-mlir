@@ -190,7 +190,7 @@ class SimpleTuner:
             self.args.tune_num = self.args.tune_num // self.batch_size
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = setup_logger('auto_tune', log_level=log_level)
-        self.tune_steps = 20
+        self.tune_steps = 21
         if 'tune_steps' in self.debug_cmd:
             self.tune_steps = int(self.debug_cmd['tune_steps'])
         self.module_dq = pymlir.module()
@@ -1018,11 +1018,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.min_value[out] = min(np.min(activation), self.min_value[out])
                 self.max_value[out] = max(np.max(activation), self.max_value[out])
                 abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
-                if 'use_percentile9999' in self.debug_cmd:
+                if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
                     tmp = np.abs(activation.flatten())
                     tmp = sort_distr(tmp, res_length)
                     self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
-                elif 'use_mse' in self.debug_cmd :
+                elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
                     bit = 8
                     if 'int4' in self.debug_cmd :
                         bit = 4
@@ -1046,7 +1046,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         self.mse[out].append(s_n)
                     else:
                         self.mse[out].append(s_n)
-                elif 'use_aciq_gauss' in self.debug_cmd:
+                elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
                     alpha = 3.92403337
                     if 'int4' in self.debug_cmd:
                         alpha = 2.55913642
@@ -1062,7 +1062,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         self.aciq[out].append(alpha * std)
                     else:
                         self.aciq[out].append(alpha * std)
-                elif 'use_aciq_laplace' in self.debug_cmd:
+                elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
                     beta = 9.89675982
                     if 'int4' in self.debug_cmd :
                         beta = 5.02864014
@@ -1076,7 +1076,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         self.aciq[out].append(beta * b)
                     else:
                         self.aciq[out].append(beta * b)
-                elif 'use_max' in self.debug_cmd:
+                elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
                     self.max_abs_value[out] = max(np.max(np.abs(activation)), self.max_abs_value[out])
                 if out not in self.histogram_data_map:
                     hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
@@ -1103,13 +1103,13 @@ class ActivationCalibrator(BaseKldCalibrator):
             if out not in all_tensors and out not in self.tensor_list:
                 continue
             abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
-            if 'use_percentile9999' in self.debug_cmd:
+            if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
                 res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
                 inter = self.args.input_num * self.size[out] - 1
                 idx = int((self.perd[evaled_op]/ 100) * inter)
                 ratio = (self.perd[evaled_op]/ 100) * inter - idx
                 abs_value = res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
-            elif 'use_mse' in self.debug_cmd:
+            elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
                 if out in self.last_five_tensors:
                     res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
                     inter = self.args.input_num * self.size[out] - 1
@@ -1119,7 +1119,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 mean_s_n = sum(self.mse[out])/len(self.mse[out])
                 mean_s_n = min(mean_s_n,abs_value)
                 abs_value = mean_s_n
-            elif 'use_aciq_gauss' in self.debug_cmd:
+            elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
                 if out in self.last_five_tensors:
                     res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
                     inter = self.args.input_num * self.size[out] - 1
@@ -1130,7 +1130,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 if mean_gauss > abs_value :
                     mean_gauss = abs_value
                 abs_value = mean_gauss
-            elif 'use_aciq_laplace' in self.debug_cmd:
+            elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
                 if out in self.last_five_tensors:
                     res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
                     inter = self.args.input_num * self.size[out] - 1
@@ -1141,7 +1141,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 if mean_laplace > abs_value :
                     mean_laplace = abs_value
                 abs_value = mean_laplace
-            elif 'use_max' in self.debug_cmd:
+            elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
                 #t0 = time.time()
                 abs_value = self.max_abs_value[out]
             if abs_value != None and abs_value <= 1e-5:
@@ -1242,7 +1242,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     thresholds_map_scale[out] = scale.numpy()[0]
                     thresholds_map_zp[out] = zp.numpy()[0]
 
-        if 'use_mse' in self.debug_cmd or 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_laplace' in self.debug_cmd:
+        if 'use_mse' in self.debug_cmd or 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_laplace' in self.debug_cmd or 'use_mse' in self.args.cali_method or 'use_aciq_gauss' in self.args.cali_method or 'use_aciq_laplace' in self.args.cali_method:
             for tensor in self.last_five_tensors:
                 if self.last_five_tensors_threshold[tensor] != max(abs(self.activations_statistics[tensor][0]), abs(self.activations_statistics[tensor][1])):
                     break
@@ -1260,10 +1260,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                 if thresholds_map[k] > abs_val:
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
-                if 'use_percentile9999' in self.debug_cmd:
+                if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
-                elif 'use_mse' in self.debug_cmd:
+                elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
                     # thresholds_map_absmax[k] = max(abs(mi),abs(ma))
                     if k in thresholds_out:
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
@@ -1275,7 +1275,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
-                elif 'use_aciq_gauss' in self.debug_cmd:
+                elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
                     thresholds_map_absmax[k] = max(abs(mi),abs(ma))
                     if k in thresholds_out:
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
@@ -1287,7 +1287,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
-                elif 'use_aciq_laplace' in self.debug_cmd:
+                elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
                     thresholds_map_absmax[k] = max(abs(mi),abs(ma))
                     if k in thresholds_out:
                         thresholds_map[k] = self.last_five_tensors_threshold[k]
@@ -1299,7 +1299,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         continue
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
-                elif 'use_max' in self.debug_cmd:
+                elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
         time2 = time.time()
@@ -1748,7 +1748,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             for i, op_name in enumerate(op_layers):
                 op_name = split_fuseop(op_name)
                 threshold = thresholds[op_name]
-                if threshold <= 1e-5:
+                if threshold <= 1e-5 or np.isnan(threshold):
                     threshold = 1e-5
                     print("WARNING: layer {} threshold is zero. Please check the "
                         "input data correctness.".format(op_name))

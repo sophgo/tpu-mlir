@@ -84,6 +84,9 @@ class SearchThreshold:
                                 min_value, max_value, *_ = calibrator._activations_statistics[op_name]
                             else:
                                 min_value, max_value = -1,1
+                            if threshold <= 1e-5 or np.isnan(threshold):
+                                threshold = 1e-5
+                                self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(op_name))
                         f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
                 if 'int4' in self.debug_cmd:
                     thresholds_map4 = thresholds4[method_name]
@@ -95,6 +98,9 @@ class SearchThreshold:
                             if out not in thresholds_map:
                                 continue
                             threshold = thresholds_map4[out]
+                            if threshold <= 1e-5 or np.isnan(threshold):
+                                threshold = 1e-5
+                                self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(out))
                             min_value, max_value = -threshold*8.0/7.0, threshold
                             f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
                                                                     max_value))
@@ -121,6 +127,9 @@ class SearchThreshold:
                 for i, op_name in enumerate(op_layers):
                     op_name = split_fuseop(op_name)
                     threshold = thresholds_map[op_name]
+                    if threshold <= 1e-5:
+                        threshold = 1e-5
+                        self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(op_name))
                     layer_name_list.append('{}_{}'.format(i, op_name))
                     min_value, max_value, *_ = calibrator._activations_statistics[op_name]
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
