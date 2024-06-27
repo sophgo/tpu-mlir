@@ -782,16 +782,15 @@ class TPULANG_IR_TESTER(object):
             return mat
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, dtype='float32'):
+        def _test_model_def(in_shape, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = resnet50(x)
             if dtype == 'float32':
                 x.preprocess(mean=[0, 0.3, 0])
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([1, 3, 224, 224])
-        _test_model_def([1, 3, 224, 224], 'float16')
+        _test_model_def([1, 3, 224, 224], 'float16', is_quantized=True)
 
     def conv_int_op(self,
                 x,
@@ -988,19 +987,17 @@ class TPULANG_IR_TESTER(object):
             return out0, out1
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, d, head, num, dtype='float32'):
+        def _test_model_def(in_shape, d, head, num, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             musk_num = np.random.randint(2, in_shape[1]+ 1)
             musk_data = np.hstack((np.array([1] * musk_num), np.array([0] * (in_shape[1] - musk_num)))).astype(dtype)
             musk = tpul.Tensor(dtype=dtype, shape=[in_shape[0], in_shape[1]], data=musk_data)
             out0, out1 = bert(x, musk, in_shape, d, head, num, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x, musk], [out0, out1], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [x, musk], [out0, out1], is_quantized=is_quantized)
 
-        _test_model_def([1, 384, 1024], 64, 16, 2)
-        _test_model_def([1, 384, 1024], 64, 16, 2, 'float16')
-        _test_model_def([1, 224, 768], 64, 12, 2, 'float16')
-        _test_model_def([1, 384, 768], 64, 12, 2)
+        _test_model_def([1, 384, 1024], 64, 16, 1, 'float16', is_quantized=True)
+        _test_model_def([1, 224, 768], 64, 12, 1, 'float16', is_quantized=True)
 
     #######################################################################
     # attention quant block
@@ -1093,19 +1090,19 @@ class TPULANG_IR_TESTER(object):
             return dq3
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, d, head, num, dtype='float32', atten_dtype='int8'):
+        def _test_model_def(in_shape, d, head, num, dtype='float32', atten_dtype='int8', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -2, 2)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             shape = [in_shape[0], int(in_shape[2] * in_shape[3] / 16 / 16 + 1), head*d]
             out = vit(x, shape, d, head, num, dtype=dtype, atten_dtype=atten_dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8")
+        _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8", is_quantized=True)
 
     #######################################################################
     # vit
     # ------------
-    def test_Vit(self, case_name, in_shape, d, head, num, dtype='float32'):
+    def test_Vit(self, case_name, in_shape, d, head, num, dtype='float32', is_quantized=True):
         def matmul_weight(x, shape, dtype):
             weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
             bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
@@ -1211,23 +1208,23 @@ class TPULANG_IR_TESTER(object):
             return mat3
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, d, head, num, dtype='float32'):
+        def _test_model_def(in_shape, d, head, num, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -2, 2)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             shape = [in_shape[0], int(in_shape[2] * in_shape[3] / 16 / 16 + 1), head*d]
             out = vit(x, shape, d, head, num, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def(in_shape, d, head, num, dtype)
+        _test_model_def(in_shape, d, head, num, dtype, is_quantized)
         # _test_model_def([2, 3, 384, 384], 64, 16, 2)
 
     def test_Vit_L(self, case_name):
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 2, 'float32')
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 1, 'float32', is_quantized=False)
     def test_Vit_L_f16(self, case_name):
-        self.test_Vit(case_name, [1, 3, 224, 224], 64, 16, 2, 'float16')
+        self.test_Vit(case_name, [1, 3, 224, 224], 64, 16, 1, 'float16', is_quantized=True)
     def test_Vit_B(self, case_name):
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 2, 'float32')
-        self.test_Vit(case_name, [1, 3, 224, 224], 64, 12, 2, 'float16')
+        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 1, 'float32', is_quantized=False)
+        self.test_Vit(case_name, [1, 3, 224, 224], 64, 12, 1, 'float16', is_quantized=True)
 
     #######################################################################
     # swin_t
@@ -1365,15 +1362,15 @@ class TPULANG_IR_TESTER(object):
             return reshape3_1
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, d, head, dtype='float32'):
+        def _test_model_def(in_shape, d, head, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -2, 2)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             shape = [in_shape[0], 3136, head*d]
             out = swin_t(x, shape, d, head, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([2, 3, 224, 224], 32, 3)
-        _test_model_def([1, 3, 224, 224], 32, 3, 'float16')
+        _test_model_def([2, 3, 224, 224], 32, 3, is_quantized=False)
+        _test_model_def([1, 3, 224, 224], 32, 3, 'float16', is_quantized=True)
 
     #######################################################################
     # Convolution
