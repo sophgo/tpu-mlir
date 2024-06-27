@@ -19,7 +19,7 @@ LogicalResult tpu::FAttentionOp::init(InferenceParameter &p) {
   int M_q = getMq();
   int M_k = getMk();
   uint64_t d = getDim();
-  uint64_t head = getHead();
+  uint64_t head = getQHead();
   auto scale = getScale().convertToDouble();
 
   int type = out_type.isF16() ? 1 : 0;

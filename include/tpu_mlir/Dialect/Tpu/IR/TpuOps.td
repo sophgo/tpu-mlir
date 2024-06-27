@@ -1347,7 +1347,8 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
     AnyTensorOrNone:$buffer,
     F64Attr:$scale,
     I64Attr:$batch,
-    I64Attr:$head,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
     I64Attr:$dim,
     I64Attr:$mq,
     I64Attr:$mk

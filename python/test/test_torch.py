@@ -2264,42 +2264,57 @@ class TORCH_IR_TESTER(object):
 
     def test_FAttention(self):
 
-        def _test_flash_attention(batch, d, head, mq, mk, has_musk):
+        def _test_flash_attention(batch, d, q_head, kv_head, mq, mk, has_mask):
+            def repeat_kv(kv: torch.Tensor, n_rep: int) -> torch.Tensor:
+                batch, seq_len, num_head, head_dim = kv.shape
+                if n_rep == 1:
+                    return kv
+                kv = kv[:, :, :, None, :].expand(batch, seq_len, num_head, n_rep, head_dim)
+                return kv.reshape(batch, seq_len, num_head * n_rep, head_dim)
+
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.musk = - \
+                    self.mask = - \
                         ((torch.randn((batch, 1, mq, mk)) > 0) * 10000)
+                    self.head_rep = q_head // kv_head
+                    assert (kv_head * self.head_rep == q_head)
 
                 def forward(self, q, k, v):
                     q = q + 1
                     k = k + 1
                     v = v + 1
+                    k = repeat_kv(k, self.head_rep)
+                    v = repeat_kv(v, self.head_rep)
                     q = q.transpose(1, 2)
                     k = k.transpose(1, 2)
                     k = k.transpose(3, 2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
-                    if has_musk:
-                        m0 = m0 + self.musk
+                    if has_mask:
+                        m0 = m0 + self.mask
                     m0 = torch.softmax(m0, 3)
                     v = v.transpose(1, 2)
                     m1 = torch.matmul(m0, v)
                     m1 = m1.transpose(1, 2)
-                    m1 = m1.reshape(batch, mq, head*d)
+                    m1 = m1.reshape(batch, mq, q_head*d)
                     return m1
 
-            shape0 = [batch, mq, head, d]
-            shape1 = [batch, mk, head, d]
-            shape2 = [batch, mk, head, d]
+            shape0 = [batch, mq, q_head, d]
+            shape1 = [batch, mk, kv_head, d]
+            shape2 = [batch, mk, kv_head, d]
             max = 10
             min = -10
             self.trace_and_test([shape0, shape1, shape2], Model(), [self.Desc(
                 'float32', min, max), self.Desc('float32', min, max), self.Desc('float32', min, max)])
 
-        # _test_flash_attention(1, 128, 32, 1, 8193, True)
-        # _test_flash_attention(1, 128, 10, 1024, 1024, True)
+        # _test_flash_attention(1, 128, 28, 4, 1, 8193,   True)
+        # _test_flash_attention(1, 128, 28, 4, 256, 513,  True)
+        # _test_flash_attention(1, 128, 32, 32, 1, 8193,  True)
+        # _test_flash_attention(1, 128, 32, 32, 256, 513, True)
+        # _test_flash_attention(1, 128, 64, 8, 1, 8193,   True)
+        # _test_flash_attention(1, 128, 64, 8, 256, 513,  True)
         # _test_flash_attention(1, 128, 10, 1024, 1024, False)
         # _test_flash_attention(1, 128, 10, 2048, 2048, True)
         # _test_flash_attention(1, 128, 10, 2048, 2048, False)

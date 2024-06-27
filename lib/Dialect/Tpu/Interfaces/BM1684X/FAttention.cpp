@@ -23,7 +23,8 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   auto &common = param.common;
   // get_param(op, common);
   common.batch = getBatch();
-  common.head = getHead();
+  common.q_head = getQHead();
+  common.kv_head = getKvHead();
   common.mq = getMq();
   common.mk = getMk();
   common.dim = getDim();
@@ -52,7 +53,8 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto &common = param.common;
   // get_param(op, common);
   common.batch = getBatch();
-  common.head = getHead();
+  common.q_head = getQHead();
+  common.kv_head = getKvHead();
   common.mq = getMq();
   common.mk = getMk();
   common.dim = getDim();

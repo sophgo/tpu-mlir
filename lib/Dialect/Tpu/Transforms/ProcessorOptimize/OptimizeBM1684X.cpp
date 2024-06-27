@@ -2946,8 +2946,9 @@ public:
                                 PatternRewriter &rewriter) const override {
     // return failure();
     std::vector<Operation *> op_need_del;
-    if (!module::isBM1684X())
+    if (!module::isBM1684X()) {
       return failure();
+    }
     auto out_type = module::getStorageType(op.getOutput());
     if (!out_type.isBF16() && !out_type.isF16()) {
       return failure();
@@ -3002,8 +3003,8 @@ public:
     op_need_del.emplace_back(softmax);
     Value mul_out;
     tpu::AddOp add;
-    if (auto cast_op =
-            dyn_cast<tpu::CastOp>(softmax.getInput().getDefiningOp())) {
+    tpu::CastOp cast_op = dyn_cast<tpu::CastOp>(softmax.getInput().getDefiningOp());
+    if (cast_op) {
       if (!cast_op->hasOneUse()) {
         return failure();
       }
@@ -3013,7 +3014,11 @@ public:
       add = dyn_cast<tpu::AddOp>(softmax.getInput().getDefiningOp());
     }
     if (!add) {
-      mul_out = softmax.getInput();
+      if (cast_op) {
+        mul_out = cast_op.getInput();
+      } else {
+        mul_out = softmax.getInput();
+      }
     } else {
       mul_out = add.getInputs()[0];
       op_need_del.emplace_back(add);
@@ -3042,16 +3047,46 @@ public:
     // keys
     auto k_permute =
         dyn_cast<tpu::PermuteOp>(matmul0.getRight().getDefiningOp());
-    if (!k_permute || !k_permute->hasOneUse())
+    if (!k_permute || !k_permute->hasOneUse()) {
       return failure();
+    }
     op_need_del.emplace_back(k_permute);
+    Value k_in = k_permute.getInput();
+    /// keys tile
+    bool has_tile = false;
+    auto k_reshape = dyn_cast<tpu::ReshapeOp>(k_in.getDefiningOp());
+    if (k_reshape) {
+      auto k_tile = k_reshape.getInput().getDefiningOp();
+      if (isa<tpu::MulOp, tpu::TileOp>(k_tile)) {
+        auto k_unsqu =
+            dyn_cast<tpu::UnsqueezeOp>(k_tile->getOperand(0).getDefiningOp());
+        if (k_unsqu) {
+          has_tile = true;
+          op_need_del.emplace_back(k_reshape);
+          op_need_del.emplace_back(k_tile);
+          op_need_del.emplace_back(k_unsqu);
+          k_in = k_unsqu.getInput();
+        } else {
+          return failure();
+        }
+      }
+    }
 
     //Avoid getting into wrong FAttention
     auto k_permute_order = module::getI64Array(k_permute.getOrder());
-    if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
-        || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1
-        || k_permute_order->at(3) != 3) {
-      return failure();
+    auto right_trans = matmul0.getRightTranspose();
+    if (right_trans) {
+      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
+          || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1
+          || k_permute_order->at(3) != 3) {
+        return failure();
+      }
+    } else {
+      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
+          || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 3
+          || k_permute_order->at(3) != 1) {
+        return failure();
+      }
     }
     auto q_permute_order = module::getI64Array(q_permute.getOrder());
     if (q_permute_order->size() != 4 || q_permute_order->at(0) != 0
@@ -3062,15 +3097,38 @@ public:
 
     // values
     auto v_permute = dyn_cast<tpu::PermuteOp>(op.getRight().getDefiningOp());
-    if (!v_permute || !v_permute->hasOneUse())
+    if (!v_permute || !v_permute->hasOneUse()) {
       return failure();
+    }
     op_need_del.emplace_back(v_permute);
+    Value v_in = v_permute.getInput();
+    /// values tile
+    auto v_reshape = dyn_cast<tpu::ReshapeOp>(v_in.getDefiningOp());
+    if (v_reshape) {
+      auto v_tile = v_reshape.getInput().getDefiningOp();
+      if (isa<tpu::MulOp, tpu::TileOp>(v_tile)) {
+        auto v_unsqu =
+            dyn_cast<tpu::UnsqueezeOp>(v_tile->getOperand(0).getDefiningOp());
+        if (v_unsqu) {
+          if (!has_tile) {
+            return failure();
+          }
+          op_need_del.emplace_back(v_reshape);
+          op_need_del.emplace_back(v_tile);
+          op_need_del.emplace_back(v_unsqu);
+          v_in = v_unsqu.getInput();
+        } else {
+          return failure();
+        }
+      }
+    }
 
     rewriter.setInsertionPointAfter(reshape_op);
     auto o_shape = module::getShape(op.getOutput());
     auto sf_shape = module::getShape(softmax.getInput());
+    auto kv_shape = module::getShape(k_in);
     auto none = module::getNoneOp(op);
-    int64_t head;
+    int64_t q_head, kv_head;
     int64_t d;
     int64_t mq;
     int64_t mk;
@@ -3078,11 +3136,12 @@ public:
 
     assert(o_shape.size() == 4 && sf_shape.size() == 4);
     batch = o_shape[0];
-    head = o_shape[1];
+    q_head = o_shape[1];
+    kv_head = kv_shape[2];
     d = o_shape[3];
     mq = sf_shape[2];
     mk = sf_shape[3];
-    assert(o_shape[2] == mq && sf_shape[1] == head);
+    assert(o_shape[2] == mq && sf_shape[1] == q_head);
 
     // ppl flash attention only support d <= 256, bf16 & fp16
     if (d > 160 || mk < 4) {
@@ -3092,7 +3151,9 @@ public:
     attrs.push_back(
         rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
     attrs.push_back(
-        rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
+        rewriter.getNamedAttr("q_head", rewriter.getI64IntegerAttr(q_head)));
+    attrs.push_back(
+        rewriter.getNamedAttr("kv_head", rewriter.getI64IntegerAttr(kv_head)));
     attrs.push_back(
         rewriter.getNamedAttr("dim", rewriter.getI64IntegerAttr(d)));
     attrs.push_back(
@@ -3103,8 +3164,9 @@ public:
         rewriter.getNamedAttr("mk", rewriter.getI64IntegerAttr(mk)));
     std::vector<Value> operands;
     operands.push_back(q_in);
-    operands.push_back(k_permute.getInput());
-    operands.push_back(v_permute.getInput());
+
+    operands.push_back(k_in);
+    operands.push_back(v_in);
     operands.push_back(add ? add.getInputs()[1] : none);
     operands.push_back(none);
     auto attention = rewriter.create<tpu::FAttentionOp>(

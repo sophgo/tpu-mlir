@@ -1508,7 +1508,8 @@ typedef struct attention_local_spec {
 
 typedef struct flash_attention_common_spec {
   int batch;
-  int head;
+  int q_head;
+  int kv_head;
   int dim;
   int mq;
   int mk;
