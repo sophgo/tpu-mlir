@@ -30,6 +30,7 @@ if __name__ == '__main__':
                         help='num of maximum float layers')
     parser.add_argument('--tune_list', type=str, default='', help='Tune list file contain all input for tune')
     parser.add_argument('--tune_num', type=int, default=5, help='num of images for tune')
+    parser.add_argument('--cali_method', type=str, default='use_kl',help='method of calibration')
     parser.add_argument('--expected_cos', type=float, default=0.99,
                         help='expected net output cos')
     parser.add_argument('--global_compare_layers', type=str, default='',
