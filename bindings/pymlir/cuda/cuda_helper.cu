@@ -182,6 +182,65 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                                             size);
 }
 
+template <typename T0, typename T1, typename T2>
+__global__ void kernelMulInt8(T0 *a, T1 *b, T2 *out, int32_t multiplier,
+                              int32_t rshift, int size, bool qdm, bool relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int32_t value;
+    if (qdm) {
+      int64_t data =
+          static_cast<int64_t>(a[idx]) * static_cast<int64_t>(b[idx]);
+      data = data * static_cast<int64_t>(multiplier);
+      data = (data + (1ll << 30)) >> 31;
+      value = static_cast<int32_t>(data);
+      // half away from zero
+      int32_t offset = 1 << (rshift - 1);
+      bool negative = value < 0;
+      if (negative) {
+        value = -value;
+      }
+      value = (value + offset) >> rshift;
+      if (negative) {
+        value = -value;
+      }
+    } else {
+      value = static_cast<int32_t>(a[idx]) * static_cast<int32_t>(b[idx]) *
+              multiplier;
+      // half up
+      value = (value + (1 << (rshift - 1))) >> rshift;
+    }
+    if (std::is_same<T2, int8_t>::value) {
+      int32_t min_ = relu ? 0 : -128;
+      value = max(min_, min(127, value));
+      ((int8_t *)out)[idx] = static_cast<int8_t>(value);
+    } else {
+      value = max(0, min(255, value));
+      ((uint8_t *)out)[idx] = static_cast<uint8_t>(value);
+    }
+  }
+}
+
+void cudaMulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign,
+                 bool o_sign, int multiplier, int rshift, int size, bool qdm,
+                 bool relu) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (a_sign && b_sign && o_sign) {
+    kernelMulInt8<<<num_blocks, block_size>>>((int8_t *)a, (int8_t *)b,
+                                              (int8_t *)o, multiplier, rshift,
+                                              size, qdm, relu);
+  } else if (!a_sign && !b_sign && !o_sign) {
+    kernelMulInt8<<<num_blocks, block_size>>>((uint8_t *)a, (uint8_t *)b,
+                                              (uint8_t *)o, multiplier, rshift,
+                                              size, qdm, relu);
+  } else if (a_sign && b_sign && !o_sign) {
+    kernelMulInt8<<<num_blocks, block_size>>>((int8_t *)a, (int8_t *)b,
+                                              (uint8_t *)o, multiplier, rshift,
+                                              size, qdm, relu);
+  }
+}
+
 __global__ void kernelAddInt8(int8_t *a, int8_t *b, void *out, int32_t mul0,
                               int32_t mul1, int shift0, int shift1, int size,
                               bool sign) {
