@@ -420,7 +420,11 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
   auto rightShape = module::getShape(getRight());
   // compute the parallel dimensions
   bool hasTS = getLeftTranspose() || getOutputTranspose();
-  int maxParallelDims = outShape.size() - 1 - hasTS - getHdimIsBatch();
+  bool hdimBatch = getHdimIsBatch();
+  int maxParallelDims = outShape.size() - 1 - hasTS - hdimBatch;
+  if (hdimBatch && outShape.size() == 4) {
+    maxParallelDims = 1;
+  }
 
   if (maxParallelDims < 1)
     return Builder(getContext()).getAffineMapArrayAttr({});
