@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 82e73d740ac32c5c9f434fce7e9bf6c8d3efa5db
+#bm1688 sha256: f82bc96ea4beefa8e5585ca757c6515d0bc16acc
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
@@ -56,7 +56,7 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 
 
 ## tpu-runtime 2023-5-9
-build from tpu-runtime 73eac3426f8aa128e4d03c12ef4db8909954d4b7
+build from tpu-runtime 85e9e78b9d47f497f819374de110e1d9e362db01
 ``` bash
 pushd libsophon
 mkdir -p build && cd build
