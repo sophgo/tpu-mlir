@@ -203,23 +203,6 @@ module @MatMul3.2 attributes {module.chip = "bm1688", module.cores = 2 : i64, mo
 
 // -----
 
-// case 3.2: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
-// CHECK-LABEL:     module @MatMul3.2 {{.*}}
-// CHECK:           %[[SPLIT1:.*]]:2 = "tpu.Split"(%arg0) : (tensor<3x5x4x6xf32>) -> (tensor<2x5x4x6xf32>, tensor<1x5x4x6xf32>) loc({{.*}})
-// CHECK:           %[[SPLIT2:.*]]:2 = "tpu.Split"(%arg1) : (tensor<3x6x4x7xf32>) -> (tensor<2x6x4x7xf32>, tensor<1x6x4x7xf32>) loc({{.*}})
-// CHECK:           %[[MAMUL1:.*]] = "tpu.MatMul"(%[[SPLIT1]]#0, %[[SPLIT2]]#0, %0) {{{.*}}} : (tensor<2x5x4x6xf32>, tensor<2x6x4x7xf32>, none) -> tensor<2x6x4x7xf32> loc({{.*}})
-// CHECK:           %[[MAMUL2:.*]] = "tpu.MatMul"(%[[SPLIT1]]#1, %[[SPLIT2]]#1, %0) {{{.*}}} : (tensor<1x5x4x6xf32>, tensor<1x6x4x7xf32>, none) -> tensor<1x6x4x7xf32> loc({{.*}})
-module @MatMul3.2 attributes {module.chip = "bm1688", module.cores = 2 : i64, module.mode = "F32", module.platform = "ONNX", module.state = "TPU_LOWERED", module.weight_file = ""} {
-  func.func @main(%arg0: tensor<3x5x4x6xf32> loc("a"), %arg1: tensor<3x6x4x7xf32> loc("b")) -> tensor<3x6x4x7xf32> {
-    %0 = "top.None"() : () -> none loc(unknown)
-    %1 = "tpu.MatMul"(%arg0, %arg1, %0) {hdim_is_batch=true} : (tensor<3x5x4x6xf32>, tensor<3x6x4x7xf32>, none) -> tensor<3x6x4x7xf32> loc("c")
-    return %1 : tensor<3x6x4x7xf32> loc("d")
-  }
-}
-
-
-// -----
-
 // case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
 // CHECK-LABEL:     module @MatMul4 {{.*}}
 // CHECK:           %[[SPLIT1:.*]]:2 = "tpu.Split"(%arg0) : (tensor<4x5x6xf32>) -> (tensor<2x5x6xf32>, tensor<2x5x6xf32>) loc({{.*}})
