@@ -56,7 +56,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   int32_t multipler = multiplier_v->at(0);
   int32_t rshift = rshift_v->at(0);
   bool sign = !out_stype.isUnsignedInteger(8);
-  bool qdm = module::isCV18xx();
+  bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
   bool relu = sign && p.do_relu;
   cudaRequantInt8(out_i32.get(), output, multipler, rshift, num_out, sign, qdm,
                   relu);

@@ -97,7 +97,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   CHECK_CUDA(cudaMemcpy(cudaShifts.get(), rs.data(),
                         rs.size() * sizeof(int32_t), cudaMemcpyHostToDevice));
   bool sign = !out_stype.isUnsignedInteger(8);
-  bool qdm = module::isCV18xx();
+  bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
   bool relu = sign && p.do_relu;
   cudaRequantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
                             cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign, qdm,

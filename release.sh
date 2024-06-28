@@ -4,7 +4,13 @@ set -e
 source envsetup.sh
 rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
-source build.sh RELEASE
+suffix=""
+if [ x"$1" = x"CUDA" ]; then
+    source build.sh RELEASE CUDA
+    suffix="_cuda"
+else
+    source build.sh RELEASE
+fi
 
 mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
 release_archive="./tpu-mlir_${mlir_version}"
@@ -71,6 +77,5 @@ function use_chip(){
 //MY_CODE_STREAM
 # ------------------------------------------------------------------------------
 
-
-tar -cvzf "tpu-mlir_${mlir_version}.tar.gz" ${release_archive}
+tar -cvzf "tpu-mlir_${mlir_version}${suffix}.tar.gz" ${release_archive}
 rm -rf ${release_archive}

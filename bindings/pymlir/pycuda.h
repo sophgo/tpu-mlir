@@ -83,6 +83,7 @@ private:
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
   void cudaMatMulOp(tpu::MatMulOp op);
+  void cudaMulOp(tpu::MulOp op);
   void cudaMulShiftOp(tpu::MulShiftOp op);
   void cudaReshapeOp(tpu::ReshapeOp op);
   void cudaRequantIntAxisOp(tpu::RequantIntAxisOp op);

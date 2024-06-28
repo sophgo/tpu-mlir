@@ -187,6 +187,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaLutOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
           cudaMatMulOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MulOp>(op)) {
+          cudaMulOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulShiftOp>(op)) {
           cudaMulShiftOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {

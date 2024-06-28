@@ -34,6 +34,11 @@ void cudaF32ToInt8(void *input, void *output, float scale, int size, bool sign,
 // int8 or uint8 * scale => float output
 void cudaInt8ToF32(void *input, void *output, float scale, int size, bool sign);
 
+// mul: int8 * int8 * multiplier >> rshift => int8
+void cudaMulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign,
+                 bool o_sign, int multiplier, int rshift, int size, bool qdm,
+                 bool relu);
+
 // add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int shift, int size);
