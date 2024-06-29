@@ -6,7 +6,17 @@ set -e
 source envsetup.sh
 rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
-source build.sh RELEASE
+# Check for CUDA support
+USE_CUDA=""
+if [ -n "$1" ]; then
+    if [ "$1" = "CUDA" ]; then
+        USE_CUDA="CUDA"
+    elif [ "$1" != "CPU" ]; then
+        echo "Invalid CUDA option: $1"
+        exit 1
+    fi
+fi
+source build.sh RELEASE $USE_CUDA
 
 # build customlayer for regression test
 source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
