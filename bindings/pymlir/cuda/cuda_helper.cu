@@ -162,24 +162,25 @@ void cudaCVQuantInt8(void *input, void *output, float scale, int size) {
                                                 (int8_t *)output, scale, size);
 }
 
-__global__ void kernelAddInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
-                              int32_t mul1, int shift, int size) {
+__global__ void kernelCVAddInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
+                                int32_t mul1, int shift, int size, bool relu) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     int32_t temp = (int32_t)a[idx] * mul0 + (int32_t)b[idx] * mul1;
     temp = (temp + (1 << (shift - 1))) >> shift;
-    temp = max(-128, min(127, temp));
+    int32_t min_ = relu ? 0 : -128;
+    temp = max(min_, min(127, temp));
     out[idx] = static_cast<int8_t>(temp);
   }
 }
 
-void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift, int size) {
+void cudaCVAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                   int shift, int size, bool relu) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  kernelAddInt8<<<num_blocks, block_size>>>((int8_t *)input0, (int8_t *)input1,
-                                            (int8_t *)output, mul0, mul1, shift,
-                                            size);
+  kernelCVAddInt8<<<num_blocks, block_size>>>(
+      (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1, shift,
+      size, relu);
 }
 
 template <typename T0, typename T1, typename T2>
@@ -334,35 +335,65 @@ void cudaMulBinaryInt8(void *a, void *b, void *o, int n0, int c0, int h0,
   }
 }
 
-__global__ void kernelAddInt8(int8_t *a, int8_t *b, void *out, int32_t mul0,
-                              int32_t mul1, int shift0, int shift1, int size,
-                              bool sign) {
+template <typename T0, typename T1, typename T2>
+__global__ void kernelAddInt8(T0 *a, T1 *b, T2 *out, int32_t mul0, int32_t mul1,
+                              int shift0, int shift1, int size, bool relu) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    int32_t a_data = (int32_t)a[idx] * mul0;
+    int32_t a_data = static_cast<int32_t>(a[idx]) * mul0;
     a_data = (a_data + (1 << (shift0 - 1))) >> shift0;
-    a_data = max(-128, min(127, a_data));
-    int32_t b_data = (int32_t)b[idx] * mul1;
+    int32_t b_data = static_cast<int32_t>(b[idx]) * mul1;
     b_data = (b_data + (1 << (shift1 - 1))) >> shift1;
-    b_data = max(-128, min(127, b_data));
     a_data = a_data + b_data;
-    if (sign) {
-      a_data = max(-128, min(127, a_data));
-      static_cast<int8_t *>(out)[idx] = static_cast<int8_t>(a_data);
+    if (std::is_same<T2, int8_t>::value) {
+      int32_t min_ = relu ? 0 : -128;
+      a_data = max(min_, min(127, a_data));
+      out[idx] = static_cast<int8_t>(a_data);
     } else {
       a_data = max(0, min(255, a_data));
-      static_cast<uint8_t *>(out)[idx] = static_cast<uint8_t>(a_data);
+      out[idx] = static_cast<uint8_t>(a_data);
     }
   }
 }
 
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift0, int shift1, int size, bool sign) {
+                 int shift0, int shift1, bool a_sign, bool b_sign, bool o_sign,
+                 int size, bool relu) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  kernelAddInt8<<<num_blocks, block_size>>>((int8_t *)input0, (int8_t *)input1,
-                                            output, mul0, mul1, shift0, shift1,
-                                            size, sign);
+  if (a_sign && b_sign && o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (!a_sign && b_sign && o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (a_sign && !b_sign && o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (a_sign && b_sign && !o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (!a_sign && !b_sign && o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (!a_sign && b_sign && !o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (a_sign && !b_sign && !o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  } else if (!a_sign && !b_sign && !o_sign) {
+    kernelAddInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, size, relu);
+  }
 }
 
 template <typename T>
