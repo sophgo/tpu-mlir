@@ -80,6 +80,7 @@ private:
   void cudaCastOp(tpu::CastOp op);
   void cudaConcatOp(tpu::ConcatOp op);
   void cudaDeconvOp(tpu::DeconvOp op);
+  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
   void cudaMatMulOp(tpu::MatMulOp op);

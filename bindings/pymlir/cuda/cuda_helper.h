@@ -38,6 +38,10 @@ void cudaInt8ToF32(void *input, void *output, float scale, int size, bool sign);
 void cudaMulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign,
                  bool o_sign, int multiplier, int rshift, int size, bool qdm,
                  bool relu);
+void cudaMulBinaryInt8(void *a, void *b, void *o, int n0, int c0, int h0,
+                       int w0, int n1, int c1, int h1, int w1, int n2, int c2,
+                       int h2, int w2, bool a_sign, bool b_sign, bool o_sign,
+                       int multiplier, int rshift, bool qdm, bool relu);
 
 // add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
@@ -48,6 +52,12 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int shift0, int shift1, int size, bool sign);
 
 void cudaNegative(void *input, void *output, int size, cudnnDataType_t type);
+
+void cudaDepth2Space(void *input, void *output, int in, int ic, int ih, int iw,
+                     int on, int oc, int oh, int ow, int instride, int icstride,
+                     int ihstride, int iwstride, int onstride, int ocstride,
+                     int ohstride, int owstride, int block_h, int block_w,
+                     bool crd, bool swap_cr, bool inversed, int tbytes);
 
 void cudaConvInt8(void *input, void *filter, void *bias, void *output,
                   void *multipliers, void *shifts, int n, int ic, int ih,

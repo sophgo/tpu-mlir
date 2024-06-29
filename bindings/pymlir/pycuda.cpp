@@ -181,6 +181,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaCastOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::DeconvOp>(op)) {
           cudaDeconvOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::Depth2SpaceOp>(op)) {
+          cudaDepth2SpaceOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
           cudaGenericCpuOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::LutOp>(op)) {
