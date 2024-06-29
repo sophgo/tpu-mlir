@@ -178,6 +178,7 @@ class ONNX_IR_TESTER(object):
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y),
+            "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y),
             "Sign":         (self.test_Sign,          N, Y, Y, N, Y),
@@ -207,7 +208,6 @@ class ONNX_IR_TESTER(object):
             "TopK4":        (self.test_TopK4,         N, N, N, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y),
-            "space2depth":  (self.test_space2depth,   Y, Y, Y, N, Y),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
@@ -783,7 +783,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(76800,2).float()
         self.torch_and_test(x, Model(), case_name)
 
-    def test_space2depth(self, case_name):
+    def test_Space2Depth(self, case_name):
 
         class Model(nn.Module):
 

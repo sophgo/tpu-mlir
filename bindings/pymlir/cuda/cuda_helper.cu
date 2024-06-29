@@ -241,6 +241,99 @@ void cudaMulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign,
   }
 }
 
+template <typename T0, typename T1, typename T2>
+__global__ void
+kernelMulBinaryInt8(T0 *a, T1 *b, T2 *out, int n0, int c0, int h0, int w0,
+                    int n1, int c1, int h1, int w1, int n2, int c2, int h2,
+                    int w2, int multiplier, int rshift, bool qdm, bool relu) {
+  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
+  int idx_c = blockIdx.z % c2;
+  int idx_n = blockIdx.z / c2;
+  if (idx_w < w2 && idx_h < h2 && idx_c < c2 && idx_n < n2) {
+    int idx_out = ((idx_n * c2 + idx_c) * h2 + idx_h) * w2 + idx_w;
+    int idx_n0 = idx_n >= n0 ? 0 : idx_n;
+    int idx_c0 = idx_c >= c0 ? 0 : idx_c;
+    int idx_h0 = idx_h >= h0 ? 0 : idx_h;
+    int idx_w0 = idx_w >= w0 ? 0 : idx_w;
+    int idx_a = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n >= n1 ? 0 : idx_n;
+    int idx_c1 = idx_c >= c1 ? 0 : idx_c;
+    int idx_h1 = idx_h >= h1 ? 0 : idx_h;
+    int idx_w1 = idx_w >= w1 ? 0 : idx_w;
+    int idx_b = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    int32_t value;
+    if (qdm) {
+      int64_t data =
+          static_cast<int64_t>(a[idx_a]) * static_cast<int64_t>(b[idx_b]);
+      data = data * static_cast<int64_t>(multiplier);
+      data = (data + (1ll << 30)) >> 31;
+      value = static_cast<int32_t>(data);
+      // half away from zero
+      int32_t offset = 1 << (rshift - 1);
+      bool negative = value < 0;
+      if (negative) {
+        value = -value;
+      }
+      value = (value + offset) >> rshift;
+      if (negative) {
+        value = -value;
+      }
+    } else {
+      value = static_cast<int32_t>(a[idx_a]) * static_cast<int32_t>(b[idx_b]) *
+              multiplier;
+      // half up
+      value = (value + (1 << (rshift - 1))) >> rshift;
+    }
+    if (std::is_same<T2, int8_t>::value) {
+      int32_t min_ = relu ? 0 : -128;
+      value = max(min_, min(127, value));
+      ((int8_t *)out)[idx_out] = static_cast<int8_t>(value);
+    } else {
+      value = max(0, min(255, value));
+      ((uint8_t *)out)[idx_out] = static_cast<uint8_t>(value);
+    }
+  }
+}
+
+void cudaMulBinaryInt8(void *a, void *b, void *o, int n0, int c0, int h0,
+                       int w0, int n1, int c1, int h1, int w1, int n2, int c2,
+                       int h2, int w2, bool a_sign, bool b_sign, bool o_sign,
+                       int multiplier, int rshift, bool qdm, bool relu) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((w2 + blockSize.x - 1) / blockSize.x,
+                 (h2 + blockSize.y - 1) / blockSize.y, n2 * c2);
+  if (a_sign && b_sign && o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (int8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (!a_sign && !b_sign && !o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (uint8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1,
+        w1, n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (a_sign && b_sign && !o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (int8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (a_sign && !b_sign && o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (int8_t *)a, (uint8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (!a_sign && b_sign && o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (uint8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (a_sign && !b_sign && !o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (int8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  } else if (!a_sign && b_sign && !o_sign) {
+    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+        (uint8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
+        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+  }
+}
+
 __global__ void kernelAddInt8(int8_t *a, int8_t *b, void *out, int32_t mul0,
                               int32_t mul1, int shift0, int shift1, int size,
                               bool sign) {
@@ -818,4 +911,61 @@ void cudaUpsample4D(void *src, void *dst, int n, int c, int h, int w,
 
   kernelUpsample4D<<<numBlocks, blockSize>>>(src, dst, n, c, h, w, scale_h,
                                              scale_w, tbytes);
+}
+
+__global__ void kernelDepth2Space(void *input, void *output, int in, int ic,
+                                  int ih, int iw, int on, int oc, int oh,
+                                  int ow, int instride, int icstride,
+                                  int ihstride, int iwstride, int onstride,
+                                  int ocstride, int ohstride, int owstride,
+                                  int block_h, int block_w, bool crd,
+                                  bool swap_cr, bool inversed, int tbytes) {
+  int w = blockIdx.x * blockDim.x + threadIdx.x;
+  int h = blockIdx.y * blockDim.y + threadIdx.y;
+  int c = blockIdx.z % ic;
+  int n = blockIdx.z / ic;
+  if (n < in && c < ic && h < ih && w < iw) {
+    int new_c, new_h, new_w, left;
+    if (crd) {
+      new_c = c / (block_h * block_w);
+      left = c % (block_h * block_w);
+    } else {
+      new_c = c % oc;
+      left = c / oc;
+    }
+    if (swap_cr) {
+      int64_t c1 = left / block_w;
+      int64_t c2 = left % block_w;
+      int64_t rleft = c2 * block_h + c1;
+      if (crd) {
+        c = new_c * (block_h * block_w) + rleft;
+      } else {
+        c = rleft * oc + new_c;
+      }
+    }
+    new_h = h * block_h + left / block_w;
+    new_w = w * block_w + left % block_w;
+    int64_t i_index = n * instride + c * icstride + h * ihstride + w * iwstride;
+    int64_t o_index =
+        n * onstride + new_c * ocstride + new_h * ohstride + new_w * owstride;
+    if (inversed) {
+      kernelCopyElement(input, o_index, output, i_index, tbytes);
+    } else {
+      kernelCopyElement(input, i_index, output, o_index, tbytes);
+    }
+  }
+}
+
+void cudaDepth2Space(void *input, void *output, int in, int ic, int ih, int iw,
+                     int on, int oc, int oh, int ow, int instride, int icstride,
+                     int ihstride, int iwstride, int onstride, int ocstride,
+                     int ohstride, int owstride, int block_h, int block_w,
+                     bool crd, bool swap_cr, bool inversed, int tbytes) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((iw + blockSize.x - 1) / blockSize.x,
+                 (ih + blockSize.y - 1) / blockSize.y, in * ic);
+  kernelDepth2Space<<<numBlocks, blockSize>>>(
+      input, output, in, ic, ih, iw, on, oc, oh, ow, instride, icstride,
+      ihstride, iwstride, onstride, ocstride, ohstride, owstride, block_h,
+      block_w, crd, swap_cr, inversed, tbytes);
 }
