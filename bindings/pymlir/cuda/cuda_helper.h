@@ -49,6 +49,9 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int size, bool relu);
 
 void cudaNegative(void *input, void *output, int size, cudnnDataType_t type);
+// zero pad
+void cudaPad4D(void *input, void *output, int n, int c, int h, int w,
+               int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int tbytes);
 
 void cudaDepth2Space(void *input, void *output, int in, int ic, int ih, int iw,
                      int on, int oc, int oh, int ow, int instride, int icstride,

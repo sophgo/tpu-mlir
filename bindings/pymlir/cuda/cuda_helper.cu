@@ -50,6 +50,39 @@ template <typename T> __device__ T kernelInt(float data, cuda_rmode_t rmode) {
   return static_cast<T>(data);
 }
 
+__device__ void kernelCopyElement(void *src, int sidx, void *dst, int didx,
+                                  int tbytes) {
+  switch (tbytes) {
+  case 1:
+    static_cast<uint8_t *>(dst)[didx] = static_cast<uint8_t *>(src)[sidx];
+    break;
+  case 2:
+    static_cast<uint16_t *>(dst)[didx] = static_cast<uint16_t *>(src)[sidx];
+    break;
+  case 4:
+    static_cast<uint32_t *>(dst)[didx] = static_cast<uint32_t *>(src)[sidx];
+    break;
+  default:
+    break;
+  }
+}
+
+__device__ void kernelSetZero(void *dst, int didx, int tbytes) {
+  switch (tbytes) {
+  case 1:
+    static_cast<uint8_t *>(dst)[didx] = 0;
+    break;
+  case 2:
+    static_cast<uint16_t *>(dst)[didx] = 0;
+    break;
+  case 4:
+    static_cast<uint32_t *>(dst)[didx] = 0;
+    break;
+  default:
+    break;
+  }
+}
+
 __global__ void kernelF32ToInt8(float *input, void *output, float scale,
                                 int size, bool sign, cuda_rmode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -396,6 +429,40 @@ void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
   }
 }
 
+__global__ void kernelPad4D(void *input, void *output, int n, int c, int h,
+                            int w, int pad_h_t, int pad_h_b, int pad_w_l,
+                            int pad_w_r, int tbytes) {
+  int oh = h + pad_h_t + pad_h_b;
+  int ow = w + pad_w_l + pad_w_r;
+  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
+  int idx_c = blockIdx.z % c;
+  int idx_n = blockIdx.z / c;
+  if (idx_n < n && idx_c < c && idx_h < oh && idx_w < ow) {
+    int out_idx = ((idx_n * c + idx_c) * oh + idx_h) * ow + idx_w;
+    if (idx_h >= pad_h_t && idx_h < (pad_h_t + h) && idx_w >= pad_w_l &&
+        idx_w < (pad_w_l + w)) {
+      int idx_in_h = idx_h - pad_h_t;
+      int idx_in_w = idx_w - pad_w_l;
+      int in_idx = ((idx_n * c + idx_c) * h + idx_in_h) * w + idx_in_w;
+      kernelCopyElement(input, in_idx, output, out_idx, tbytes);
+    } else {
+      kernelSetZero(output, out_idx, tbytes);
+    }
+  }
+}
+
+void cudaPad4D(void *input, void *output, int n, int c, int h, int w,
+               int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int tbytes) {
+  int oh = h + pad_h_t + pad_h_b;
+  int ow = w + pad_w_l + pad_w_r;
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((ow + blockSize.x - 1) / blockSize.x,
+                 (oh + blockSize.y - 1) / blockSize.y, n * c);
+  kernelPad4D<<<numBlocks, blockSize>>>(input, output, n, c, h, w, pad_h_t,
+                                        pad_h_b, pad_w_l, pad_w_r, tbytes);
+}
+
 template <typename T>
 __global__ void kernelNegative(T *input, T *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -419,23 +486,6 @@ void cudaNegative(void *input, void *output, int size, cudnnDataType_t type) {
   case CUDNN_DATA_INT8:
     kernelNegative<<<num_blocks, block_size>>>((int8_t *)input,
                                                (int8_t *)output, size);
-    break;
-  default:
-    break;
-  }
-}
-
-__device__ void kernelCopyElement(void *src, int sidx, void *dst, int didx,
-                                  int tbytes) {
-  switch (tbytes) {
-  case 1:
-    static_cast<uint8_t *>(dst)[didx] = static_cast<uint8_t *>(src)[sidx];
-    break;
-  case 2:
-    static_cast<uint16_t *>(dst)[didx] = static_cast<uint16_t *>(src)[sidx];
-    break;
-  case 4:
-    static_cast<uint32_t *>(dst)[didx] = static_cast<uint32_t *>(src)[sidx];
     break;
   default:
     break;
