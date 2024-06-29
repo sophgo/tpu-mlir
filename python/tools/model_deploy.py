@@ -265,10 +265,16 @@ class DeployTool:
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all)
-        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all, use_cuda=self.cuda)
+        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
+        if self.cuda:
+            cuda_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all, use_cuda= True)
+            cuda_npz = self.tpu_npz.replace("_tpu_","_cuda_")
+            np.savez(cuda_npz, **cuda_outputs)
+            file_mark(cuda_npz)
+            f32_blobs_compare(cuda_npz, self.tpu_npz, "0.9999,0.9999", self.excepts)
         self.cache_tool.mark_tpu_success()
 
     def build_model(self):

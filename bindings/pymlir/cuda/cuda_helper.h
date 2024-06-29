@@ -43,13 +43,10 @@ void cudaMulBinaryInt8(void *a, void *b, void *o, int n0, int c0, int h0,
                        int h2, int w2, bool a_sign, bool b_sign, bool o_sign,
                        int multiplier, int rshift, bool qdm, bool relu);
 
-// add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
-void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift, int size);
-
 // add: i8 * i32 >> s0 + i8 * i32 >> s1 = int8 (half away from zero)
 void cudaAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift0, int shift1, int size, bool sign);
+                 int shift0, int shift1, bool sign0, bool sign1, bool sign2,
+                 int size, bool relu);
 
 void cudaNegative(void *input, void *output, int size, cudnnDataType_t type);
 
@@ -108,3 +105,7 @@ void cudaCVScaleToF32(void *input, void *output, float scale, int size);
 // int8 * multi >> shift = i8 output
 void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
                           int size);
+
+// add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
+void cudaCVAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                   int shift, int size, bool relu);
