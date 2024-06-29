@@ -203,6 +203,10 @@ void py_cuda::invoke(bool dump_all) {
           cudaPermuteOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
           cudaSliceOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SoftmaxOp>(op)) {
+          cudaSoftmaxOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
+          cudaSqueezeOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
           cudaUpsampleOp(tpuOp);
         } else {

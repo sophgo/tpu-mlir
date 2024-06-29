@@ -91,6 +91,8 @@ private:
   void cudaPool2DOp(tpu::Pool2DOp op);
   void cudaPermuteOp(tpu::PermuteOp op);
   void cudaSliceOp(tpu::SliceOp op);
+  void cudaSoftmaxOp(tpu::SoftmaxOp op);
+  void cudaSqueezeOp(tpu::SqueezeOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
 
 private:

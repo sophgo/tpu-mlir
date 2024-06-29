@@ -17,14 +17,34 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   }
   auto num_out = module::getNumElements(op.getOutput());
   auto out_stype = module::getStorageType(op.getOutput());
+  bool need_pad = p.pht != p.phb || p.pwl != p.pwr;
+  cuda_ptr in_f32;
+  int ih = p.ih, iw = p.iw;
+  int pad_h = p.phb, pad_w = p.pwr;
+  // pad input ?
+  if (!need_pad) {
+    in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
+  } else {
+    auto input = getCudaData(op.getInput());
+    ih = p.ih + p.pht + p.phb;
+    iw = p.iw + p.pwl + p.pwr;
+    pad_h = 0;
+    pad_w = 0;
+    int num = p.n * p.ic * ih * iw;
+    auto pad_in = cuda_malloc(num);
+    cudaPad4D(input, pad_in.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
+              p.pwr, 1);
+    in_f32 = cuda_malloc(num * sizeof(float));
+    cudaTransform(pad_in.get(), in_f32.get(), num, getCudnnType(op.getInput()),
+                  CUDNN_DATA_FLOAT);
+  }
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
-  auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
   auto kernel_f32 = newCudaData(op.getFilter(), CUDNN_DATA_FLOAT);
   cudnnTensorDescriptor_t input_desc;
   cudnnCreateTensorDescriptor(&input_desc);
   cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
-                             p.n, p.ic, p.ih, p.iw);
+                             p.n, p.ic, ih, iw);
   cudnnFilterDescriptor_t kernel_desc;
   cudnnCreateFilterDescriptor(&kernel_desc);
   cudnnSetFilter4dDescriptor(kernel_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW,
@@ -35,10 +55,8 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                              p.n, p.oc, p.oh, p.ow);
   cudnnConvolutionDescriptor_t conv_desc;
   cudnnCreateConvolutionDescriptor(&conv_desc);
-  ASSERT_OP(p.pdb == p.pdf, op); // other not supported
-  ASSERT_OP(p.pwl == p.pwr, op); // other not supported
   CHECK_CUDNN(cudnnSetConvolution2dDescriptor(
-      conv_desc, p.phb, p.pwl, p.sh, p.sw, p.dh, p.dw, CUDNN_CROSS_CORRELATION,
+      conv_desc, pad_h, pad_w, p.sh, p.sw, p.dh, p.dw, CUDNN_CROSS_CORRELATION,
       CUDNN_DATA_FLOAT));
   if (p.groups > 1) {
     CHECK_CUDNN(cudnnSetConvolutionGroupCount(conv_desc, p.groups));
@@ -78,6 +96,9 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                                outf32_desc, out_f32.get()));
     cudnnDestroyTensorDescriptor(bias_desc);
   }
+  // if (p.do_relu) {
+  //   cudaRelu(out_f32.get(), num_out, CUDNN_DATA_FLOAT);
+  // }
   auto out_i32 =
       newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
   out_f32.reset();
