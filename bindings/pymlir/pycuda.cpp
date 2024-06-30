@@ -129,6 +129,15 @@ void py_cuda::cuda_to_host(const std::string &name) {
       buffer[i] = static_cast<float>(temp[i]);
     }
     delete[] temp;
+  } else if (stype.isBF16()) {
+    auto num = module::getNumElements(v);
+    uint16_t *temp = new uint16_t[num];
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(uint16_t),
+                          cudaMemcpyDeviceToHost));
+    for (int i = 0; i < num; i++) {
+      buffer[i] = bf16_to_f32(temp[i]);
+    }
+    delete[] temp;
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");

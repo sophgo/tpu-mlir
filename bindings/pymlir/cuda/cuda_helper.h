@@ -77,6 +77,23 @@ void cudaRequantInt8(void *input, void *output, int32_t multiplier,
 // inplace relu
 void cudaRelu(void *data, int size, cudnnDataType_t type);
 
+// find max. input[outer_dim, axis_dim, inner_dim] =>
+// output[outer_dim,1,inner_dim]
+void cudaMaxAxis(void *input, void *output, int outer_dim, int axis_dim,
+                 int inner_dim, cudnnDataType_t type);
+
+// input [outer_dim, axis_dim, inner_dim], sub[outer_dim,1,inner_dim] =>
+// output[outer_dim, axis_dim, inner_dim]
+void cudaSubAxis(void *input, void *sub, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type);
+void cudaMulAxis(void *input, void *mul, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type);
+void cudaAddAxis(void *input, void *add, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type);
+// sum
+void cudaSumAxis(void *input, void *output, int outer_dim, int axis_dim,
+                 int inner_dim, cudnnDataType_t type);
+
 cudaError_t cudaTransform(void *src, void *dst, int size,
                           cudnnDataType_t src_type, cudnnDataType_t dst_type,
                           cuda_rmode_t rmode = CUDA_TOWARDS_ZERO);
@@ -100,11 +117,12 @@ void cudaLut256(void *src, void *table, void *dst, int size,
 // cv18xx only
 
 // float * scale => int8 output
-void cudaCVQuantInt8(void *input, void *output, float scale, int size);
+void cudaCVQuantInt8(void *input, void *output, float scale, int size,
+                     bool is_bf16);
 
 // int8 or uint8 * scale => float output, cv18xx only
 void cudaCVScaleToF32(void *input, void *output, float scale, int size);
-
+void cudaCVScaleToBF16(void *input, void *output, float scale, int size);
 // int8 * multi >> shift = i8 output
 void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
                           int size);
@@ -112,3 +130,12 @@ void cudaCVMultiShiftInt8(void *input, void *output, int multiplier, int shift,
 // add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
 void cudaCVAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                    int shift, int size, bool relu);
+
+void cudaCVLutSlope(void *data, void *table0, void *table1, int num,
+                    float scale, float offset);
+
+// softmax by mantisa table
+void cudaCVSoftmax(void *input, void *buffer, void *output, void *table0,
+                   void *table1, void *table2, void *table3, int outer_dim,
+                   int axis_dim, int inner_dim, float scale, float offset,
+                   bool log);
