@@ -36,6 +36,10 @@ cudnnDataType_t py_cuda::getCudnnType(Value v) {
     return CUDNN_DATA_FLOAT;
   } else if (stype.isSignlessInteger(32) || stype.isSignedInteger(32)) {
     return CUDNN_DATA_INT32;
+  } else if (stype.isBF16()) {
+    return CUDNN_DATA_BFLOAT16;
+  } else if (stype.isF16()) {
+    return CUDNN_DATA_HALF;
   }
   v.dump();
   llvm_unreachable("Not supported");

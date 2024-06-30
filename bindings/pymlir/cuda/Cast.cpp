@@ -52,7 +52,8 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     auto qtype = module::getUniformQuantizedType(op.getOutput());
     auto scale = qtype.getScale();
     if (is_cv18xx) {
-      cudaCVQuantInt8(input, output, BF16(1. / scale), num_elem);
+      bool is_bf16 = in_type.isBF16();
+      cudaCVQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16);
     } else {
       auto rmode = rmode_convert(op.getRoundMode());
       cudaF32ToInt8(input, output, 1. / scale, num_elem,
@@ -63,12 +64,22 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     auto qtype = module::getUniformQuantizedType(op.getInput());
     auto scale = qtype.getScale();
     if (is_cv18xx) {
-      cudaCVScaleToF32(input, output, BF16(scale), num_elem);
+      if (out_type.isF32()) {
+        cudaCVScaleToF32(input, output, BF16(scale), num_elem);
+      } else {
+        cudaCVScaleToBF16(input, output, BF16(scale), num_elem);
+      }
     } else {
-      cudaInt8ToF32(input, output, scale, num_elem,
-                    !qtype.isUnsignedInteger(8));
+      if (out_type.isF32()) {
+        cudaInt8ToF32(input, output, scale, num_elem,
+                      !qtype.isUnsignedInteger(8));
+      } else {
+        UNREACHABLE_OP("Not Implemented", op);
+      }
     }
     return;
+  } else {
+    cudaTransform(input, output, num_elem, getCudnnType(op.getInput()),
+                  getCudnnType(op.getOutput()));
   }
-  UNREACHABLE_OP("Not Implemented", op);
 }

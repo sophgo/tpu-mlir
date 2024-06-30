@@ -108,6 +108,7 @@ struct bfloat16 {
   uint16_t value;
 
   __device__ bfloat16() : value(0) {}
+  __device__ bfloat16(uint16_t v) : value(v) {}
   __device__ bfloat16(float val, bool half_up = false) {
     if (half_up) {
       uint32_t u32_val = *((uint32_t *)(&val));
@@ -128,25 +129,22 @@ struct bfloat16 {
   }
 };
 
-__device__ bfloat16 kernelBF16Mul(bfloat16 a, bfloat16 b) {
-  float af = static_cast<float>(a);
-  float bf = static_cast<float>(b);
-  return bfloat16(af * bf, true);
+__device__ float kernel_BF16(float data, bool round_up = true) {
+  bfloat16 in_bf16(data, round_up);
+  return static_cast<float>(in_bf16);
+}
+
+__device__ float kernel_BF16(uint16_t data) {
+  bfloat16 in_bf16(data);
+  return static_cast<float>(in_bf16);
 }
 
 __global__ void kernelCVScaleToF32(int8_t *input, float *output, float scale,
                                    int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    // Step 1: Convert int8 to FP32
     float intermediate = static_cast<float>(input[idx]);
-
-    // Step 2: Multiply input by BF16 scale
-    bfloat16 bf16_result =
-        kernelBF16Mul(bfloat16(intermediate), bfloat16(scale));
-
-    // Step 3: Convert BF16 back to FP32
-    output[idx] = static_cast<float>(bf16_result);
+    output[idx] = kernel_BF16(intermediate * scale);
   }
 }
 
@@ -155,6 +153,24 @@ void cudaCVScaleToF32(void *input, void *output, float scale, int size) {
   int block_size = CUDA_BLOCK_SIZE;
   kernelCVScaleToF32<<<num_blocks, block_size>>>((int8_t *)input,
                                                  (float *)output, scale, size);
+}
+
+__global__ void kernelCVScaleToBF16(int8_t *input, uint16_t *output,
+                                    float scale, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float intermediate = static_cast<float>(input[idx]);
+    float out = kernel_BF16(intermediate * scale);
+    bfloat16 out_bf16(out, false);
+    output[idx] = out_bf16.value;
+  }
+}
+
+void cudaCVScaleToBF16(void *input, void *output, float scale, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelCVScaleToBF16<<<num_blocks, block_size>>>(
+      (int8_t *)input, (uint16_t *)output, scale, size);
 }
 
 __global__ void kernelInt8ToF32(void *input, float *output, float scale,
@@ -182,17 +198,31 @@ __global__ void kernelCVQuantInt8(float *input, int8_t *output, float scale,
                                   int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    auto out_bf16 = kernelBF16Mul(bfloat16(input[idx]), bfloat16(scale));
-    auto out_f32 = static_cast<float>(out_bf16);
-    output[idx] = kernelInt<int8_t>(out_f32, CUDA_HALF_TO_EVEN);
+    auto out_bf16 = kernel_BF16(kernel_BF16(input[idx], false) * scale);
+    output[idx] = kernelInt<int8_t>(out_bf16, CUDA_HALF_TO_EVEN);
   }
 }
 
-void cudaCVQuantInt8(void *input, void *output, float scale, int size) {
+__global__ void kernelCVQuantInt8(uint16_t *input, int8_t *output, float scale,
+                                  int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    auto out_bf16 = kernel_BF16(kernel_BF16(input[idx]) * scale);
+    output[idx] = kernelInt<int8_t>(out_bf16, CUDA_HALF_TO_EVEN);
+  }
+}
+
+void cudaCVQuantInt8(void *input, void *output, float scale, int size,
+                     bool is_bf16) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  kernelCVQuantInt8<<<num_blocks, block_size>>>((float *)input,
-                                                (int8_t *)output, scale, size);
+  if (!is_bf16) {
+    kernelCVQuantInt8<<<num_blocks, block_size>>>(
+        (float *)input, (int8_t *)output, scale, size);
+  } else {
+    kernelCVQuantInt8<<<num_blocks, block_size>>>(
+        (uint16_t *)input, (int8_t *)output, scale, size);
+  }
 }
 
 __global__ void kernelCVAddInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
@@ -856,6 +886,25 @@ __global__ void kernelFloatToUint8(float *input, uint8_t *output, int size,
   }
 }
 
+__global__ void kernelFloatToBFloat16(float *input, uint16_t *output, int size,
+                                      cuda_rmode_t rmode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    auto df16 = bfloat16(input[idx], rmode == CUDA_HALF_UP);
+    output[idx] = df16.value;
+  }
+}
+
+__global__ void kernelBFloat16ToFloat(uint16_t *input, float *output,
+                                      int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    bfloat16 data;
+    data.value = input[idx];
+    output[idx] = static_cast<float>(data);
+  }
+}
+
 cudaError_t cudaTransform(void *src, void *dst, int size,
                           cudnnDataType_t src_type, cudnnDataType_t dst_type,
                           cuda_rmode_t rmode) {
@@ -879,6 +928,12 @@ cudaError_t cudaTransform(void *src, void *dst, int size,
   } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_FLOAT) {
     kernelUint8ToFloat<<<num_blocks, block_size>>>((uint8_t *)src, (float *)dst,
                                                    size);
+  } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_BFLOAT16) {
+    kernelFloatToBFloat16<<<num_blocks, block_size>>>(
+        (float *)src, (uint16_t *)dst, size, rmode);
+  } else if (src_type == CUDNN_DATA_BFLOAT16 && dst_type == CUDNN_DATA_FLOAT) {
+    kernelBFloat16ToFloat<<<num_blocks, block_size>>>((uint16_t *)src,
+                                                      (float *)dst, size);
   } else {
     // not implemented
     return cudaErrorNotSupported;
@@ -890,6 +945,13 @@ template <typename T> __global__ void kernelPrint(T *data, int size) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < size) {
     printf("Data[%d] = %g\n", idx, (float)data[idx]);
+  }
+}
+
+__global__ void kernelPrintBF16(uint16_t *data, int size) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < size) {
+    printf("Data[%d] = %g\n", idx, kernel_BF16(data[idx]));
   }
 }
 
@@ -906,6 +968,9 @@ void cudaPrint(void *data, int size, cudnnDataType_t type) {
     break;
   case CUDNN_DATA_UINT8:
     kernelPrint<<<(size + 256) / 256, 256>>>((uint8_t *)data, size);
+    break;
+  case CUDNN_DATA_BFLOAT16:
+    kernelPrintBF16<<<(size + 256) / 256, 256>>>((uint16_t *)data, size);
     break;
   }
 }
@@ -930,6 +995,291 @@ void cudaRelu(void *data, int size, cudnnDataType_t type) {
   case CUDNN_DATA_INT8:
     kernelRelu<<<num_blocks, block_size>>>((int8_t *)data, size);
     break;
+  }
+}
+
+template <typename T>
+__global__ void kernelMaxAxis(T *input, T *output, int outer_dim, int axis_dim,
+                              int inner_dim) {
+  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+    int outer_offset = outer_idx * axis_dim * inner_dim;
+    // find max
+    T max_v = input[outer_offset + inner_idx];
+    for (int i = 1; i < axis_dim; i++) {
+      T v = input[outer_offset + inner_idx + i * inner_dim];
+      if (v > max_v) {
+        v = max_v;
+      }
+    }
+    output[outer_idx * inner_dim + inner_idx] = max_v;
+  }
+}
+
+__global__ void kernelMaxAxisBF16(uint16_t *input, uint16_t *output,
+                                  int outer_dim, int axis_dim, int inner_dim) {
+  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+    int outer_offset = outer_idx * axis_dim * inner_dim;
+    // find max
+    bfloat16 max_v(input[outer_offset + inner_idx]);
+    for (int i = 1; i < axis_dim; i++) {
+      bfloat16 v(input[outer_offset + inner_idx + i * inner_dim]);
+      if (static_cast<float>(max_v) < static_cast<float>(v)) {
+        max_v.value = v.value;
+      }
+    }
+    output[outer_idx * inner_dim + inner_idx] = max_v.value;
+  }
+}
+
+void cudaMaxAxis(void *input, void *output, int outer_dim, int axis_dim,
+                 int inner_dim, cudnnDataType_t type) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((inner_dim + blockSize.x - 1) / blockSize.x,
+                 (outer_dim + blockSize.y - 1) / blockSize.y);
+  if (type == CUDNN_DATA_BFLOAT16) {
+    kernelMaxAxisBF16<<<numBlocks, blockSize>>>(
+        (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT8) {
+    kernelMaxAxis<<<numBlocks, blockSize>>>((int8_t *)input, (int8_t *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_UINT8) {
+    kernelMaxAxis<<<numBlocks, blockSize>>>((uint8_t *)input, (uint8_t *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_FLOAT) {
+    kernelMaxAxis<<<numBlocks, blockSize>>>((float *)input, (float *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT32) {
+    kernelMaxAxis<<<numBlocks, blockSize>>>((int32_t *)input, (int32_t *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else {
+  }
+}
+
+template <typename T>
+__global__ void kernelSumAxis(T *input, T *output, int outer_dim, int axis_dim,
+                              int inner_dim) {
+  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+    int outer_offset = outer_idx * axis_dim * inner_dim;
+    // find max
+    T sum = 0;
+    for (int i = 0; i < axis_dim; i++) {
+      sum += input[outer_offset + inner_idx + i * inner_dim];
+    }
+    output[outer_idx * inner_dim + inner_idx] = sum;
+  }
+}
+
+__global__ void kernelSumAxisBF16(uint16_t *input, uint16_t *output,
+                                  int outer_dim, int axis_dim, int inner_dim) {
+  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+    int outer_offset = outer_idx * axis_dim * inner_dim;
+    // find max
+    float sum = 0.0f;
+    for (int i = 0; i < axis_dim; i++) {
+      sum += kernel_BF16(input[outer_offset + inner_idx + i * inner_dim]);
+    }
+    bfloat16 sum_bf16(sum, true);
+    output[outer_idx * inner_dim + inner_idx] = sum_bf16.value;
+  }
+}
+
+void cudaSumAxis(void *input, void *output, int outer_dim, int axis_dim,
+                 int inner_dim, cudnnDataType_t type) {
+  dim3 blockSize(16, 16);
+  dim3 numBlocks((inner_dim + blockSize.x - 1) / blockSize.x,
+                 (outer_dim + blockSize.y - 1) / blockSize.y);
+  if (type == CUDNN_DATA_BFLOAT16) {
+    kernelSumAxisBF16<<<numBlocks, blockSize>>>(
+        (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_FLOAT) {
+    kernelSumAxis<<<numBlocks, blockSize>>>((float *)input, (float *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT32) {
+    kernelSumAxis<<<numBlocks, blockSize>>>((int32_t *)input, (int32_t *)output,
+                                            outer_dim, axis_dim, inner_dim);
+  } else {
+  }
+}
+
+template <typename T>
+__global__ void kernelSubAxis(T *input, T *sub, T *output, int outer_dim,
+                              int axis_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    output[idx] = input[idx] - sub[sub_idx];
+  }
+}
+
+__global__ void kernelSubAxisBF16(uint16_t *input, uint16_t *sub,
+                                  uint16_t *output, int outer_dim, int axis_dim,
+                                  int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    bfloat16 in_data(input[idx]);
+    bfloat16 sub_data(sub[sub_idx]);
+    float out = static_cast<float>(in_data) - static_cast<float>(sub_data);
+    bfloat16 out_f16 = bfloat16(out, true);
+    output[idx] = out_f16.value;
+  }
+}
+
+void cudaSubAxis(void *input, void *sub, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (type == CUDNN_DATA_BFLOAT16) {
+    kernelSubAxisBF16<<<num_blocks, block_size>>>(
+        (uint16_t *)input, (uint16_t *)sub, (uint16_t *)output, outer_dim,
+        axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT8) {
+    kernelSubAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)sub,
+                                              (int8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_UINT8) {
+    kernelSubAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)sub,
+                                              (uint8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_FLOAT) {
+    kernelSubAxis<<<num_blocks, block_size>>>((float *)input, (float *)sub,
+                                              (float *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT32) {
+    kernelSubAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)sub,
+                                              (int32_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else {
+  }
+}
+
+template <typename T>
+__global__ void kernelAddAxis(T *input, T *sub, T *output, int outer_dim,
+                              int axis_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    output[idx] = input[idx] + sub[sub_idx];
+  }
+}
+
+__global__ void kernelAddAxisBF16(uint16_t *input, uint16_t *sub,
+                                  uint16_t *output, int outer_dim, int axis_dim,
+                                  int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    bfloat16 in_data(input[idx]);
+    bfloat16 sub_data(sub[sub_idx]);
+    float out = static_cast<float>(in_data) + static_cast<float>(sub_data);
+    bfloat16 out_f16 = bfloat16(out, true);
+    output[idx] = out_f16.value;
+  }
+}
+
+void cudaAddAxis(void *input, void *add, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (type == CUDNN_DATA_BFLOAT16) {
+    kernelAddAxisBF16<<<num_blocks, block_size>>>(
+        (uint16_t *)input, (uint16_t *)add, (uint16_t *)output, outer_dim,
+        axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT8) {
+    kernelAddAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)add,
+                                              (int8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_UINT8) {
+    kernelAddAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)add,
+                                              (uint8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_FLOAT) {
+    kernelAddAxis<<<num_blocks, block_size>>>((float *)input, (float *)add,
+                                              (float *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT32) {
+    kernelAddAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)add,
+                                              (int32_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else {
+  }
+}
+
+template <typename T>
+__global__ void kernelMulAxis(T *input, T *mul, T *output, int outer_dim,
+                              int axis_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim * inner_idx;
+    output[idx] = input[idx] + mul[sub_idx];
+  }
+}
+
+__global__ void kernelMulAxisBF16(uint16_t *input, uint16_t *mul,
+                                  uint16_t *output, int outer_dim, int axis_dim,
+                                  int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    bfloat16 in_data(input[idx]);
+    bfloat16 sub_data(mul[sub_idx]);
+    float out = static_cast<float>(in_data) * static_cast<float>(sub_data);
+    bfloat16 out_f16 = bfloat16(out, true);
+    output[idx] = out_f16.value;
+  }
+}
+
+void cudaMulAxis(void *input, void *mul, void *output, int outer_dim,
+                 int axis_dim, int inner_dim, cudnnDataType_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (type == CUDNN_DATA_BFLOAT16) {
+    kernelMulAxisBF16<<<num_blocks, block_size>>>(
+        (uint16_t *)input, (uint16_t *)mul, (uint16_t *)output, outer_dim,
+        axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT8) {
+    kernelMulAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)mul,
+                                              (int8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_UINT8) {
+    kernelMulAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)mul,
+                                              (uint8_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_FLOAT) {
+    kernelMulAxis<<<num_blocks, block_size>>>((float *)input, (float *)mul,
+                                              (float *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else if (type == CUDNN_DATA_INT32) {
+    kernelMulAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)mul,
+                                              (int32_t *)output, outer_dim,
+                                              axis_dim, inner_dim);
+  } else {
   }
 }
 
@@ -1049,4 +1399,144 @@ void cudaDepth2Space(void *input, void *output, int in, int ic, int ih, int iw,
       input, output, in, ic, ih, iw, on, oc, oh, ow, instride, icstride,
       ihstride, iwstride, onstride, ocstride, ohstride, owstride, block_h,
       block_w, crd, swap_cr, inversed, tbytes);
+}
+
+__global__ void kernelCVSoftmax(uint16_t *input, uint16_t *output,
+                                int outer_dim, int axis_dim, int inner_dim) {
+  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+    int outer_offset = outer_idx * axis_dim * inner_dim;
+    // find max
+    float max_bf16 = -__FLT_MAX__;
+    for (int i = 0; i < axis_dim; i++) {
+      bfloat16 data(input[outer_offset + inner_idx + i * inner_dim]);
+      float v = static_cast<float>(data);
+      if (v > max_bf16) {
+        v = max_bf16;
+      }
+    }
+    // sub max
+    for (int i = 0; i < axis_dim; i++) {
+      bfloat16 data(input[outer_offset + inner_idx + i * inner_dim]);
+      float v = static_cast<float>(data);
+      v -= max_bf16;
+      bfloat16 out(v, true);
+      output[outer_offset + inner_idx + i * inner_dim] = out.value;
+    }
+    //
+  }
+}
+
+__device__ uint16_t kernel_bf16_lut_slope(uint16_t input, uint16_t *base_table,
+                                          uint16_t *slope_table, float scale,
+                                          float offset) {
+  float in_bf16 = kernel_BF16(input);
+  float in_rescale = kernel_BF16(in_bf16 - offset);
+  in_rescale = kernel_BF16(in_rescale * scale);
+  int in_i8 = kernelInt<int8_t>(in_rescale, CUDA_TOWARDS_ZERO);
+  // get delta x (x - x0)
+  float delta_x = kernel_BF16(in_rescale - static_cast<float>(in_i8));
+  // get slope
+  auto slope = slope_table[in_i8 & 0xff];
+  // base y0 = f(x0)
+  auto base = base_table[in_i8 & 0xff];
+  float slope_f32 = kernel_BF16(slope);
+  float base_f32 = kernel_BF16(base);
+  float out = kernel_BF16(kernel_BF16(delta_x * slope_f32) + base_f32);
+  bfloat16 out_bf16(out);
+  return out_bf16.value;
+}
+
+__device__ uint16_t kernel_bf16_lut_mantissa(uint16_t input,
+                                             uint16_t *exp_table,
+                                             uint16_t *mantissa_table,
+                                             bool is_log) {
+  float val = kernel_BF16(input);
+  int exponentIndex;
+  if (val == 0) {
+    exponentIndex = 0;
+  } else if (val >= 0) {
+    exponentIndex = floor(log2(val));
+    exponentIndex += 62 + 1; // 62 means start with 2^-62, index from 1
+  } else {
+    exponentIndex = floor(log2(-1 * val));
+    exponentIndex += 62 + 129; // 62 means start with 2^-62, index from 129
+  }
+  float exponent = kernel_BF16(exp_table[exponentIndex]);
+  float mantissa = kernel_BF16(mantissa_table[input & 0xff]);
+  float out;
+  if (is_log) {
+    out = kernel_BF16(exponent + mantissa);
+  } else {
+    out = kernel_BF16(exponent * mantissa);
+  }
+  bfloat16 out_bf16(out, false);
+  return out_bf16.value;
+}
+
+__global__ void kernelCVLutSlope(uint16_t *input, uint16_t *output,
+                                 uint16_t *table0, uint16_t *table1, int num,
+                                 float scale, float offset) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num) {
+    output[idx] =
+        kernel_bf16_lut_slope(input[idx], table0, table1, scale, offset);
+  }
+}
+
+void cudaCVLutSlope(void *input, void *output, void *table0, void *table1,
+                    int num, float scale, float offset) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelCVLutSlope<<<block_size, num_blocks>>>(
+      (uint16_t *)input, (uint16_t *)output, (uint16_t *)table0,
+      (uint16_t *)table1, num, scale, offset);
+}
+
+__global__ void kernelCVLutMantissa(uint16_t *input, uint16_t *output,
+                                    uint16_t *table0, uint16_t *table1, int num,
+                                    bool is_log) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num) {
+    output[idx] = kernel_bf16_lut_mantissa(input[idx], table0, table1, is_log);
+  }
+}
+
+void cudaCVLutMantissa(void *input, void *output, void *table0, void *table1,
+                       int num, bool is_log) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelCVLutMantissa<<<block_size, num_blocks>>>(
+      (uint16_t *)input, (uint16_t *)output, (uint16_t *)table0,
+      (uint16_t *)table1, num, is_log);
+}
+
+void cudaCVSoftmax(void *input, void *buffer, void *output, void *table0,
+                   void *table1, void *table2, void *table3, int outer_dim,
+                   int axis_dim, int inner_dim, float scale, float offset,
+                   bool log) {
+  // get max => buffer
+  cudaMaxAxis(input, buffer, outer_dim, axis_dim, inner_dim,
+              CUDNN_DATA_BFLOAT16);
+  // sub max => output
+  cudaSubAxis(input, buffer, output, outer_dim, axis_dim, inner_dim,
+              CUDNN_DATA_BFLOAT16);
+
+  // exp => output
+  cudaCVLutSlope(output, output, table0, table1,
+                 outer_dim * inner_dim * axis_dim, scale, offset);
+  // sum => buffer
+  cudaSumAxis(output, buffer, outer_dim, axis_dim, inner_dim,
+              CUDNN_DATA_BFLOAT16);
+  // 1/sum => buffer
+  cudaCVLutMantissa(buffer, buffer, table2, table3, outer_dim * inner_dim, log);
+
+  if (log) {
+    cudaAddAxis(output, buffer, output, outer_dim, axis_dim, inner_dim,
+                CUDNN_DATA_BFLOAT16);
+  } else {
+    cudaMulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim,
+                CUDNN_DATA_BFLOAT16);
+  }
 }
