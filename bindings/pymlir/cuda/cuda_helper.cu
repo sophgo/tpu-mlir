@@ -310,11 +310,12 @@ __global__ void
 kernelMulBinaryInt8(T0 *a, T1 *b, T2 *out, int n0, int c0, int h0, int w0,
                     int n1, int c1, int h1, int w1, int n2, int c2, int h2,
                     int w2, int multiplier, int rshift, bool qdm, bool relu) {
-  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
-  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
-  int idx_c = blockIdx.z % c2;
-  int idx_n = blockIdx.z / c2;
-  if (idx_w < w2 && idx_h < h2 && idx_c < c2 && idx_n < n2) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n2 * c2 * h2 * w2)) {
+    int idx_n = idx / (c2 * h2 * w2);
+    int idx_c = idx % (c2 * h2 * w2) / (h2 * w2);
+    int idx_h = idx % (h2 * w2) / w2;
+    int idx_w = idx % w2;
     int idx_out = ((idx_n * c2 + idx_c) * h2 + idx_h) * w2 + idx_w;
     int idx_n0 = idx_n >= n0 ? 0 : idx_n;
     int idx_c0 = idx_c >= c0 ? 0 : idx_c;
@@ -364,35 +365,34 @@ void cudaMulBinaryInt8(void *a, void *b, void *o, int n0, int c0, int h0,
                        int w0, int n1, int c1, int h1, int w1, int n2, int c2,
                        int h2, int w2, bool a_sign, bool b_sign, bool o_sign,
                        int multiplier, int rshift, bool qdm, bool relu) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((w2 + blockSize.x - 1) / blockSize.x,
-                 (h2 + blockSize.y - 1) / blockSize.y, n2 * c2);
+  int num_blocks = CUDA_NUM_BLOCKS(n2 * c2 * h2 * w2);
+  int block_size = CUDA_BLOCK_SIZE;
   if (a_sign && b_sign && o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (!a_sign && !b_sign && !o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1,
         w1, n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (a_sign && b_sign && !o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (a_sign && !b_sign && o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (uint8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (!a_sign && b_sign && o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (a_sign && !b_sign && !o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   } else if (!a_sign && b_sign && !o_sign) {
-    kernelMulBinaryInt8<<<numBlocks, blockSize>>>(
+    kernelMulBinaryInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
         n2, c2, h2, w2, multiplier, rshift, qdm, relu);
   }
@@ -464,11 +464,12 @@ __global__ void kernelPad4D(void *input, void *output, int n, int c, int h,
                             int pad_w_r, int tbytes) {
   int oh = h + pad_h_t + pad_h_b;
   int ow = w + pad_w_l + pad_w_r;
-  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
-  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
-  int idx_c = blockIdx.z % c;
-  int idx_n = blockIdx.z / c;
-  if (idx_n < n && idx_c < c && idx_h < oh && idx_w < ow) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * oh * ow)) {
+    int idx_n = idx / (c * oh * ow);
+    int idx_c = idx % (c * oh * ow) / (oh * ow);
+    int idx_h = idx % (oh * ow) / ow;
+    int idx_w = idx % ow;
     int out_idx = ((idx_n * c + idx_c) * oh + idx_h) * ow + idx_w;
     if (idx_h >= pad_h_t && idx_h < (pad_h_t + h) && idx_w >= pad_w_l &&
         idx_w < (pad_w_l + w)) {
@@ -486,11 +487,10 @@ void cudaPad4D(void *input, void *output, int n, int c, int h, int w,
                int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int tbytes) {
   int oh = h + pad_h_t + pad_h_b;
   int ow = w + pad_w_l + pad_w_r;
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((ow + blockSize.x - 1) / blockSize.x,
-                 (oh + blockSize.y - 1) / blockSize.y, n * c);
-  kernelPad4D<<<numBlocks, blockSize>>>(input, output, n, c, h, w, pad_h_t,
-                                        pad_h_b, pad_w_l, pad_w_r, tbytes);
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * oh * ow);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelPad4D<<<num_blocks, block_size>>>(input, output, n, c, h, w, pad_h_t,
+                                          pad_h_b, pad_w_l, pad_w_r, tbytes);
 }
 
 template <typename T>
@@ -610,10 +610,10 @@ void cudaCopyAxis(void *src, void *dst, int outer_dim, int axis_dim,
 
 __global__ void kernelMatMulF32(float *A, float *B, float *C, int m, int k,
                                 int n) {
-  int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (row < m && col < n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (m * n)) {
+    int row = idx / n;
+    int col = idx % n;
     float sum = 0.0;
     for (int i = 0; i < k; i++) {
       sum += A[row * k + i] * B[i * n + col];
@@ -625,60 +625,10 @@ __global__ void kernelMatMulF32(float *A, float *B, float *C, int m, int k,
 void cudaMatMulF32(void *input, void *right, void *output, int m, int k,
                    int n) {
   // Dimensions for blocks and grid
-  dim3 threadsPerBlock(16, 16);
-  dim3 blocksPerGrid((n + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                     (m + threadsPerBlock.y - 1) / threadsPerBlock.y);
-  kernelMatMulF32<<<blocksPerGrid, threadsPerBlock>>>(
-      (float *)input, (float *)right, (float *)output, m, k, n);
-}
-
-__global__ void kernelConvInt8(int8_t *input, int8_t *filter, int32_t *bias,
-                               int8_t *output, int32_t *multipliers,
-                               int32_t *shifts, int n, int ic, int ih, int iw,
-                               int oc, int kh, int kw, int stride_h,
-                               int stride_w, int pad_h, int pad_w) {
-  int ox = blockIdx.x * blockDim.x + threadIdx.x;
-  int oy = blockIdx.y * blockDim.y + threadIdx.y;
-  int oz = blockIdx.z * blockDim.z + threadIdx.z;
-
-  if (ox < (iw - kw + 2 * pad_w) / stride_w + 1 &&
-      oy < (ih - kh + 2 * pad_h) / stride_h + 1 && oz < oc) {
-    int32_t sum = 0;
-
-    for (int c = 0; c < ic; c++) {
-      for (int p = 0; p < kh; p++) {
-        for (int q = 0; q < kw; q++) {
-          int ix = ox * stride_w + q - pad_w;
-          int iy = oy * stride_h + p - pad_h;
-
-          if (ix >= 0 && ix < iw && iy >= 0 && iy < ih) {
-            sum += input[((n * ic + c) * ih + iy) * iw + ix] *
-                   filter[(((oz * ic + c) * kh + p) * kw + q)];
-          }
-        }
-      }
-    }
-    if (bias != nullptr) {
-      sum += bias[oz];
-    }
-    sum = ((int64_t)(sum * multipliers[oz]) >> 31) >> shifts[oz];
-
-    output[(oz * (ih - kh + 2 * pad_h) / stride_h + 1 + oy) *
-               ((iw - kw + 2 * pad_w) / stride_w + 1) +
-           ox] = (int8_t)sum;
-  }
-}
-
-void cudaConvInt8(void *input, void *filter, void *bias, void *output,
-                  void *multipliers, void *shifts, int n, int ic, int ih,
-                  int iw, int oc, int kh, int kw, int stride_h, int stride_w,
-                  int pad_h, int pad_w) {
-  dim3 blocks((iw + 15) / 16, (ih + 15) / 16, oc);
-  dim3 threads(16, 16, 1);
-  kernelConvInt8<<<blocks, threads>>>(
-      (int8_t *)input, (int8_t *)filter, (int32_t *)bias, (int8_t *)output,
-      (int32_t *)multipliers, (int32_t *)shifts, n, ic, ih, iw, oc, kh, kw,
-      stride_h, stride_w, pad_h, pad_w);
+  int num_blocks = CUDA_NUM_BLOCKS(m * n);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelMatMulF32<<<num_blocks, block_size>>>((float *)input, (float *)right,
+                                              (float *)output, m, k, n);
 }
 
 __global__ void kernelRequantInt8Perchannel(int32_t *input, void *output,
@@ -686,46 +636,41 @@ __global__ void kernelRequantInt8Perchannel(int32_t *input, void *output,
                                             int32_t *shifts, int n, int c,
                                             int h, int w, bool out_sign,
                                             bool qdm, bool relu) {
-  int x = blockIdx.x * blockDim.x + threadIdx.x;
-  int y = blockIdx.y * blockDim.y + threadIdx.y;
-  int z = blockIdx.z * blockDim.z + threadIdx.z;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * h * w)) {
+    int idx_c = idx % (c * h * w) / (h * w);
+    int32_t value;
+    if (qdm == false) {
+      // half up
+      int64_t data = static_cast<int64_t>(input[idx]) *
+                     static_cast<int64_t>(multipliers[idx_c]);
+      int64_t round = (int64_t)(1ll << (shifts[idx_c] - 1));
+      data = (data + round) >> shifts[idx_c];
+      value = static_cast<int32_t>(data);
+    } else {
 
-  if (x < w && y < h && z < n) {
-    for (int channel = 0; channel < c; channel++) {
-      int index = z * (c * h * w) + channel * (h * w) + y * w + x;
-      int32_t value;
-      if (qdm == false) {
-        // half up
-        int64_t data = static_cast<int64_t>(input[index]) *
-                       static_cast<int64_t>(multipliers[channel]);
-        int64_t round = (int64_t)(1ll << (shifts[channel] - 1));
-        data = (data + round) >> shifts[channel];
-        value = static_cast<int32_t>(data);
-      } else {
-
-        int64_t data = static_cast<int64_t>(input[index]) *
-                       static_cast<int64_t>(multipliers[channel]);
-        data = (data + (1ll << 30)) >> 31;
-        value = static_cast<int32_t>(data);
-        // half away from zero
-        int32_t offset = 1 << (shifts[channel] - 1);
-        bool negative = value < 0;
-        if (negative) {
-          value = -value;
-        }
-        value = (value + offset) >> shifts[channel];
-        if (negative) {
-          value = -value;
-        }
+      int64_t data = static_cast<int64_t>(input[idx]) *
+                     static_cast<int64_t>(multipliers[idx_c]);
+      data = (data + (1ll << 30)) >> 31;
+      value = static_cast<int32_t>(data);
+      // half away from zero
+      int32_t offset = 1 << (shifts[idx_c] - 1);
+      bool negative = value < 0;
+      if (negative) {
+        value = -value;
       }
-      if (out_sign) {
-        int32_t min_ = relu ? 0 : -128;
-        value = max(min_, min(127, value));
-        ((int8_t *)output)[index] = static_cast<int8_t>(value);
-      } else {
-        value = max(0, min(255, value));
-        ((uint8_t *)output)[index] = static_cast<uint8_t>(value);
+      value = (value + offset) >> shifts[idx_c];
+      if (negative) {
+        value = -value;
       }
+    }
+    if (out_sign) {
+      int32_t min_ = relu ? 0 : -128;
+      value = max(min_, min(127, value));
+      ((int8_t *)output)[idx] = static_cast<int8_t>(value);
+    } else {
+      value = max(0, min(255, value));
+      ((uint8_t *)output)[idx] = static_cast<uint8_t>(value);
     }
   }
 }
@@ -733,11 +678,9 @@ __global__ void kernelRequantInt8Perchannel(int32_t *input, void *output,
 void cudaRequantInt8Perchannel(void *input, void *output, void *multipliers,
                                void *shifts, int n, int c, int h, int w,
                                bool out_sign, bool qdm, bool relu) {
-  dim3 threadsPerBlock(16, 16, 1);
-  dim3 numBlocks((w + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                 (h + threadsPerBlock.y - 1) / threadsPerBlock.y,
-                 (n + threadsPerBlock.z - 1) / threadsPerBlock.z);
-  kernelRequantInt8Perchannel<<<numBlocks, threadsPerBlock>>>(
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelRequantInt8Perchannel<<<num_blocks, block_size>>>(
       (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
       h, w, out_sign, qdm, relu);
 }
@@ -1020,9 +963,10 @@ __global__ void kernelMaxAxis(T *input, T *output, int outer_dim, int axis_dim,
 
 __global__ void kernelMaxAxisBF16(uint16_t *input, uint16_t *output,
                                   int outer_dim, int axis_dim, int inner_dim) {
-  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
-  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (outer_dim * inner_dim)) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
     int outer_offset = outer_idx * axis_dim * inner_dim;
     // find max
     bfloat16 max_v(input[outer_offset + inner_idx]);
@@ -1038,24 +982,23 @@ __global__ void kernelMaxAxisBF16(uint16_t *input, uint16_t *output,
 
 void cudaMaxAxis(void *input, void *output, int outer_dim, int axis_dim,
                  int inner_dim, cudnnDataType_t type) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((inner_dim + blockSize.x - 1) / blockSize.x,
-                 (outer_dim + blockSize.y - 1) / blockSize.y);
+  int num_blocks = CUDA_NUM_BLOCKS(inner_dim * outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
   if (type == CUDNN_DATA_BFLOAT16) {
-    kernelMaxAxisBF16<<<numBlocks, blockSize>>>(
+    kernelMaxAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_INT8) {
-    kernelMaxAxis<<<numBlocks, blockSize>>>((int8_t *)input, (int8_t *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelMaxAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)output,
+                                              outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_UINT8) {
-    kernelMaxAxis<<<numBlocks, blockSize>>>((uint8_t *)input, (uint8_t *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelMaxAxis<<<num_blocks, block_size>>>(
+        (uint8_t *)input, (uint8_t *)output, outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_FLOAT) {
-    kernelMaxAxis<<<numBlocks, blockSize>>>((float *)input, (float *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelMaxAxis<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                              outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_INT32) {
-    kernelMaxAxis<<<numBlocks, blockSize>>>((int32_t *)input, (int32_t *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelMaxAxis<<<num_blocks, block_size>>>(
+        (int32_t *)input, (int32_t *)output, outer_dim, axis_dim, inner_dim);
   } else {
   }
 }
@@ -1063,9 +1006,10 @@ void cudaMaxAxis(void *input, void *output, int outer_dim, int axis_dim,
 template <typename T>
 __global__ void kernelSumAxis(T *input, T *output, int outer_dim, int axis_dim,
                               int inner_dim) {
-  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
-  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (outer_dim * inner_dim)) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
     int outer_offset = outer_idx * axis_dim * inner_dim;
     // find max
     T sum = 0;
@@ -1078,9 +1022,10 @@ __global__ void kernelSumAxis(T *input, T *output, int outer_dim, int axis_dim,
 
 __global__ void kernelSumAxisBF16(uint16_t *input, uint16_t *output,
                                   int outer_dim, int axis_dim, int inner_dim) {
-  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
-  if (inner_idx < inner_dim && outer_idx < outer_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (outer_dim * inner_dim)) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
     int outer_offset = outer_idx * axis_dim * inner_dim;
     // find max
     float sum = 0.0f;
@@ -1094,18 +1039,17 @@ __global__ void kernelSumAxisBF16(uint16_t *input, uint16_t *output,
 
 void cudaSumAxis(void *input, void *output, int outer_dim, int axis_dim,
                  int inner_dim, cudnnDataType_t type) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((inner_dim + blockSize.x - 1) / blockSize.x,
-                 (outer_dim + blockSize.y - 1) / blockSize.y);
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
   if (type == CUDNN_DATA_BFLOAT16) {
-    kernelSumAxisBF16<<<numBlocks, blockSize>>>(
+    kernelSumAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_FLOAT) {
-    kernelSumAxis<<<numBlocks, blockSize>>>((float *)input, (float *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelSumAxis<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                              outer_dim, axis_dim, inner_dim);
   } else if (type == CUDNN_DATA_INT32) {
-    kernelSumAxis<<<numBlocks, blockSize>>>((int32_t *)input, (int32_t *)output,
-                                            outer_dim, axis_dim, inner_dim);
+    kernelSumAxis<<<num_blocks, block_size>>>(
+        (int32_t *)input, (int32_t *)output, outer_dim, axis_dim, inner_dim);
   } else {
   }
 }
@@ -1169,30 +1113,28 @@ void cudaSubAxis(void *input, void *sub, void *output, int outer_dim,
 }
 
 template <typename T>
-__global__ void kernelAddAxis(T *input, T *sub, T *output, int outer_dim,
+__global__ void kernelAddAxis(T *input, T *add, T *output, int outer_dim,
                               int axis_dim, int inner_dim) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = idx / (axis_dim * inner_dim);
-  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
-  int inner_idx = idx % inner_dim;
-  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
-    int sub_idx = outer_idx * inner_dim + inner_idx;
-    output[idx] = input[idx] + sub[sub_idx];
+  if (idx < (inner_dim * outer_dim * axis_dim)) {
+    int outer_idx = idx / (axis_dim * inner_dim);
+    int inner_idx = idx % inner_dim;
+    int add_idx = outer_idx * inner_dim + inner_idx;
+    output[idx] = input[idx] + add[add_idx];
   }
 }
 
-__global__ void kernelAddAxisBF16(uint16_t *input, uint16_t *sub,
+__global__ void kernelAddAxisBF16(uint16_t *input, uint16_t *add,
                                   uint16_t *output, int outer_dim, int axis_dim,
                                   int inner_dim) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = idx / (axis_dim * inner_dim);
-  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
-  int inner_idx = idx % inner_dim;
-  if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
-    int sub_idx = outer_idx * inner_dim + inner_idx;
+  if (idx < (inner_dim * outer_dim * axis_dim)) {
+    int outer_idx = idx / (axis_dim * inner_dim);
+    int inner_idx = idx % inner_dim;
+    int add_idx = outer_idx * inner_dim + inner_idx;
     bfloat16 in_data(input[idx]);
-    bfloat16 sub_data(sub[sub_idx]);
-    float out = static_cast<float>(in_data) + static_cast<float>(sub_data);
+    bfloat16 add_data(add[add_idx]);
+    float out = static_cast<float>(in_data) + static_cast<float>(add_data);
     bfloat16 out_f16 = bfloat16(out, true);
     output[idx] = out_f16.value;
   }
@@ -1320,13 +1262,14 @@ void cudaLut256(void *src, void *table, void *dst, int size,
 __global__ void kernelUpsample4D(void *input, void *output, int n, int c,
                                  int ih, int iw, int scale_h, int scale_w,
                                  int tbytes) {
-  int dst_w = blockIdx.x * blockDim.x + threadIdx.x;
-  int dst_h = blockIdx.y * blockDim.y + threadIdx.y;
-  int dst_c = blockIdx.z % c; // Channel index
-  int dst_n = blockIdx.z / c; // Batch index
   int oh = ih * scale_h;
   int ow = iw * scale_w;
-  if (dst_w < ow && dst_h < oh && dst_c < c && dst_n < n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * oh * ow)) {
+    int dst_n = idx / (c * oh * ow);
+    int dst_c = idx % (c * oh * ow) / (oh * ow);
+    int dst_h = idx % (oh * ow) / ow;
+    int dst_w = idx % ow;
     int dst_idx = ((dst_n * c + dst_c) * oh + dst_h) * ow + dst_w;
     int src_w = dst_w / scale_w;
     int src_h = dst_h / scale_h;
@@ -1337,12 +1280,10 @@ __global__ void kernelUpsample4D(void *input, void *output, int n, int c,
 
 void cudaUpsample4D(void *src, void *dst, int n, int c, int h, int w,
                     int scale_h, int scale_w, int tbytes) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((scale_w * w + blockSize.x - 1) / blockSize.x,
-                 (scale_h * h + blockSize.y - 1) / blockSize.y, n * c);
-
-  kernelUpsample4D<<<numBlocks, blockSize>>>(src, dst, n, c, h, w, scale_h,
-                                             scale_w, tbytes);
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w * scale_h * scale_w);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelUpsample4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, scale_h,
+                                               scale_w, tbytes);
 }
 
 __global__ void kernelDepth2Space(void *input, void *output, int in, int ic,
@@ -1352,11 +1293,12 @@ __global__ void kernelDepth2Space(void *input, void *output, int in, int ic,
                                   int ocstride, int ohstride, int owstride,
                                   int block_h, int block_w, bool crd,
                                   bool swap_cr, bool inversed, int tbytes) {
-  int w = blockIdx.x * blockDim.x + threadIdx.x;
-  int h = blockIdx.y * blockDim.y + threadIdx.y;
-  int c = blockIdx.z % ic;
-  int n = blockIdx.z / ic;
-  if (n < in && c < ic && h < ih && w < iw) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (in * ic * ih * iw)) {
+    int n = idx / (ic * ih * iw);
+    int c = idx % (ic * ih * iw) / (ih * iw);
+    int h = idx % (ih * iw) / iw;
+    int w = idx % iw;
     int new_c, new_h, new_w, left;
     if (crd) {
       new_c = c / (block_h * block_w);
@@ -1393,10 +1335,9 @@ void cudaDepth2Space(void *input, void *output, int in, int ic, int ih, int iw,
                      int ihstride, int iwstride, int onstride, int ocstride,
                      int ohstride, int owstride, int block_h, int block_w,
                      bool crd, bool swap_cr, bool inversed, int tbytes) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((iw + blockSize.x - 1) / blockSize.x,
-                 (ih + blockSize.y - 1) / blockSize.y, in * ic);
-  kernelDepth2Space<<<numBlocks, blockSize>>>(
+  int num_blocks = CUDA_NUM_BLOCKS(in * ic * ih * iw);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelDepth2Space<<<num_blocks, block_size>>>(
       input, output, in, ic, ih, iw, on, oc, oh, ow, instride, icstride,
       ihstride, iwstride, onstride, ocstride, ohstride, owstride, block_h,
       block_w, crd, swap_cr, inversed, tbytes);
