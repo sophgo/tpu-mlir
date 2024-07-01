@@ -28,6 +28,8 @@ LogicalResult tpu::SqueezeOp::LocalGenSupport() {
   if (module::isCV18xx() || module::isBM1684Family()) {
     return failure();
   }
+  auto runmode = getRunMode(getOperation());
+  if (runmode == RunMode::TPU_DYNAMIC) return failure();
 
   auto ishape = module::getShape(getInput());
   auto oshape = module::getShape(getOutput());
