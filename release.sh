@@ -4,10 +4,8 @@ set -e
 source envsetup.sh
 rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
-suffix=""
 if [ x"$1" = x"CUDA" ]; then
     source build.sh RELEASE CUDA
-    suffix="_cuda"
 else
     source build.sh RELEASE
 fi
@@ -77,5 +75,5 @@ function use_chip(){
 //MY_CODE_STREAM
 # ------------------------------------------------------------------------------
 
-tar -cvzf "tpu-mlir_${mlir_version}${suffix}.tar.gz" ${release_archive}
+tar -cvzf "tpu-mlir_${mlir_version}.tar.gz" ${release_archive}
 rm -rf ${release_archive}
