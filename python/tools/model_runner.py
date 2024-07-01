@@ -19,9 +19,11 @@ from utils.misc import str2bool
 from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 
 
-def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False):
-    print("[CMD]: model_runner.py --input {} --model {} --output {} {}".format(
-        in_npz, model, out_npz, "--dump_all_tensors" if dump_all_tensors else ""))
+def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False, use_cuda=False):
+    dump_all = "--dump_all_tensors" if dump_all_tensors else ""
+    cuda = "--cuda" if use_cuda else ""
+    print("[CMD]: model_runner.py --input {} --model {} --output {} {} {}".format(
+        in_npz, model, out_npz, dump_all, cuda))
 
 
 def get_chip_from_model(model_file: str) -> str:

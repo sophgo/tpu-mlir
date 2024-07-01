@@ -384,8 +384,9 @@ class TORCH_IR_TESTER(object):
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
         # cuda inference and compare
         if self.test_cuda:
-            cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
             cuda_npz = tpu_mlir.replace(".mlir", "_cuda_out.npz")
+            show_fake_cmd(input_npz, tpu_mlir, cuda_npz, True, True)
+            cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
             np.savez(cuda_npz, **cuda_outs)
             file_mark(cuda_npz)
             npz_compare([cuda_npz, tpu_npz, "--tolerance", "0.9999,0.9999", "-v"])
