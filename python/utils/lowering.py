@@ -21,7 +21,13 @@ equal_dtypes = {
 }
 
 
-def lowering(input, pdtype, pshape, pzero_point=0, pscale=1):
+def lowering(input:np.array, pdtype:str, pshape, pzero_point=0, pscale=1):
+    if pdtype == "si8": pdtype = "i8"
+    if pdtype == "si16": pdtype = "i16"
+    if pdtype == "si32": pdtype = "i32"
+    if pdtype == "ui8": pdtype = "u8"
+    if pdtype == "ui16": pdtype = "u16"
+    if pdtype == "ui32": pdtype = "u32"
     if equal_dtypes.get(pdtype, pdtype) == input.dtype.name:
         res = input.reshape(pshape)
     elif pdtype == "i8" and input.dtype == np.float32:
