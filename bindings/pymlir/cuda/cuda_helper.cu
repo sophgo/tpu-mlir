@@ -553,34 +553,35 @@ void cudaPermute4D(void *src, void *dst, int n, int c, int h, int w, int o0,
                                               o3, tbytes);
 }
 
-__global__ void kenrelSlice4D(void *src, void *dst, int n, int c, int h, int w,
+__global__ void kernelSlice4D(void *src, void *dst, int n, int c, int h, int w,
                               int off0, int off1, int off2, int off3, int s0,
                               int s1, int s2, int s3, int on, int oc, int oh,
                               int ow, int tbytes) {
-  int idx_w = blockIdx.x * blockDim.x + threadIdx.x;
-  int idx_h = blockIdx.y * blockDim.y + threadIdx.y;
-  int idx_c = blockIdx.z % oc;
-  int idx_n = blockIdx.z / oc;
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
   if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
-    int dst_idx = ((idx_n * oc + idx_c) * oh + idx_h) * ow + idx_w;
     idx_n = off0 + idx_n * s0;
     idx_c = off1 + idx_c * s1;
     idx_h = off2 + idx_h * s2;
     idx_w = off3 + idx_w * s3;
-    int src_idx = ((idx_n * c + idx_c) * h + idx_h) * w + idx_w;
-    kernelCopyElement(src, src_idx, dst, dst_idx, tbytes);
+    if (idx_n < n && idx_c < c && idx_h < h && idx_w < w) {
+      int src_idx = ((idx_n * c + idx_c) * h + idx_h) * w + idx_w;
+      kernelCopyElement(src, src_idx, dst, dst_idx, tbytes);
+    }
   }
 }
 
 void cudaSlice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
                  int off1, int off2, int off3, int s0, int s1, int s2, int s3,
                  int on, int oc, int oh, int ow, int tbytes) {
-  dim3 blockSize(16, 16);
-  dim3 numBlocks((ow + blockSize.x - 1) / blockSize.x,
-                 (oh + blockSize.y - 1) / blockSize.y, on * oc);
-  kenrelSlice4D<<<numBlocks, blockSize>>>(src, dst, n, c, h, w, off0, off1,
-                                          off2, off3, s0, s1, s2, s3, on, oc,
-                                          oh, ow, tbytes);
+  int num_blocks = CUDA_NUM_BLOCKS(on * oc * oh * ow);
+  int block_size = CUDA_BLOCK_SIZE;
+  kernelSlice4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, off0, off1,
+                                            off2, off3, s0, s1, s2, s3, on, oc,
+                                            oh, ow, tbytes);
 }
 
 __global__ void kernelCopyAxis(void *src, void *dst, int outer_dim,

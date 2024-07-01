@@ -270,6 +270,7 @@ class DeployTool:
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
         if self.cuda:
+            show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all, True)
             cuda_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all, use_cuda= True)
             cuda_npz = self.tpu_npz.replace("_tpu_","_cuda_")
             np.savez(cuda_npz, **cuda_outputs)
