@@ -14,9 +14,9 @@ void py_cuda::cudaSliceOp(tpu::SliceOp op) {
   void *input = getCudaData(op.getInput());
   void *output = getCudaData(op.getOutput());
   auto p = op.parseParam();
-  cudaSlice4D(input, output, p.is_4[0], p.is_4[1], p.is_4[2], p.is_4[3],
-              p.offset_4[0], p.offset_4[1], p.offset_4[2], p.offset_4[3],
-              p.step_4[0], p.step_4[1], p.step_4[2], p.step_4[3], p.os_4[0],
-              p.os_4[1], p.os_4[2], p.os_4[3],
-              module::getDtypeSize(op.getOutput()));
+  cuda::slice4D(input, output, p.is_4[0], p.is_4[1], p.is_4[2], p.is_4[3],
+                p.offset_4[0], p.offset_4[1], p.offset_4[2], p.offset_4[3],
+                p.step_4[0], p.step_4[1], p.step_4[2], p.step_4[3], p.os_4[0],
+                p.os_4[1], p.os_4[2], p.os_4[3],
+                module::getDtypeSize(op.getOutput()));
 }

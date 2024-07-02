@@ -74,7 +74,7 @@ cuda_ptr py_cuda::newCudaData(void *data, size_t num, cudnnDataType_t src_type,
   }
   void *newData;
   CHECK_CUDA(cudaMalloc(&newData, num * getCudnnTypeBytes(dst_type)));
-  CHECK_CUDA(cudaTransform(data, newData, num, src_type, dst_type));
+  CHECK_CUDA(cuda::convertType(data, newData, num, src_type, dst_type));
   cuda_ptr wrapper(newData);
   return std::move(wrapper);
 }

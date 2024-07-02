@@ -20,6 +20,6 @@ void py_cuda::cudaPermuteOp(tpu::PermuteOp op) {
   std::vector<int> shape(p.in_shape_fix.begin(), p.in_shape_fix.end());
   std::vector<int> order(p.order_fix.begin(), p.order_fix.end());
   int tbytes = module::getDtypeSize(op.getInput());
-  cudaPermute4D(src, dst, shape[0], shape[1], shape[2], shape[3], order[0],
-                order[1], order[2], order[3], tbytes);
+  cuda::permute4D(src, dst, shape[0], shape[1], shape[2], shape[3], order[0],
+                  order[1], order[2], order[3], tbytes);
 }

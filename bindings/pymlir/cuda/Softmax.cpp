@@ -38,8 +38,8 @@ void py_cuda::cudaSoftmaxOp(tpu::SoftmaxOp op) {
     auto buffer = cuda_malloc(outer_dim * inner_dim * sizeof(uint16_t));
     float scale = BF16(256.0 / 30.0); // EXP_BF16_LUT_RANGE
     float offset = 0.0f;
-    cudaCVSoftmax(input, buffer.get(), output, table0, table1, table2, table3,
-                  outer_dim, axis_dim, inner_dim, scale, offset, op.getLog());
+    cuda::cvSoftmax(input, buffer.get(), output, table0, table1, table2, table3,
+                    outer_dim, axis_dim, inner_dim, scale, offset, op.getLog());
   } else {
     UNREACHABLE_OP("Not Implemented", op);
   }

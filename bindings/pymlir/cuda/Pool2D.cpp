@@ -54,13 +54,13 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   cudnnDestroyTensorDescriptor(outf32_desc);
   cudnnDestroyPoolingDescriptor(pooling_desc);
   if (!is_avg) {
-    cudaTransform(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
-                  getCudnnType(op.getOutput()));
+    cuda::convertType(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
+                      getCudnnType(op.getOutput()));
     return;
   }
   auto out_i32 = cuda_malloc(num_out * sizeof(int32_t));
-  cudaTransform(out_f32.get(), out_i32.get(), num_out, CUDNN_DATA_FLOAT,
-                CUDNN_DATA_INT32, CUDA_HALF_UP);
+  cuda::convertType(out_f32.get(), out_i32.get(), num_out, CUDNN_DATA_FLOAT,
+                    CUDNN_DATA_INT32, cuda::RD_HALF_UP);
   out_f32.reset();
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. multiplier + shift i32 => i8
@@ -68,5 +68,6 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   auto rs = op.getRshift().value_or(0);
   bool sign = !out_stype.isUnsignedInteger(8);
   bool relu = sign && p.do_relu;
-  cudaRequantInt8(out_i32.get(), output, multi, rs, num_out, sign, false, relu);
+  cuda::requantInt8(out_i32.get(), output, multi, rs, num_out, sign, false,
+                    relu);
 }

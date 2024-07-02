@@ -17,6 +17,6 @@ void py_cuda::cudaUpsampleOp(tpu::UpsampleOp op) {
   module::getNCHW(op.getInput(), n, c, ih, iw);
   int sw = op.getScaleW();
   int sh = op.getScaleH();
-  cudaUpsample4D(input, output, n, c, ih, iw, sh, sw,
-                 module::getDtypeSize(op.getInput()));
+  cuda::upsample4D(input, output, n, c, ih, iw, sh, sw,
+                   module::getDtypeSize(op.getInput()));
 }
