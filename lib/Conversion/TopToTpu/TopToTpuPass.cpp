@@ -1376,7 +1376,6 @@ void ConvertTopToTpu::device2host_process() {
       return;
     if (isa<tpu::ShapeOp, tpu::Device2HostOp>(op))
       return;
-    op->dump();
     for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
       if (module::isNone(op->getOperand(idx)))
         continue;
@@ -2306,7 +2305,7 @@ void ConvertTopToTpu::match_kv_cache(std::vector<Operation *> &kv_cache) {
       }
       if (mulop == NULL || ccop == NULL)
         return;
-      else  
+      else
         kv_cache.push_back(addop);
     }
     if (auto reshapeop = dyn_cast<top::ReshapeOp>(op)) {

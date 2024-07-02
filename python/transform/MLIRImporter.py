@@ -278,10 +278,7 @@ class MLIRImporter(object):
             t = _type
             if isinstance(_type, str):
                 t = self.mlir_type[_type]
-            if _shape:
-                self.output_types.append(RankedTensorType.get(_shape, t))
-            else:
-                self.output_types.append(self.get_tensor_type(_shape, t))
+            self.output_types.append(self.get_tensor_type(_shape, t))
         args_txt = str()
         for _idx, _type in enumerate(self.input_types):
             args_txt += "%args{}: {} loc(unknown)".format(_idx, _type.__str__())

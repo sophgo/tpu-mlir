@@ -31,7 +31,7 @@ class CaffeConverter(BaseConverter):
                  input_shapes: list,
                  output_names: list,
                  preprocess_args: dict = {},
-                 inputs_is_shape: list = [],
+                 shape_influencing_input_names: list = [],
                  no_save: bool = False):
         super().__init__(no_save=no_save)
         # yapf: disable
@@ -48,7 +48,7 @@ class CaffeConverter(BaseConverter):
             22: 'Split', 33: 'Slice', 23: 'Tanh', 24: 'WindowData', 31: 'Threshold', 32: 'Relu6',
         }
         # yapf: enable
-        self.inputs_is_shape = inputs_is_shape
+        self.shape_influencing_input_names = shape_influencing_input_names
         self.model_name = model_name
         self.prototxt = prototxt
         self.caffemodel = caffemodel
@@ -204,7 +204,7 @@ class CaffeConverter(BaseConverter):
     def convert_subgraph(self):
         # add input op
         input_data = None
-        if self.inputs_is_shape:
+        if self.shape_influencing_input_names:
             test_file = ''
             if isinstance(self.test_input, list):
                 assert self.test_input[0].endswith('.npz')
@@ -213,11 +213,11 @@ class CaffeConverter(BaseConverter):
                 assert self.test_input.endswith('.npz')
                 test_file = self.test_input
             else:
-                raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+                raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
             input_data = np.load(test_file)
         for idx, _name in enumerate(self.input_names):
             kwargs = copy.deepcopy(self.preprocess_args)
-            if _name in self.inputs_is_shape:
+            if _name in self.shape_influencing_input_names:
                 assert input_data[_name].ndim == 1, "input shape tensor should be 1D tensor"
                 kwargs['shape_tensor'] = input_data[_name]
             input_ = self.mlir.create_input_op(self.get_loc(_name), idx, kwargs)

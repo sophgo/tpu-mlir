@@ -51,6 +51,7 @@ void top::UnsqueezeOp::shape_inference() {
           module::commonShapeValInfer(getOperation(), {input_shape_v}, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
+      dump();
       llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
     }
   }

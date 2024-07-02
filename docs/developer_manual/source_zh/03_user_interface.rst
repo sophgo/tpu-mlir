@@ -233,12 +233,15 @@ model_transform.py
    * - cache_skip
      - 否
      - 是否在生成相同mlir/bmodel时跳过正确性的检查
-   * - dynamic_inputs
+   * - dynamic_shape_input_names
      - 否
-     - 指定动态输入名，例如input1,input2
-   * - inputs_is_shape
+     - 具有动态shape的输入的名称列表, 例如input1,input2. 如果设置了, model_deploy需要设置参数'dynamic'.
+   * - shape_influencing_input_names
      - 否
-     - shape信息作为一个输入操作数
+     - 在推理过程中会影响其他张量形状的输入的名称列表, 例如input1,input2. 如果设置了, 则必须指定test_input, 且model_deploy需要设置参数'dynamic'。
+   * - dynamic
+     - 否
+     - 该参数只对onnx模型有效. 如果设置了, 工具链会自动将模型带有dynamic_axis的输入加入dynamic_shape_input_names列表中, 将模型中1维的输入加入shape_influencing_input_names列表中, 且model_deploy需要设置参数'dynamic'.
    * - resize_dims
      - 否
      - 图像缩放到指定的固定尺寸h/w,缺省时为输入图像本身尺寸
