@@ -110,18 +110,23 @@ class OnnxConverter(BaseConverter):
                  preprocess_args: dict = {},
                  static_shape=True,
                  onnx_sim="",
-                 dynamic_inputs=[],
-                 dynamic=False,
-                 inputs_is_shape=[]):
+                 dynamic_shape_input_names=[],
+                 shape_influencing_input_names=[],
+                 dynamic=False):
         super().__init__()
 
-        self.dynamic_inputs = dynamic_inputs
-        self.dynamic = dynamic
+        self.dynamic_shape_input_names = dynamic_shape_input_names
+        self.shape_influencing_input_names = shape_influencing_input_names
+        # self.dynamic = dynamic
+        if self.dynamic_shape_input_names or self.shape_influencing_input_names:
+            self.dynamic = "manual"
+            dynamic = True
+        elif dynamic:
+            self.dynamic = "auto"
+        else:
+            self.dynamic = "off"
         self.run_mode = "DYNAMIC" if dynamic else "STATIC"
-        if self.dynamic_inputs:
-            self.dynamic = True
         self.dynamic_shapes = dict()
-        self.inputs_is_shape = inputs_is_shape
         self.test_input = test_input
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
@@ -413,7 +418,7 @@ class OnnxConverter(BaseConverter):
     def model_simplify(self, input_shapes=[]):
         # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
         try:
-            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
+            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_shape_input_names).run()
         except:
             logger.info("WARNING: ConstantFolding failed.")
         logger.info("ConstantFolding finished")
@@ -428,12 +433,12 @@ class OnnxConverter(BaseConverter):
         except:
             logger.info("WARNING: onnxsim opt failed.")
         logger.info("Onnxsim opt finished")
-        if self.dynamic_inputs:
+        if self.dynamic_shape_input_names:
             self.input_shape_assign(input_shapes)
             logger.info("Input_shape assigned")
         # Do constantFolding after onnxsim to avoid onnxsim bug (such as run ppyolo_tiny)
         try:
-            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_inputs).run()
+            self.model = ConstantFolding(self.model, self.test_input, self.dynamic_shape_input_names).run()
         except:
             logger.info("WARNING: ConstantFolding failed.")
         logger.info("ConstantFolding finished")
@@ -462,7 +467,8 @@ class OnnxConverter(BaseConverter):
             self.select_output(output_names)
         self.input_names = self.get_input_names(self.model)
         self.num_input = len(self.input_names)
-        if not self.dynamic_inputs:
+        self.dynamic_input_names_auto_assign()
+        if not self.dynamic_shape_input_names:
             self.input_shape_assign(input_shapes)
             logger.info("Input_shape assigned")
             if static_shape:
@@ -481,8 +487,8 @@ class OnnxConverter(BaseConverter):
             # TODO: for quantized onnx, keep the same type
         self.get_output_name(self.model.graph)
         # self.add_shape_info(self.model.graph)
-        if self.dynamic:
-            self.get_dynamic_op_shape(self.model)
+        # if self.dynamic:
+        #     self.get_dynamic_op_shape(self.model)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
         try:
@@ -584,6 +590,20 @@ class OnnxConverter(BaseConverter):
             del self.model.graph.output[:]
         model.graph.output.extend(ori_outputs)
 
+    def dynamic_input_names_auto_assign(self):
+        if self.dynamic != "auto":
+            return
+        inputs = self.get_inputs(self.model)
+        for idx, input in enumerate(inputs):
+            _dims = input.type.tensor_type.shape.dim
+            if _dims:
+                if len(_dims) == 1:
+                    self.shape_influencing_input_names.append(input.name)
+                for _i, _dim in enumerate(_dims):
+                    if _dim.dim_value == 0 and _dim.dim_param:
+                        self.dynamic_shape_input_names.append(input.name)
+                        break
+
     def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
         outputs = self.get_outputs(self.model)
@@ -657,7 +677,7 @@ class OnnxConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         input_data = None
-        if self.inputs_is_shape:
+        if self.shape_influencing_input_names:
             test_file = ''
             if isinstance(self.test_input, list):
                 assert self.test_input[0].endswith('.npz')
@@ -666,11 +686,11 @@ class OnnxConverter(BaseConverter):
                 assert self.test_input.endswith('.npz')
                 test_file = self.test_input
             else:
-                raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+                raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
             input_data = np.load(test_file)
         for idx, _name in enumerate(self.input_names):
             kwargs = copy.deepcopy(self.preprocess_args)
-            if _name in self.inputs_is_shape:
+            if _name in self.shape_influencing_input_names:
                 assert input_data[_name].ndim == 1, "input shape tensor should be 1D tensor"
                 kwargs['shape_tensor'] = input_data[_name]
             input_ = self.mlir.create_input_op(self.get_loc(_name), idx, kwargs)
@@ -1290,24 +1310,15 @@ class OnnxConverter(BaseConverter):
 
     def convert_range_op(self, onnx_node):
         assert (onnx_node.op_type == "Range")
-        output_shape = self.getDynamicShape(onnx_node.name)
         start = self.getOp(onnx_node.inputs[0])
         limit = self.getOp(onnx_node.inputs[1])
         delta = self.getOp(onnx_node.inputs[2])
-        if output_shape is None:
-            range_op = top.RangeOp(self.unranked_type,
-                                start,
-                                limit,
-                                delta,
-                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                                ip=self.mlir.insert_point).output
-        else:
-            range_op = top.RangeOp(self.mlir.get_tensor_type(output_shape),
-                                start,
-                                limit,
-                                delta,
-                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                                ip=self.mlir.insert_point).output
+        range_op = top.RangeOp(self.unranked_type,
+                            start,
+                            limit,
+                            delta,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, range_op)
 
     def convert_sigmoid_op(self, onnx_node):
@@ -1614,7 +1625,7 @@ class OnnxConverter(BaseConverter):
                 output_type = self.get_value_info(onnx_node.name).type.tensor_type.elem_type
             need_floor = (output_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64]) \
                         or (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
-            
+
             if (self.dynamic and need_floor):
                 new_op=top.DivConstOp(self.unranked_type,
                                       lhs_op,

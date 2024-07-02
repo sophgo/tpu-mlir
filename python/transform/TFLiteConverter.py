@@ -221,9 +221,9 @@ class TFLiteConverter(BaseConverter):
                  input_shapes=None,
                  output_names: list = [],
                  preprocess_args: dict = {},
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__()
-        self.inputs_is_shape = inputs_is_shape
+        self.shape_influencing_input_names = shape_influencing_input_names
         self.model_name = model_name
         self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
@@ -965,7 +965,7 @@ class TFLiteConverter(BaseConverter):
         for idx, input in enumerate(subgraph.inputs):
             loc = Location.fused([Location.name(input.name)])
             input_data = None
-            if self.inputs_is_shape:
+            if self.shape_influencing_input_names:
                 test_file = ''
                 if isinstance(self.test_input, list):
                     assert self.test_input[0].endswith('.npz')
@@ -974,10 +974,10 @@ class TFLiteConverter(BaseConverter):
                     assert self.test_input.endswith('.npz')
                     test_file = self.test_input
                 else:
-                    raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+                    raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
                 input_data = np.load(test_file)
             kwargs = copy.deepcopy(self.preprocess_args)
-            if input.name in self.inputs_is_shape:
+            if input.name in self.shape_influencing_input_names:
                 assert input_data[input.name].ndim == 1, "input shape tensor should be 1D tensor"
                 kwargs['shape_tensor'] = input_data[input.name]
             input_op = self.mlir.create_input_op(loc, idx, kwargs)

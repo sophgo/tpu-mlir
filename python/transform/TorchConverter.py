@@ -52,9 +52,9 @@ class TorchConverter(BaseConverter):
                  output_names: list,
                  preprocess_args: dict = {},
                  dynamic=False,
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__()
-        self.inputs_is_shape = inputs_is_shape
+        self.shape_influencing_input_names = shape_influencing_input_names
         self.dynamic = dynamic
         self.run_mode = "DYNAMIC" if dynamic else "STATIC"
         self.model_name = model_name
@@ -360,7 +360,7 @@ class TorchConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         input_data = None
-        if self.inputs_is_shape:
+        if self.shape_influencing_input_names:
             test_file = ''
             if isinstance(self.test_input, list):
                 assert self.test_input[0].endswith('.npz')
@@ -369,11 +369,11 @@ class TorchConverter(BaseConverter):
                 assert self.test_input.endswith('.npz')
                 test_file = self.test_input
             else:
-                raise ValueError("test_input npz file is necessary when inputs_is_shape is set")
+                raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
             input_data = np.load(test_file)
         for idx, _name in enumerate(self.input_names):
             kwargs = copy.deepcopy(self.preprocess_args)
-            if _name in self.inputs_is_shape:
+            if _name in self.shape_influencing_input_names:
                 assert input_data[_name].ndim == 1, "input shape tensor should be 1D tensor"
                 kwargs['shape_tensor'] = input_data[_name]
             input_ = self.mlir.create_input_op(

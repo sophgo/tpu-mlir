@@ -39,7 +39,13 @@ void top::ConstantFillOp::shape_inference() {
   } else if (module::isShape(getInput())) {
     auto out_shape = module::getShapeTensorValue(getInput());
     module::setShapeOrVerify(getOutput(), out_shape);
-  }else {
+    if (out_shape.size() == 1 || out_shape.size() == 0) {
+      std::vector<std::vector<int64_t>> input_shapes_v;
+      input_shapes_v.push_back(out_shape);
+      auto output_shape_v = module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+      module::bindShapeTensorValue(getOutput(), output_shape_v);
+    }
+  } else {
     auto output_shape = module::getShape(getInput());
     module::setShapeOrVerify(getOutput(), output_shape);
   }

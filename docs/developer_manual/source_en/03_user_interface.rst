@@ -233,12 +233,15 @@ Used to convert various neural network models into MLIR files, the supported par
    * - cache_skip
      - N
      - skip checking the correctness when generate same mlir and bmodel
-   * - dynamic_inputs
+   * - dynamic_shape_input_names
      - N
-     - list of dynamic input names, like:input1,input2
-   * - inputs_is_shape
+     - Name list of inputs with dynamic shape, like:input1,input2. If set, '--dynamic' is required during model_deploy.
+   * - shape_influencing_input_names
      - N
-     - inputs affect tensors shape
+     - Name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. If set, test_input is required and '--dynamic' is required during model_deploy.
+   * - dynamic
+     - N
+     - Only valid for onnx model. If set, will automatically set inputs with dyanmic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
    * - resize_dims
      - N
      - Image was resize to fixed 'h,w', default is same as net input dims

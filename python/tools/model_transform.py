@@ -142,9 +142,9 @@ class OnnxTransformer(ModelTransformer):
                  preprocessor: dict = {},
                  static_shape=True,
                  onnx_sim='',
-                 dynamic_inputs: list = [],
+                 dynamic_shape_input_names: list = [],
                  dynamic=False,
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -155,9 +155,9 @@ class OnnxTransformer(ModelTransformer):
                                        preprocessor,
                                        static_shape,
                                        onnx_sim=onnx_sim,
-                                       dynamic_inputs=dynamic_inputs,
+                                       dynamic_shape_input_names=dynamic_shape_input_names,
                                        dynamic=dynamic,
-                                       inputs_is_shape=inputs_is_shape)
+                                       shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -173,12 +173,12 @@ class CaffeTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__(model_name, model_def)
         self.model_data = model_data
         from transform.CaffeConverter import CaffeConverter
         self.converter = CaffeConverter(self.model_name, self.model_def, model_data, input_shapes,
-                                        output_names, preprocessor, inputs_is_shape=inputs_is_shape)
+                                        output_names, preprocessor, shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import caffe_inference
@@ -193,12 +193,12 @@ class TFLiteTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__(model_name, model_def)
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
         self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
-                                         output_names, preprocessor, inputs_is_shape=inputs_is_shape)
+                                         output_names, preprocessor, shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
@@ -224,11 +224,11 @@ class TorchTransformer(ModelTransformer):
                  output_names: list = [],
                  preprocessor: dict = {},
                  dynamic=False,
-                 inputs_is_shape: list = []):
+                 shape_influencing_input_names: list = []):
         super().__init__(model_name, model_def)
         from transform.TorchConverter import TorchConverter
         self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, input_types,
-                                        output_names, preprocessor, dynamic=dynamic, inputs_is_shape=inputs_is_shape)
+                                        output_names, preprocessor, dynamic=dynamic, shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
@@ -261,21 +261,21 @@ def get_model_transform(args):
                                args.test_input,
                                preprocessor.to_dict(),
                                onnx_sim=args.onnx_sim,
-                               dynamic_inputs=args.dynamic_inputs,
+                               dynamic_shape_input_names=args.dynamic_shape_input_names,
                                dynamic=args.dynamic,
-                               inputs_is_shape=args.inputs_is_shape)
+                               shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict(),
-                                inputs_is_shape=args.inputs_is_shape)
+                                shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.tflite'):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                  args.output_names, preprocessor.to_dict(),
-                                 inputs_is_shape=args.inputs_is_shape)
+                                 shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict(),
-                                dynamic=args.dynamic, inputs_is_shape=args.inputs_is_shape)
+                                dynamic=args.dynamic, shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.mlir'):
         tool = MlirTransformer(args.model_name, args.model_def)
     else:
@@ -326,11 +326,14 @@ if __name__ == '__main__':
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                         help='used for regression test, check if patterns are successfully applied a specific number of times')
-    parser.add_argument("--dynamic_inputs", type=str2list, default=list(),
-                        help="list of dynamic input names, like:input1,input2")
-    parser.add_argument("--dynamic", action='store_true', help='enable dynamic shape inference, only used for onnx model')
-    parser.add_argument("--inputs_is_shape", type=str2list, default=list(),
-                        help='inputs affect tensors\' shape')
+    parser.add_argument("--dynamic_shape_input_names", type=str2list, default=list(),
+                        help="name list of inputs with dynamic shape, like:input1,input2")
+    parser.add_argument("--shape_influencing_input_names", type=str2list, default=list(),
+                        help="name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. \
+                            if set, test_input is required")
+    parser.add_argument("--dynamic", action='store_true',
+                        help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis \
+                            as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names')
 
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
@@ -340,6 +343,8 @@ if __name__ == '__main__':
     if args.test_input:
         for input in args.test_input:
             assert os.path.exists(input), f"test_input {input} not exist!"
+    if args.shape_influencing_input_names:
+        assert args.test_input, "if shape_influencing_input_names is set, test_input is required!"
     cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
