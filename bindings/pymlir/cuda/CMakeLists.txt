@@ -13,4 +13,5 @@ target_include_directories(cuda_helper PUBLIC
   ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 )
 
-set_target_properties(cuda_helper PROPERTIES LINKER_LANGUAGE CUDA)
+set_target_properties(cuda_helper PROPERTIES
+                      LINKER_LANGUAGE CUDA)

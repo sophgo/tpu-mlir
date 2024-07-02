@@ -21,6 +21,8 @@ elif [ "$1" = "model" ]; then
 elif [ "$1" = "check_utests" ]; then
     echo "::RUN check tests and unit tests."
     cmake --build ${BUILD_PATH} --target check-tpumlir
+elif [ "$1" = "cuda" ]; then
+    ehco "::RUN CUDA test."
 else
     echo "run operation, script and model test"
     $REGRESSION_PATH/main_entry.py --test_type basic

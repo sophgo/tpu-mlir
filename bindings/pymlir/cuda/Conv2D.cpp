@@ -32,11 +32,11 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
     pad_w = 0;
     int num = p.n * p.ic * ih * iw;
     auto pad_in = cuda_malloc(num);
-    cudaPad4D(input, pad_in.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-              p.pwr, 1);
+    cuda::pad4D(input, pad_in.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
+                p.pwr, 1);
     in_f32 = cuda_malloc(num * sizeof(float));
-    cudaTransform(pad_in.get(), in_f32.get(), num, getCudnnType(op.getInput()),
-                  CUDNN_DATA_FLOAT);
+    cuda::convertType(pad_in.get(), in_f32.get(), num,
+                      getCudnnType(op.getInput()), CUDNN_DATA_FLOAT);
   }
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
@@ -97,7 +97,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
     cudnnDestroyTensorDescriptor(bias_desc);
   }
   // if (p.do_relu) {
-  //   cudaRelu(out_f32.get(), num_out, CUDNN_DATA_FLOAT);
+  //   doRelu(out_f32.get(), num_out, CUDNN_DATA_FLOAT);
   // }
   auto out_i32 =
       newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
@@ -120,7 +120,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   bool sign = !out_stype.isUnsignedInteger(8);
   bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
   bool relu = sign && p.do_relu;
-  cudaRequantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
-                            cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign, qdm,
-                            relu);
+  cuda::requantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
+                              cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
+                              qdm, relu);
 }

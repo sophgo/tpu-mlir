@@ -10,31 +10,31 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-cuda_rmode_t rmode_convert(tpu::RoundMode mode) {
+cuda::rounding_mode_t rmode_convert(tpu::RoundMode mode) {
   switch (mode) {
   case tpu::RoundMode::HalfAwayFromZero:
-    return CUDA_HALF_AWAY_FROM_ZERO;
+    return cuda::RD_HALF_AWAY_FROM_ZERO;
   case tpu::RoundMode::HalfUp:
-    return CUDA_HALF_UP;
+    return cuda::RD_HALF_UP;
   case tpu::RoundMode::HalfDown:
-    return CUDA_HALF_DOWN;
+    return cuda::RD_HALF_DOWN;
   case tpu::RoundMode::HalfToEven:
-    return CUDA_HALF_TO_EVEN;
+    return cuda::RD_HALF_TO_EVEN;
   case tpu::RoundMode::HalfToOdd:
-    return CUDA_HALF_TO_ODD;
+    return cuda::RD_HALF_TO_ODD;
   case tpu::RoundMode::HalfTowardsZero:
-    return CUDA_HALF_TOWARDS_ZERO;
+    return cuda::RD_HALF_TOWARDS_ZERO;
   case tpu::RoundMode::TowardsZero:
-    return CUDA_TOWARDS_ZERO;
+    return cuda::RD_TOWARDS_ZERO;
   case tpu::RoundMode::Up:
-    return CUDA_UP;
+    return cuda::RD_UP;
   case tpu::RoundMode::Down:
-    return CUDA_DOWN;
+    return cuda::RD_DOWN;
   default:
     break;
   }
   llvm_unreachable("Not Implemented");
-  return CUDA_HALF_AWAY_FROM_ZERO;
+  return cuda::RD_HALF_AWAY_FROM_ZERO;
 }
 
 void py_cuda::cudaCastOp(tpu::CastOp op) {
@@ -53,11 +53,11 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     auto scale = qtype.getScale();
     if (is_cv18xx) {
       bool is_bf16 = in_type.isBF16();
-      cudaCVQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16);
+      cuda::cvQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16);
     } else {
       auto rmode = rmode_convert(op.getRoundMode());
-      cudaF32ToInt8(input, output, 1. / scale, num_elem,
-                    !out_type.isUnsignedInteger(8), rmode);
+      cuda::f32ScaleToInt8(input, output, 1. / scale, num_elem,
+                           !out_type.isUnsignedInteger(8), rmode);
     }
     return;
   } else if (fOutput && isInQuant) {
@@ -65,21 +65,21 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     auto scale = qtype.getScale();
     if (is_cv18xx) {
       if (out_type.isF32()) {
-        cudaCVScaleToF32(input, output, BF16(scale), num_elem);
+        cuda::cvScaleToF32(input, output, BF16(scale), num_elem);
       } else {
-        cudaCVScaleToBF16(input, output, BF16(scale), num_elem);
+        cuda::cvScaleToBF16(input, output, BF16(scale), num_elem);
       }
     } else {
       if (out_type.isF32()) {
-        cudaInt8ToF32(input, output, scale, num_elem,
-                      !qtype.isUnsignedInteger(8));
+        cuda::int8ScaleToF32(input, output, scale, num_elem,
+                             !qtype.isUnsignedInteger(8));
       } else {
         UNREACHABLE_OP("Not Implemented", op);
       }
     }
     return;
   } else {
-    cudaTransform(input, output, num_elem, getCudnnType(op.getInput()),
-                  getCudnnType(op.getOutput()));
+    cuda::convertType(input, output, num_elem, getCudnnType(op.getInput()),
+                      getCudnnType(op.getOutput()));
   }
 }

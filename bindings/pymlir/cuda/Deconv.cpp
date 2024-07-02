@@ -81,10 +81,10 @@ void py_cuda::cudaDeconvOp(tpu::DeconvOp op) {
   cudnnDestroyTensorDescriptor(outf32_desc);
   if (out_stype.isInteger(32)) {
     auto output = getCudaData(op.getOutput());
-    cudaTransform(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
-                  CUDNN_DATA_INT32);
+    cuda::convertType(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
+                      CUDNN_DATA_INT32);
     if (p.do_relu) {
-      cudaRelu(output, num_out, CUDNN_DATA_INT32);
+      cuda::doRelu(output, num_out, CUDNN_DATA_INT32);
     }
     return;
   }
@@ -107,7 +107,7 @@ void py_cuda::cudaDeconvOp(tpu::DeconvOp op) {
   bool sign = !out_stype.isUnsignedInteger(8);
   bool qdm = module::isCV18xx();
   bool relu = sign && p.do_relu;
-  cudaRequantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
-                            cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign, qdm,
-                            relu);
+  cuda::requantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
+                              cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
+                              qdm, relu);
 }

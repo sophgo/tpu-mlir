@@ -29,9 +29,9 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
     auto multiplier_v =
         module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
     auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
-    cudaCVAddInt8(input0, input1, output, multiplier_v->at(0),
-                  multiplier_v->at(1), rshift_v->at(0), num_out,
-                  op.getDoRelu());
+    cuda::cvAddInt8(input0, input1, output, multiplier_v->at(0),
+                    multiplier_v->at(1), rshift_v->at(0), num_out,
+                    op.getDoRelu());
   } else {
     auto sign0 = !module::getStorageType(in0).isUnsignedInteger(8);
     auto sign1 = !module::getStorageType(in1).isUnsignedInteger(8);
@@ -40,8 +40,8 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
         module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
     auto rshift_v =
         module::getI64Array(op.getRshifts(), op.getInputs().size(), 0);
-    cudaAddInt8(input0, input1, output, multiplier_v->at(0),
-                multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1), sign0,
-                sign1, out_sign, num_out, op.getDoRelu());
+    cuda::addInt8(input0, input1, output, multiplier_v->at(0),
+                  multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1), sign0,
+                  sign1, out_sign, num_out, op.getDoRelu());
   }
 }

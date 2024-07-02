@@ -25,7 +25,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
   auto right_f32 = newCudaData(op.getRight(), CUDNN_DATA_FLOAT);
   auto out_f32 = cuda_malloc(num_out * sizeof(float));
-  cudaMatMulF32(in_f32.get(), right_f32.get(), out_f32.get(), p.M, p.K, p.N);
+  cuda::mmF32(in_f32.get(), right_f32.get(), out_f32.get(), p.M, p.K, p.N);
   in_f32.reset();
   right_f32.reset();
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -58,6 +58,6 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   bool sign = !out_stype.isUnsignedInteger(8);
   bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
   bool relu = sign && p.do_relu;
-  cudaRequantInt8(out_i32.get(), output, multipler, rshift, num_out, sign, qdm,
-                  relu);
+  cuda::requantInt8(out_i32.get(), output, multipler, rshift, num_out, sign,
+                    qdm, relu);
 }

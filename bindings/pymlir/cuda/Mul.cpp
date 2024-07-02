@@ -34,15 +34,15 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
   bool sign1 = !module::getStorageType(in1).isUnsignedInteger(8);
   bool sign2 = !module::getStorageType(out).isUnsignedInteger(8);
   if (num_out == num_in0 && num_out == num_in1) {
-    cudaMulInt8(input0, input1, output, sign0, sign1, sign2, multiplier, rshift,
-                num_out, qdm, op.getDoRelu());
+    cuda::mulInt8(input0, input1, output, sign0, sign1, sign2, multiplier,
+                  rshift, num_out, qdm, op.getDoRelu());
   } else {
     int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
     module::getNCHW(in0, n0, c0, h0, w0);
     module::getNCHW(in1, n1, c1, h1, w1);
     module::getNCHW(out, n2, c2, h2, w2);
-    cudaMulBinaryInt8(input0, input1, output, n0, c0, h0, w0, n1, c1, h1, w1,
-                      n2, c2, h2, w2, sign0, sign1, sign2, multiplier, rshift,
-                      qdm, op.getDoRelu());
+    cuda::mulInt8(input0, input1, output, n0, c0, h0, w0, n1, c1, h1, w1, n2,
+                  c2, h2, w2, sign0, sign1, sign2, multiplier, rshift, qdm,
+                  op.getDoRelu());
   }
 }

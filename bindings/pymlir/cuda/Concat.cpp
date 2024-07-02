@@ -36,14 +36,14 @@ void py_cuda::cudaConcatOp(tpu::ConcatOp op) {
       int multiplier = multiplier_v->at(i);
       int rshift = rshift_v->at(i);
       if (multiplier == 1 && rshift == 0) {
-        cudaCopyAxis(src, dst, outer_dim, axis_dim, inner_dim, offset,
-                     in_shape[axis], tbytes);
+        cuda::copyAxis(src, dst, outer_dim, axis_dim, inner_dim, offset,
+                       in_shape[axis], tbytes);
         offset += in_shape[axis];
       } else {
         auto temp = cuda_malloc(module::getBytes(in));
-        cudaCVMultiShiftInt8(src, temp.get(), multiplier, rshift, num_elem);
-        cudaCopyAxis(temp.get(), dst, outer_dim, axis_dim, inner_dim, offset,
-                     in_shape[axis], tbytes);
+        cuda::cvMulShiftInt8(src, temp.get(), multiplier, rshift, num_elem);
+        cuda::copyAxis(temp.get(), dst, outer_dim, axis_dim, inner_dim, offset,
+                       in_shape[axis], tbytes);
         offset += in_shape[axis];
       }
     }
@@ -52,14 +52,14 @@ void py_cuda::cudaConcatOp(tpu::ConcatOp op) {
     for (auto in : op.getInputs()) {
       auto src = getCudaData(in);
       auto in_shape = module::getShape(in);
-      cudaCopyAxis(src, dst, outer_dim, axis_dim, inner_dim, offset,
-                   in_shape[axis], tbytes);
+      cuda::copyAxis(src, dst, outer_dim, axis_dim, inner_dim, offset,
+                     in_shape[axis], tbytes);
       offset += in_shape[axis];
     }
   }
   auto out_type = module::getStorageType(op.getOutput());
   if (op.getDoRelu() && !out_type.isUnsignedInteger(8)) {
     int num_out = module::getNumElements(op.getOutput());
-    cudaRelu(dst, num_out, getCudnnType(op.getOutput()));
+    cuda::doRelu(dst, num_out, getCudnnType(op.getOutput()));
   }
 }

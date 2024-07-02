@@ -56,8 +56,9 @@ void py_cuda::cudaDepth2SpaceOp(tpu::Depth2SpaceOp op) {
     std::swap(ihstride, ohstride);
     std::swap(iwstride, owstride);
   }
-  cudaDepth2Space(input, output, in, ic, ih, iw, on, oc, oh, ow, instride,
-                  icstride, ihstride, iwstride, onstride, ocstride, ohstride,
-                  owstride, op.getBlockH(), op.getBlockW(), crd, op.getSwapCr(),
-                  inversed, module::getDtypeSize(op.getInput()));
+  cuda::depth2Space(input, output, in, ic, ih, iw, on, oc, oh, ow, instride,
+                    icstride, ihstride, iwstride, onstride, ocstride, ohstride,
+                    owstride, op.getBlockH(), op.getBlockW(), crd,
+                    op.getSwapCr(), inversed,
+                    module::getDtypeSize(op.getInput()));
 }
