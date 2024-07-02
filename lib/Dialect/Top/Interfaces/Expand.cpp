@@ -32,6 +32,13 @@ void top::ExpandOp::shape_inference() {
         [](auto &v) { return static_cast<int64_t>(v); });
   } else if (module::isShape(getShapeT())) {
       expand_shape = module::getShapeTensorValue(getShapeT());
+      assert(expand_shape.size() == in_shape.size());
+      for (int64_t i=0; i < expand_shape.size(); ++i){
+        if (expand_shape[i] == -1){
+          expand_shape[i] = in_shape[i];
+        }
+      }
+      module::bindShapeTensorValue(getShapeT(), expand_shape);
   } else{
     llvm_unreachable("out_shape is illegal");
   }
