@@ -276,8 +276,11 @@ public:
       return success();
     }
     auto real_mode = getOpQuantMode(op);
-    module::removeAttr(op, "round_mode");
-    module::removeAttr(op, "first_round_mode");
+    if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op))
+    {
+      module::removeAttr(op, "round_mode");
+      module::removeAttr(op, "first_round_mode");
+    }
     switch (real_mode) {
     case module::Mode::INT8:
       if (auto conv = dyn_cast<top::ConvOp>(op)) {
