@@ -131,7 +131,8 @@ def compile_f32(name: str,
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter)
         compare = cmp and refs != None
-        model_top_inference(model_name=name, cmp=compare)
+        if mlir_inference:
+            model_top_inference(model_name=name, cmp=compare)
         for m in mode_list:
             model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
                                         inference=mlir_inference, cmp=cmp)
