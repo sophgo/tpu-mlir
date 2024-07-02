@@ -165,10 +165,23 @@ static void WeightFolder(Operation *op) {
     std::string suffix = std::string("folder_") + std::to_string(i);
     auto out = outs[i];
     auto out_type = out.getType().cast<RankedTensorType>();
-    auto new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
-    out.replaceAllUsesWith(new_op);
+
+    // cast data
+    auto ele_type = out_type.getElementType();
+    if (ele_type.isF16()){
+      std::vector<uint16_t> datas_uint16;
+      for (float value : datas[i]) {
+        datas_uint16.push_back(static_cast<uint16_t>(value));
+      }
+      auto new_op = top::WeightOp::create(op, "folder", datas_uint16, out_type);
+      out.replaceAllUsesWith(new_op);
+    }
+    else{
+      auto new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
+      out.replaceAllUsesWith(new_op);
+    }
+    }
   }
-}
 
 class ShapeInferPass : public ShapeInferBase<ShapeInferPass> {
 public:

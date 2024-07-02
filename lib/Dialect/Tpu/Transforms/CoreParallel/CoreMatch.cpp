@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/Transforms/TopologicalSortUtils.h"
 #include <llvm/ADT/DenseSet.h>
+#include <unordered_set>
 
 namespace tpu_mlir {
 namespace tpu {
@@ -163,6 +164,25 @@ bool isReachable(Operation *a, Operation *b) {
                       [b](Operation *op) { return isReachable(op, b); });
 }
 
+bool isReachable_for_training(Operation *a, Operation *b, std::unordered_set<Operation *> &visited) {
+  if (a && a == b)
+    return true;
+  if (b->getNumOperands() == 0)
+    return false;
+  if (visited.count(a))
+    return false;
+  visited.insert(a);
+  if (a->getBlock() == b->getBlock()) {
+    if (!a->isBeforeInBlock(b))
+      return false;
+  }
+  if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
+    return isReachable_for_training(a->getParentOp(), b, visited);
+  return llvm::any_of(a->getUsers(),
+                      [b, &visited](Operation *op) { return isReachable_for_training(op, b, visited); });
+}
+
+
 bool isCircularDependency(std::vector<Operation *> &beginOps,
                           std::vector<Operation *> &endOps) {
   // Operations use value in [beginOps, endOps]
@@ -196,11 +216,23 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
     usedByOutside.erase(v);
     definedInOutside.erase(v);
   }
-  // check dataFlow form usedByOutside to definedInOutside.
-  for (auto uOp : usedByOutside) {
-    for (auto dOp : definedInOutside) {
-      if (isReachable(uOp, dOp)) {
-        return true;
+  if (module::isTrain()){
+    std::unordered_set<Operation *> visited;
+    // check dataFlow form usedByOutside to definedInOutside.
+    for (auto uOp : usedByOutside) {
+      for (auto dOp : definedInOutside) {
+        if (isReachable_for_training(uOp, dOp, visited)) {
+          return true;
+        }
+      }
+    }
+  }
+  else{
+    for (auto uOp : usedByOutside) {
+      for (auto dOp : definedInOutside) {
+        if (isReachable(uOp, dOp)) {
+          return true;
+        }
       }
     }
   }

@@ -86,6 +86,9 @@ void top::CompareOp::shape_inference() {
       }
     }
     auto out_shape = module::getShape(getOutput());
+    if (out_shape.size()>1 && module::isTrain()){
+      return;
+    }
     auto output_shape_v =
         module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);

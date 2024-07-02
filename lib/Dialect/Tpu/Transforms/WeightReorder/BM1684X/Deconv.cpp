@@ -89,6 +89,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
   auto attr = op.parseParam();
 
   // filter op
+if (dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp())){
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_u16 = filterOp.read<uint16_t>();
   auto filter_type = module::getStorageType(op.getFilter());
@@ -105,6 +106,21 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
         top::WeightOp::create(op, "_reordered", *filter_u16, new_filter_type);
     op->setOperand(1, newFilterOp);
   }
+}
+else if (dyn_cast<top::InputOp>(op.getFilter().getDefiningOp())){
+  auto filter_type = module::getStorageType(op.getFilter());
+  auto filter_shape = op.getFilter().getType().cast<RankedTensorType>().getShape();
+  int64_t oc, ic, kh, kw;
+  module::getNCHW(filter_shape, oc, ic, kh, kw);
+  auto type_bytes = sizeof(int16_t);
+  int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
+  auto kernel_hw = kh * kw;
+  int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
+  int64_t new_hw = kernel_hw * IC_PARALLEL;
+  filter_shape = {1, oc, 1, new_ic * new_hw};
+  auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+  op.getFilter().setType(new_filter_type);
+}
 
   // bias op
   if (attr.with_bias) {
