@@ -64,5 +64,8 @@ void top::SplitOp::shape_inference() {
     auto out = getResult(i);
     out_shape[axis] = out_size[i];
     module::setShapeOrVerify(out, out_shape);
+    if (module::isShape(getInput())){
+      module::bindShapeTensorValue(getResult(i), out_shape);
+    }
   }
 }
