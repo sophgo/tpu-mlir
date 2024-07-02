@@ -58,7 +58,11 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
         top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
     op->setOperand(2, newBiasOp);
   }
-
+  else if (attr.has_bias && dyn_cast<top::InputOp>(op.getBias().getDefiningOp())){
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
+    op.getBias().setType(new_bias_type);
+  }
   return success();
 }
 

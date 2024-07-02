@@ -44,7 +44,7 @@ void CastLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void CastLowering::LoweringF16(PatternRewriter &rewriter,
                                top::CastOp op) const {
-  auto round_mode = op.getRoundModeAttr().str();
+  std::string round_mode = module::isTrain() ? "HalfAwayFromZero" : op.getRoundModeAttr().str();
   auto newOp = lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.getOutput().getType());
    newOp.setRoundModeAttr(
