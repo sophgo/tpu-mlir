@@ -4363,12 +4363,11 @@ bmodel_inference_combine
             out_fixed: bool = False,
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             tmp_path: str = "/tmp",  # should config when is_soc=True
-            trans_tools: bool = True,  # should config when is_soc=True
             tools_path: str = "/soc_infer",  # should config when is_soc=True
-            hostname: str = "",  # should config when is_soc=True
-            port: int = 22,  # should config when is_soc=True
-            username: str = "",  # should config when is_soc=True
-            password: str = "",  # should config when is_soc=True
+            hostname: str = None,  # should config when is_soc=True
+            port: int = None,  # should config when is_soc=True
+            username: str = None,  # should config when is_soc=True
+            password: str = None,  # should config when is_soc=True
         ):
 
 功能描述
@@ -4396,9 +4395,8 @@ bmodel_inference_combine
 
 注意:
 
-* 当使用cmodel和pcie模式进行逐层dump时，需分别先使用 `/tpu-mlir/envsetup.sh` 中的use_cmodel/use_chip切换环境变量。当使用soc模式时，使用use_chip。
+* 当使用pcie或soc模式进行逐层dump时，需先使用 `/tpu-mlir/envsetup.sh` 中的use_chip切换环境变量。当使用cmodel模式时，使用use_cmodel。
 * 当使用soc模式时：reference_data_fn必须是.npz格式。
-* 当 `trans_tools=True` 时 `tools_path`不能已存在，后续调用该接口时要保证 `tools_path`不变。
 
 返回值
 """""""""""

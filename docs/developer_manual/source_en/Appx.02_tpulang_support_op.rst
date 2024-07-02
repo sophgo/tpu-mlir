@@ -3294,12 +3294,11 @@ Definition
             out_fixed: bool = False,
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             tmp_path: str = "/tmp",  # should config when is_soc=True
-            trans_tools: bool = True,  # should config when is_soc=True
             tools_path: str = "/soc_infer",  # should config when is_soc=True
-            hostname: str = "",  # should config when is_soc=True
-            port: int = 22,  # should config when is_soc=True
-            username: str = "",  # should config when is_soc=True
-            password: str = "",  # should config when is_soc=True
+            hostname: str = None,  # should config when is_soc=True
+            port: int = None,  # should config when is_soc=True
+            username: str = None,  # should config when is_soc=True
+            password: str = None,  # should config when is_soc=True
         ):
 
 Description
@@ -3318,7 +3317,6 @@ Parameters
 * out_fixed: Bool type, representing whether to get results in fixed number.
 * is_soc: Bool type, representing whether to use in soc mode.
 * tmp_path: String type, representing the abs path of tmp files on device in soc mode.
-* trans_tools: Bool type, representing whether to transfer soc_infer tools to device in soc mode, only set to True at the first calling.
 * tools_path: String type, representing the dir of soc_infer tools on device in soc mode.
 * hostname: String type, representing the ip address of device in soc mode.
 * port: Int type, representing the port of device in soc mode.
@@ -3329,7 +3327,6 @@ Attention:
 
 * When the funciton is called in cmodel/pcie mode, functions `use_cmodel/use_chip` from `/tpu-mlir/envsetup.sh` is required.
 * When the funciton is called in soc mode, use `use_chip` and `reference_data_fn` must be .npz.
-* When `trans_tools=True`, dir `tools_path` must not exist. Ensure that `tools_path` remains unchanged when calling this interface subsequently.
 
 Returns
 """""""""""

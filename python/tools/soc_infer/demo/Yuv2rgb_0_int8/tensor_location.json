@@ -1,0 +1,38 @@
+[
+  {
+    "file-line": 11,
+    "subnet_id": 0,
+    "core_id": 0,
+    "opcode": "tpu.Yuv2rgbFormula",
+    "tiu_dma_id(before)": [
+      0,
+      0
+    ],
+    "tiu_dma_id(after)": [
+      84,
+      15
+    ],
+    "operands": [
+      {
+        "address": 4294967296,
+        "layout": "continuous",
+        "memory_type": "<3x90x60xui8>",
+        "name": "BMTensor0",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<3x90x60xui8, 4294967296 : i64>"
+      }
+    ],
+    "results": [
+      {
+        "address": 4294983680,
+        "layout": "continuous",
+        "memory_type": "<3x3x60x60xui8>",
+        "name": "yuv2rgb_cd66f5ba-4fa5-4944-a716-beabb865689a",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<3x3x60x60xui8, 4294983680 : i64>"
+      }
+    ]
+  }
+]
