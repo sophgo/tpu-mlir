@@ -5,6 +5,7 @@
 #
 # ==============================================================================
 
+import getpass
 from typing import List, Union, Tuple, Optional
 
 from debugger.tdb_support import TdbCmdBackend
@@ -243,6 +244,13 @@ def _soc_upload_dir(sftp, local_dir, remote_dir):
                 pass
 
 
+def _soc_rm_dir(client, remote_dir):
+    command = f"rm -rf {remote_dir}"
+    stdin, stdout, stderr = client.exec_command(command)
+    if stderr:
+        print(stderr.read().decode("utf-8"))
+
+
 def bmodel_inference_combine(
     bmodel_file: str,
     final_mlir_fn: str,
@@ -254,12 +262,11 @@ def bmodel_inference_combine(
     out_fixed: bool = False,
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
     tmp_path: str = "/tmp",  # should config when is_soc=True
-    trans_tools: bool = True,  # should config when is_soc=True
     tools_path: str = "/soc_infer",  # should config when is_soc=True
-    hostname: str = "",  # should config when is_soc=True
-    port: int = 22,  # should config when is_soc=True
-    username: str = "",  # should config when is_soc=True
-    password: str = "",  # should config when is_soc=True
+    hostname: str = None,  # should config when is_soc=True
+    port: int = None,  # should config when is_soc=True
+    username: str = None,  # should config when is_soc=True
+    password: str = None,  # should config when is_soc=True
 ):
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
@@ -276,7 +283,7 @@ def bmodel_inference_combine(
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     plugin.__init__(tdb)
     plugin.set_tol(cosine_similarity_tol=0.99, euclidean_similarity_tol=0.99)
-    plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.FAILED)
+    plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.TPULANG)
     plugin.out_fixed = out_fixed
     plugin.is_soc = is_soc
 
@@ -303,6 +310,15 @@ def bmodel_inference_combine(
         # connect remote ssh server
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if not hostname:
+            hostname = input("Enter the hostname: ")
+        if not port:
+            port = int(input("Enter the port: "))
+        if not username:
+            username = input("Enter your username: ")
+        if not password:
+            password = getpass.getpass("Enter your password: ")
+
         client.connect(
             hostname=hostname, port=port, username=username, password=password
         )
@@ -334,17 +350,17 @@ def bmodel_inference_combine(
         progress_put("bmodel file", bmodel_file, os.path.basename(bmodel_file), progress)
         progress_put("input data", input_data_fn, os.path.basename(input_data_fn), progress)
         progress_put("ref data", reference_data_fn, os.path.basename(reference_data_fn), progress)
-        if trans_tools:  # Make sure soc_infer tools not exist on device when `trans_tools=True`
-            print("Transfering Soc_infer Tools...")
-            local_tools_path = os.getenv("PROJECT_ROOT", None)
-            if not local_tools_path:
-                local_tools_path = os.getenv("TPUC_ROOT")
-                assert local_tools_path
-            _soc_upload_dir(
-                sftp,
-                os.path.join(local_tools_path, "python/tools/soc_infer/"),
-                tools_path,
-            )
+        # transfer soc_infer tools
+        print("Transfering Soc_infer Tools...")
+        local_tools_path = os.getenv("PROJECT_ROOT", None)
+        if not local_tools_path:
+            local_tools_path = os.getenv("TPUC_ROOT")
+            assert local_tools_path
+        _soc_upload_dir(
+            sftp,
+            os.path.join(local_tools_path, "python/tools/soc_infer/"),
+            tools_path,
+        )
         # execute soc_bmodel_infer
         remote_bmodel = os.path.basename(bmodel_file)
         remote_input = os.path.basename(input_data_fn)
@@ -355,7 +371,6 @@ def bmodel_inference_combine(
         stdin, stdout, stderr = client.exec_command(exec_command)
         print(stdout.read().decode("utf-8"))
         print(stderr.read().decode("utf-8"))
-
         # retrieve results
         remote_infer_combine_path = os.path.join(tools_path, f"soc_infer_{remote_ref}")
         local_infer_combine_path = os.path.join(save_path, f"soc_infer_{remote_ref}")
@@ -365,6 +380,8 @@ def bmodel_inference_combine(
             remote_infer_combine_path,
             progress,
         )
+        _soc_rm_dir(client, tmp_path)
+        _soc_rm_dir(client, tools_path)
         client.close()
         return
 
