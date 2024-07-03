@@ -253,6 +253,8 @@ public:
     // 2. Get Params
     auto top = unsqueeze_op.getInput(); // [512,2,2,128]
     auto order = module::getI64Array(right_op.getOrder());
+    if(order->size() != 3)
+      return failure();
     for (int i = 0; i < order->size(); i++) {
       if (order->at(i) == order->size() - 1) {
         order->at(i) += 1;
