@@ -32,17 +32,38 @@ typedef enum {
   RD_UNKNOWN = -1
 } rounding_mode_t;
 
+typedef enum {
+  DT_INT8 = 0,      // 8-bit signed integer
+  DT_UINT8 = 1,     // 8-bit unsigned integer
+  DT_INT16 = 2,     // 16-bit signed integer
+  DT_UINT16 = 3,    // 16-bit unsigned integer
+  DT_INT32 = 4,     // 32-bit signed integer
+  DT_UINT32 = 5,    // 32-bit unsigned integer
+  DT_BF16 = 6,      // Bfloat16 floating-point
+  DT_F16 = 7,       // 16-bit floating-point (Half precision)
+  DT_F32 = 8,       // 32-bit floating-point (Single precision)
+  DT_F64 = 9,       // 64-bit floating-point (Double precision)
+  DT_UNKNOWN = 1000 // Unknown or invalid data type
+} data_type_t;
+
+size_t get_dtype_bytes(data_type_t type);
 // -------------------------------------------------------------------------
 // --- host functions ---
 
 // float input * scale = int8 output，if !sign, uint8 output
 void f32ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
                     rounding_mode_t rmode);
-
+void bf16ScaleToInt8(void *input, void *output, float scale, int size,
+                     bool sign, rounding_mode_t rmode);
+void f16ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
+                    rounding_mode_t rmode);
 // int8 or uint8 * scale => float output
 void int8ScaleToF32(void *input, void *output, float scale, int size,
                     bool sign);
-
+void int8ScaleToBF16(void *input, void *output, float scale, int size,
+                     bool sign);
+void int8ScaleToF16(void *input, void *output, float scale, int size,
+                    bool sign);
 // mul: int8 * int8 * multiplier >> rshift => int8
 void mulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign, bool o_sign,
              int multiplier, int rshift, int size, bool qdm, bool relu);
@@ -57,7 +78,7 @@ void addInt8(void *input0, void *input1, void *output, int mul0, int mul1,
              int shift0, int shift1, bool sign0, bool sign1, bool sign2,
              int size, bool relu);
 
-void neg(void *input, void *output, int size, cudnnDataType_t type);
+void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
 void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
            int pad_h_b, int pad_w_l, int pad_w_r, int tbytes);
@@ -78,45 +99,48 @@ void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
                  int num, bool out_sign, bool qdm = false, bool relu = false);
 
 // inplace relu
-void doRelu(void *data, int size, cudnnDataType_t type);
+void doRelu(void *data, int size, data_type_t type);
 
 // find max. input[outer_dim, axis_dim, inner_dim] =>
 // output[outer_dim,1,inner_dim]
 void maxAxis(void *input, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type);
+             int inner_dim, data_type_t type);
 
 // input [outer_dim, axis_dim, inner_dim], sub[outer_dim,1,inner_dim] =>
 // output[outer_dim, axis_dim, inner_dim]
 void subAxis(void *input, void *sub, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type);
+             int inner_dim, data_type_t type);
 void mulAxis(void *input, void *mul, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type);
+             int inner_dim, data_type_t type);
 void addAxis(void *input, void *add, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type);
+             int inner_dim, data_type_t type);
 // sum
 void sumAxis(void *input, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type);
+             int inner_dim, data_type_t type);
 void copyAxis(void *src, void *dst, int outer_dim, int axis_dim, int inner_dim,
               int offset, int num, int tbytes);
 
-cudaError_t convertType(void *src, void *dst, int size,
-                        cudnnDataType_t src_type, cudnnDataType_t dst_type,
+cudaError_t convertType(void *src, void *dst, int num_elem,
+                        data_type_t src_type, data_type_t dst_type,
                         rounding_mode_t rmode = RD_TOWARDS_ZERO);
 void permute4D(void *src, void *dst, int n, int c, int h, int w, int o0, int o1,
                int o2, int o3, int tbytes);
 void upsample4D(void *src, void *dst, int n, int c, int h, int w, int scale_h,
                 int scale_w, int tbytes);
-void print(void *data, int size, cudnnDataType_t type);
+void print(void *data, int size, data_type_t type);
 
 // input4 , offset4, step4 => output4
 void slice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow, int tbytes);
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
-              cudnnDataType_t type);
+              data_type_t type);
 // src is i8, table has 256 value
-void lut256(void *src, void *table, void *dst, int size,
-            cudnnDataType_t src_type, cudnnDataType_t dst_type);
+void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
+            data_type_t dst_type);
+void gather(void *indices, void *embedding, void *output, int num_indices,
+            int embedding_dim, int inner_dim, data_type_t ind_type,
+            data_type_t embed_type);
 // -------------------------------------------------------------------------
 // cv18xx only
 

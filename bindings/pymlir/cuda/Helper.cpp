@@ -10,6 +10,8 @@
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
+using namespace tpu_mlir::cuda;
+
 void *py_cuda::getCudaData(Value v) {
   auto name = module::getName(v).str();
   if (module::isWeight(v)) {
@@ -26,61 +28,46 @@ void *py_cuda::getCudaData(Value v) {
   return nullptr;
 }
 
-cudnnDataType_t py_cuda::getCudnnType(Value v) {
+data_type_t py_cuda::getCudaType(Value v) {
   auto stype = module::getStorageType(v);
   if (stype.isUnsignedInteger(8)) {
-    return CUDNN_DATA_UINT8;
+    return DT_UINT8;
   } else if (stype.isInteger(8)) {
-    return CUDNN_DATA_INT8;
+    return DT_INT8;
   } else if (stype.isF32()) {
-    return CUDNN_DATA_FLOAT;
-  } else if (stype.isSignlessInteger(32) || stype.isSignedInteger(32)) {
-    return CUDNN_DATA_INT32;
+    return DT_F32;
+  } else if (stype.isUnsignedInteger(32)) {
+    return DT_UINT32;
+  } else if (stype.isInteger(32)) {
+    return DT_INT32;
   } else if (stype.isBF16()) {
-    return CUDNN_DATA_BFLOAT16;
+    return DT_BF16;
   } else if (stype.isF16()) {
-    return CUDNN_DATA_HALF;
+    return DT_F16;
+  } else if (stype.isUnsignedInteger(16)) {
+    return DT_UINT16;
+  } else if (stype.isInteger(16)) {
+    return DT_INT16;
   }
   v.dump();
-  llvm_unreachable("Not supported");
-  return CUDNN_DATA_FLOAT;
+  llvm_unreachable("Not Supported");
+  return DT_F32;
 }
 
-size_t py_cuda::getCudnnTypeBytes(cudnnDataType_t type) {
-  switch (type) {
-  case CUDNN_DATA_FLOAT:
-    return sizeof(float);
-  case CUDNN_DATA_DOUBLE:
-    return sizeof(double);
-  case CUDNN_DATA_HALF:
-    return sizeof(short);
-  case CUDNN_DATA_INT8:
-  case CUDNN_DATA_UINT8:
-    return 1;
-  case CUDNN_DATA_INT32:
-    return sizeof(int);
-  case CUDNN_DATA_INT8x4:
-    return 4;
-  default:
-    llvm_unreachable("Unknown type");
-    return 0;
-  }
-}
-
-cuda_ptr py_cuda::newCudaData(void *data, size_t num, cudnnDataType_t src_type,
-                              cudnnDataType_t dst_type) {
+cuda_ptr py_cuda::newCudaData(void *data, size_t num, data_type_t src_type,
+                              data_type_t dst_type) {
   if (src_type == dst_type) {
     llvm_unreachable("Same type shouldn't convert");
   }
   void *newData;
-  CHECK_CUDA(cudaMalloc(&newData, num * getCudnnTypeBytes(dst_type)));
-  CHECK_CUDA(cuda::convertType(data, newData, num, src_type, dst_type));
+  CHECK_CUDA(cudaMalloc(&newData, num * cuda::get_dtype_bytes(dst_type)));
+  CHECK_CUDA(convertType(data, newData, num, src_type, dst_type));
   cuda_ptr wrapper(newData);
   return std::move(wrapper);
 }
 
-cuda_ptr py_cuda::newCudaData(Value v, cudnnDataType_t dst_type) {
-  auto src_type = getCudnnType(v);
+cuda_ptr py_cuda::newCudaData(Value v, data_type_t dst_type) {
+  auto src_type = getCudaType(v);
   auto data = getCudaData(v);
   size_t num = module::getNumElements(v);
   return std::move(newCudaData(data, num, src_type, dst_type));

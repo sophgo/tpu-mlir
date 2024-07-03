@@ -26,6 +26,32 @@ __global__ void g_f32ScaleToInt8(float *input, void *output, float scale,
   }
 }
 
+__global__ void g_bf16ScaleToInt8(uint16_t *input, void *output, float scale,
+                                  int size, bool sign, rounding_mode_t rmode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float value = d_BF16(d_RawBF16(input[idx]) * d_BF16(scale));
+    if (sign) {
+      static_cast<int8_t *>(output)[idx] = d_f32ToInt<int8_t>(value, rmode);
+    } else {
+      static_cast<uint8_t *>(output)[idx] = d_f32ToInt<uint8_t>(value, rmode);
+    }
+  }
+}
+
+__global__ void g_f16ScaleToInt8(uint16_t *input, void *output, float scale,
+                                 int size, bool sign, rounding_mode_t rmode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float value = d_F16(d_RawF16(input[idx]) * d_F16(scale));
+    if (sign) {
+      static_cast<int8_t *>(output)[idx] = d_f32ToInt<int8_t>(value, rmode);
+    } else {
+      static_cast<uint8_t *>(output)[idx] = d_f32ToInt<uint8_t>(value, rmode);
+    }
+  }
+}
+
 __global__ void g_int8ScaleToF32(void *input, float *output, float scale,
                                  int size, bool sign) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -36,6 +62,36 @@ __global__ void g_int8ScaleToF32(void *input, float *output, float scale,
     } else {
       output[idx] = static_cast<float>(((uint8_t *)input)[idx]) * scale;
     }
+  }
+}
+
+__global__ void g_int8ScaleToBF16(void *input, uint16_t *output, float scale,
+                                  int size, bool sign) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    // Convert int8 to bfloat16 and scale
+    float value;
+    if (sign) {
+      value = static_cast<float>(((int8_t *)input)[idx]) * d_BF16(scale);
+    } else {
+      value = static_cast<float>(((uint8_t *)input)[idx]) * d_BF16(scale);
+    }
+    output[idx] = d_BF16Raw(value);
+  }
+}
+
+__global__ void g_int8ScaleToF16(void *input, uint16_t *output, float scale,
+                                 int size, bool sign) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    // Convert int8 to bfloat16 and scale
+    float value;
+    if (sign) {
+      value = static_cast<float>(((int8_t *)input)[idx]) * d_F16(scale);
+    } else {
+      value = static_cast<float>(((uint8_t *)input)[idx]) * d_F16(scale);
+    }
+    output[idx] = d_F16Raw(value);
   }
 }
 
@@ -354,52 +410,24 @@ __global__ void g_mulShift(T *input, T *output, int multiplier, int shift,
   }
 }
 
-__global__ void g_int32ToF32(int32_t *input, float *output, int size) {
+template <typename T>
+__global__ void g_intToF32(T *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     output[idx] = static_cast<float>(input[idx]);
   }
 }
 
-__global__ void g_f32ToInt32(float *input, int32_t *output, int size,
-                             rounding_mode_t rmode) {
+template <typename T>
+__global__ void g_f32ToInt(float *input, T *output, int size,
+                           rounding_mode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
-    output[idx] = d_f32ToInt<int32_t>(input[idx], rmode);
+    output[idx] = d_f32ToInt<T>(input[idx], rmode);
   }
 }
 
-__global__ void g_int8ToF32(int8_t *input, float *output, int size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    output[idx] = static_cast<float>(input[idx]);
-  }
-}
-
-__global__ void g_f32ToInt8(float *input, int8_t *output, int size,
-                            rounding_mode_t rmode) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    output[idx] = d_f32ToInt<int8_t>(input[idx], rmode);
-  }
-}
-
-__global__ void g_uint8ToF32(uint8_t *input, float *output, int size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    output[idx] = static_cast<float>(input[idx]);
-  }
-}
-
-__global__ void g_f32ToUint8(float *input, uint8_t *output, int size,
-                             rounding_mode_t rmode) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    output[idx] = d_f32ToInt<uint8_t>(input[idx], rmode);
-  }
-}
-
-__global__ void g_F32ToBF16(float *input, uint16_t *output, int size,
+__global__ void g_f32ToBF16(float *input, uint16_t *output, int size,
                             rounding_mode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
@@ -407,10 +435,25 @@ __global__ void g_F32ToBF16(float *input, uint16_t *output, int size,
   }
 }
 
-__global__ void g_BF16ToF32(uint16_t *input, float *output, int size) {
+__global__ void g_bf16ToF32(uint16_t *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     output[idx] = d_RawBF16(input[idx]);
+  }
+}
+
+__global__ void g_f32ToF16(float *input, uint16_t *output, int size,
+                           rounding_mode_t rmode = RD_HALF_TO_EVEN) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_F16Raw(input[idx], rmode);
+  }
+}
+
+__global__ void g_f16ToF32(uint16_t *input, float *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_RawF16(input[idx]);
   }
 }
 
@@ -425,6 +468,13 @@ __global__ void g_printBF16(uint16_t *data, int size) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < size) {
     printf("Data[%d] = %g\n", idx, d_RawBF16(data[idx]));
+  }
+}
+
+__global__ void g_printF16(uint16_t *data, int size) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < size) {
+    printf("Data[%d] = %g\n", idx, d_RawF16(data[idx]));
   }
 }
 
@@ -657,6 +707,20 @@ __global__ void g_depth2Space(void *input, void *output, int in, int ic, int ih,
       d_copyElement(input, o_index, output, i_index, tbytes);
     } else {
       d_copyElement(input, i_index, output, o_index, tbytes);
+    }
+  }
+}
+
+template <typename T0, typename T1>
+__global__ void g_gather(T0 *indices, T1 *embedding, T1 *output,
+                         int num_indices, int embedding_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num_indices) {
+    int index = static_cast<int>(indices[idx]);
+    if (index < embedding_dim && index >= 0) {
+      for (int i = 0; i < inner_dim; i++) {
+        output[idx * inner_dim + i] = embedding[index * inner_dim + i];
+      }
     }
   }
 }

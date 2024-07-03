@@ -16,6 +16,25 @@ namespace cuda {
 
 // -------------------------------------------------------------------------
 // ------- type convert functions
+size_t get_dtype_bytes(data_type_t type) {
+  switch (type) {
+  case DT_F64:
+    return 8;
+  case DT_F32:
+  case DT_INT32:
+    return 4;
+  case DT_F16:
+  case DT_BF16:
+  case DT_UINT16:
+  case DT_INT16:
+    return 2;
+  case DT_INT8:
+  case DT_UINT8:
+    return 1;
+  default:
+    return 1;
+  }
+}
 
 void f32ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
                     rounding_mode_t rmode) {
@@ -25,42 +44,93 @@ void f32ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
                                                size, sign, rmode);
 }
 
+void bf16ScaleToInt8(void *input, void *output, float scale, int size,
+                     bool sign, rounding_mode_t rmode) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_bf16ScaleToInt8<<<num_blocks, block_size>>>((uint16_t *)input, output,
+                                                scale, size, sign, rmode);
+}
+
+void f16ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
+                    rounding_mode_t rmode) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_f16ScaleToInt8<<<num_blocks, block_size>>>((uint16_t *)input, output, scale,
+                                               size, sign, rmode);
+}
+
 void int8ScaleToF32(void *input, void *output, float scale, int size,
                     bool sign) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  g_int8ScaleToF32<<<num_blocks, block_size>>>((int8_t *)input, (float *)output,
-                                               scale, size, sign);
+  g_int8ScaleToF32<<<num_blocks, block_size>>>(input, (float *)output, scale,
+                                               size, sign);
 }
 
-cudaError_t convertType(void *src, void *dst, int size,
-                        cudnnDataType_t src_type, cudnnDataType_t dst_type,
-                        rounding_mode_t rmode) {
+void int8ScaleToBF16(void *input, void *output, float scale, int size,
+                     bool sign) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_INT32) {
-    g_f32ToInt32<<<num_blocks, block_size>>>((float *)src, (int32_t *)dst, size,
-                                             rmode);
-  } else if (src_type == CUDNN_DATA_INT32 && dst_type == CUDNN_DATA_FLOAT) {
-    g_int32ToF32<<<num_blocks, block_size>>>((int32_t *)src, (float *)dst,
-                                             size);
-  } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_INT8) {
-    g_f32ToInt8<<<num_blocks, block_size>>>((float *)src, (int8_t *)dst, size,
-                                            rmode);
-  } else if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_FLOAT) {
-    g_int8ToF32<<<num_blocks, block_size>>>((int8_t *)src, (float *)dst, size);
-  } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_UINT8) {
-    g_f32ToUint8<<<num_blocks, block_size>>>((float *)src, (uint8_t *)dst, size,
-                                             rmode);
-  } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_FLOAT) {
-    g_uint8ToF32<<<num_blocks, block_size>>>((uint8_t *)src, (float *)dst,
-                                             size);
-  } else if (src_type == CUDNN_DATA_FLOAT && dst_type == CUDNN_DATA_BFLOAT16) {
-    g_F32ToBF16<<<num_blocks, block_size>>>((float *)src, (uint16_t *)dst, size,
-                                            rmode);
-  } else if (src_type == CUDNN_DATA_BFLOAT16 && dst_type == CUDNN_DATA_FLOAT) {
-    g_BF16ToF32<<<num_blocks, block_size>>>((uint16_t *)src, (float *)dst,
-                                            size);
+  g_int8ScaleToBF16<<<num_blocks, block_size>>>(input, (uint16_t *)output,
+                                                scale, size, sign);
+}
+
+void int8ScaleToF16(void *input, void *output, float scale, int size,
+                    bool sign) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_int8ScaleToF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
+                                               size, sign);
+}
+
+cudaError_t convertType(void *src, void *dst, int num_elem,
+                        data_type_t src_type, data_type_t dst_type,
+                        rounding_mode_t rmode) {
+  int num_blocks = CUDA_NUM_BLOCKS(num_elem);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (src_type == DT_F32 && dst_type == DT_INT32) {
+    g_f32ToInt<<<num_blocks, block_size>>>((float *)src, (int32_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_INT32 && dst_type == DT_F32) {
+    g_intToF32<<<num_blocks, block_size>>>((int32_t *)src, (float *)dst,
+                                           num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_INT8) {
+    g_f32ToInt<<<num_blocks, block_size>>>((float *)src, (int8_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_INT8 && dst_type == DT_F32) {
+    g_intToF32<<<num_blocks, block_size>>>((int8_t *)src, (float *)dst,
+                                           num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_UINT8) {
+    g_f32ToInt<<<num_blocks, block_size>>>((float *)src, (uint8_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_UINT8 && dst_type == DT_F32) {
+    g_intToF32<<<num_blocks, block_size>>>((uint8_t *)src, (float *)dst,
+                                           num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_BF16) {
+    g_f32ToBF16<<<num_blocks, block_size>>>((float *)src, (uint16_t *)dst,
+                                            num_elem, rmode);
+  } else if (src_type == DT_BF16 && dst_type == DT_F32) {
+    g_bf16ToF32<<<num_blocks, block_size>>>((uint16_t *)src, (float *)dst,
+                                            num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_F16) {
+    g_f32ToF16<<<num_blocks, block_size>>>((float *)src, (uint16_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_F16 && dst_type == DT_F32) {
+    g_f16ToF32<<<num_blocks, block_size>>>((uint16_t *)src, (float *)dst,
+                                           num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_UINT16) {
+    g_f32ToInt<<<num_blocks, block_size>>>((float *)src, (uint16_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_F32 && dst_type == DT_INT16) {
+    g_f32ToInt<<<num_blocks, block_size>>>((float *)src, (int16_t *)dst,
+                                           num_elem, rmode);
+  } else if (src_type == DT_UINT16 && dst_type == DT_F32) {
+    g_intToF32<<<num_blocks, block_size>>>((uint16_t *)src, (float *)dst,
+                                           num_elem);
+  } else if (src_type == DT_INT16 && dst_type == DT_F32) {
+    g_intToF32<<<num_blocks, block_size>>>((int16_t *)src, (float *)dst,
+                                           num_elem);
   } else {
     // not implemented
     return cudaErrorNotSupported;
@@ -175,22 +245,22 @@ void copyAxis(void *src, void *dst, int outer_dim, int axis_dim, int inner_dim,
 }
 
 void maxAxis(void *input, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type) {
+             int inner_dim, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(inner_dim * outer_dim);
   int block_size = CUDA_BLOCK_SIZE;
-  if (type == CUDNN_DATA_BFLOAT16) {
+  if (type == DT_BF16) {
     g_maxAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT8) {
+  } else if (type == DT_INT8) {
     g_maxAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)output,
                                           outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_UINT8) {
+  } else if (type == DT_UINT8) {
     g_maxAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)output,
                                           outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_FLOAT) {
+  } else if (type == DT_F32) {
     g_maxAxis<<<num_blocks, block_size>>>((float *)input, (float *)output,
                                           outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT32) {
+  } else if (type == DT_INT32) {
     g_maxAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)output,
                                           outer_dim, axis_dim, inner_dim);
   } else {
@@ -198,16 +268,16 @@ void maxAxis(void *input, void *output, int outer_dim, int axis_dim,
 }
 
 void sumAxis(void *input, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type) {
+             int inner_dim, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
-  if (type == CUDNN_DATA_BFLOAT16) {
+  if (type == DT_BF16) {
     g_sumAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)output, outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_FLOAT) {
+  } else if (type == DT_F32) {
     g_sumAxis<<<num_blocks, block_size>>>((float *)input, (float *)output,
                                           outer_dim, axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT32) {
+  } else if (type == DT_INT32) {
     g_sumAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)output,
                                           outer_dim, axis_dim, inner_dim);
   } else {
@@ -215,26 +285,26 @@ void sumAxis(void *input, void *output, int outer_dim, int axis_dim,
 }
 
 void subAxis(void *input, void *sub, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type) {
+             int inner_dim, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
-  if (type == CUDNN_DATA_BFLOAT16) {
+  if (type == DT_BF16) {
     g_subAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)sub, (uint16_t *)output, outer_dim,
         axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT8) {
+  } else if (type == DT_INT8) {
     g_subAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)sub,
                                           (int8_t *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_UINT8) {
+  } else if (type == DT_UINT8) {
     g_subAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)sub,
                                           (uint8_t *)output, outer_dim,
                                           axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_FLOAT) {
+  } else if (type == DT_F32) {
     g_subAxis<<<num_blocks, block_size>>>((float *)input, (float *)sub,
                                           (float *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_INT32) {
+  } else if (type == DT_INT32) {
     g_subAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)sub,
                                           (int32_t *)output, outer_dim,
                                           axis_dim, inner_dim);
@@ -243,26 +313,26 @@ void subAxis(void *input, void *sub, void *output, int outer_dim, int axis_dim,
 }
 
 void addAxis(void *input, void *add, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type) {
+             int inner_dim, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
-  if (type == CUDNN_DATA_BFLOAT16) {
+  if (type == DT_BF16) {
     g_addAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)add, (uint16_t *)output, outer_dim,
         axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT8) {
+  } else if (type == DT_INT8) {
     g_addAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)add,
                                           (int8_t *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_UINT8) {
+  } else if (type == DT_UINT8) {
     g_addAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)add,
                                           (uint8_t *)output, outer_dim,
                                           axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_FLOAT) {
+  } else if (type == DT_F32) {
     g_addAxis<<<num_blocks, block_size>>>((float *)input, (float *)add,
                                           (float *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_INT32) {
+  } else if (type == DT_INT32) {
     g_addAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)add,
                                           (int32_t *)output, outer_dim,
                                           axis_dim, inner_dim);
@@ -271,26 +341,26 @@ void addAxis(void *input, void *add, void *output, int outer_dim, int axis_dim,
 }
 
 void mulAxis(void *input, void *mul, void *output, int outer_dim, int axis_dim,
-             int inner_dim, cudnnDataType_t type) {
+             int inner_dim, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
-  if (type == CUDNN_DATA_BFLOAT16) {
+  if (type == DT_BF16) {
     g_mulAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)mul, (uint16_t *)output, outer_dim,
         axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_INT8) {
+  } else if (type == DT_INT8) {
     g_mulAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)mul,
                                           (int8_t *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_UINT8) {
+  } else if (type == DT_UINT8) {
     g_mulAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)mul,
                                           (uint8_t *)output, outer_dim,
                                           axis_dim, inner_dim);
-  } else if (type == CUDNN_DATA_FLOAT) {
+  } else if (type == DT_F32) {
     g_mulAxis<<<num_blocks, block_size>>>((float *)input, (float *)mul,
                                           (float *)output, outer_dim, axis_dim,
                                           inner_dim);
-  } else if (type == CUDNN_DATA_INT32) {
+  } else if (type == DT_INT32) {
     g_mulAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)mul,
                                           (int32_t *)output, outer_dim,
                                           axis_dim, inner_dim);
@@ -298,18 +368,18 @@ void mulAxis(void *input, void *mul, void *output, int outer_dim, int axis_dim,
   }
 }
 
-void neg(void *input, void *output, int size, cudnnDataType_t type) {
+void neg(void *input, void *output, int size, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   switch (type) {
-  case CUDNN_DATA_INT32:
+  case DT_INT32:
     g_neg<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)output,
                                       size);
     break;
-  case CUDNN_DATA_FLOAT:
+  case DT_F32:
     g_neg<<<num_blocks, block_size>>>((float *)input, (float *)output, size);
     break;
-  case CUDNN_DATA_INT8:
+  case DT_INT8:
     g_neg<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)output, size);
     break;
   default:
@@ -356,6 +426,43 @@ void mmF32(void *input, void *right, void *output, int m, int k, int n) {
                                       (float *)output, m, k, n);
 }
 
+void gather(void *indices, void *embedding, void *output, int num_indices,
+            int embedding_dim, int inner_dim, data_type_t ind_type,
+            data_type_t embed_type) {
+  int num_blocks = CUDA_NUM_BLOCKS(num_indices);
+  int block_size = CUDA_BLOCK_SIZE;
+  auto dbytes = get_dtype_bytes(embed_type);
+  if (ind_type == DT_UINT16) {
+    if (dbytes == 1) {
+      g_gather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint8_t *)embedding, (uint8_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    } else if (dbytes == 2) {
+      g_gather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint16_t *)embedding, (uint16_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    } else if (dbytes == 4) {
+      g_gather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint32_t *)embedding, (uint32_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    }
+  } else if (ind_type == DT_INT32) {
+    if (dbytes == 1) {
+      g_gather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint8_t *)embedding, (uint8_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    } else if (dbytes == 2) {
+      g_gather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint16_t *)embedding, (uint16_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    } else if (dbytes == 4) {
+      g_gather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint32_t *)embedding, (uint32_t *)output,
+          num_indices, embedding_dim, inner_dim);
+    }
+  }
+}
+
 void requantInt8Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w,
                            bool out_sign, bool qdm, bool relu) {
@@ -375,71 +482,80 @@ void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
 }
 
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
-              cudnnDataType_t type) {
+              data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   switch (type) {
-  case CUDNN_DATA_INT8:
+  case DT_INT8:
     g_mulShift<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)output,
                                            multiplier, shift, size);
     break;
-  case CUDNN_DATA_UINT8:
+  case DT_UINT8:
     g_mulShift<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)output,
                                            multiplier, shift, size);
     break;
   }
 }
 
-void print(void *data, int size, cudnnDataType_t type) {
+void print(void *data, int size, data_type_t type) {
   switch (type) {
-  case CUDNN_DATA_FLOAT:
+  case DT_F32:
     g_print<<<(size + 256) / 256, 256>>>((float *)data, size);
     break;
-  case CUDNN_DATA_INT32:
+  case DT_INT32:
     g_print<<<(size + 256) / 256, 256>>>((int32_t *)data, size);
     break;
-  case CUDNN_DATA_INT8:
+  case DT_INT8:
     g_print<<<(size + 256) / 256, 256>>>((int8_t *)data, size);
     break;
-  case CUDNN_DATA_UINT8:
+  case DT_UINT8:
     g_print<<<(size + 256) / 256, 256>>>((uint8_t *)data, size);
     break;
-  case CUDNN_DATA_BFLOAT16:
+  case DT_INT16:
+    g_print<<<(size + 256) / 256, 256>>>((int16_t *)data, size);
+    break;
+  case DT_UINT16:
+    g_print<<<(size + 256) / 256, 256>>>((uint16_t *)data, size);
+    break;
+  case DT_BF16:
     g_printBF16<<<(size + 256) / 256, 256>>>((uint16_t *)data, size);
+    break;
+  case DT_F16:
+    g_printF16<<<(size + 256) / 256, 256>>>((uint16_t *)data, size);
     break;
   }
 }
 
-void doRelu(void *data, int size, cudnnDataType_t type) {
+void doRelu(void *data, int size, data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   switch (type) {
-  case CUDNN_DATA_FLOAT:
+  case DT_F32:
     g_doRelu<<<num_blocks, block_size>>>((float *)data, size);
     break;
-  case CUDNN_DATA_INT32:
+  case DT_INT32:
     g_doRelu<<<num_blocks, block_size>>>((int32_t *)data, size);
     break;
-  case CUDNN_DATA_INT8:
+  case DT_INT8:
     g_doRelu<<<num_blocks, block_size>>>((int8_t *)data, size);
     break;
   }
 }
 
-void lut256(void *src, void *table, void *dst, int size,
-            cudnnDataType_t src_type, cudnnDataType_t dst_type) {
+void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
+            data_type_t dst_type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_INT8) {
+  if (src_type == DT_INT8 && dst_type == DT_INT8) {
     g_lut256<<<num_blocks, block_size>>>((int8_t *)src, (int8_t *)table,
                                          (int8_t *)dst, size);
-  } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_UINT8) {
+  } else if (src_type == DT_UINT8 && dst_type == DT_UINT8) {
     g_lut256<<<num_blocks, block_size>>>((uint8_t *)src, (uint8_t *)table,
                                          (uint8_t *)dst, size);
-  } else if (src_type == CUDNN_DATA_INT8 && dst_type == CUDNN_DATA_UINT8) {
+  } else if (src_type == DT_INT8 && dst_type == DT_UINT8) {
     g_lut256<<<num_blocks, block_size>>>((int8_t *)src, (uint8_t *)table,
                                          (uint8_t *)dst, size);
-  } else if (src_type == CUDNN_DATA_UINT8 && dst_type == CUDNN_DATA_INT8) {
+  } else if (src_type == DT_UINT8 && dst_type == DT_INT8) {
     g_lut256<<<num_blocks, block_size>>>((uint8_t *)src, (int8_t *)table,
                                          (int8_t *)dst, size);
   }
@@ -535,25 +651,22 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
                int axis_dim, int inner_dim, float scale, float offset,
                bool log) {
   // get max => buffer
-  maxAxis(input, buffer, outer_dim, axis_dim, inner_dim, CUDNN_DATA_BFLOAT16);
+  maxAxis(input, buffer, outer_dim, axis_dim, inner_dim, DT_BF16);
   // sub max => output
-  subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim,
-          CUDNN_DATA_BFLOAT16);
+  subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
 
   // exp => output
   cvLutSlope(output, output, table0, table1, outer_dim * inner_dim * axis_dim,
              scale, offset);
   // sum => buffer
-  sumAxis(output, buffer, outer_dim, axis_dim, inner_dim, CUDNN_DATA_BFLOAT16);
+  sumAxis(output, buffer, outer_dim, axis_dim, inner_dim, DT_BF16);
   // 1/sum => buffer
   cvLutMantissa(buffer, buffer, table2, table3, outer_dim * inner_dim, log);
 
   if (log) {
-    addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim,
-            CUDNN_DATA_BFLOAT16);
+    addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   } else {
-    mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim,
-            CUDNN_DATA_BFLOAT16);
+    mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   }
 }
 

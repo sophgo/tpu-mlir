@@ -60,6 +60,6 @@ void py_cuda::cudaConcatOp(tpu::ConcatOp op) {
   auto out_type = module::getStorageType(op.getOutput());
   if (op.getDoRelu() && !out_type.isUnsignedInteger(8)) {
     int num_out = module::getNumElements(op.getOutput());
-    cuda::doRelu(dst, num_out, getCudnnType(op.getOutput()));
+    cuda::doRelu(dst, num_out, getCudaType(op.getOutput()));
   }
 }

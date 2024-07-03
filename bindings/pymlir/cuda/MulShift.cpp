@@ -19,5 +19,5 @@ void py_cuda::cudaMulShiftOp(tpu::MulShiftOp op) {
   auto num = module::getBytes(op.getOutput());
   int32_t m = op.getMultiplier();
   int32_t s = op.getRshift();
-  cuda::mulShift(input, output, m, s, num, getCudnnType(op.getInput()));
+  cuda::mulShift(input, output, m, s, num, getCudaType(op.getInput()));
 }

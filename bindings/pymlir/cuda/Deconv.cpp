@@ -20,8 +20,8 @@ void py_cuda::cudaDeconvOp(tpu::DeconvOp op) {
   auto output = getCudaData(op.getOutput());
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
-  auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
-  auto kernel_f32 = newCudaData(op.getFilter(), CUDNN_DATA_FLOAT);
+  auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
+  auto kernel_f32 = newCudaData(op.getFilter(), cuda::DT_F32);
   cudnnTensorDescriptor_t input_desc;
   cudnnCreateTensorDescriptor(&input_desc);
   cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -68,7 +68,7 @@ void py_cuda::cudaDeconvOp(tpu::DeconvOp op) {
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
   if (p.with_bias) {
-    auto bias = newCudaData(op.getBias(), CUDNN_DATA_FLOAT);
+    auto bias = newCudaData(op.getBias(), cuda::DT_F32);
     cudnnTensorDescriptor_t bias_desc;
     cudnnCreateTensorDescriptor(&bias_desc);
     cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -81,15 +81,15 @@ void py_cuda::cudaDeconvOp(tpu::DeconvOp op) {
   cudnnDestroyTensorDescriptor(outf32_desc);
   if (out_stype.isInteger(32)) {
     auto output = getCudaData(op.getOutput());
-    cuda::convertType(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
-                      CUDNN_DATA_INT32);
+    cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
+                      cuda::DT_INT32);
     if (p.do_relu) {
-      cuda::doRelu(output, num_out, CUDNN_DATA_INT32);
+      cuda::doRelu(output, num_out, cuda::DT_INT32);
     }
     return;
   }
   auto out_i32 =
-      newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
+      newCudaData(out_f32.get(), num_out, cuda::DT_F32, cuda::DT_INT32);
   out_f32.reset();
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 3. multiplier + shift i32 => i8
