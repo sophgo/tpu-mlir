@@ -51,7 +51,7 @@ def learning_scale_wrap(reqs):
 
 
 if __name__ == '__main__':
-    print("TPU-MLIR {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.__version__))
     # yapf: disable
     parser = argparse.ArgumentParser(
         description="Learning the scale for quantization, run after basic quant table")

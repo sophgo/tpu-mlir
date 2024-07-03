@@ -16,7 +16,7 @@ from calibration.sensitive_layer import SensitiveLayer
 from calibration.data_selector import DataSelector
 
 if __name__ == '__main__':
-    print("TPU-MLIR {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.__version__))
     # yapf: disable
     parser = argparse.ArgumentParser(description="Search sensitive layer")
     parser.add_argument('mlir_file', help='fp32 mlir file')

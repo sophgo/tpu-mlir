@@ -23,7 +23,7 @@ def parse_method_list(input_str):
     return input_str.split(',')
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.__version__))
     # yapf: disable
     parser = argparse.ArgumentParser()
     parser.add_argument('mlir_file', metavar='mlir_file', help='mlir file')

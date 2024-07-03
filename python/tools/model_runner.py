@@ -64,7 +64,7 @@ def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: 
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed = False) -> dict:
+def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=False) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
@@ -82,8 +82,9 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
             lib_so = 'libcmodel_mars3.so'
         elif chip == "SG2380":
             lib_so = 'libcmodel_sg2380.so'
-        assert(os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
-        cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
+        assert (os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
+        cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(
+            lib_so)
         os.system(cmd)
         # used in custom layer
         lib_so = 'libcmodel_custom_1684x.so'
@@ -96,7 +97,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
         # elif chip == "MARS3":
         #     lib_so = 'libcmodel_custom_mars3.so'
         if os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)):
-            cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel_custom.so'.format(lib_so)
+            cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel_custom.so'.format(
+                lib_so)
             os.system(cmd)
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
@@ -110,7 +112,7 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
         model = pyruntime.Model(model_file)
         net = model.Net(model.networks[0])
     else:
-        model = pyruntime.Model(model_file, output_all_tensors = dump_all)
+        model = pyruntime.Model(model_file, output_all_tensors=dump_all)
         net = model
     input_shapes = []
     only_one = len(inputs) == 1
@@ -133,7 +135,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
             else:
                 input_shapes.append(i.data.shape)
         # i.data[:] = lowering(input, pdtype=i.dtype, pshape=i.data.shape,pzero_point=i.qzero_point, pscale=i.qscale)
-        i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype, pshape=input.shape, pzero_point=i.qzero_point, pscale=i.qscale).flatten()
+        i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype,
+                                                             pshape=input.shape, pzero_point=i.qzero_point, pscale=i.qscale).flatten()
 
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
@@ -160,7 +163,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0 and out_fixed == False:
             if is_cv18xx and i.name in inputs:
                 name = i.name + "_si8" if i.data.dtype == np.int8 else "_ui8"
-                outputs[name] = np.array(i.data.astype(np.float32) / np.float32(i.qscale))
+                outputs[name] = np.array(i.data.astype(
+                    np.float32) / np.float32(i.qscale))
             else:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
@@ -180,14 +184,14 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
                     *dyn_output_shapes[dyn_idx])
             dyn_idx += 1
     try:
-        next(pack_bmodel_context) # save output
+        next(pack_bmodel_context)  # save output
     except StopIteration:
         pass
 
     if not is_cv18xx and dump_all:
         if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ["NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
             if "DYNAMIC_LAYER_OUTPUT_DATA_PATH" in os.environ and \
-            "DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH" in os.environ:
+                    "DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH" in os.environ:
                 dyn_layer_out_data_path = os.environ["DYNAMIC_LAYER_OUTPUT_DATA_PATH"]
                 id_dict_file = os.environ["DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH"]
                 if os.path.exists(dyn_layer_out_data_path) and os.path.exists(id_dict_file) and os.path.isfile(id_dict_file):
@@ -197,17 +201,20 @@ def _model_inference(inputs: dict, model_file: str, dump_all = True, out_fixed =
                     id_dict_str += "}"
                     id_dict = eval(id_dict_str)
                     os.remove(id_dict_file)
-                    ids = sorted([int(file) for file in os.listdir(dyn_layer_out_data_path) if file.isdecimal() and int(file) in id_dict])
+                    ids = sorted([int(file) for file in os.listdir(
+                        dyn_layer_out_data_path) if file.isdecimal() and int(file) in id_dict])
                     for id in ids:
                         name = id_dict[id]
-                        filename = os.path.join(dyn_layer_out_data_path, str(id))
+                        filename = os.path.join(
+                            dyn_layer_out_data_path, str(id))
                         with open(filename, "r") as f:
                             dict_str = f.readline()
                             dict_ = eval(dict_str)
                             data = dict_["data"]
                             is_fp = dict_["is_fp"]
                             shape = dict_["shape"]
-                            data = np.array(data, dtype=(np.float32 if is_fp else np.int32))
+                            data = np.array(data, dtype=(
+                                np.float32 if is_fp else np.int32))
                             outputs[name] = np.reshape(data, shape)
                     os.system(f"rm -r {dyn_layer_out_data_path}/*")
 
@@ -225,7 +232,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bo
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
         if not use_cuda:
-            return _mlir_inference(inputs, mlir_file, dump_all, out_fixed)
+            return _mlir_inference_by_cpu(inputs, mlir_file, dump_all, out_fixed)
         else:
             return _mlir_inference_by_cuda(inputs, mlir_file, dump_all)
     finally:
@@ -234,7 +241,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bo
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, out_fixed: bool = False) -> dict:
+def _mlir_inference_by_cpu(inputs: dict, mlir_file: str, dump_all: bool = True, out_fixed: bool = False) -> dict:
     import pymlir
     pymlir.set_mem_mode("value_mem")
     from utils.mlir_parser import MlirParser
@@ -278,10 +285,11 @@ def _mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, out_fix
                 outputs[pre_op] = tensors[pre_op]
     return outputs
 
+
 def _mlir_inference_by_cuda(inputs: dict, mlir_file: str, dump_all: bool = False) -> dict:
     import pymlir
-    if not hasattr(pymlir, "cuda"):
-        raise RuntimeError("this version not support cuda")
+    if not pymlir.support_cuda:
+        raise RuntimeError("current version not support cuda")
     global g_mlir_cuda
     if g_mlir_cuda != None:
         g_mlir_cuda = None
@@ -300,6 +308,7 @@ def _mlir_inference_by_cuda(inputs: dict, mlir_file: str, dump_all: bool = False
     g_mlir_cuda.invoke(dump_all)
     return g_mlir_cuda.get_all_tensor()
 
+
 def free_mlir_module():
     global g_mlir_module
     g_mlir_module = None
@@ -310,6 +319,7 @@ def free_mlir_module():
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     import onnx
     import onnxruntime
+
     def generate_onnx_with_all(onnx_file: str):
         # for dump all activations
         # plz refre https://github.com/microsoft/onnxruntime/issues/1455
@@ -327,18 +337,20 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 intermediate_layer_value_info = onnx.helper.ValueInfoProto()
                 intermediate_layer_value_info.name = name
                 model.graph.output.append(intermediate_layer_value_info)
-                output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
+                output_keys.append(
+                    intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
         try:
             onnx.save(model, dump_all_tensors_onnx)
         except Exception as E:
             if "The proto size is larger than the 2 GB limit." in str(E):
-                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(dump_all_tensors_onnx))
+                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(
+                    dump_all_tensors_onnx))
                 onnx.save(model,
-                        dump_all_tensors_onnx,
-                        save_as_external_data=True,
-                        location="model_runner_external_data",
-                        convert_attribute=True)
+                          dump_all_tensors_onnx,
+                          save_as_external_data=True,
+                          location="model_runner_external_data",
+                          convert_attribute=True)
             else:
                 raise E
         return output_keys, dump_all_tensors_onnx
@@ -346,7 +358,8 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
-    session = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
+    session = onnxruntime.InferenceSession(
+        onnx_file, providers=['CPUExecutionProvider'])
     inodes = session.get_inputs()
     only_one = len(inputs) == 1
     if only_one:
@@ -452,9 +465,11 @@ def tflite_inference(
             data[name] = d
         elif d.dtype == np.float32 and is_quant:
             scale, zp = input["quantization"]
-            data[name] = np.clip(round_away_from_zero(d / scale + zp), 0, 255).astype(t)
+            data[name] = np.clip(round_away_from_zero(
+                d / scale + zp), 0, 255).astype(t)
         else:
-            raise RuntimeError("input type:{} not match model type:{}".format(d.dtype, t))
+            raise RuntimeError(
+                "input type:{} not match model type:{}".format(d.dtype, t))
     outputs = session.run(input_is_nchw, **data)
 
     if dump_all:
@@ -516,8 +531,10 @@ if __name__ == '__main__':
     parser.add_argument("--input", required=True, help="input npz file")
     parser.add_argument("--model", type=str, required=True,
                         help="mlir/pytorch/onnx/tflie/bmodel/prototxt file.")
-    parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
-    parser.add_argument("--output", default='_output.npz', help="output npz file")
+    parser.add_argument("--weight", type=str, default="",
+                        help="caffemodel for caffe")
+    parser.add_argument("--output", default='_output.npz',
+                        help="output npz file")
     parser.add_argument("--dump_all_tensors", action='store_true',
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
@@ -531,13 +548,15 @@ if __name__ == '__main__':
     data = np.load(args.input)
     output = dict()
     if args.model.endswith(".mlir"):
-        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed, args.cuda)
+        output = mlir_inference(
+            data, args.model, args.dump_all_tensors, args.debug, args.out_fixed, args.cuda)
     elif args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
-        output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
+        output = caffe_inference(
+            data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):
         output = torch_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):

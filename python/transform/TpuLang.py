@@ -82,7 +82,7 @@ def compile(name: str,
             opt=2,
             mlir_inference=True,
             bmodel_inference=True):
-    logger.info("TPU-MLIR {}".format(pymlir.module().version))
+    logger.info("TPU-MLIR {}".format(pymlir.__version__))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()

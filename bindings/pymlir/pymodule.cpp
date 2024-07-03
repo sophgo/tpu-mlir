@@ -9,11 +9,6 @@
 
 #include "pymodule.h"
 
-#ifndef MLIR_VERSION
-#define MLIR_VERSION "version unknown"
-#endif
-
-std::string py_module::version = MLIR_VERSION;
 std::string py_module::gmem_mode_str_ = "";
 
 py_module::~py_module() {

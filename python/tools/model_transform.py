@@ -296,7 +296,7 @@ def model_transform_func(model_name, model_def, input_shapes, mlir_scale, mlir_m
     tool.model_transform(output_mlir)
 
 if __name__ == '__main__':
-    logger.info("TPU-MLIR {}".format(pymlir.module().version))
+    logger.info("TPU-MLIR {}".format(pymlir.__version__))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")
