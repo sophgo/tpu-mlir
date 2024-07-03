@@ -115,6 +115,8 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_bm1690.so'
             elif chip == "MARS3":
                 lib_so = 'libcmodel_mars3.so'
+            elif chip == "SG2380":
+                lib_so = 'libcmodel_sg2380.so'
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
             os.system(cmd)
         elif self.args.model_file.endswith(".cvimodel"):
