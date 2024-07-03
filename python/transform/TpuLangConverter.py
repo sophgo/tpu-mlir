@@ -183,6 +183,9 @@ class Tensor:
     def quantization(self,
                      scale: Union[float, List[float]] = None,
                      zero_point: Union[int, List[int]] = None):
+        if self.dtype != "int8" and self.dtype != "uint8":
+            assert scale is None and zero_point is None, \
+            "When dtype is not int8 or uint8, scale and zero_point must be None."
         if scale is not None:
             scale = [abs(s) for s in scale] if isinstance(scale, List) else abs(scale)
         if self.is_quantized is False:
