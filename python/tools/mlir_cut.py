@@ -207,7 +207,7 @@ def backtrace(
 
 
 if __name__ == "__main__":
-    print("TPU-MLIR {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.__version__))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--mlir", required=True, help="model name")

@@ -312,7 +312,7 @@ def deprecated_option(cond, msg):
 
 
 if __name__ == '__main__':
-    logger.info("TPU-MLIR {}".format(pymlir.module().version))
+    logger.info("TPU-MLIR {}".format(pymlir.__version__))
     parser = argparse.ArgumentParser()
     # yapf: disable
     # ========== Basic Options ===========

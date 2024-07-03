@@ -55,7 +55,7 @@ class SearchThreshold:
             if self.args.tune_num > 0:
                 cali_table += ".1"
             with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.module().version))
+                f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
                 f.write("# genetated time: {}\n".format(datetime.datetime.now()))
                 f.write("# quantization threshold calculation method: {}\n".format(method_name))
@@ -116,7 +116,7 @@ class SearchThreshold:
             layer_name_list = []
             cali_table += "_tune"
             with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.module().version))
+                f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
                 f.write("# genetated time: {}\n".format(datetime.datetime.now()))
                 f.write("# quantization threshold calculation method: {}\n".format(method_name))

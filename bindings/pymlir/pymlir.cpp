@@ -13,6 +13,17 @@
 #include "pycuda.h"
 #endif
 
+#ifndef MLIR_VERSION
+#define MLIR_VERSION "version unknown"
+#endif
+static std::string mlir_version = MLIR_VERSION;
+
+#ifdef USE_CUDA
+static bool support_cuda = true;
+#else
+static bool support_cuda = false;
+#endif
+
 void set_mem_mode(std::string mem_mode) { py_module::set_mem_mode(mem_mode); }
 
 void debug_only(std::vector<std::string> debug_types) {
@@ -70,7 +81,9 @@ void run_pass_pipeline(std::string mlir_txt, std::vector<std::string> opts) {
 
 // wrap as Python module
 PYBIND11_MODULE(pymlir, m) {
-  m.doc() = "pybind11 for mlir";
+  m.doc() = "pybind11 for TPU-MLIR";
+  m.attr("__version__") = mlir_version;
+  m.attr("support_cuda") = support_cuda;
   m.def("debug", &debug, py::arg("enable") = true,
         "enable debugging information");
   m.def("debug", &debug_only, "configure debugging information");
@@ -103,8 +116,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
-      .def_readonly("all_weight_names", &py_module::all_weight_names)
-      .def_readonly_static("version", &py_module::version);
+      .def_readonly("all_weight_names", &py_module::all_weight_names);
 #ifdef USE_CUDA
   py::class_<py_cuda>(m, "cuda", "MLIR Cuda")
       .def(py::init<>())

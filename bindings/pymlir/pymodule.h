@@ -57,7 +57,6 @@ public:
   py::list all_weight_names;
   py::list input_names;
   py::list output_names;
-  static std::string version;
   static std::string gmem_mode_str_;
 
 private:

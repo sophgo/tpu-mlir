@@ -15,7 +15,7 @@ from pathlib import Path
 from calibration.mix_precision import MixPrecSearcher
 
 if __name__ == '__main__':
-    print("TPU-MLIR {}".format(pymlir.module().version))
+    print("TPU-MLIR {}".format(pymlir.__version__))
     # yapf: disable
     parser = argparse.ArgumentParser(description="Generate quantization table")
     parser.add_argument('mlir_file', help='fp32 mlir file')

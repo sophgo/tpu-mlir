@@ -64,7 +64,7 @@ class SearchQtable:
             if self.args.tune_num > 0:
                 cali_table += ".1"
             with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.module().version))
+                f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
                 f.write("# genertated time: {}\n".format(datetime.datetime.now()))
                 f.write("# histogram number: {}\n".format(calibrator.histogram_bin_num))
@@ -96,7 +96,7 @@ class SearchQtable:
             layer_name_list = []
             cali_table += "_tune"
             with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.module().version))
+                f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
                 f.write("# genertated time: {}\n".format(datetime.datetime.now()))
                 f.write("# histogram number: {}\n".format(calibrator.histogram_bin_num))

@@ -1695,7 +1695,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             if self.args.tune_num > 0:
                 cali_table += ".1"
             with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.module().version))
+                f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
                 f.write("# genetated time: {}\n".format(datetime.datetime.now()))
                 if 'fp8' in self.debug_cmd:
@@ -1760,7 +1760,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         # step 5: dump threshold table after tuning
         tuned_threshold_list = []
         with open(self.args.calibration_table, 'w') as f:
-            f.write("# mlir version: {}\n".format(pymlir.module().version))
+            f.write("# mlir version: {}\n".format(pymlir.__version__))
             f.write("# mlir: {}\n".format(self.args.mlir_file))
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
