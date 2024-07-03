@@ -22,7 +22,7 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   auto out_stype = module::getStorageType(op.getOutput());
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
-  auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
+  auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
   void *output = getCudaData(op.getOutput());
   cudnnTensorDescriptor_t input_desc;
   cudnnCreateTensorDescriptor(&input_desc);
@@ -54,13 +54,13 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   cudnnDestroyTensorDescriptor(outf32_desc);
   cudnnDestroyPoolingDescriptor(pooling_desc);
   if (!is_avg) {
-    cuda::convertType(out_f32.get(), output, num_out, CUDNN_DATA_FLOAT,
-                      getCudnnType(op.getOutput()));
+    cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
+                      getCudaType(op.getOutput()));
     return;
   }
   auto out_i32 = cuda_malloc(num_out * sizeof(int32_t));
-  cuda::convertType(out_f32.get(), out_i32.get(), num_out, CUDNN_DATA_FLOAT,
-                    CUDNN_DATA_INT32, cuda::RD_HALF_UP);
+  cuda::convertType(out_f32.get(), out_i32.get(), num_out, cuda::DT_F32,
+                    cuda::DT_INT32, cuda::RD_HALF_UP);
   out_f32.reset();
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. multiplier + shift i32 => i8

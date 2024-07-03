@@ -22,8 +22,8 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   auto out_stype = module::getStorageType(op.getOutput());
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
-  auto in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
-  auto right_f32 = newCudaData(op.getRight(), CUDNN_DATA_FLOAT);
+  auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
+  auto right_f32 = newCudaData(op.getRight(), cuda::DT_F32);
   auto out_f32 = cuda_malloc(num_out * sizeof(float));
   cuda::mmF32(in_f32.get(), right_f32.get(), out_f32.get(), p.M, p.K, p.N);
   in_f32.reset();
@@ -31,7 +31,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
   if (p.with_bias) {
-    auto bias = newCudaData(op.getBias(), CUDNN_DATA_FLOAT);
+    auto bias = newCudaData(op.getBias(), cuda::DT_F32);
     cudnnTensorDescriptor_t outf32_desc, bias_desc;
     cudnnCreateTensorDescriptor(&outf32_desc);
     cudnnSetTensor4dDescriptor(outf32_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -46,7 +46,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
     cudnnDestroyTensorDescriptor(outf32_desc);
   }
   auto out_i32 =
-      newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
+      newCudaData(out_f32.get(), num_out, cuda::DT_F32, cuda::DT_INT32);
   out_f32.reset();
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 3. multiplier + shift i32 => i8

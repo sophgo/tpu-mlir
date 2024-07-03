@@ -9,16 +9,20 @@
 #pragma once
 
 #include "cuda_helper.h"
+#include <cuda_fp16.h>
 
 namespace tpu_mlir {
 namespace cuda {
+
+// -------------------------------------------------------------------------
+// ------- bfloat16 definition
 
 struct bfloat16 {
   uint16_t value;
 
   __device__ bfloat16() : value(0) {}
   __device__ bfloat16(uint16_t v) : value(v) {}
-  __device__ bfloat16(float val, bool half_up = false) {
+  __device__ bfloat16(float val, bool half_up = true) {
     if (half_up) {
       uint32_t u32_val = *((uint32_t *)(&val));
       uint32_t lsb = (u32_val >> 16) & 1;
@@ -52,6 +56,46 @@ __device__ uint16_t d_BF16Raw(float data, bool round_up = true) {
   bfloat16 in_bf16(data, round_up);
   return in_bf16.value;
 }
+
+// -------------------------------------------------------------------------
+// ------- float16 definition
+
+struct float16 {
+  uint16_t value;
+
+  __device__ float16() : value(0) {}
+  __device__ float16(uint16_t v) : value(v) {}
+  __device__ float16(float val, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
+    if (rmode == RD_HALF_TO_EVEN) {
+      __half data = __float2half_rn(val);
+      value = *reinterpret_cast<uint16_t *>(&data);
+    }
+  }
+
+  __device__ operator float() const {
+    __half data = *(__half *)(&value);
+    return __half2float(data);
+  }
+};
+
+__device__ float d_F16(float data, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
+  float16 in_f16(data, rmode);
+  return static_cast<float>(in_f16);
+}
+
+__device__ float d_RawF16(uint16_t data) {
+  float16 in_f16(data);
+  return static_cast<float>(in_f16);
+}
+
+__device__ uint16_t d_F16Raw(float data,
+                             rounding_mode_t rmode = RD_HALF_TO_EVEN) {
+  float16 in_f16(data, rmode);
+  return in_f16.value;
+}
+
+// -------------------------------------------------------------------------
+// ----- type convert
 
 template <typename T>
 __device__ T d_f32ToInt(float data, rounding_mode_t rmode) {
@@ -123,6 +167,9 @@ __device__ void d_setZero(void *dst, int didx, int tbytes) {
     break;
   }
 }
+
+// -------------------------------------------------------------------------
+// ----- cv18xx
 
 __device__ uint16_t d_lutSlopeBF16(uint16_t input, uint16_t *base_table,
                                    uint16_t *slope_table, float scale,

@@ -54,10 +54,20 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     if (is_cv18xx) {
       bool is_bf16 = in_type.isBF16();
       cuda::cvQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16);
-    } else {
+    } else if (in_type.isF32()) {
       auto rmode = rmode_convert(op.getRoundMode());
       cuda::f32ScaleToInt8(input, output, 1. / scale, num_elem,
                            !out_type.isUnsignedInteger(8), rmode);
+    } else if (in_type.isBF16()) {
+      auto rmode = rmode_convert(op.getRoundMode());
+      cuda::bf16ScaleToInt8(input, output, 1. / scale, num_elem,
+                            !out_type.isUnsignedInteger(8), rmode);
+    } else if (in_type.isF16()) {
+      auto rmode = rmode_convert(op.getRoundMode());
+      cuda::f16ScaleToInt8(input, output, 1. / scale, num_elem,
+                           !out_type.isUnsignedInteger(8), rmode);
+    } else {
+      UNREACHABLE_OP("Not Implemented", op);
     }
     return;
   } else if (fOutput && isInQuant) {
@@ -73,13 +83,19 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
       if (out_type.isF32()) {
         cuda::int8ScaleToF32(input, output, scale, num_elem,
                              !qtype.isUnsignedInteger(8));
+      } else if (out_type.isBF16()) {
+        cuda::int8ScaleToBF16(input, output, scale, num_elem,
+                              !qtype.isUnsignedInteger(8));
+      } else if (out_type.isF16()) {
+        cuda::int8ScaleToF16(input, output, scale, num_elem,
+                             !qtype.isUnsignedInteger(8));
       } else {
         UNREACHABLE_OP("Not Implemented", op);
       }
     }
     return;
   } else {
-    cuda::convertType(input, output, num_elem, getCudnnType(op.getInput()),
-                      getCudnnType(op.getOutput()));
+    cuda::convertType(input, output, num_elem, getCudaType(op.getInput()),
+                      getCudaType(op.getOutput()));
   }
 }

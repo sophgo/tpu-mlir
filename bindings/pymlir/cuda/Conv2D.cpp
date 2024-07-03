@@ -21,9 +21,9 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   cuda_ptr in_f32;
   int ih = p.ih, iw = p.iw;
   int pad_h = p.phb, pad_w = p.pwr;
-  // pad input ?
+  // pad input
   if (!need_pad) {
-    in_f32 = newCudaData(op.getInput(), CUDNN_DATA_FLOAT);
+    in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
   } else {
     auto input = getCudaData(op.getInput());
     ih = p.ih + p.pht + p.phb;
@@ -36,11 +36,11 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                 p.pwr, 1);
     in_f32 = cuda_malloc(num * sizeof(float));
     cuda::convertType(pad_in.get(), in_f32.get(), num,
-                      getCudnnType(op.getInput()), CUDNN_DATA_FLOAT);
+                      getCudaType(op.getInput()), cuda::DT_F32);
   }
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
-  auto kernel_f32 = newCudaData(op.getFilter(), CUDNN_DATA_FLOAT);
+  auto kernel_f32 = newCudaData(op.getFilter(), cuda::DT_F32);
   cudnnTensorDescriptor_t input_desc;
   cudnnCreateTensorDescriptor(&input_desc);
   cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -86,7 +86,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
   if (p.has_bias) {
-    auto bias = newCudaData(op.getBias(), CUDNN_DATA_FLOAT);
+    auto bias = newCudaData(op.getBias(), cuda::DT_F32);
     cudnnTensorDescriptor_t bias_desc;
     cudnnCreateTensorDescriptor(&bias_desc);
     cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
@@ -97,10 +97,10 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
     cudnnDestroyTensorDescriptor(bias_desc);
   }
   // if (p.do_relu) {
-  //   doRelu(out_f32.get(), num_out, CUDNN_DATA_FLOAT);
+  //   doRelu(out_f32.get(), num_out, cuda::DT_F32);
   // }
   auto out_i32 =
-      newCudaData(out_f32.get(), num_out, CUDNN_DATA_FLOAT, CUDNN_DATA_INT32);
+      newCudaData(out_f32.get(), num_out, cuda::DT_F32, cuda::DT_INT32);
   out_f32.reset();
   cudnnDestroyTensorDescriptor(outf32_desc);
   //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --

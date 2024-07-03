@@ -12,7 +12,7 @@
 #include "pymlir.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
-
+#include "cuda/cuda_helper.h"
 #include <cudnn.h>
 #include <cuda_runtime.h>
 
@@ -33,7 +33,6 @@
     exit(EXIT_FAILURE);                                                        \
   }
 
-// 自定义删除器，用于std::unique_ptr来调用cudaFree
 struct cudaDeleter {
   void operator()(void *ptr) {
     if (ptr != nullptr) {
@@ -65,13 +64,12 @@ private:
   // assert
   void *getCudaData(Value v);
   // get cudnn type from mlir type
-  cudnnDataType_t getCudnnType(Value v);
-  size_t getCudnnTypeBytes(cudnnDataType_t type);
+  cuda::data_type_t getCudaType(Value v);
   // convert cuda data from one type to another type
-  cuda_ptr newCudaData(void *data, size_t num, cudnnDataType_t src_type,
-                       cudnnDataType_t dst_type);
+  cuda_ptr newCudaData(void *data, size_t num, cuda::data_type_t src_type,
+                       cuda::data_type_t dst_type);
   // alloc new buffer to store new type
-  cuda_ptr newCudaData(Value v, cudnnDataType_t dst_type);
+  cuda_ptr newCudaData(Value v, cuda::data_type_t dst_type);
 
   // -------------------------------------------------------------------
   // -------------- op inference by cuda -------------------------------
@@ -81,6 +79,7 @@ private:
   void cudaConcatOp(tpu::ConcatOp op);
   void cudaDeconvOp(tpu::DeconvOp op);
   void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
+  void cudaGatherOp(tpu::GatherOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
   void cudaMatMulOp(tpu::MatMulOp op);

@@ -15,6 +15,6 @@ void py_cuda::cudaLutOp(tpu::LutOp op) {
   void *lut = getCudaData(op.getTable());
   void *output = getCudaData(op.getOutput());
   int num = module::getNumElements(op.getInput());
-  cuda::lut256(input, lut, output, num, getCudnnType(op.getInput()),
-               getCudnnType(op.getTable()));
+  cuda::lut256(input, lut, output, num, getCudaType(op.getInput()),
+               getCudaType(op.getTable()));
 }

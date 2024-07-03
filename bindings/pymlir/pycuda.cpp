@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "pycuda.h"
+#include "cuda/cuda_helper.h"
 
 py_cuda::py_cuda() { CHECK_CUDNN(cudnnCreate(&cudnn_)); }
 
@@ -138,6 +139,15 @@ void py_cuda::cuda_to_host(const std::string &name) {
       buffer[i] = bf16_to_f32(temp[i]);
     }
     delete[] temp;
+  } else if (stype.isF16()) {
+    auto num = module::getNumElements(v);
+    uint16_t *temp = new uint16_t[num];
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(uint16_t),
+                          cudaMemcpyDeviceToHost));
+    for (int i = 0; i < num; i++) {
+      buffer[i] = f16_to_f32(temp[i]);
+    }
+    delete[] temp;
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");
@@ -152,12 +162,22 @@ void py_cuda::set_tensor(
     llvm_unreachable("set_tensor name is not exist");
   }
   auto v = it_value->second;
-  auto bytes = module::getBytes(v);
-  if (data.size() * sizeof(float) != bytes) {
+  auto num = module::getNumElements(v);
+  if (data.size() != num) {
     llvm_unreachable("set_tensor data size is uncorrect");
   }
+  auto bytes = module::getBytes(v);
+  auto v_type = getCudaType(v);
   void *dst = getCudaData(v);
-  CHECK_CUDA(cudaMemcpy(dst, data.data(), bytes, cudaMemcpyHostToDevice));
+  if (v_type != cuda::DT_F32) {
+    int src_bytes = data.size() * sizeof(float);
+    auto tmp = cuda_malloc(src_bytes);
+    CHECK_CUDA(
+        cudaMemcpy(tmp.get(), data.data(), src_bytes, cudaMemcpyHostToDevice));
+    CHECK_CUDA(cuda::convertType(tmp.get(), dst, num, cuda::DT_F32, v_type));
+  } else {
+    CHECK_CUDA(cudaMemcpy(dst, data.data(), bytes, cudaMemcpyHostToDevice));
+  }
 }
 
 void py_cuda::invoke(bool dump_all) {
@@ -194,6 +214,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaDepth2SpaceOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
           cudaGenericCpuOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::GatherOp>(op)) {
+          cudaGatherOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::LutOp>(op)) {
           cudaLutOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {

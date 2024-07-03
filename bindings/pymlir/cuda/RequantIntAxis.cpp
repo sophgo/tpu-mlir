@@ -30,7 +30,7 @@ void py_cuda::cudaRequantIntAxisOp(tpu::RequantIntAxisOp op) {
   cuda::slice4D(quant, shifts.get(), shape[0], shape[1], shape[2], shape[3], 0,
                 0, 0, 1, 1, 1, 1, 1, shape[0], shape[1], shape[2], 1,
                 sizeof(int32_t));
-  cuda::neg(shifts.get(), shifts.get(), shape[1], CUDNN_DATA_INT32);
+  cuda::neg(shifts.get(), shifts.get(), shape[1], cuda::DT_INT32);
   cuda::requantInt8Perchannel(input, output, multipliers.get(), shifts.get(), n,
                               c, h, w, sign);
 }
