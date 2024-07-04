@@ -71,6 +71,10 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::ScatterNDOp op,
                                      bool asymmetric) const {
   // LoweringF32(rewriter, op);
+  if(module::isWeight(op.getInputData())){
+    LoweringF32(rewriter, op);
+    return;
+  }
   auto new_type = getQuantFloatType(op.getOutput());
   RequantizeInt8(rewriter, op, new_type, asymmetric);
 }

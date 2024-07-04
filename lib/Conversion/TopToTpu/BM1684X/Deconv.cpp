@@ -163,8 +163,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto deconvType = RankedTensorType::get(module::getShape(op.getOutput()),
                                           rewriter.getI32Type());
-  auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
-                                                 operands, attrs);
+  auto newValue =
+      CreateDeconvOp(rewriter, op.getKernelShape().size(), NameLoc::get(name), deconvType, operands, attrs);
 
   auto rqType = getQuantInt8Type(op.getOutput(), asymmetric);
 
@@ -213,7 +213,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       "quant_mode",
       tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   operands.clear();
-  operands.push_back(deconvOp.getOutput());
+  operands.push_back(newValue);
   operands.push_back(new_quant);
   auto rqOp = rewriter.create<tpu::RequantIntAxisOp>(op->getLoc(), rqType,
                                                      operands, attrs);
