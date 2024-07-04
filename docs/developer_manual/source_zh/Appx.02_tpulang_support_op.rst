@@ -3106,6 +3106,10 @@ extract
 * BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
+
+
+
+
 Sort Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3773,6 +3777,54 @@ maxpool2d_with_mask
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
 
+
+maxpool3d
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool3d(input: Tensor,
+                kernel: Union[List[int],int,Tuple[int, ...]] = None,
+                stride: Union[List[int],int,Tuple[int, ...]] = None,
+                pad:    Union[List[int],int,Tuple[int, ...]] = None,
+                ceil_mode: bool = False,
+                scale: List[float] = None,
+                zero_point: List[int] = None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero"):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行Max池化处理。请参考各大框架下的池化操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入操作Tensor。
+* kernel：List[int]或Tuple[int]型或int或None，输入None表示使用global_pooling，不为None时若输入单个整数，表示在3个维度上的kernel大小相同，若输入List或Tuple，要求该参数长度为3。
+* pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
+* stride：List[int]或Tuple[int]型或int或None，表示步长尺寸，输入None使用默认值[1,1,1]，不为None时若输入单个整数，表示在3个维度上的stride大小相同，若输入List或Tuple，要求该参数长度为3。
+* ceil：bool型，表示计算output shape时是否向上取整。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
+* zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+芯片支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+
 avgpool2d
 :::::::::::::::::::
 
@@ -3821,6 +3873,57 @@ avgpool2d
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
+
+avgpool3d
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool3d(input: Tensor,
+            kernel: Union[List[int],int,Tuple[int, ...]] = None,
+            stride: Union[List[int],int,Tuple[int, ...]] = None,
+            pad:    Union[List[int],int,Tuple[int, ...]] = None,
+            ceil_mode: bool = False,
+            scale: List[float] = None,
+            zero_point: List[int] = None,
+            out_name: str = None,
+            count_include_pad : bool = False,
+            round_mode : str="half_away_from_zero",
+            first_round_mode : str="half_away_from_zero"):
+          #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行Avg池化处理。请参考各大框架下的池化操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* tensor：Tensor类型，表示输入操作Tensor。
+* kernel：List[int]或Tuple[int]型或int或None，输入None表示使用global_pooling，不为None时若输入单个整数，表示在3个维度上的kernel大小相同，若输入List或Tuple，要求该参数长度为3。
+* pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
+* stride：List[int]或Tuple[int]型或int或None，表示步长尺寸，输入None使用默认值[1,1,1]，不为None时若输入单个整数，表示在3个维度上的stride大小相同，若输入List或Tuple，要求该参数长度为3。
+* ceil：bool型，表示计算output shape时是否向上取整。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
+* zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* count_include_pad：Bool类型，表示在计算平均值时，是否将pad值计算在内，默认值为False。
+* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
+* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+芯片支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
 
 upsample
 :::::::::::::::::
@@ -4407,6 +4510,45 @@ bmodel_inference_combine
 """""""""""
 * BM1688：  cmodel模式。
 * BM1684X： cmodel/pcie/soc模式。
+
+
+scatter
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def scatter(input: Tensor,
+            index: Tensor,
+            updates: Tensor,
+            axis: int = 0,
+            out_name: str = None):
+        #pass
+
+功能描述
+"""""""""""
+根据指定的索引，将输入数据写入目标Tensor的特定位置。该操作允许将更新输入Tensor的元素散布到输出Tensor的指定位置。请参考各大框架下的ScatterElements操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作Tensor，即需要更新的目标Tensor。
+* index：Tensor类型，表示指定更新位置的索引Tensor。
+* updates：Tensor类型，表示要写入目标Tensor的值。
+* axis：int型，表示更新的轴。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+
+返回值
+"""""""""""
+返回一个新的Tensor，该Tensor在指定位置上进行了更新操作，其他位置保持了原始输入的Tensor值。
+
+芯片支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32,FLOAT16,INT8。
+* BM1688：输入数据类型可以是FLOAT32,FLOAT16,INT8。
 
 
 Preprocess Operator

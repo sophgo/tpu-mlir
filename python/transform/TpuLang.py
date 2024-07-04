@@ -1314,6 +1314,51 @@ def maxpool2d(input: Tensor,
     TpuLang.insert_op("top.MaxPool", inputs=[input], outputs=[output], params=attr)
     return output
 
+@auto_name()
+@annotation_check
+def maxpool3d(input: Tensor,
+            kernel: Union[List[int],int,Tuple[int, ...]] = None,
+            stride: Union[List[int],int,Tuple[int, ...]] = None,
+            pad:    Union[List[int],int,Tuple[int, ...]] = None,
+            ceil_mode: bool = False,
+            scale: List[float] = None,
+            zero_point: List[int] = None,
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
+    kernel = [] if kernel is None else kernel
+    if isinstance(kernel, int):
+        kernel = [kernel] * 3
+    if stride is None:
+        stride = [1, 1, 1]
+    if isinstance(stride, int):
+        stride = [stride] * 3
+    if isinstance(pad, int):
+        pad = [pad] * 6
+    pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    o_dtype = input.dtype
+    attr = {
+        "kernel_shape": ArrayAttr(kernel),
+        "strides": ArrayAttr(stride),
+        "pads": ArrayAttr(pad),
+        "ceil_mode": Attr(ceil_mode, "bool"),
+        "keepdims": Attr(True, "bool"),
+        "pad_value": Attr(0),
+        "count_include_pad": Attr(False, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+    }
+    output = Tensor(dtype=o_dtype, name=out_name)
+    if scale is not None:
+        zero_point = zero_point if zero_point is not None else [0, 0]
+        input.quantization(scale=scale[0], zero_point=zero_point[0])
+        output.quantization(scale=scale[1], zero_point=zero_point[1])
+    TpuLang.insert_op("top.MaxPool", inputs=[input], outputs=[output], params=attr)
+    return output
+
+
+
+
 @auto_name('out_name')
 @auto_name('mask_name')
 @annotation_check
@@ -1388,6 +1433,55 @@ def avgpool2d(input: Tensor,
         output.quantization(scale=scale[1], zero_point=zero_point[1])
     TpuLang.insert_op("top.AvgPool", inputs=[input], outputs=[output], params=attr)
     return output
+
+@auto_name()
+@annotation_check
+def avgpool3d(input: Tensor,
+            kernel: Union[List[int],int,Tuple[int, ...]] = None,
+            stride: Union[List[int],int,Tuple[int, ...]] = None,
+            pad:    Union[List[int],int,Tuple[int, ...]] = None,
+            ceil_mode: bool = False,
+            scale: List[float] = None,
+            zero_point: List[int] = None,
+            out_name: str = None,
+            count_include_pad : bool = False,
+            round_mode : str="half_away_from_zero",
+            first_round_mode : str="half_away_from_zero"):
+    kernel = [] if kernel is None else kernel
+    if isinstance(kernel, int):
+        kernel = [kernel] * 3
+    if stride is None:
+        stride = [1, 1, 1]
+    if isinstance(stride, int):
+        stride = [stride] * 3
+    if isinstance(pad, int):
+        pad = [pad] * 6
+    pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    o_dtype = input.dtype
+    attr = {
+        "kernel_shape": ArrayAttr(kernel),
+        "strides": ArrayAttr(stride),
+        "pads": ArrayAttr(pad),
+        "ceil_mode": Attr(ceil_mode, "bool"),
+        "keepdims": Attr(True, "bool"),
+        "pad_value": Attr(0),
+        "count_include_pad": Attr(count_include_pad, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+        "first_round_mode": Attr(round_mode_convert(first_round_mode), data_type="string"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    if scale is not None:
+        zero_point = zero_point if zero_point is not None else [0,0]
+        input.quantization(scale=scale[0], zero_point=zero_point[0])
+        output.quantization(scale=scale[1], zero_point=zero_point[1])
+    TpuLang.insert_op("top.AvgPool", inputs=[input], outputs=[output], params=attr)
+    return output
+
+
+
+
 
 ######### Activation Operator ###############
 @auto_name()
@@ -2019,6 +2113,23 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
     TpuLang.insert_op("top.Slice", inputs=[input, None, None, None], outputs=[output], params=attr)
     return output
 
+# @auto_name()
+# @annotation_check
+# def roll(input:Tensor,
+#          shift: Union[List[int],int,Tuple[int, ...]] = None,
+#          dim: Union[List[int],int,Tuple[int, ...]]   = None,
+#          out_name:str=None):
+#     opname = input.name
+#     shape = input.shape
+#     if dim is None:
+#     o_dtype = input.dtype
+#     attr = {
+#         "shift":Attr(shift),
+#     }
+#     output = Tensor(dtype=o_dtype,name=out_name)
+#     TpuLang.insert_op("top.Roll",inputs=[input],outputs=[output],params=attr)
+#     return output
+
 
 ######### Vision Operator ############
 @auto_name()
@@ -2402,4 +2513,26 @@ def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
 
     output = Tensor(input.shape, dtype=odtype, name=out_name)
     TpuLang.insert_op("top.MeanStdScale", [input], [output], params=op_params)
+    return output
+
+@auto_name()
+@annotation_check
+def scatter(input: Tensor,
+        index: Tensor,
+        updates: Tensor,
+        axis: int = 0,
+        out_name: str = None):
+    o_dtype = input.dtype
+    if axis < 0:
+        assert  axis <= len(input.shape), "axis is invalid"
+        axis = len(input.shape) + axis
+    else:
+        assert axis < len(input.shape), "axis is invalid"
+    attr = {
+        "axis": Attr(axis, "int64"),
+    }
+    assert input.shape[:axis] == index.shape[:axis] == updates.shape[:axis], "input should have not less than shape of index and updates"
+    assert len(index.shape) == len(updates.shape), "index and updates should have the same shape"
+    output = Tensor(dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.ScatterElements", inputs=[input, index, updates], outputs=[output], params=attr)
     return output
