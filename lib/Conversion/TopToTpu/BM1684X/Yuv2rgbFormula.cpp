@@ -14,33 +14,32 @@ namespace bm1684x {
 
 void Yuv2rgbFormulaLowering::LoweringF32(PatternRewriter &rewriter,
                                          top::Yuv2rgbFormulaOp op) const {
-  // llvm_unreachable("Not Implemented");
   Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 
 void Yuv2rgbFormulaLowering::LoweringINT8(PatternRewriter &rewriter,
                                           top::Yuv2rgbFormulaOp op,
                                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 void Yuv2rgbFormulaLowering::LoweringINT4(PatternRewriter &rewriter,
                                           top::Yuv2rgbFormulaOp op,
                                           bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 void Yuv2rgbFormulaLowering::LoweringBF16(PatternRewriter &rewriter,
                                           top::Yuv2rgbFormulaOp op) const {
-  llvm_unreachable("Not Implemented");
+  Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 
 void Yuv2rgbFormulaLowering::LoweringF16(PatternRewriter &rewriter,
                                          top::Yuv2rgbFormulaOp op) const {
-  llvm_unreachable("Not Implemented");
+  Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 
 void Yuv2rgbFormulaLowering::LoweringF8(PatternRewriter &rewriter,
                                         top::Yuv2rgbFormulaOp op) const {
-  llvm_unreachable("Not Implemented");
+  Yuv2rgbFormulaLowering::LoweringQuantized(rewriter, op);
 }
 
 void Yuv2rgbFormulaLowering::LoweringQuantized(
