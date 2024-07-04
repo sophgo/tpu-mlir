@@ -1343,7 +1343,7 @@ bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "LessOrEqual") {
     return a <= b;
   }
-  if (mode == "NotEqual") {
+  if (mode == "NotEqual" || mode == "Xor") {
     return a != b;
   }
   if (mode == "And") {

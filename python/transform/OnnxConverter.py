@@ -272,6 +272,7 @@ class OnnxConverter(BaseConverter):
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Upsample": lambda node: self.convert_upsample_op(node),
             "Where": lambda node: self.convert_where_op(node),
+            "Xor": lambda node: self.convert_cmp_op(node),
             "If": lambda node: self.convert_if_op(node),
             "Loop": lambda node: self.convert_loop_op(node),
         }
@@ -2430,7 +2431,7 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, not_op)
 
     def convert_cmp_op(self, onnx_node):
-        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual", "And"}
+        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual", "And", "Xor"}
         assert (onnx_node.op_type in supports)
         assert (len(onnx_node.inputs) == 2)
         lhs = onnx_node.inputs[0]
