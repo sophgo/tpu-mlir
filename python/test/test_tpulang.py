@@ -83,6 +83,7 @@ class TPULANG_IR_TESTER(object):
             "Arg": (self.test_Arg,                      Y, Y),
             "ArgSort": (self.test_ArgSort,              Y, Y),
             "Avgpool": (self.test_Avgpool,              Y, Y),
+            "Avgpool3d":(self.test_Avgpool3d,           Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
             # "Cast": (self.test_Cast,                    Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
@@ -118,7 +119,7 @@ class TPULANG_IR_TESTER(object):
             "Le": (self.test_Le,                        Y, Y),
             "Les": (self.test_Les,                      Y, Y),
             "LeakyRelu": (self.test_LeakyRelu,          Y, Y),
-            # "Lenet": (self.test_Lenet,                  N, N),
+            #"Lenet": (self.test_Lenet,                  N, N),
             "Ln": (self.test_Ln,                        Y, Y),
             "Lt": (self.test_Lt,                        Y, Y),
             "Lts": (self.test_Lts,                      Y, Y),
@@ -126,6 +127,7 @@ class TPULANG_IR_TESTER(object):
             "MatMul": (self.test_MatMul,                Y, Y),
             "Max": (self.test_Max,                      Y, Y),
             "Maxpool": (self.test_Maxpool,              Y, Y),
+            "Maxpool3d": (self.test_Maxpool3d,          Y, Y),
             "Min": (self.test_Min,                      Y, Y),
             "Mish": (self.test_Mish,                    Y, Y),
             "Mul": (self.test_Mul,                      Y, Y),
@@ -143,8 +145,10 @@ class TPULANG_IR_TESTER(object):
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
             "RMSNorm": (self.test_RMSNorm,              Y, Y),
+            #"Roll": (self.test_Roll,                    Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
+            "Scatter": (self.test_ScatterElements,      Y, Y),
             "ShapeFetch": (self.test_Shape_fetch,       Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
@@ -1693,7 +1697,10 @@ class TPULANG_IR_TESTER(object):
                 zero_point=None):
         scale = [scale, scale] if scale != None else scale
         zero_point = [zero_point, zero_point] if zero_point != None else zero_point
-        maxpool = tpul.maxpool2d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
+        if len(input_0.shape) == 5:
+            maxpool = tpul.maxpool3d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
+        else:
+            maxpool = tpul.maxpool2d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
         return maxpool
 
     def test_Maxpool(self, case_name):
@@ -1729,7 +1736,25 @@ class TPULANG_IR_TESTER(object):
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
     #  _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
+    def test_Maxpool3d(self, case_name):
+        """Maxpool3d"""
+        @tpulang(self.chip)
+        def _test_maxpool3d(shape_x: List[int],
+                                kshape: List[int] = [1,1,1],
+                                stride: List[int] = [1, 1, 1],
+                                pad: List[int] = None,
+                                scale=None,
+                                zero_point=None,
+                                dtype="float32",
+                                is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
+            maxpool = self.maxpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
+            self.compile_and_check(self.unique_name(case_name), [x], [maxpool], is_quantized=is_quantized)
 
+        _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
+        _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], dtype="float16", is_quantized=True)
+        _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
     #######################################################################
     # Avgpool
     # ------------
@@ -1743,7 +1768,11 @@ class TPULANG_IR_TESTER(object):
                 zero_point=None):
         scale = [scale, scale] if scale != None else scale
         zero_point = [zero_point, zero_point] if zero_point != None else zero_point
-        maxpool = tpul.avgpool2d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
+        print(scale,zero_point)
+        if len(input_0.shape) == 5:
+            maxpool = tpul.avgpool3d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
+        else:
+            maxpool = tpul.avgpool2d(input_0, kshape, stride, pad, ceil_mode, scale=scale, zero_point=zero_point)
         return maxpool
 
     def test_Avgpool(self, case_name):
@@ -1751,8 +1780,8 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang(self.chip)
         def _test_avgpool(shape_x: List[int],
-                                kshape: List[int] = [1,1],
-                                stride: List[int] = [1, 1],
+                                kshape: List[int] = None,
+                                stride: List[int] = None,
                                 pad: List[int] = None,
                                 scale=None,
                                 zero_point=None,
@@ -1766,6 +1795,32 @@ class TPULANG_IR_TESTER(object):
         _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
+
+    def test_Avgpool3d(self, case_name):
+        """Avgpool3d"""
+
+        @tpulang(self.chip)
+        def _test_avgpool3d(shape_x: List[int],
+                                kshape: List[int] = None,
+                                stride: List[int] = None,
+                                pad: List[int] = None,
+                                scale=None,
+                                zero_point=None,
+                                dtype="float32",
+                                is_quantized=False):
+            input = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input, scale=scale, zero_point=zero_point)
+            avgpool = self.avgpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
+            self.compile_and_check(self.unique_name(case_name), [x], [avgpool], is_quantized=is_quantized)
+       # _test_avgpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
+       # _test_avgpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], dtype="float16", is_quantized=True)
+        _test_avgpool3d([1, 32, 28, 28, 28])
+        _test_avgpool3d([1, 32, 28, 28, 28], kshape = 2)
+        _test_avgpool3d([4, 8, 12, 20, 24], kshape = 2, stride = 2, pad = 0)
+        _test_avgpool3d([4, 8, 12, 20, 24], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
+        _test_avgpool3d([4, 8, 12, 20, 24], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
+
+
 
     #######################################################################
     # Relu
@@ -3775,6 +3830,55 @@ class TPULANG_IR_TESTER(object):
         _test_uint8_to_f16_()
         _test_f32_to_f16_()
 
+
+    ########################################################################
+    # ScatterElements case
+    # ------------
+    def test_ScatterElements(self,case_name):
+        """ScatterElements"""
+
+        @tpulang(self.chip)
+        def _test_scatter(inputs:List[int] = None, 
+                          indices:List[int] = None, 
+                          updates:List[int] = None, 
+                          axis:int = 0, 
+                          dtype="float32",
+                          is_quantized=False):
+            inputs = np.array(inputs, dtype=dtype)
+            indices = np.array(indices, dtype=np.int32)
+            updates = np.array(updates, dtype=dtype)
+            print(type(inputs))
+            print(dtype)
+            inputs_shapes = list(inputs.shape)
+            indices_shapes = list(indices.shape)
+            updates_shapes = list(updates.shape)
+            x = tpul.Tensor(dtype=dtype, shape=inputs_shapes, data=inputs)
+            y = tpul.Tensor(dtype='int32', shape=indices_shapes, data=indices)
+            z = tpul.Tensor(dtype=dtype, shape=updates_shapes, data=updates)
+            outputs = tpul.scatter(x, y, z, axis)
+            self.compile_and_check(self.unique_name(case_name), [x, y, z], [outputs],is_quantized=is_quantized)
+        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0,dtype="float16", is_quantized=True)
+        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0,dtype="int8", is_quantized=True) 
+        _test_scatter([[1.0, 2.0, 3.0, 4.0, 5.0]],[[1.0, 3.0]],[[1.1, 2.1]], 1)
+        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0)
+
+    ########################################################################
+    # Roll case
+    # ------------
+    def test_Roll(self, case_name):
+        """Roll"""
+        @tpulang(self.chip)
+        def _test_roll(inputs,
+                       shifts:List[int] = None,
+                       dim:List[int] = None):
+            inputs = np.array(inputs, dtype=np.float32)
+            inputs_shapes = list(inputs.shape)
+            x = tpul.Tensor(dtype="float32", shape=inputs_shapes, data=inputs)
+            y = tpul.roll(x, shifts, dim)
+            self.compile_and_check(self.unique_name(case_name), [x], [y])
+        _test_roll([[1.0,2.0],[3.0,4.0],[5.0,6.0]],1)
+        _test_roll([[1.0,2.0],[3.0,4.0],[5.0,6.0]],1,0)
+
     #######################################################################
     # Error Case: some error case
     # ------------
@@ -3795,6 +3899,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x, y], [requant], is_quantized=True)
 
         _test_concat_conv()
+
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     t = Timer()
