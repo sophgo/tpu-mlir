@@ -215,6 +215,7 @@ class ONNX_IR_TESTER(object):
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
             "Where":        (self.test_Where,         N, Y, Y, Y, Y),
+            "Xor":          (self.test_Xor,           N, Y, Y, N, N),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
@@ -4716,6 +4717,19 @@ class ONNX_IR_TESTER(object):
             """ % (case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+    def test_Xor(self, case_name):
+        input1_shape = [1, 3, 27, 27]
+        input2_shapes = [[1, 3, 27, 27], [1]]
+        for input2_shape in input2_shapes:
+            graph_txt = """
+                %s (bool%s input1, bool%s input2) => (bool%s output)
+                {
+                    output = Xor(input1, input2)
+                }
+                """ % (case_name, input1_shape, input2_shape, input1_shape)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]

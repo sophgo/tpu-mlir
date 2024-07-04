@@ -574,7 +574,7 @@ int BM168x::compare_mode(StringRef mode) {
   if (mode == "LessOrEqual") {
     return BINARY_LE;
   }
-  if (mode == "NotEqual") {
+  if (mode == "NotEqual" || mode == "Xor") {
     return BINARY_NE;
   }
   if (mode == "And") {

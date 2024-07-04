@@ -22,6 +22,7 @@ LogicalResult top::CompareOp::init(InferenceParameter &p) {
       {"Less", algorithm::binary_lt},
       {"LessOrEqual", algorithm::binary_le},
       {"NotEqual", algorithm::binary_ne},
+      {"Xor", algorithm::binary_ne},
       {"And", algorithm::binary_mul}};
 
   auto binary = new Binary();
