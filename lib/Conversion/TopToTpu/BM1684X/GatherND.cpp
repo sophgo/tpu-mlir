@@ -70,6 +70,10 @@ void GatherNDLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void GatherNDLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::GatherNDOp op, bool asymmetric) const {
+  if(module::isWeight(op.getInput())){
+    LoweringF32(rewriter, op);
+    return;
+  }
   GatherND_lowering_common(rewriter, op);
 }
 

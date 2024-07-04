@@ -1218,7 +1218,7 @@ void ConvertTopToTpu::runOnOperation() {
   patterns.add<
       ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>,
       ForwardTypePattern<tpu::TileOp>, ForwardInt32TypePattern<tpu::SqueezeOp>,
-      ForwardInt32TypePattern<tpu::SliceOp>>(ctx_);
+      ForwardInt32TypePattern<tpu::SliceOp>, ForwardInt32TypePattern<tpu::PermuteOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
   if (module::isBM1684XFamily()) {

@@ -97,7 +97,11 @@ void ScatterElementsLowering::LoweringINT8(PatternRewriter &rewriter,
                                        bool asymmetric) const {
   // lowering_common_int8<tpu::ScatterElementsOp>(rewriter, op.getOperation(),
   //                                          asymmetric);
-
+  // Please implent lowering quant for weight if necessary
+  if(module::isWeight(op.getInput())){
+    LoweringF32(rewriter, op);
+    return;
+  }
   auto new_type = getQuantInt8Type(op.getOutput());
   RequantizeInt8(rewriter, op, new_type, asymmetric);
 }
