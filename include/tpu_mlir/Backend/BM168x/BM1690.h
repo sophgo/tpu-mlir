@@ -89,6 +89,9 @@ public:
     return multiCode;
   }
 
+  // specific global info
+  static constexpr llvm::StringRef LIB_KERNEL_NAME =
+      "libbm1690_kernel_module.so";
 private:
   enum TagType {
     TAG_USERS = 0,
