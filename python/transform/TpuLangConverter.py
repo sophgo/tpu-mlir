@@ -610,7 +610,10 @@ class TpuLangConverter(BaseConverter):
         return_op = []
         graph_outs = dict()
         for op in subgraph.operators:
-            add_operation(op)
+            try :
+                add_operation(op)
+            except:
+                print("Error: Convert operation {} failed.".format(op.op_name))
             for out in op.outputs:
                 if out is None: continue
                 if out.name in self.output_names:
