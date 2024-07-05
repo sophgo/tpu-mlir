@@ -145,7 +145,7 @@ class TPULANG_IR_TESTER(object):
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
             "RMSNorm": (self.test_RMSNorm,              Y, Y),
-            #"Roll": (self.test_Roll,                    Y, Y),
+            "Roll": (self.test_Roll,                    Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
             "Scatter": (self.test_ScatterElements,      Y, Y),
@@ -258,7 +258,7 @@ class TPULANG_IR_TESTER(object):
 
     def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
         for input in inputs:
-            assert input.ttype == "neuron", "invalid input {}".format(input.name)
+            assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
         if is_quantized == False:
             for mode in self.quant_modes:
@@ -3838,10 +3838,10 @@ class TPULANG_IR_TESTER(object):
         """ScatterElements"""
 
         @tpulang(self.chip)
-        def _test_scatter(inputs:List[int] = None, 
-                          indices:List[int] = None, 
-                          updates:List[int] = None, 
-                          axis:int = 0, 
+        def _test_scatter(inputs:List[int] = None,
+                          indices:List[int] = None,
+                          updates:List[int] = None,
+                          axis:int = 0,
                           dtype="float32",
                           is_quantized=False):
             inputs = np.array(inputs, dtype=dtype)
@@ -3856,9 +3856,9 @@ class TPULANG_IR_TESTER(object):
             y = tpul.Tensor(dtype='int32', shape=indices_shapes, data=indices)
             z = tpul.Tensor(dtype=dtype, shape=updates_shapes, data=updates)
             outputs = tpul.scatter(x, y, z, axis)
-            self.compile_and_check(self.unique_name(case_name), [x, y, z], [outputs],is_quantized=is_quantized)
-        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0,dtype="float16", is_quantized=True)
-        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0,dtype="int8", is_quantized=True) 
+            self.compile_and_check(self.unique_name(case_name), [x, y, z], [outputs], is_quantized=is_quantized)
+        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0, dtype="float16", is_quantized=True)
+        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0, dtype="int8", is_quantized=True)
         _test_scatter([[1.0, 2.0, 3.0, 4.0, 5.0]],[[1.0, 3.0]],[[1.1, 2.1]], 1)
         _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0)
 
@@ -3868,16 +3868,20 @@ class TPULANG_IR_TESTER(object):
     def test_Roll(self, case_name):
         """Roll"""
         @tpulang(self.chip)
-        def _test_roll(inputs,
-                       shifts:List[int] = None,
-                       dim:List[int] = None):
-            inputs = np.array(inputs, dtype=np.float32)
-            inputs_shapes = list(inputs.shape)
-            x = tpul.Tensor(dtype="float32", shape=inputs_shapes, data=inputs)
+        def _test_roll(input_shape,
+                       shifts:List[int],
+                       dim:List[int] = None,
+                       dtype="float32",
+                       is_quantized=False):
+            inputs = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=list(input_shape), data=inputs)
             y = tpul.roll(x, shifts, dim)
-            self.compile_and_check(self.unique_name(case_name), [x], [y])
-        _test_roll([[1.0,2.0],[3.0,4.0],[5.0,6.0]],1)
-        _test_roll([[1.0,2.0],[3.0,4.0],[5.0,6.0]],1,0)
+            self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
+
+        _test_roll((6,8,4,5,4),[1,2],[0,4], dtype="int8", is_quantized=True)
+        _test_roll((4,2), 1, dtype="float16", is_quantized=True)
+        _test_roll((4,2), (123,-133), (1,0))
+
 
     #######################################################################
     # Error Case: some error case

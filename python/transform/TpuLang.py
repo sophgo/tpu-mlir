@@ -2113,22 +2113,121 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
     TpuLang.insert_op("top.Slice", inputs=[input, None, None, None], outputs=[output], params=attr)
     return output
 
-# @auto_name()
-# @annotation_check
-# def roll(input:Tensor,
-#          shift: Union[List[int],int,Tuple[int, ...]] = None,
-#          dim: Union[List[int],int,Tuple[int, ...]]   = None,
-#          out_name:str=None):
-#     opname = input.name
-#     shape = input.shape
-#     if dim is None:
-#     o_dtype = input.dtype
-#     attr = {
-#         "shift":Attr(shift),
-#     }
-#     output = Tensor(dtype=o_dtype,name=out_name)
-#     TpuLang.insert_op("top.Roll",inputs=[input],outputs=[output],params=attr)
-#     return output
+@auto_name()
+@annotation_check
+def roll(input:Tensor,
+         shifts: Union[int, List[int], Tuple[int]],
+         dims: Union[int, List[int], Tuple[int]]   = None,
+         out_name:str=None):
+    #
+    # ====== case1 (dims is None): =========
+    #
+    #       roll => flatten -> slice0 -> concat -> reshape
+    #                        \        /
+    #                          slice1
+    #
+    #
+    #
+    # ====== case2 (dims is not None): ========
+    #
+    #    for i in dims:
+    #       roll => slice1_i -> concat_i
+    #             \          /
+    #               slice2_i
+    #
+    #    concat(concat_0, ···， concat_dims)
+    #
+
+    o_dtype = input.dtype
+    in_shape = input.shape
+    if dims is None:
+        assert isinstance(shifts, int), "invalid dims/shifts {}".format(out_name)
+        start_dim = 0
+        end_dim = -1
+        length = 1
+        for i in in_shape:
+            length *= i
+        flatten_attr = {
+            "start_dim": Attr(start_dim),
+            "end_dim": Attr(end_dim)
+        }
+        flatten_out = Tensor(dtype=o_dtype, name=out_name+"_flatten")
+        TpuLang.insert_op("top.Flatten", inputs=[input], outputs=[flatten_out], params=flatten_attr)
+
+        slice0_attr = {
+            "offset": ArrayAttr([length - (shifts % length)]),
+            "steps": ArrayAttr([1]),
+            "ends": ArrayAttr([length]),
+            "axes": ArrayAttr([0]),
+        }
+        slice0_out = Tensor(dtype=o_dtype, name=out_name+"_slice0")
+        TpuLang.insert_op("top.Slice", inputs=[flatten_out, None, None, None], outputs=[slice0_out], params=slice0_attr)
+
+        slice1_attr = {
+            "offset": ArrayAttr([0]),
+            "steps": ArrayAttr([1]),
+            "ends": ArrayAttr([length - (shifts % length)]),
+            "axes": ArrayAttr([0]),
+        }
+        slice1_out = Tensor(dtype=o_dtype, name=out_name+"_slice1")
+        TpuLang.insert_op("top.Slice", inputs=[flatten_out, None, None, None], outputs=[slice1_out], params=slice1_attr)
+
+        concat_attr = {
+            "axis": Attr(0, "int32")
+        }
+        concat_out = Tensor(dtype=o_dtype, name=out_name+"_concat")
+        TpuLang.insert_op("top.Concat", inputs=[slice0_out, slice1_out], outputs=[concat_out], params=concat_attr)
+
+        reshape_attr = {
+            "shape": ArrayAttr(in_shape)
+        }
+        final_out = Tensor(dtype=o_dtype, name=out_name) # out_name should keep the same
+        TpuLang.insert_op("top.Reshape", inputs=[concat_out], outputs=[final_out], params=reshape_attr)
+        return final_out
+    else:
+        len_shape = len(in_shape)
+        if isinstance(shifts, int):
+            assert isinstance(dims, int) and 0 <= dims < len_shape, "invalid dims/shifts {}".format(out_name)
+            dims = [dims]
+            shifts = [shifts]
+        elif isinstance(shifts, Tuple) or isinstance(shifts, List):
+            assert (isinstance(dims, Tuple) or isinstance(dims, List)) and len(shifts) == len(dims) and len(shifts) <= len_shape, \
+                        "invalid dims/shifts {}".format(out_name)
+            for dim in dims:
+                assert 0 <= dim < len_shape, "invalid dims {}".format(out_name)
+
+        final_out = None
+        cur_in = input
+        for i, (dim, shift) in enumerate(zip(dims, shifts)):
+            offset_0 = [0] * len_shape
+            offset_0[dim] = in_shape[dim] - (shift % in_shape[dim])
+            slice0_attr = {
+                "offset": ArrayAttr(offset_0),
+                "steps": ArrayAttr([1] * len_shape),
+                "ends": ArrayAttr(in_shape),
+                "axes": ArrayAttr(list(range(0, len_shape, 1)))
+            }
+            slice0_out = Tensor(dtype=o_dtype, name=out_name + "_{}_slice0".format(i))
+            TpuLang.insert_op("top.Slice", inputs=[cur_in, None, None, None], outputs=[slice0_out], params=slice0_attr)
+
+            ends_1 = in_shape.copy()
+            ends_1[dim] = ends_1[dim] - (shift % ends_1[dim])
+            slice1_attr = {
+                "offset": ArrayAttr([0] * len_shape),
+                "steps": ArrayAttr([1] * len_shape),
+                "ends": ArrayAttr(ends_1),
+                "axes": ArrayAttr(list(range(0, len_shape, 1)))
+            }
+            slice1_out = Tensor(dtype=o_dtype, name=out_name + "_{}_slice1".format(i))
+            TpuLang.insert_op("top.Slice", inputs=[cur_in, None, None, None], outputs=[slice1_out], params=slice1_attr)
+
+            concat_out_name = out_name
+            concat_out_name += "" if i == (len(dims) - 1) else "_{}_concat".format(i)
+            concat_out = Tensor(dtype=o_dtype, name=concat_out_name)
+            TpuLang.insert_op("top.Concat", inputs=[slice0_out, slice1_out], outputs=[concat_out], params={"axis":Attr(dim, "int32")})
+            cur_in = concat_out
+            final_out = concat_out
+        return final_out
 
 
 ######### Vision Operator ############
