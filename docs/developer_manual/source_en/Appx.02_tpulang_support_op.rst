@@ -2962,8 +2962,10 @@ The interface definition
       def rms_norm(input: Tensor,
                      gamma: Tensor = None,
                      epsilon: float = 1e-5,
+                     axis: int = -1,
                      out_name: str = None):
           #pass
+
 
 
 Description of the function
@@ -2979,6 +2981,7 @@ Explanation of parameters
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited.
 * gamma: A Tensor type or None, representing the scaling after RMS normalization. If the value is not None, shape is required to be equal with the last dimension of the input. If None is used, shape is equivalent to all 1 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
+* axis: int type, the first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value

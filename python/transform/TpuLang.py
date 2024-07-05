@@ -2402,7 +2402,7 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 @annotation_check
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
-    assert epsilon >= 0
+    assert epsilon >= 0, "invalid epsilon {}".format(out_name)
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape":  ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
@@ -2419,9 +2419,10 @@ def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
 
 @auto_name()
 @annotation_check
-def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, out_name: str = None):
+def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, axis: int = -1, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
     assert input.dtype == "float32", "invalid input dtype {}".format(out_name)
+    assert axis == -1 or axis == len(input.shape) - 1, "axis={} not supported yet {}".format(axis, out_name)
     if gamma:
         assert input.dtype == gamma.dtype, "invalid input and gamma dtype {}".format(out_name)
         assert input.shape[-1] == gamma.shape[0] and len(gamma.shape) == 1, \
