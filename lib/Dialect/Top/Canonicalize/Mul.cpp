@@ -91,7 +91,7 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
       return failure();
     }
 
-    if (const_val->at(0) == 1.0f) {
+    if (std::fabs(const_val->at(0) - 1.0f) < 2e-5f) {
       // erase mul
       rewriter.replaceOp(op, {new_input});
       return success();
