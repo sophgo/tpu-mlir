@@ -2360,6 +2360,7 @@ Definition
 Description
 """""""""""
 Extract slice of input tensor.
+This operation is considered a **restricted local operation**.
 
 Parameters
 """""""""""
@@ -2374,9 +2375,46 @@ Returns
 Returns a Tensor, whose data type is same of that of `table`.
 
 Processor Support
-"""""""""""
+""""""""""""""""""""""
 * BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
+
+roll
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def roll(input:Tensor,
+                shifts: Union[int, List[int], Tuple[int]],
+                dims: Union[int, List[int], Tuple[int]]   = None,
+                out_name:str=None):
+          #pass
+
+Description
+"""""""""""
+Roll the tensor input along the given dimension(s). Elements that are shifted beyond the last position are re-introduced at the first position. If dims is None, the tensor will be flattened before rolling and then restored to the original shape.
+This operation is considered a **restricted local operation**.
+
+Parameters
+"""""""""""
+* input: Tensor type. the input tensor.
+* shifts: int, a list or tuple of int. the number of places by which the elements of the tensor are shifted. If shifts is a tuple.
+* dims: int, a list or tuple of int or None. Axis along which to roll.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor Support
+""""""""""""""""""""""
+* BM1688:  Data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: Data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
 
 
 Sort Operator

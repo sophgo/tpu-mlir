@@ -3107,7 +3107,40 @@ extract
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
+roll
+:::::::::::::::::
 
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def roll(input:Tensor,
+                shifts: Union[int, List[int], Tuple[int]],
+                dims: Union[int, List[int], Tuple[int]]   = None,
+                out_name:str=None):
+          #pass
+
+功能描述
+"""""""""""
+沿给定维度滚动输入张量。移出最后一个位置的元素将在第一个位置重新引入。如果 dims 为 None，则张量将在滚动之前展平，然后恢复到原始形状。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作Tensor。
+* shifts：int，List[int]或Tuple[int]型，张量元素移动的位数。如果 shifts 是元组/列表，则 dims 必须是相同大小的元组/列表，并且每个维度将按相应的值滚动。
+* dims：int，List[int]，Tuple[int]型或None, 滚动的轴。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
 
 
 Sort Operator
