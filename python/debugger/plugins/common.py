@@ -155,19 +155,11 @@ class FinalMlirIndexPlugin(TdbPlugin):
         # create subnet tiu, dma id offset
         self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
         last_af_point = 0
-        indexs = tdb.op_df.index
+        index_dic = tdb.op_df.to_dict("index")
 
         def find_point(key):
-            ret = tdb.op_df["executed_id"][indexs == key]
-
-            if len(ret) == 0:
-                raise KeyError(f"cannot find command of key {key}")
-            elif len(ret) > 1:
-                raise ValueError(
-                    f"find multiple command have key {key}, please report this bug."
-                )
-
-            return ret[0]
+            ret = index_dic[key]
+            return ret['executed_id']
 
         def assemble_tuple_key(subnet_id, core_id, cmd_id, cmd_type):
             if cmd_type == CMDType.tiu:
