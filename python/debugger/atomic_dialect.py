@@ -222,8 +222,11 @@ class Block(Node):
 
                 if isinstance(context, BM1684Context):
                     # tricky make cmd_id of cmd groups after first but in the same subnet add offset from previou cmd_id
-                    tiu_offset = self.cmds[0].tiu[-1].cmd_id
-                    dma_offset = self.cmds[0].dma[-1].cmd_id
+                    if len(self.cmds[0].tiu) > 0:
+                        tiu_offset = self.cmds[0].tiu[-1].cmd_id
+                    if len(self.cmds[0].dma) > 0:
+                        dma_offset = self.cmds[0].dma[-1].cmd_id
+
                     for cmd_group in self.cmds[1:]:
                         for cmd in cmd_group.tiu:
                             cmd.cmd_id += tiu_offset
