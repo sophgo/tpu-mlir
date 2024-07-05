@@ -515,6 +515,15 @@ def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = Non
         assert in0_dtype == out_dtype
     return in0_dtype
 
+def _conv_check(input: Tensor, weight: Tensor, bias: Tensor = None):
+    assert input.dtype in ["float32", "float16"]
+    assert weight.dtype == input.dtype
+    assert input.is_quantized is False
+    assert weight.is_quantized is False
+    if bias is not None and bias.dtype == "float16":
+        bias.dtype = "float32"
+        bias.buffer = bias.buffer.astype("float32")
+
 @auto_name()
 @annotation_check
 @assert_with_out_name
@@ -531,11 +540,7 @@ def conv(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = input.dtype if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
-    if bias:
-        assert bias.dtype == "float32"
-    assert input.is_quantized is False
-    assert weight.is_quantized is False
+    _conv_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -651,11 +656,7 @@ def conv3d(input: Tensor,
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
-    if bias:
-        assert bias.dtype == "float32"
-    assert input.is_quantized is False
-    assert weight.is_quantized is False
+    _conv_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -766,11 +767,7 @@ def deconv(input: Tensor,
     pad = [0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0] if output_padding is None else output_padding
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
-    if bias:
-        assert bias.dtype == "float32"
-    assert input.is_quantized is False
-    assert weight.is_quantized is False
+    _conv_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -847,11 +844,7 @@ def deconv3d(input: Tensor,
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0, 0] if output_padding is None else output_padding
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
-    if bias:
-        assert bias.dtype == "float32"
-    assert input.is_quantized is False
-    assert weight.is_quantized is False
+    _conv_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
