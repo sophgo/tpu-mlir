@@ -4135,6 +4135,7 @@ rms_norm
       def rms_norm(input: Tensor,
                      gamma: Tensor = None,
                      epsilon: float = 1e-5,
+                     axis: int = -1,
                      out_name: str = None):
           #pass
 
@@ -4151,6 +4152,7 @@ rms_norm
 * input：Tensor类型，表示输入待归一化的Tensor，维度不限。
 * gamma：Tensor类型或None，表示批归一化之后进行的缩放，不为None时要求shape与input最后一维 `w` 相等，取None时相当于shape为[w]的全1Tensor。
 * epsilon：FLOAT类型，表示为了除法运算数值稳定加在分母上的值。
+* axis: int型，第一个标准化的维度。 如果rank(X)为r，则axis的允许范围为[-r, r)。 负值表示从后面开始计算维度。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
