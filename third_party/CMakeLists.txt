@@ -23,6 +23,8 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbm1684x_kernel_module.a
               nntoolchain/lib/libbmtpulv60_kernel_module.so
               nntoolchain/lib/libbmtpulv60_kernel_module.a
+              nntoolchain/lib/libbm1690_kernel_module.so
+              nntoolchain/lib/libbm1690_kernel_module.a
               nntoolchain/lib/liblibtorch_plugin.so
               or-tools/lib/libortools.so
               or-tools/lib/libortools.so.9
