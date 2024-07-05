@@ -146,6 +146,7 @@ class ONNX_IR_TESTER(object):
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y),
             "Not":          (self.test_Not,           N, Y, Y, N, Y),
+            "Mod":          (self.test_Mod,           N, Y, Y, N, N),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N, Y),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N, Y),
@@ -396,6 +397,10 @@ class ONNX_IR_TESTER(object):
             elif i.type.tensor_type.elem_type == onnx.TensorProto.BOOL:
                 # create random input data for bool type
                 inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
+            elif i.type.tensor_type.elem_type == onnx.TensorProto.INT64:
+                inputs[name] = np.random.randint(1, 10, shape).astype(np.int64)
+            else:
+                assert(0)
         return inputs
 
     def onnx_convert(self,
@@ -4715,6 +4720,22 @@ class ONNX_IR_TESTER(object):
             }
             """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Mod(self, case_name):
+        shape = [1, 5, 15, 15]
+        input1_info = helper.make_tensor_value_info('input1', TensorProto.INT64, shape)
+        input2_info = helper.make_tensor_value_info('input2', TensorProto.INT64, [1])
+        output_info = helper.make_tensor_value_info('output', TensorProto.INT64, shape)
+
+        node_def = helper.make_node("Mod",
+                                   inputs=["input1", "input2"],
+                                   outputs=["output"],
+                                   fmod=0)
+        graph_def = helper.make_graph([node_def],
+                                      case_name,
+                                      [input1_info, input2_info],
+                                      [output_info])
         self.onnx_and_test(graph_def)
 
     def test_Cast(self, case_name):

@@ -1971,6 +1971,18 @@ def Top_AbsOp : Top_Op<"Abs"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_ModOp : Top_Op<"Mod"> {
+  let summary = " Mod operator";
+  let description = [{
+     f(x, y) = Mod(x, y)
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_PReluOp : Top_Op<"PRelu"> {
   let summary = "PRelu operator";
   let description = [{

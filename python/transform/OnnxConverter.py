@@ -225,6 +225,7 @@ class OnnxConverter(BaseConverter):
             "Max": lambda node: self.convert_max_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Min": lambda node: self.convert_min_op(node),
+            "Mod": lambda node: self.convert_mod_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
             "NonMaxSuppression": lambda node: self.convert_nms_op(node),
@@ -2144,6 +2145,19 @@ class OnnxConverter(BaseConverter):
         lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
         rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
         new_op = top.MinOp(self.unranked_type, [lhs_op, rhs_op],
+                           loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_mod_op(self, onnx_node):
+        assert (onnx_node.op_type == "Mod")
+        assert (len(onnx_node.inputs) == 2)
+        inp1 = onnx_node.inputs[0]
+        inp2 = onnx_node.inputs[1]
+        inp1_op = self.getOp(inp1)
+        inp2_op = self.getOp(inp2)
+        new_op = top.ModOp(self.unranked_type,
+                           [inp1_op, inp2_op],
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
