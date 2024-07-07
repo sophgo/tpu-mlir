@@ -9,7 +9,7 @@ import getpass
 from typing import List, Union, Tuple, Optional
 
 from debugger.tdb_support import TdbCmdBackend
-from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name
+from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name, assert_with_out_name
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
@@ -431,6 +431,7 @@ def Attr(data, data_type: str = 'int64'):
 '''
 
 @annotation_check
+@assert_with_out_name
 def custom(tensors_in: List[Tensor],
            op_name: str,
            out_dtypes: List[str],
@@ -516,6 +517,7 @@ def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = Non
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv(input: Tensor,
          weight: Tensor,
          bias: Tensor = None,
@@ -549,6 +551,7 @@ def conv(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv_int(input: Tensor,
              weight: Tensor,
              bias: Tensor = None,
@@ -585,6 +588,7 @@ def conv_int(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv_quant(input: Tensor,
             weight: Tensor,
             bias: Tensor = None,
@@ -625,6 +629,7 @@ def conv_quant(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv3d(input: Tensor,
                 weight: Tensor,
                 bias: Tensor = None,
@@ -657,6 +662,7 @@ def conv3d(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv3d_int(input: Tensor,
                weight: Tensor,
                bias: Tensor = None,
@@ -693,6 +699,7 @@ def conv3d_int(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def conv3d_quant(input: Tensor,
             weight: Tensor,
             bias: Tensor = None,
@@ -733,6 +740,7 @@ def conv3d_quant(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def deconv(input: Tensor,
             weight: Tensor,
             bias: Tensor = None,
@@ -768,6 +776,7 @@ def deconv(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def deconv_int(input: Tensor,
              weight: Tensor,
              bias: Tensor = None,
@@ -807,6 +816,7 @@ def deconv_int(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def deconv3d(input: Tensor,
                 weight: Tensor,
                 bias: Tensor = None,
@@ -842,6 +852,7 @@ def deconv3d(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def matmul(input: Tensor,
             right: Tensor,
             bias: Tensor = None,
@@ -874,6 +885,7 @@ def matmul(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def matmul_int(input: Tensor,
                right: Tensor,
                bias: Tensor = None,
@@ -910,6 +922,7 @@ def matmul_int(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def matmul_quant(input: Tensor,
                  right: Tensor,
                  bias: Tensor = None,
@@ -979,6 +992,7 @@ def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scal
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Add", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
@@ -986,6 +1000,7 @@ def add(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Mul", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
@@ -993,6 +1008,7 @@ def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     is_reverse = None if isinstance(tensor_i0, Tensor) else True
@@ -1001,6 +1017,7 @@ def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_name: str = None):
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     output = Tensor([], dtype=o_dtype, name=out_name)
@@ -1021,6 +1038,7 @@ def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def max(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Max", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
@@ -1028,6 +1046,7 @@ def max(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def min(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     return _base_binary(tensor_i0, tensor_i1, "top.Min", scale, zero_point, out_dtype=out_dtype, out_name=out_name)
@@ -1063,6 +1082,7 @@ def __binary_shift(tensor_i0: Tensor, tensor_i1: Tensor, type: str, shift: int,
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def add_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
               shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
@@ -1072,6 +1092,7 @@ def add_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Sc
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sub_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
               shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
@@ -1082,6 +1103,7 @@ def sub_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Sc
 @to_scalar(2)
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def mul_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Scalar, int],
               shift: int, out_dtype: str, round_mode: str='half_away_from_zero', is_saturate: bool=True,
               out_name: str = None):
@@ -1109,6 +1131,7 @@ def mul_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Sc
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def copy(input: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("copy")
@@ -1123,6 +1146,7 @@ def copy(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def cast(tensor_i: Tensor,
          out_dtype: str = 'float32',
          out_name: str = None,
@@ -1139,6 +1163,7 @@ def cast(tensor_i: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def clamp(input: Tensor, min:float, max:float, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     attr = {
@@ -1152,6 +1177,7 @@ def clamp(input: Tensor, min:float, max:float, out_name: str = None):
 ###### quant operator ########
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def requant_fp_to_int(tensor_i: Tensor,
                       scale: Union[float, List[float]],
                       offset: Union[int, List[int]],
@@ -1171,6 +1197,7 @@ def requant_fp_to_int(tensor_i: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def dequant_int_to_fp(tensor_i: Tensor,
                       scale: Union[float, List[float]],
                       offset: Union[int, List[int], float, List[float]],
@@ -1196,6 +1223,7 @@ def round_mode_convert(rmode: str):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def requant_int(tensor_i: Tensor,
                 mul: Union[int, List[int]],
                 shift: Union[int, List[int]],
@@ -1221,6 +1249,7 @@ def requant_int(tensor_i: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def dequant_int(tensor_i: Tensor,
                 mul: Union[int, List[int]],
                 shift: Union[int, List[int]],
@@ -1247,6 +1276,7 @@ def dequant_int(tensor_i: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def requant_fp(tensor_i: Tensor,
                scale: Union[float, List[float]],
                offset: Union[float, List[float]],
@@ -1276,6 +1306,7 @@ def requant_fp(tensor_i: Tensor,
 ######## Up / Down Scaling Operator #########
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def maxpool2d(input: Tensor,
             kernel: List[int]=None,
             stride: List[int] = None,
@@ -1316,6 +1347,7 @@ def maxpool2d(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def maxpool3d(input: Tensor,
             kernel: Union[List[int],int,Tuple[int, ...]] = None,
             stride: Union[List[int],int,Tuple[int, ...]] = None,
@@ -1362,6 +1394,7 @@ def maxpool3d(input: Tensor,
 @auto_name('out_name')
 @auto_name('mask_name')
 @annotation_check
+@assert_with_out_name
 def maxpool2d_with_mask(input: Tensor,
                         kernel: List[int]=None,
                         stride: List[int] = None,
@@ -1396,6 +1429,7 @@ def maxpool2d_with_mask(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def avgpool2d(input: Tensor,
             kernel: List[int]=None,
             stride: List[int] = None,
@@ -1436,6 +1470,7 @@ def avgpool2d(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def avgpool3d(input: Tensor,
             kernel: Union[List[int],int,Tuple[int, ...]] = None,
             stride: Union[List[int],int,Tuple[int, ...]] = None,
@@ -1486,6 +1521,7 @@ def avgpool3d(input: Tensor,
 ######### Activation Operator ###############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def relu(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output])
@@ -1493,6 +1529,7 @@ def relu(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def prelu(input: Tensor, slope : Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.PRelu", inputs=[input, slope], outputs=[output])
@@ -1500,6 +1537,7 @@ def prelu(input: Tensor, slope : Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None, round_mode : str="half_away_from_zero",):
     attr = {
         "alpha": Attr(negative_slope, data_type="float64"),
@@ -1511,6 +1549,7 @@ def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def abs(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Abs", inputs=[input], outputs=[output])
@@ -1525,6 +1564,7 @@ def _active_scale(input:Tensor, output: Tensor, scale: List[float]=None, zero_po
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def ceil(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1533,6 +1573,7 @@ def ceil(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1541,6 +1582,7 @@ def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def round(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Round", inputs=[input], outputs=[output])
@@ -1548,6 +1590,7 @@ def round(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sin(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1556,6 +1599,7 @@ def sin(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def cos(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1564,6 +1608,7 @@ def cos(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def exp(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1572,6 +1617,7 @@ def exp(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def ln(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1580,6 +1626,7 @@ def ln(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_n
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None, round_mode : str="half_away_from_zero",):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1591,6 +1638,7 @@ def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
             out_name: str = None, round_mode : str="half_away_from_zero"):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
@@ -1603,6 +1651,7 @@ def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def elu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     attr = {
         "alpha": Attr(1.0, "float64"),
@@ -1614,6 +1663,7 @@ def elu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def square(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     scale = [scale[0], scale[0], scale[1]] if scale != None else scale
     zero_point = [zero_point[0], zero_point[0], zero_point[1]] if zero_point != None else zero_point
@@ -1621,6 +1671,7 @@ def square(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, o
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1629,6 +1680,7 @@ def sqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def rsqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1637,6 +1689,7 @@ def rsqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def silu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1645,6 +1698,7 @@ def silu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def erf(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1653,6 +1707,7 @@ def erf(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def log_sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1661,6 +1716,7 @@ def log_sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=No
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def tan(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Tan", inputs=[input], outputs=[output])
@@ -1668,6 +1724,7 @@ def tan(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def softmax(input: Tensor, axis: int, out_name: str = None):
     attr = {
         "axis": Attr(axis, data_type="int32"),
@@ -1678,6 +1735,7 @@ def softmax(input: Tensor, axis: int, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[int] = None,
                 out_name: str = None, round_mode : str="half_away_from_zero"):
     attr = {
@@ -1693,6 +1751,7 @@ def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[i
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def mish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1701,6 +1760,7 @@ def mish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def hswish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1709,6 +1769,7 @@ def hswish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, o
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def arccos(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Arccos", inputs=[input], outputs=[output])
@@ -1716,6 +1777,7 @@ def arccos(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def arctanh(input: Tensor, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Arctanh", inputs=[input], outputs=[output])
@@ -1723,6 +1785,7 @@ def arctanh(input: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sinh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1731,6 +1794,7 @@ def sinh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def cosh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1739,6 +1803,7 @@ def cosh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sign(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
@@ -1747,6 +1812,7 @@ def sign(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
          out_name: str = None, round_mode : str="half_away_from_zero"):
     output = Tensor(dtype=input.dtype, name=out_name)
@@ -1759,6 +1825,7 @@ def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def hsigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     attr = {
         "alpha": Attr(1/6, data_type="float64"),
@@ -1773,6 +1840,7 @@ def hsigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
 ######### Sort Operator ############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def arg(input: Tensor,
         method: str = "max",
         axis: int = 0,
@@ -1800,6 +1868,7 @@ def arg(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sort(input: Tensor,
          axis: int = -1,
          descending: bool = True,
@@ -1817,6 +1886,7 @@ def sort(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def argsort(input: Tensor,
             axis: int = -1,
             descending: bool = True,
@@ -1833,6 +1903,7 @@ def argsort(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def sort_by_key(input: Tensor,
                 key: Tensor,
                 axis: int = -1,
@@ -1859,6 +1930,7 @@ def sort_by_key(input: Tensor,
 ######### Data Arrange Operator ############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = None):
     attr = {
         "order": ArrayAttr(order),
@@ -1869,6 +1941,7 @@ def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = 
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     attr = {
         "tile": ArrayAttr(reps),
@@ -1879,6 +1952,7 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None,
            zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None,
            dtype: str="float32", round_mode: str="half_away_from_zero"):
@@ -1903,6 +1977,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Expand", inputs=[input], outputs=[output], params={"shape": ArrayAttr(reps)})
@@ -1910,6 +1985,7 @@ def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str =
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def nonzero(inputs: Tensor, dtype = "int32", out_name: str = None):
     attr = {
         "order": Attr("ColMajor", "string"),
@@ -1920,6 +1996,7 @@ def nonzero(inputs: Tensor, dtype = "int32", out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def upsample(input: Tensor, scale: int = 2, out_name: str = None):
     attr = {
         "scale_h": Attr(scale, data_type="int64"),
@@ -1931,6 +2008,7 @@ def upsample(input: Tensor, scale: int = 2, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def reduce(input: Tensor, method: str = "ReduceSum", axes: Union[List[int], int] = [1,2], keep_dims: bool = True, out_name: str = None):
     assert(method in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"])
     if isinstance(axes, int):
@@ -1946,6 +2024,7 @@ def reduce(input: Tensor, method: str = "ReduceSum", axes: Union[List[int], int]
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
     attr = {
         "axes": ArrayAttr(axes, "int64"),
@@ -1957,6 +2036,7 @@ def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def yuv2rgb(
     inputs: Tensor,
     src_format: int,
@@ -1998,6 +2078,7 @@ def yuv2rgb(
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def split(input: Tensor,
           axis: int = 0,
           num: int = 1,
@@ -2027,6 +2108,7 @@ def split(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def slice(input: Tensor,
           starts: Union[int, List[int]],
           ends: Union[int, List[int]],
@@ -2056,6 +2138,7 @@ def slice(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def pad(input: Tensor,
         method: str = "constant",
         value: Scalar = None,
@@ -2078,6 +2161,7 @@ def pad(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def repeat(input: Tensor, reps: Tensor, out_name: str = None):
     if out_name is None:
         out_name = generate_name("repeat")
@@ -2088,6 +2172,7 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Union[List[int], Tuple[int]] = None, stride: Union[List[int], Tuple[int]] = None, out_name: str = None):
     dims = len(input.shape)
     if start:
@@ -2115,6 +2200,7 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def roll(input:Tensor,
          shifts: Union[int, List[int], Tuple[int]],
          dims: Union[int, List[int], Tuple[int]]   = None,
@@ -2141,7 +2227,7 @@ def roll(input:Tensor,
     o_dtype = input.dtype
     in_shape = input.shape
     if dims is None:
-        assert isinstance(shifts, int), "invalid dims/shifts {}".format(out_name)
+        assert isinstance(shifts, int), "invalid dims/shifts"
         start_dim = 0
         end_dim = -1
         length = 1
@@ -2187,14 +2273,14 @@ def roll(input:Tensor,
     else:
         len_shape = len(in_shape)
         if isinstance(shifts, int):
-            assert isinstance(dims, int) and 0 <= dims < len_shape, "invalid dims/shifts {}".format(out_name)
+            assert isinstance(dims, int) and 0 <= dims < len_shape, "invalid dims/shifts"
             dims = [dims]
             shifts = [shifts]
         elif isinstance(shifts, Tuple) or isinstance(shifts, List):
             assert (isinstance(dims, Tuple) or isinstance(dims, List)) and len(shifts) == len(dims) and len(shifts) <= len_shape, \
-                        "invalid dims/shifts {}".format(out_name)
+                        "invalid dims/shifts"
             for dim in dims:
-                assert 0 <= dim < len_shape, "invalid dims {}".format(out_name)
+                assert 0 <= dim < len_shape, "invalid dims"
 
         final_out = None
         cur_in = input
@@ -2233,6 +2319,7 @@ def roll(input:Tensor,
 ######### Vision Operator ############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def topk(input: Tensor,
          axis: int,
          k: int,
@@ -2251,6 +2338,7 @@ def topk(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def nms(boxes: Tensor,
         scores: Tensor,
         box_format: str = 'PYTORCH',
@@ -2276,6 +2364,7 @@ def nms(boxes: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def interpolate(input: Tensor,
                 scale_h: float,
                 scale_w: float,
@@ -2301,6 +2390,7 @@ def interpolate(input: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def interpolate_v2(input: Tensor,
                    roi: Tensor = None,
                    sizes: Tensor = None,
@@ -2366,31 +2456,37 @@ def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, scale: List[float
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def gt(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "Greater", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def lt(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "Less", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def ge(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "GreaterOrEqual", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def le(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "LessOrEqual", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def eq(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "Equal", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def ne(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "NotEqual", scale, zero_point, out_name)
 
@@ -2414,31 +2510,37 @@ def __compare_const(tensor_i0: Tensor, scalar_i1: Scalar, type: str, scale: List
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def gts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "Greater", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def lts(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "Less", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def ges(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "GreaterOrEqual", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def les(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "LessOrEqual", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def eqs(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "Equal", scale, zero_point, out_name)
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "NotEqual", scale, zero_point, out_name)
 
@@ -2446,6 +2548,7 @@ def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[flo
 ######### Shape-Related Operator ############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
     if out_name is None:
         out_name = generate_name("squeeze")
@@ -2458,6 +2561,7 @@ def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str 
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out_name: str = None):
     output = Tensor(dtype=tensor.dtype, name=out_name)
     inputs = [tensor]
@@ -2471,6 +2575,7 @@ def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def shape_fetch(tensor_i: Tensor,
                 begin_axis: int = None,
                 end_axis: int = None,
@@ -2488,6 +2593,7 @@ def shape_fetch(tensor_i: Tensor,
 ############## Normalization Operator ###############
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
                gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, out_name: str = None):
@@ -2499,9 +2605,10 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
-    assert epsilon >= 0, "invalid epsilon {}".format(out_name)
+    assert epsilon >= 0, "invalid epsilon"
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape":  ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
@@ -2509,6 +2616,7 @@ def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, num_groups: int = 1, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
@@ -2518,14 +2626,15 @@ def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, axis: int = -1, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
-    assert input.dtype == "float32", "invalid input dtype {}".format(out_name)
-    assert axis == -1 or axis == len(input.shape) - 1, "axis={} not supported yet {}".format(axis, out_name)
+    assert input.dtype == "float32", "invalid input dtype"
+    assert axis == -1 or axis == len(input.shape) - 1, "axis={} not supported yet".format(axis)
     if gamma:
-        assert input.dtype == gamma.dtype, "invalid input and gamma dtype {}".format(out_name)
+        assert input.dtype == gamma.dtype, "invalid input and gamma dtype"
         assert input.shape[-1] == gamma.shape[0] and len(gamma.shape) == 1, \
-            "invalid input/gamma shape: {}".format(out_name)
+            "invalid input/gamma shape"
     attr = {"eps": Attr(epsilon, 'float64')}
     TpuLang.insert_op("top.RMSNorm", inputs=[input, gamma], outputs=[output], params=attr)
     return output
@@ -2534,6 +2643,7 @@ def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, axis: i
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def lut(input: Tensor, table: Tensor, out_name: str = None):
     assert input.dtype == 'int8' or input.dtype == 'uint8'
     assert table.dtype == 'int8' or table.dtype == 'uint8'
@@ -2543,6 +2653,7 @@ def lut(input: Tensor, table: Tensor, out_name: str = None):
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, Scalar], out_name: str = None):
     assert tbrn.dtype == fbrn.dtype
     out_dtype = tbrn.dtype
@@ -2567,6 +2678,7 @@ def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, S
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name: str = None):
     assert lhs.shape == rhs.shape
     cond = __compare(lhs, rhs, type, f"{out_name}_compare")
@@ -2575,6 +2687,7 @@ def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name: str = None, keep_dims: bool = True):
     attr = {
         "axis": Attr(axis, "int32"),
@@ -2586,6 +2699,7 @@ def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name: str =
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
                 scale: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None,
                 out_name: str = None, odtype="float32", round_mode: str = "half_away_from_zero"):
@@ -2617,6 +2731,7 @@ def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
 
 @auto_name()
 @annotation_check
+@assert_with_out_name
 def scatter(input: Tensor,
         index: Tensor,
         updates: Tensor,

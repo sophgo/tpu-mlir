@@ -127,6 +127,17 @@ def annotation_check(func):
 def check_dtype(dtype: str):
     assert dtype.lower() in supported_dtypes
 
+# the decorator should stay behind auto_name()
+def assert_with_out_name(func):
+    def wrapper(*args, **kwargs):
+        out_name = kwargs.get('out_name', '')
+        out_names = kwargs.get('out_names', [''])
+        try:
+            return func(*args, **kwargs)
+        except AssertionError as e:
+            raise AssertionError(f"{e}. out_name: {out_name if out_name else ', '.join(out_names)}")
+    return wrapper
+
 class Scalar:
 
     def __init__(self, value, dtype: str ='float32'):
