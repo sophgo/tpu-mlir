@@ -439,6 +439,9 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     cur_out = attn_start_out;
     next_op = cloneAttentionQuery(rewriter, next_op, cur_out, pos_ids,
                                   num_devices, cur_device, false, num_head)[0];
+    if (isa<tpu::MulConstOp>(next_op)) {
+      next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
+    }
     Value query_branch = cur_out;
     auto query_next_op = next_op;
     // Key branch
