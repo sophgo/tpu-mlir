@@ -2854,6 +2854,102 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+maxpool3d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool3d(input: Tensor,
+                kernel: Union[List[int],int,Tuple[int, ...]] = None,
+                stride: Union[List[int],int,Tuple[int, ...]] = None,
+                pad:    Union[List[int],int,Tuple[int, ...]] = None,
+                ceil_mode: bool = False,
+                scale: List[float] = None,
+                zero_point: List[int] = None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Max Pooling on the input Tensor.The Max Pooling 3d operation can refer to the maxpool3d operator of each framework This operation is a  **local operation** 。
+
+Parameters
+"""""""""""
+* tensor: Tensor type, representing the input tensor for the operation.
+* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
+* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
+* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+
+
+avgpool3d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool3d(input: Tensor,
+                kernel: Union[List[int],int,Tuple[int, ...]] = None,
+                stride: Union[List[int],int,Tuple[int, ...]] = None,
+                pad:    Union[List[int],int,Tuple[int, ...]] = None,
+                ceil_mode: bool = False,
+                scale: List[float] = None,
+                zero_point: List[int] = None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero",
+                first_round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Avg Pooling on the input Tensor.The Avg Pooling 3d operation can refer to the avgpool3d operator of each framework This operation is a  **local operation** 。
+
+Parameters
+"""""""""""
+* tensor: Tensor type, representing the input tensor for the operation.
+* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
+* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
+* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
+*first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+
+
+
+
+
+
 Normalization Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3378,6 +3474,48 @@ Processor Support
 """""""""""
 * BM1688:  only cmodel mode.
 * BM1684X: cmodel/pcie/soc mode.
+
+scatter
+:::::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+      def scatter(input: Tensor,
+            index: Tensor,
+            updates: Tensor,
+            axis: int = 0,
+            out_name: str = None):
+        #pass
+
+Description
+"""""""""""
+Based on the specified indices, write the input data to specific positions in the target Tensor. This operation allows the elements of the input Tensor to be scattered to the specified positions in the output Tensor. Refer to the ScatterElements operation in various frameworks for more details.
+This operation belongs to **local operation**。
+
+Parameters
+"""""""""""
+* input: Tensor type, represents the input operation Tensor, i.e., the target Tensor that needs to be updated.
+* index: Tensor type, represents the index Tensor that specifies the update positions.
+* updates: Tensor type, represents the values to be written into the target Tensor.
+* axis: int type, represents the axis along which to update.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+
+
+Returns
+"""""""""""
+Returns a new Tensor with updates applied at the specified positions, while other positions retain the original values from the input Tensor.
+
+
+
+Processor Support
+"""""""""""
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+
+
 
 Preprocess Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
