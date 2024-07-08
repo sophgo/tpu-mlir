@@ -70,7 +70,7 @@ class MAIN_ENTRY(object):
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
-        self.script_basic = ["test1", "test2","test5","test9","test11","test_llm0","test12"]
+        self.script_basic = ["test1", "test2","test5","test9","test11","test_llm0","test12",'test_modelzoo']
         self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm1"]
         # yapf: enable
         self.test_set = {
