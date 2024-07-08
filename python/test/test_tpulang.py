@@ -777,15 +777,15 @@ class TPULANG_IR_TESTER(object):
             apool = tpul.avgpool2d(relu17, None, [1,1], [0,0,0,0])
             reshape = tpul.reshape(apool, [0, -1])
             mat_weight = self.coeff_tensor([2048, 1000], dtype, scale=0.05)
-            mat_bias = self.coeff_tensor([1000], dtype, scale=0.03)
-            mat = self.matmul_op(reshape, mat_weight, mat_bias)
+            mat_bias = self.coeff_tensor([1000], dtype=dtype if self.chip == "bm1684x" else "float32", scale=0.03)
+            mat = self.matmul_op(reshape, mat_weight, mat_bias, dtype=dtype)
             return mat
 
         @tpulang(self.chip)
         def _test_model_def(in_shape, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
-            out = resnet50(x)
+            out = resnet50(x, dtype)
             if dtype == 'float32':
                 x.preprocess(mean=[0, 0.3, 0])
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
