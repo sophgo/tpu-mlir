@@ -93,7 +93,8 @@ class FBSArray:
 class FBSOptional:
     def __init__(self, fbs, *args):
         self.has = bool(fbs)
-        self.init(fbs, *args)
+        if self:
+            self.init(fbs, *args)
 
     def serialize(self, *args):
         if self:
@@ -163,11 +164,12 @@ class StageIr(FBSOptional):
 
 class Binary(FBSOptional):
     def init(self, fbs: bmodel_fbs.Binary, buffer: memoryview):
-        if fbs is None:
-            self.bytes = memoryview(bytes())
-        else:
-            binary = (fbs.Start(), fbs.Size())
-            self.bytes = buffer[binary[0] : sum(binary)]
+        binary = (fbs.Start(), fbs.Size())
+        self._bytes = buffer[binary[0] : sum(binary)]
+
+    @property
+    def bytes(self):
+        return getattr(self, "_bytes", memoryview(bytes()))
 
     def __bytes__(self):
         return bytes(self.bytes)
