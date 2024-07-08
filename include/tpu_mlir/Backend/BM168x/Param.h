@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "tpu_mlir/Backend/Arch.h"
+// #include "tpu_mlir/Backend/Arch.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -8,12 +8,14 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using namespace tpu_mlir::backend;
 
 int64_t Arch::NPU_NUM = 0;
@@ -50,7 +52,7 @@ void Arch::init(uint64_t freq) {
       inst = &CV18xx::instance(chip);
     } else if (chip == module::Chip::BM1690) {
       inst = &BM1690::instance();
-    } else if (chip == module::Chip::MARS3){
+    } else if (chip == module::Chip::MARS3) {
       inst = &MARS3::instance(A2_1::value);
     } else if (chip == module::Chip::SG2380) {
       inst = &SG2380::instance();
@@ -147,12 +149,34 @@ int64_t Arch::get_weight_lmem_bytes(Value v, group_type_t group_type,
 Arch::~Arch() {}
 
 void Arch::load_library() {
+  std::string Err;
   if (!DL.isValid()) {
-    std::string Err;
     DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_BACKEND_NAME.data(),
                                                         &Err);
     if (DL.isValid() == false) {
       llvm_unreachable(Err.c_str());
+    }
+  }
+
+  if (!JIT_DL.isValid()) {
+    bool exist = false;
+    std::string jit_so_name = "libppl_host.so";
+    std::string ppl_root;
+    if (auto env = getenv("PROJECT_ROOT")) {
+      ppl_root = env;
+    }
+    fs::path directory(ppl_root);
+    fs::path path = directory / "install/lib" / jit_so_name;
+    if (fs::is_regular_file(path)) {
+      exist = true;
+    }
+
+    if (exist) {
+      JIT_DL = llvm::sys::DynamicLibrary::getPermanentLibrary(
+          path.string().c_str(), &Err);
+      if (JIT_DL.isValid() == false) {
+        llvm_unreachable(Err.c_str());
+      }
     }
   }
 }

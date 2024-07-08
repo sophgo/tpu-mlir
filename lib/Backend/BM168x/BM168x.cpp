@@ -9,6 +9,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+#include "dlfcn.h"
+
 using namespace tpu_mlir::backend;
 
 void *BM168x::get_gmem_addr(uint64_t addr) {
@@ -176,8 +178,9 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
       auto vec_input_move_addr = *module::getI64Array(moveOp.getMoveDestAdd());
       int idx = v.cast<OpResult>().getResultNumber();
       spec.addr = vec_input_move_addr[idx];
-      llvm::errs() <<"value_to_spec, v:"<<module::getName(v).str()
-                   <<", idx:"<<idx<<", vec_input_move_addr[idx]:"<<spec.addr<<"\n";
+      llvm::errs() << "value_to_spec, v:" << module::getName(v).str()
+                   << ", idx:" << idx
+                   << ", vec_input_move_addr[idx]:" << spec.addr << "\n";
     } else {
       auto gi = LocalGenInterface::getGroupInfo(v);
       spec.addr = gi.out_addr;
@@ -300,10 +303,33 @@ void BM168x::call_local_func(const char *symbolName, void *params,
 
 typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
                                     void *output, void *pid_node);
+typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
+                                        void *input, void *output,
+                                        const char *chip, void *pid_node);
 void BM168x::call_global_func(const char *symbolName, void *params,
                               int param_size, void *input, void *output) {
   auto func = instance()->CastToFPtr<global_backend_api_t>(symbolName);
   func(params, param_size, input, output, (*instance())->cmdid_node);
+}
+
+void BM168x::call_ppl_func(const char *symbolName, void *params, int param_size,
+                           void *input, void *output) {
+  std::string chip_str;
+  auto chip = module::getChip();
+  if (chip == module::Chip::BM1684X) {
+    chip_str = "bm1684x";
+  } else if (chip == module::Chip::BM1688) {
+    chip_str = "bm1688";
+  } else if (chip == module::Chip::BM1690) {
+    chip_str = "bm1690";
+  } else {
+    llvm_unreachable("chip not supported\n");
+  }
+
+  auto kernel_func =
+      instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
+  kernel_func(params, param_size, input, output, chip_str.c_str(),
+              (*instance())->cmdid_node);
 }
 
 typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
@@ -317,67 +343,74 @@ void BM168x::call_local_func(const char *symbolName, void *params,
 
 typedef bool (*force_dynamic_run_func_t)(void *params, int param_size);
 typedef bool (*local_gen_support_func_t)(void *params, int param_size);
-typedef bool (*allow_data_split_func_t)(void *params, int param_size,
-                                        int axis, group_type_t group_type);
-typedef bool (*backward_slice_func_t)(void *params, int param_size,
-                                      int* in_idx, int* in_slice,
-                                      int out_idx, int out_slice);
+typedef bool (*allow_data_split_func_t)(void *params, int param_size, int axis,
+                                        group_type_t group_type);
+typedef bool (*backward_slice_func_t)(void *params, int param_size, int *in_idx,
+                                      int *in_slice, int out_idx,
+                                      int out_slice);
 typedef bool (*inference_func_t)(void *params, int param_size,
-                                 const int** input_shapes, const int* input_dims,
-                                 const float** inputs, float** outputs);
-void BM168x::call_custom_plugin_func(kCustomPluginTypes plugin_type, void* ret,
-                                     const char *symbolName,
-                                     void *params, int param_size,
-                                     void* args) {
+                                 const int **input_shapes,
+                                 const int *input_dims, const float **inputs,
+                                 float **outputs);
+void BM168x::call_custom_plugin_func(kCustomPluginTypes plugin_type, void *ret,
+                                     const char *symbolName, void *params,
+                                     int param_size, void *args) {
   switch (plugin_type) {
   case kCustomPluginTypes::PLUGIN_FORCEDYNAMICRUN:
   case kCustomPluginTypes::PLUGIN_LOCALGENSUPPORT: {
-    auto func = instance()->CastToCustomPluginPtr<local_gen_support_func_t>(symbolName);
-    *(bool*)ret = func ? func(params, param_size) : false;
-  }
-  break;
+    auto func =
+        instance()->CastToCustomPluginPtr<local_gen_support_func_t>(symbolName);
+    *(bool *)ret = func ? func(params, param_size) : false;
+  } break;
   case kCustomPluginTypes::PLUGIN_ALLOWDATASPLIT: {
-    int* _args = (int*)args; // {axis, group_type}
-    auto func = instance()->CastToCustomPluginPtr<allow_data_split_func_t>(symbolName);
+    int *_args = (int *)args; // {axis, group_type}
+    auto func =
+        instance()->CastToCustomPluginPtr<allow_data_split_func_t>(symbolName);
     if (func) {
-      *(bool*)ret = func(params, param_size, _args[0], (group_type_t)_args[1]);
+      *(bool *)ret = func(params, param_size, _args[0], (group_type_t)_args[1]);
     } else {
-      *(bool*)ret = true;
+      *(bool *)ret = true;
     }
-  }
-  break;
+  } break;
   case kCustomPluginTypes::PLUGIN_BACKWARDH:
   case kCustomPluginTypes::PLUGIN_BACKWARDW: {
-    int* _args = (int*)args; // {in_idx, in_slice, out_idx, out_slice}
-    auto func = instance()->CastToCustomPluginPtr<backward_slice_func_t>(symbolName);
+    int *_args = (int *)args; // {in_idx, in_slice, out_idx, out_slice}
+    auto func =
+        instance()->CastToCustomPluginPtr<backward_slice_func_t>(symbolName);
     if (func) {
-      *(bool*)ret = func(params, param_size, &_args[0], &_args[1], _args[2], _args[3]);
+      *(bool *)ret =
+          func(params, param_size, &_args[0], &_args[1], _args[2], _args[3]);
     } else {
       _args[0] = _args[2], _args[1] = _args[3];
-      *(bool*)ret = true;
+      *(bool *)ret = true;
     }
-  }
-  break;
+  } break;
   case kCustomPluginTypes::PLUGIN_INFERENCE: {
-    void* _args[4] = {((void**)args)[0], ((void**)args)[1], ((void**)args)[2], ((void**)args)[3]}; // {input_shapes, input_dims, inputs, outputs}
+    void *_args[4] = {
+        ((void **)args)[0], ((void **)args)[1], ((void **)args)[2],
+        ((void **)args)[3]}; // {input_shapes, input_dims, inputs, outputs}
     auto func = instance()->CastToCustomPluginPtr<inference_func_t>(symbolName);
     if (func) {
-      func(params, param_size, (const int**)(_args[0]), (const int*)(_args[1]), (const float**)(_args[2]), (float**)(_args[3]));
-      *(bool*)ret = true;
-    }
-    else *(bool*)ret = false;
-  }
-  break;
+      func(params, param_size, (const int **)(_args[0]),
+           (const int *)(_args[1]), (const float **)(_args[2]),
+           (float **)(_args[3]));
+      *(bool *)ret = true;
+    } else
+      *(bool *)ret = false;
+  } break;
   default:
-  break;
+    break;
   }
 }
 
 typedef int (*global_dq_custom_api_t)(void *params, int param_size, void *input,
-                                   void *output, void *pid_node);
-void BM168x::call_dq_custom_global_func(const char *libName, const char *symbolName, void *params,
-                                        int param_size, void *input, void *output) {
-  auto func = instance()->CastToDQFPtr<global_dq_custom_api_t>(libName, symbolName);
+                                      void *output, void *pid_node);
+void BM168x::call_dq_custom_global_func(const char *libName,
+                                        const char *symbolName, void *params,
+                                        int param_size, void *input,
+                                        void *output) {
+  auto func =
+      instance()->CastToDQFPtr<global_dq_custom_api_t>(libName, symbolName);
   func(params, param_size, input, output, (*instance())->cmdid_node);
 }
 
@@ -401,19 +434,21 @@ void BM168x::call_local_custom_func(const char *symbolName, void *params,
 
 typedef int64_t (*global_bfsz_custom_api_t)(void *params, int param_size,
                                             void *input, void *output);
-int64_t BM168x::call_global_bfsz_custom_func(const char *symbolName, void *params,
-                                             int param_size, void *input,
-                                             void *output) {
-  auto func = instance()->CastToCustomFPtr<global_bfsz_custom_api_t>(symbolName, false);
+int64_t BM168x::call_global_bfsz_custom_func(const char *symbolName,
+                                             void *params, int param_size,
+                                             void *input, void *output) {
+  auto func =
+      instance()->CastToCustomFPtr<global_bfsz_custom_api_t>(symbolName, false);
   return func ? func(params, param_size, input, output) : 0;
 }
 
-typedef int (*local_bfsz_custom_api_t)(void *params, int param_size,
-                                       void *info, void *input, void *output);
+typedef int (*local_bfsz_custom_api_t)(void *params, int param_size, void *info,
+                                       void *input, void *output);
 int BM168x::call_local_bfsz_custom_func(const char *symbolName, void *params,
                                         int param_size, void *info, void *input,
                                         void *output) {
-  auto func = instance()->CastToCustomFPtr<local_bfsz_custom_api_t>(symbolName, false);
+  auto func =
+      instance()->CastToCustomFPtr<local_bfsz_custom_api_t>(symbolName, false);
   return func ? func(params, param_size, info, input, output) : 0;
 }
 
