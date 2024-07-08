@@ -3775,11 +3775,10 @@ class TPULANG_IR_TESTER(object):
 
     def test_MeanStdScale(self, case_name):
         @tpulang(self.chip)
-        def _test_mean_std_scale(idtype="uint8", odtype="int8"):
+        def _test_mean_std_scale(idtype="uint8", odtype="int8", shape=[4, 3, 500, 400]):
             mean = [128.0, 128.0, 128.0]
             std = [1/0.017, 1/0.017, 1/0.017]
             scale= [1.0, 1 / 2**6]
-            shape = [4, 3, 500, 400]
 
             if idtype == "uint8":
                 # customer_layer_path = os.getenv("CUSTOM_LAYER_PATH")
@@ -3802,22 +3801,28 @@ class TPULANG_IR_TESTER(object):
         # output i8
         def _test_int8_to_int8_():
             _test_mean_std_scale("int8", "int8")
+            _test_mean_std_scale("int8", "int8", [4, 3, 50, 40, 60])
 
         def _test_uint8_to_int8_():
             _test_mean_std_scale("uint8", "int8")
+            _test_mean_std_scale("uint8", "int8", [4, 3, 50, 40, 60])
 
         def _test_f32_to_int8_():
             _test_mean_std_scale("float32", "int8")
+            _test_mean_std_scale("float32", "int8", [4, 3, 50, 40, 60])
 
         # output f16
         def _test_int8_to_f16_():
             _test_mean_std_scale("int8", "float16")
+            _test_mean_std_scale("int8", "float16", [4, 3, 50, 40, 60])
 
         def _test_uint8_to_f16_():
             _test_mean_std_scale("uint8", "float16")
+            _test_mean_std_scale("uint8", "float16", [4, 3, 50, 40, 60])
 
         def _test_f32_to_f16_():
             _test_mean_std_scale("float32", "float16")
+            _test_mean_std_scale("float32", "float16", [4, 3, 50, 40, 60])
 
         _test_int8_to_int8_()
         _test_uint8_to_int8_()

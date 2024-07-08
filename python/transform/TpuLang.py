@@ -2709,7 +2709,7 @@ def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
         round_mode = "HALF_TO_EVEN"
 
     assert len(std) == len(mean)
-    assert len(input.shape) == 4
+    assert len(input.shape) == 4 or len(input.shape) == 5
 
     h = input.shape[2]
     w = input.shape[3]
