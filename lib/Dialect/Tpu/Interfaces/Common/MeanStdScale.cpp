@@ -144,10 +144,14 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
   auto offset = module::getI64Array(getOffset());
   auto multi = module::getI64Array(getMulti());
   std::vector<int64_t> in_shape = module::getShape(getInput());
+  auto in_shape_size = in_shape.size();
 
   int in_zp = (*zero_points)[0];
   int out_zp = (*zero_points)[1];
-  int hw_size = in_shape[2] *in_shape[3];
+  int inner_size = 1;
+  for (int i = 2; i < in_shape_size; i++) {
+    inner_size *= in_shape[i];
+  }
   int batch_size = in_shape[0];
   int channels = in_shape[1];
 
@@ -160,9 +164,9 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
   auto odtype =  module::getStorageType(getResult().getType());
   if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) && odtype.isSignedInteger(8)) {
     for(int b = 0; b < batch_size; b++) {
-      for (int i = 0; i < hw_size * channels; i++) {
-        int global_idx = b * hw_size * channels + i;
-        int chn_idx = (i / hw_size) % channels;
+      for (int i = 0; i < inner_size * channels; i++) {
+        int global_idx = b * inner_size * channels + i;
+        int chn_idx = (i / inner_size) % channels;
         int _rshift = rshift->at(chn_idx);
         int _offset = offset->at(chn_idx);
         int32_t res = 0;
@@ -183,9 +187,9 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
   else if (idtype.isF32() && odtype.isSignedInteger(8)) {
     std::vector<int32_t> res;
     for(int b = 0; b < batch_size; b++) {
-      for (int i = 0; i < hw_size * channels; i++) {
-        int global_idx = b * hw_size * channels + i;
-        int chn_idx = (i / hw_size) % channels;
+      for (int i = 0; i < inner_size * channels; i++) {
+        int global_idx = b * inner_size * channels + i;
+        int chn_idx = (i / inner_size) % channels;
         float mean_float = mean->at(chn_idx);
 
         int32_t tmp = (int32_t)round_float_number((int32_t)(p.inputs[0][global_idx] - mean_float) * (1 / std->at(chn_idx)), round_mode);
@@ -198,9 +202,9 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
   } else {
     //default
     for(int b = 0; b < batch_size; b++) {
-      for (int i = 0; i < hw_size * channels; i++) {
-        int global_idx = b * hw_size * channels + i;
-        int chn_idx = i / hw_size;
+      for (int i = 0; i < inner_size * channels; i++) {
+        int global_idx = b * inner_size * channels + i;
+        int chn_idx = i / inner_size;
         p.outputs[0][global_idx] = (p.inputs[0][global_idx] - mean->at(chn_idx)) / std->at(chn_idx);
       }
     }
