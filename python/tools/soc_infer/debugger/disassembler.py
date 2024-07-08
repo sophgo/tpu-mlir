@@ -165,7 +165,11 @@ class StageIr(FBSOptional):
 class Binary(FBSOptional):
     def init(self, fbs: bmodel_fbs.Binary, buffer: memoryview):
         binary = (fbs.Start(), fbs.Size())
-        self.bytes = buffer[binary[0] : sum(binary)]
+        self._bytes = buffer[binary[0] : sum(binary)]
+
+    @property
+    def bytes(self):
+        return getattr(self, "_bytes", memoryview(bytes()))
 
     def __bytes__(self):
         return bytes(self.bytes)
@@ -189,7 +193,7 @@ class Binary(FBSOptional):
     def __repr__(self):
         if self:
             return f"bin:{len(self.bytes)}"
-        return ""
+        return "empty"
 
 
 class CmdGroup(FBSOptional):
@@ -197,6 +201,7 @@ class CmdGroup(FBSOptional):
         self.tiu_num = fbs.BdcNum()
         self.dma_num = fbs.GdmaNum()
         self.tiu_cmd = Binary(fbs.BinaryBdc(), buffer)
+        self.tiu_cmd.bytes
         self.dma_cmd = Binary(fbs.BinaryGdma(), buffer)
 
     def _serialize(self, builder, save_binary_fun):
