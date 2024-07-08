@@ -300,6 +300,10 @@ static bool isAttentionInput(Operation *op,
 static bool isAttentionQuery(Operation *op, std::vector<Operation *> &begin_ops,
                              bool GQA) {
   LLVM_DEBUG(llvm::dbgs() << "== Start match AttentionQuery. ==\n");
+  if (isa<tpu::MulConstOp>(op)) {
+    op = op->getOperand(0).getDefiningOp();
+  }
+
   if (!isa<tpu::AddOp>(op) || !op->hasOneUse()) {
     LLVM_DEBUG({
       if (!isa<tpu::AddOp>(op)) {
