@@ -1,0 +1,75 @@
+#include "helper.h"
+#include "mlir_attention_bf16.h"
+#include "mlir_attention_f16.h"
+#include "tpu_mlir/Backend/BM168x/Param.h"
+#include <assert.h>
+#include <cstdio>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void api_fattention_global(void *param, size_t param_size, void *input_spec,
+                           void *output_spec, const char *chip, void *cmdid) {
+  flash_attention_global_spec_t *_param =
+      (flash_attention_global_spec_t *)param;
+  tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
+  tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
+  auto q_spec = in_spec;
+  auto k_spec = in_spec + 1;
+  auto v_spec = in_spec + 2;
+  auto mask_spec = in_spec + 3;
+
+  // tiling
+  int ret = 0;
+  int dmax = align_up(_param->common.dim, 32 /*eu num*/);
+  int block_m, block_k, block_h;
+  if (_param->common.mq == 1) {
+    block_m = 64;
+    block_k = 192;
+    block_h = 32;
+  } else {
+    block_m = 128;
+    block_k = 128;
+    block_h = 32;
+  }
+
+  bool success = false;
+  while (1) {
+    if (in_spec[0].dtype == DTYPE_FP16) {
+      ret = mlir_attention_f16(
+          chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
+          _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
+          _param->common.mq, _param->common.mk, _param->common.dim,
+          _param->common.q_head, _param->common.kv_head, _param->common.scale,
+          _param->common.hasmask, dmax, block_m, block_k, block_h);
+    } else if (in_spec[0].dtype == DTYPE_BFP16) {
+      ret = mlir_attention_bf16(
+          chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
+          _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
+          _param->common.mq, _param->common.mk, _param->common.dim,
+          _param->common.q_head, _param->common.kv_head, _param->common.scale,
+          _param->common.hasmask, dmax, block_m, block_k, block_h);
+    } else {
+      assert(0);
+    }
+    if (ret == 0) {
+      success = true;
+      break;
+    } else if (ret == -1) {
+      printf("local mem not enough, reduce block size");
+      assert(0);
+    } else {
+      assert(0);
+    }
+  }
+  if (!success) {
+    assert(0 && "tiling failed\n");
+  }
+}
+
+#ifdef __cplusplus
+}
+#endif

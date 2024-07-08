@@ -56,24 +56,28 @@ typedef void (*tensor_align_move_gen_cmd)(
     int transpose, CMD_ID_NODE *pid_node);
 
 typedef void (*tensor_normal_decompress_gen_cmd)(
-    uint32_t local_mem_addr, uint64_t sys_mem_addr, int32_t N, int32_t C, int32_t H,
-    int32_t W, uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
-    uint8_t bias0, uint8_t bias1, int32_t is_signed, int32_t zero_guard,
-    int32_t data_format, CMD_ID_NODE *pid_node);
+    uint32_t local_mem_addr, uint64_t sys_mem_addr, int32_t N, int32_t C,
+    int32_t H, int32_t W, uint32_t local_n_stride, uint32_t local_c_stride,
+    uint32_t local_h_stride, uint8_t bias0, uint8_t bias1, int32_t is_signed,
+    int32_t zero_guard, int32_t data_format, CMD_ID_NODE *pid_node);
 
 typedef void (*tensor_racu_decompress_gen_cmd)(
-    uint32_t local_mem_addr, uint64_t racu_sys_mem_addr, uint64_t meta_sys_mem_addr, int32_t N, int32_t C,
-    int32_t H, int32_t W, uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
-    uint32_t racu_n_stride, uint32_t racu_c_stride, uint32_t racu_h_stride, uint32_t meta_n_stride,
-    uint32_t meta_c_stride, uint8_t bias0, uint8_t bias1, int32_t is_signed, int32_t zero_guard,
-    int32_t data_format, CMD_ID_NODE *pid_node);
+    uint32_t local_mem_addr, uint64_t racu_sys_mem_addr,
+    uint64_t meta_sys_mem_addr, int32_t N, int32_t C, int32_t H, int32_t W,
+    uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
+    uint32_t racu_n_stride, uint32_t racu_c_stride, uint32_t racu_h_stride,
+    uint32_t meta_n_stride, uint32_t meta_c_stride, uint8_t bias0,
+    uint8_t bias1, int32_t is_signed, int32_t zero_guard, int32_t data_format,
+    CMD_ID_NODE *pid_node);
 
 typedef void (*tensor_racu_compress_gen_cmd)(
-    uint32_t local_mem_addr, uint64_t racu_sys_mem_addr, uint64_t meta_sys_mem_addr, int32_t N, int32_t C,
-    int32_t H, int32_t W, uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
-    uint32_t racu_n_stride, uint32_t racu_c_stride, uint32_t racu_h_stride, uint32_t meta_n_stride,
-    uint32_t meta_c_stride, uint8_t bias0, uint8_t bias1, int32_t is_signed, int32_t zero_guard,
-    int32_t data_format, CMD_ID_NODE *pid_node);
+    uint32_t local_mem_addr, uint64_t racu_sys_mem_addr,
+    uint64_t meta_sys_mem_addr, int32_t N, int32_t C, int32_t H, int32_t W,
+    uint32_t local_n_stride, uint32_t local_c_stride, uint32_t local_h_stride,
+    uint32_t racu_n_stride, uint32_t racu_c_stride, uint32_t racu_h_stride,
+    uint32_t meta_n_stride, uint32_t meta_c_stride, uint8_t bias0,
+    uint8_t bias1, int32_t is_signed, int32_t zero_guard, int32_t data_format,
+    CMD_ID_NODE *pid_node);
 
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
@@ -140,6 +144,8 @@ public:
                               int param_size);
   static void call_global_func(const char *symbolName, void *params,
                                int param_size, void *input, void *output);
+  static void call_ppl_func(const char *symbolName, void *params,
+                            int param_size, void *input, void *output);
   static void call_local_func(const char *symbolName, void *params,
                               int param_size, void *info, void *input,
                               void *output);
@@ -149,24 +155,25 @@ public:
   static int call_local_bfsz_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
-  static void call_dq_custom_global_func(const char *libName, const char *symbolName, void *params,
-                                         int param_size, void *input, void *output);
+  static void call_dq_custom_global_func(const char *libName,
+                                         const char *symbolName, void *params,
+                                         int param_size, void *input,
+                                         void *output);
   static void call_global_custom_func(const char *symbolName, void *params,
                                       int param_size, void *input,
                                       void *output);
   static void call_local_custom_func(const char *symbolName, void *params,
                                      int param_size, void *info, void *input,
                                      void *output);
-  static int64_t call_global_bfsz_custom_func(const char *symbolName, void *params,
-                                              int param_size, void *input,
-                                              void *output);
+  static int64_t call_global_bfsz_custom_func(const char *symbolName,
+                                              void *params, int param_size,
+                                              void *input, void *output);
   static int call_local_bfsz_custom_func(const char *symbolName, void *params,
-                                         int param_size, void *info, void *input,
-                                         void *output);
-  static void call_custom_plugin_func(kCustomPluginTypes plugin_type, void* ret,
-                                      const char *symbolName,
-                                      void *params, int param_size,
-                                      void* args);
+                                         int param_size, void *info,
+                                         void *input, void *output);
+  static void call_custom_plugin_func(kCustomPluginTypes plugin_type, void *ret,
+                                      const char *symbolName, void *params,
+                                      int param_size, void *args);
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
@@ -186,10 +193,11 @@ public:
   static int compare_mode(StringRef mode);
   static int binary_mode(StringRef mode);
   static int64_t ic_num(double dbytes) {
-     if(module::isSG2380() && dbytes == 2) {
+    if (module::isSG2380() && dbytes == 2) {
       return IC_PARALLEL;
-     }
-     return IC_PARALLEL / dbytes; }
+    }
+    return IC_PARALLEL / dbytes;
+  }
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   static stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
@@ -308,9 +316,7 @@ public:
     dl_forbid_store_cmd();
   }
 
-  void set_profile_dump(bool enable) {
-    dl_sg_set_profile_dump(enable);
-  }
+  void set_profile_dump(bool enable) { dl_sg_set_profile_dump(enable); }
 
   // for cpu layer
   void bmcpu_setup();

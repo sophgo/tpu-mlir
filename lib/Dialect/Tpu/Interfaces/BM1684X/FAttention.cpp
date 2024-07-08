@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -31,13 +31,17 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.scale = getScale().convertToDouble();
   common.hasmask = !module::isNone(getMask());
 
-  BM168x::call_global_func("backend_api_flash_attention_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+#if 1
+  BM168x::call_global_func("backend_api_flash_attention_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
+#else
+  BM168x::call_ppl_func("api_fattention_global", &param, sizeof(param),
+                        input_spec->data(), output_spec->data());
+#endif
 }
 
-int64_t tpu::FAttentionOp::get_fw_type_bm1684x() {
-  return FW_BMNET_FATTENTION;
-}
+int64_t tpu::FAttentionOp::get_fw_type_bm1684x() { return FW_BMNET_FATTENTION; }
 
 // ======================================
 // Dynamic GlobalGenInterface

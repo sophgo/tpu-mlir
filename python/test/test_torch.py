@@ -2340,7 +2340,7 @@ class TORCH_IR_TESTER(object):
         # _test_flash_attention(1, 128, 10, 2048, 2048, True)
         # _test_flash_attention(1, 128, 10, 2048, 2048, False)
         # _test_flash_attention(2, 128, 10, 1024, 1024, True)
-        # _test_flash_attention(1, 128, 4, 128, 128, True)
+        # _test_flash_attention(1, 128, 4, 4, 128, 128, True)
         # _test_flash_attention(1, 128, 4, 1, 128, True)
         # _test_flash_attention(1, 128, 10, 1, 2048, True)
         # _test_flash_attention(1, 128, 10, 1, 4096, True)
