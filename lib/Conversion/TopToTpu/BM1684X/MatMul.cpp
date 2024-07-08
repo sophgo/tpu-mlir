@@ -526,6 +526,7 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         return;
       }
       if (i == 2 && bias_use_fp32) {
+        ASSERT_OP(module::getStorageType(in).isF32() && "bias has to be f32", op);
         operands.push_back(in);
       } else {
         operands.push_back(wOp.clone_f16(op));

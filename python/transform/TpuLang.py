@@ -531,7 +531,9 @@ def conv(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = input.dtype if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"]
+    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
+    if bias:
+        assert bias.dtype == "float32"
     assert input.is_quantized is False
     assert weight.is_quantized is False
 
@@ -563,11 +565,15 @@ def conv_int(input: Tensor,
              weight_zp: Union[int, List[int]] = None,
              out_dtype: str = None,
              out_name: str = None):
+    assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
+    if bias:
+        assert bias.dtype == "int32"
+    o_dtype = "int32" if out_dtype is None else out_dtype
+    assert o_dtype in ["int32", "uint32"]
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = "int32" if out_dtype is None else out_dtype
-    assert o_dtype in ["int32", "uint32"]
     assert input.is_quantized is True or input_zp is not None
     assert weight.is_quantized is True or weight_zp is not None
 
@@ -608,7 +614,9 @@ def conv_quant(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = out_dtype if out_dtype is not None else input.dtype
-    assert o_dtype in ["int8", "uint8"]
+    assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"] and o_dtype in ["int8", "uint8"]
+    if bias:
+        bias.dtype == "int32"
     assert input.is_quantized is True or input_scale is not None
     assert weight.is_quantized is True  or weight_scale is not None
 
@@ -643,7 +651,9 @@ def conv3d(input: Tensor,
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"]
+    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
+    if bias:
+        assert bias.dtype == "float32"
     assert input.is_quantized is False
     assert weight.is_quantized is False
 
@@ -756,7 +766,9 @@ def deconv(input: Tensor,
     pad = [0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0] if output_padding is None else output_padding
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"]
+    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
+    if bias:
+        assert bias.dtype == "float32"
     assert input.is_quantized is False
     assert weight.is_quantized is False
 
@@ -789,6 +801,9 @@ def deconv_int(input: Tensor,
              weight_zp: Union[int, List[int]] = None,
              out_dtype: str = None,
              out_name: str = None):
+    assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
+    if bias:
+        assert bias.dtype == "int32"
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
@@ -832,7 +847,9 @@ def deconv3d(input: Tensor,
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0, 0] if output_padding is None else output_padding
     o_dtype = "float32" if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"]
+    assert input.dtype in ["float32", "float16"] and input.dtype == weight.dtype
+    if bias:
+        assert bias.dtype == "float32"
     assert input.is_quantized is False
     assert weight.is_quantized is False
 
@@ -864,7 +881,9 @@ def matmul(input: Tensor,
             out_name: str = None):
 
     o_dtype = input.dtype if out_dtype is None else out_dtype
-    assert input.dtype in ["float32", "float16"]
+    assert input.dtype in ["float32", "float16"] and input.dtype == right.dtype
+    if bias:
+        assert bias.dtype in ["float32", "float16"]
     assert input.is_quantized is False
     assert right.is_quantized is False
 
@@ -897,7 +916,9 @@ def matmul_int(input: Tensor,
                right_zp: Union[int, List[int]] = None,
                out_dtype: str = None,
                out_name: str = None):
-
+    assert input.dtype in ["int8", "uint8"] and right.dtype in ["int8", "uint8"]
+    if bias:
+        assert bias.dtype == "int32"
     o_dtype = "int32" if out_dtype is None else out_dtype
     assert o_dtype in ["int32", "uint32"]
     assert input.is_quantized is True or input_zp is not None
@@ -946,7 +967,9 @@ def matmul_quant(input: Tensor,
         "do_relu":  Attr(False, "bool"),
         "relu_limit":  Attr(-1.0, "float64")
     }
-
+    assert input.dtype in ["int8", "uint8"] and right.dtype in ["int8", "uint8"] and out_dtype in ["int8", "uint8"]
+    if bias:
+        bias.dtype == "int32"
     assert input.is_quantized is True or input_scale is not None
     assert right.is_quantized is True or right_scale is not None
     assert output_scale is not None

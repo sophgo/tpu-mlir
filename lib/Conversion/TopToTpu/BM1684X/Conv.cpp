@@ -622,12 +622,15 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   }
 
   // bias lowering will be done in --weight-reorder pass
-  operands.push_back(op.getBias());
+  auto bias_value = op.getBias();
+  bool with_bias = !module::isNone(bias_value);
+  if (with_bias)
+    ASSERT_OP(module::getStorageType(bias_value).isF32() && "bias has to be f32", op);
+  operands.push_back(bias_value);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.getOutput());
