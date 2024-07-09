@@ -2079,6 +2079,17 @@ def Top_Pow2Op : Top_Op<"Pow2"> {
   //let hasCanonicalizer = 1;
 }
 
+def Top_Pow3Op : Top_Op<"Pow3"> {
+  let summary = "Pow3 operation";
+  let description = [{
+    output = x1 ^ x2
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SqrtOp : Top_Op<"Sqrt"> {
   let summary = "Sqrt operation";
   let description = [{

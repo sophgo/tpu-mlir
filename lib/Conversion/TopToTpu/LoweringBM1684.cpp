@@ -97,6 +97,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       GELULowering,
       PowLowering,
       Pow2Lowering,
+      Pow3Lowering,
       DivLowering,
       CompareLowering,
       CompareConstLowering,
