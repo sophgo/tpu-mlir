@@ -1571,6 +1571,22 @@ bool ConvertTopToTpu::set_block_fp16(Operation *from, Operation *to) {
   return res;
 }
 
+void ConvertTopToTpu::spread_q_config() {
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp, top::SqueezeOp,
+            top::UnsqueezeOp>(op)) {
+      auto pre_op = op->getOperands()[0].getDefiningOp();
+      if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
+          LoweringConfig::quantize_map.end()) {
+        LoweringConfig::quantize_map.insert(
+            {module::getName(op).str(),
+             LoweringConfig::quantize_map.find(module::getName(pre_op).str())
+                 ->second});
+      }
+    }
+  });
+}
+
 bool ConvertTopToTpu::eva2_mix_precision() {
   std::vector<Operation *> mlp;
   std::vector<Operation *> mhsa;
@@ -1689,6 +1705,7 @@ bool ConvertTopToTpu::eva2_mix_precision() {
         }
       }
     }
+    spread_q_config();
     return true;
   }
   return false;

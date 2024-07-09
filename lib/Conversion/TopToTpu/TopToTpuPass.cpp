@@ -2257,22 +2257,6 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
   });
 }
 
-void ConvertTopToTpu::spread_q_config() {
-  mainFunc_.walk([&](Operation *op) {
-    if (isa<top::PermuteOp, top::ReshapeOp, top::SliceOp, top::SqueezeOp,
-            top::UnsqueezeOp>(op)) {
-      auto pre_op = op->getOperands()[0].getDefiningOp();
-      if (LoweringConfig::quantize_map.find(module::getName(pre_op).str()) !=
-          LoweringConfig::quantize_map.end()) {
-        LoweringConfig::quantize_map.insert(
-            {module::getName(op).str(),
-             LoweringConfig::quantize_map.find(module::getName(pre_op).str())
-                 ->second});
-      }
-    }
-  });
-}
-
 void ConvertTopToTpu::qtable_process() {
   bert_mix_precision();
   swin_mix_precision();
@@ -2282,7 +2266,6 @@ void ConvertTopToTpu::qtable_process() {
   eva2_mix_precision();
   detr_mix_precision();
   set_add_before_softmax_fp32();
-  spread_q_config();
 }
 
 // match kv cache
