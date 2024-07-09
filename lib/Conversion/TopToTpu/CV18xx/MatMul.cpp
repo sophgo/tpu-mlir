@@ -152,7 +152,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   operands.emplace_back(op.getInput());
   operands.emplace_back(right_operand);
   operands.emplace_back(bias_operand);
-
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   return;
@@ -171,6 +172,8 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
   }
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 } // namespace cv18xx

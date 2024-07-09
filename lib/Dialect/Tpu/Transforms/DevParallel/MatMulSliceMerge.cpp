@@ -218,12 +218,18 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     }
     rewriter.setInsertionPointAfter(next_op);
     auto new_type = next_op->getResult(0).getType();
-    auto new_mm1 =
-        a16_mm1 ? rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands,
-                                                    next_op->getAttrs())
-                : rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands,
-                                                 next_op->getAttrs());
-    end_operands.push_back(new_mm1->getResult(0));
+    mlir::Operation* new_mm1;
+
+    auto createMatMulOp = [&](bool a16_mm1) -> mlir::Operation* {
+        if (a16_mm1) {
+            return rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
+        } else {
+            operands.push_back(module::getNoneOp(op));
+            return rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
+        }
+    };
+
+    new_mm1 = createMatMulOp(a16_mm1);
 
     if (i == 0) {
       end_op = *next_op->user_begin();

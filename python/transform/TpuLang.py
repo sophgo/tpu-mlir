@@ -1284,7 +1284,7 @@ def requant_int(tensor_i: Tensor,
                 requant_mode: int,
                 out_dtype: str="int8",
                 out_name=None,
-                round_mode='half_away_from_zero'):
+                round_mode='half_away_from_zero', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
     assert requant_mode < 3
     q_mode = ["TFLite_LShift", "TFLite", "MultiplierShift"]
     output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype, zero_point=offset)
@@ -1295,7 +1295,9 @@ def requant_int(tensor_i: Tensor,
         "multiplier": ArrayAttr(mul, "int64"),
         "rshift": ArrayAttr(shift, "int64"),
         "quant_mode": Attr(q_mode[requant_mode], "string"),
-        "round_mode": Attr(round_mode_convert(round_mode), "string")
+        "round_mode": Attr(round_mode_convert(round_mode), "string"),
+        "rq_axis": Attr(rq_axis, "int32"),
+        "fuse_rq": Attr(fuse_rq_to_matmul, "bool")
     }
     TpuLang.insert_op("top.RequantInt", inputs=[tensor_i], outputs=[output], params=attr)
     return output
@@ -2799,3 +2801,30 @@ def scatter(input: Tensor,
     output = Tensor(dtype=o_dtype, name=out_name)
     TpuLang.insert_op("top.ScatterElements", inputs=[input, index, updates], outputs=[output], params=attr)
     return output
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def matmulrq_int_op(input: Tensor,
+                    right : Tensor,
+                    bias = None,
+                    input_transpose: bool = False,
+                    right_transpose: bool = False,
+                    output_transpose: bool = False,
+                    keep_dims: bool = True,
+                    out_dtype: str = "int8",
+                    out_name: str = None,
+                    multiplier: Union[int, List[int]] = None,
+                    shift: Union[int, List[int]] = None,
+                    offset: Union[int, List[int]] = None,
+                    requant_mode: int = 2,  # Default to "MultiplierShift"
+                    round_mode: str = 'half_away_from_zero', rq_axis = -1):
+    assert input_transpose == False and output_transpose == False
+    assert out_dtype == "int8" or out_dtype == "int16"
+    assert rq_axis==-1 or (rq_axis == len(input.shape) - 1)
+    matmul_out_name = out_name + "_matmul" if out_name else "matmul_output"
+    matmul_output = matmul_int(input, right, bias, input_transpose=False, right_transpose=False, output_transpose=False, keep_dims=True, input_zp=0, right_zp=0, out_dtype="int32", out_name=matmul_out_name)
+    shift = shift if isinstance(shift, List) else [shift]
+    shift = [-sft for sft in shift]
+    requantized_output = requant_int(matmul_output, multiplier, shift, offset, requant_mode, out_dtype=out_dtype, out_name=out_name, round_mode=round_mode, rq_axis=rq_axis, fuse_rq_to_matmul=True)
+    return requantized_output

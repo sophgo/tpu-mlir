@@ -3560,7 +3560,7 @@ requant_int
                         requant_mode,
                         out_dtype = None,
                         out_name = None,
-                        round_mode='half_up'):
+                        round_mode='half_up', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
 
 功能描述
 """""""""""
@@ -3611,6 +3611,8 @@ requant_int
 * round_mode：string型，表示舍入模式。默认为“half_up”。
 * out_dtype：string类型或None，表示输出Tensor的类型。None代表输出数据类型为“int8”
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* rq_axis：int型，表示在rq_axis维度做requant。
+* fuse_rq_to_matmul：bool类型，表示是否将requant 融合到matmul,默认是False。
 
 返回值
 """""""""""

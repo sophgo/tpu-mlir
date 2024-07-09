@@ -497,14 +497,16 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
                  int64_t lshift,
                  tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
-// from int8 to int32
+// from int32 to int8
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, tpu::RequantMode mode,
                  tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, tpu::RequantMode mode,
-                 tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
+                 bool tensorType, tpu::RequantMode mode, tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
+
+Value do_requant_axis(Location name_loc, Value input, Value quant, Type to_type,
+                 bool tensorType, tpu::RequantMode mode, tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero, int64_t rq_axis=1, bool fuse_rq = false);
 
 Value do_requantFp(
     Value input, double scale, double offset, Type to_type,
