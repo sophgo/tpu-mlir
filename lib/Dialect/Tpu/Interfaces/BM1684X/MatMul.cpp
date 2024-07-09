@@ -49,14 +49,13 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.izp_const_val = p.input_zp;
       if (module::isUniformQuantized(getOutput())) {
         spec.requant_mode = static_cast<int>(getQuantMode());
-        auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-        auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-        assert(rshift_v->size() == 1);
-        assert(multiplier_v->size() == 1);
+        auto rshift_v = module::getI64Array(getRshifts());
+        auto multiplier_v = module::getI64Array(getMultipliers());
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
+        spec.fuse_rq = getFuseRq();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
@@ -87,16 +86,16 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.rzp_const_val = p.right_zp;
     spec.izp_const_val = p.input_zp;
     if (module::isUniformQuantized(getOutput())) {
-      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-      assert(rshift_v->size() == 1);
-      assert(multiplier_v->size() == 1);
+      auto rshift_v = module::getI64Array(getRshifts());
+      auto multiplier_v = module::getI64Array(getMultipliers());
       spec.requant_mode = static_cast<int>(getQuantMode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+      spec.fuse_rq = getFuseRq();
+      if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
 
@@ -261,14 +260,13 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     common.izp_const_val = p.input_zp;
     if (module::isUniformQuantized(getOutput())) {
       common.requant_mode = static_cast<int>(getQuantMode());
-      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-      assert(rshift_v->size() == 1);
-      assert(multiplier_v->size() == 1);
+      auto rshift_v = module::getI64Array(getRshifts());
+      auto multiplier_v = module::getI64Array(getMultipliers());
       common.mul_val = multiplier_v->at(0);
       common.shift_val = -rshift_v->at(0);
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
+      common.fuse_rq = getFuseRq();
     }
   } else if (odtype.isFloat8E4M3FN()) {
     common.requant_mode = 0;
@@ -311,14 +309,13 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.izp_const_val = p.input_zp;
       if (module::isUniformQuantized(getOutput())) {
         spec.requant_mode = static_cast<int>(getQuantMode());
-        auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-        auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-        assert(rshift_v->size() == 1);
-        assert(multiplier_v->size() == 1);
+        auto rshift_v = module::getI64Array(getRshifts());
+        auto multiplier_v = module::getI64Array(getMultipliers());
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
+        spec.fuse_rq = getFuseRq();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
@@ -342,16 +339,16 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.rzp_const_val = p.right_zp;
     spec.izp_const_val = p.input_zp;
     if (module::isUniformQuantized(getOutput())) {
-      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-      assert(rshift_v->size() == 1);
-      assert(multiplier_v->size() == 1);
+      auto rshift_v = module::getI64Array(getRshifts());
+      auto multiplier_v = module::getI64Array(getMultipliers());
       spec.requant_mode = static_cast<int>(getQuantMode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+      spec.fuse_rq = getFuseRq();
+      if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);

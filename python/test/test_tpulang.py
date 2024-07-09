@@ -14,6 +14,8 @@ from typing import List
 import math
 from utils.timer import Timer
 import cv2
+from typing import List, Union
+import random
 
 def is_int(dtype, width = None):
     if width == None:
@@ -37,12 +39,16 @@ def is_fp(dtype, width = None):
         return True
     return False
 
-def rand_data(shape, dtype, min=-10, max=10):
+def rand_data(shape, dtype, min=-10, max=10,seed=None):
+    if seed is not None:
+        np.random.seed(seed)
     if dtype in ['float32', 'float16']:
         return np.clip(np.random.randn(*shape).astype(dtype), min, max)
     if dtype == 'int32' or 'uint32' or 'int16' or 'uint16' or 'int8' or 'uint8':
         return np.random.randint(0, 127, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
+
+
 
 def rand_indices(shape, dtype):
     num_elem = 1
@@ -85,7 +91,7 @@ class TPULANG_IR_TESTER(object):
             "Avgpool": (self.test_Avgpool,              Y, Y),
             "Avgpool3d":(self.test_Avgpool3d,           Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
-            # "Cast": (self.test_Cast,                    Y, Y),
+            # "Cast": (self.test_Cast,                  Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
             "Clamp": (self.test_Clamp,                  Y, Y),
             "Concat": (self.test_Concat,                Y, Y),
@@ -126,6 +132,8 @@ class TPULANG_IR_TESTER(object):
             "Lut": (self.test_Lut,                      Y, Y),
             "LayerNorm":(self.test_LayerNorm,           Y, Y),
             "MatMul": (self.test_MatMul,                Y, Y),
+            "MatMulRQ_OP": (self.test_MatMulRQ_OP,      Y, N),
+            "MatMulRQ_Int_Group":(self.test_MatMulRQ_Int_Group,Y, N),
             "Max": (self.test_Max,                      Y, Y),
             "Maxpool": (self.test_Maxpool,              Y, Y),
             "Maxpool3d": (self.test_Maxpool3d,          Y, Y),
@@ -1019,14 +1027,14 @@ class TPULANG_IR_TESTER(object):
             H_k = shape[2]
             S_v = shape[1]
             H_v = shape[2]
-            q = matmul_weight(x0, [H_q, d*head], 8158145, -30, dtype)
+            q = matmul_weight(x0, [H_q, d * head], 8158145, -30, dtype)
             q = tpul.reshape(q, [B, S_q, head, d])
             q = tpul.permute(q, [0, 2, 1, 3])
-            k = matmul_weight(x1, [H_k, d*head], 8158145, -30, dtype)
+            k = matmul_weight(x1, [H_k, d * head], 8158145, -30, dtype)
             k = tpul.reshape(k, [B, S_k, head, d])
             k = tpul.permute(k, [0, 2, 1, 3])
             k = tpul.permute(k, [0, 1, 3, 2])
-            v = matmul_weight(x2, [H_v, d*head], 8158145, -30, dtype)
+            v = matmul_weight(x2, [H_v, d * head], 8158145, -30, dtype)
             v = tpul.reshape(v, [B, S_v, head, d])
             v = tpul.permute(v, [0, 2, 1, 3])
             m0 = tpul.matmul_int(q, k, input_zp=0, right_zp=0, out_dtype='int32')
@@ -1042,6 +1050,7 @@ class TPULANG_IR_TESTER(object):
             m1 = tpul.reshape(m1, [B, S_q, -1])
             out = matmul_weight(m1, [d*head, H_q], 8158145, -30, dtype=dtype)
             return out
+
 
         def mlp_block(x, shape, dtype):
             H = shape[2]
@@ -1668,10 +1677,8 @@ class TPULANG_IR_TESTER(object):
         return matmul
 
     def test_MatMul(self, case_name):
-        """Matmul"""
-
         @tpulang(self.chip)
-        def _test_matmul(shape_x: List[int], shape_y: List[int], dtype="float32", is_quantized=False):
+        def _test_matmul(shape_x: List[int], shape_y: List[int], bias_shape: List[int] = None, dtype="float32", is_quantized=False, is_fuse_rq=False, has_bias=False,bias_dtype="int32",requant_mode=2, input_transpose: bool = False):
             left = rand_data(shape_x, dtype)
             right = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
@@ -1681,6 +1688,84 @@ class TPULANG_IR_TESTER(object):
 
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
+
+    def matmul_int_op(self,input,
+                        right,
+                        bias = None,
+                        input_transpose: bool = False,
+                        right_transpose: bool = False,
+                        output_transpose: bool = False,
+                        keep_dims: bool = True,
+                        out_dtype: str = "int8",
+                        out_name: str = None,
+                        multiplier: Union[int, List[int]] = None,
+                        shift: Union[int, List[int]] = None,
+                        offset: Union[int, List[int]] = None,
+                        requant_mode: int = 2,  # Default to "MultiplierShift"
+                        round_mode: str = 'half_away_from_zero'):
+        assert len(input.shape) == len(right.shape) and len(input.shape) == len(bias.shape)
+        rq_axis_ = -1
+        matmul_output = tpul.matmul_int(input, right, bias, input_transpose=False, right_transpose=right_transpose, output_transpose=False, keep_dims=True, input_zp=0, right_zp=0, out_dtype="int32", out_name="matmul_int")
+        requantized_output = tpul.requant_int(matmul_output, multiplier, shift, offset, requant_mode, out_dtype="int8", out_name='requant_pc', round_mode=round_mode, rq_axis=rq_axis_, fuse_rq_to_matmul=True)
+        shape_right_tmp = [1 for i in range(len(input.shape)-2)] + [right.shape[-1],256]
+        right_tmp = rand_data(shape_right_tmp, dtype="int8")
+
+        weight  = tpul.Tensor(dtype="int8", shape=shape_right_tmp, data=right_tmp, ttype="coeff")
+        matmul_output_ = tpul.matmul_int(requantized_output,  weight, None, input_transpose=False, right_transpose=False, output_transpose=False, keep_dims=True, input_zp=0, right_zp=0, out_dtype="int32", out_name="matmul_int_")
+        return matmul_output_
+
+
+    def test_MatMulRQ_Int_Group(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_matmul(shape_x: List[int], shape_y: List[int], bias_shape: List[int] = None, dtype="float32", is_quantized=False, is_fuse_rq=False, has_bias=False,bias_dtype="int32",requant_mode=2, right_transpose: bool = False):
+            left = rand_data(shape_x, dtype)
+            right = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right, ttype="coeff")
+            z = None
+            if has_bias:
+                bias = rand_data(bias_shape, bias_dtype)
+                z  = tpul.Tensor(dtype=bias_dtype, shape=bias_shape, data=bias, ttype="coeff")
+            if is_quantized and is_fuse_rq:
+                multiplier = [random.randint(1000, 10000) for _ in range(shape_y[-1])]
+                rshift = rshift = [23 for _ in range(shape_y[-1])]
+                offset = 0
+                out_dtype_ = "int8"
+                if has_bias:
+                    out_dtype_ = bias_dtype
+                matmul = self.matmul_int_op(x, y, z, out_dtype=out_dtype_, multiplier=multiplier, shift=rshift, offset=offset,requant_mode=requant_mode, right_transpose=right_transpose)
+            else:
+                matmul = self.matmul_op(x, y, z, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=is_quantized)
+
+        _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
+        _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
+        _test_matmul([1, 1, 256, 1024], [1, 1, 1024, 1024], [1, 1, 1, 1024], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2)
+        _test_matmul([197, 768], [768, 768], [1, 768], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2, right_transpose = True)
+
+
+    def test_MatMulRQ_OP(self, case_name):
+        @tpulang(self.chip)
+        def _test_matmul(shape_x: List[int], shape_y: List[int], bias_shape: List[int] = None, idtype="float32", is_quantized=False, is_fuse_rq=False, has_bias=False,bias_dtype="int32", odtype = "int8", requant_mode=2, round_mode='half_away_from_zero'):
+            left = rand_data(shape_x, idtype)
+            right = rand_data(shape_y, idtype)
+            x = tpul.Tensor(dtype=idtype, shape=shape_x, data=left)
+            y = tpul.Tensor(dtype=idtype, shape=shape_y, data=right, ttype="coeff")
+            z = None
+            if has_bias:
+                bias = rand_data(bias_shape, bias_dtype)
+                z  = tpul.Tensor(dtype=bias_dtype, shape=bias_shape, data=bias, ttype="coeff")
+
+            if is_quantized and is_fuse_rq:
+                multiplier = [random.randint(1000, 10000) for _ in range(1024)]
+                rshift = [-23]
+                offset = 0
+                matmul = tpul.matmulrq_int_op(x, y, z, out_dtype=odtype, multiplier=multiplier, shift=rshift, offset=offset,requant_mode=requant_mode, round_mode=round_mode)
+                self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=is_quantized)
+
+        _test_matmul([2 ,197, 768], [2, 768, 768], [2, 1, 768], idtype="int8", odtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2,round_mode='half_up')
+
 
     #######################################################################
     # Maxpool

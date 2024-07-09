@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  lowering_common_f32<tpu::MatMulOp>(rewriter, op);
+  lowering_common_f32<tpu::MatMulOp>(rewriter, op, 4);
 }
 
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
@@ -173,6 +173,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   //trick for Img2Col
@@ -376,6 +378,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     auto matmul_int32_name =
         module::getName(op.getOperation()).str() + "_int32";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(matmul_int32_name));
+    auto noneOp_multi = module::getNoneOp(op);
+    operands.push_back(noneOp_multi);
     auto matmul_int32_out =
         rewriter.create<tpu::MatMulOp>(name_loc, convType, operands, attrs);
 
@@ -455,6 +459,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     if (all_next_layer_is_int8) {
       newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
     }
+    auto noneOp_multi = module::getNoneOp(op);
+    operands.push_back(noneOp_multi);
     auto newOp =
         rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
     rewriter.replaceOp(op, {newOp.getOutput()});
@@ -492,6 +498,8 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
       operands.push_back(in);
     }
   }
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
 
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
@@ -535,6 +543,8 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
       operands.push_back(in);
     }
   }
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
   if (!module::isNone(operands[2]) && newOp.supports_multi_core() && bias_use_fp32) {
@@ -570,6 +580,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     } else {
       operands.push_back(module::getNoneOp(op));
     }
+    auto noneOp_multi = module::getNoneOp(op);
+    operands.push_back(noneOp_multi);
     auto newType = getQuantF8E5M2Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
     return;
@@ -642,7 +654,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-
+  auto noneOp_multi = module::getNoneOp(op);
+  operands.push_back(noneOp_multi);
   auto newType = getQuantF8E4M3Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
@@ -658,7 +671,6 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto input_qtype = module::getUniformQuantizedType(op.getInput());
   auto right_qtype = module::getUniformQuantizedType(op.getRight());
   int64_t left_num_dims = module::getShape(op.getInput()).size();
-
   int32_t right_zero_point = right_qtype.getZeroPoint();
   auto ctx = getContext();
   OpBuilder builder(ctx);
@@ -732,9 +744,11 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     }
     auto matmul_type = RankedTensorType::get(module::getShape(op.getOutput()),
                                              rewriter.getI32Type());
-    auto new_name = module::getName(op.getOperation()).str() + "_matmul_no_izp";
+    auto new_name = module::getName(op.getOperation()).str() + "_no_izp";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfter(op);
+    auto none = module::getNoneOp(op);
+    operands.push_back(none);
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
     matValue = newOp.getOutput();
@@ -754,6 +768,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto new_name = module::getName(op.getOperation()).str() + "_int32";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfter(op);
+    auto none = module::getNoneOp(op);
+    operands.push_back(none);
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
     matValue = newOp.getOutput();

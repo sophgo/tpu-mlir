@@ -58,8 +58,10 @@ public:
       if (!isa<tpu::PermuteOp>(tile_op.getOperand(0).getDefiningOp())) {
         return failure();
       }
-      auto permute_op = dyn_cast<tpu::PermuteOp>(tile_op.getOperand(0).getDefiningOp());
-      rewriter.replaceAllUsesWith(tile_op->getResult(0), permute_op->getResult(0));
+      auto permute_op =
+          dyn_cast<tpu::PermuteOp>(tile_op.getOperand(0).getDefiningOp());
+      rewriter.replaceAllUsesWith(tile_op->getResult(0),
+                                  permute_op->getResult(0));
       rewriter.eraseOp(tile_op);
       r_op = permute_op;
     }
@@ -2969,9 +2971,9 @@ public:
         return failure();
       }
       auto o_permute_order = module::getI64Array(o_permute.getOrder());
-      if (o_permute_order->size() != 4 || o_permute_order->at(0) != 0
-          || o_permute_order->at(1) != 2 || o_permute_order->at(2) != 1
-          || o_permute_order->at(3) != 3) {
+      if (o_permute_order->size() != 4 || o_permute_order->at(0) != 0 ||
+          o_permute_order->at(1) != 2 || o_permute_order->at(2) != 1 ||
+          o_permute_order->at(3) != 3) {
         return failure();
       }
       reshape_op =
@@ -3072,7 +3074,7 @@ public:
       }
     }
 
-    //Avoid getting into wrong FAttention
+    // Avoid getting into wrong FAttention
     auto k_permute_order = module::getI64Array(k_permute.getOrder());
     auto right_trans = matmul0.getRightTranspose();
     if (right_trans) {
@@ -3089,9 +3091,9 @@ public:
       }
     }
     auto q_permute_order = module::getI64Array(q_permute.getOrder());
-    if (q_permute_order->size() != 4 || q_permute_order->at(0) != 0
-        || q_permute_order->at(1) != 2 || q_permute_order->at(2) != 1
-        || q_permute_order->at(3) != 3) {
+    if (q_permute_order->size() != 4 || q_permute_order->at(0) != 0 ||
+        q_permute_order->at(1) != 2 || q_permute_order->at(2) != 1 ||
+        q_permute_order->at(3) != 3) {
       return failure();
     }
 
@@ -3667,8 +3669,9 @@ public:
     auto input_shape = module::getShape(input);
     int input_dim = input_shape.size();
     auto axes = module::getI64Array(op.getAxes());
-    if (op.getKeepdims() || axes->size() != 2 || input_dim < 3 || axes->at(0) != input_dim - 2 || axes->at(1) != input_dim - 1
-        || input_shape[axes->at(0)] * input_shape[axes->at(1)] < 65536)
+    if (op.getKeepdims() || axes->size() != 2 || input_dim < 3 ||
+        axes->at(0) != input_dim - 2 || axes->at(1) != input_dim - 1 ||
+        input_shape[axes->at(0)] * input_shape[axes->at(1)] < 65536)
       return failure();
 
     auto name = module::getName(input);
@@ -3690,7 +3693,8 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
-    attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axes->at(1)})));
+    attrs.push_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axes->at(1)})));
     attrs.push_back(rewriter.getNamedAttr(
         "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
     auto reducel2_op0 = rewriter.create<tpu::ReduceOp>(
@@ -3712,8 +3716,8 @@ public:
     }
     attrs.push_back(
         rewriter.getNamedAttr("mode", rewriter.getStringAttr(mode)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "axes", rewriter.getI64ArrayAttr({axes->at(0)})));
+    attrs.push_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axes->at(0)})));
     attrs.push_back(rewriter.getNamedAttr(
         "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
     auto reducel2_op1 = rewriter.create<tpu::ReduceOp>(
@@ -3911,6 +3915,72 @@ struct GridSamplerFusePattern : public OpRewritePattern<tpu::GridSamplerOp> {
   }
 };
 
+
+
+// MatMul  +  RequantIntAxis ->  MatMul
+class MatMulRequantIntFusion : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    if(!module::isBM1684X()) failure();
+
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+
+    auto nextOp = *op.getOutput().user_begin();
+    if (!isa<tpu::RequantIntAxisOp>(nextOp)) {
+      return failure();
+    }
+
+    auto requantIntAxisOp = dyn_cast<tpu::RequantIntAxisOp>(nextOp);
+    bool fuse_rq_axis = requantIntAxisOp.getFuseRqAxis();
+    if(!fuse_rq_axis) return failure();
+    auto shape = module::getShape(requantIntAxisOp.getOutput());
+    auto quantValueOp =
+        requantIntAxisOp.getQuant().getDefiningOp<top::WeightOp>();
+    auto quantDataPtr = quantValueOp.read<int32_t>();
+    auto &quantData = *quantDataPtr;
+
+
+    int channels = shape[shape.size() - 1];
+    std::vector<int64_t> new_multi0(channels);
+    std::vector<int64_t> new_rshift0(channels);
+
+    for (int i = 0; i < channels; ++i) {
+      new_multi0[i] = quantData[i * 3];      // multi
+      new_rshift0[i] = quantData[i * 3 + 1]; // rshift
+    }
+
+    rewriter.setInsertionPoint(op);
+    std::vector<int32_t> reshaped_multi0(channels);
+    std::copy(new_multi0.begin(), new_multi0.end(), reshaped_multi0.begin());
+    std::vector<int64_t> multi_shape = {1, channels};
+    multi_shape.insert(multi_shape.begin(), shape.size() -  multi_shape.size(), 1);
+    auto multi_type = mlir::RankedTensorType::get(multi_shape, rewriter.getIntegerType(32, true));
+    auto weight_op = top::WeightOp::create(op, "i32", reshaped_multi0, multi_type);
+
+    std::vector<mlir::Value> operands(op.getOperands().begin(),
+                                      op.getOperands().end());
+    operands.back() = weight_op;
+
+    auto newMatmulOp = rewriter.create<tpu::MatMulOp>(
+        requantIntAxisOp->getLoc(), requantIntAxisOp.getOutput().getType(),
+        operands, op->getAttrs());
+
+    newMatmulOp.setMultipliersAttr(rewriter.getI64ArrayAttr(new_multi0));
+    newMatmulOp.setRshiftsAttr(rewriter.getI64ArrayAttr(new_rshift0));
+    newMatmulOp.setFuseRqAttr(rewriter.getBoolAttr(true));
+    auto round_mode = requantIntAxisOp.getRoundModeAttr().getValue();
+    newMatmulOp.setRoundMode(round_mode);
+    rewriter.replaceOp(requantIntAxisOp, newMatmulOp.getResult());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -3957,7 +4027,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 TryInsertTileBinaryPattern<tpu::MulOp>,
                 Concat5dto4d,
                 EliminateCastBeforeGatherElements,
-                ConvMergeRequant
+                ConvMergeRequant,
+                MatMulRequantIntFusion
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on

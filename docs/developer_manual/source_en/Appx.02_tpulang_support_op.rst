@@ -2786,6 +2786,73 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+requant_int
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+        def requant_int(tensor_i,
+                                mul,
+                                shift,
+                                offset,
+                                requant_mode,
+                                out_dtype = None,
+                                out_name = None,
+                                round_mode='half_up', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
+
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Quantize the input tensor.
+
+computation mode
+"""""""""""""""""""""""""""""""""
+When requant_mode == 0, the corresponding computation is:
+output = shift > 0 ? (input << shift) : input
+output = saturate((output * multiplier) >> 31),     where >> is round_half_up, saturate to INT32
+output = shift < 0 ? (output >> -shift) : output,   where >> rounding mode is determined by round_mode
+output = saturate(output + offset),                 where saturate to the output data type
+BM1684X: Input data type can be INT32, output data type can be INT32/INT16/INT8
+BM1688: Input data type can be INT32, output data type can be INT32/INT16/INT8
+
+When requant_mode == 1, the corresponding computation is:
+output = saturate((input * multiplier) >> 31),     where >> is round_half_up, saturate to INT32
+output = saturate(output >> -shift + offset),      where >> rounding mode is determined by round_mode, saturate to the output data type
+BM1684X: Input data type can be INT32, output data type can be INT32/INT16/INT8
+BM1688: Input data type can be INT32, output data type can be INT32/INT16/INT8
+
+When requant_mode == 2 (recommended), the corresponding computation is:
+output = input * multiplier
+output = shift > 0 ? (output << shift) : (output >> -shift),    where >> rounding mode is determined by round_mode
+output = saturate(output + offset),                             where saturate to the output data type
+BM1684X: Input data type can be INT32/INT16/UINT16, output data type can be INT16/UINT16/INT8/UINT8
+BM1688: Input data type can be INT32/INT16/UINT16, output data type can be INT16/UINT16/INT8/UINT8
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor, 3-5 dimensions.
+* mul: List[int] or int, representing the quantization multiplier coefficients.
+* shift:List[int] or int, representing the quantization shift coefficients. Right shift is negative, left shift is positive.
+* offset: List[int] or int, representing the output offset.
+* requant_mode: int, representing the quantization mode.
+* round_mode: string, representing the rounding mode. Default is "half_up".
+* out_dtype: string or None, representing the output tensor type. None means the output data type is "int8".
+* out_name: string or None, representing the output tensor name. If None, the name will be generated automatically.
+* rq_axis: int, representing the axis on which to apply requant.
+* fuse_rq_to_matmul: bool, indicating whether to fuse requant into matmul. Default is False.
+
+Return value
+""""""""""""""""""""""
+Returns a tensor. The data type of this tensor is determined by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X
+* BM1688
 
 Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -311,7 +311,9 @@ def Top_RequantIntOp:Top_Op<"RequantInt"> {
     I64ArrayAttr:$multiplier,
     I64ArrayAttr:$rshift,
     RequantModeAttr:$quant_mode,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<SI32Attr, "1">:$rq_axis,
+    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq
   );
   let results = (outs AnyTensor:$output);
 }

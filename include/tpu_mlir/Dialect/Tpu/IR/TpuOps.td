@@ -1252,7 +1252,10 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DefaultValuedAttr<I64Attr, "1">:$left_reuse,
     OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multi_core
+    OptionalAttr<BoolAttr>:$multi_core,
+    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
+    AnyTensorOrNone:$multi,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1578,7 +1581,9 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     AnyRankedTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<SI32Attr, "1">:$rq_axis,
+    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq_axis
   );
   let results = (outs AnyRankedTensor:$output);
 }

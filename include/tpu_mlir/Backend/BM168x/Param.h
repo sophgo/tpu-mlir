@@ -1238,6 +1238,7 @@ typedef struct fc_global_spec {
   int32_t shift_val;
   int32_t offset_val;
   int32_t round_mode;
+  bool fuse_rq;
 } fc_global_spec_t;
 
 typedef struct a16_matmul_spec {
@@ -1267,6 +1268,7 @@ typedef struct batch_matmul_common_spec {
   int offset_val;
   int round_mode;
   int left_reuse;
+  bool fuse_rq;
 } batch_matmul_common_spec_t;
 
 typedef struct batch_matmul_global_spec {
