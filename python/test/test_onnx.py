@@ -150,13 +150,14 @@ class ONNX_IR_TESTER(object):
             "Min":          (self.test_Min,           Y, Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N, Y),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y),
-            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y), # zero pad
-            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y), # pad val
-            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y),
+            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y),
+            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y), # zero pad
+            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y), # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y, Y),
-            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y), # y = x ^ n
-            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y), # y = n ^ x
-            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y),
+            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y),
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y), # y = x ^ n
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y), # y = n ^ x
+            "Pow3":         (self.test_Pow3,          Y, Y, Y, N, Y), # y = x1 ^ x2
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y),
             "Range":        (self.test_Range,         N, Y, Y, N, Y),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y),
@@ -4642,6 +4643,19 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def)
+
+    def test_Pow3(self, case_name):
+        shape = [1, 3, 27, 27]
+        input1_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
+        input2_data = np.random.randn(*shape).astype(np.float32)
+        graph_txt = """
+            %s (float%s input1, float%s input2) => (float%s output)
+            {
+                output = Pow(input1, input2)
+            }
+            """ % (case_name, shape, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def, input_data={"input1": input1_data, "input2": input2_data})
 
     def test_Not(self, case_name):
         shape = [1, 3, 27, 27]

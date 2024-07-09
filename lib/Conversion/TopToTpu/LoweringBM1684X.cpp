@@ -145,6 +145,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PreprocessLowering,
       PowLowering,
       Pow2Lowering,
+      Pow3Lowering,
       ReciprocalLowering,
       ReluLowering,
       RemainderLowering,

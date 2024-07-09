@@ -2351,7 +2351,14 @@ class OnnxConverter(BaseConverter):
                                 ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, pow_op)
         else:
-            raise RuntimeError("Not implemented")
+            base_op = self.getOp(base)
+            expn_op = self.getOp(expn)
+            pow_op = top.Pow3Op(self.unranked_type,
+                                [base_op, expn_op],
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, pow_op)
+
 
     def convert_where_op(self, onnx_node):
         assert (onnx_node.op_type == "Where")
