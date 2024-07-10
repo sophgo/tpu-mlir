@@ -10,9 +10,12 @@
 import  pymlir
 import argparse
 from utils.fp_layer_search import FpLayerSearcher
+from utils.log_setting import setup_logger
+
+logger = setup_logger("fp_forward")
 
 if __name__ == '__main__':
-    print("TPU-MLIR {}".format(pymlir.module().version))
+    logger.info("TPU-MLIR {}".format(pymlir.__version__))
     # yapf: disable
     parser = argparse.ArgumentParser(description="Generate quantization table")
     parser.add_argument('mlir_file', help='fp32 mlir file')
