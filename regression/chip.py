@@ -75,7 +75,7 @@ full_model_list = {
     "ecanet50":                   (N,      Y,       N,      N,      N,      N,      Y,      N,     N,     N),
     "efficientdet-d0":            (N,      N,       N,      Y,      N,      Y,      Y,      N,     N,     N),
     "efficientnet":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N),
-    "efficientnetv2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N),
+    "efficientnetv2":             (N,      N,       N,      N,      N,      N,      N,      N,     N,     N),
     "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N), # bm1690 f16, bf16 has problem
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y,     N),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y,     N),
