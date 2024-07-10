@@ -19,9 +19,10 @@ weight tensor分配gmem
 
 global neuron tensors分配gmem
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    最大可能的复用内存空间,根据生命周期给全部global neuron tensor分配,在分配过程中会复用已分配gmem.
+最大可能的复用内存空间,根据生命周期给全部global neuron tensor分配,在分配过程中会复用已分配gmem。
 
-a. 数据结构介绍:
+a. 数据结构介绍
+
     每次分配时把对应的tensor, address, size, ref_cnt(这个tensor有几个OP使用)记录在rec_tbl.
     同时将tensor, address记录在辅助数据结构hold_edges,in_using_addr中
 
@@ -33,7 +34,7 @@ a. 数据结构介绍:
         std::vector<mlir::Value> hold_edges;
         std::set<int64_t> in_using_addr;
 
-b. 流程介绍:
+b. 流程介绍
 
     * **遍历每个Op, 在遍历Op时,判断Op的输入tensor是否位于rec_tbl**
 

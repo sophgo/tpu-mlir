@@ -1,6 +1,6 @@
 开发环境配置
 ============
-首先检查当前系统环境是否满足ubuntu 22.04和python 3.10。如不满足，请进行下一节 :ref:`基础环境配置 <env setup>` ；如满足，直接跳至 :ref:`tpu_mlir 安装 <install tpu_mlir>` 。
+首先检查当前系统环境是否满足Ubuntu 22.04和Python 3.10。如不满足，请进行下一节 :ref:`基础环境配置 <env setup>` ；如满足，直接跳至 :ref:`TPU-MLIR 安装 <install tpu_mlir>` 。
 
 .. _env setup:
 
@@ -22,7 +22,7 @@
    $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
 
 
-如果是首次使用Docker, 可执行下述命令进行安装和配置（仅首次执行）：
+如果是首次使用Docker，可执行下述命令进行安装和配置（仅首次执行）：
 
 
 .. _docker configuration:
@@ -46,14 +46,14 @@
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-其中， ``myname`` 为容器名称, 可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
+其中， ``myname`` 为容器名称，可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
 
 后文假定用户已经处于 docker 里面的 ``/workspace`` 目录。
 
 
 .. _install tpu_mlir:
 
-安装tpu_mlir
+安装TPU-MLIR
 ------------------
 
 目前支持2种安装方法，分别是在线安装和离线安装。
@@ -76,10 +76,10 @@
    $ pip install tpu_mlir-*-py3-none-any.whl
 
 
-安装tpu_mlir依赖
+安装TPU-MLIR依赖
 ------------------
 
-tpu_mlir在对不同框架模型处理时所需的依赖不同，在线安装和离线安装方式都需要安装额外依赖。
+TPU-MLIR在对不同框架模型处理时所需的依赖不同，在线安装和离线安装方式都需要安装额外依赖。
 
 **在线安装**
 

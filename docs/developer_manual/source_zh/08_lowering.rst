@@ -3,9 +3,7 @@ Lowering
 
 Lowering将Top层OP下沉到Tpu层OP, 它支持的类型有F32/F16/BF16/INT8对称/INT8非对称。
 
-当转换INT8时, 它涉及到量化算法; 针对不同硬件, 量化算法是不一样的, 比如有的支持perchannel, 有的不支持;
-
-有的支持32位Multiplier, 有的只支持8位, 等等。
+当转换INT8时, 它涉及到量化算法; 针对不同硬件, 量化算法是不一样的, 比如有的支持perchannel, 有的不支持；有的支持32位Multiplier, 有的只支持8位, 等等。
 
 所以Lowering将算子从硬件无关层(TOP), 转换到了硬件相关层(TPU)。
 

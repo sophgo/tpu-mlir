@@ -72,7 +72,7 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 
 .. code-block:: shell
 
-    # 将bmprofile_data_0目录的profile原始数据转换成网页放置到bmprofile_out目录
+    # 将bmprofile_data-1目录的profile原始数据转换成网页放置到bmprofile_out目录
     # 如果有图形界面，会直接打开浏览器，直接看到结果
     tpu_profile bmprofile_data-1 bmprofile_out
     ls bmprofile_out

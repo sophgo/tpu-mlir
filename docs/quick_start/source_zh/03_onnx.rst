@@ -1,11 +1,11 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至深度学习处理器平台运行。
+本章以 ``yolov5s.onnx`` 为例，介绍如何编译迁移一个onnx模型至深度学习处理器平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
-本章需要安装tpu_mlir。
+本章需要安装TPU-MLIR。
 
 .. list-table::
    :widths: 35 20 30
@@ -23,10 +23,10 @@
 
 .. _onnx to bmodel:
 
-安装tpu_mlir
+安装TPU-MLIR
 ------------------
 
-进入Docker容器，并执行以下命令安装tpu_mlir：
+进入Docker容器，并执行以下命令安装TPU-MLIR：
 
 .. code-block:: shell
 
@@ -40,7 +40,7 @@
 
 .. include:: get_resource.rst
 
-建立 ``model_yolov5s`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s`` 目录中。
+建立 ``model_yolov5s`` 目录，并把模型文件和图片文件都放入 ``model_yolov5s`` 目录中。
 
 操作如下:
 
@@ -57,7 +57,7 @@
 ONNX转MLIR
 ------------------
 
-如果模型是图片输入, 在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入, 则不需要考虑预处理。
+如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
 
 预处理过程用公式表达如下( :math:`x` 代表输入):
 
@@ -66,7 +66,7 @@ ONNX转MLIR
    y = (x - mean) \times scale
 
 
-官网yolov5的图片是rgb格式, 每个值会乘以 ``1/255`` , 转换成mean和scale对应为
+官网yolov5的图片是rgb格式，每个值会乘以 ``1/255`` ，转换成mean和scale对应为
 ``0.0,0.0,0.0`` 和 ``0.0039216,0.0039216,0.0039216`` 。
 
 模型转换命令如下:
@@ -147,13 +147,13 @@ ONNX转MLIR
      - 指定输出的mlir文件名称和路径
 
 
-转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
+转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。
 
 
 MLIR转F16模型
 ------------------
 
-将mlir文件转换成f16的bmodel, 操作方法如下:
+将mlir文件转换成f16的bmodel，操作方法如下:
 
 .. code-block:: shell
 
@@ -219,7 +219,7 @@ MLIR转F16模型
      - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证
 
 
-编译完成后, 会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。
+编译完成后，会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。
 
 
 MLIR转INT8模型
@@ -228,12 +228,12 @@ MLIR转INT8模型
 生成校准表
 ~~~~~~~~~~~~~~~~~~~~
 
-转INT8模型前需要跑calibration, 得到校准表; 输入数据的数量根据情况准备100~1000张左右。
+转INT8模型前需要跑calibration，得到校准表; 输入数据的数量根据情况准备100~1000张左右。
 
-然后用校准表, 生成对称或非对称bmodel。如果对称符合需求, 一般不建议用非对称, 因为
+然后用校准表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
 非对称的性能会略差于对称模型。
 
-这里用现有的100张来自COCO2017的图片举例, 执行calibration:
+这里用现有的100张来自COCO2017的图片举例，执行calibration:
 
 
 .. code-block:: shell
@@ -243,13 +243,13 @@ MLIR转INT8模型
        --input_num 100 \
        -o yolov5s_cali_table
 
-运行完成后会生成名为 ``yolov5s_cali_table`` 的文件, 该文件用于后续编译INT8模型的输入文件。
+运行完成后会生成名为 ``yolov5s_cali_table`` 的文件，该文件用于后续编译INT8模型的输入文件。
 
 
 编译为INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8对称量化模型, 执行如下命令:
+转成INT8对称量化模型，执行如下命令:
 
 .. code-block:: shell
 
@@ -263,22 +263,22 @@ MLIR转INT8模型
        --tolerance 0.85,0.45 \
        --model yolov5s_1684x_int8_sym.bmodel
 
-编译完成后, 会生成名为 ``yolov5s_1684x_int8_sym.bmodel`` 的文件。
+编译完成后，会生成名为 ``yolov5s_1684x_int8_sym.bmodel`` 的文件。
 
 
 效果对比
 ------------------
 
-在本发布包中有用python写好的yolov5用例, 使用 ``detect_yolov5`` 命令, 用于对图片进行目标检测。
+在本发布包中有用python写好的yolov5用例，使用 ``detect_yolov5`` 命令，用于对图片进行目标检测。
 
 该命令对应源码路径 ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py`` 。
 
-阅读该代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
+阅读该代码可以了解模型是如何使用的: 先预处理得到模型的输入，然后推理得到输出，最后做后处理。
 
 用以下代码分别来验证onnx/f16/int8的执行结果。
 
 
-onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
+onnx模型的执行方式如下，得到 ``dog_onnx.jpg`` :
 
 .. code-block:: shell
 
@@ -287,7 +287,7 @@ onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
        --model ../yolov5s.onnx \
        --output dog_onnx.jpg
 
-f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
+f16 bmodel的执行方式如下，得到 ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
@@ -296,7 +296,7 @@ f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
        --model yolov5s_1684x_f16.bmodel \
        --output dog_f16.jpg
 
-int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
+int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` :
 
 .. code-block:: shell
 
@@ -315,13 +315,13 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
    TPU-MLIR对YOLOv5s编译效果对比
 
-由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result` 会有些差异。
+由于运行环境不同，最终的效果和精度与 :numref:`yolov5s_result` 会有些差异。
 
 
 模型性能测试
 ------------
 
-以下操作需要在Docker外执行,
+以下操作需要在Docker外执行，
 
 安装 ``libsophon`` 环境
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -332,7 +332,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 检查 ``BModel`` 的性能
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-安装好 ``libsophon`` 后, 可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确性及性能。可以根据 ``bmrt_test`` 输出的性能结果, 来估算模型最大的fps, 来选择合适的模型。
+安装好 ``libsophon`` 后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
 
 .. code-block:: shell
 
@@ -381,7 +381,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 从上面输出可以看到以下信息:
 
 1. 05-08行是bmodel的网络输入输出信息
-2. 19行是运行时间, 其中深度学习处理器用时4009us, 非加速用时113us。这里非加速用时主要是指在HOST端调用等待时间
+2. 19行是运行时间，其中深度学习处理器用时4009us，非加速用时113us。这里非加速用时主要是指在HOST端调用等待时间
 3. 24行是加载数据到NPU的DDR的时间
 4. 25行相当于19行的总时间
 5. 26行是输出数据取回时间

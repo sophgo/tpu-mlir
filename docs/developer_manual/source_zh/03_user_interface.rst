@@ -316,7 +316,7 @@ run_calibration.py
    * - max_float_layers
      - 否
      - search_qtable 浮点层数量
-   * - chip
+   * - processor
      - 否
      - 芯片类型
    * - cali_method
@@ -499,7 +499,7 @@ model_deploy.py
      - 指定输入数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输入数据类型也为int8，若不指定则为F32
    * - quant_output
      - 否
-     - 指定输出数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输出入数据类型也为int8，若不指定则为F32
+     - 指定输出数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输出数据类型也为int8，若不指定则为F32
    * - quant_input_list
      - 否
      - 选择要转换的索引，例如 1,3 表示第一个和第三个输入的强制转换

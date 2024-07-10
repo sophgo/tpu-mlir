@@ -3,13 +3,13 @@
 
 本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例, 介绍如何编译迁移一个caffe模型至 BM1684X 平台运行。
 
-本章需要安装tpu_mlir。
+本章需要安装TPU-MLIR。
 
 
-安装tpu_mlir
+安装TPU-MLIR
 ------------------
 
-进入Docker容器，并执行以下命令安装tpu_mlir：
+进入Docker容器，并执行以下命令安装TPU-MLIR：
 
 .. code-block:: shell
 

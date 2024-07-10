@@ -87,9 +87,6 @@ Depth2SpaceOp
     - is_inversed: 如果true, 那么结果的形状为:  :math:`[n, c * block_h * block_w, h / block_h, w / block_w]`,
                     否则结果的形状为: :math:`[n, c / (block_h * block_w), h * block_h, w * block_w]`
 
-:输出:
-    - output: 输出tensor
-
 :接口:
     无
 
@@ -281,9 +278,6 @@ DivOp
     - multiplier: 量化用的乘数, 默认为1
     - rshift: 量化用的右移, 默认为0
 
-:输出:
-    - output: 输出tensor
-
 :接口:
     无
 
@@ -309,9 +303,6 @@ LeakyReluOp
 
 :属性:
     - alpha:对应每个tensor的系数
-
-:输出:
-    - output: 输出tensor
 
 :接口:
     无
@@ -343,9 +334,6 @@ LSTMOp
     - bidirectional: 设置双向循环的LSTM, 默认为false
     - batch_first: 是否将batch放在第一维, 默认为false
 
-:输出:
-    - output: 输出tensor
-
 :接口:
     无
 
@@ -367,9 +355,6 @@ LogOp
 
 :属性:
     无
-
-:输出:
-    - output: 输出tensor
 
 :接口:
     无
@@ -424,9 +409,6 @@ MatMulOp
     - do_relu: 结果是否做Relu, 默认为False
     - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
-:输出:
-    - output: 输出tensor
-
 :接口:
     无
 
@@ -454,9 +436,6 @@ MulOp
     - multiplier: 量化用的乘数, 默认为1
     - rshift: 量化用的右移, 默认为0
 
-:输出:
-    - output: 输出tensor
-
 :接口:
     无
 
@@ -482,9 +461,6 @@ MulConstOp
     - const_val: f64类型的常量
     - do_relu: 结果是否做Relu, 默认为False
     - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
-
-:输出:
-    - output: 输出tensor
 
 :接口:
     无
@@ -534,9 +510,6 @@ ReluOp
 
 :属性:
    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限。
-
-:输出:
-    - output: 输出tensor
 
 :接口:
     无
