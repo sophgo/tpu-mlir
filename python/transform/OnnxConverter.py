@@ -415,6 +415,9 @@ class OnnxConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
+    def is_dynamic(self):
+        return self.run_mode == "DYNAMIC"
+
     def model_simplify(self, input_shapes=[]):
         # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
         try:
@@ -1626,7 +1629,7 @@ class OnnxConverter(BaseConverter):
             need_floor = (output_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64]) \
                         or (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
 
-            if (self.dynamic and need_floor):
+            if self.is_dynamic() and need_floor:
                 new_op=top.DivConstOp(self.unranked_type,
                                       lhs_op,
                                       const_val=self.getScalar(rhs),
