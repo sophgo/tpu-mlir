@@ -219,7 +219,7 @@ TpuLang自定义算子添加
 
 8. 调用TpuLang构建模型
 
-   有关如何使用 TpuLang 的说明，请参阅 TPULang 接口部分。
+   有关如何使用 TpuLang 的说明，请参阅 “TPULang接口” 部分。
 
    TpuLang 提供了 `TpuLang.custom` 接口来在工具链前端构建自定义算子（请确保 `op_name` 与后端算子的名称匹配）：注意，`params` 应该是 python 中的字典，其 key 应该是 是一个表示参数名称的字符串，值应该是整数或浮点数，或者是整数或浮点数的列表（列表的长度不应大于16）。 在构建神经网络时，对于相同的自定义运算符和相同的键，键的数量和顺序应保持相同，如果其值为列表，则长度应保持相同。
 
@@ -312,7 +312,7 @@ Caffe自定义算子添加
     --input_shapes # list of input shapes (e.g., [[1,2,3],[3,4,5]]) \
     --mlir # output mlir file
 
-后端部分与TpuLang自定义算子添加中的步骤相同，此处不再赘述。
+后端部分与 “TpuLang自定义算子添加” 中的步骤相同，此处不再赘述。
 
 自定义算子示例
 --------------
@@ -643,7 +643,7 @@ Caffe示例
     --input_shapes [[1,3,14,14],[1,3,24,26]] \
     --mlir caffe_test_net.mlir
 
-  通过以上步骤可获得caffe_test_net.mlir的Top层mlir文件，后续的模型部署过程请参考用户接口章节。
+  通过以上步骤可获得caffe_test_net.mlir的Top层mlir文件，后续的模型部署过程请参考 “用户接口” 章节。
 
 4. 后端算子与接口实现
 

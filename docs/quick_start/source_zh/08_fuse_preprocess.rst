@@ -27,7 +27,7 @@
 
 其中图像裁剪会先将图片按使用 ``model_transform`` 工具时输入的 “--resize_dims” 参数将图片调整为对应的大小，再裁剪成模型输入的尺寸。而归一化计算支持直接将未进行预处理的图像数据(即unsigned int8格式的数据)做归一化处理。
 
-若要将预处理融入到模型中，则需要在使用 ``model_deploy`` 工具进行部署时使用 “--fuse_preprocess” 参数。如果要做验证，则传入的 ``test_input`` 需要是图像原始格式的输入(即jpg, jpeg和png格式), 相应地会生成原始图像输入对应的npz文件，名称为 ``${model_name}_in_ori.npz``。
+若要将预处理融入到模型中，则需要在使用 ``model_deploy`` 工具进行部署时使用 “--fuse_preprocess” 参数。如果要做验证，则传入的 ``test_input`` 需要是图像原始格式的输入(即jpg, jpeg和png格式)， 相应地会生成原始图像输入对应的npz文件，名称为 ``${model_name}_in_ori.npz``。
 
 此外，当实际外部输入格式与模型的格式不相同时，用 “--customization_format” 指定实际的外部输入格式，支持的格式说明如下：
 

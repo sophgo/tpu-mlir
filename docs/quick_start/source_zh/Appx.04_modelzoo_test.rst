@@ -167,7 +167,7 @@ Vid4 (可选)
    $ docker pull sophgo/tpuc_dev:v3.2
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装tpu_mlir:
+运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
 
 .. code-block:: shell
 
@@ -204,7 +204,7 @@ Vid4 (可选)
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 和 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
 执行以下命令, 可以编译全部测试样例:
 
@@ -253,7 +253,7 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能：
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 和 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
 
@@ -306,7 +306,7 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度：
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 和 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：

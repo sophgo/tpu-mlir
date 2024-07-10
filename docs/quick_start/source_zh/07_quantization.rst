@@ -10,17 +10,17 @@
 TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化的层生成 ``quantize_table`` ，用以在 ``model_deploy`` 阶段指定这些层采用较高比特的量化方式。本章会对当前TPU-MLIR已有的 ``quantize_table`` 自动生成工具使用方式进行介绍。
 
 
-1. run_qtable
+run_qtable
 =====================
 
 本节以检测网络 ``yolov3 tiny`` 网络模型为例, 介绍如何使用run_qtable进行混精度。
 
-.. 该模型来自https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3。
+.. 该模型来自https://github.com/onnx/models/blob/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx。
 
-本节需要安装tpu_mlir。
+本节需要安装TPU-MLIR。
 
 
-安装tpu-mlir
+安装TPU-MLIR
 ------------------
 
 .. code-block:: shell
@@ -43,7 +43,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
   :linenos:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
-   $ wget https://media.githubusercontent.com/media/onnx/models/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
+   $ wget https://github.com/onnx/models/blob/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
    $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
@@ -84,7 +84,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
 
 如前面章节介绍的转模型方法, 这里不做参数说明, 只有操作过程。
 
-第一步: 转成F32 mlir
+步骤0: 转成F32 mlir
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -100,7 +100,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --output_names=convolution_output1,convolution_output \
        --mlir yolov3_tiny.mlir
 
-第二步: 生成calibartion table
+步骤1: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -110,7 +110,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --input_num 100 \
        -o yolov3_cali_table
 
-第三步: 转对称量化模型
+步骤2: 转对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -122,7 +122,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --processor bm1684x \
        --model yolov3_int8.bmodel
 
-第四步: 验证模型
+步骤3: 验证模型
 ~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -156,7 +156,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
 
 在转int8对称量化模型的基础上, 执行如下步骤。
 
-第一步: 生成混精度量化表
+步骤0: 生成混精度量化表
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 使用 ``run_qtable`` 生成混精度量化表, 相关参数说明如下:
@@ -278,7 +278,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
 ``run_qtable`` 会在每次设置某相邻2层为浮点计算后，接续计算整个网络的输出cos，若该cos大于指定的expected_cos，则退出搜素。因此，若设置更大的expected_cos，会尝试将更多层设为浮点计算
 
 
-第二步: 生成混精度量化模型
+步骤1: 生成混精度量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -291,7 +291,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --processor bm1684x \
        --model yolov3_mix.bmodel
 
-第三步: 验证混精度模型
+步骤2: 验证混精度模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -323,17 +323,17 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
 需要说明的是，除了使用run_qtable生成量化表外，也可根据模型中每一层的相似度对比结果，自行设置量化表中需要做混精度量化的OP的名称和量化类型。
 
 
-2. run_sensitive_layer
+run_sensitive_layer
 =======================
 
 本节以检测网络 ``mobilenet-v2`` 网络模型为例, 介绍如何使用敏感层搜索。
 
 .. 该模型来自nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt。
 
-本节需要安装tpu_mlir。
+本节需要安装TPU-MLIR。
 
 
-安装tpu-mlir
+安装TPU-MLIR
 ------------------
 
 .. code-block:: shell
@@ -365,7 +365,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
 
 如前面章节介绍的转模型方法, 这里不做参数说明, 只有操作过程。
 
-第一步: 转成FP32 mlir
+步骤0: 转成FP32 mlir
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -380,7 +380,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --pixel_format rgb \
        --mlir mobilenet_v2.mlir
 
-第二步: 生成calibartion table
+步骤1: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -390,7 +390,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --input_num 100 \
        -o mobilenet_v2_cali_table
 
-第三步: 转FP32 bmodel
+步骤2: 转FP32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -401,7 +401,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --processor bm1684 \
        --model mobilenet_v2_bm1684_f32.bmodel
 
-第四步: 转对称量化模型
+步骤3: 转对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -413,7 +413,7 @@ TPU-MLIR所采用的混合精度方式为搜索网络中不适于低比特量化
        --calibration_table mobilenet_v2_cali_table \
        --model mobilenet_v2_bm1684_int8_sym.bmodel
 
-第五步: 验证FP32模型和INT8对称量化模型
+步骤4: 验证FP32模型和INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 classify_mobilenet_v2是已经写好的验证程序，可以用来对mobilenet_v2网络进行验证。执行过程如下，FP32模型：
@@ -426,16 +426,14 @@ classify_mobilenet_v2是已经写好的验证程序，可以用来对mobilenet_v
        --output mobilenet_v2_fp32_bmodel.JPEG \
        --category_file ../ILSVRC2012/synset_words.txt
 
-在输出结果图片上可以看到如下分类信息，正确结果tench排在第一名：
+在输出结果图片 ``mobilenet_v2_fp32_bmodel.JPEG`` 中，正确结果tench排在第一名：
 
-.. code-block:: shell
+.. _mobilenet_v2_fp32_bmodel.JPEG:
+.. figure:: ../assets/mobilenet_v2_fp32_bmodel.JPEG
+   :align: center
 
-    Top-5
-    n01440764 tench, Tinca tinca
-    n02536864 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
-    n02422106 hartebeest
-    n02749479 assault rifle, assault gun
-    n02916936 bulletproof vest
+   classify_mobilenet_v2 fp32执行效果
+
 
 INT8对称量化模型：
 
@@ -447,23 +445,21 @@ INT8对称量化模型：
        --output mobilenet_v2_INT8_sym_bmodel.JPEG \
        --category_file ../ILSVRC2012/synset_words.txt
 
-在输出结果图片上可以看到如下分类信息，正确结果tench排在第一名：
+在输出结果图片 ``mobilenet_v2_INT8_sym_bmodel.JPEG`` 中，正确结果tench排在第一名：
 
-.. code-block:: shell
+.. _mobilenet_v2_INT8_sym_bmodel.JPEG:
+.. figure:: ../assets/mobilenet_v2_INT8_sym_bmodel.JPEG
+   :align: center
 
-    Top-5
-    n01440764 tench, Tinca tinca
-    n02749479 assault 日file, assau
-    n02536864 coho, cohoe, coho
-    n02916936 bulletproof vest
-    n04336792 stretcher
+   classify_mobilenet_v2 int8执行效果
+
 
 转成混精度量化模型
 -----------------------
 
 在转int8对称量化模型的基础上, 执行如下步骤。
 
-第一步: 进行敏感层搜索
+步骤0: 进行敏感层搜索
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 使用 ``run_sensitive_layer`` 搜索损失较大的layer，注意尽量使用bad cases进行敏感层搜索，相关参数说明如下:
@@ -614,7 +610,7 @@ INT8对称量化模型：
 该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
 在本例中，根据输出的loss信息，观察到input3.1的loss比其他op高很多，可以在qtable中只设置input3.1为FP32。
 
-第二步: 生成混精度量化模型
+步骤1: 生成混精度量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -627,7 +623,7 @@ INT8对称量化模型：
        --quantize_table mobilenet_v2_qtable \
        --model mobilenet_v2_bm1684_mix.bmodel
 
-第三步: 验证混精度模型
+步骤2: 验证混精度模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
@@ -650,7 +646,7 @@ INT8对称量化模型：
     n04090263 rifle
 
 
-3. fp_forward
+fp_forward
 ================
 
 对于特定网络，部分层由于数据分布差异大，量化成INT8会大幅降低模型精度，使用局部不量化功能，可以一键将部分层之前、之后、之间添加到混精度表中，在生成混精度模型时，这部分层将不被量化。

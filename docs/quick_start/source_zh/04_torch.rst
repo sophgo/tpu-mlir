@@ -1,15 +1,15 @@
 编译TORCH模型
 =============
 
-本章以 ``yolov5s.pt`` 为例, 介绍如何编译迁移一个pytorch模型至BM1684X 平台运行。
+本章以 ``yolov5s.pt`` 为例，介绍如何编译迁移一个pytorch模型至BM1684X 平台运行。
 
-本章需要安装tpu_mlir。
+本章需要安装TPU-MLIR。
 
 
-安装tpu_mlir
+安装TPU-MLIR
 ------------------
 
-进入Docker容器，并执行以下命令安装tpu_mlir：
+进入Docker容器，并执行以下命令安装TPU-MLIR：
 
 .. code-block:: shell
 
@@ -23,7 +23,7 @@
 
 .. include:: get_resource.rst
 
-建立 ``model_yolov5s_pt`` 目录, 并把模型文件和图片文件都放入 ``model_yolov5s_pt`` 目录中。
+建立 ``model_yolov5s_pt`` 目录，并把模型文件和图片文件都放入 ``model_yolov5s_pt`` 目录中。
 
 操作如下:
 
@@ -40,7 +40,7 @@
 TORCH转MLIR
 ------------------
 
-本例中的模型是 `RGB` 输入, mean和scale分别为 ``0.0,0.0,0.0`` 和 ``0.0039216,0.0039216,0.0039216``。
+本例中的模型是 `RGB` 输入，mean和scale分别为 ``0.0,0.0,0.0`` 和 ``0.0039216,0.0039216,0.0039216``。
 
 
 模型转换命令如下:
@@ -61,13 +61,13 @@ TORCH转MLIR
        --mlir yolov5s_pt.mlir
 
 
-转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。值得注意的是，目前我们仅支持静态模型，模型在编译前需要调用 ``torch.jit.trace()`` 以生成静态模型。
+转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。值得注意的是，目前仅支持静态模型，模型在编译前需要调用 ``torch.jit.trace()`` 以生成静态模型。
 
 
 MLIR转F16模型
 ------------------
 
-将mlir文件转换成f16的bmodel, 操作方法如下:
+将mlir文件转换成f16的bmodel，操作方法如下:
 
 .. code-block:: shell
 
@@ -80,7 +80,7 @@ MLIR转F16模型
        --model yolov5s_pt_1684x_f16.bmodel
 
 
-编译完成后, 会生成名为 ``yolov5s_pt_1684x_f16.bmodel`` 的文件。
+编译完成后，会生成名为 ``yolov5s_pt_1684x_f16.bmodel`` 的文件。
 
 
 MLIR转INT8模型
@@ -89,7 +89,7 @@ MLIR转INT8模型
 生成校准表
 ~~~~~~~~~~~~~~~~~~~~
 
-转INT8模型前需要跑calibration, 得到校准表; 这里用现有的100张来自COCO2017的图片举例, 执行calibration:
+转INT8模型前需要跑calibration，得到校准表; 这里用现有的100张来自COCO2017的图片举例，执行calibration:
 
 
 .. code-block:: shell
@@ -99,14 +99,14 @@ MLIR转INT8模型
        --input_num 100 \
        -o yolov5s_pt_cali_table
 
-运行完成后会生成名为 ``yolov5s_pt_cali_table`` 的文件, 该文件用于后续编译INT8
+运行完成后会生成名为 ``yolov5s_pt_cali_table`` 的文件，该文件用于后续编译INT8
 模型的输入文件。
 
 
 编译为INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8对称量化模型, 执行如下命令:
+转成INT8对称量化模型，执行如下命令:
 
 .. code-block:: shell
 
@@ -120,18 +120,18 @@ MLIR转INT8模型
        --tolerance 0.85,0.45 \
        --model yolov5s_pt_1684x_int8_sym.bmodel
 
-编译完成后, 会生成名为 ``yolov5s_pt_1684x_int8_sym.bmodel`` 的文件。
+编译完成后，会生成名为 ``yolov5s_pt_1684x_int8_sym.bmodel`` 的文件。
 
 
 效果对比
 ------------------
 
-利用 ``detect_yolov5`` 命令, 对图片进行目标检测。
+利用 ``detect_yolov5`` 命令，对图片进行目标检测。
 
 用以下代码分别来验证pytorch/f16/int8的执行结果。
 
 
-pytorch模型的执行方式如下, 得到 ``dog_torch.jpg`` :
+pytorch模型的执行方式如下，得到 ``dog_torch.jpg`` :
 
 .. code-block:: shell
 
@@ -141,7 +141,7 @@ pytorch模型的执行方式如下, 得到 ``dog_torch.jpg`` :
        --output dog_torch.jpg
 
 
-f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
+f16 bmodel的执行方式如下，得到 ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
@@ -152,7 +152,7 @@ f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
 
 
 
-int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
+int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` :
 
 .. code-block:: shell
 
@@ -171,4 +171,4 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
    TPU-MLIR对YOLOv5s编译效果对比
 
-由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_pt_result` 会有些差异。
+由于运行环境不同，最终的效果和精度与 :numref:`yolov5s_pt_result` 会有些差异。

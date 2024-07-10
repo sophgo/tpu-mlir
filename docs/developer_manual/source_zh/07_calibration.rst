@@ -4,7 +4,7 @@ Calibration
 总体介绍
 --------------------
 所谓校准, 就是用真实场景数据来调校出恰当的量化参数, 为何需要校准？当我们对激活进行非对称量化时,
-需要预先知道其总体的动态范围, 即minmax值,对激活进行对称量化时, 需要预先使用合适的量化门限算法
+需要预先知道其总体的动态范围, 即min/max值,对激活进行对称量化时, 需要预先使用合适的量化门限算法
 在激活总体数据分布的基础上计算得到其量化门限, 而一般训练输出的模型是不带有激活这些数据统计
 信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
@@ -150,7 +150,7 @@ auto-tune算法
 度量进行微调, 从而保证其int8量化具有更好的精度表现;
 
 实现方案: 首先统一对网络中带权重layer的权重进行伪量化, 即从fp32量化为int8, 再反量化为fp32, 引入量化误差; 然后
-逐个对op的输入激活量化门限进行调优: 在初始KLD量化门限和激活的最大绝对值之间, 均匀选择20个候选值, 用这些候选者
+逐个对op的输入激活量化门限进行调优: 在初始KLD量化门限和激活的最大绝对值之间, 均匀选择20个候选值, 用这些候选值
 对fp32参考激活值进行量化加扰, 引入量化误差, 然后输入op进行fp32计算, 将输出的结果与fp32参考激活进行欧式距离计算,
 选择20个候选值中具有最小欧式距离的值作为调优门限; 对于1个op输出连接到后面多个分支的情形, 多个分支分别按上述方法
 计算量化门限, 然后取其中较大者, 比如(:ref:`auto_tune_flow`)图中layer1的输出会分别针对layer2、layer3调节一次, 两次调节独立进行,
@@ -416,7 +416,7 @@ we+bc:
       --bc \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --bc_inference_num 200 \
       --cali_method use_mse \
       -o yolov5s_cali_table
@@ -431,7 +431,7 @@ we+bc+search_threshold:
       --bc \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --bc_inference_num 200 \
       --search search_threshold \
       -o yolov5s_cali_table
@@ -444,7 +444,7 @@ search_qtable:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --max_float_layers 5 \
       --expected_cos 0.99 \
       --transformer False \
@@ -487,7 +487,7 @@ search_qtable:
      - bias_correction中该层量化输出与浮点输出的相似度下限,当低于该下限时需要对该层进行补偿,取值范围[0,1]
    * - --max_float_layers
      - search_qtable 浮点层数量
-   * - --chip
+   * - --processor
      - 芯片类型
    * - --cali_method
      - 量化门限计算方法选择
@@ -545,7 +545,7 @@ search_qtable:
    * - --port
      - 服务程序的TCP监听端口，默认值为10000
    * - --f32_mlir
-     - 量化前的浮点mlir网络的文件名, 此文件为model_transform生成，一般为netname.mlir，是初始float32网络
+     - 量化前的浮点mlir网络的文件名，此文件为model_transform生成，一般为netname.mlir，是初始float32网络
    * - --quant_mlir
      - 量化后的定点mlir网络的文件名，此文件为model_deploy生成，一般文件名为netname_int8_sym_tpu.mlir，生成bmodel用的_final.mlir不适用此工具。
    * - --input

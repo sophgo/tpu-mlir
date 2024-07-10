@@ -12,7 +12,7 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
 安装tpu-mlir
 ~~~~~~~~~~~~~~~~~~~~
 
-进入Docker容器，并执行以下命令安装tpu_mlir：
+进入Docker容器，并执行以下命令安装TPU-MLIR：
 
 .. code-block:: shell
 
@@ -749,7 +749,7 @@ FAQ
 
 2.2 跑量化如何处理多输入问题?
 
-  多输入模型跑run_calibration时, 需要多输入模型跑run_calibration时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
+  多输入模型跑run_calibration时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
 
 2.3 跑量化输入会进行预处理吗?
 
