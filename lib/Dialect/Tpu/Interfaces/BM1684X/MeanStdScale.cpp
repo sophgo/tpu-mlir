@@ -26,14 +26,6 @@ void tpu::MeanStdScaleOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  if (input_spec->at(0).dims == 5) {
-    input_spec->at(0).dims = 4;
-    input_spec->at(0).shape[3] *= input_spec->at(0).shape[4];
-    input_spec->at(0).shape[4] = 0;
-    output_spec->at(0).dims = 4;
-    output_spec->at(0).shape[3] *= output_spec->at(0).shape[4];
-    output_spec->at(0).shape[4] = 0;
-  }
 
   mean_std_scale_param_t param = {0};
   param.num_of_chn = in_shape[1];
