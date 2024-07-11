@@ -383,10 +383,29 @@ void ConvertTopToTpu::match_swin_wmsa(std::vector<Operation *> &wmsa,
                         *(rsop4.getResult().user_begin()))) {
                   if (auto rsop5 = dyn_cast<top::ReshapeOp>(
                           *(pmop2.getResult().user_begin()))) {
-                    if (isa<top::SliceOp>(*(rsop5.getResult().user_begin()))) {
-                      auto slice_tmp = dyn_cast<top::SliceOp>(*(rsop5.getResult().user_begin()));
-                      if (isa<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()))) {
-                        rsop5 = dyn_cast<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()));
+                    for (auto user : rsop5.getResult().getUsers()) { // dino updated pattern(July)
+                      if (isa<top::SliceOp>(user)) {
+                        auto slice_tmp = dyn_cast<top::SliceOp>(user);
+                        if (isa<top::ConcatOp>(*(slice_tmp.getResult().user_begin()))) {
+                          auto cc_tmp = dyn_cast<top::ConcatOp>(*(slice_tmp.getResult().user_begin()));
+                          if (isa<top::SliceOp>(*(cc_tmp.getResult().user_begin()))) {
+                            slice_tmp = dyn_cast<top::SliceOp>(*(cc_tmp.getResult().user_begin()));
+                            if (isa<top::ConcatOp>(*(slice_tmp.getResult().user_begin()))) {
+                              cc_tmp = dyn_cast<top::ConcatOp>(*(slice_tmp.getResult().user_begin()));
+                              if (isa<top::SliceOp>(*(cc_tmp.getResult().user_begin()))) {
+                                slice_tmp = dyn_cast<top::SliceOp>(*(cc_tmp.getResult().user_begin()));
+                                if (isa<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()))) {
+                                  rsop5 = dyn_cast<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()));
+                                }
+                              }
+                            }
+                          }
+                        } else if (isa<top::SliceOp>(*(rsop5.getResult().user_begin()))) {
+                          auto slice_tmp = dyn_cast<top::SliceOp>(*(rsop5.getResult().user_begin()));
+                          if (isa<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()))) {
+                            rsop5 = dyn_cast<top::ReshapeOp>(*(slice_tmp.getResult().user_begin()));
+                          }
+                        }
                       }
                     }
                     if (auto swdi2 = dyn_cast<top::SwapDimInnerOp>(
