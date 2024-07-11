@@ -3801,28 +3801,28 @@ class TPULANG_IR_TESTER(object):
         # output i8
         def _test_int8_to_int8_():
             _test_mean_std_scale("int8", "int8")
-            _test_mean_std_scale("int8", "int8", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("int8", "int8", [4, 3, 16, 224,224])
 
         def _test_uint8_to_int8_():
             _test_mean_std_scale("uint8", "int8")
-            _test_mean_std_scale("uint8", "int8", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("uint8", "int8", [4, 3, 16, 224,224])
 
         def _test_f32_to_int8_():
             _test_mean_std_scale("float32", "int8")
-            _test_mean_std_scale("float32", "int8", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("float32", "int8", [4, 3, 16, 224,224])
 
         # output f16
         def _test_int8_to_f16_():
             _test_mean_std_scale("int8", "float16")
-            _test_mean_std_scale("int8", "float16", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("int8", "float16", [4, 3, 16, 224,224])
 
         def _test_uint8_to_f16_():
             _test_mean_std_scale("uint8", "float16")
-            _test_mean_std_scale("uint8", "float16", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("uint8", "float16", [4, 3, 16, 224,224])
 
         def _test_f32_to_f16_():
             _test_mean_std_scale("float32", "float16")
-            _test_mean_std_scale("float32", "float16", [4, 3, 50, 40, 60])
+            _test_mean_std_scale("float32", "float16", [4, 3, 16, 224,224])
 
         _test_int8_to_int8_()
         _test_uint8_to_int8_()
