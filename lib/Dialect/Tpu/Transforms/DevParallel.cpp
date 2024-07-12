@@ -60,6 +60,12 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
           input = in;
         }
       }
+    } else if (isa<tpu::FAttentionOp>(op)) {
+      for (auto in : op->getOperands()) {
+        if (isa<top::InputOp>(in.getDefiningOp())) {
+          input = in;
+        }
+      }
     }
     if (opd.getDefiningOp()->isBeforeInBlock(input.getDefiningOp())) {
       opd = input;
@@ -116,10 +122,13 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
   auto end = rewriter.create<tpu::DevEndOp>(end_loc, types, inputs, attrs);
 
   for (size_t i = 0; i < ops_end.size(); ++i) {
-    // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
     inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
-      return use.getOwner() != end &&
-             !isa<tpu::ConcatOp, tpu::MatMulOp, tpu::PermuteOp, tpu::UnsqueezeOp>(use.getOwner());
+      return ( use.getOwner() != end &&
+              !isa<tpu::ConcatOp,
+               tpu::MatMulOp,
+               tpu::PermuteOp,
+               tpu::UnsqueezeOp,
+               tpu::FAttentionOp>(use.getOwner()));
     });
   }
 }
@@ -275,6 +284,9 @@ public:
       case tpu::DevPattern::MatMulSliceMerge3:
         sliceMerge3Split(rewriter, op, num_devices);
         break;
+      case tpu::DevPattern::FAttentionSliceMerge:
+        sliceFAttentionMergeSplit(rewriter, op, num_devices);
+        break;
       case tpu::DevPattern::MatMulTopK:
         topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
         break;
@@ -302,6 +314,9 @@ public:
         break;
       case tpu::DevPattern::MatMulSliceMerge3:
         sliceMerge3Split(rewriter, op, num_devices);
+        break;
+      case tpu::DevPattern::FAttentionSliceMerge:
+        sliceFAttentionMergeSplit(rewriter, op, num_devices);
         break;
       case tpu::DevPattern::MatMulTopK:
         topKSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
@@ -340,6 +355,7 @@ public:
         module::applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge<tpu::MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
+        module::applyPatternOnce<FAttentionSliceMerge>(mOp);
         // module::applyPatternOnce<EmbeddingSliceMerge>(mOp);
       } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
                  mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
@@ -348,6 +364,7 @@ public:
         module::applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge<tpu::A16MatMulOp>>(mOp);
         module::applyPatternOnce<AttentionSliceMerge2<tpu::A16MatMulOp>>(mOp);
+        module::applyPatternOnce<FAttentionSliceMerge>(mOp);
       } else {
         llvm_unreachable("Not supported quantization mode");
       }

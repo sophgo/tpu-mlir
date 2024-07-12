@@ -3992,10 +3992,7 @@ namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-  if (module::getDeviceNum() < 2) {
-    // DevParallel not support FAttention, need to support in future
-    patterns->add<MatMul2FAttentionPattern>(ctx, 10);
-  }
+  patterns->add<MatMul2FAttentionPattern>(ctx, 10);
   patterns->add<LargePadConvPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,

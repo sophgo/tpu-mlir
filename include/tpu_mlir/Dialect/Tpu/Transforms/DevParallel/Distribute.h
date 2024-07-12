@@ -98,6 +98,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class FAttentionSliceMerge : public OpRewritePattern<tpu::FAttentionOp> {
+public:
+  using OpRewritePattern<tpu::FAttentionOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::FAttentionOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
                      tpu::DevBeginOp op, int64_t num_devices);
@@ -130,6 +137,10 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
 
 void embeddingMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
                     int64_t num_devices);
+
+void sliceFAttentionMergeSplit(PatternRewriter &rewriter,
+                               tpu::DevBeginOp op,
+                               int64_t num_devices);
 
 enum class DevEndMode {
   EndToUnknown = 0,
