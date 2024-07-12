@@ -185,9 +185,18 @@ LogicalResult ConcatToSwapDimInner::matchAndRewrite(top::ConcatOp concat_op,
   auto offset1 = module::getI64Array(slice1_op.getOffset());
   // auto oshape0 = module::getShape(slice0_op.getOutput());
   auto oshape1 = module::getShape(slice1_op.getOutput());
-
+  auto fshape = module::getShape(from);
   int axis = concat_op.getAxis();
-  if (offset0->at(axis) != oshape1[axis] || offset1->at(axis) != 0) {
+  int offset_axis0 = offset0->at(axis);
+  int offset_axis1 = offset1->at(axis);
+  if (offset0->at(axis) < 0) {
+    offset_axis0 = fshape[axis] + offset0->at(axis);
+    offset0->at(axis) = offset_axis0;
+  }
+  if (offset1->at(axis) < 0) {
+    offset_axis1 = fshape[axis] + offset1->at(axis);
+  }
+  if (offset_axis0 != oshape1[axis] || offset_axis1 != 0) {
     return failure();
   }
 
@@ -198,7 +207,8 @@ LogicalResult ConcatToSwapDimInner::matchAndRewrite(top::ConcatOp concat_op,
   // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
   rewriter.replaceOpWithNewOp<top::SwapDimInnerOp>(
       concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
-
+  rewriter.eraseOp(in0_op);
+  rewriter.eraseOp(in1_op);
   return success();
 }
 

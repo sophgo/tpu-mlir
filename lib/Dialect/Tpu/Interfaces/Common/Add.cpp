@@ -205,22 +205,38 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   } else {
     auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
     auto rshift_v = module::getI64Array(getRshifts(), 2, 0);
-    auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
-    auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto lhs_num_elem = module::getNumElements(getInputs()[0]);
     auto rhs_num_elem = module::getNumElements(getInputs()[1]);
     std::vector<float> lhs_tmp(lhs_num_elem);
     std::vector<float> rhs_tmp(rhs_num_elem);
+    if (isa<top::WeightOp>(getInputs()[0].getDefiningOp())) {
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
-    for (int i = 0; i < lhs_num_elem; i++) {
-      lhs_tmp[i] = applyMultiplierAndRShift(
-          p.inputs[0][i] - l_qtype.getZeroPoint(), multiplier_v->at(0), rshift_v->at(0));
+      for (int i = 0; i < lhs_num_elem; i++) {
+        lhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[0][i], multiplier_v->at(0), rshift_v->at(0));
+      }
+    } else {
+      auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+      for (int i = 0; i < lhs_num_elem; i++) {
+        lhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[0][i] - l_qtype.getZeroPoint(), multiplier_v->at(0), rshift_v->at(0));
+      }
     }
+    if (isa<top::WeightOp>(getInputs()[1].getDefiningOp())) {
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
-    for (int i = 0; i < rhs_num_elem; i++) {
-      rhs_tmp[i] = applyMultiplierAndRShift(
-          p.inputs[1][i] - r_qtype.getZeroPoint(), multiplier_v->at(1), rshift_v->at(1));
+      for (int i = 0; i < rhs_num_elem; i++) {
+        rhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
+      }
+    }else {
+      auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+      for (int i = 0; i < rhs_num_elem; i++) {
+        rhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[1][i] - r_qtype.getZeroPoint(), multiplier_v->at(1), rshift_v->at(1));
+      }
     }
     auto binary = (Binary *)p.handle;
     (*binary)
