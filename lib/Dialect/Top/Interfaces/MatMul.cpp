@@ -132,6 +132,7 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
 // case 4: [4, 5, 6] * [6, 7] = [4, 5, 7]
 // case 5: [4, 5, 6] * [6] = [4, 5]
 // case 6: keep_dims == false, [4, 5, 6] * [6, 7] = [20, 7]
+//case 7: [3] * [3, 256] = [1,256]
 void top::MatMulOp::shape_inference() {
   std::vector<int64_t> in0_shape = module::getShape(getInput());
   int in0_dims = in0_shape.size();
@@ -155,6 +156,10 @@ void top::MatMulOp::shape_inference() {
     out_shape = in1_shape;
     for (int i = 1; i <= 2; i++) {
       out_shape[out_shape.size() - i] = in0_shape[in0_dims - i];
+      if(i > in0_dims){
+        out_shape[out_shape.size() - i] = 1;
+      }
+
     }
   }
   if (in1_dims == 1) {
