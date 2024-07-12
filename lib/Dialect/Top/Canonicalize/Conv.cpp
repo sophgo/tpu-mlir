@@ -252,14 +252,14 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       auto bias_merge = std::make_shared<std::vector<float>>((size_t)E, 0);
       if (p.has_bias) {
         auto Biasop = op.getBias().getDefiningOp<top::WeightOp>();
-        auto Biasop_f32 = Biasop.read<float>();
+        auto Biasop_f32 = Biasop.read_as_float();
         bias_merge = Biasop_f32;
       }
 
       if (prep.has_bias) {
         // calcute merge filter's bias
         auto preBiasop = prevConvOp.getBias().getDefiningOp<top::WeightOp>();
-        auto preBiasop_f32 = preBiasop.read<float>();
+        auto preBiasop_f32 = preBiasop.read_as_float();
 #pragma omp parallel for schedule(static, omp_schedule(E))
         for (int e = 0; e < E; ++e) {
           float sum = 0.0;

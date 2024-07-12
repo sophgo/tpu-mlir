@@ -361,7 +361,7 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
     if (sBias) {
       // merge SBias into conv's bias
       auto sBiasShape = module::getShape(sBias);
-      auto sBiasData = sBias.read<float>();
+      auto sBiasData = sBias.read_as_float();
       if (std::find(sBiasShape.begin(), sBiasShape.end(), c) ==
               sBiasShape.end() &&
           sBiasData->size() != c) {
@@ -375,7 +375,7 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
         if (!cBiasOp) { // filter may be not WeightOp
           return failure();
         }
-        auto cBiasData = cBiasOp.read<float>();
+        auto cBiasData = cBiasOp.read_as_float();
         for (int i = 0; i < c; ++i) {
           newBiasVec[i] += cBiasData->at(i) * scaleVec[i];
         }

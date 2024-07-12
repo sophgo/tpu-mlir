@@ -52,15 +52,17 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   spec.output_dtype = BM168x::getDataType(getOutput());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(getInput())) {
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
     auto out_etype = module::getStorageType(getOutput());
     spec.do_relu = out_etype.isUnsignedInteger();
-    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      spec.pad_val = in_qtype.getZeroPoint();
+    }
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
     spec.pad_is_const = true;
-    spec.pad_val = in_qtype.getZeroPoint();
   }
   BM168x::call_global_func("backend_api_conv3d_global", &spec, sizeof(spec));
 }
@@ -158,15 +160,17 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   spec.output_dtype = BM168x::getDataType(getOutput());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(getInput())) {
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
     auto out_etype = module::getStorageType(getOutput());
     spec.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      spec.pad_val = in_qtype.getZeroPoint();
+    }
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
     spec.pad_is_const = true;
-    spec.pad_val = in_qtype.getZeroPoint();
   }
   BM168x::call_local_func("backend_api_conv3d_local", &spec,
                           sizeof(conv3d_local_spec_t));
@@ -207,15 +211,17 @@ int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.output_dtype = BM168x::getDataType(getOutput());
   param.spec.common.do_relu = attr.do_relu;
   param.spec.common.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(getInput())) {
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
     auto out_etype = module::getStorageType(getOutput());
     param.spec.common.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      param.spec.common.pad_val = in_qtype.getZeroPoint();
+    }
     param.spec.common.kzp_is_const = true;
     param.spec.common.kzp_val = attr.kernel_zp;
     param.spec.common.kzp_dtype = param.spec.common.weight_dtype;
     param.spec.common.pad_is_const = true;
-    param.spec.common.pad_val = in_qtype.getZeroPoint();
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
@@ -255,15 +261,17 @@ int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.spec.common.output_dtype = BM168x::getDataType(getOutput());
   param.spec.common.do_relu = attr.do_relu;
   param.spec.common.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(getInput())) {
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
     auto out_etype = module::getStorageType(getOutput());
     param.spec.common.do_relu = out_etype.isUnsignedInteger();
-    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      param.spec.common.pad_val = in_qtype.getZeroPoint();
+    }
     param.spec.common.kzp_is_const = true;
     param.spec.common.kzp_val = attr.kernel_zp;
     param.spec.common.kzp_dtype = param.spec.common.weight_dtype;
     param.spec.common.pad_is_const = true;
-    param.spec.common.pad_val = in_qtype.getZeroPoint();
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

@@ -3904,7 +3904,21 @@ class TPULANG_IR_TESTER(object):
             requant = tpul.requant_int(conv, 6853, 21, 0, 2)
             self.compile_and_check(self.unique_name(case_name), [x, y], [requant], is_quantized=True)
 
+        @tpulang(self.chip)
+        def _test_conv_requant_axis():
+            xshape = [1, 1, 64, 64]
+            x_data = rand_data(xshape, "uint8")
+            x = tpul.Tensor(dtype="uint8", shape=xshape, data=x_data)
+            cast = tpul.cast(x, "int8")
+            conv = self.conv_int_op(cast, [16, 1, 5, 5], [2,2], [2,2,2,2], bias=True)
+            mul = [2198, 12522, 2630, 601, 1, 2371, 2058, 6401, 3131, 4390, 20056, 1375, 327, 1, 23562, 21906]
+            requant = tpul.requant_int(conv, mul, [-22]*16, 0, 2, round_mode="half_up")
+            relu = tpul.relu(requant)
+            dequant = tpul.dequant_int_to_fp(relu, 0.125, 0)
+            self.compile_and_check(self.unique_name(case_name), [x], [dequant], is_quantized=True)
+
         _test_concat_conv()
+        _test_conv_requant_axis()
 
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):

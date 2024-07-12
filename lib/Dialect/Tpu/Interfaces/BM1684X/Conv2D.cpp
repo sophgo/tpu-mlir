@@ -84,8 +84,12 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
   spec.using_multicore = true;
-  if (module::isUniformQuantized(getInput())) {
-    auto in_qtype = module::getUniformQuantizedType(getInput());
+  common.ipad_value = 0;
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      common.ipad_value = in_qtype.getZeroPoint();
+    }
     auto out_etype = module::getStorageType(getOutput());
     if (out_etype.isUnsignedInteger()) {
       common.if_relu = true;
@@ -97,10 +101,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
       spec.merge_coeff = 2;
     }
     common.is_asym = true;
-    common.ipad_value = in_qtype.getZeroPoint();
   } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
     spec.merge_coeff = 2;
-    common.ipad_value = 0;
   }
   if (op->hasAttr("compress_info")) {
     auto cinfo = getCompressInfo();
@@ -136,7 +138,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   int use_3ic_optimize = getUse_3icOptimize();
   if (module::isBM1688() && getCoeffMerged()) {
-    if (module::isUniformQuantized(getInput()) && p.kernel_zp != 0)
+    if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
       return int32_size * 2;
     if (p.groups > 1) {
       sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) *
@@ -271,9 +273,12 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     p.spec.unused_wr_for_input = std::max(0, w_end - (cal_w_idx + cal_w_slice));
   }
 
-  if (module::isUniformQuantized(getInput())) {
-    auto in_qtype = module::getUniformQuantizedType(getInput());
-    common.ipad_value = in_qtype.getZeroPoint();
+  common.ipad_value = 0;
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      common.ipad_value = in_qtype.getZeroPoint();
+    }
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
@@ -287,7 +292,6 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     }
   } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
     p.spec.merge_coeff = 2;
-    common.ipad_value = 0;
     p.spec.with_requant = 1;
   }
   BM168x::call_local_func("backend_api_conv_local", &p, sizeof(p), &sec_info,
@@ -335,9 +339,12 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
-  if (module::isUniformQuantized(getInput())) {
-    auto in_qtype = module::getUniformQuantizedType(getInput());
-    common.ipad_value = in_qtype.getZeroPoint();
+  common.ipad_value = 0;
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      common.ipad_value = in_qtype.getZeroPoint();
+    }
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
@@ -351,7 +358,6 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
     }
   } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
     param.spec.merge_coeff = 2;
-    common.ipad_value = 0;
     param.spec.with_requant = 1;
   }
   param.spec.reference_id = get_tensor_id(op->getResult(0));
@@ -392,9 +398,12 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
-  if (module::isUniformQuantized(getInput())) {
-    auto in_qtype = module::getUniformQuantizedType(getInput());
-    common.ipad_value = in_qtype.getZeroPoint();
+  common.ipad_value = 0;
+  if (module::getStorageType(getInput()).isIntOrIndex()) {
+    if (module::isUniformQuantized(getInput())) {
+      auto in_qtype = module::getUniformQuantizedType(getInput());
+      common.ipad_value = in_qtype.getZeroPoint();
+    }
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
@@ -406,7 +415,6 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     }
   } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
     spec.merge_coeff = 2;
-    common.ipad_value = 0;
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

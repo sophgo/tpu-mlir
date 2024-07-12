@@ -92,7 +92,7 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
       // refer to convert_mul_op in OnnxConvert
       auto scale = cast<top::WeightOp>(scale_op.getScale().getDefiningOp());
       auto bias = cast<top::WeightOp>(scale_op.getBias().getDefiningOp());
-      auto bias_data = bias.read<float>();
+      auto bias_data = bias.read_as_float();
       bool all_zero = std::all_of(bias_data->begin(), bias_data->end(),
                                   [](float value) { return value == 0.0f; });
       if (scale_op.getDoRelu() || !all_zero) {
