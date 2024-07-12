@@ -686,7 +686,7 @@ struct SplitMatMulEva2 : public OpRewritePattern<MatMulOp> {
       }
       auto b = std::make_shared<std::vector<float>>(weight_shape[1] / 3);
       if (bias_op != NULL) {
-        auto bias = bias_op.read<float>();
+        auto bias = bias_op.read_as_float();
         for (int m = 0; m < weight_shape[1] / 3; m++) {
           b->data()[m] = bias->at(pos[i] * weight_shape[1] / 3 + m);
         }
