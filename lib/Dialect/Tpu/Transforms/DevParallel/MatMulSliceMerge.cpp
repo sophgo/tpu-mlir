@@ -395,7 +395,7 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
                               cur_device)[0];
     }
     auto ln_input = cur_out;
-    // createMulConstOp(rewriter, cur_out, num_devices, cur_device);
+    // createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 : 0);
     auto residual_out = cur_out;
 
     // clone pos_ids input branch
@@ -490,10 +490,10 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
     // out0 = attn_out + residual_out
     if (!isa<tpu::AddOp>(next_op)) {
       auto matmul = attn_out.getDefiningOp();
-      createMulConstOp2(rewriter, residual_out, num_devices, cur_device);
+      createMulConstOp(rewriter, residual_out, cur_device, 1.0 / num_devices);
       matmul->setOperand(2, residual_out);
     } else {
-      createMulConstOp2(rewriter, residual_out, num_devices, cur_device);
+      createMulConstOp(rewriter, residual_out, cur_device, 1.0 / num_devices);
 
       operands.clear();
       operands.push_back(residual_out);

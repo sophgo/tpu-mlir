@@ -141,7 +141,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
         cur_out = next_op->getOperand(3);
       }
     }
-    createMulConstOp(rewriter, cur_out, num_devices, cur_device);
+    createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 : 0);
     auto residual_out = cur_out;
 
     // MLP
@@ -341,7 +341,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
                               cur_device)[0];
     }
     auto ln_input = cur_out;
-    createMulConstOp(rewriter, cur_out, num_devices, cur_device);
+    createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 : 0);
     auto residual_out = cur_out;
 
     // clone pos_ids input branch
@@ -354,7 +354,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
       if (isa<tpu::ReshapeOp, tpu::PermuteOp>(*next_op->user_begin())) {
         next_op = *next_op->user_begin();
       }
-      createReshapeOp(rewriter, next_op, cur_out, num_devices, cur_device);
+      createReshapeOp(rewriter, next_op, cur_out, cur_device);
       muls0 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
@@ -367,7 +367,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
       if (isa<tpu::ReshapeOp, tpu::PermuteOp>(*next_op->user_begin())) {
         next_op = *next_op->user_begin();
       }
-      createReshapeOp(rewriter, next_op, cur_out, num_devices, cur_device);
+      createReshapeOp(rewriter, next_op, cur_out, cur_device);
       muls1 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
@@ -492,6 +492,116 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     end_operands.push_back(cur_out);
     end_operands.push_back(key_out);
     end_operands.push_back(value_out);
+    if (cur_device == 0) {
+      end_op = next_op;
+    } else {
+      assert(end_op == next_op);
+    }
+  }
+
+  assert(isa<tpu::DevEndOp>(end_op));
+  std::vector<Value> unused(end_op->operand_begin(), end_op->operand_end());
+  end_op->setOperands(end_operands);
+
+  module::removeUnusedOp();
+}
+
+LogicalResult FAttentionSliceMerge::matchAndRewrite(tpu::FAttentionOp op, PatternRewriter &rewriter) const {
+  // TODO: only support quant input/output for now
+  if (module::isOpInDevParallel(op) || !op->hasOneUse()) {
+    return failure();
+  }
+  std::vector<Operation *> begin_ops;
+  std::vector<Operation *> end_ops;
+  int num_head = 0;
+  if (!isFAttentionPattern(op, begin_ops, end_ops, false, &num_head)) {
+    return failure();
+  }
+  std::vector<int64_t> begin_methods{1, 1, 1, 1, 1};
+  if (begin_ops.size() > begin_methods.size()) {
+    begin_methods.push_back(2); // past_k op
+    begin_methods.push_back(2); // past_v op
+  }
+  std::vector<int64_t> end_methods{1, 3, 3};
+  distribute(rewriter, begin_ops, end_ops,
+             tpu::DevPattern::FAttentionSliceMerge,
+             begin_methods, end_methods, num_head);
+  return success();
+}
+
+void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
+                               int64_t num_devices){
+  std::vector<Operation *> users(op->user_begin(), op->user_end());
+  Operation *residual = users[0];
+  Operation *attn_ln = users[1];
+  std::vector<Operation *> pos = {users[2], users[3]};
+  int num_head = op.getNumHead();
+
+  std::vector<Value> end_operands;
+  std::vector<Value> operands;
+  Operation *end_op;
+  Operation *next_op;
+  Value cur_out;
+  for (int cur_device = 0; cur_device < num_devices; ++cur_device) {
+    auto suffix = std::to_string(cur_device);
+    // clone residual branch
+    next_op = residual;
+    cur_out = next_op->getOperand(0);
+    if (isa<tpu::AddOp>(next_op) && cur_out.getDefiningOp() != op.getOperation()){
+      cur_out = next_op->getOperand(1);
+    }
+    createMulConstOp(rewriter, cur_out, cur_device, 1./num_devices);
+    Value residual_out = cur_out;
+
+    // clone pos_ids input branch
+    std::vector<Value> pos_ids;
+    std::vector<Operation *> muls;
+    for (int j = 0; j < 2; j++) {
+      next_op = pos[j];
+      cur_out = next_op->getOperand(1);
+      auto next_ops = cloneOpWithWeight(rewriter, next_op, cur_out, suffix);
+      if (next_ops.size() == 1 && isa<tpu::UnsqueezeOp>(next_ops[0])) {
+        next_op = next_ops[0];
+        if (isa<tpu::ReshapeOp, tpu::PermuteOp>(*next_op->user_begin())) {
+          next_op = *next_op->user_begin();
+        }
+        createReshapeOp(rewriter, next_op, cur_out, cur_device);
+        muls = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
+      }
+      pos_ids.push_back(cur_out);
+    }
+    if (isa<tpu::ConcatOp>(muls[0]->getOperand(0).getDefiningOp())) {
+      std::swap(pos_ids[0], pos_ids[1]);
+    }
+
+    // clone past_k, past_v
+    std::vector<Value> past_kv;
+    if (users.size() > 5) {
+      std::vector<Operation *> input_kv = {users[5], users[6]};
+      for (int j = 0; j < 2; j++) {
+        next_op = input_kv[j];
+        cur_out = next_op->getOperand(0);
+        next_op = createSliceOp(rewriter, next_op, cur_out, 2, num_devices,
+                                cur_device, num_head);
+        past_kv.push_back(cur_out);
+      }
+    }
+
+    // clone attention branch + out_proj + residual_add
+    next_op = attn_ln;
+    cur_out = next_op->getOperand(0);
+    next_op = cloneFlashAttention(rewriter, next_op, cur_out,
+                                  pos_ids, past_kv, num_devices,
+                                  cur_device, num_head)[0];
+    next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
+                                     cur_device, num_head);
+    operands = {residual_out, cur_out};
+    next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, -1,
+                              num_devices, cur_device);
+
+    end_operands.push_back(cur_out);
+    end_operands.push_back(past_kv[0]);
+    end_operands.push_back(past_kv[1]);
     if (cur_device == 0) {
       end_op = next_op;
     } else {

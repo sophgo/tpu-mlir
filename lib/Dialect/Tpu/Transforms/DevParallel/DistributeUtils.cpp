@@ -327,44 +327,7 @@ static bool isAttentionQuery(Operation *op, std::vector<Operation *> &begin_ops,
   }
 
   Operation *top_op = rotary_begins[0]->getOperand(0).getDefiningOp();
-  // if (GQA) {
-  //   // Reshape -> Slice
-  //   if (!isa<tpu::SliceOp>(top_op) || !top_op->hasOneUse()) {
-  //     LLVM_DEBUG({
-  //       if (!isa<tpu::SliceOp>(top_op)) {
-  //         llvm::dbgs() << "3. This Op is not SliceOp: " << *top_op << "\n";
-  //       } else {
-  //         std::vector<Operation *> users(top_op->user_begin(),
-  //                                        top_op->user_end());
-  //         llvm::dbgs() << "3. This SliceOp is: " << *top_op << "\n";
-  //         llvm::dbgs() << "This SliceOp has " << users.size() << " users:\n";
-  //         for (auto user : users) {
-  //           llvm::dbgs() << *user << "\n";
-  //         }
-  //       }
-  //     });
-  //     return false;
-  //   }
-  //   top_op = top_op->getOperand(0).getDefiningOp();
-  //   int num_users = std::distance(top_op->user_begin(), top_op->user_end());
-  //   if (!isa<tpu::ReshapeOp>(top_op) || num_users != 3) {
-  //     LLVM_DEBUG({
-  //       if (!isa<tpu::ReshapeOp>(top_op)) {
-  //         llvm::dbgs() << "4. This Op is not ReshapeOp: " << *top_op << "\n";
-  //       } else {
-  //         std::vector<Operation *> users(top_op->user_begin(),
-  //                                        top_op->user_end());
-  //         llvm::dbgs() << "4. This ReshapeOp is: " << *top_op << "\n";
-  //         llvm::dbgs() << "This ReshapeOp has " << users.size() << " users:\n";
-  //         for (auto user : users) {
-  //           llvm::dbgs() << *user << "\n";
-  //         }
-  //       }
-  //     });
-  //     return false;
-  //   }
-  // } else {
-  if(GQA){
+  if (GQA) {
     // Norm -> MatMulW
     if (!isLargeMatMul(top_op) || !top_op->hasOneUse()) {
       LLVM_DEBUG({
@@ -399,6 +362,10 @@ static bool isAttentionQuery(Operation *op, std::vector<Operation *> &begin_ops,
         }
       });
       return false;
+    }
+  } else {
+    if (!isa<tpu::LayerNormOp, tpu::RMSNormOp>(top_op)) {
+      top_op = top_op->getOperand(0).getDefiningOp();
     }
   }
 
@@ -468,44 +435,7 @@ static bool isAttentionKey(Operation *op, std::vector<Operation *> &begin_ops,
   }
 
   Operation *top_op = rotary_begins[0]->getOperand(0).getDefiningOp();
-  // if (GQA) {
-  //   // Reshape -> Slice
-  //   if (!isa<tpu::SliceOp>(top_op) || !top_op->hasOneUse()) {
-  //     LLVM_DEBUG({
-  //       if (!isa<tpu::SliceOp>(top_op)) {
-  //         llvm::dbgs() << "2. This Op is not SliceOp: " << *top_op << "\n";
-  //       } else {
-  //         std::vector<Operation *> users(top_op->user_begin(),
-  //                                        top_op->user_end());
-  //         llvm::dbgs() << "2. This SliceOp is: " << *top_op << "\n";
-  //         llvm::dbgs() << "This SliceOp has " << users.size() << " users:\n";
-  //         for (auto user : users) {
-  //           llvm::dbgs() << *user << "\n";
-  //         }
-  //       }
-  //     });
-  //     return false;
-  //   }
-  //   top_op = top_op->getOperand(0).getDefiningOp();
-  //   int num_users = std::distance(top_op->user_begin(), top_op->user_end());
-  //   if (!isa<tpu::ReshapeOp>(top_op) || num_users != 3) {
-  //     LLVM_DEBUG({
-  //       if (!isa<tpu::ReshapeOp>(top_op)) {
-  //         llvm::dbgs() << "3. This Op is not ReshapeOp: " << *top_op << "\n";
-  //       } else {
-  //         std::vector<Operation *> users(top_op->user_begin(),
-  //                                        top_op->user_end());
-  //         llvm::dbgs() << "3. This ReshapeOp is: " << *top_op << "\n";
-  //         llvm::dbgs() << "This ReshapeOp has " << users.size() << " users:\n";
-  //         for (auto user : users) {
-  //           llvm::dbgs() << *user << "\n";
-  //         }
-  //       }
-  //     });
-  //     return false;
-  //   }
-  // } else {
-  if(GQA){
+  if (GQA) {
     // Norm -> MatMulW
     if (!isLargeMatMul(top_op) || !top_op->hasOneUse()) {
       LLVM_DEBUG({
@@ -540,6 +470,10 @@ static bool isAttentionKey(Operation *op, std::vector<Operation *> &begin_ops,
         }
       });
       return false;
+    }
+  } else {
+    if (!isa<tpu::LayerNormOp, tpu::RMSNormOp>(top_op)) {
+      top_op = top_op->getOperand(0).getDefiningOp();
     }
   }
 
@@ -605,7 +539,7 @@ static bool isAttentionMatrix(Operation *op,
 /**
  * 1. Common Attention
  *  (1) Prefill:
- *   Norm -> MatMulW -> Resahpe --> MatMul
+ *   Norm -> MatMulW -> Reshape --> MatMul
  *                             \
  *                               -> (Cast) => present_v
  *
@@ -894,7 +828,7 @@ bool isAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
   query_pos_ids_op.push_back(begins[2]);
   begins.clear();
   if (query_pos_ids_op[0] != key_pos_ids_op[0] ||
-      query_pos_ids_op[0] != key_pos_ids_op[0]) {
+      query_pos_ids_op[1] != key_pos_ids_op[1]) {
     LLVM_DEBUG(llvm::dbgs()
                << "6. The pos_ids of Query and Key should be the same\n");
     return false;
@@ -936,6 +870,110 @@ bool isAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
   }
 
   LLVM_DEBUG(llvm::dbgs() << "== End match AttentionPattern. ==\n");
+  return true;
+}
+
+/**
+ *                     -> AttentionQuery -
+ *                    /                   \
+ *  => AttentionInput --> AttentionKey ----> FAttentionOut
+ *                    \                   /
+ *                     -> AttentionValue -
+ */
+bool isFAttentionPattern(Operation *op, std::vector<Operation *> &begin_ops,
+                        std::vector<Operation *> &end_ops, bool GQA,
+                        int *num_head) {
+  LLVM_DEBUG(llvm::dbgs() << "== Start match FlashAttentionPattern. ==\n");
+  std::vector<Operation *> query_pos_ids_op;
+  std::vector<Operation *> key_pos_ids_op;
+  Operation *past_k_op;
+  Operation *past_v_op;
+  Operation *present_k_op;
+  Operation *present_v_op;
+
+  std::vector<Operation *> begins;
+  std::vector<Operation *> ends;
+  LLVM_DEBUG(llvm::dbgs() << "== Start match FAttentionIO. ==\n");
+  // flash attention input
+  auto q_in = op->getOperand(0).getDefiningOp();
+  auto k_in = op->getOperand(1).getDefiningOp();
+  auto v_in = op->getOperand(2).getDefiningOp();
+  auto attn_mask = op->getOperand(3).getDefiningOp();
+  // flash attention output
+  auto o_proj = dyn_cast<tpu::MatMulOp>(*op->user_begin());
+  auto o_a16_proj = dyn_cast<tpu::A16MatMulOp>(*op->user_begin());
+  auto residual_add = o_proj ? dyn_cast<tpu::AddOp>(*o_proj->user_begin())
+                             : dyn_cast<tpu::AddOp>(*o_a16_proj->user_begin());
+  if (!isa<tpu::AddOp>(q_in) ||
+      !isa<tpu::ConcatOp, tpu::AddOp>(k_in) ||
+      !isa<tpu::ConcatOp, tpu::ReshapeOp>(v_in) ||
+      !isa<top::InputOp>(attn_mask) ||
+      !residual_add || (!o_proj && !o_a16_proj)) {
+    LLVM_DEBUG(llvm::dbgs() << "1. Failed to match FAttentionIO.\n");
+    return false;
+  }
+
+  if (!isAttentionValue(v_in, begins, ends, GQA, num_head)) {
+    LLVM_DEBUG(llvm::dbgs() << "2. Failed to match AttentionValue.\n");
+    return false;
+  }
+  // begins: norm_op, [past_v]
+  auto value_top_op = begins[0];
+  past_v_op = begins.size() > 1 ? begins[1] : nullptr;
+  present_v_op = ends[0];
+  begins.clear();
+  ends.clear();
+
+  if (!isAttentionKey(k_in, begins, ends, GQA)) {
+    LLVM_DEBUG(llvm::dbgs() << "3. Failed to match AttentionKey.\n");
+    return false;
+  }
+  // begins: norm_op, key_pos0, key_pos1, [past_k]
+  auto key_top_op = begins[0];
+  key_pos_ids_op.push_back(begins[1]);
+  key_pos_ids_op.push_back(begins[2]);
+  past_k_op = begins.size() > 3 ? begins[3] : nullptr;
+  present_k_op = ends[0];
+  begins.clear();
+  ends.clear();
+
+  if (!isAttentionQuery(q_in, begins, GQA)) {
+    LLVM_DEBUG(llvm::dbgs() << "4. Failed to match AttentionQuery.\n");
+    return false;
+  }
+  // begins: norm_op, query_pos0, query_pos1
+  auto query_top_op = begins[0];
+  query_pos_ids_op.push_back(begins[1]);
+  query_pos_ids_op.push_back(begins[2]);
+  begins.clear();
+
+  if (query_pos_ids_op[0] != key_pos_ids_op[0] ||
+      query_pos_ids_op[1] != key_pos_ids_op[1]) {
+    LLVM_DEBUG(llvm::dbgs()
+               << "5. The pos_ids of Query and Key should be the same\n");
+    return false;
+  }
+  if (query_top_op != key_top_op ||
+      query_top_op != value_top_op) {
+    LLVM_DEBUG(llvm::dbgs()
+               << "6. The Query/Key/Value shares the same top_op.\n");
+    return false;
+  }
+
+  begin_ops.push_back(residual_add.getOperation());
+  begin_ops.push_back(query_top_op);
+  begin_ops.push_back(query_pos_ids_op[0]);
+  begin_ops.push_back(query_pos_ids_op[1]);
+  begin_ops.push_back(op);
+  if (past_k_op != nullptr) {
+    begin_ops.push_back(past_k_op);
+    begin_ops.push_back(past_v_op);
+  }
+  end_ops.push_back(residual_add.getOperation());
+  end_ops.push_back(present_k_op);
+  end_ops.push_back(present_v_op);
+
+  LLVM_DEBUG(llvm::dbgs() << "== End match FlashAttentionPattern. ==\n");
   return true;
 }
 
@@ -1706,10 +1744,11 @@ std::vector<Operation *> cloneMultiInsOps(PatternRewriter &rewriter,
   return next_ops;
 }
 
-std::vector<Operation *>
-cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
-                   Value &cur_out, int axis, std::vector<Value> pos_ids,
-                   int num_devices, int cur_device, int num_head) {
+std::vector<Operation *> cloneRotaryEmbedOp(PatternRewriter &rewriter,
+                                            Operation *next_op, Value &cur_out,
+                                            int axis, std::vector<Value> pos_ids,
+                                            int num_devices, int cur_device,
+                                            int num_head) {
   auto suffix = std::to_string(cur_device);
   auto users = next_op->getUsers();
   cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device,
@@ -1990,33 +2029,39 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   return next_op;
 }
 
-void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
-                      int num_devices, int cur_device) {
-  auto suffix = "mulconst_" + std::to_string(cur_device);
-  auto name = module::getName(cur_out);
-  std::string new_name = name.str() + "_" + suffix;
-  auto new_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-  rewriter.setInsertionPointAfterValue(cur_out);
-  std::vector<NamedAttribute> attrs;
-  float const_val = cur_device == 0 ? 1.0 : 0;
-  attrs.push_back(
-      rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
-  auto new_type = cur_out.getType();
-  auto new_op = rewriter.create<tpu::MulConstOp>(new_loc, new_type,
-                                                 ValueRange{cur_out}, attrs);
-
+Operation *cloneFAttentionOp(PatternRewriter &rewriter, Operation *next_op,
+                             Value &cur_out, int num_head, int axis, int num_devices,
+                             std::vector<Value> &operands, int cur_device) {
+  auto suffix = std::to_string(cur_device);
+  auto ori_out = next_op->getResult(0);
+  auto new_loc = module::getLocLike(ori_out, suffix);
+  std::vector<int64_t> new_shape = module::getShape(ori_out);
+  new_shape[axis] = get_splited_size(new_shape[axis], num_devices,
+                                     cur_device, num_head, 0);
+  int q_head = module::getShape(operands[0])[axis];
+  int kv_head = module::getShape(operands[1])[axis];
+  auto new_type = module::getTypeLike(ori_out, new_shape);
+  rewriter.setInsertionPointAfter(next_op);
+  if (operands.size() == 4) {
+    operands.push_back(module::getNoneOp(next_op));
+  }
+  Operation *new_op = rewriter.create<tpu::FAttentionOp>(new_loc, new_type,
+                                                         operands, next_op->getAttrs());
+  new_op->setAttr("q_head", rewriter.getI64IntegerAttr(q_head));
+  new_op->setAttr("kv_head", rewriter.getI64IntegerAttr(kv_head));
   cur_out = new_op->getResult(0);
+  next_op = *next_op->user_begin();
+  return next_op;
 }
 
-void createMulConstOp2(PatternRewriter &rewriter, Value &cur_out,
-                      int num_devices, int cur_device) {
+void createMulConstOp(PatternRewriter &rewriter, Value &cur_out,
+                      int cur_device, float const_val) {
   auto suffix = "mulconst_" + std::to_string(cur_device);
   auto name = module::getName(cur_out);
   std::string new_name = name.str() + "_" + suffix;
   auto new_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   rewriter.setInsertionPointAfterValue(cur_out);
   std::vector<NamedAttribute> attrs;
-  float const_val = 1.0 / num_devices;
   attrs.push_back(
       rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
   auto new_type = cur_out.getType();
@@ -2174,10 +2219,12 @@ std::vector<Operation *> cloneAttentionQuery(PatternRewriter &rewriter,
   return next_ops;
 }
 
-std::vector<Operation *>
-cloneAttentionKey(PatternRewriter &rewriter, Operation *next_op, Value &cur_out,
-                  std::vector<Value> &other_opds, std::vector<Value> &outs,
-                  int num_devices, int cur_device, bool GQA, int num_head) {
+std::vector<Operation *> cloneAttentionKey(PatternRewriter &rewriter,
+                                            Operation *next_op, Value &cur_out,
+                                            std::vector<Value> &other_opds,
+                                            std::vector<Value> &outs,
+                                            int num_devices, int cur_device,
+                                            bool GQA, int num_head) {
   auto suffix = std::to_string(cur_device);
   if (GQA) {
     // clone SliceOp
@@ -2291,7 +2338,7 @@ std::vector<Operation *> cloneAttentionValue(PatternRewriter &rewriter,
                                      cur_device, num_head);
   }
 
-  // clone RehsapeOp
+  // clone ReshapeOp
   auto next_ops =
       cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device);
   if (next_ops.size() > 1 &&
@@ -2361,6 +2408,70 @@ std::vector<Operation *> cloneAttentionOutput(PatternRewriter &rewriter,
                                    cur_device, num_head);
 
   std::vector<Operation *> next_ops{next_op};
+  return next_ops;
+}
+
+std::vector<Operation *> cloneFlashAttention(PatternRewriter &rewriter,
+                                             Operation *next_op, Value &cur_out,
+                                             std::vector<Value> &pos_ids,
+                                             std::vector<Value> &past_kv,
+                                             int num_devices, int cur_device,
+                                             int num_head) {
+  auto suffix = std::to_string(cur_device);
+  std::vector<Operation *> op_branches = cloneOpWithWeight(rewriter, next_op,
+                                                           cur_out, suffix);
+  auto ln_out = cur_out;
+  std::vector<Value> operands;
+
+  // query branch
+  next_op = op_branches[2];
+  next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
+                                   cur_device, num_head);
+  next_op = cloneRotaryEmbedOp(rewriter, next_op, cur_out, 2, pos_ids,
+                               num_devices, cur_device, num_head)[0];
+  Value query_out = cur_out;
+
+  // key branch
+  next_op = op_branches[1];
+  cur_out = ln_out;
+  next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
+                                   cur_device, num_head);
+  auto next_ops = cloneRotaryEmbedOp(rewriter, next_op, cur_out, 2, pos_ids,
+                                     num_devices, cur_device, num_head);
+  next_op = isa<tpu::DevEndOp>(next_ops[0]) ? next_ops[1] : next_ops[0];
+  if (past_kv.size() == 2) {
+    operands = {past_kv[0], cur_out};
+    past_kv[0] = cur_out;
+    next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, 2,
+                              num_devices, cur_device);
+  } else {
+    past_kv.push_back(cur_out);
+  }
+  Value key_out = cur_out;
+
+  // value branch
+  next_op = op_branches[0];
+  cur_out = ln_out;
+  next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
+                                   cur_device, num_head);
+  next_ops = cloneCommonAxisOp(rewriter, next_op, cur_out,
+                               2, num_devices, cur_device);
+  next_op = isa<tpu::DevEndOp>(next_ops[0]) ? next_ops[1] : next_ops[0];
+  if (past_kv.size() == 2) {
+    operands = {past_kv[1], cur_out};
+    past_kv[1] = cur_out;
+    next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, 2,
+                              num_devices, cur_device);
+  } else {
+    past_kv.push_back(cur_out);
+  }
+  Value value_out = cur_out;
+
+  // clone flash attn
+  operands = {query_out, key_out, value_out, next_op->getOperand(3)};
+  next_op = cloneFAttentionOp(rewriter, next_op, cur_out, num_head, 2,
+                              num_devices, operands, cur_device);
+  next_ops = {next_op};
   return next_ops;
 }
 
@@ -2590,7 +2701,7 @@ std::vector<Operation *> cloneChatGLMAttentionValue(PatternRewriter &rewriter,
                                      cur_device, num_head);
   }
 
-  // clone RehsapeOp
+  // clone ReshapeOp
   auto next_ops =
       cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device);
   if (next_ops.size() > 1 &&
@@ -2880,7 +2991,7 @@ Operation *cloneChatGLMAttentionOutput(PatternRewriter &rewriter,
 // input: cur_out
 // output: type is the same as the result of next_op
 void createReshapeOp(PatternRewriter &rewriter, Operation *next_op,
-                    Value &cur_out, int num_devices, int cur_device) {
+                    Value &cur_out, int cur_device) {
   auto suffix = "reshape_" + std::to_string(cur_device);
   auto name = module::getName(cur_out);
   std::string new_name = name.str() + "_" + suffix;

@@ -175,7 +175,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
       next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
     }
     auto ln_input = cur_out;
-    createMulConstOp(rewriter, cur_out, num_devices, cur_device);
+    createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 : 0);
     auto residual_out = cur_out;
 
     // clone pos_ids input branch

@@ -199,7 +199,8 @@ def Tpu_DevPattern: I32EnumAttr<"DevPattern",
       I32EnumAttrCase<"MatMulSliceMerge3", 6>,
       I32EnumAttrCase<"AttentionSliceMerge", 7>,
       I32EnumAttrCase<"AttentionSliceMerge2", 8>,
-      I32EnumAttrCase<"EmbeddingSliceMerge", 9>
+      I32EnumAttrCase<"EmbeddingSliceMerge", 9>,
+      I32EnumAttrCase<"FAttentionSliceMerge", 10>
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
