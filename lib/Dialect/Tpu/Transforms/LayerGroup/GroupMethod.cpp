@@ -105,7 +105,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
          shape[0] * shape[1] * shape[2] * shape[3] % Arch::NPU_NUM == 0)) {
       continue;
     }
-    if ((shape.size() == 3 && shape[0] > 1 && shape[1] == 197)) {
+    if ((shape.size() == 3 && shape[0] > 4 && shape[1] == 197)) {
       continue;
     }
 
