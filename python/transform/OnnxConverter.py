@@ -112,7 +112,8 @@ class OnnxConverter(BaseConverter):
                  onnx_sim="",
                  dynamic_shape_input_names=[],
                  shape_influencing_input_names=[],
-                 dynamic=False):
+                 dynamic=False,
+                 dump_final_opt=True):
         super().__init__()
 
         self.dynamic_shape_input_names = dynamic_shape_input_names
@@ -139,7 +140,7 @@ class OnnxConverter(BaseConverter):
         ]
         self.onnx_sim = onnx_sim
         self.origin_output_names = output_names.copy()
-        self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape)
+        self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape, dump_final_opt)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
         # some onnx may have strange domain, such as "ai.onnx.ml"
@@ -461,7 +462,7 @@ class OnnxConverter(BaseConverter):
                 onnx_tensor = node.attrs['value']
                 return numpy_helper.to_array(onnx_tensor)
 
-    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True):
+    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True, dump_final_opt=True):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
@@ -513,7 +514,7 @@ class OnnxConverter(BaseConverter):
             f.write(str(strip_model))
         if static_shape:
             # fuse ops such as layernorm gelu...
-            self.model, self.node_name_mapping = onnx_opt(self.model, True)
+            self.model, self.node_name_mapping = onnx_opt(self.model, dump_final_opt)
 
     def get_output_name(self, graph):
         for output in graph.output:

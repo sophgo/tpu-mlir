@@ -393,6 +393,344 @@ public:
   }
 };
 
+class ChatGLM3ToGQAAttention : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    // Rewrite to match GQA FlashAttention
+    auto matmul_left = op.getOperand(0);
+    auto matmul_right = op.getOperand(1);
+    auto reshape0_op = dyn_cast<top::ReshapeOp>(matmul_left.getDefiningOp());
+    if (!reshape0_op || !module::isWeight(matmul_right)) {
+      return failure();
+    }
+    auto transpose_op =
+        dyn_cast<top::PermuteOp>(reshape0_op.getInput().getDefiningOp());
+    if (!transpose_op) {
+      return failure();
+    }
+    auto reshape1_op = dyn_cast<top::ReshapeOp>(transpose_op.getInput().getDefiningOp());
+    if (!reshape1_op) {
+      return failure();
+    }
+    auto matmulkv_op =
+        dyn_cast<top::MatMulOp>(reshape1_op.getInput().getDefiningOp());
+    if (!matmulkv_op) {
+      return failure();
+    }
+    // not support quant
+    if (module::isCalibratedType(op.getOutput().getType())) {
+      return failure();
+    }
+
+    auto reshape0_kv_left_op = dyn_cast<top::ReshapeOp>(matmulkv_op.getInput().getDefiningOp());
+    if (!reshape0_kv_left_op) {
+      return failure();
+    }
+    auto transpose_kv_right_op = dyn_cast<top::PermuteOp>(matmulkv_op.getRight().getDefiningOp());
+    if (!transpose_kv_right_op) {
+      return failure();
+    }
+    auto reshape_kv_right_op = dyn_cast<top::ReshapeOp>(transpose_kv_right_op.getInput().getDefiningOp());
+    if (!reshape_kv_right_op) {
+      return failure();
+    }
+    auto tile_kv_right_op = dyn_cast<top::TileOp>(reshape_kv_right_op.getInput().getDefiningOp());
+    if (!tile_kv_right_op) {
+      return failure();
+    }
+    auto unsqueeze_kv_right_op = dyn_cast<top::UnsqueezeOp>(tile_kv_right_op.getInput().getDefiningOp());
+    if (!unsqueeze_kv_right_op) {
+      return failure();
+    }
+    auto concat_kv_right_op = dyn_cast<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
+    if (!concat_kv_right_op) {
+      return failure();
+    }
+    auto softmax_op = dyn_cast<top::SoftmaxOp>(reshape0_kv_left_op.getInput().getDefiningOp());
+    if (!softmax_op) {
+      return failure();
+    }
+    auto add_op = dyn_cast<top::AddOp>(softmax_op.getInput().getDefiningOp());
+    if (!add_op) {
+      return failure();
+    }
+    auto reshape1_kv_left_op = dyn_cast<top::ReshapeOp>(add_op.getInputs()[0].getDefiningOp());
+    if (!reshape1_kv_left_op) {
+      return failure();
+    }
+    auto mulconst_op = dyn_cast<top::MulConstOp>(reshape1_kv_left_op.getInput().getDefiningOp());
+    if (!mulconst_op) {
+      return failure();
+    }
+
+    auto matmulqk_op = dyn_cast<top::MatMulOp>(mulconst_op.getInput().getDefiningOp());
+    if (!matmulqk_op) {
+      return failure();
+    }
+    auto transpose_qk_left_op = dyn_cast<top::PermuteOp>(matmulqk_op.getInput().getDefiningOp());
+    if (!transpose_qk_left_op) {
+      return failure();
+    }
+    auto reshape_qk_left_op = dyn_cast<top::ReshapeOp>(transpose_qk_left_op.getInput().getDefiningOp());
+    if (!reshape_qk_left_op) {
+      return failure();
+    }
+    auto concat_qk_left_op = dyn_cast<top::ConcatOp>(reshape_qk_left_op.getInput().getDefiningOp());
+    if (!concat_qk_left_op) {
+      return failure();
+    }
+    auto transpose_qk_right_op = dyn_cast<top::PermuteOp>(matmulqk_op.getRight().getDefiningOp());
+    if (!transpose_qk_left_op) {
+      return failure();
+    }
+    auto reshape_qk_right_op = dyn_cast<top::ReshapeOp>(transpose_qk_right_op.getInput().getDefiningOp());
+    if (!reshape_qk_right_op) {
+      return failure();
+    }
+    auto tile_qk_right_op = dyn_cast<top::TileOp>(reshape_qk_right_op.getInput().getDefiningOp());
+    if (!tile_qk_right_op) {
+      return failure();
+    }
+    auto unsqueeze_qk_right_op = dyn_cast<top::UnsqueezeOp>(tile_qk_right_op.getInput().getDefiningOp());
+    if (!unsqueeze_qk_right_op) {
+      return failure();
+    }
+    auto concat_qk_right_op = dyn_cast<top::ConcatOp>(unsqueeze_qk_right_op.getInput().getDefiningOp());
+    if (!concat_qk_right_op) {
+      return failure();
+    }
+    auto qk_left_shape = module::getShape(concat_qk_left_op.getOutput());
+    auto qk_right_shape = module::getShape(tile_qk_right_op.getOutput());
+    if(qk_left_shape.size() != 4 || qk_left_shape[1] != 1)
+      return failure();
+
+    // Reshape[16k,1,32,128] -> [1,16k,32,128]
+    std::vector<NamedAttribute> attrs;
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {qk_left_shape[1], qk_left_shape[0], qk_left_shape[2], qk_left_shape[3]})));
+    auto qk_left_reshape_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_left_op.getOperation()).str() + "_reshape")),
+        RankedTensorType::get(
+            {qk_left_shape[1], qk_left_shape[0], qk_left_shape[2], qk_left_shape[3]}, module::getElementType(concat_qk_left_op.getOutput())),
+        concat_qk_left_op.getOutput(), attrs);
+
+    // PermuteOp [1,16k,32,128] -> [1,32,1k,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {0, 2, 1, 3})));
+    auto qk_left_permute_type = RankedTensorType::get(
+        {qk_left_shape[1], qk_left_shape[2], qk_left_shape[0], qk_left_shape[3]},
+        module::getElementType(qk_left_reshape_op.getOutput()));
+    auto qk_left_permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_left_op.getOperation()).str() + "_permute")),
+        qk_left_permute_type, qk_left_reshape_op.getOutput(), attrs);
+
+    // ReshapeOp [16k,1,2,128] -> [1,16k,2,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[4]})));
+    auto qk_right_reshape0_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_reshape0")),
+        RankedTensorType::get(
+            {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[4]}, module::getElementType(concat_qk_right_op.getOutput())),
+        concat_qk_right_op.getOutput(), attrs);
+
+    // UnsqueezeOp [1,16k,2,128] -> [1,16k,2,1,168]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axes", rewriter.getI64ArrayAttr(
+                     {3})));
+    auto qk_right_unsqueeze_type = RankedTensorType::get(
+        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], 1, qk_right_shape[4]},
+        module::getElementType(qk_right_reshape0_op.getOutput()));
+    auto qk_right_unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_unsqueeze")),
+        qk_right_unsqueeze_type, qk_right_reshape0_op.getOutput(), attrs);
+
+    // TileOp [1,16k,2,1,128] -> [1,16k,2,16,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+      "tile", rewriter.getI64ArrayAttr({1,1,1,qk_right_shape[3],1})));
+    auto qk_right_tile_type = RankedTensorType::get(
+        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[3], qk_right_shape[4]},
+        module::getElementType(qk_right_unsqueeze_op.getOutput()));
+    auto qk_right_tile_op = rewriter.create<top::TileOp>(
+      NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_tile")),
+      qk_right_tile_type, ValueRange{qk_right_unsqueeze_op.getOutput()}, attrs);
+
+    // ReshapeOp [1,16k,2,16,128] -> [1,16k,32,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2]*qk_right_shape[3], qk_right_shape[4]})));
+    auto qk_right_reshape1_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_reshape1")),
+        RankedTensorType::get(
+            {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2]*qk_right_shape[3], qk_right_shape[4]},
+            module::getElementType(concat_qk_right_op.getOutput())),
+            qk_right_tile_op.getOutput(), attrs);
+
+    // PermuteOp [1,16k,32,128] -> [1,32,128,16k]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {0, 2, 3, 1})));
+    auto qk_right_permute_type = RankedTensorType::get(
+        {qk_right_shape[1], qk_right_shape[2] * qk_right_shape[3], qk_right_shape[4], qk_right_shape[0]},
+        module::getElementType(concat_qk_right_op.getOutput()));
+    auto qk_right_permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_permute")),
+        qk_right_permute_type, qk_right_reshape1_op.getOutput(), attrs);
+
+    // MatMulOp [(1,32,16k,128),(1,32,128,16k)] -> [1,32,16k,16k]
+    std::vector<int64_t> new_matmulqk_shape = module::getShape(qk_left_permute_op.getOutput());
+    new_matmulqk_shape[new_matmulqk_shape.size() - 1] = module::getShape(qk_right_permute_op.getOutput())[3];
+    auto new_matmulqk_op = rewriter.clone(*matmulqk_op);
+    module::setLocSuffix(new_matmulqk_op, std::to_string(0));
+    new_matmulqk_op->setOperand(0, qk_left_permute_op.getOutput());
+    new_matmulqk_op->setOperand(1, qk_right_permute_op.getOutput());
+
+    new_matmulqk_op->setAttr("right_transpose", rewriter.getBoolAttr(matmulqk_op.getRightTranspose()));
+    new_matmulqk_op->setAttr("hdim_is_batch", rewriter.getBoolAttr(false));
+    module::setShape(new_matmulqk_op->getResult(0), new_matmulqk_shape);
+
+    // MulConstOp [1,32,16k,16k]
+    auto new_mulconst_op = rewriter.clone(*mulconst_op);
+    module::setLocSuffix(new_mulconst_op, std::to_string(0));
+    new_mulconst_op->setOperand(0, new_matmulqk_op->getResult(0));
+    std::vector<int64_t> new_mulconst_shape = module::getShape(new_matmulqk_op->getResult(0));
+    module::setShape(new_mulconst_op->getResult(0), new_mulconst_shape);
+
+   // AddOp [1,32,16k,16k]
+    auto new_add_op = rewriter.clone(*add_op);
+    module::setLocSuffix(new_add_op, std::to_string(0));
+    new_add_op->setOperand(0, new_mulconst_op->getResult(0));
+    new_add_op->setOperand(1, add_op.getInputs()[1]);
+    std::vector<int64_t> new_add_shape = module::getShape(new_mulconst_op->getResult(0));
+    module::setShape(new_add_op->getResult(0), new_add_shape);
+
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(new_matmulqk_shape.size() - 1)));
+    auto softmax_name_loc = NameLoc::get(rewriter.getStringAttr(module::getName(
+        softmax_op.getOperation()).str() + "_" + std::to_string(0)));
+    auto new_softmax_op = rewriter.create<top::SoftmaxOp>(
+        softmax_name_loc,
+        RankedTensorType::get(
+            new_matmulqk_shape, module::getElementType(softmax_op.getOutput())),
+            ValueRange{new_add_op->getResult(0)},
+                attrs);
+
+    auto kv_right_shape = module::getShape(tile_kv_right_op.getOutput());
+    // ReshapeOp [16k,1,2,128] -> [1,16k,2,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]})));
+    auto kv_right_reshape0_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_reshape0")),
+        RankedTensorType::get(
+            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]}, module::getElementType(concat_kv_right_op.getOutput())),
+        concat_kv_right_op.getOutput(), attrs);
+
+    // UnsqueezeOp [1,16k,2,128] -> [1,16k,2,1,168]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axes", rewriter.getI64ArrayAttr(
+                     {3})));
+    auto kv_right_unsqueeze_type = RankedTensorType::get(
+        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], 1, kv_right_shape[4]},
+        module::getElementType(kv_right_reshape0_op.getOutput()));
+    auto kv_right_unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_unsqueeze")),
+        kv_right_unsqueeze_type, kv_right_reshape0_op.getOutput(), attrs);
+
+    // TileOp [1,16k,2,1,128] -> [1,16k,2,16,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+      "tile", rewriter.getI64ArrayAttr({1,1,1,kv_right_shape[3],1})));
+    auto kv_right_tile_type = RankedTensorType::get(
+        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[3], kv_right_shape[4]},
+        module::getElementType(qk_right_unsqueeze_op.getOutput()));
+    auto kv_right_tile_op = rewriter.create<top::TileOp>(
+      NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_tile")),
+      kv_right_tile_type, ValueRange{kv_right_unsqueeze_op.getOutput()}, attrs);
+
+    // ReshapeOp [1,16k,2,16,128] -> [1,16k,32,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]})));
+    auto kv_right_reshape1_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_reshape1")),
+        RankedTensorType::get(
+            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]},
+            module::getElementType(concat_kv_right_op.getOutput())),
+            kv_right_tile_op.getOutput(), attrs);
+
+    // PermuteOp [1,16k,32,128] -> [1,32,16k,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {0, 2, 1, 3})));
+    auto kv_right_permute_type = RankedTensorType::get(
+        {kv_right_shape[1], kv_right_shape[2] * kv_right_shape[3], kv_right_shape[0], kv_right_shape[4]},
+        module::getElementType(concat_kv_right_op.getOutput()));
+    auto kv_right_permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_permute")),
+        kv_right_permute_type, kv_right_reshape1_op.getOutput(), attrs);
+
+    // MatMulOp [(1,32,16k,16k),(1,32,16k,128)] -> [1,32,16k,128]
+    std::vector<int64_t> new_matmulkv_shape = module::getShape(new_softmax_op.getOutput());
+    new_matmulkv_shape[new_matmulkv_shape.size() - 1] = module::getShape(kv_right_permute_op.getOutput())[3];
+    auto new_matmulkv_op = rewriter.clone(*matmulkv_op);
+    module::setLocSuffix(new_matmulkv_op, std::to_string(0));
+    new_matmulkv_op->setOperand(0, new_softmax_op.getOutput());
+    new_matmulkv_op->setOperand(1, kv_right_permute_op.getOutput());
+    new_matmulkv_op->setAttr("hdim_is_batch", rewriter.getBoolAttr(false));
+    module::setShape(new_matmulkv_op->getResult(0), new_matmulkv_shape);
+
+    // PermuteOp [1,32,16k,128] -> [1,16k,32,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {0, 2, 1, 3})));
+    auto matmulkv_permute_type = RankedTensorType::get(
+        {new_matmulkv_shape[0], new_matmulkv_shape[2], new_matmulkv_shape[1], new_matmulkv_shape[3]},
+        module::getElementType(new_matmulkv_op->getResult(0)));
+    auto matmulkv_permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(new_matmulkv_op).str() + "_permute")),
+        matmulkv_permute_type, new_matmulkv_op->getResult(0), attrs);
+
+    // ReshapeOp [1,16k,32,128] -> [16k,1,4096]
+    attrs.clear();
+    auto attention_shape = module::getShape(matmulkv_op.getOutput());
+    std::vector<int64_t> new_attention_shape = attention_shape;
+    new_attention_shape[0] = attention_shape[1];
+    new_attention_shape[1] = new_matmulkv_shape[0];
+    new_attention_shape[2] = new_matmulkv_shape[1] * new_matmulkv_shape[3];
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    {new_attention_shape[0], new_attention_shape[1], new_attention_shape[2]})));
+    auto attention_reshape_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(new_matmulkv_op).str() + "_reshape")),
+        RankedTensorType::get(
+            {new_attention_shape[0], new_attention_shape[1], new_attention_shape[2]}, module::getElementType(new_matmulkv_op->getResult(0))),
+        matmulkv_permute_op->getResult(0), attrs);
+
+     op->setOperand(0, attention_reshape_op.getOutput());
+
+    rewriter.setInsertionPointAfter(op);
+    return success();
+  }
+};
+
 class ConvertMatMulWithRightTranspose : public OpRewritePattern<top::MatMulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -1650,7 +1988,7 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
-      ->add<ConvertGLMTilePermute, ConvertGLMTilePermute2,
+      ->add<ChatGLM3ToGQAAttention,
             ConvertMatMulWithRightTranspose, ConvertMatMul2Attention,
             ReshapeReorderPattern, ConvertMultiInputAdd, WhereBroadcastToTile,
             ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,

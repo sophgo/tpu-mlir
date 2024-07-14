@@ -144,7 +144,8 @@ class OnnxTransformer(ModelTransformer):
                  onnx_sim='',
                  dynamic_shape_input_names: list = [],
                  dynamic=False,
-                 shape_influencing_input_names: list = []):
+                 shape_influencing_input_names: list = [],
+                 dump_final_opt=True):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -157,7 +158,8 @@ class OnnxTransformer(ModelTransformer):
                                        onnx_sim=onnx_sim,
                                        dynamic_shape_input_names=dynamic_shape_input_names,
                                        dynamic=dynamic,
-                                       shape_influencing_input_names=shape_influencing_input_names)
+                                       shape_influencing_input_names=shape_influencing_input_names,
+                                       dump_final_opt=dump_final_opt)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -263,7 +265,8 @@ def get_model_transform(args):
                                onnx_sim=args.onnx_sim,
                                dynamic_shape_input_names=args.dynamic_shape_input_names,
                                dynamic=args.dynamic,
-                               shape_influencing_input_names=args.shape_influencing_input_names)
+                               shape_influencing_input_names=args.shape_influencing_input_names,
+                               dump_final_opt=args.dump_final_opt)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict(),
@@ -322,6 +325,7 @@ if __name__ == '__main__':
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--dump_final_opt", default=True, help='save final_opt onnx file')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
