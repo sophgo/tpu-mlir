@@ -254,7 +254,47 @@ struct AddMerge : public OpRewritePattern<AddOp> {
   }
 };
 
+//[(5,16,1,32),(1,32)] -> [(5,16,1,32),(1,1,1,32)]
+struct AlignInputsDim : public OpRewritePattern<AddOp> {
+  using OpRewritePattern::OpRewritePattern;
+  AlignInputsDim(MLIRContext *context)
+      : OpRewritePattern<AddOp>(context) {}
+  LogicalResult matchAndRewrite(AddOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    auto lhs_shape = module::getShape(op.getInputs()[0]);
+    auto rhs_shape = module::getShape(op.getInputs()[1]);
+    if(lhs_shape.size() == rhs_shape.size())
+      return failure();
+
+    int diff_dims = lhs_shape.size() > rhs_shape.size() ? lhs_shape.size() - rhs_shape.size() : rhs_shape.size() - lhs_shape.size();
+    std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> new_shape(diff_dims,1);
+    Operation* add_need_reshape;
+    if(lhs_shape.size() > rhs_shape.size()){
+      add_need_reshape = op.getInputs()[1].getDefiningOp();
+      for(auto shape : rhs_shape)
+        new_shape.emplace_back(shape);
+    } else {
+      add_need_reshape = op.getInputs()[0].getDefiningOp();
+      for(auto shape : lhs_shape)
+        new_shape.emplace_back(shape);
+    }
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                    new_shape)));
+    auto reshape_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_reshape")),
+        RankedTensorType::get(new_shape, module::getElementType(add_need_reshape->getResult(0))),
+        add_need_reshape->getResult(0), attrs);
+    op.setOperand(lhs_shape.size() > rhs_shape.size() ? 1 : 0, reshape_op.getOutput());
+    return success();
+  }
+};
+
 void AddOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<SwapInput, AddToAddConst, AddToScale, AddMerge>(context);
+  results.insert<SwapInput, AddToAddConst, AddToScale, AddMerge, AlignInputsDim>(context);
 }
