@@ -132,6 +132,7 @@ class TORCH_IR_TESTER(object):
             "MM":               (self.test_MM,                N, Y, Y, Y),
             "MV":               (self.test_MV,                N, Y, N, N),
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
+            "MulConst":         (self.test_MulConst,          N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
             "NonZero":          (self.test_NonZero,           N, Y, Y, N),
             "New_full":         (self.test_New_full,          N, Y, Y, Y),
@@ -725,6 +726,25 @@ class TORCH_IR_TESTER(object):
             _test_max((4, 30), 1, ret_case)
             _test_max((1, 3, 64, 64), 3, ret_case)
             # _test_max((4, 384), 0, ret_case)
+
+    def test_MulConst(self):
+
+        def _test_mulconst(shape):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = x * 0.044
+                    z = y * 2
+                    return z
+
+            self.trace_and_test([shape], Model())
+
+        for ret_case in [0, 1, 2]:
+            _test_mulconst((4, 30))
 
     #######################################################################
     # Min

@@ -12,6 +12,30 @@
 
 using namespace tpu_mlir::top;
 
+// merge continuous mulconst, maybe final const_val is 1 and match RemoveMulConst below
+// TODO : merge all mulconst
+struct MergeContinuousMulConst : public OpRewritePattern<MulConstOp> {
+  using OpRewritePattern::OpRewritePattern;
+  MergeContinuousMulConst(MLIRContext *context)
+      : OpRewritePattern<MulConstOp>(context) {}
+  LogicalResult matchAndRewrite(MulConstOp op,
+                                PatternRewriter &rewriter) const override {
+    // placeholder
+    double const_val = op.getConstVal().convertToDouble();
+    if (auto mulconstOp = dyn_cast_or_null<top::MulConstOp>(op.getInput().getDefiningOp())){
+      if(!mulconstOp.getOutput().hasOneUse())
+        return failure();
+      const_val *= mulconstOp.getConstVal().convertToDouble();
+      op.setConstVal(APFloat(const_val));
+      rewriter.replaceOp(mulconstOp, {mulconstOp.getInput()});
+      return success();
+    } else {
+      return failure();
+    }
+    return success();
+  }
+};
+
 struct RemoveMulConst : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
   RemoveMulConst(MLIRContext *context)
@@ -127,5 +151,5 @@ struct MulTooLarge : public OpRewritePattern<MulConstOp> {
 
 void MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                              MLIRContext *context) {
-  results.insert<RemoveMulConst, MergeMulConst, MulTooLarge>(context);
+  results.insert<MergeContinuousMulConst, RemoveMulConst, MergeMulConst, MulTooLarge>(context);
 }
