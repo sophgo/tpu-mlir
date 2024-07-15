@@ -3280,6 +3280,78 @@ static tpu::SliceOp create_slice_op(PatternRewriter &rewriter, Operation *op,
   return new_op;
 }
 
+// Conv merge requant
+class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
+  public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto left = op.getInput();
+    auto right = op.getFilter();
+    auto bias = op.getBias();
+
+    auto stype = module::getStorageType(left);
+    if (!stype.isInteger(8)) {
+      return failure();
+    }
+
+    if (op->hasOneUse() == false) {
+      return failure();
+    }
+
+    std::vector<int64_t> rshift_v;
+    std::vector<int64_t> multiplier_v;
+    auto shape = module::getShape(op.getOutput());
+    if (auto requant_op = dyn_cast<tpu::RequantIntOp>(*(op.getOutput().getUsers().begin()))) {
+      if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
+        return failure();
+      // Conv merge requant_int
+      multiplier_v.assign(shape[1], requant_op.getMultiplier());
+      rshift_v.assign(shape[1], requant_op.getRshift());
+      op.setMultiplierAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
+      op.setRshiftAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v}));
+      op.setQuantModeAttr(requant_op.getQuantModeAttr());
+      op.setRoundModeAttr(requant_op.getRoundModeAttr());
+      rewriter.setInsertionPointAfter(op);
+      auto s_op = rewriter.create<tpu::Conv2DOp>(requant_op->getLoc(), requant_op.getOutput().getType(),
+                                                 ValueRange{left, right, bias}, op->getAttrs());
+      requant_op.replaceAllUsesWith(s_op.getOutput());
+      return success();
+    }
+
+    if (auto requant_op = dyn_cast<tpu::RequantIntAxisOp>(*(op.getOutput().getUsers().begin()))) {
+      if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
+        return failure();
+      // Conv merge requant_int_axis
+      auto requant = dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
+      auto data = requant.read<int32_t>();
+      if (module::isBM1688()) {
+        for (int i = 0; i < shape[1]; ++i) {
+          multiplier_v.push_back(data->data()[i * 2]);
+          rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
+        }
+      } else {
+        for (int i = 0; i < shape[1]; ++i) {
+          multiplier_v.push_back(data->data()[i * 3]);
+          rshift_v.push_back(-(data->data()[i * 3 + 1]));
+        }
+      }
+      op.setMultiplierAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
+      op.setRshiftAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v}));
+      op.setQuantModeAttr(requant_op.getQuantModeAttr());
+      op.setRoundModeAttr(requant_op.getRoundModeAttr());
+      rewriter.setInsertionPointAfter(op);
+      auto s_op = rewriter.create<tpu::Conv2DOp>(requant_op->getLoc(), requant_op.getOutput().getType(),
+                                                 ValueRange{left, right, bias}, op->getAttrs());
+      requant_op.replaceAllUsesWith(s_op.getOutput());
+      return success();
+    }
+
+    return failure();
+  }
+};
+
 class ConvMergePattern : public OpRewritePattern<tpu::Conv2DOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -3880,7 +3952,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 TryInsertTileBinaryPattern<tpu::AddOp>,
                 TryInsertTileBinaryPattern<tpu::MulOp>,
                 Concat5dto4d,
-                EliminateCastBeforeGatherElements
+                EliminateCastBeforeGatherElements,
+                ConvMergeRequant
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on

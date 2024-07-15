@@ -75,7 +75,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.pad_h_b = attr.phb;
   common.pad_w_l = attr.pwl;
   common.pad_w_r = attr.pwr;
-  common.round_mode = ROUNDING_HALF_UP;
+  common.round_mode = round_mode_convert(getRoundMode());
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
@@ -235,7 +235,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
   common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
   common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
-  common.round_mode = ROUNDING_HALF_UP;
+  common.round_mode = round_mode_convert(getRoundMode());
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
@@ -331,7 +331,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   common.pad_h_b = attr.phb;
   common.pad_w_l = attr.pwl;
   common.pad_w_r = attr.pwr;
-  common.round_mode = ROUNDING_HALF_UP;
+  common.round_mode = round_mode_convert(getRoundMode());
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
@@ -390,7 +390,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   common.pad_h_b = attr.phb;
   common.pad_w_l = attr.pwl;
   common.pad_w_r = attr.pwr;
-  common.round_mode = ROUNDING_HALF_UP;
+  common.round_mode = round_mode_convert(getRoundMode());
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
