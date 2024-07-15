@@ -95,7 +95,7 @@ cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
 cp -rf ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/third_party/
 
 # automic entries gen for entry.py and set for setup.py
-python ${release_archive}/entryconfig.py --execute_path bin/ python/tools/ python/samples/ python/test/ --execute_file customlayer/test/test_custom_tpulang.py
+python ${release_archive}/entryconfig.py --execute_path bin/ python/tools/ python/samples/ python/test/ python/PerfAI/ --execute_file customlayer/test/test_custom_tpulang.py
 
 # set tpu-mlir core shared object files rpath
 patchelf --set-rpath '$ORIGIN/../lib/:$ORIGIN/../lib/third_party/' ${release_archive}/bin/cvimodel_debug
