@@ -211,6 +211,15 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
     assert opt in [0, 1, 2]
     mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group)
 
+    if False:
+        bmodel_file = tpu_mlir + ".bmodel"
+        final_file = tpu_mlir + "_final.mlir"
+        input_file = model_name + '_in_f32.npz'
+        location_file = bmodel_file + ".json"
+        output_file = tpu_mlir + "_tpu_out.npz"
+        bmodel_inference_combine(bmodel_file, final_file, input_file, location_file, output_file, dump_file=True,
+                                save_path=tpu_mlir + "_model_output.npz", out_fixed=False)
+
     if inference:
         # inference
         in_f32_npz = model_name + '_in_f32.npz'

@@ -457,6 +457,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfUp">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     // fuse leakyRelu
     OptionalAttr<BoolAttr>:$do_leaky_relu,
@@ -506,6 +507,7 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfUp">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<F64Attr>:$out_f8_scale
   );
