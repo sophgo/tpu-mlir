@@ -167,6 +167,8 @@ Vid4 (可选)
    $ docker pull sophgo/tpuc_dev:v3.2
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
+``--rm`` 参数会保证容器在推出后自动回收删除，如果要让容器不在退出后删除，请删除该参数
+
 运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
 
 .. code-block:: shell
