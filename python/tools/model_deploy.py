@@ -326,8 +326,6 @@ if __name__ == '__main__':
                                  'W4F16', 'W4BF16', "F8E4M3", "F8E5M2", 'QDQ'],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
-    parser.add_argument("--not_gen_bmodel", action="store_true",
-                        help="for qat intergation")
     # ========== Quantization Options ==============
     parser.add_argument("--calibration_table",
                         help="calibration table for int8 quantization")
@@ -384,6 +382,8 @@ if __name__ == '__main__':
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'],
                         help="set address assign mode, if not set, auto as default")
+    parser.add_argument("--not_gen_bmodel", action="store_true",
+                        help="for qat intergation, only gen tpu.mlir")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
