@@ -79,6 +79,7 @@ class MAIN_ENTRY(object):
             "script": self.run_script_test,
             "model": self.run_model_test,
             "multi_core_model": self.run_multi_core_test,
+            "cuda": self.run_cuda_test,
         }
 
         self.results = []
@@ -172,7 +173,6 @@ class MAIN_ENTRY(object):
         t = Timer()
         # run scripts under $REGRESSION_OUT/script_test
         print("======= script test ======")
-        case_name = "script_test"
 
         sources = self.script_basic
         if not self.is_basic:
@@ -183,6 +183,15 @@ class MAIN_ENTRY(object):
             if not ret and self.is_basic:
                 break
         self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
+        return SUCCESS if ret else FAILURE
+
+    def run_cuda_test(self):
+        # return exit status
+        t = Timer()
+        # run scripts under $REGRESSION_OUT/script_test
+        print("======= cuda test ======")
+        ret = self._run_script_test("cuda")
+        self.time_cost.append(f"run_cuda: {int(t.elapsed_time())} seconds")
         return SUCCESS if ret else FAILURE
 
     def run_op_test(self, op_test_types):
