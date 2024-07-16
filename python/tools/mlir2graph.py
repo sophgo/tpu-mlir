@@ -34,6 +34,14 @@ GROUP_COLOR = "gray95"
 FAILED_COLOR = "red"
 
 
+def name_escape(arg):
+    """
+    pydot 1.4.2 will do escape automatically but >3.0.0 will not.
+    Force to escape to ensure compatibility.
+    """
+    return f'"{arg}"'
+
+
 def escape(name: str):
     return escape_pattern.sub("_", name).strip('"()_')
 
@@ -163,11 +171,21 @@ def is_opname(op, *names: str):
     return any(get_opname(op) == name for name in names)
 
 
+class EscapeNode(pydot.Node):
+    def __init__(self, name="", obj_dict=None, **attrs):
+        super().__init__(name_escape(name), obj_dict, **attrs)
+
+
+class EscapeEdge(pydot.Edge):
+    def __init__(self, src="", dst="", obj_dict=None, **attrs):
+        super().__init__(name_escape(src), name_escape(dst), obj_dict, **attrs)
+
+
 def create_node(op, op_loc, node_attrs: dict):
     failed = node_attrs.get("failed", False)
 
     logger.debug("node: ", op_loc)
-    node = pydot.Node(
+    node = EscapeNode(
         op_loc,
         id=op_loc,
         **node_attrs,
@@ -186,7 +204,7 @@ def create_edge(pre_op_loc, op_loc, label, ltail=None, href=None):
 
     logger.debug("edge: ", pre_op_loc, op_loc)
     edge_attr = {k: v for k, v in edge_attr.items() if v is not None}
-    edge = pydot.Edge(pre_op_loc, op_loc, xlabel=label, **edge_attr)
+    edge = EscapeEdge(pre_op_loc, op_loc, xlabel=label, **edge_attr)
     return edge
 
 
@@ -255,7 +273,7 @@ if __name__ == "__main__":
     def draw_group_op(group):
         op_loc = get_op_loc(group)
         group_graph = pydot.Subgraph(
-            "cluster_" + op_loc,
+            name_escape("cluster_" + op_loc),
             id="cluster_" + op_loc,
             label=make_group_label(group),
             shape="plain",
@@ -321,7 +339,7 @@ if __name__ == "__main__":
         if in_main_func:
             for arg in func.arguments:
                 arg_name = f"main_{escape(arg.get_name())}"
-                node = pydot.Node(
+                node = EscapeNode(
                     arg_name,
                     id=arg_name,
                     shape="plain",
@@ -346,7 +364,7 @@ if __name__ == "__main__":
                             index = int(opd_ref[1])
                         func_inputs_names[subfunc_name].append([opd_name, index])
 
-            elif is_opname(op, "tpu.Group", "tpu.CoreParallel","tpu.Parallel"):
+            elif is_opname(op, "tpu.Group", "tpu.CoreParallel", "tpu.Parallel"):
                 group_graph = draw_group_op(op)
                 func_graph.add_subgraph(group_graph)
             else:

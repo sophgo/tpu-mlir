@@ -711,6 +711,45 @@ visual.py
 
 注意：需要在model_deploy.py阶段打开 ``--debug`` 选项保留中间文件供visual.py使用，工具的详细使用说明见(:ref:`visual-usage`)。
 
+mlir2graph.py
+~~~~~~~~~~~~~~~~
+
+基于 dot 对 mlir 文件可视化，支持所有阶段的 mlir 文件。执行后会在 mlir 对应目录生成对应的 .dot 文件和 .svg 文件。其中 .dot 文件可以基于 dot 渲染成其他格式的命令。.svg 是默认输出的渲染格式。可以直接在浏览器打开。
+
+执行命令可参考如下：
+
+.. code-block:: shell
+
+   $ mlir2graph.py \
+     --mlir netname.mlir
+
+对较大的 mlir 文件，dot 文件使用原始的渲染算法可能会消耗较长的时间，可以添加 --is_big 参数，会减少算法的迭代时间，出图更快：
+
+.. code-block:: shell
+
+   $ mlir2graph.py \
+     --mlir netname.mlir --is_big
+
+支持的功能如下:
+
+.. list-table:: mlir2graph 功能
+   :widths: 18 60
+   :header-rows: 1
+
+   * - 功能
+     - 描述
+   * - mlir
+     - 任意 mlir 文件
+   * - is_big
+     - 是否是比较大的 mlir 文件，没有明确指标，一般靠人为根据渲染用时判断
+   * - failed_keys
+     - 对比失败的节点名列表，多个用 "," 隔开，在渲染后对应节点会渲染为红色
+   * - bmodel_checker_data
+     - 使用 bmodel_checker.py 生成的 failed.npz 文件路径，当指定该路径时，会自动解析错误节点，并将对应节点渲染为红色
+   * - output
+     - 输出文件的路径，默认为 --mlir 的路径加格式后缀，如 netname.mlir.dot/netname.mlir.svg
+
+
 gen_rand_input.py
 ~~~~~~~~~~~~~~~~~~~~
 
