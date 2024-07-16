@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# ==============================================================================
+#
+# Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+#
+# TPU-MLIR is licensed under the 2-Clause BSD License except for the
+# third-party components.
+#
+# ==============================================================================
 # @Time    : 2023/8/7 11:26
 # @Author  : chongqing.zeng@sophgo.com
 # @Project: PerfAI
@@ -34,7 +42,7 @@ def get_engine_layer(g_info):
     tiu_layer_map = dict()
     gdma_layer_map = dict()
     if isinstance(g_info, GlobalInfo):
-        for layer_info in g_info.subnet_list[0].layer_list:         
+        for layer_info in g_info.subnet_list[0].layer_list:
             for tiu_node in layer_info.bd_nodes:
                 k = tiu_node.bd_id
                 c = tiu_node.core_id
