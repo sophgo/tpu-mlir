@@ -53,6 +53,11 @@ static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
     if (isa<Conv3DOp, Pool3DOp>(op)) {
       return true;
     }
+    if (auto layernorm_op = dyn_cast<LayerNormOp>(op)) {
+      if (module::getShape(layernorm_op.getInput()).size() == 5) {
+        return true;
+      }
+    }
   }
   return false;
 }
