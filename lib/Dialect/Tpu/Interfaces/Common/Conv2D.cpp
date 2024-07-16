@@ -20,7 +20,12 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
   p.id = p.od = p.kd = p.sd = p.dd = 1;
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
+  auto f_s = getFilter().getType().cast<RankedTensorType>().getShape();
   auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
+  p.fn = f_s[0];
+  p.fc = f_s[1];
+  p.fh = f_s.size() > 2 ? f_s[2] : 1;
+  p.fw = f_s.size() > 3 ? f_s[3] : 1;
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = getWithBias();
@@ -481,6 +486,7 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   } else if (module::isBM1684Family()) {
     auto attr = parseParam();
+    if (attr.fn == attr.ic && attr.fc == attr.n) return failure();
     if (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15 ||
         attr.ic >= (1 << 12) || attr.oc >= (1 << 12)) {
       return failure();
