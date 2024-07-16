@@ -22,6 +22,7 @@ typedef struct {
   int64_t od;
   int64_t oh;
   int64_t ow;
+  int64_t fn, fc, fh, fw;
   int64_t kd, dd, sd, ins_d;
   int64_t kh, dh, sh, ins_h;
   int64_t kw, dw, sw, ins_w;
