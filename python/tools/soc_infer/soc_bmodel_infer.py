@@ -21,6 +21,9 @@ from debugger.atomic_dialect import BModel2MLIR
 from debugger.disassembler import BModel
 from debugger.lowering import lowering
 from debugger.final_mlir import Pickled_Value
+from npz_file import IncNpzFile
+from tqdm import tqdm
+from collections import Counter
 
 
 class soc_launch_struct:
@@ -223,11 +226,16 @@ if __name__ == "__main__":
         set_inputs_dict(atomic_mlir, inputs, soc_runner.memory)
 
     ref_data = np.load(reference_data_fn)
-    infer_data = {}
+    dump_path = args.tool_path
+    file_name = os.path.basename(reference_data_fn).split(".")[0]
+    save_path = os.path.join(dump_path, f"soc_infer_{file_name}.npz")
+    infer_data = IncNpzFile(save_path)
 
     # compute
     cmd_points = sorted(values_in_pkl.keys())
-    for idx, struct in enumerate(cmds_pkl):
+    tqdm_iter = tqdm(cmds_pkl)
+    history = Counter
+    for idx, struct in enumerate(tqdm_iter):
         in_values = values_in_pkl[cmd_points[idx]]
         for value in in_values:
             infer_combine(value, soc_runner, ref_data, infer_data, args.out_fixed)
@@ -235,13 +243,11 @@ if __name__ == "__main__":
         soc_runner.checker_fast_compute(
             struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf
         )
+        history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
+        tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
 
         out_value = values_out_pkl[idx]
         infer_combine(out_value, soc_runner, ref_data, infer_data, args.out_fixed)
 
-    dump_path = args.tool_path
     os.makedirs(dump_path, exist_ok=True)
-    file_name = os.path.basename(reference_data_fn).split(".")[0]
-    save_path = os.path.join(dump_path, f"soc_infer_{file_name}.npz")
-    np.savez(save_path, **infer_data)
     print(f"Inference combine file: {save_path} generated!")
