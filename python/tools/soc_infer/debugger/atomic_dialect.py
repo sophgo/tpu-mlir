@@ -26,6 +26,7 @@ from .target_common import (
     BaseCmd,
     use_backend,
 )
+
 # from .target_1684.context import BM1684Context
 # from .target_1688.context import BM1688Context
 # from .target_1690.context import BM1690Context
@@ -220,21 +221,26 @@ class Block(Node):
                     for x in subnet.cmd_group
                 ]
 
-                # if isinstance(context, BM1684Context):
-                #     # tricky make cmd_id of cmd groups after first but in the same subnet add offset from previou cmd_id
-                #     tiu_offset = self.cmds[0].tiu[-1].cmd_id
-                #     dma_offset = self.cmds[0].dma[-1].cmd_id
-                #     for cmd_group in self.cmds[1:]:
-                #         for cmd in cmd_group.tiu:
-                #             cmd.cmd_id += tiu_offset
-                #             cmd.cmd_id_dep += dma_offset
+                from .target_1684x.context import BM1684XContext
 
-                #         for cmd in cmd_group.dma:
-                #             cmd.cmd_id += dma_offset
-                #             cmd.cmd_id_dep += tiu_offset
+                if isinstance(context, BM1684XContext):
+                    # tricky make cmd_id of cmd groups after first but in the same subnet add offset from previou cmd_id
+                    if len(self.cmds[0].tiu) > 0:
+                        tiu_offset = self.cmds[0].tiu[-1].cmd_id
+                    if len(self.cmds[0].dma) > 0:
+                        dma_offset = self.cmds[0].dma[-1].cmd_id
 
-                #         tiu_offset = cmd.cmd_id
-                #         dma_offset = cmd.cmd_id
+                    for cmd_group in self.cmds[1:]:
+                        for cmd in cmd_group.tiu:
+                            cmd.cmd_id += tiu_offset
+                            cmd.cmd_id_dep += dma_offset
+
+                        for cmd in cmd_group.dma:
+                            cmd.cmd_id += dma_offset
+                            cmd.cmd_id_dep += tiu_offset
+
+                        tiu_offset = cmd.cmd_id
+                        dma_offset = cmd.cmd_id
             else:
                 self.cmds = [
                     decode_cmdgroup(context, cmd, self.subnet_id, core_id)
