@@ -32,7 +32,7 @@ static void QuantizeMultiplier(float value, int length, int bits, int *multiplie
 }
 
 static void op_lowering_common(PatternRewriter &rewriter,
-                                      top::MeanStdScaleOp op) {
+                                      top::MeanStdScaleOp op, Type type) {
   auto processOp = op.getOperation();
   assert(processOp);
 
@@ -44,7 +44,8 @@ static void op_lowering_common(PatternRewriter &rewriter,
   std::vector<Attribute> vector_offset;
 
   auto idtype = module::getStorageType(processOp->getOperands()[0].getType());
-  auto odtype = module::getStorageType(processOp->getResult(0).getType());
+  auto odtype = module::getStorageType(type);
+  assert(odtype.isSignedInteger(8) || odtype.isF16());
   auto scale_attr = op.getScale();
   auto std_attr = op.getStd();
   auto mean_attr = op.getMean();
@@ -87,34 +88,42 @@ static void op_lowering_common(PatternRewriter &rewriter,
   processOp->setAttr("rshift", ArrayAttr::get(context, vector_rshift));
   processOp->setAttr("offset", ArrayAttr::get(context, vector_offset));
 
-  lowering_common<tpu::MeanStdScaleOp>(rewriter, processOp, processOp->getResult(0).getType(), 1);
+  if ((idtype.isF32() || idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) && odtype.isF16()) {
+    processOp->setAttr("rounding_mode", StringAttr::get(op.getContext(), "HalfToEven"));
+  }
+  lowering_common<tpu::MeanStdScaleOp>(rewriter, processOp, type, 1);
 }
 
 void MeanStdScaleLowering::LoweringINT8(PatternRewriter &rewriter,
                                           top::MeanStdScaleOp op,
                                           bool asymmetric) const {
-  lowering_common_int8<tpu::MeanStdScaleOp>(rewriter, op, asymmetric, 1);
+  // lowering_common_int8<tpu::MeanStdScaleOp>(rewriter, op, asymmetric, 1);
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MeanStdScaleLowering::LoweringINT4(PatternRewriter &rewriter,
                                         top::MeanStdScaleOp op,
                                         bool asymmetric) const {
-  lowering_common_int8<tpu::MeanStdScaleOp>(rewriter, op, asymmetric, 1);
+  // lowering_common_int8<tpu::MeanStdScaleOp>(rewriter, op, asymmetric, 1);
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MeanStdScaleLowering::LoweringBF16(PatternRewriter &rewriter,
                                       top::MeanStdScaleOp op) const {
-  lowering_common_bf16<tpu::MeanStdScaleOp>(rewriter, op, 1);
+  // lowering_common_bf16<tpu::MeanStdScaleOp>(rewriter, op, 1);
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MeanStdScaleLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::MeanStdScaleOp op) const {
-  lowering_common_f32<tpu::MeanStdScaleOp>(rewriter, op, 1);
+  // lowering_common_f32<tpu::MeanStdScaleOp>(rewriter, op, 1);
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 void MeanStdScaleLowering::LoweringF16(PatternRewriter &rewriter,
                                      top::MeanStdScaleOp op) const {
-  op_lowering_common(rewriter, op);
+  auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
+  op_lowering_common(rewriter, op, new_type);
 }
 
 void MeanStdScaleLowering::LoweringF8(PatternRewriter &rewriter,
@@ -124,7 +133,8 @@ void MeanStdScaleLowering::LoweringF8(PatternRewriter &rewriter,
 
 void MeanStdScaleLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::MeanStdScaleOp op) const {
-  op_lowering_common(rewriter, op);
+  auto new_type = op.getOutput().getType();
+  op_lowering_common(rewriter, op, new_type);
 }
 
 }

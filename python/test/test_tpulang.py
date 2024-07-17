@@ -256,13 +256,13 @@ class TPULANG_IR_TESTER(object):
         else:
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
-    def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False):
+    def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False, top_mlir_inference=True, tpu_mlir_inference=True):
         for input in inputs:
             assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
         if is_quantized == False:
             for mode in self.quant_modes:
-                tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode, no_save=self.no_save)
+                tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode, no_save=self.no_save, top_mlir_inference=top_mlir_inference, tpu_mlir_inference=tpu_mlir_inference)
         else:
             tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
 
@@ -3779,6 +3779,7 @@ class TPULANG_IR_TESTER(object):
             mean = [128.0, 128.0, 128.0]
             std = [1/0.017, 1/0.017, 1/0.017]
             scale= [1.0, 1 / 2**6]
+            is_quantized = True
 
             if idtype == "uint8":
                 # customer_layer_path = os.getenv("CUSTOM_LAYER_PATH")
@@ -3795,8 +3796,13 @@ class TPULANG_IR_TESTER(object):
                 # np.savez("random_input.npz", data_in)
                 input = tpul.Tensor(name="in", dtype=idtype, shape=shape, data=data_in)
 
+            if odtype == "float16":
+                is_quantized = False
+                self.quant_modes = ["f16"]
+                odtype = "float32"
+
             output = tpul.mean_std_scale(input, std, mean, scale, zero_points=[0,0], odtype=odtype, round_mode="half_up")
-            self.compile_and_check(self.unique_name(case_name), [input], [output], is_quantized=True)
+            self.compile_and_check(self.unique_name(case_name), [input], [output], is_quantized=is_quantized, top_mlir_inference=False)
 
         # output i8
         def _test_int8_to_int8_():

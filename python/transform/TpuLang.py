@@ -118,7 +118,9 @@ def compile_f32(name: str,
             opt=2,
             no_save=False,
             mlir_inference=True,
-            bmodel_inference=True):
+            bmodel_inference=True,
+            top_mlir_inference=True,
+            tpu_mlir_inference=True):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -131,11 +133,14 @@ def compile_f32(name: str,
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter)
         compare = cmp and refs != None
-        if mlir_inference:
+        top_mlir_inference = top_mlir_inference and mlir_inference
+        tpu_mlir_inference = tpu_mlir_inference and mlir_inference
+        if top_mlir_inference:
             model_top_inference(model_name=name, cmp=compare)
         for m in mode_list:
+            tpu_mlir_compare = cmp and top_mlir_inference
             model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
-                                        inference=mlir_inference, cmp=cmp)
+                                        inference=tpu_mlir_inference, cmp=tpu_mlir_compare)
             bmodel_generate_and_inference(model_name=name, quant_mode=m, inference=bmodel_inference,\
                                         dynamic=dynamic, opt=opt)
     else:
