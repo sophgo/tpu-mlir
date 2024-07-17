@@ -12,6 +12,24 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void ReduceTryLowering::Lowering(PatternRewriter &rewriter,
+                                top::ReduceOp op) const {
+  auto prev_op = op.getInput().getDefiningOp();
+  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+    return;
+  }
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs())  {
+    attrs.push_back(attr);
+  }
+  auto v = op.getResult();
+  auto shape = module::getShape(v);
+  auto ctx = v.getContext();
+  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeReduceOp>(op, new_type, op.getOperand(), attrs);
+}
+
 void ReduceLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::ReduceOp op) const {
   lowering_common_f32<tpu::ReduceOp>(rewriter, op, 3);
