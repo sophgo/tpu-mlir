@@ -1878,6 +1878,14 @@ typedef struct shape_cast_param {
 } shape_cast_param_t;
 
 typedef struct {
+  int axis_list[MAX_SHAPE_DIMS];
+  int axis_num;
+  int keep_dims;
+  int reduce_method;
+  float scale;
+} shape_reduce_param_t;
+
+typedef struct {
   int modulated;
   int deform_groups;
   int kh;

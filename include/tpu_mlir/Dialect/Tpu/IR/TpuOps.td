@@ -2625,6 +2625,28 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
   }];
 }
 
+def Tpu_ShapeReduceOp: Tpu_Op<"ShapeReduce", [
+    ShapeProducer, ShapeConsumer,DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "ShapeReduce operator";
+
+  let description = [{
+    ShapeReduce Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$axes,
+    BoolAttr:$keepdims,
+    ReduceModeAttr:$mode,
+    DefaultValuedAttr<F64Attr, "1.0">:$scale
+  );
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    reduce_attr_t parseParam();
+    void assign_fw_param(void *param);
+  }];
+}
+
 def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "Arg operator";
   let description = [{

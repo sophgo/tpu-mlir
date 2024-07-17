@@ -208,8 +208,13 @@ LogicalResult ConcatToSwapDimInner::matchAndRewrite(top::ConcatOp concat_op,
   // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
   rewriter.replaceOpWithNewOp<top::SwapDimInnerOp>(
       concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
-  rewriter.eraseOp(in0_op);
-  rewriter.eraseOp(in1_op);
+//         / slice \
+// (544,960)         concat(960,544) ... concat(960,544,960,544)
+//         \ slice /
+  if(in0_op->getUses().empty())
+    rewriter.eraseOp(in0_op);
+  if(in1_op->getUses().empty())
+    rewriter.eraseOp(in1_op);
   return success();
 }
 
