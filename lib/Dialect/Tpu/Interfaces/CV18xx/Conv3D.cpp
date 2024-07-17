@@ -17,6 +17,9 @@ void tpu::Conv3DOp::codegen_global_cv18xx(int64_t layer_id) {
     llvm_unreachable("Not supported now");
   }
   auto attr = parseParam();
+  if (attr.groups != 1) {
+    llvm_unreachable("Not supported now");
+  }
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   gaddr_t ga_filter = module::getAddress(getFilter());

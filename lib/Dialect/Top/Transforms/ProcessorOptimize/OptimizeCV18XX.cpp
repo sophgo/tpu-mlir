@@ -1858,6 +1858,40 @@ public:
   }
 };
 
+class convertScale5dOp : public OpRewritePattern<top::ScaleOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto shape = module::getShape(op.getInput());
+    if (shape.size() <= 4) {
+      return failure();
+    }
+
+    int64_t in, ic, ih, iw;
+    module::getNCHW(op.getOutput(), in, ic, ih, iw);
+    auto op_name = module::getName(op.getResult()).str();
+    auto type = module::getElementType(op.getOutput());
+    auto newType = RankedTensorType::get({in, ic, ih, iw}, type);
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape"));
+    rewriter.setInsertionPoint(op);
+    auto reshapeOp =
+        rewriter.create<top::ReshapeOp>(name_loc, newType, op->getOperand(0));
+    name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_scale4d"));
+    std::vector<Value> operands;
+    operands.emplace_back(reshapeOp.getOutput());
+    for (int i = 1; i < op.getNumOperands(); i++) {
+      operands.emplace_back(op.getOperand(i));
+    }
+    auto new_scaleOp = rewriter.create<top::ScaleOp>(name_loc, newType,
+                                                     operands, op->getAttrs());
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(
+        op, op.getOutput().getType().cast<RankedTensorType>(),
+        ValueRange{new_scaleOp.getOutput()});
+    return success();
+  }
+};
+
 } // namespace cv18xx
 
 namespace top {
@@ -1865,17 +1899,18 @@ using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(),
                                  /*PatternBenefit*/ 9);
-  patterns->add<
-      ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading, ConvertConvDilation,
-      ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp, ConvertGatherOp,
-      ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp, ConvertMaxUnpoolOp,
-      ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
-      ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
-      convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
-      ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
-      patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
-      patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>, ConvertClipOp,
-      RemoveUnuseOutput>(patterns->getContext(), 8);
+  patterns
+      ->add<ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading,
+            ConvertConvDilation, ConvertConv2dToMatMul, ConvertAddConstOp,
+            ConvertDivOp, ConvertGatherOp, convertScale5dOp,
+            ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp, ConvertMaxUnpoolOp,
+            ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
+            ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
+            convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
+            ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
+            patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
+            patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
+            ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
