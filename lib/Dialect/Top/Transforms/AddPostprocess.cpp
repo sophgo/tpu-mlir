@@ -32,7 +32,7 @@ static const std::vector<int64_t> YOLOV4_ANCHORS = {
     142, 110, 192, 243, 459, 401  // 32
 };
 
-static const std::vector<int64_t> YOLOV5_ANCHORS = {
+static const std::vector<int64_t> YOLOV5_ANCHORS_DEFAULT = {
     10,  13, 16,  30,  33,  23,  // 8
     30,  61, 62,  45,  59,  119, // 16
     116, 90, 156, 198, 373, 326  // 32
@@ -95,6 +95,25 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     anchors = {0};
     return;
   }
+  // TODO: refine this mess
+  if (post_type == "yolov5" && module::getShape(opds[0]).size() == 4) {
+    for (auto opd : opds) {
+      auto s = module::getShape(opd);
+      if (s.size() != 4 || width % s[3] != 0) {
+        terminator->dump();
+        llvm_unreachable("outputs are not correct");
+      }
+      widths.push_back(s[3]);
+    }
+    std::vector<std::pair<int, int64_t>> result;
+    topk_indices(result, widths.data(), widths.size(), widths.size(), true);
+    anchors = YOLOV5_ANCHORS_DEFAULT;
+    for (int i = 0; i < num_opds; i++) {
+      auto idx = result[i].first;
+      operands.push_back(opds[idx]);    
+    }
+    return;
+  }
   // yolov8
   if (post_type == "yolov8" && num_opds == 1){
     operands.push_back(opds[0]);
@@ -118,11 +137,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     operands.push_back(opds[idx]);
     scales.push_back(width / w);
   }
-  // TODO: refine this mess
-  if (post_type == "yolov5" && module::getShape(opds[0]).size() == 4) {
-    anchors = YOLOV5_ANCHORS;
-    return;
-  }
+
   if (num_opds == 3) {
     anchors = post_type == "yolov4" ? YOLOV4_ANCHORS : YOLOV3_ANCHORS;
     return;
