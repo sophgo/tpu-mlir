@@ -15,7 +15,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690 2024-6-26
 ``` bash
 
-#bm1684x sha256: 8a9624e43098e2ed72c51eb353addda72af231ec
+#bm1684x sha256: 1037b29c50bdc362a9848b8eaf58741145a04a42
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 **debug: rebuild_backend_lib_cmodel**
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 8a9624e43098e2ed72c51eb353addda72af231ec
+#bm1688 sha256: 1037b29c50bdc362a9848b8eaf58741145a04a42
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
@@ -37,9 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 8a9624e43098e2ed72c51eb353addda72af231ec
-# bm1690 backend has problem, tmp revert:
-# revert: 4c302a3b5b533b859c4a3f635824ebfd523ac863, 1a432de967b2b52db341924d895525a93d83c35d
+#bm1690 sha256: 1037b29c50bdc362a9848b8eaf58741145a04a42
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**
@@ -50,7 +48,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#sg2380 sha256: 26946e72212d5984deede74e7e6a60669400d4d4
+#sg2380 sha256: 1037b29c50bdc362a9848b8eaf58741145a04a42
 cd TPU1686
 source  scripts/envsetup.sh sg2380
 **debug: rebuild_backend_lib_cmodel**

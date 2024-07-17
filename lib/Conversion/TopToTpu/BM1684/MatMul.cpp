@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  lowering_common_f32<tpu::MatMulOp>(rewriter, op, 4);
+  lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
@@ -82,9 +82,11 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     auto newType = getQuantInt8Type(op.getOutput());
     auto noneOp_multi = module::getNoneOp(op);
     operands.push_back(noneOp_multi);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   } else {
-    lowering_common_f32<tpu::MatMulOp>(rewriter, op, 4);
+    lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
   }
 }
 

@@ -3964,7 +3964,7 @@ public:
 
     std::vector<mlir::Value> operands(op.getOperands().begin(),
                                       op.getOperands().end());
-    operands.back() = weight_op;
+    operands[operands.size() - 2] = weight_op;
 
     auto newMatmulOp = rewriter.create<tpu::MatMulOp>(
         requantIntAxisOp->getLoc(), requantIntAxisOp.getOutput().getType(),

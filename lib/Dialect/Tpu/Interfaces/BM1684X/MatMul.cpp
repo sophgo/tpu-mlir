@@ -75,6 +75,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.if_relu = p.do_relu;
+  spec.if_getting_buffer_size = false;
+  spec.buffer_size_ptr = NULL;
   spec.relu_limit = p.relu_limit;
   spec.have_bias = p.with_bias;
   spec.requant_mode = -1;
@@ -101,6 +103,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 
   // CoreParallel setMultiCore(true)
   if (module::getCoreNum() > 1 && supports_multi_core() && this->getMultiCore()) {
+    if (!module::isNone(getBuffer())) {
+      spec.need_buffer = true;
+    }
     return BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
                                     sizeof(spec), input_spec->data(),
                                     output_spec->data());

@@ -467,6 +467,67 @@ public:
   }
 };
 
+class MatMulGlobalBuffer : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern<tpu::MatMulOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::MatMulOp matmulOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1690Family())
+      return failure();
+
+    if (!module::isNone(matmulOp.getBuffer()))
+      return failure();
+
+    if(module::getCoreNum() == 1 || !matmulOp.supports_multi_core() || !matmulOp.getMultiCore())
+      return failure();
+
+
+    auto p = matmulOp.parseParam();
+    fc_global_spec_t spec = {0};
+    memset(&spec, 0, sizeof(spec));
+    spec.if_getting_buffer_size = true;
+    uint64_t buffer_size = 0;
+    spec.buffer_size_ptr = &buffer_size;
+    spec.if_relu = p.do_relu;
+    spec.relu_limit = p.relu_limit;
+    spec.have_bias = p.with_bias;
+    spec.requant_mode = -1;
+    spec.R_transpose = p.right_transpose;
+    if (module::isUniformQuantized(matmulOp.getInput())) {
+      spec.rshift = 0;
+      spec.is_asymmetric = 1;
+      spec.rzp_is_const = 1;
+      spec.rzp_const_val = p.right_zp;
+      spec.izp_const_val = p.input_zp;
+      if (module::isUniformQuantized(matmulOp.getOutput())) {
+        auto rshift_v = module::getI64Array(matmulOp.getRshifts(), 1, 0);
+        auto multiplier_v = module::getI64Array(matmulOp.getMultipliers(), 1, 1);
+        assert(rshift_v->size() == 1);
+        assert(multiplier_v->size() == 1);
+        spec.requant_mode = static_cast<int>(matmulOp.getQuantMode());
+        spec.mul_val = multiplier_v->at(0);
+        spec.shift_val = -rshift_v->at(0);
+        auto output_type = module::getUniformQuantizedType(matmulOp.getOutput());
+        spec.offset_val = output_type.getZeroPoint();
+        spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+      }
+    }
+    auto input_spec = BM168x::get_input_spec(matmulOp);
+    auto output_spec = BM168x::get_output_spec(matmulOp);
+    BM168x::call_global_func("backend_api_fc_multi_core_global", &spec, sizeof(spec),
+                             input_spec->data(), output_spec->data());
+    if (buffer_size > 0) {
+      auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+      auto buffer = tpu::BufferOp::create(matmulOp, buffer_type, tpu::BufferType::L2);
+      matmulOp.setOperand(module::isNone(matmulOp.getBias()) ? 2 : 3, buffer);
+      return success();
+    }
+    return failure();
+  }
+};
+
 class GridSamplerBuffer : public OpRewritePattern<tpu::GridSamplerOp> {
 public:
   using OpRewritePattern<tpu::GridSamplerOp>::OpRewritePattern;

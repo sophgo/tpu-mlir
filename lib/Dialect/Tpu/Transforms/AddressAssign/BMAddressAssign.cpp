@@ -74,6 +74,14 @@ static int64_t getIOLimit(ModuleOp m) {
   return limit;
 }
 
+static inline bool buffer_must_in_l2(Operation *op) {
+  if (isa<tpu::BufferOp>(op) &&
+      tpu::BufferTypeAttr::get(op->getContext(), tpu::BufferType::L2) ==
+          op->getAttr("buffer_type"))
+    return true;
+  return false;
+}
+
 std::map<ValueInfo, int64_t>
 L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   if (!module::isBM1690Family())
@@ -97,13 +105,17 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
     if (isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op))
       continue;
 
+    if (buffer_must_in_l2(op)
+          && live.tensor_size > l2memSize)
+    llvm_unreachable("BufferOp with L2 and size > l2memSize");
+
     auto result = op->getResult(value.index);
     if (valueIsRetrun(result))
       continue;
 
     auto uses = result.getUses();
     int64_t hot = std::distance(uses.begin(), uses.end()) + 1;
-    if (live.tensor_size < l2memSize) // l2mem 128M
+    if (live.tensor_size <= l2memSize)
       valueIntensive[value] = valueDemand{live.tensor_size, hot};
   }
 
@@ -129,11 +141,13 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
       l2memUsed = allocator.assignGaddr(ops, liveRange, reuse_addr, start_addr);
       if (l2memUsed > l2memSize) {
         // remove the smallest one And try again
-        int64_t minTraffic = valueIntensive.begin()->second.size;
-        minTraffic *= valueIntensive.begin()->second.hot;
-        ValueInfo vMin = valueIntensive.begin()->first;
+        // Never Remove BufferOp with L2
+        int64_t minTraffic = 0;
+        ValueInfo vMin;
         for (auto &[k, v] : valueIntensive) {
-          if (minTraffic > v.size * v.hot) {
+          auto op = (Operation *)k.op;
+          if(buffer_must_in_l2(op)) continue;
+          if (minTraffic == 0 || minTraffic > v.size * v.hot) {
             vMin = k;
             minTraffic = v.size * v.hot;
           }
@@ -142,6 +156,13 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
       }
     }
   } while (l2memUsed > l2memSize);
+
+  for (auto &[value, live] : liveRange) {
+    auto op = (Operation *)value.op;
+    if (buffer_must_in_l2(op) && L2MemMap.count(value) == 0)
+    llvm_unreachable("BufferOp with MUST_L2 and not in L2MemMap");
+  }
+
   LLVM_DEBUG(llvm::dbgs() << "L2Memory usage: " << l2memUsed / 1024 << " KB\n");
   return std::move(L2MemMap);
 }

@@ -1663,6 +1663,7 @@ Operation *cloneMultiInsOp(PatternRewriter &rewriter, Operation *next_op,
     operands.push_back(next_op->getOperand(2));
     auto none = module::getNoneOp(next_op);
     operands.push_back(none);
+    operands.push_back(module::getNoneOp(next_op));
     new_op = rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, attrs);
   }
 
@@ -1694,6 +1695,7 @@ std::vector<Operation *> cloneMultiInsOps(PatternRewriter &rewriter,
     operands.push_back(next_op->getOperand(2));
     auto none = module::getNoneOp(next_op);
     operands.push_back(none);
+    operands.push_back(module::getNoneOp(next_op));
     new_op = rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, attrs);
   } else {
     llvm_unreachable("This Op should be ConcatOp or MatMulOp.\n");
@@ -1827,6 +1829,7 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     operands.push_back(new_bias);
     auto none = module::getNoneOp(next_op);
     operands.push_back(none);
+    operands.push_back(module::getNoneOp(next_op));
     auto new_mm0 = rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands,
                                                   mm0->getAttrs());
     new_op = new_mm0.getOperation();
@@ -1938,6 +1941,7 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     operands.push_back(new_bias);
     auto none = module::getNoneOp(next_op);
     operands.push_back(none);
+    operands.push_back(module::getNoneOp(next_op));
     auto new_mm0 = rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands,
                                                   mm0->getAttrs());
     new_op = new_mm0.getOperation();
