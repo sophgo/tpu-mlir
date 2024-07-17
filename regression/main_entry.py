@@ -293,7 +293,7 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op0", "op1", "script", "model", "multi_core_model"]
+    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
