@@ -312,8 +312,8 @@ public:
     // deal with pad > 16
     auto attr = op.parseParam();
     bool insert_pad = false;
-    auto kernel_size = module::getI64Array(op.getKernelShape())->size();
     std::vector<int64_t> input_shape = module::getShape(op.getInput());
+    auto kernel_size = input_shape.size() - 2;
     auto _pads = module::getI64Array(op.getPads());
     std::vector<int64_t> pad_v;
     std::vector<int64_t> new_pad_v;
@@ -378,11 +378,6 @@ public:
         new_pad_v[7] = attr.pwr;
         input_shape[3] += attr.pwr;
       }
-      if (attr.pht > 15 && attr.pwl == 0 && attr.phb == attr.pht &&
-          attr.pwl == attr.pwr) {
-        pad_v = {0, 0, 0, 0};
-        new_pad_v = {0, 0, attr.pht, 0, 0, 0, attr.phb, 0};
-      }
     } else if (kernel_size == 1) {
       if (attr.pht > 15) {
         assert(attr.pht == pad_v[0]);
@@ -391,8 +386,11 @@ public:
         input_shape[2] += attr.pht;
       }
       if (attr.phb > 15) {
-        assert(attr.phb == pad_v[1]);
-        pad_v[1] = 0;
+        // conv1d convert to conv2d in pre common pass, but input and output shape is still conv1d mannaer
+        // pads = [25, 0, 25, 0]
+        // (tensor<1x256x1592xf32>, tensor<256x256x11x1xf32>, tensor<256xf32>) -> tensor<1x256x1592xf32>
+        assert(attr.phb == pad_v[pad_v.size()/2]);
+        pad_v[pad_v.size()/2] = 0;
         new_pad_v[5] = attr.phb;
         input_shape[2] += attr.phb;
       }
@@ -418,7 +416,6 @@ public:
     auto convOp = rewriter.create<top::ConvOp>(
         op->getLoc(), op->getResultTypes(), op->getOperands(), op->getAttrs());
     rewriter.replaceOp(op, {convOp.getOutput()});
-
     return success();
   }
 };
