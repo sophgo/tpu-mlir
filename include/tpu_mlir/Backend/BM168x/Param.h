@@ -1238,7 +1238,10 @@ typedef struct fc_global_spec {
   int32_t shift_val;
   int32_t offset_val;
   int32_t round_mode;
-  bool fuse_rq;
+  int32_t fuse_rq;
+  int if_getting_buffer_size;
+  uint64_t *buffer_size_ptr;
+  int32_t need_buffer;
 } fc_global_spec_t;
 
 typedef struct a16_matmul_spec {

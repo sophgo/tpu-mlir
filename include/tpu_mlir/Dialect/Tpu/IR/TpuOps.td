@@ -365,6 +365,17 @@ def Tpu_Yuv2rgbFormula : I32EnumAttr<"Yuv2rgbFormula",
 
 def Tpu_Yuv2rgbFormulaAttr : EnumAttr<Tpu_Dialect, Tpu_Yuv2rgbFormula, "yuv2rgb_formula_mode">;
 
+def Tpu_BufferType: I32EnumAttr<"BufferType",
+    "buffer op type",[
+      I32EnumAttrCase<"GMEM",    0>,
+      I32EnumAttrCase<"L2",      1>,
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+
+def Tpu_BufferTypeAttr : EnumAttr<Tpu_Dialect, Tpu_BufferType, "buffer_type">;
+
 //===----------------------------------------------------------------------===//
 // Tpu Types.
 //===----------------------------------------------------------------------===//
@@ -416,10 +427,15 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
     A global buffer for operation, and free after op
   }];
 
+  let arguments = (ins
+    DefaultValuedAttr<Tpu_BufferTypeAttr, "tpu::BufferType::GMEM">:$buffer_type
+  );
+
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     static mlir::Value create(mlir::Operation * OwnerOp,
-                              mlir::RankedTensorType& type);
+                              mlir::RankedTensorType& type,
+                              tpu::BufferType buffer_type = tpu::BufferType::GMEM);
   }];
 }
 
@@ -1255,6 +1271,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     OptionalAttr<BoolAttr>:$multi_core,
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
     AnyTensorOrNone:$multi,
+    AnyTensorOrNone:$buffer,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
   );
 

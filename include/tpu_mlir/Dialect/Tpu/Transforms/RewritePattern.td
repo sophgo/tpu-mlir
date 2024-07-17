@@ -23,20 +23,20 @@ def SplitQuantizedMLPPattern :  Pat<(Tpu_MatMulOp
                                               BoolAttr:$output_transpose2, BoolAttr:$hdim_is_batch2, BoolAttr:$keep_dims2,
                                               BoolAttr:$do_relu2, F64Attr:$relu_limit2, I64ArrayAttr:$multipliers2, I64ArrayAttr:$rshifts2,
                                               I64Attr:$right_zp2, I64Attr:$input_zp2, Tpu_RequantModeAttr:$quant_mode2,
-                                              I64Attr:$left_reuse2, $arg3, $arg4, BoolAttr:$multi_core2,BoolAttr:$fuse_rq2,$arg5,$round_mode_0),
-                                            $arg6,
-                                            $arg7),
-                                          $arg8, $arg9, BoolAttr:$left_transpose, BoolAttr:$right_transpose,
+                                              I64Attr:$left_reuse2, $arg3, $arg4, BoolAttr:$multi_core2,BoolAttr:$fuse_rq2,$arg5, $arg6, $round_mode_0),
+                                            $arg7,
+                                            $arg8),
+                                          $arg9, $arg10, BoolAttr:$left_transpose, BoolAttr:$right_transpose,
                                           BoolAttr:$output_transpose, BoolAttr:$hdim_is_batch, BoolAttr:$keep_dims,
                                           BoolAttr:$do_relu, F64Attr:$relu_limit, I64ArrayAttr:$multipliers, I64ArrayAttr:$rshifts,
                                           I64Attr:$right_zp, I64Attr:$input_zp, Tpu_RequantModeAttr:$quant_mode,
-                                          I64Attr:$left_reuse, $arg10, $arg11, BoolAttr:$multi_core,BoolAttr:$fuse_rq,$arg12,$round_mode_1),
+                                          I64Attr:$left_reuse, $arg11, $arg12, BoolAttr:$multi_core,BoolAttr:$fuse_rq,$arg13, $arg14,$round_mode_1),
                                       (createSplitQuantizedMLP $result, $arg0),
                                       [(HasOneUse:$arg0),
                                       (IsUniformQuantizedType $arg0),
                                       (IsWeightOp $arg1)]
                                       >;
-
+ 
 def SplitMixedQuantizedMLPPattern :  Pat<(Tpu_MatMulOp:$result1
                                             (Tpu_CastOp
                                               (Tpu_LutOp
@@ -44,14 +44,14 @@ def SplitMixedQuantizedMLPPattern :  Pat<(Tpu_MatMulOp:$result1
                                                   BoolAttr:$output_transpose2, BoolAttr:$hdim_is_batch2, BoolAttr:$keep_dims2,
                                                   BoolAttr:$do_relu2, F64Attr:$relu_limit2, I64ArrayAttr:$multipliers2, I64ArrayAttr:$rshifts2,
                                                   I64Attr:$right_zp2, I64Attr:$input_zp2, Tpu_RequantModeAttr:$quant_mode2,
-                                                  I64Attr:$left_reuse2, $arg3, $arg4, BoolAttr:$multi_core,BoolAttr:$fuse_rq,$arg5,$round_mode_0),
-                                                $arg6,
-                                                $arg7), $extra_input, $ginfo, $with_scale, $round_mode),
-                                          $arg8, $arg9, BoolAttr:$left_transpose, BoolAttr:$right_transpose,
+                                                  I64Attr:$left_reuse2, $arg3, $arg4, BoolAttr:$multi_core,BoolAttr:$fuse_rq,$arg5, $arg6, $round_mode_0),
+                                                $arg7,
+                                                $arg8), $extra_input, $ginfo, $with_scale, $round_mode),
+                                          $arg9, $arg10, BoolAttr:$left_transpose, BoolAttr:$right_transpose,
                                           BoolAttr:$output_transpose, BoolAttr:$hdim_is_batch, BoolAttr:$keep_dims,
                                           BoolAttr:$do_relu, F64Attr:$relu_limit, I64ArrayAttr:$multipliers, I64ArrayAttr:$rshifts,
                                           I64Attr:$right_zp, I64Attr:$input_zp, Tpu_RequantModeAttr:$quant_mode,
-                                          I64Attr:$left_reuse, $arg10, $arg11, BoolAttr:$multi_core2,BoolAttr:$fuse_rq2, $arg12, $round_mode_1),
+                                          I64Attr:$left_reuse, $arg11, $arg12, BoolAttr:$multi_core2,BoolAttr:$fuse_rq2, $arg13, $arg14, $round_mode_1),
                                       (createSplitQuantizedMLP $result, $arg0),
                                       [(HasOneUse:$arg0),
                                       (IsUniformQuantizedType $arg0),

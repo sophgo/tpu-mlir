@@ -225,6 +225,7 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
             return rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
         } else {
             operands.push_back(module::getNoneOp(op));
+            operands.push_back(module::getNoneOp(op));
             return rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
         }
     };

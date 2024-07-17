@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  lowering_common_f32<tpu::MatMulOp>(rewriter, op, 4);
+  lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
@@ -175,6 +175,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   auto noneOp_multi = module::getNoneOp(op);
   operands.push_back(noneOp_multi);
+  // buffer
+  operands.push_back(module::getNoneOp(op));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   //trick for Img2Col
@@ -380,6 +382,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     auto name_loc = NameLoc::get(rewriter.getStringAttr(matmul_int32_name));
     auto noneOp_multi = module::getNoneOp(op);
     operands.push_back(noneOp_multi);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     auto matmul_int32_out =
         rewriter.create<tpu::MatMulOp>(name_loc, convType, operands, attrs);
 
@@ -461,6 +465,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     }
     auto noneOp_multi = module::getNoneOp(op);
     operands.push_back(noneOp_multi);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     auto newOp =
         rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
     rewriter.replaceOp(op, {newOp.getOutput()});
@@ -500,7 +506,8 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   auto noneOp_multi = module::getNoneOp(op);
   operands.push_back(noneOp_multi);
-
+  // buffer
+  operands.push_back(module::getNoneOp(op));
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
   if (!module::isNone(operands[2]) && newOp.supports_multi_core() && bias_use_fp32) {
@@ -545,6 +552,8 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   }
   auto noneOp_multi = module::getNoneOp(op);
   operands.push_back(noneOp_multi);
+  // buffer
+  operands.push_back(module::getNoneOp(op));
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
   if (!module::isNone(operands[2]) && newOp.supports_multi_core() && bias_use_fp32) {
@@ -582,6 +591,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     }
     auto noneOp_multi = module::getNoneOp(op);
     operands.push_back(noneOp_multi);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     auto newType = getQuantF8E5M2Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
     return;
@@ -656,6 +667,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   }
   auto noneOp_multi = module::getNoneOp(op);
   operands.push_back(noneOp_multi);
+  // buffer
+  operands.push_back(module::getNoneOp(op));
   auto newType = getQuantF8E4M3Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
@@ -749,6 +762,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     operands.push_back(none);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
     matValue = newOp.getOutput();
@@ -770,6 +785,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     operands.push_back(none);
+    // buffer
+    operands.push_back(module::getNoneOp(op));
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
     matValue = newOp.getOutput();
