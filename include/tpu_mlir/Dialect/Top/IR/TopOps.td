@@ -281,7 +281,7 @@ def Top_DtypeCastOp:Top_Op<"DtypeCast"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
+def Top_ConcatOp: Top_Op<"Concat"> {
   let summary = "Concat operator";
 
   let description = [{
