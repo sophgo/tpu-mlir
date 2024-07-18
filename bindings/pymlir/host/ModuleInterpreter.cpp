@@ -444,6 +444,8 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
         for (auto result : op->getResults()) {
           if (result.getType().isa<NoneType>()) {
             param->outputs.push_back(nullptr);
+          } else if (0 == module::getNumElements(result)) {
+            param->outputs.push_back(nullptr);
           } else {
             auto o_name = module::getName(result).str();
             param->outputs.push_back(mem_map[o_name]->data());
@@ -468,8 +470,12 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
           }
 
           if (mem_map.find(input_name) == mem_map.end()) {
-            input.dump();
-            llvm_unreachable("input operands not allocated");
+            if (module::getNumElements(input) == 0) {
+              param->inputs.push_back(nullptr);
+            } else {
+              input.dump();
+              llvm_unreachable("input operands not allocated");
+            }
           } else {
             param->inputs.push_back(mem_map[input_name]->data());
           }

@@ -7,23 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-// merge continuous mulconst, maybe final const_val is 1 and match RemoveMulConst below
+// merge continuous mulconst, maybe final const_val is 1 and match
+// RemoveMulConst below
 // TODO : merge all mulconst
 struct MergeContinuousMulConst : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
-  MergeContinuousMulConst(MLIRContext *context)
-      : OpRewritePattern<MulConstOp>(context) {}
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
     // placeholder
     double const_val = op.getConstVal().convertToDouble();
-    if (auto mulconstOp = dyn_cast_or_null<top::MulConstOp>(op.getInput().getDefiningOp())){
-      if(!mulconstOp.getOutput().hasOneUse())
+    if (auto mulconstOp =
+            dyn_cast_or_null<top::MulConstOp>(op.getInput().getDefiningOp())) {
+      if (!mulconstOp.getOutput().hasOneUse())
         return failure();
       const_val *= mulconstOp.getConstVal().convertToDouble();
       op.setConstVal(APFloat(const_val));
@@ -38,8 +37,6 @@ struct MergeContinuousMulConst : public OpRewritePattern<MulConstOp> {
 
 struct RemoveMulConst : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
-  RemoveMulConst(MLIRContext *context)
-      : OpRewritePattern<MulConstOp>(context) {}
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
     // placeholder
@@ -52,10 +49,35 @@ struct RemoveMulConst : public OpRewritePattern<MulConstOp> {
   }
 };
 
+// MulConst(ConstantFill(X)) = ConstantFill(X)
+
+struct MulConstantFill : public OpRewritePattern<MulConstOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulConstOp op,
+                                PatternRewriter &rewriter) const override {
+    double const_val = op.getConstVal().convertToDouble();
+    auto input = op.getInput();
+    auto constant_op = dyn_cast<top::ConstantFillOp>(input.getDefiningOp());
+    if (!constant_op) {
+      return failure();
+    }
+    if (!constant_op->hasOneUse()) {
+      return failure();
+    }
+    double val = constant_op.getValue().convertToDouble();
+    val *= const_val;
+    constant_op.setValue(APFloat(val));
+    constant_op->setLoc(op.getLoc());
+    rewriter.replaceOp(op, {input});
+    return success();
+  }
+};
+
 // merge into conv or matmul
 struct MergeMulConst : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
-  MergeMulConst(MLIRContext *context) : OpRewritePattern<MulConstOp>(context) {}
+
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
     double const_val = op.getConstVal().convertToDouble();
@@ -116,8 +138,9 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
         w *= const_val;
       }
       auto weight_type = value.getType().cast<RankedTensorType>();
-      auto new_weight = WeightOp::create_float(
-          formerOp, "_mergeMulConst", *weight_f32, weight_type.getShape(), storage_type);
+      auto new_weight =
+          WeightOp::create_float(formerOp, "_mergeMulConst", *weight_f32,
+                                 weight_type.getShape(), storage_type);
       formerOp->setOperand(i, new_weight);
     }
     formerOp->setLoc(op.getLoc());
@@ -132,7 +155,6 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
 // mul to large, to 10k
 struct MulTooLarge : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
-  MulTooLarge(MLIRContext *context) : OpRewritePattern<MulConstOp>(context) {}
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
     // placeholder
@@ -151,5 +173,6 @@ struct MulTooLarge : public OpRewritePattern<MulConstOp> {
 
 void MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                              MLIRContext *context) {
-  results.insert<MergeContinuousMulConst, RemoveMulConst, MergeMulConst, MulTooLarge>(context);
+  results.insert<MergeContinuousMulConst, RemoveMulConst, MergeMulConst,
+                 MulTooLarge, MulConstantFill>(context);
 }

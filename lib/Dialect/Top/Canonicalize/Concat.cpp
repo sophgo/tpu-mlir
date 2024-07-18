@@ -181,8 +181,8 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
         }
       }
       auto filter_shape = module::getShape(filter_op.getOutput());
-      auto new_filter_op = WeightOp::create_float(use_op, "filter_S2D", *filter_new,
-                                            filter_shape, storage_type);
+      auto new_filter_op = WeightOp::create_float(
+          use_op, "filter_S2D", *filter_new, filter_shape, storage_type);
       use_op->setOperand(1, new_filter_op);
       // change name of new op to avoid wrong comparison
       concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
@@ -309,10 +309,13 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
         if (ends->at(i) < 0) {
           ends->at(i) += in_shape[i];
         }
-        offset->at(i) = steps->at(i) > 0 ? std::clamp(offset->at(i), 0L, in_shape[i])
+        offset->at(i) = steps->at(i) > 0
+                            ? std::clamp(offset->at(i), 0L, in_shape[i])
                             : std::clamp(offset->at(i), 0L, in_shape[i] - 1);
-        ends->at(axis) = steps->at(axis) > 0 ? std::clamp(ends->at(axis), 0L, in_shape[axis])
-                    : std::clamp(ends->at(axis), -1L, in_shape[axis] - 1);
+        ends->at(axis) =
+            steps->at(axis) > 0
+                ? std::clamp(ends->at(axis), 0L, in_shape[axis])
+                : std::clamp(ends->at(axis), -1L, in_shape[axis] - 1);
       }
       if (steps->at(axis) != 1) {
         return failure();
@@ -417,13 +420,14 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
       tmp_w += w;
     }
     auto tensor_name = module::getName(concat_op, 0).str() + "loadweight";
-    auto weight_operand = WeightOp::create_float(concat_op, tensor_name, resultT,
-                                            o_shape, storage_type);
+    auto weight_operand = WeightOp::create_float(
+        concat_op, tensor_name, resultT, o_shape, storage_type);
     rewriter.replaceOp(concat_op, weight_operand);
     return success();
   }
 };
 
+// Concat(A) => A
 struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -433,47 +437,17 @@ struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
       return failure();
     }
 
-    auto inputs = concat_op.getInputs();
-    int num_inputs = inputs.size();
-
-    if (num_inputs > 2 || num_inputs == 0) {
+    if (concat_op.getNumOperands() != 1) {
       return failure();
     }
-
-    auto none_op = module::getNoneOp(concat_op);
-    bool hasNoneorInvaidShape = false;
-    for (int i = 0; i < num_inputs; i++) {
-      auto in_op = inputs[i].getDefiningOp();
-      auto slice_op = dyn_cast<SliceOp>(in_op);
-      if (slice_op) {
-        auto oslice_shape = module::getShape(slice_op.getOutput());
-        for (auto &shape : oslice_shape) {
-          if (shape != 0) {
-            continue;
-          }
-          concat_op.setOperand(i, none_op);
-          rewriter.eraseOp(slice_op);
-          hasNoneorInvaidShape = true;
-        }
-      }
-    }
-
-    if (hasNoneorInvaidShape) {
-      for (auto input_op : inputs) {
-        if (!module::isNone(input_op)) {
-          concat_op.getOutput().replaceAllUsesWith(input_op);
-        }
-      }
-      rewriter.eraseOp(concat_op);
-    }
-
+    rewriter.replaceAllUsesWith(concat_op.getOutput(), concat_op.getOperand(0));
     return success();
   }
 };
 
 /***
  * Remove meaningless Struct
- * Tile (tile = 0) -> Concat (0, n) --> out(n)
+ *  Concat (0, X) --> Concat(X); Concat (None, X) => Concat(X)
  * ***/
 struct RemoveInvaidConcatSlice : public OpRewritePattern<ConcatOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -483,32 +457,21 @@ struct RemoveInvaidConcatSlice : public OpRewritePattern<ConcatOp> {
     auto inputs = concat_op.getInputs();
     int num_inputs = inputs.size();
 
-    if (num_inputs != 2) {
-      return failure();
-    }
-    auto in_op0 = concat_op.getOperand(0).getDefiningOp();
-    auto in_op1 = concat_op.getOperand(1).getDefiningOp();
-
-    if (isOperationValid(in_op0) && isOperationValid(in_op1)) {
-      return failure();
-    }
-
-    concat_op.replaceAllUsesWith(isOperationValid(in_op0) ? in_op0 : in_op1);
-    rewriter.eraseOp(concat_op);
-
-    return success();
-  }
-
-private:
-  bool isOperationValid(Operation* op) const{
-    if (op) {
-      auto out_shape = module::getShape(op->getResult(0));
-      for (auto &e : out_shape) {
-        if (e == 0)
-          return false;
+    std::vector<Value> new_operands;
+    bool ret = false;
+    for (int i = 0; i < num_inputs; i++) {
+      auto in = concat_op.getInputs()[i];
+      if (0 == module::getNumElements(in)) {
+        ret = true;
+      } else {
+        new_operands.push_back(in);
       }
     }
-    return true;
+    if (ret == false) {
+      return failure();
+    }
+    concat_op->setOperands(new_operands);
+    return success();
   }
 };
 
@@ -516,7 +479,6 @@ void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern,
-                 RemoveInvaidConcatSlice,
+                 MergeSliceConcatPattern, RemoveInvaidConcatSlice,
                  RemoveInvaidShapeConcatInput>(context);
 }

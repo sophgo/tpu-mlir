@@ -58,8 +58,9 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
         softmax_op =
             dyn_cast<SoftmaxOp>(*add_op.getOutput().getUsers().begin());
     }
-    if (softmax_op == NULL)
+    if (softmax_op == NULL) {
       return failure();
+    }
     for (int i = 0; i < 2; i++) {
       auto w = weight_op[i].read<float>();
       for (int i = 0; i < w.get()->size(); i++) {
@@ -113,7 +114,7 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     weight_tile[i] = tile;
     count++;
   }
-  if(count == 0){
+  if (count == 0) {
     return tensor_last_op;
   }
 
@@ -142,7 +143,7 @@ struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
     bool process = false;
 
     auto cond = op.getCond();
-    std::string op_name = std::string(module::getName(op.getOperation()).data());
+    std::string op_name = module::getName(op.getOutput()).str();
     auto cond_ = expand_dim_and_tile(cond, out_shape, rewriter, op_name);
     if (cond != cond_) {
       op.setOperand(0, cond_);
@@ -192,6 +193,50 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
   }
 };
 
+// Where(condition, ConstantFill(x), y) => Where(condition, const, y)
+
+struct WhereFuseConstant : public OpRewritePattern<WhereOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    auto x_opd = op.getTbrn();
+    auto y_opd = op.getFbrn();
+    bool fact = false;
+    auto none_op = module::getNoneOp(op);
+    if (op.getXIsConst()) {
+      if (!module::isNone(x_opd)) {
+        op.setOperand(1, none_op);
+        fact = true;
+      }
+    } else {
+      auto x_op = dyn_cast<top::ConstantFillOp>(x_opd.getDefiningOp());
+      if (x_op) {
+        op.setXIsConst(true);
+        op.setXConstVal(x_op.getValue());
+        op.setOperand(1, none_op);
+        fact = true;
+      }
+    }
+
+    if (op.getYIsConst()) {
+      if (!module::isNone(y_opd)) {
+        op.setOperand(2, none_op);
+        fact = true;
+      }
+    } else {
+      auto y_op = dyn_cast<top::ConstantFillOp>(y_opd.getDefiningOp());
+      if (y_op) {
+        op.setYIsConst(true);
+        op.setYConstVal(y_op.getValue());
+        op.setOperand(2, none_op);
+        fact = true;
+      }
+    }
+    return fact ? success() : failure();
+  }
+};
+
 /*
   special case in maskrcnn
   where(x!=-1, x, 1)
@@ -210,18 +255,20 @@ struct WhereToMax : public OpRewritePattern<WhereOp> {
       if (auto comp_op = dyn_cast<CompareConstOp>(cond.getDefiningOp())) {
         if (comp_op.getMode().compare("Equal") == 0 &&
             comp_op.getConstVal().convertToDouble() == -1.f &&
-            op.getXConstVal().convertToDouble() == 1.f && comp_op->getOperand(0) == y) {
+            op.getXConstVal().convertToDouble() == 1.f &&
+            comp_op->getOperand(0) == y) {
 
           std::vector<NamedAttribute> attrs;
-          attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.f)));
+          attrs.push_back(rewriter.getNamedAttr("const_val",
+                                                rewriter.getF64FloatAttr(1.f)));
           auto new_op = rewriter.replaceOpWithNewOp<MaxConstOp>(
-              op, op.getOutput().getType(),
-              ValueRange{y}, attrs);
+              op, op.getOutput().getType(), ValueRange{y}, attrs);
           new_op.shape_inference();
+          return success();
         }
       }
     }
-    return success();
+    return failure();
   }
 };
 
@@ -274,6 +321,6 @@ struct RemoveInvalidWhere : public OpRewritePattern<WhereOp> {
 
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge, WhereToMax,
-                 RemoveInvalidWhere>(context);
+  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge,
+                 WhereToMax, RemoveInvalidWhere, WhereFuseConstant>(context);
 }

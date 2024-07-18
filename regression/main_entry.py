@@ -190,7 +190,7 @@ class MAIN_ENTRY(object):
         t = Timer()
         # run scripts under $REGRESSION_OUT/script_test
         print("======= cuda test ======")
-        ret = self._run_script_test("cuda")
+        ret = self._run_script_test("test_cuda")
         self.time_cost.append(f"run_cuda: {int(t.elapsed_time())} seconds")
         return SUCCESS if ret else FAILURE
 

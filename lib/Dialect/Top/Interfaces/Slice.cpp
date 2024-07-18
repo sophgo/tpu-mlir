@@ -54,6 +54,9 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto steps_v = module::getI64Array(getSteps());
   std::vector<int64_t> out_shape = module::getShape(getOutput());
   std::vector<int64_t> in_shape = module::getShape(getInput());
+  if (out_num_elem == 0) {
+    return success();
+  }
   const size_t slice_dims = offset_v->size();
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
