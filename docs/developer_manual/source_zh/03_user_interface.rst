@@ -179,6 +179,9 @@ model_transform.py
    * - model_def
      - 是
      - 指定模型定义文件, 比如 ``.onnx`` 或 ``.tflite`` 或 ``.prototxt`` 文件
+   * - mlir
+     - 是
+     - 指定输出的mlir文件名称和路径
    * - model_data
      - 否
      - 指定模型权重文件, caffe模型需要, 对应 ``.caffemodel`` 文件
@@ -221,9 +224,6 @@ model_transform.py
    * - onnx_sim
      - 否
      - onnx-sim 的可选项参数，目前仅支持 skip_fuse_bn 选项，用于关闭 batch_norm 和 Conv 层的合并
-   * - mlir
-     - 是
-     - 指定输出的mlir文件名称和路径
    * - debug
      - 否
      - 保存可用于debug的模型
@@ -258,6 +258,17 @@ model_transform.py
 
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
+
+注意：
+
+1. `model_transform.py` 阶段输入的预处理参数会用于对 `test_input` 进行预处理，并且会记录到 `mlir` 文件中，后续执行 `run_calibration.py` 时会读取该预处理参数对校准数据集进行预处理。若 `model_transform.py` 阶段没有对应参数输入将可能影响到模型的实际量化效果。
+
+2. 预处理参数计算方式：
+
+.. math::
+
+    input &= scale \times (input - mean) \\
+    scale &= \frac{1}{255 \times std}
 
 
 run_calibration.py
