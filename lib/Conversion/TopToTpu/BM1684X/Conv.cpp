@@ -624,7 +624,7 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   // bias lowering will be done in --weight-reorder pass
   auto bias_value = op.getBias();
   bool with_bias = !module::isNone(bias_value);
-  if (with_bias)
+  if (with_bias && !module::isTrain())
     ASSERT_OP(module::getStorageType(bias_value).isF32() && "bias has to be f32", op);
   operands.push_back(bias_value);
   std::vector<NamedAttribute> attrs;
