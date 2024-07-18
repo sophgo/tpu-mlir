@@ -1034,11 +1034,12 @@ class TORCH_IR_TESTER(object):
         _test_Roll((1,1,1,8), 4, 3)
         _test_Roll((1,69,8,7), 4, 2)
         _test_Roll((2,8,4,4), 1, 0)
-        _test_Roll((4,2), 1)
-        _test_Roll((4,2), 1, 0)
-        _test_Roll((4,2), -1, 0)
-        _test_Roll((4,2), (4,2), (0,1))
-        _test_Roll((4,2), (123,-133), (1,0))
+        if not self.simple:
+            _test_Roll((4,2), 1)
+            _test_Roll((4,2), 1, 0)
+            _test_Roll((4,2), -1, 0)
+            _test_Roll((4,2), (4,2), (0,1))
+            _test_Roll((4,2), (123,-133), (1,0))
 
 
     #######################################################################

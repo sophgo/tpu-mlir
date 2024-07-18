@@ -132,16 +132,18 @@ struct MulToMulConst2 : public OpRewritePattern<MulOp> {
     auto op1 = op.getInputs()[1].getDefiningOp();
     Operation *const_op = nullptr;
     Operation *input_op = nullptr;
-    if (isa<top::ConstantFillOp>(op0)) {
+    Value new_input;
+    if (isa_and_nonnull<top::ConstantFillOp>(op0)) {
       const_op = op0;
       input_op = op1;
-    } else if (isa<top::ConstantFillOp>(op1)) {
+      new_input = op.getInputs()[1];
+    } else if (isa_and_nonnull<top::ConstantFillOp>(op1)) {
       const_op = op1;
       input_op = op0;
+      new_input = op.getInputs()[0];
     } else {
       return failure();
     }
-    auto new_input = input_op->getResult(0);
     auto constOp = cast<top::ConstantFillOp>(const_op);
     auto in_shape = module::getShape(new_input);
     auto c_shape = module::getShape(constOp.getOutput());
@@ -225,7 +227,8 @@ struct MulToScale : public OpRewritePattern<MulOp> {
 
     std::vector<float> bias(left_shape[1], 0);
     // module::gets
-    auto B = WeightOp::create_float(op, "bias", bias, module::getShape(S).vec(), storage_type);
+    auto B = WeightOp::create_float(op, "bias", bias, module::getShape(S).vec(),
+                                    storage_type);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));

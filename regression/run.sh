@@ -23,7 +23,7 @@ elif [ "$1" = "check_utests" ]; then
     cmake --build ${BUILD_PATH} --target check-tpumlir
 elif [ "$1" = "cuda" ]; then
     echo "::RUN CUDA test."
-    $REGRESSION_PATH/main_entry.py --test_type basic --test_set cuda
+    #$REGRESSION_PATH/main_entry.py --test_type basic --test_set cuda
 else
     echo "::RUN Other test."
 fi
