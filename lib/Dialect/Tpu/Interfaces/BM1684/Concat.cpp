@@ -14,7 +14,7 @@
 using namespace tpu_mlir::backend;
 
 void tpu::ConcatOp::codegen_global_bm1684() {
-  if (getOnlyMerge()) {
+  if (getOnlyMerge() && module::getAddress(getInputs()[0]) == module::getAddress(getOutput())) {
     return;
   }
   int num_input = getInputs().size();
