@@ -113,6 +113,7 @@ class TORCH_IR_TESTER(object):
             "IndexSelect":      (self.test_IndexSelect,       N, Y, Y, Y),
             "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y, Y),
             "Interp":           (self.test_Interp,            N, Y, Y, Y),
+            "Interp2":           (self.test_Interp2,          N, Y, Y, N),
             "LayerNorm":        (self.test_LayerNorm,         N, Y, Y, Y),
             "LeakyRelu":        (self.test_LeakyRelu,         N, Y, Y, Y),
             "Linear":           (self.test_Linear,            N, Y, Y, Y),
@@ -175,10 +176,10 @@ class TORCH_IR_TESTER(object):
             "Where":            (self.test_Where,             N, Y, Y, N),
             ## Special Case
             "Connect":          (self.test_Connect,           N, N, N, N),
+            "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
             "InfError":         (self.test_InfError,          N, Y, Y, N),
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
             "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
-            "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
             ## only for test, only run test_single
             "user_define_net":   (self.user_define_net,    N, N, N, N),
             ## Canonicalization
@@ -1566,6 +1567,28 @@ class TORCH_IR_TESTER(object):
         if self.chip in ["bm1684x", "bm1688"]:
             _test_interp((2, 3, 224), None, 2, 'linear')
             _test_interp((2, 3, 224), (100), None, 'linear')
+
+    #######################################################################
+    # Interp2
+    # ------------
+    def test_Interp2(self):
+        """Interp2"""
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.new_hw = torch.Tensor([24,32])
+
+            def forward(self, x):
+                s = [int(self.new_hw[0]), int(self.new_hw[1])]
+                y = nn.functional.interpolate(x,
+                                              s,
+                                              None,
+                                              mode="bilinear",
+                                              align_corners=False)
+                return y
+
+        self.trace_and_test([(1, 3, 64, 64)], Model())
 
     #######################################################################
     # BMM
