@@ -524,7 +524,7 @@ def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = Non
         assert in0_dtype == out_dtype
     return in0_dtype
 
-def _conv_check(input: Tensor, weight: Tensor, bias: Tensor = None):
+def _conv_float_check(input: Tensor, weight: Tensor, bias: Tensor = None):
     assert input.dtype in ["float32", "float16"]
     assert weight.dtype == input.dtype
     assert input.is_quantized is False
@@ -549,7 +549,8 @@ def conv(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     o_dtype = input.dtype if out_dtype is None else out_dtype
-    _conv_check(input, weight, bias)
+    assert input.dtype == o_dtype
+    _conv_float_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -579,6 +580,7 @@ def conv_int(input: Tensor,
              weight_zp: Union[int, List[int]] = None,
              out_dtype: str = None,
              out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
     assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
     if bias:
         assert bias.dtype == "int32"
@@ -587,7 +589,6 @@ def conv_int(input: Tensor,
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
-    o_dtype = "int32" if out_dtype is None else out_dtype
     assert input.is_quantized is True or input_zp is not None
     assert weight.is_quantized is True or weight_zp is not None
 
@@ -624,6 +625,10 @@ def conv_quant(input: Tensor,
             output_zp: Union[int, List[int]] = None,
             out_dtype: str = None,
             out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
+    assert not isinstance(output_zp, list), "not supported yet"
+    assert not isinstance(input_scale, list), "not supported yet"
+    assert not isinstance(output_scale, list), "not supported yet"
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
@@ -664,8 +669,9 @@ def conv3d(input: Tensor,
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
-    o_dtype = "float32" if out_dtype is None else out_dtype
-    _conv_check(input, weight, bias)
+    o_dtype = input.dtype if out_dtype is None else out_dtype
+    assert input.dtype == o_dtype
+    _conv_float_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -694,6 +700,7 @@ def conv3d_int(input: Tensor,
                weight_zp: Union[int, List[int]] = None,
                out_dtype: str = None,
                out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
@@ -735,6 +742,11 @@ def conv3d_quant(input: Tensor,
             output_zp: Union[int, List[int]] = None,
             out_dtype: str = None,
             out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
+    assert not isinstance(output_zp, list), "not supported yet"
+    assert not isinstance(input_scale, list), "not supported yet"
+    assert not isinstance(output_scale, list), "not supported yet"
+
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
@@ -775,8 +787,9 @@ def deconv(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0] if output_padding is None else output_padding
-    o_dtype = "float32" if out_dtype is None else out_dtype
-    _conv_check(input, weight, bias)
+    o_dtype = input.dtype if out_dtype is None else out_dtype
+    assert input.dtype == o_dtype
+    _conv_float_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -807,6 +820,7 @@ def deconv_int(input: Tensor,
              weight_zp: Union[int, List[int]] = None,
              out_dtype: str = None,
              out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
     assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
     if bias:
         assert bias.dtype == "int32"
@@ -852,8 +866,9 @@ def deconv3d(input: Tensor,
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0, 0] if output_padding is None else output_padding
-    o_dtype = "float32" if out_dtype is None else out_dtype
-    _conv_check(input, weight, bias)
+    o_dtype = input.dtype if out_dtype is None else out_dtype
+    assert input.dtype == o_dtype
+    _conv_float_check(input, weight, bias)
 
     attr = {
         "kernel_shape": ArrayAttr(weight.shape[2:]),
@@ -881,8 +896,8 @@ def matmul(input: Tensor,
             keep_dims: bool = True,
             out_dtype: str = None,
             out_name: str = None):
-
     o_dtype = input.dtype if out_dtype is None else out_dtype
+    assert input.dtype == o_dtype
     assert input.dtype in ["float32", "float16"] and input.dtype == right.dtype
     if bias:
         assert bias.dtype in ["float32", "float16"]
@@ -918,6 +933,8 @@ def matmul_int(input: Tensor,
                right_zp: Union[int, List[int]] = None,
                out_dtype: str = None,
                out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
+    assert not isinstance(right_zp, list), "not supported yet"
     assert input.dtype in ["int8", "uint8"] and right.dtype in ["int8", "uint8"]
     if bias:
         assert bias.dtype == "int32"
@@ -959,6 +976,12 @@ def matmul_quant(input: Tensor,
                  output_zp: Union[int, List[int]] = None,
                  out_dtype: str = 'int8',
                  out_name: str = None):
+    assert not isinstance(input_zp, list), "not supported yet"
+    assert not isinstance(right_zp, list), "not supported yet"
+    assert not isinstance(output_zp, list), "not supported yet"
+    assert not isinstance(input_scale, list), "not supported yet"
+    assert not isinstance(right_scale, list), "not supported yet"
+    assert not isinstance(output_scale, list), "not supported yet"
 
     attr = {
         "right_transpose": Attr(right_transpose, "bool"),

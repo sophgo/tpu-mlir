@@ -440,7 +440,7 @@ conv_int
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -503,12 +503,12 @@ conv_quant
 * dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
-* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。
+* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。当前不支持List[float]型。
 * weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
-* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。当前不支持List[float]型。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
-* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。当前不支持List[int]型。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -612,9 +612,9 @@ deconv_int
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
 * output_padding：List[int]，表示输出的填充大小，取None则表示[0,0]，不为None时要求长度为1或2。
 * groups：int型，表示反卷积层的组数。
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -717,9 +717,9 @@ conv3d_int
 * dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -780,12 +780,12 @@ conv3d_quant
 * dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
 * pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
-* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。
+* input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。当前不支持List[float]型。
 * weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
-* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。
-* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
+* output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。当前不支持List[float]型。
+* input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
-* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
+* output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。当前不支持List[int]型。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -884,8 +884,8 @@ matmul_int
 * right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
 * output_transpose：bool型，默认为False。表示计算时是否对输出矩阵进行转置。
 * keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
-* input_zp：int型，表示input的偏移。取None则表示0。
-* right_zp：int型，表示right的偏移。取None则表示0。
+* input_zp：List[int]型或int型，表示input的偏移。取None则表示0。当前不支持List[int]型。
+* right_zp：List[int]型或int型，表示right的偏移。取None则表示0。当前不支持List[int]型。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -937,12 +937,12 @@ matmul_quant
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[n]。
 * right_transpose：bool型，默认为False。表示计算时是否对右矩阵进行转置。
 * keep_dims：bool型，默认为True。表示结果是否保持原来的dim，False则shape为2维。
-* input_scale：float型，表示input的量化参数。取None则使用input Tensor中的量化参数。
-* right_scale：float型，表示right的量化参数。取None则使用right Tensor中的量化参数。
-* output_scale：float型，表示output的量化参数。不可以取None。
-* input_zp：int型，表示input的偏移。取None则表示0。
-* right_zp：int型，表示right的偏移。取None则表示0。
-* output_zp：int型，表示output的偏移。取None则表示0。
+* input_scale：List[float]型或float型，表示input的量化参数。取None则使用input Tensor中的量化参数。当前不支持List[float]型。
+* right_scale：List[float]型float型，表示right的量化参数。取None则使用right Tensor中的量化参数。当前不支持List[float]型。
+* output_scale：List[float]型float型，表示output的量化参数。不可以取None。当前不支持List[float]型。
+* input_zp：List[int]型或int型，表示input的偏移。取None则表示0。当前不支持List[int]型。
+* right_zp：List[int]型或int型，表示right的偏移。取None则表示0。当前不支持List[int]型。
+* output_zp：List[int]型或int型，表示output的偏移。取None则表示0。当前不支持List[int]型。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
