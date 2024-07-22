@@ -936,15 +936,15 @@ void aggressive_slice_for_multicore(LmemAllocator &lmem_allocator,
                                    shape_secs_t &ir_shape_secs,
                                    shape_secs_t lg_shape_secs)
 {
-  // only apply at least 4 cores
+  // only apply 4-core sg2380
   auto core_num = module::getCoreNum();
-  if (core_num < 4 ||
+  if (core_num != 4 ||
       ir_shape_secs.hsecs == lg_shape_secs.hsecs)
     return;
 
   // if bank align causes hsecs increased, allow bank conflict to
   // improve DDR read bandwidth
-  if (ir_shape_secs.hsecs > core_num && lg_shape_secs.hsecs <= core_num) {
+  if (ir_shape_secs.hsecs == (core_num + 1) && lg_shape_secs.hsecs <= core_num) {
     lg_shape_secs.hsecs = core_num;
     auto ret = lmem_allocator.assignLmemAddrWithSecs(
         lg_info, time_step, lg_shape_secs, true);
