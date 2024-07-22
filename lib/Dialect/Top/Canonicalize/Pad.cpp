@@ -6,15 +6,18 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-struct TopFusePad : public OpRewritePattern<PadOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopFusePad : public OpRewriterPatternEx<PadOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PadOp op,
+  TopFusePad(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<PadOp>(context, "TopFusePad") {}
+
+  LogicalResult matchAndRewriteImpl(PadOp op,
                                 PatternRewriter &rewriter) const override {
 
     if (op.getInput().getType().dyn_cast<TensorType>().getShape().size() < 3)

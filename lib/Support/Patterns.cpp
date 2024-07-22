@@ -14,7 +14,7 @@ namespace tpu_mlir {
 namespace patterns {
 
 // if 2 op is same, fuse it.
-LogicalResult FuseSameOp::matchAndRewrite(Operation *op,
+LogicalResult FuseSameOp::matchAndRewriteImpl(Operation *op,
                                           PatternRewriter &rewriter) const {
   if (isa_and_nonnull<top::NoneOp, top::WeightOp>(op)) {
     return failure();
@@ -44,74 +44,5 @@ LogicalResult FuseSameOp::matchAndRewrite(Operation *op,
   }
   return failure();
 }
-
-template <typename OpTy>
-LogicalResult
-FuseRepeatPattern<OpTy>::matchAndRewrite(OpTy op,
-                                         PatternRewriter &rewriter) const {
-  auto in_op = op.getInput().getDefiningOp();
-  if (nullptr == in_op || in_op->hasOneUse() == false) {
-    return failure();
-  }
-  if (!isa<OpTy>(in_op)) {
-    return failure();
-  }
-  op->setOperand(0, in_op->getOperand(0));
-  rewriter.eraseOp(in_op);
-  return success();
-
-  // handle situations like
-  //           -reshape
-  // reshape -{
-  //           -reshape
-
-  // maybe not for now, just record here
-
-  // std::vector<mlir::Operation *> users;
-  // for (auto user: op->getUsers()) {
-  //   if (!isa<OpTy>(user)) {
-  //     return failure();
-  //   }
-  //   users.emplace_back(user);
-  // }
-  // for(auto user: users) {
-  //   user->setOperand(0, op->getOperand(0));
-  // }
-  // rewriter.eraseOp(op);
-  // return success();
-}
-
-template LogicalResult FuseRepeatPattern<top::ReshapeOp>::matchAndRewrite(
-    top::ReshapeOp op, PatternRewriter &rewriter) const;
-
-template LogicalResult FuseRepeatPattern<tpu::ReshapeOp>::matchAndRewrite(
-    tpu::ReshapeOp op, PatternRewriter &rewriter) const;
-
-template <typename From, typename To>
-LogicalResult
-ConvertPattern<From, To>::matchAndRewrite(From op,
-                                          PatternRewriter &rewriter) const {
-  rewriter.replaceOpWithNewOp<To>(op, op.getOutput().getType(),
-                                  op->getOperands(),
-                                  std::vector<NamedAttribute>());
-  return success();
-}
-
-template LogicalResult
-ConvertPattern<top::SqueezeOp, top::ReshapeOp>::matchAndRewrite(
-    top::SqueezeOp op, PatternRewriter &rewriter) const;
-
-template LogicalResult
-ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>::matchAndRewrite(
-    top::UnsqueezeOp op, PatternRewriter &rewriter) const;
-
-template LogicalResult
-ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>::matchAndRewrite(
-    tpu::SqueezeOp op, PatternRewriter &rewriter) const;
-
-template LogicalResult
-ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>::matchAndRewrite(
-    tpu::UnsqueezeOp op, PatternRewriter &rewriter) const;
-
 } // namespace patterns
 } // namespace tpu_mlir

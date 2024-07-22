@@ -14,7 +14,7 @@ namespace tpu_mlir {
 namespace top {
 
 LogicalResult
-MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
+MergeScale2Conv::matchAndRewriteImpl(top::ScaleOp op,
                                  PatternRewriter &rewriter) const {
   auto preOp = op.getInput().getDefiningOp();
   if (!preOp->hasOneUse() || !isa<ConvOp>(preOp)) {
@@ -113,7 +113,7 @@ MergeScale2Conv::matchAndRewrite(top::ScaleOp op,
   return success();
 }
 
-LogicalResult ConvertScaleOp::matchAndRewrite(top::ScaleOp op,
+LogicalResult ConvertScaleOp::matchAndRewriteImpl(top::ScaleOp op,
                                               PatternRewriter &rewriter) const {
   auto input_shape = module::getShape(op.getInput());
   if (input_shape.size() > 4) {
@@ -152,7 +152,7 @@ LogicalResult ConvertScaleOp::matchAndRewrite(top::ScaleOp op,
 // A --slice--> A0 | A1 --concat--> A1 | A0
 // ==> SwapDimInner
 // test by `test_onnx.py --case SwapDimInner`
-LogicalResult ConcatToSwapDimInner::matchAndRewrite(top::ConcatOp concat_op,
+LogicalResult ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
                               PatternRewriter &rewriter) const {
   if (concat_op.getDoRelu()) {
     return failure();

@@ -6,18 +6,21 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
 // in gpt2 model, the mask to softmax is from where, very small value in weight
 // tensor, change them to -10000
-struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct FilterWhereWeightPattern : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  FilterWhereWeightPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "FilterWhereWeightPattern") {}
+
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isUniformQuantized(op.getOutput()))
       return failure();
     if (!op->hasOneUse()) {
@@ -131,11 +134,14 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
   return tensor_last_op;
 }
 
-struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct WhereBroadcastToTile : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  WhereBroadcastToTile(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "WhereBroadcastToTile") {}
+
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isDynamic()) {
       return failure();
     }
@@ -153,11 +159,13 @@ struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
   }
 };
 
-struct WhereTooLarge : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct WhereTooLarge : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  WhereTooLarge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "WhereTooLarge") {}
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!op.getResult().hasOneUse())
       return failure();
     if (!op.getXIsConst() && !op.getYIsConst()) {
@@ -194,12 +202,14 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
 };
 
 // Where(condition, ConstantFill(x), y) => Where(condition, const, y)
+struct WhereFuseConstant : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-struct WhereFuseConstant : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+  WhereFuseConstant(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "WhereFuseConstant") {}
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     auto x_opd = op.getTbrn();
     auto y_opd = op.getFbrn();
     bool fact = false;
@@ -243,11 +253,14 @@ struct WhereFuseConstant : public OpRewritePattern<WhereOp> {
   x is shape, x == -1 when x < 1
   so, this case can convert to max(x, 1)
 */
-struct WhereToMax : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct WhereToMax : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  WhereToMax(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "WhereToMax") {}
+
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     auto cond = op.getOperand(0);
     // auto x = op.getOperand(1);
     auto y = op.getOperand(2);
@@ -280,11 +293,14 @@ struct WhereToMax : public OpRewritePattern<WhereOp> {
         \            /
          ———————————>
 */
-struct RemoveInvalidWhere : public OpRewritePattern<WhereOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct RemoveInvalidWhere : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  RemoveInvalidWhere(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "RemoveInvalidWhere") {}
+
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
     auto cond = op.getCond();
     auto fbrn = op.getFbrn();
 

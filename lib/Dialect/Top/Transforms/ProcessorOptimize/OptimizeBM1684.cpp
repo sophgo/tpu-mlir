@@ -12,12 +12,14 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
-class ConvertMultiInputAdd : public OpRewritePattern<top::AddOp> {
+class ConvertMultiInputAdd : public OpRewriterPatternEx<top::AddOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
+  ConvertMultiInputAdd(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::AddOp>(context, "ConvertMultiInputAdd") {}
 
-  LogicalResult matchAndRewrite(top::AddOp op,
-                                PatternRewriter &rewriter) const override {
+protected:
+  LogicalResult matchAndRewriteImpl(top::AddOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto inputs = op.getInputs();
     auto name = module::getName(op.getOperation()).str();
     if (inputs.size() <= 2) {
@@ -47,11 +49,14 @@ public:
 
 } // namespace bm1684
 
-class NoneZeroFixRowMajor : public OpRewritePattern<tpu::NonZeroOp> {
+class NoneZeroFixRowMajor : public OpRewriterPatternEx<tpu::NonZeroOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::NonZeroOp op,
-                                PatternRewriter &rewriter) const override {
+  NoneZeroFixRowMajor(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::NonZeroOp>(context, "NoneZeroFixRowMajor") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::NonZeroOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     const int order = op.getOrder().str() == "ColMajor" ? 0 : 1;
     if (order == 0){
       return failure();
@@ -82,11 +87,11 @@ namespace top {
 using namespace bm1684;
 void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   // add bm1684 optimize here
-  patterns->add<patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
-                patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-                ConvertMultiInputAdd, ConcatToSwapDimInner,NoneZeroFixRowMajor>(patterns->getContext(),
-                                                      8);
+  patterns->add<ConvertMultiInputAdd, ConcatToSwapDimInner,NoneZeroFixRowMajor>(patterns->getContext(),8);
+  patterns->add<patterns::SqueezeToReshapePattern>(
+      patterns->getContext());
+  patterns->add<patterns::UnsqueezeToReshapePattern>(
+      patterns->getContext());
 }
-
 } // namespace top
 } // namespace tpu_mlir

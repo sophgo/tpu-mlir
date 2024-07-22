@@ -32,13 +32,16 @@ void LgPassManager::add_pass(std::unique_ptr<LgPass> pass) {
 }
 
 #define PASS_RUN(pass)                                                         \
-  llvm::errs() << "==---------------------------==\n";                         \
-  llvm::errs() << "Run " << pass->name() << " : \n";                           \
-  llvm::errs() << "    " << pass->brief() << "\n";                             \
-  llvm::errs() << "==---------------------------==\n";                         \
+  LAYER_GROUP_LOG_DEBUG_BLOCK({                                                \
+    llvm::outs() << "==---------------------------==\n";                       \
+    llvm::outs() << "Run " << pass->name() << " : \n";                         \
+    llvm::outs() << "    " << pass->brief() << "\n";                           \
+    llvm::outs() << "==---------------------------==\n";                       \
+  });                                                                          \
   if (!pass->run(pass_ir)) {                                                   \
-    llvm::errs() << pass->name().c_str() << " pass failed."                    \
-                 << "\n";                                                      \
+    LAYER_GROUP_LOG_DEBUG_BLOCK(llvm::outs()                                    \
+                                << pass->name().c_str() << " pass failed."     \
+                                << "\n";);                                     \
   }
 
 void LgPassManager::run(LgPassIR *pass_ir) {
@@ -72,7 +75,7 @@ const LgOptimizerMap &get_registered_optimizers() {
 LgOptimizerReg::LgOptimizerReg(const std::string &name,
                                std::shared_ptr<LgOptimizer> optimizer) {
   if (get_lg_optimizers().find(name) != get_lg_optimizers().end()) {
-    llvm::errs() << "Lg optimizer name \"" << name
+    llvm::outs() << "Lg optimizer name \"" << name
                  << "\" had beed already regitered."
                  << "So we replace it by the newest one.\n";
   }

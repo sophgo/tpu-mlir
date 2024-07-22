@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
@@ -18,11 +18,15 @@ using namespace tpu_mlir::trait;
 // reshape2:1x32x64x2x64x2] -> [1x32x128x128]
 //==>pixelshuffle:[1x128x64x64] -> [1x32x128x128]
 
-struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopPermuteToPixelShuffle : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  TopPermuteToPixelShuffle(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToPixelShuffle") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     if (input_shape.size() != 6) {
       return failure();
@@ -44,11 +48,10 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
     if (!reshape_before) {
       return failure();
     }
-    auto reshape_before_shape =
-        module::getShape(reshape_before.getOutput());
+    auto reshape_before_shape = module::getShape(reshape_before.getOutput());
     auto dims = std::accumulate(reshape_before_shape.begin() + 1,
-                                   reshape_before_shape.begin() + 4, 1,
-                                   std::multiplies<int64_t>());
+                                reshape_before_shape.begin() + 4, 1,
+                                std::multiplies<int64_t>());
     if (dims != module::getShape(reshape_before.getInput())[1]) {
       return failure();
     }
@@ -95,11 +98,15 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
 // permute:[1x128x32x2x32x2] -> [1x128x2x2x32x32]
 // reshape2:[1x128x2x2x32x32] -> [1x512x32x32]
 //==>reorg:[1x128x64x64] -> [1x512x32x32]
-struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopPermuteToReorg : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  TopPermuteToReorg(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToReorg") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     if (input_shape.size() != 6) {
       return failure();
@@ -204,7 +211,7 @@ static bool is_valid_order(std::vector<int64_t> shape,
         }
       }
     } // end for check continous order
-  }   // end num_dims > 4
+  } // end num_dims > 4
   return valid_order;
 }
 
@@ -234,11 +241,15 @@ static void left_continous(std::vector<int64_t> &order,
 }
 
 // convert unsupport permute5d order to double permute
-struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct Permute5dSplit : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  Permute5dSplit(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "Permute5dSplit") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     // implement
     std::vector<int64_t> order = *(module::getI64Array(op.getOrder()));
     auto input = op.getInput();
@@ -287,11 +298,15 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
 };
 
 // permute + permute or permute + reshape + permute
-struct PermuteFuse : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteFuse : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  PermuteFuse(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "PermuteFuse") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
@@ -379,11 +394,15 @@ struct PermuteFuse : public OpRewritePattern<PermuteOp> {
 /**
  * Op1->NonZero->Permute->Op2 => Op1->NonZero->Op2
  **/
-struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct NonZeroPermutePattern : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  NonZeroPermutePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "NonZeroPermutePattern") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     const auto &input = op.getInput();
     // check topo
 
@@ -453,11 +472,15 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
 // ...-{ }-Add-Reshape-Permute-Reshape-Add-...
 //      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-
 // clang-format on
-struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+    TopDecomposedRelPosEmb(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopDecomposedRelPosEmb") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     // check topo
     if (!op->hasOneUse())
       return failure();
@@ -785,11 +808,15 @@ struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
 };
 
 // permute 1-D tensor
-struct TopPermuteEliminate : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopPermuteEliminate : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+      TopPermuteEliminate(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteEliminate") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     if (in_shape.size() != 1) {
       return failure();
@@ -803,7 +830,6 @@ struct TopPermuteEliminate : public OpRewritePattern<PermuteOp> {
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
-                 PermuteFuse, NonZeroPermutePattern,
-                 TopDecomposedRelPosEmb,
+                 PermuteFuse, NonZeroPermutePattern, TopDecomposedRelPosEmb,
                  TopPermuteEliminate>(context);
 }

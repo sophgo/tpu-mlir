@@ -38,7 +38,7 @@ def _os_system_log(cmd_str):
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 
-def _os_system(cmd: list, save_log: bool = False, mute: bool = False):
+def _os_system(cmd: list, save_log: bool = False, mute: bool = False, log_level: str = "normal"):
     cmd_str = " ".join(cmd)
     if mute:
         ret = subprocess.call(cmd_str,
@@ -47,15 +47,19 @@ def _os_system(cmd: list, save_log: bool = False, mute: bool = False):
                               stderr=subprocess.DEVNULL)
         assert ret == 0
         return
-    if not save_log:
+    if save_log:
+        _os_system_log(cmd_str)
+    elif log_level == "quiet":
+        ret = os.system(cmd_str)
+        if ret != 0:
+            print("[Failed]: {}".format(cmd_str))
+    else:
         print("[Running]: {}".format(cmd_str))
         ret = os.system(cmd_str)
         if ret == 0:
             print("[Success]: {}".format(cmd_str))
         else:
             raise RuntimeError("[!Error]: {}".format(cmd_str))
-    else:
-        _os_system_log(cmd_str)
 
 
 def get_matched_patterns(log_file: str = ""):
@@ -69,7 +73,7 @@ def get_matched_patterns(log_file: str = ""):
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
-                     count_patterns: bool = False):
+                     count_patterns: bool = False, log_level:str="normal"):
     cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
     if len(add_postprocess) > 0:
         cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
@@ -78,7 +82,11 @@ def mlir_opt_for_top(mlirfile: str,
     if count_patterns:
         log_file = "top_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+    if log_level == "quiet":
+        cmd.extend(["> /dev/null"])
+    elif log_level == "simple":
+        cmd.insert(2, '--init="level=1"')
+    _os_system(cmd,log_level=log_level)
     return get_matched_patterns(log_file)
 
 
@@ -99,7 +107,8 @@ def mlir_lowering(top_mlir: str,
                   q_group_size: int = 0,
                   count_patterns: bool = False,
                   addr_mode: str = "auto",
-                  mute: bool = False):
+                  mute: bool = False,
+                  log_level: str = "normal"):
     cmd = [
         "tpuc-opt", top_mlir,
         "--processor-assign=\"chip={} num_device={} num_core={} addr_mode={}\"".format(
@@ -133,9 +142,16 @@ def mlir_lowering(top_mlir: str,
     ])
     log_file = ""
     if count_patterns:
-        log_file = "lowering_patterns.log"
+        log_file = "tpu_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd, mute=mute)
+    if log_level == "quiet":
+        cmd.extend(["> /dev/null"])
+    elif log_level == "only-layer-group":
+        cmd.extend(["--debug-only=layer-group,LayerGroupUtil"])
+        cmd.insert(2, '--init="level=2"')
+    elif log_level == "simple":
+        cmd.insert(2, '--init="level=1"')
+    _os_system(cmd, mute=mute,log_level=log_level)
     return get_matched_patterns(log_file)
 
 
@@ -156,7 +172,7 @@ def mlir_to_model(tpu_mlir: str,
                   model_version: str = "",
                   count_patterns: bool = False,
                   compress_mode: str = "none",
-                  debug_cmd: str = ""):
+                  debug_cmd: str = "",log_level:str = "normal"):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
@@ -192,7 +208,7 @@ def mlir_to_model(tpu_mlir: str,
             tpu_opt_mlir,
             debug_cmd
         ])
-        _os_system(cmd)
+        _os_system(cmd,log_level=log_level)
         cmd = [
             "tpuc-opt",
             tpu_opt_mlir
@@ -215,7 +231,14 @@ def mlir_to_model(tpu_mlir: str,
     if count_patterns:
         log_file = "tpu_patterns.log"
         cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
-    _os_system(cmd)
+    if log_level == "quiet":
+        cmd.extend(["> /dev/null"])
+    elif log_level == "only-layer-group":
+        cmd.extend(["--debug-only=layer-group,LayerGroupUtil"])
+        cmd.insert(2, '--init="level=2"')
+    elif log_level == "simple":
+        cmd.insert(2, '--init="level=1"')
+    _os_system(cmd,log_level=log_level)
 
     # codegen based on final mlir
     codegen_param = (
@@ -227,7 +250,7 @@ def mlir_to_model(tpu_mlir: str,
         codegen_param,
         "-o /dev/null",
     ]
-    _os_system(cmd)
+    _os_system(cmd,log_level=log_level)
 
     out_dir = model.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
@@ -236,8 +259,8 @@ def mlir_to_model(tpu_mlir: str,
         if model.endswith(".bmodel") and not dynamic:
             # The suffix of the profile file is not consistent.
             # bm1684 uses ".dat", bm1684x uses ".txt".
-            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
-            _os_system(["mv net_0.profile", model + ".net_0.profile"])
+            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"], log_level=log_level)
+            _os_system(["mv net_0.profile", model + ".net_0.profile"],log_level=log_level)
     except RuntimeError:
         pass
 
@@ -275,7 +298,8 @@ def origin_mlir_txt_to_bmodel(
     group_by_cores: str = "auto",
     model_version: str = "",
     count_patterns: bool = False,
-    compress_mode: str = "none"
+    compress_mode: str = "none",
+    log_level: str = 'normal'
 ):
     bmodel = f"{model_name}_{mode}.bmodel"
 
@@ -365,16 +389,31 @@ def origin_mlir_txt_to_bmodel(
         options.extend(["--debug"])
 
     import pymlir
+    import sys
     mlir_txt = converter.get_mlir_txt()
-    print("origin_mlir: ")
-    print(mlir_txt)
-    print("options: ", options)
-    pymlir.run_pass_pipeline(mlir_txt, options)
-
+    if log_level == "quiet":
+        with open(os.devnull, "w") as devnull:
+                os.dup2(devnull.fileno(), sys.stdout.fileno())
+                os.dup2(devnull.fileno(), sys.stderr.fileno())
+        try:
+            pymlir.run_pass_pipeline(mlir_txt, options)
+        finally:
+                os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
+                os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+    else:
+        if log_level == "simple":
+            options = [opt for opt in options if not opt.startswith('--init')]
+            options.insert(0, '--init="level=1"')
+        elif log_level == "only-layer-group":
+            options = [opt for opt in options if not opt.startswith('--init')]
+            options.insert(0, '--init="level=2"')
+            # pymlir.debug(["layer-group","LayerGroupUtil"]) #todo
+        print("options: ", options)
+        pymlir.run_pass_pipeline(mlir_txt, options)
     return get_matched_patterns(log_file)
 
 
-def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, fuzzy_match=False):
+def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, fuzzy_match=False, log_level="normal"):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
         cmd.extend(["--except", excepts])
@@ -382,7 +421,7 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
         cmd.append('-vv')
     if fuzzy_match:
         cmd.append('--fuzzy_match')
-    _os_system(cmd)
+    _os_system(cmd,log_level=log_level)
 
 
 # TOPTOTOSA
@@ -418,7 +457,7 @@ def tosa_to_llvm(tosa_mlir: str, objfile: str):
 
 
 # Model inference on CPU
-def model_inference_cpu(objfile: str, output_size: str):
+def model_inference_cpu(objfile: str, output_size: str, log_level:str = "normal"):
     # generate executable file: a.out
     print("Generating executable file a.out ...")
     ccompiler = "clang"
@@ -430,12 +469,12 @@ def model_inference_cpu(objfile: str, output_size: str):
     lib4 = "-lm"
     cflag = "-fPIC"
     cmd = [ccompiler, cfile, model, lib1, lib2, lib3, lib4, cflag]
-    _os_system(cmd)
+    _os_system(cmd,log_level=log_level)
     print("Successfully generate executable file a.out!")
     # execute model inference
     print("Runing ...")
     cmd1 = ["./a.out", output_size]
-    _os_system(cmd1)
+    _os_system(cmd1,log_level=log_level)
     print("Inference ends successfully! Results are saved in inference_result.txt.")
 
 

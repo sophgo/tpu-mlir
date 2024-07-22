@@ -65,7 +65,7 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
                                    std::map<ValueInfo, TensorLive> &liveRange,
                                    bool neuronMemoryReuse, int64_t baseGaddr) {
   if (ops.empty()) {
-    llvm::errs() << "Warning input ops is empty!\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "Warning input ops is empty!\n";});
     return 0;
   }
   // for special op, remove ops which not in liveRange, addr is assigned later
@@ -108,7 +108,7 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
       idx = i;
     }
   }
-  llvm::errs() << "GmemAllocator use " << alloc_methods[idx]->getName() << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "GmemAllocator use " << alloc_methods[idx]->getName() << "\n";});
   gaddrMap_.swap(alloc_methods[idx]->gaddrMap_);
   return min_gmem_size;
 }

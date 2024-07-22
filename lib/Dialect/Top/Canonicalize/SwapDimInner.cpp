@@ -6,15 +6,18 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-struct TopMultiSwapDimMergeToOne : public OpRewritePattern<SwapDimInnerOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopMultiSwapDimMergeToOne : public OpRewriterPatternEx<SwapDimInnerOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SwapDimInnerOp op,
+  TopMultiSwapDimMergeToOne(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SwapDimInnerOp>(context, "TopMultiSwapDimMergeToOne") {}
+
+  LogicalResult matchAndRewriteImpl(SwapDimInnerOp op,
                                 PatternRewriter &rewriter) const override {
     auto nextOp = *op->user_begin();
     if (!isa<SwapDimInnerOp>(nextOp)) {
@@ -25,7 +28,6 @@ struct TopMultiSwapDimMergeToOne : public OpRewritePattern<SwapDimInnerOp> {
     auto cur_offset = module::getI64Array(op.getOffset());
     auto next_offset = module::getI64Array(next_swap_op.getOffset());
     assert(cur_offset->size() == next_offset->size());
-
 
     std::vector<int64_t> offset(cur_offset->size(), 0);
     int32_t axis_num = 0;

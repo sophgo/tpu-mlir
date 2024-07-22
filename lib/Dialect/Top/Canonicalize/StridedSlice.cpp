@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
@@ -25,12 +25,10 @@ typedef struct stridedslice_param_t {
   i32_array_t stride_v;
 } stridedslice_param_t_t;
 
-static bool parseParam(StridedSliceOp op,
-                                stridedslice_param_t_t &param) {
+static bool parseParam(StridedSliceOp op, stridedslice_param_t_t &param) {
   auto start_op =
       dyn_cast_or_null<top::WeightOp>(op.getStarts().getDefiningOp());
-  auto end_op =
-      dyn_cast_or_null<top::WeightOp>(op.getEnds().getDefiningOp());
+  auto end_op = dyn_cast_or_null<top::WeightOp>(op.getEnds().getDefiningOp());
   auto stride_op =
       dyn_cast_or_null<top::WeightOp>(op.getStrides().getDefiningOp());
   if (!start_op || !end_op || !stride_op) {
@@ -55,14 +53,21 @@ static void rewriteParam(stridedslice_param_t_t param, StridedSliceOp op) {
   op.setEllipsisMask(param.ellipsis_mask);
   op.setBeginMask(param.begin_mask);
   op.setEndMask(param.end_mask);
-  auto starts_ranked_type = RankedTensorType::get(module::getShape(op.getStarts()), module::getStorageType(op.getStarts()));
-  auto new_starts = top::WeightOp::create(op, "mergerd", *param.start_v, starts_ranked_type);
+  auto starts_ranked_type = RankedTensorType::get(
+      module::getShape(op.getStarts()), module::getStorageType(op.getStarts()));
+  auto new_starts =
+      top::WeightOp::create(op, "mergerd", *param.start_v, starts_ranked_type);
   op->setOperand(1, new_starts);
-  auto ends_ranked_type = RankedTensorType::get(module::getShape(op.getEnds()), module::getStorageType(op.getEnds()));
-  auto new_ends = top::WeightOp::create(op, "mergerd", *param.end_v, ends_ranked_type);
+  auto ends_ranked_type = RankedTensorType::get(
+      module::getShape(op.getEnds()), module::getStorageType(op.getEnds()));
+  auto new_ends =
+      top::WeightOp::create(op, "mergerd", *param.end_v, ends_ranked_type);
   op->setOperand(2, new_ends);
-  auto strides_ranked_type = RankedTensorType::get(module::getShape(op.getStrides()), module::getStorageType(op.getStrides()));
-  auto new_strides = top::WeightOp::create(op, "mergerd", *param.stride_v, strides_ranked_type);
+  auto strides_ranked_type =
+      RankedTensorType::get(module::getShape(op.getStrides()),
+                            module::getStorageType(op.getStrides()));
+  auto new_strides = top::WeightOp::create(op, "mergerd", *param.stride_v,
+                                           strides_ranked_type);
   op->setOperand(3, new_strides);
   return;
 }
@@ -87,11 +92,15 @@ static std::set<int> get_slice_dims(stridedslice_param_t_t param) {
   return slice_dims;
 }
 
-struct StridedSliceMergePattern : public OpRewritePattern<StridedSliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct StridedSliceMergePattern
+    : public OpRewriterPatternEx<StridedSliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(StridedSliceOp op,
-                                PatternRewriter &rewriter) const override {
+  StridedSliceMergePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<StridedSliceOp>(context, "StridedSliceMergePattern") {}
+
+  LogicalResult matchAndRewriteImpl(StridedSliceOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!op->hasOneUse()) {
       return failure();
     }
@@ -100,13 +109,13 @@ struct StridedSliceMergePattern : public OpRewritePattern<StridedSliceOp> {
       return failure();
     }
     stridedslice_param_t_t cur_param;
-    if(!parseParam(op, cur_param)){
+    if (!parseParam(op, cur_param)) {
       return failure();
     }
     std::set<int> cur_slice_dim = get_slice_dims(cur_param);
     auto pre_op = cast<StridedSliceOp>(in_op);
     stridedslice_param_t_t pre_param;
-    if (!parseParam(pre_op, pre_param)){
+    if (!parseParam(pre_op, pre_param)) {
       return failure();
     }
 

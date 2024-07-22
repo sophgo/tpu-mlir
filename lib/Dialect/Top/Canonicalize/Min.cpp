@@ -6,20 +6,23 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-struct MinToMinConst : public OpRewritePattern<MinOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MinToMinConst : public OpRewriterPatternEx<MinOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MinOp op,
-                                PatternRewriter &rewriter) const override {
+  MinToMinConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MinOp>(context, "MinToMinConst") {}
+
+  LogicalResult matchAndRewriteImpl(MinOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();

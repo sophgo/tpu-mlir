@@ -10,6 +10,7 @@
 #include "AddressAssign/CVAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
@@ -18,11 +19,13 @@ namespace tpu {
 
 extern void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns);
 
-class ConcatFusePattern : public OpRewritePattern<tpu::ConcatOp> {
-public:
-  using OpRewritePattern<tpu::ConcatOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::ConcatOp op,
+class ConcatFusePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
+  public:
+  ConcatFusePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConcatOp>(context,"ConcatFusePattern") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getOnlyMerge()) {
       return failure();
@@ -92,14 +95,16 @@ public:
     op.setOnlyMerge(true);
     return success();
   }
+  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
 };
 
-// concat(concat(a,b),c) => concat(a,b,c)
-class ConcatMergePattern : public OpRewritePattern<tpu::ConcatOp> {
-public:
-  using OpRewritePattern<tpu::ConcatOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::ConcatOp op,
+class ConcatMergePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
+  public:
+  ConcatMergePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConcatOp>(context,"ConcatMergePattern") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
                                 PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily()) {
       return failure();
@@ -138,6 +143,7 @@ public:
     }
     return success();
   }
+  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
 };
 
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {

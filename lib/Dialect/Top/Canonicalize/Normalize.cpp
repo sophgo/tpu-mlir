@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 
@@ -14,11 +14,11 @@ using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
 
-struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct NormalizeConvert : public OpRewriterPatternEx<NormalizeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   NormalizeConvert(MLIRContext *context)
-      : OpRewritePattern<NormalizeOp>(context) {}
-  LogicalResult matchAndRewrite(NormalizeOp op,
+      : OpRewriterPatternEx<NormalizeOp>(context,"NormalizeConvert") {}
+  LogicalResult matchAndRewriteImpl(NormalizeOp op,
                                 PatternRewriter &rewriter) const override {
     Value input_var = op->getOperand(0);
     std::string name = module::getName(op->getResult(0)).str();

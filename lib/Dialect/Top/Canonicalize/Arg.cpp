@@ -8,6 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
+
+
+#define DEBUG_TYPE "Arg_canonicalize"
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
@@ -17,16 +22,19 @@ Reduce_method reduce_min = SG_REDUCE_MIN;
 typedef arg_method_t Arg_method;
 Arg_method arg_max = ARG_MAXT;
 Arg_method arg_min = ARG_MINT;
-struct TopArgReducefull : public OpRewritePattern<ArgOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopArgReducefull : public OpRewriterPatternEx<ArgOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ArgOp op,
+  TopArgReducefull(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<ArgOp>(context, "TopArgReducefull") {}
+
+  LogicalResult matchAndRewriteImpl(ArgOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op.getInput().getDefiningOp();
     if (!op->hasOneUse() || formerOp->hasOneUse()) {
       return failure();
     }
-    auto arg_method = StringSwitch<int>(op.getMode())
+    auto arg_method = llvm::StringSwitch<int>(op.getMode())
                           .Case("ArgMax", 0)
                           .Case("ArgMin", 1)
                           .Default(-1);
@@ -39,7 +47,7 @@ struct TopArgReducefull : public OpRewritePattern<ArgOp> {
       if (!isa<ReduceOp>(use.getOwner()))
         continue;
       auto reop = dyn_cast<top::ReduceOp>(use.getOwner());
-      auto reduce_method = StringSwitch<int>(reop.getMode())
+      auto reduce_method = llvm::StringSwitch<int>(reop.getMode())
                                .Case("ReduceMax", 2)
                                .Case("ReduceMin", 3)
                                .Default(-1);
@@ -77,9 +85,13 @@ struct TopArgReducefull : public OpRewritePattern<ArgOp> {
   }
 };
 
-struct TopTransposeArg : public OpRewritePattern<ArgOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(ArgOp op,
+struct TopTransposeArg : public OpRewriterPatternEx<ArgOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+    TopTransposeArg(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<ArgOp>(context, "TopTransposeArg") {}
+
+  LogicalResult matchAndRewriteImpl(ArgOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto formerOp = op.getInput().getDefiningOp();
@@ -148,5 +160,6 @@ struct TopTransposeArg : public OpRewritePattern<ArgOp> {
 
 void ArgOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<TopArgReducefull, TopTransposeArg>(context);
+  results.insert<TopArgReducefull>(context,"TopArgReducefull");
+  results.insert<TopTransposeArg>(context,"TopTransposeArg");
 }

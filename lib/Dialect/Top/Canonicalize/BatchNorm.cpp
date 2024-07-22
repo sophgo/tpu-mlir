@@ -8,18 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopBatchNormToScale : public OpRewriterPatternEx<BatchNormOp> {
   TopBatchNormToScale(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewritePattern<BatchNormOp>(context, benefit) {}
+      : OpRewriterPatternEx<BatchNormOp>(context, "TopBatchNormToScale", benefit) {}
 
-  LogicalResult matchAndRewrite(BatchNormOp op,
-                                PatternRewriter &rewriter) const override {
-
+protected:
+  LogicalResult matchAndRewriteImpl(BatchNormOp op,
+                                    PatternRewriter &rewriter) const override {
     auto mean = cast<WeightOp>(op.getMean().getDefiningOp());
     auto variance = cast<WeightOp>(op.getVariance().getDefiningOp());
     auto mean_f32 = mean.read_as_float();
@@ -44,7 +44,7 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
     std::vector<float> scale(channel);
     std::vector<float> bias(channel);
 
-    // constructe scale and bias by params of BatchNorm
+    // construct scale and bias by params of BatchNorm
     auto eps = op.getEpsilon().convertToDouble();
     for (int i = 0; i < channel; ++i) {
       scale[i] = 1 / std::sqrt(variance_f32->at(i) + eps) * gamma_f32->at(i);
@@ -52,17 +52,15 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
     }
     auto storage_type = module::getStorageType(op.getOutput());
 
-    auto scale_op = WeightOp::create_float(op, "scale", scale,
-                                            {channel}, storage_type);
-    auto bias_op = WeightOp::create_float(op, "bias", bias,
-                                            {channel}, storage_type);
+    auto scale_op = WeightOp::create_float(op, "scale", scale, {channel}, storage_type);
+    auto bias_op = WeightOp::create_float(op, "bias", bias, {channel}, storage_type);
+
     // replace the BatchNorm Op
-    rewriter.replaceOpWithNewOp<ScaleOp>(
-        op, op.getOutput().getType(),
-        ValueRange{op.getInput(), scale_op, bias_op});
+    rewriter.replaceOpWithNewOp<ScaleOp>(op, op.getOutput().getType(), ValueRange{op.getInput(), scale_op, bias_op});
     return success();
   }
 };
+
 
 void BatchNormOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {

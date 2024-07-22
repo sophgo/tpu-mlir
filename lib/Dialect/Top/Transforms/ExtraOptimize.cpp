@@ -15,13 +15,15 @@ using namespace llvm;
 
 namespace tpu_mlir {
 namespace top {
+template <typename OpTy>
+struct RemoveUnuseOutput : public OpRewriterPatternEx<OpTy> {
+public:
+  RemoveUnuseOutput(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context) {}
 
-template <typename TyOp>
-struct RemoveUnuseOutput : public OpRewritePattern<TyOp> {
-  using OpRewritePattern<TyOp>::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(TyOp op,
-                                PatternRewriter &rewriter) const override {
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(OpTy op,
+                                          mlir::PatternRewriter &rewriter) const override {
     for (Value out : op.getResults()) {
       if (out.getUsers().empty() && !isa<tpu::TopKOp, top::TopKOp>(op)) {
         out.setType(mlir::NoneType::get(rewriter.getContext()));

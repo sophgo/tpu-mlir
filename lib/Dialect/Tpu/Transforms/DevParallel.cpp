@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 namespace tpu_mlir {
@@ -252,15 +253,16 @@ void eraseForward(PatternRewriter &rewriter, Operation *op) {
 // ===================================
 // distribute all ops to multi device
 // ===================================
-class DoDistributePattern : public OpRewritePattern<tpu::DevBeginOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  DoDistributePattern(MLIRContext *context)
-      : OpRewritePattern<tpu::DevBeginOp>(context) {
-    num_devices = module::getDeviceNum();
-  }
-  LogicalResult matchAndRewrite(tpu::DevBeginOp op,
+class DoDistributePattern  : public OpRewriterPatternEx<tpu::DevBeginOp> {
+  public:
+  DoDistributePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::DevBeginOp>(context) {
+        num_devices = module::getDeviceNum();
+      }
+
+  LogicalResult matchAndRewriteImpl(tpu::DevBeginOp op,
                                 PatternRewriter &rewriter) const override {
+
     if (op.getDone()) {
       return failure();
     }
@@ -331,6 +333,8 @@ public:
     op.setDone(true);
     return success();
   }
+
+  bool shouldPrint(tpu::DevBeginOp op) const override { return false;}
 
 private:
   int64_t num_devices;

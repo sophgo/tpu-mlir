@@ -8,28 +8,28 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
+// Conv1dTo2d.cpp
+struct Conv1dTo2d : public OpRewriterPatternEx<ConvOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-struct Conv1dTo2d : public OpRewritePattern<ConvOp> {
-  using OpRewritePattern::OpRewritePattern;
+  Conv1dTo2d(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConvOp>(context, "Conv1dTo2d") {}
 
-  LogicalResult matchAndRewrite(ConvOp op,
-                                PatternRewriter &rewriter) const override {
-
+  LogicalResult matchAndRewriteImpl(ConvOp op,
+                                    PatternRewriter &rewriter) const override {
     auto kernel = module::getI64Array(op.getKernelShape());
     if (kernel->size() != 1) {
       return failure();
     }
     std::vector<int64_t> vfilterShape = module::getShape(op.getFilter());
     vfilterShape.push_back(1);
-    // new_type: mlir::RankedTensorType   rewriter: mlir::PatternRewriter
-    // &rewriter
     auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
     op.getFilter().setType(new_type);
 
-    // update kernel_shape
     std::vector<int64_t> kernel_shape =
         *module::getI64Array(op.getKernelShape());
     kernel_shape.push_back(1);
@@ -38,24 +38,27 @@ struct Conv1dTo2d : public OpRewritePattern<ConvOp> {
     strides.push_back(1);
     op.setStridesAttr(rewriter.getI64ArrayAttr(strides));
 
-    // update pads
     auto pads_v = module::getI64Array(op.getPads());
     std::vector<int64_t> pads = {pads_v->at(0), 0, pads_v->at(1), 0};
     op.setPadsAttr(rewriter.getI64ArrayAttr(pads));
-    // update dilations
+
     std::vector<int64_t> dilations =
         *module::getI64Array(op.getDilations(), 1, 1);
     dilations.push_back(1);
     op.setDilationsAttr(rewriter.getI64ArrayAttr(dilations));
+
     return success();
   }
 };
 
-struct Conv3dTo2d : public OpRewritePattern<ConvOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct Conv3dTo2d : public OpRewriterPatternEx<ConvOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConvOp op,
-                                PatternRewriter &rewriter) const override {
+  Conv3dTo2d(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConvOp>(context, "Conv3dTo2d") {}
+
+  LogicalResult matchAndRewriteImpl(ConvOp op,
+                                    PatternRewriter &rewriter) const override {
     auto p = op.parseParam();
     if (op.getKernelShape().size() != 3 || p.id != p.kd || p.od != 1) {
       return failure();
@@ -94,10 +97,13 @@ struct Conv3dTo2d : public OpRewritePattern<ConvOp> {
     return success();
   }
 };
-struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
-  using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(ConvOp op,
+struct Conv3dTranspose : public OpRewriterPatternEx<ConvOp> {
+
+  Conv3dTranspose(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConvOp>(context, "Conv3dTranspose") {}
+
+  LogicalResult matchAndRewriteImpl(ConvOp op,
                                 PatternRewriter &rewriter) const override {
     /* make sure it is a Conv3dOp and id == kd and ic == filter ic */
     auto p = op.parseParam();
@@ -153,10 +159,13 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
   }
 };
 
-struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct Conv1x1Convkxk2dMerge : public OpRewriterPatternEx<ConvOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConvOp op,
+  Conv1x1Convkxk2dMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConvOp>(context, "Conv1x1Convkxk2dMerge") {}
+
+  LogicalResult matchAndRewriteImpl(ConvOp op,
                                 PatternRewriter &rewriter) const override {
     if (module::isUniformQuantized(op.getOutput())) {
       return failure();

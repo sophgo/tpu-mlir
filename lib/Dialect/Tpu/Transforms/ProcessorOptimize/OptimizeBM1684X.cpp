@@ -17,15 +17,20 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 
 namespace bm1684x {
-class MatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
+class MatMulHdimBatchPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
   // Case1: Permute -> MatMul <- Permute
   // Case2: Reshape -> MatMul <- Permute
   // Case3: Left    -> MatMul <- Permute
   // Case4: Permute -> MatMul <- Tile <- Permute
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  MatMulHdimBatchPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulHdimBatchPattern",
+                                           benifit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(tpu::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto userIt = op.getOutput().user_begin();
     if (userIt != op.getOutput().user_end()) {
       auto _nextOp_ = *userIt;
@@ -38,6 +43,10 @@ public:
           return failure();
       }
     }
+
+    //  if (module::isAsymmetric()) {
+    //    return failure();
+    //  }
 
     // 1. Define Left and Right
     auto left = op.getInput();
@@ -353,11 +362,14 @@ public:
   }
 };
 
-class MatMulLeftReusePattern : public OpRewritePattern<tpu::MatMulOp> {
+class MatMulLeftReusePattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MatMulLeftReusePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulLeftReusePattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_op = op.getInput().getDefiningOp();
     if (in_op->hasOneUse()) {
       op.setLeftReuse(0);
@@ -377,11 +389,14 @@ public:
   When:
       Reshape (1,N,K) -> (1,1,N,K) or (1,N,K) -> (1,N,1,K)
 */
-class MatMulRemoveReshapePattern : public OpRewritePattern<tpu::MatMulOp> {
+class MatMulRemoveReshapePattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MatMulRemoveReshapePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(
+            context, "MatMulRemoveReshapePattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto left_op =
         dyn_cast_or_null<tpu::ReshapeOp>(op.getInput().getDefiningOp());
     auto right_op =
@@ -428,11 +443,15 @@ public:
 
 // transform group conv to normal conv, when int8/f16/bf16 &&
 // input_c<=ic_parallel && isBM1684XFamily()
-class GroupConv2NormalConv : public OpRewritePattern<tpu::Conv2DOp> {
+class GroupConv2NormalConv : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  GroupConv2NormalConv(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "GroupConv2NormalConv",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!(module::isBM1684XFamily() || module::isBM1690Family()) ||
         !module::isWeight(op.getFilter())) {
       return failure();
@@ -490,11 +509,15 @@ private:
 
 // reorder op when transpose is before mulconst/cast/softmax to optimize bert
 // TODO: may be merged into PermuteReorderPattern
-class PermuteAddWeightReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
+class PermuteAddWeightReorderPattern
+    : public OpRewriterPatternEx<tpu::PermuteOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteAddWeightReorderPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(
+            context, "PermuteAddWeightReorderPattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     //  if (module::isAsymmetric()) {
     //    return failure();
     //  }
@@ -612,11 +635,14 @@ public:
 
 // reorder op when transpose is before mulconst
 // permute order = {0,2,3,1}
-class PermuteMulconstSwap : public OpRewritePattern<tpu::PermuteOp> {
+class PermuteMulconstSwap : public OpRewriterPatternEx<tpu::PermuteOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteMulconstSwap(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteMulconstSwap",
+                                            benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op->hasOneUse() == false) {
       return failure();
@@ -678,11 +704,15 @@ public:
  *                   => MaskedFill =>                   => MaskedFill + Permute
  * input1           /              => input1 + Permute /
  */
-class MaskedFillPermuteMove : public OpRewritePattern<tpu::MaskedFillOp> {
+class MaskedFillPermuteMove : public OpRewriterPatternEx<tpu::MaskedFillOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MaskedFillOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MaskedFillPermuteMove(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MaskedFillOp>(context, "MaskedFillPermuteMove",
+                                               benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MaskedFillOp op,
+                                    PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getBrn());
     auto condition_shape = module::getShape(op.getCond());
     if (input_shape != condition_shape) {
@@ -768,11 +798,14 @@ public:
  *          => Add => Add -> permute
  * permute /
  */
-class MovePermuteAfterAdd : public OpRewritePattern<tpu::AddOp> {
+class MovePermuteAfterAdd : public OpRewriterPatternEx<tpu::AddOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::AddOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MovePermuteAfterAdd(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::AddOp>(context, "MovePermuteAfterAdd",
+                                        benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::AddOp op,
+                                    PatternRewriter &rewriter) const override {
     auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
     auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
     if (!l_permute_op || !r_permute_op)
@@ -828,11 +861,14 @@ public:
  * Optimized pattern can not make full use of lanes.
  *
  */
-class MoveReshapeAfterAdd : public OpRewritePattern<tpu::AddOp> {
+class MoveReshapeAfterAdd : public OpRewriterPatternEx<tpu::AddOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::AddOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MoveReshapeAfterAdd(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::AddOp>(context, "MoveReshapeAfterAdd",
+                                        benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::AddOp op,
+                                    PatternRewriter &rewriter) const override {
     auto l_reshape_op = op.getOperand(0).getDefiningOp<tpu::ReshapeOp>();
     auto r_reshape_op = op.getOperand(1).getDefiningOp<tpu::ReshapeOp>();
     if (!l_reshape_op || !r_reshape_op)
@@ -864,11 +900,14 @@ public:
 // reorder op when reshapeOp is before matmul/mulconst/cast/softmax op to
 // eliminate reshapeOp
 // copied from lib/Dialect/Top/Transforms/ProcessorOptimize/OptimizeBM1684X.cpp
-class TpuReshapeReorderPattern : public OpRewritePattern<tpu::ReshapeOp> {
+class TpuReshapeReorderPattern : public OpRewriterPatternEx<tpu::ReshapeOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  TpuReshapeReorderPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ReshapeOp>(context, "TpuReshapeReorderPattern",
+                                            benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto output = op.getOutput();
     if (!output.hasOneUse()) {
       return failure();
@@ -877,7 +916,8 @@ public:
     auto ishape = module::getShape(op.getInput());
     auto oshape = module::getShape(op.getOutput());
     if (ishape.size() == 4 && ishape[0] == 1 && ishape[1] == 1 &&
-        oshape.size() == 3 && ishape[2] == oshape[1] && ishape[3] == oshape[2]) {
+        oshape.size() == 3 && ishape[2] == oshape[1] &&
+        ishape[3] == oshape[2]) {
       // InsertReshape optimize, do not shape reorder
       return failure();
     }
@@ -988,11 +1028,13 @@ public:
 
 // permute + permute or permute + reshape + permute
 // copied from lib/Dialect/Top/Canonicalize/Permute.cpp (e41cc7c5)
-struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteFuse(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteFuse", benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
@@ -1076,11 +1118,13 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
 
 // permute1 + permute2
 // permute_order[0,2,1,3]!=  permute2_order[0,1,3,2]
-struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteFuse2 : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteFuse2(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteFuse2", benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
@@ -1096,9 +1140,11 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
       return failure();
     }
     // strict restrictions
-    if(in1_order->size() == 4) {
-      if (false == (in1_order->at(0) == 0 && in1_order->at(1) == 1 && in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
-         false == (in0_order->at(0) == 0 && in0_order->at(1) == 2 && in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
+    if (in1_order->size() == 4) {
+      if (false == (in1_order->at(0) == 0 && in1_order->at(1) == 1 &&
+                    in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
+          false == (in0_order->at(0) == 0 && in0_order->at(1) == 2 &&
+                    in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
         return failure();
       }
     }
@@ -1121,11 +1167,16 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
 // input_stride[i] = input_shape[i-1] * ... * input_shape[0]
 // indices_coeff[i0][i1]...[in-1] = i0 * input_stride[0] * axis_flag[i] + ... +
 // in-1 * input_stride[n-1] * axis_flag[n-1]
-struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct GatherElementsPattern
+    : public OpRewriterPatternEx<tpu::GatherElementsOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(tpu::GatherElementsOp op,
-                                PatternRewriter &rewriter) const override {
+  GatherElementsPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::GatherElementsOp>(
+            context, "GatherElementsPattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::GatherElementsOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto indices = op.getIndices();
     auto indices_shape = module::getShape(indices);
@@ -1217,8 +1268,11 @@ struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
  * @brief Try insert tile since shapes cannot merge to 4d in some case
  */
 template <typename TyOp>
-struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
-  using OpRewritePattern<TyOp>::OpRewritePattern;
+struct TryInsertTileBinaryPattern : public OpRewriterPatternEx<TyOp> {
+  // using OpRewriterPatternEx<TyOp>::OpRewriterPatternEx;
+  TryInsertTileBinaryPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<TyOp>(context, "TryInsertTileBinaryPattern",
+                                  benifit) {}
 
   bool can_be_merged(int64_t a1, int64_t a2, int64_t b1, int64_t b2) const {
     // case 0: both dims are same --- always true
@@ -1332,8 +1386,8 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     return broadcast_axes;
   }
 
-  LogicalResult matchAndRewrite(TyOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(TyOp op,
+                                    PatternRewriter &rewriter) const override {
     int max_allow_dim_backend = 4;
     Value out = op.getOutput();
     if (isa<ReturnOp>(op))
@@ -1365,11 +1419,13 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
   }
 };
 
-class Concat5dto4d : public OpRewritePattern<tpu::ConcatOp> {
+class Concat5dto4d : public OpRewriterPatternEx<tpu::ConcatOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ConcatOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  Concat5dto4d(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ConcatOp>(context, "Concat5dto4d", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
+                                    PatternRewriter &rewriter) const override {
     auto dims = module::getShape(op.getInputs()[0]).size();
     if (dims != 5 || op.getAxis() != 3)
       return failure();
@@ -1426,11 +1482,15 @@ public:
 };
 
 struct ScatterElementsPattern
-    : public OpRewritePattern<tpu::ScatterElementsOp> {
-  using OpRewritePattern::OpRewritePattern;
+    : public OpRewriterPatternEx<tpu::ScatterElementsOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(tpu::ScatterElementsOp op,
-                                PatternRewriter &rewriter) const override {
+  ScatterElementsPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ScatterElementsOp>(
+            context, "ScatterElementsPattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ScatterElementsOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto indices = op.getIndices();
     auto indices_shape = module::getShape(indices);
@@ -1521,11 +1581,15 @@ struct ScatterElementsPattern
 
 // permute + (mulconst) + add + cast + softmax + cast + permute
 // -> add + cast + softmax + cast
-struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteFuseAddSoftmax : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  PermuteFuseAddSoftmax(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteFuseAddSoftmax",
+                                            benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     auto out = op->getResult(0);
     if (in.hasOneUse() == false) {
@@ -1642,8 +1706,12 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
 
 // permute + (mulconst) + add + cast + softmax + cast + slice + permute
 // -> add + cast + softmax + cast + slice
-struct PermuteFuseAddSoftmaxSlice : public OpRewritePattern<tpu::ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteFuseAddSoftmaxSlice : public OpRewriterPatternEx<tpu::ReshapeOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  PermuteFuseAddSoftmaxSlice(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ReshapeOp>(
+            context, "PermuteFuseAddSoftmaxSlice", benifit) {}
 
   tpu::ReshapeOp move_reshape_after_add(tpu::AddOp &op,
                                         PatternRewriter &rewriter) const {
@@ -1744,8 +1812,8 @@ struct PermuteFuseAddSoftmaxSlice : public OpRewritePattern<tpu::ReshapeOp> {
     return;
   }
 
-  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto add_op = dyn_cast<tpu::AddOp>(op->getOperand(0).getDefiningOp());
     if (!add_op) {
       return failure();
@@ -1984,11 +2052,14 @@ struct PermuteFuseAddSoftmaxSlice : public OpRewritePattern<tpu::ReshapeOp> {
 };
 
 // reshape + permute -> permute
-struct ReshapePermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ReshapePermuteFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  ReshapePermuteFuse(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "ReshapePermuteFuse",
+                                            benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
@@ -2024,11 +2095,14 @@ struct ReshapePermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
 };
 
 // permute + reshape -> reshape
-struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteReshapeFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteReshapeFuse(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteReshapeFuse",
+                                            benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
@@ -2061,11 +2135,13 @@ struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
 // cast (int2float) + ... + cast (float2int) + gatherelements() -> ... +
 // gatherelements
 struct EliminateCastBeforeGatherElements
-    : public OpRewritePattern<tpu::CastOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(tpu::CastOp op,
-                                PatternRewriter &rewriter) const override {
+    : public OpRewriterPatternEx<tpu::CastOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  EliminateCastBeforeGatherElements(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::CastOp>(
+            context, "EliminateCastBeforeGatherElements", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::CastOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     auto stype = module::getStorageType(in);
     if (!stype.isInteger(32)) {
@@ -2108,11 +2184,14 @@ struct EliminateCastBeforeGatherElements
 //  reshape + permute + reshape + permute -> reshape + permute
 //            3D(0,2,1) 6D        6D case1:(0,2,4,3,5,1)
 //                                   case2:(0,2,4,1,3,5)
-struct PermuteReshapeFuse2 : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermuteReshapeFuse2 : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  PermuteReshapeFuse2(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteReshapeFuse2",
+                                            benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
 
     int pattern_case = -1;
@@ -2190,11 +2269,14 @@ struct PermuteReshapeFuse2 : public OpRewritePattern<tpu::PermuteOp> {
   }
 };
 
-struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct FitPermute2Hdim : public OpRewriterPatternEx<tpu::MatMulOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  FitPermute2Hdim(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "FitPermute2Hdim",
+                                           benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     int pattern_case = -1;
     auto left = op.getInput();
@@ -2377,11 +2459,14 @@ struct FitPermute2Hdim : public OpRewritePattern<tpu::MatMulOp> {
  * permute /                    permute /
  */
 
-struct ErasePermuteAroundAdd : public OpRewritePattern<tpu::AddOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ErasePermuteAroundAdd : public OpRewriterPatternEx<tpu::AddOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  ErasePermuteAroundAdd(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::AddOp>(context, "ErasePermuteAroundAdd",
+                                        benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::AddOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::AddOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
     auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
@@ -2458,11 +2543,14 @@ struct ErasePermuteAroundAdd : public OpRewritePattern<tpu::AddOp> {
  * NOTE: This is typical for Group-Query-Attention(GQA) and B is Key or Value
  *
  */
-class TileMatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
+class TileMatMulHdimBatchPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  TileMatMulHdimBatchPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(
+            context, "TileMatMulHdimBatchPattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto left = op.getInput();
     auto right = op.getRight();
@@ -2523,10 +2611,10 @@ public:
    reshape---->SliceOp
          \---->SliceOp
       */
-class MarkRedundancySlicePattern : public OpRewritePattern<tpu::SliceOp> {
+class MarkRedundancySlicePattern : public OpRewriterPatternEx<tpu::SliceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::SliceOp op,
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  LogicalResult matchAndRewriteImpl(tpu::SliceOp op,
                                 PatternRewriter &rewriter) const override {
     if (!isa<tpu::ReshapeOp>(op.getInput().getDefiningOp())) {
       return failure();
@@ -2545,11 +2633,14 @@ public:
 
 #if 1
 //  split the pattern if batch=1
-class MatMulActiveMatMulPattern : public OpRewritePattern<tpu::MatMulOp> {
+class MatMulActiveMatMulPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MatMulActiveMatMulPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulActiveMatMulPattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto left0 = op.getInput();
     auto right0 = op.getRight();
@@ -2626,10 +2717,14 @@ Operation *get_next_op(Operation *op,
   return *next_op->getResult(0).getUsers().begin();
 }
 
-class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override {
+class RotaryPosEmbPattern : public OpRewriterPatternEx<tpu::PermuteOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+public:
+  RotaryPosEmbPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "RotaryPosEmbPattern",
+                                            benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
     // check topo
     if (op->hasOneUse())
       return failure();
@@ -2879,10 +2974,14 @@ class RotaryPosEmbPattern : public OpRewritePattern<tpu::PermuteOp> {
  *              /                                 /
  * A -> Reshape --> Slice -> squeeze -> ... => A  --> Slice -> ...
  */
-class ReshapeSliceSqueezePattern : public OpRewritePattern<tpu::ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+class ReshapeSliceSqueezePattern : public OpRewriterPatternEx<tpu::ReshapeOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+public:
+  ReshapeSliceSqueezePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ReshapeOp>(
+            context, "ReshapeSliceSqueezePattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     auto shape = module::getShape(in);
     auto users = std::vector<Operation *>(op->user_begin(), op->user_end());
@@ -2953,11 +3052,14 @@ class ReshapeSliceSqueezePattern : public OpRewritePattern<tpu::ReshapeOp> {
   }
 };
 
-class MatMul2FAttentionPattern : public OpRewritePattern<tpu::MatMulOp> {
+class MatMul2FAttentionPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  MatMul2FAttentionPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMul2FAttentionPattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     // return failure();
     std::vector<Operation *> op_need_del;
     if (!module::isBM1684X()) {
@@ -3017,7 +3119,8 @@ public:
     op_need_del.emplace_back(softmax);
     Value mul_out;
     tpu::AddOp add;
-    tpu::CastOp cast_op = dyn_cast<tpu::CastOp>(softmax.getInput().getDefiningOp());
+    tpu::CastOp cast_op =
+        dyn_cast<tpu::CastOp>(softmax.getInput().getDefiningOp());
     if (cast_op) {
       if (!cast_op->hasOneUse()) {
         return failure();
@@ -3090,15 +3193,15 @@ public:
     auto k_permute_order = module::getI64Array(k_permute.getOrder());
     auto right_trans = matmul0.getRightTranspose();
     if (right_trans) {
-      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
-          || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1
-          || k_permute_order->at(3) != 3) {
+      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0 ||
+          k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1 ||
+          k_permute_order->at(3) != 3) {
         return failure();
       }
     } else {
-      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0
-          || k_permute_order->at(1) != 2 || k_permute_order->at(2) != 3
-          || k_permute_order->at(3) != 1) {
+      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0 ||
+          k_permute_order->at(1) != 2 || k_permute_order->at(2) != 3 ||
+          k_permute_order->at(3) != 1) {
         return failure();
       }
     }
@@ -3295,12 +3398,14 @@ static tpu::SliceOp create_slice_op(PatternRewriter &rewriter, Operation *op,
 }
 
 // Conv merge requant
-class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
-  public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override {
-
+class ConvMergeRequant : public OpRewriterPatternEx<tpu::Conv2DOp> {
+public:
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  ConvMergeRequant(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "ConvMergeRequant",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    PatternRewriter &rewriter) const override {
     auto left = op.getInput();
     auto right = op.getFilter();
     auto bias = op.getBias();
@@ -3317,7 +3422,8 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
     std::vector<int64_t> rshift_v;
     std::vector<int64_t> multiplier_v;
     auto shape = module::getShape(op.getOutput());
-    if (auto requant_op = dyn_cast<tpu::RequantIntOp>(*(op.getOutput().getUsers().begin()))) {
+    if (auto requant_op =
+            dyn_cast<tpu::RequantIntOp>(*(op.getOutput().getUsers().begin()))) {
       if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
         return failure();
       // if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
@@ -3325,24 +3431,28 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
       // Conv merge requant_int
       multiplier_v.assign(shape[1], requant_op.getMultiplier());
       rshift_v.assign(shape[1], requant_op.getRshift());
-      op.setMultiplierAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
+      op.setMultiplierAttr(
+          rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
       op.setRshiftAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v}));
       op.setQuantModeAttr(requant_op.getQuantModeAttr());
       op.setRoundModeAttr(requant_op.getRoundModeAttr());
       rewriter.setInsertionPointAfter(op);
-      auto s_op = rewriter.create<tpu::Conv2DOp>(requant_op->getLoc(), requant_op.getOutput().getType(),
-                                                 ValueRange{left, right, bias}, op->getAttrs());
+      auto s_op = rewriter.create<tpu::Conv2DOp>(
+          requant_op->getLoc(), requant_op.getOutput().getType(),
+          ValueRange{left, right, bias}, op->getAttrs());
       requant_op.replaceAllUsesWith(s_op.getOutput());
       return success();
     }
 
-    if (auto requant_op = dyn_cast<tpu::RequantIntAxisOp>(*(op.getOutput().getUsers().begin()))) {
+    if (auto requant_op = dyn_cast<tpu::RequantIntAxisOp>(
+            *(op.getOutput().getUsers().begin()))) {
       if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
         return failure();
       // if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
       //   return failure();
       // Conv merge requant_int_axis
-      auto requant = dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
+      auto requant =
+          dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
       if (module::isBM1688()) {
         for (int i = 0; i < shape[1]; ++i) {
@@ -3355,13 +3465,15 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
           rshift_v.push_back(-(data->data()[i * 3 + 1]));
         }
       }
-      op.setMultiplierAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
+      op.setMultiplierAttr(
+          rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v}));
       op.setRshiftAttr(rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v}));
       op.setQuantModeAttr(requant_op.getQuantModeAttr());
       op.setRoundModeAttr(requant_op.getRoundModeAttr());
       rewriter.setInsertionPointAfter(op);
-      auto s_op = rewriter.create<tpu::Conv2DOp>(requant_op->getLoc(), requant_op.getOutput().getType(),
-                                                 ValueRange{left, right, bias}, op->getAttrs());
+      auto s_op = rewriter.create<tpu::Conv2DOp>(
+          requant_op->getLoc(), requant_op.getOutput().getType(),
+          ValueRange{left, right, bias}, op->getAttrs());
       requant_op.replaceAllUsesWith(s_op.getOutput());
       return success();
     }
@@ -3370,11 +3482,14 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
   }
 };
 
-class ConvMergePattern : public OpRewritePattern<tpu::Conv2DOp> {
+class ConvMergePattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  ConvMergePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "ConvMergePattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     if (!module::isUniformQuantized(in)) {
       return failure();
@@ -3541,11 +3656,15 @@ public:
   }
 };
 
-class NoneZeroFixRowMajor : public OpRewritePattern<tpu::NonZeroOp> {
+class NoneZeroFixRowMajor : public OpRewriterPatternEx<tpu::NonZeroOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::NonZeroOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  NoneZeroFixRowMajor(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::NonZeroOp>(context, "NoneZeroFixRowMajor",
+                                            benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::NonZeroOp op,
+                                    PatternRewriter &rewriter) const override {
     const int order = op.getOrder().str() == "ColMajor" ? 0 : 1;
     if (order == 0) {
       return failure();
@@ -3571,11 +3690,14 @@ public:
   }
 };
 
-class SplitReduceL2Pattern : public OpRewritePattern<tpu::ReduceOp> {
+class SplitReduceL2Pattern : public OpRewriterPatternEx<tpu::ReduceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  SplitReduceL2Pattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ReduceOp>(context, "SplitReduceL2Pattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     /* ReduceL2(1x6x8x65536)->Reshape(1x48x256x256)+ReduceL2(1x48x256x1)+ReduceL2(1x48x1x1)+Reshape(1x6x8x1)
      * ReduceL2(1x48x65536)->Reshape(48x256x256)+ReduceL2(48x256x1)+ReduceL2(48x1x1)+Reshape(1x48x1)
      */
@@ -3665,11 +3787,14 @@ public:
   }
 };
 
-class Reduce2AxesPattern : public OpRewritePattern<tpu::ReduceOp> {
+class Reduce2AxesPattern : public OpRewriterPatternEx<tpu::ReduceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  Reduce2AxesPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::ReduceOp>(context, "Reduce2AxesPattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     /* ReduceL2(1x4x256x256,axes[2,3],keep_dims=false)->ReduceL2(1x4x256x256)+ReduceL2(1x4x256)
      */
     if (!module::isBM1688()) {
@@ -3749,11 +3874,14 @@ public:
  *  /                   /
  *                 Slice
  */
-class SplitMatmulPattern : public OpRewritePattern<tpu::MatMulOp> {
+class SplitMatmulPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  SplitMatmulPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitMatmulPattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     /*
      * MatMul(1x1x48x65536,1x1x65536x48) -> Slice =>
      * MatMul(1x1x48x16384,1x1x16384x48) => Add
@@ -3875,11 +4003,15 @@ public:
   }
 };
 
-struct GridSamplerFusePattern : public OpRewritePattern<tpu::GridSamplerOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct GridSamplerFusePattern : public OpRewriterPatternEx<tpu::GridSamplerOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(tpu::GridSamplerOp op,
-                                PatternRewriter &rewriter) const override {
+  GridSamplerFusePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::GridSamplerOp>(
+            context, "GridSamplerFusePattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::GridSamplerOp op,
+                                    PatternRewriter &rewriter) const override {
     auto dims = module::getShape(op.getInput()).size();
     if (dims != 5) {
       return failure();
@@ -3928,12 +4060,16 @@ struct GridSamplerFusePattern : public OpRewritePattern<tpu::GridSamplerOp> {
 };
 
 // MatMul  +  RequantIntAxis ->  MatMul
-class MatMulRequantIntFusion : public OpRewritePattern<tpu::MatMulOp> {
+class MatMulRequantIntFusion : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
+  MatMulRequantIntFusion(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulRequantIntFusion",
+                                           benefit) {}
 
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    if (!module::isBM1684X())
+      failure();
 
     if (!module::isBM1684X() || !op->hasOneUse()) {
       return failure();

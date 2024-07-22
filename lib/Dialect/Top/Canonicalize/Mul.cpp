@@ -7,15 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
-struct MulToSiLU : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MulToSiLU : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MulToSiLU(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MulToSiLU") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op.getDoRelu() || op.getInputs().size() != 2) {
       return failure();
     }
@@ -48,11 +52,14 @@ struct MulToSiLU : public OpRewritePattern<MulOp> {
  * Any       /
  *
  */
-struct MulToMulConst : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MulToMulConst : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MulToMulConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MulToMulConst") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();
@@ -115,11 +122,14 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
  * Any       /
  *
  */
-struct MulToMulConst2 : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MulToMulConst2 : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MulToMulConst2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MulToMulConst2") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();
@@ -176,11 +186,14 @@ struct MulToMulConst2 : public OpRewritePattern<MulOp> {
   }
 };
 
-struct MulToScale : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MulToScale : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MulToScale(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MulToScale") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -242,11 +255,14 @@ struct MulToScale : public OpRewritePattern<MulOp> {
 };
 
 // Mul + Mul
-struct MulMerge : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MulMerge : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MulMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MulMerge") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -302,11 +318,14 @@ struct MulMerge : public OpRewritePattern<MulOp> {
   }
 };
 
-struct MergeGelu : public OpRewritePattern<MulOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MergeGelu : public OpRewriterPatternEx<MulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MulOp op,
-                                PatternRewriter &rewriter) const override {
+  MergeGelu(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MulOp>(context, "MergeGelu") {}
+
+  LogicalResult matchAndRewriteImpl(MulOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isUniformQuantized(op.getOutput()))
       return failure();
     if (!op.getResult().hasOneUse())

@@ -35,16 +35,16 @@ public:
   GroupMethod(int64_t opt);
   void process(LgPassIR *pass_ir);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
-                          const SetVector<Operation *> &subnet_ops);
+                          const llvm::SetVector<Operation *> &subnet_ops);
   void dynamic_programming_layer_group_with_cluster(
-      std::vector<LgInfo> &lg_infos, const SetVector<Operation *> &subnet_ops);
+      std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops);
 
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
                    const std::vector<std::vector<Operation *>> &base_groups);
 
   void get_base_groups(std::vector<std::vector<Operation *>> &base_groups,
-                       const SetVector<Operation *> &subnet_ops);
+                       const llvm::SetVector<Operation *> &subnet_ops);
 
   int64_t get_max_cluster_size(int64_t layer_num);
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
@@ -82,14 +82,13 @@ public:
   void show_cut_results();
   void ilp_layer_group(LgPassIR *pass_ir);
   void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                       const SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
+                       const llvm::SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
   void get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                       const SetVector<Operation *> &subnet_ops, const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups);
+                       const llvm::SetVector<Operation *> &subnet_ops, const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups);
   void cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR *pass_ir,
                                 std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups);
   void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR* pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
-
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;

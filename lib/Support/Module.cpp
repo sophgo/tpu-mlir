@@ -60,6 +60,8 @@ static Platform platform = Platform::ONNX;
 static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
 static std::string weightFileName = "";
 static std::string debug_cmd = "";
+std::unordered_map<std::string, int> patternMatchCounts;
+std::mutex patternMatchCountsMutex;
 
 void init(ModuleOp module) {
   m = module;
@@ -79,6 +81,11 @@ void init(ModuleOp module) {
     std::getline(file, debug_cmd);
     file.close();
   }
+}
+
+// int32_t cur_log_level = 0;
+void init_loglevel(int32_t log_level) {
+    SetLogFlag(log_level);
 }
 
 top::NoneOp getNoneOp(Operation *op) {

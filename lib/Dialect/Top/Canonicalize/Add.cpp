@@ -8,13 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct SwapInput : public OpRewritePattern<AddOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct SwapInput : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(AddOp op,
+  SwapInput(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "SwapInput") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
@@ -43,10 +47,13 @@ struct SwapInput : public OpRewritePattern<AddOp> {
   }
 };
 
-struct AddToScale : public OpRewritePattern<AddOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct AddToScale : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(AddOp op,
+    AddToScale(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AddToScale") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
@@ -102,10 +109,13 @@ struct AddToScale : public OpRewritePattern<AddOp> {
   }
 };
 
-struct AddToAddConst : public OpRewritePattern<AddOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct AddToAddConst : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(AddOp op,
+    AddToAddConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AddToAddConst") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
@@ -167,10 +177,13 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
 };
 
 // Add weight + Add Weight
-struct AddMerge : public OpRewritePattern<AddOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct AddMerge : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(AddOp op,
+  AddMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AddMerge") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
@@ -255,12 +268,14 @@ struct AddMerge : public OpRewritePattern<AddOp> {
 };
 
 //[(5,16,1,32),(1,32)] -> [(5,16,1,32),(1,1,1,32)]
-struct AlignInputsDim : public OpRewritePattern<AddOp> {
-  using OpRewritePattern::OpRewritePattern;
-  AlignInputsDim(MLIRContext *context)
-      : OpRewritePattern<AddOp>(context) {}
-  LogicalResult matchAndRewrite(AddOp op,
-                                PatternRewriter &rewriter) const override {
+struct AlignInputsDim : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  AlignInputsDim(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AlignInputsDim") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }

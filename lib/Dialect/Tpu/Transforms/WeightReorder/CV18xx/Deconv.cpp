@@ -155,7 +155,7 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 // ======================================
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
@@ -205,7 +205,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();

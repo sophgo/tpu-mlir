@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
                              bool is_tpu) {
@@ -133,13 +134,14 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   return success();
 }
 
-struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
-  SimplifyRedundantCast(mlir::MLIRContext *context)
-      : OpRewritePattern<tpu::CastOp>(context, /*benefit=*/1) {}
 
-  LogicalResult
-  matchAndRewrite(tpu::CastOp op,
-                  mlir::PatternRewriter &rewriter) const override {
+class SimplifyRedundantCast : public OpRewriterPatternEx<tpu::CastOp> {
+public:
+  SimplifyRedundantCast(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::CastOp>(context, "SimplifyRedundantCast") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::CastOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     auto in_type = in.getType();
     auto out_type = op.getOutput().getType();
@@ -201,6 +203,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
     llvm::errs() << "Warning: two cast can merge to one !!!\n";
     return failure();
   }
+  bool shouldPrint(tpu::CastOp op) const override { return false;}
 };
 
 void tpu::CastOp::getCanonicalizationPatterns(RewritePatternSet &results,

@@ -6,29 +6,30 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct PowToBinary : public OpRewritePattern<PowOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PowToBinary : public OpRewriterPatternEx<PowOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PowOp op,
-                                PatternRewriter &rewriter) const override {
+  PowToBinary(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PowOp>(context, "PowToBinary") {}
+
+  LogicalResult matchAndRewriteImpl(PowOp op,
+                                    PatternRewriter &rewriter) const override {
     auto exp = op.getExponent().convertToDouble();
     std::vector<NamedAttribute> attrs;
     if (exp == 2) {
-      rewriter.replaceOpWithNewOp<MulOp>(op, op.getOutput().getType(),
-                                         ValueRange{op.getInput(), op.getInput()},
-                                         attrs);
+      rewriter.replaceOpWithNewOp<MulOp>(
+          op, op.getOutput().getType(),
+          ValueRange{op.getInput(), op.getInput()}, attrs);
       success();
     } else if (exp == 0.5) {
       rewriter.replaceOpWithNewOp<SqrtOp>(op, op.getOutput().getType(),
-                                         ValueRange{op.getInput()},
-                                         attrs);
+                                          ValueRange{op.getInput()}, attrs);
       success();
     }
     return failure();

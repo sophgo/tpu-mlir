@@ -146,7 +146,7 @@ def print_result_one_array(tc, npz1, name, dic, verbose, per_axis_compare):
     tc.print_result(d1, name, dic[name], verbose, per_axis_compare)
 
 
-def npz_compare(args_list):
+def npz_compare(args_list, log_level="normal"):
     lock = multiprocessing.Lock()
     dic = multiprocessing.Manager().dict()
     args = parse_args(args_list)
@@ -162,7 +162,7 @@ def npz_compare(args_list):
     excepts = []
     if args.excepts:
         excepts = [str(s) for s in args.excepts.split(',')]
-    #excepts.append("Y_Index_TopK")
+    # excepts.append("Y_Index_TopK")
     ordered_names = []
     operations = {}
     quant_types = {}
@@ -178,7 +178,7 @@ def npz_compare(args_list):
     if args.fuzzy_match:
         min_cos, min_euc = 1, 1
         for name in npz1.files:
-            max_cos,max_euc = 0.0, 0.0
+            max_cos, max_euc = 0.0, 0.0
             for name2 in npz2.files:
                 d1 = npz1.get(name)
                 d2 = npz2.get(name2)
@@ -186,12 +186,14 @@ def npz_compare(args_list):
                     d1, d2 = align_type_and_shape(d1, d2)
                     result = tc.compare(d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare)
                     if result[1] == 'EQUAL':
-                        print(f'find EQUAL for {name}')
+                        if log_level == "normal":
+                            print(f'find EQUAL for {name}')
                         break
                     elif result[3]['cosine'] > max_cos:
                         max_cos = result[3]['cosine']
                         max_euc = result[3]['euclid']
-            print(f'find max_cos:{max_cos}, max_euc:{max_euc} for {name}')
+            if log_level == "normal":
+                print(f'find max_cos:{max_cos}, max_euc:{max_euc} for {name}')
             if min_cos > max_cos:
                 min_cos = max_cos
             if min_euc > max_euc:
@@ -201,7 +203,8 @@ def npz_compare(args_list):
             # sys.exit(-1)
             return
         else:
-            print("npz compare PASSED.", flush=True)
+            if log_level == "normal":
+                print("npz compare PASSED.", flush=True)
             return
 
     common = list()
@@ -224,7 +227,7 @@ def npz_compare(args_list):
         if step > 1:
             names_list = names_list[::step]
 
-        for i in range(1,10):
+        for i in range(1, 10):
             if names[-i] not in names_list:
                 # last n value may be outputs, these comparison is very important
                 names_list.append(names[-1])
@@ -232,7 +235,7 @@ def npz_compare(args_list):
     if args.per_axis_compare >= 0:
         process_number = 1
 
-    pbar = tqdm(names, total=len(names_list), position=0, leave=True)
+    pbar = tqdm(names, total=len(names_list), position=0, leave=True, disable=(log_level != "normal"))
     while (len(names_list) > 0):
         compare_process_name_list = names_list[:process_number]
         names_list = names_list[process_number:]  # remove done name
@@ -240,8 +243,9 @@ def npz_compare(args_list):
         # take name which will do compare
         processes = []
         for name in compare_process_name_list:
-            pbar.set_description("compare {}".format(name))
-            pbar.update(1)
+            if log_level == "normal":
+                pbar.set_description("compare {}".format(name))
+                pbar.update(1)
             p = multiprocessing.Process(target=compare_one_array,
                                         args=(tc, npz1, npz2, name, args.verbose, lock, dic,
                                               int8_tensor_close, args.per_axis_compare))
@@ -253,23 +257,29 @@ def npz_compare(args_list):
         gc.collect()
 
     for name in names:
-        if dic.get(name) == None:
+        if dic.get(name) is None:
             continue
         stats.update(name, dic.get(name))
-        print_result_one_array(tc, npz1, name, dic, args.verbose, args.per_axis_compare)
+        if log_level == "normal":
+            print_result_one_array(tc, npz1, name, dic, args.verbose, args.per_axis_compare)
 
-    stats.print_result()
-    if (args.save):
+    if log_level == "normal":
+        stats.print_result()
+
+    if args.save:
         stats.save_result(args.save, operations, quant_types)
-        print("Results save as {}".format(args.save))
-    print("Target    {}".format(f1))
-    print("Reference {}".format(f2))
-    if (stats.failed == 0):
-        print("npz compare PASSED.", flush=True)
-        return stats
-    else:
-        print("npz compare FAILED.", flush=True)
-        sys.exit(-1)
+        print("Results saved as {}".format(args.save))
+
+    if log_level != "quiet":
+        print("Target    {}".format(f1))
+        print("Reference {}".format(f2))
+        if stats.failed == 0:
+            print("npz compare PASSED.", flush=True)
+            return stats
+        else:
+            print("npz compare FAILED.", flush=True)
+            sys.exit(-1)
+
 
 
 if __name__ == '__main__':

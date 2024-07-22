@@ -13,7 +13,7 @@
 using namespace bm1684x;
 
 template <>
-LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const {
   if (op.getWeightBits() != 4 || op.getQGroupSize() <= 0) {
     return failure();

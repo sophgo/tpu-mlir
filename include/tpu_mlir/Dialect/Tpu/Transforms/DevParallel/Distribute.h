@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Traits/Traits.h"
 #include <llvm/Support/Debug.h>
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -45,64 +46,79 @@ void eraseForward(PatternRewriter &rewriter, Operation *op);
 // patterns for distribution
 // ===================================
 template <typename MatMulTy>
-class MatMulSliceMerge : public OpRewritePattern<MatMulTy> {
+class  MatMulSliceMerge : public OpRewriterPatternEx<MatMulTy> {
 public:
-  using OpRewritePattern<MatMulTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(MatMulTy op,
-                                PatternRewriter &rewriter) const override;
+   MatMulSliceMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulTy>(context,"MatMulSliceMerge") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulTy op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
 template <typename MatMulTy>
-class AttentionSliceMerge : public OpRewritePattern<MatMulTy> {
+class  AttentionSliceMerge : public OpRewriterPatternEx<MatMulTy> {
 public:
-  using OpRewritePattern<MatMulTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(MatMulTy op,
-                                PatternRewriter &rewriter) const override;
+   AttentionSliceMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulTy>(context,"AttentionSliceMerge") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulTy op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
 template <typename MatMulTy>
-class MatMulSliceMerge2 : public OpRewritePattern<MatMulTy> {
+class  MatMulSliceMerge2 : public OpRewriterPatternEx<MatMulTy> {
 public:
-  using OpRewritePattern<MatMulTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(MatMulTy op,
-                                PatternRewriter &rewriter) const override;
+   MatMulSliceMerge2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulTy>(context,"MatMulSliceMerge2") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulTy op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
 template <typename MatMulTy>
-class AttentionSliceMerge2 : public OpRewritePattern<MatMulTy> {
+class  AttentionSliceMerge2 : public OpRewriterPatternEx<MatMulTy> {
 public:
-  using OpRewritePattern<MatMulTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(MatMulTy op,
-                                PatternRewriter &rewriter) const override;
+   AttentionSliceMerge2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulTy>(context,"AttentionSliceMerge2") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulTy op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
-class MatMulSliceMerge3 : public OpRewritePattern<tpu::AddOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::AddOp op,
-                                PatternRewriter &rewriter) const override;
-};
 
+class  MatMulSliceMerge3 : public OpRewriterPatternEx<tpu::AddOp> {
+public:
+   MatMulSliceMerge3(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::AddOp>(context,"MatMulSliceMerge3") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::AddOp op,
+                                    PatternRewriter &rewriter) const override ;
+};
 template <typename MatMulTy>
-class MatMulTopK : public OpRewritePattern<MatMulTy> {
+class  MatMulTopK : public OpRewriterPatternEx<MatMulTy> {
 public:
-  using OpRewritePattern<MatMulTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(MatMulTy op,
-                                PatternRewriter &rewriter) const override;
+   MatMulTopK(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulTy>(context,"MatMulTopK") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulTy op,
+                                    PatternRewriter &rewriter) const override ;
+};
+class  EmbeddingSliceMerge : public OpRewriterPatternEx<tpu::GatherOp> {
+public:
+  EmbeddingSliceMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GatherOp>(context,"EmbeddingSliceMerge") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::GatherOp op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
-class EmbeddingSliceMerge : public OpRewritePattern<tpu::GatherOp> {
+class  FAttentionSliceMerge : public OpRewriterPatternEx<tpu::FAttentionOp> {
 public:
-  using OpRewritePattern<tpu::GatherOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::GatherOp op,
-                                PatternRewriter &rewriter) const override;
-};
+  FAttentionSliceMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::FAttentionOp>(context,"FAttentionSliceMerge") {}
 
-class FAttentionSliceMerge : public OpRewritePattern<tpu::FAttentionOp> {
-public:
-  using OpRewritePattern<tpu::FAttentionOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::FAttentionOp op,
-                                PatternRewriter &rewriter) const override;
+  LogicalResult matchAndRewriteImpl(tpu::FAttentionOp op,
+                                    PatternRewriter &rewriter) const override ;
 };
 
 template <typename MatMulTy>

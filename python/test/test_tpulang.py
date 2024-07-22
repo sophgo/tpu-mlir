@@ -267,15 +267,15 @@ class TPULANG_IR_TESTER(object):
         else:
             return tpul.Tensor(dtype=dtype, shape=shape, data=data, ttype="coeff")
 
-    def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False, top_mlir_inference=True, tpu_mlir_inference=True):
+    def compile_and_check(self, model_name, inputs, outputs, is_quantized=False, asymmetric=False, top_mlir_inference=True, tpu_mlir_inference=True,log_level='normal'):
         for input in inputs:
             assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
         if is_quantized == False:
             for mode in self.quant_modes:
-                tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode, no_save=self.no_save, top_mlir_inference=top_mlir_inference, tpu_mlir_inference=tpu_mlir_inference)
+                tpul.compile_f32(model_name, inputs, outputs, cmp=True, mode=mode, no_save=self.no_save, top_mlir_inference=top_mlir_inference, tpu_mlir_inference=tpu_mlir_inference,log_level=log_level)
         else:
-            tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
+            tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save, log_level=log_level)
 
     def test_base_binary_quant(self, case_name, func, shape_x: List[int], shape_y: List[int], scale=None, dtype="int8"):
         @tpulang(self.chip)

@@ -6,17 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
-
 
 using namespace tpu_mlir::top;
 
 // for bert model, concat matmuls to batch matmul
-struct PackMatmulPattern : public OpRewritePattern<PackOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PackMatmulPattern : public OpRewriterPatternEx<PackOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PackOp op,
+  PackMatmulPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PackOp>(context, "OpRewriterPatternEx") {}
+
+  LogicalResult matchAndRewriteImpl(PackOp op,
                                 PatternRewriter &rewriter) const override {
     if (!op->hasOneUse()) {
       return failure();

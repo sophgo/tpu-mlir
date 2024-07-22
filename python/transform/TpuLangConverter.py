@@ -629,13 +629,15 @@ class TpuLangConverter(BaseConverter):
         self.mlir.create_return_op(return_op)
         return self.mlir.print_module()
 
-    def generate_mlir(self, mlir_file: str):
+    def generate_mlir(self, mlir_file: str, log_level="normal"):
         mlir_txt = self.get_mlir_txt()
         with open(mlir_file, "w") as f:
             f.write(mlir_txt)
-        logger.info("Save mlir file: {}".format(mlir_file))
+            if log_level != "quiet":
+                logger.info("Save mlir file: {}".format(mlir_file))
         for k,v in self.constant.items():
             if v.dtype == 'float16':
                 self.constant[k] = v.view('uint16')
         np.savez(self.weight_file, **self.constant)
-        logger.info("Save weight file: {}".format(self.weight_file))
+        if log_level != "quiet":
+            logger.info("Save weight file: {}".format(self.weight_file))

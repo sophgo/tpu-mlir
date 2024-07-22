@@ -81,8 +81,12 @@ def compile(name: str,
             no_save=False,
             opt=2,
             mlir_inference=True,
-            bmodel_inference=True):
-    logger.info("TPU-MLIR {}".format(pymlir.__version__))
+            bmodel_inference=True, log_level:str = 'normal'):
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
+    if log_level != 'quiet':
+        logger.info("TPU-MLIR {}".format(pymlir.__version__))
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -96,16 +100,16 @@ def compile(name: str,
             break
     if not no_save:
         save_input_reference(model_name=name, refs=refs)
-        model_transform(name, converter)
+        model_transform(name, converter,log_level=log_level)
         compare = cmp and refs != None
         model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, \
                                     inference=mlir_inference, cmp=compare, asymmetric=asymmetric,\
-                                    ctm_format=ctm_format, fuse=fuse)
+                                    ctm_format=ctm_format, fuse=fuse, log_level=log_level)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", inference=bmodel_inference,\
-                                    dynamic=dynamic, opt=opt)
+                                        dynamic=dynamic, opt=opt, log_level=log_level)
     else:
         origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode="int8",
-                                  chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic)
+                                  chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic, log_level=log_level)
 
 
 def compile_f32(name: str,
@@ -120,41 +124,45 @@ def compile_f32(name: str,
             mlir_inference=True,
             bmodel_inference=True,
             top_mlir_inference=True,
-            tpu_mlir_inference=True):
+            tpu_mlir_inference=True,log_level:str = 'normal'):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
     mode_list = [mode]
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
     if not no_save:
         save_input_reference(model_name=name, refs=refs)
-        model_transform(name, converter)
+        model_transform(name, converter, log_level=log_level)
         compare = cmp and refs != None
         top_mlir_inference = top_mlir_inference and mlir_inference
         tpu_mlir_inference = tpu_mlir_inference and mlir_inference
         if top_mlir_inference:
-            model_top_inference(model_name=name, cmp=compare)
+            model_top_inference(model_name=name, cmp=compare, log_level=log_level)
         for m in mode_list:
             tpu_mlir_compare = cmp and top_mlir_inference
             model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
-                                        inference=tpu_mlir_inference, cmp=tpu_mlir_compare)
+                                        inference=tpu_mlir_inference, cmp=tpu_mlir_compare, log_level=log_level)
             bmodel_generate_and_inference(model_name=name, quant_mode=m, inference=bmodel_inference,\
-                                        dynamic=dynamic, opt=opt)
+                                        dynamic=dynamic, opt=opt, log_level=log_level)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode=m,
-                                      chip=TpuLang.chip, dynamic=dynamic)
+                                      chip=TpuLang.chip, dynamic=dynamic, log_level=log_level)
 
 
-def model_transform(model_name, converter: TpuLangConverter):
+def model_transform(model_name, converter: TpuLangConverter, log_level:str = 'normal'):
     mlir_file = model_name + '.mlir'
     mlir_origin = model_name + '_origin.mlir'
-    converter.generate_mlir(mlir_origin)
-    mlir_opt_for_top(mlir_origin, mlir_file)
-    print("Mlir file generated:{}".format(mlir_file))
+    converter.generate_mlir(mlir_origin, log_level=log_level)
+    mlir_opt_for_top(mlir_origin, mlir_file, log_level=log_level)
+    if log_level != "quiet":
+        print("Mlir file generated:{}".format(mlir_file))
 
 
 def save_input_reference(model_name, refs:dict):
@@ -171,50 +179,52 @@ def save_input_reference(model_name, refs:dict):
     np.savez(in_f32_npz, **ref_inputs)
 
 
-def model_top_inference(model_name, cmp=False):
+def model_top_inference(model_name, cmp=False,log_level:str = 'normal'):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
     input_data = np.load(in_f32_npz)
     top_npz = model_name + '_top_outputs.npz'
-    show_fake_cmd(in_f32_npz, mlir_file, top_npz)
-    f32_outputs = mlir_inference(dict(input_data), mlir_file)
+    if log_level != "quiet":
+        show_fake_cmd(in_f32_npz, mlir_file, top_npz)
+    f32_outputs = mlir_inference(dict(input_data), mlir_file,log_level=log_level)
     np.savez(top_npz, **f32_outputs)
     if cmp:
         ref_npz = model_name + '_ref_output.npz'
-        f32_blobs_compare(top_npz, ref_npz, '0.99,0.99')
+        f32_blobs_compare(top_npz, ref_npz, '0.99,0.99', log_level=log_level)
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
                                  inference: bool = True, cmp: bool = False, ctm_format = "BGR_PLANAR", \
-                                 fuse=False):
+                                 fuse=False,log_level : str = 'normal'):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
-                  customization_format=ctm_format, fuse_preprocess=fuse)
+                  customization_format=ctm_format, fuse_preprocess=fuse,log_level=log_level)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         input_data = np.load(in_f32_npz)
         file_mark(tpu_npz)
-        show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
-        tpu_mlir_outs = mlir_inference(dict(input_data), tpu_mlir, dump_all=True)
+        if log_level != "quiet":
+            show_fake_cmd(in_f32_npz, tpu_mlir, tpu_npz)
+        tpu_mlir_outs = mlir_inference(dict(input_data), tpu_mlir, dump_all=True,log_level=log_level)
         np.savez(tpu_npz, **tpu_mlir_outs)
         if cmp:
             if quant_mode == 'int8':
                 ref_npz = model_name + '_ref_output.npz'
-                npz_compare([ref_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
+                npz_compare([ref_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"], log_level=log_level)
             else:
                 top_npz = model_name + '_top_outputs.npz'
-                npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"])
+                npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"], log_level=log_level)
 
-def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, opt: int=2):
+def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, opt: int=2, log_level:str='normal'):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
     bmodel = tpu_mlir + ".bmodel"
     disable_layer_group = opt == 0
     assert opt in [0, 1, 2]
-    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group)
+    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group,log_level=log_level)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
@@ -232,10 +242,11 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
         input_data = np.load(in_f32_npz)
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         file_mark(model_npz)
-        show_fake_cmd(in_f32_npz, bmodel, model_npz)
-        model_outs = model_inference(dict(input_data), bmodel)
+        if log_level!='quiet':
+            show_fake_cmd(in_f32_npz, bmodel, model_npz)
+        model_outs = model_inference(dict(input_data), bmodel,log_level=log_level)
         np.savez(model_npz, **model_outs)
-        npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
+        npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"], log_level=log_level)
 
 
 def _soc_upload_dir(sftp, local_dir, remote_dir):

@@ -62,14 +62,14 @@ private:
   // -------------- helper functions -----------------------------------
   // get data in cuda by activation_map_ and weight_map_; if not find, will
   // assert
-  void *getCudaData(Value v);
+  void *getCudaData(mlir::Value v);
   // get cudnn type from mlir type
-  cuda::data_type_t getCudaType(Value v);
+  cuda::data_type_t getCudaType(mlir::Value v);
   // convert cuda data from one type to another type
   cuda_ptr newCudaData(void *data, size_t num, cuda::data_type_t src_type,
                        cuda::data_type_t dst_type);
   // alloc new buffer to store new type
-  cuda_ptr newCudaData(Value v, cuda::data_type_t dst_type);
+  cuda_ptr newCudaData(mlir::Value v, cuda::data_type_t dst_type);
 
   // -------------------------------------------------------------------
   // -------------- op inference by cuda -------------------------------
@@ -96,7 +96,7 @@ private:
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);
-  void cuda_malloc(std::map<std::string, cuda_ptr> &map, Value v);
+  void cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v);
   void cuda_to_host(const std::string &name);
 
 public:
@@ -110,7 +110,7 @@ private:
   bool dump_all_;
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
-  std::map<std::string, Value> value_map_;
+  std::map<std::string, mlir::Value> value_map_;
   std::map<std::string, cuda_ptr> input_map_;
   std::map<std::string, cuda_ptr> weight_map_;
   std::map<std::string, cuda_ptr> activation_map_;

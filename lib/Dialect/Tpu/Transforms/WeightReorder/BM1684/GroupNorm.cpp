@@ -35,7 +35,7 @@ static void groupnorm_filter_broadcast(const std::vector<int64_t> &filter_shape,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::GroupNormOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::GroupNormOp, Float32Type>::matchAndRewriteImpl(
     tpu::GroupNormOp op, PatternRewriter &rewriter) const {
   /// do broadcast for weight and bias
   int64_t N, C, H, W;

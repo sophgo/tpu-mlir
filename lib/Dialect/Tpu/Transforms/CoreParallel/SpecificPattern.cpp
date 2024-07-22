@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CoreParallel.hpp"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -60,12 +61,15 @@ NdSlice getNdSlice(LayerGroupAttr inAttr) {
   return ndSlice;
 }
 
-template <typename Op> class CoreParallel : public OpRewritePattern<Op> {
-public:
-  CoreParallel(MLIRContext *context) : OpRewritePattern<Op>(context){};
 
-  LogicalResult matchAndRewrite(Op gOp,
-                                PatternRewriter &rewriter) const override {
+template <typename OpTy>
+class  CoreParallel : public OpRewriterPatternEx<OpTy> {
+public:
+  CoreParallel(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context,"CoreParallel") {}
+
+  LogicalResult matchAndRewriteImpl(OpTy gOp,
+                                    PatternRewriter &rewriter) const override {
     if (isa_and_nonnull<tpu::CoreParallelOp>(gOp->getParentOp()))
       return failure();
 
@@ -91,6 +95,7 @@ public:
 
     return failure();
   }
+  bool shouldPrint(OpTy gOp) const override { return false;}
 };
 
 void doSpecificPattern(ModuleOp m) {

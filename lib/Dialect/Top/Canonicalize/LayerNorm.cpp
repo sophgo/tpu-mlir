@@ -7,18 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopLayerNormReshape : public OpRewritePattern<LayerNormOp> {
-  using OpRewritePattern::OpRewritePattern;
-  TopLayerNormReshape(MLIRContext *context)
-      : OpRewritePattern<LayerNormOp>(context) {}
+struct TopLayerNormReshape : public OpRewriterPatternEx<LayerNormOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopLayerNormReshape(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<LayerNormOp>(context, "TopLayerNormReshape") {}
 
-  LogicalResult matchAndRewrite(LayerNormOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(LayerNormOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     auto num_dims = in_shape.size();
     auto axis = op.getAxis();

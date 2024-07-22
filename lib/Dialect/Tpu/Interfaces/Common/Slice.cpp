@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <valarray>
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::backend;
 
@@ -356,11 +357,14 @@ mlir::Type tpu::SliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
 
-struct SliceCastSwapPattern : public OpRewritePattern<tpu::SliceOp> {
-  SliceCastSwapPattern(mlir::MLIRContext *context):
-    OpRewritePattern<tpu::SliceOp>(context) {}
-  LogicalResult matchAndRewrite(tpu::SliceOp op,
-                                mlir::PatternRewriter &rewriter) const override {
+
+class SliceCastSwapPattern  : public OpRewriterPatternEx<tpu::SliceOp> {
+  public:
+  SliceCastSwapPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::SliceOp>(context,"SliceCastSwapPattern") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SliceOp op,
+                                PatternRewriter &rewriter) const override {
 
     auto input_op = dyn_cast_or_null<tpu::CastOp>(op.getInput().getDefiningOp());
     if (!op.getResult().hasOneUse()){
@@ -400,6 +404,7 @@ struct SliceCastSwapPattern : public OpRewritePattern<tpu::SliceOp> {
     rewriter.eraseOp(op);
     return success();
   }
+  bool shouldPrint(tpu::SliceOp op) const override { return false;}
 };
 
 void tpu::SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,

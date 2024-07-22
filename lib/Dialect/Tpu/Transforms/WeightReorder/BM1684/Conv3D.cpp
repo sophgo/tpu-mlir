@@ -103,7 +103,7 @@ void conv3d_weight_transform_bm1684(int IC, int OC, int KT, int KH, int KW,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewriteImpl(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
@@ -138,7 +138,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewriteImpl(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();

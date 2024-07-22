@@ -96,7 +96,7 @@ Value lowerBias(Operation *op, Value b_value) {
 
 // common for weight
 template <>
-LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getInput()).isBF16())
     return failure();
@@ -108,7 +108,7 @@ LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::GRUOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::GRUOp, int8_t>::matchAndRewriteImpl(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getInput()).isBF16())
     return failure();

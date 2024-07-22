@@ -489,7 +489,7 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
       shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
       if (shape_secs.wsecs > max_shape_secs.wsecs) {
-        // llvm::errs() << "fail at op:"<<module::getName(op).str()<<"\n";
+        // llvm::outs() << "fail at op:"<<module::getName(op).str()<<"\n";
         return false;
       }
       shape_secs.hsecs = max_shape_secs.hsecs;
@@ -1104,7 +1104,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
         in_si.c.emplace_back(slice_pair_t(idx, slice));
       } else {
         if (failed(ret) || slice == 0) {
-          // llvm::errs() << "BackwardC fail, at
+          // llvm::outs() << "BackwardC fail, at
           // op:"<<module::getName(op).str()<<"\n";
           return false;
         }
@@ -1584,7 +1584,6 @@ backward_update_slice2(const LgInfo &lg_info, const shape_secs_t &shape_secs,
     bool hold_in_lmem = false;
     bool is_group_in =
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
-    // llvm::errs() << "xxx1:"<<module::getName(in)<<"\n";
     auto ret = get_backward_slice_info2(si, out_si, op, in, shape_secs,
                                        lg_info.type, hold_in_lmem, is_group_in);
     if (is_value_weight(in)) {
@@ -1635,7 +1634,7 @@ backward_update_slice2(const LgInfo &lg_info, const shape_secs_t &shape_secs,
         // if (pre_op) {
         //   for (auto user : pre_op->getUsers()) {
         //     if (isa<ReturnOp>(user)) {
-        //       llvm::errs() << "skip ReturnOp\n";
+        //       llvm::outs() << "skip ReturnOp\n";
         //       continue;
         //     }
         //     if (!(std::find(lg_info.group_ops.begin(),
@@ -1644,7 +1643,7 @@ backward_update_slice2(const LgInfo &lg_info, const shape_secs_t &shape_secs,
         //           isa<tpu::Conv2DOp>(user) &&
         //           module::isUniformQuantized(in))||
         //            lg_info.group_outs.size() != 1 ) {
-        //       llvm::errs() << "xxx1\n";
+        //       llvm::outs() << "xxx1\n";
         //       return false;
         //     }
         //   }
@@ -1987,7 +1986,7 @@ bool stripe_mine_idx_slice2(const LgInfo &lg_info,
                                tensor_infos, op_set, out_tensor_set);
     if (!ret) {
       fail_op = out_tensor.first.getDefiningOp();
-      llvm::errs() << module::getName(fail_op).str() << " backward_update_slice2 fail"<<"\n";
+      llvm::outs() << module::getName(fail_op).str() << " backward_update_slice2 fail"<<"\n";
       return false;
     }
   }

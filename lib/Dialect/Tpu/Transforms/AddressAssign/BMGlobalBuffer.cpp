@@ -10,6 +10,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/CustomLayer.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -18,12 +20,13 @@ namespace tpu_mlir {
 
 namespace bm168x {
 
-class GRUGlobalBuffer : public OpRewritePattern<tpu::GRUOp> {
+class GRUGlobalBuffer : public OpRewriterPatternEx<tpu::GRUOp> {
 public:
-  using OpRewritePattern<tpu::GRUOp>::OpRewritePattern;
+  GRUGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GRUOp>(context,"GRUGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::GRUOp GRUOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::GRUOp GRUOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(GRUOp.getBuffer())) {
       return failure();
     }
@@ -38,14 +41,17 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::GRUOp GRUOp) const override { return false;}
 };
 
-class FAttentionGlobalBuffer : public OpRewritePattern<tpu::FAttentionOp> {
-public:
-  using OpRewritePattern<tpu::FAttentionOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::FAttentionOp FaOp,
-                                PatternRewriter &rewriter) const override {
+class FAttentionGlobalBuffer : public OpRewriterPatternEx<tpu::FAttentionOp> {
+public:
+  FAttentionGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::FAttentionOp>(context,"FAttentionGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::FAttentionOp op,
+                                    PatternRewriter &rewriter) const override {
     // if (!module::isNone(FaOp.getBuffer())) {
     //   return failure();
     // }
@@ -61,15 +67,16 @@ public:
     // FaOp.getBufferMutable().assign(buffer);
     return success();
   }
+  bool shouldPrint(tpu::FAttentionOp op) const override { return false;}
 };
 
-class GatherElementsGlobalBuffer
-    : public OpRewritePattern<tpu::GatherElementsOp> {
+class GatherElementsGlobalBuffer : public OpRewriterPatternEx<tpu::GatherElementsOp> {
 public:
-  using OpRewritePattern<tpu::GatherElementsOp>::OpRewritePattern;
+  GatherElementsGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GatherElementsOp>(context,"GatherElementsGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::GatherElementsOp GatherElementsOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::GatherElementsOp GatherElementsOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(GatherElementsOp.getBuffer())) {
       return failure();
     }
@@ -82,14 +89,16 @@ public:
     GatherElementsOp.setOperand(3, buffer);
     return success();
   }
+  bool shouldPrint(tpu::GatherElementsOp GatherElementsOp) const override { return false;}
 };
 
-class LSTMGlobalBuffer : public OpRewritePattern<tpu::LSTMOp> {
+class LSTMGlobalBuffer : public OpRewriterPatternEx<tpu::LSTMOp> {
 public:
-  using OpRewritePattern<tpu::LSTMOp>::OpRewritePattern;
+  LSTMGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::LSTMOp>(context,"LSTMGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::LSTMOp lstmOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::LSTMOp lstmOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(lstmOp.getBuffer())) {
       return failure();
     }
@@ -105,14 +114,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::LSTMOp lstmOp) const override { return false;}
 };
 
-class ReduceGlobalBuffer : public OpRewritePattern<tpu::ReduceOp> {
+class ReduceGlobalBuffer : public OpRewriterPatternEx<tpu::ReduceOp> {
 public:
-  using OpRewritePattern<tpu::ReduceOp>::OpRewritePattern;
+  ReduceGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ReduceOp>(context,"ReduceGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::ReduceOp reduceOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(reduceOp.getBuffer())) {
       return failure();
     }
@@ -203,14 +214,17 @@ public:
 
     return success();
   }
+  bool shouldPrint(tpu::ReduceOp reduceOp) const override { return false;}
 };
 
-class SliceGlobalBuffer : public OpRewritePattern<tpu::SliceOp> {
-public:
-  using OpRewritePattern<tpu::SliceOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::SliceOp sliceOp,
-                                PatternRewriter &rewriter) const override {
+class SliceGlobalBuffer : public OpRewriterPatternEx<tpu::SliceOp> {
+public:
+  SliceGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::SliceOp>(context,"SliceGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SliceOp sliceOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(sliceOp.getBuffer())) {
       return failure();
     }
@@ -259,14 +273,17 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::SliceOp sliceOp) const override { return false;}
 };
 
-class ReshapeGlobalBuffer : public OpRewritePattern<tpu::ReshapeOp> {
-public:
-  using OpRewritePattern<tpu::ReshapeOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::ReshapeOp reshapeOp,
-                                PatternRewriter &rewriter) const override {
+class ReshapeGlobalBuffer : public OpRewriterPatternEx<tpu::ReshapeOp> {
+public:
+  ReshapeGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ReshapeOp>(context,"ReshapeGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ReshapeOp reshapeOp,
+                                    PatternRewriter &rewriter) const override {
     // only used for 4N ndim reshape!
     if (!module::isBM1684Family()) {
       return failure();
@@ -301,13 +318,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::ReshapeOp reshapeOp) const override { return false;}
 };
-class SoftmaxGlobalBuffer : public OpRewritePattern<tpu::SoftmaxOp> {
-public:
-  using OpRewritePattern<tpu::SoftmaxOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::SoftmaxOp softmaxOp,
-                                PatternRewriter &rewriter) const override {
+class SoftmaxGlobalBuffer : public OpRewriterPatternEx<tpu::SoftmaxOp> {
+public:
+  SoftmaxGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::SoftmaxOp>(context,"SoftmaxGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp softmaxOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(softmaxOp.getBuffer())) {
       return failure();
     }
@@ -329,14 +349,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::SoftmaxOp softmaxOp) const override { return false;}
 };
 
-class PermuteGlobalBuffer : public OpRewritePattern<tpu::PermuteOp> {
+class PermuteGlobalBuffer : public OpRewriterPatternEx<tpu::PermuteOp> {
 public:
-  using OpRewritePattern<tpu::PermuteOp>::OpRewritePattern;
+ PermuteGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context,"PermuteGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp permuteOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp permuteOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(permuteOp.getBuffer())) {
       return failure();
     }
@@ -410,14 +432,16 @@ public:
     }
     return failure();
   }
+  bool shouldPrint(tpu::PermuteOp permuteOp) const override { return false;}
 };
 
-class NonZeroGlobalBuffer : public OpRewritePattern<tpu::NonZeroOp> {
+class NonZeroGlobalBuffer : public OpRewriterPatternEx<tpu::NonZeroOp> {
 public:
-  using OpRewritePattern<tpu::NonZeroOp>::OpRewritePattern;
+ NonZeroGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::NonZeroOp>(context,"NonZeroGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::NonZeroOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::NonZeroOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(op.getBuffer())) {
       return failure();
     }
@@ -431,14 +455,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::NonZeroOp op) const override { return false;}
 };
 
-class InterpGlobalBuffer : public OpRewritePattern<tpu::InterpOp> {
+class InterpGlobalBuffer : public OpRewriterPatternEx<tpu::InterpOp> {
 public:
-  using OpRewritePattern<tpu::InterpOp>::OpRewritePattern;
+ InterpGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::InterpOp>(context,"InterpGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::InterpOp interpOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily() && !module::isBM1690Family())
       return failure();
 
@@ -465,14 +491,17 @@ public:
 
     return failure();
   }
+  bool shouldPrint(tpu::InterpOp interpOp) const override { return false;}
 };
 
-class MatMulGlobalBuffer : public OpRewritePattern<tpu::MatMulOp> {
-public:
-  using OpRewritePattern<tpu::MatMulOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::MatMulOp matmulOp,
-                                PatternRewriter &rewriter) const override {
+class MatMulGlobalBuffer : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+ MatMulGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context,"MatMulGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp matmulOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1690Family())
       return failure();
 
@@ -526,14 +555,16 @@ public:
     }
     return failure();
   }
+  bool shouldPrint(tpu::MatMulOp matmulOp) const override { return false;}
 };
 
-class GridSamplerBuffer : public OpRewritePattern<tpu::GridSamplerOp> {
+class GridSamplerBuffer : public OpRewriterPatternEx<tpu::GridSamplerOp> {
 public:
-  using OpRewritePattern<tpu::GridSamplerOp>::OpRewritePattern;
+ GridSamplerBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GridSamplerOp>(context,"GridSamplerBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::GridSamplerOp gridSamplerOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::GridSamplerOp gridSamplerOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily()) {
       return failure();
     }
@@ -558,14 +589,16 @@ public:
     gridSamplerOp.setOperand(gridSamplerOp.getNumOperands() - 1, buffer);
     return success();
   }
+  bool shouldPrint(tpu::GridSamplerOp gridSamplerOp) const override { return false;}
 };
 
-class DeformGatherGlobalBuffer : public OpRewritePattern<tpu::DeformGatherOp> {
+class DeformGatherGlobalBuffer : public OpRewriterPatternEx<tpu::DeformGatherOp> {
 public:
-  using OpRewritePattern<tpu::DeformGatherOp>::OpRewritePattern;
+ DeformGatherGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::DeformGatherOp>(context,"DeformGatherGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::DeformGatherOp Op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::DeformGatherOp Op,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(Op.getBuffer())) {
       return failure();
     }
@@ -591,13 +624,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::DeformGatherOp Op) const override { return false;}
 };
-class Space2BatchGlobalBuffer : public OpRewritePattern<tpu::Space2BatchOp> {
-public:
-  using OpRewritePattern<tpu::Space2BatchOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::Space2BatchOp space2batchOp,
-                                PatternRewriter &rewriter) const override {
+class Space2BatchGlobalBuffer : public OpRewriterPatternEx<tpu::Space2BatchOp> {
+public:
+ Space2BatchGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Space2BatchOp>(context,"Space2BatchGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::Space2BatchOp space2batchOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(space2batchOp.getBuffer())) {
       return failure();
     }
@@ -661,14 +697,16 @@ public:
     }
     return failure();
   }
+  bool shouldPrint(tpu::Space2BatchOp space2batchOp) const override { return false;}
 };
 
-class Batch2SpaceGlobalBuffer : public OpRewritePattern<tpu::Batch2SpaceOp> {
+class Batch2SpaceGlobalBuffer : public OpRewriterPatternEx<tpu::Batch2SpaceOp> {
 public:
-  using OpRewritePattern<tpu::Batch2SpaceOp>::OpRewritePattern;
+ Batch2SpaceGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Batch2SpaceOp>(context,"Batch2SpaceGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::Batch2SpaceOp batch2spaceOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::Batch2SpaceOp batch2spaceOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(batch2spaceOp.getBuffer())) {
       return failure();
     }
@@ -730,14 +768,17 @@ public:
     }
     return failure();
   }
+  bool shouldPrint(tpu::Batch2SpaceOp batch2spaceOp) const override { return false;}
 };
 
-class TileGlobalBuffer : public OpRewritePattern<tpu::TileOp> {
-public:
-  using OpRewritePattern<tpu::TileOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::TileOp TileOp,
-                                PatternRewriter &rewriter) const override {
+class TileGlobalBuffer : public OpRewriterPatternEx<tpu::TileOp> {
+public:
+ TileGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::TileOp>(context,"TileGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::TileOp TileOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(TileOp.getBuffer())) {
       return failure();
     }
@@ -782,14 +823,17 @@ public:
     }
     return failure();
   }
+  bool shouldPrint(tpu::TileOp TileOp) const override { return false;}
 };
 
-class IndexPutGlobalBuffer : public OpRewritePattern<tpu::IndexPutOp> {
-public:
-  using OpRewritePattern<tpu::IndexPutOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::IndexPutOp IndexPutOp,
-                                PatternRewriter &rewriter) const override {
+class IndexPutGlobalBuffer : public OpRewriterPatternEx<tpu::IndexPutOp> {
+public:
+ IndexPutGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::IndexPutOp>(context,"IndexPutGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::IndexPutOp IndexPutOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(IndexPutOp.getBuffer()) ||
         !IndexPutOp.getAccumulate()) {
       return failure();
@@ -809,14 +853,17 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::IndexPutOp IndexPutOp) const override { return false;}
 };
 
-class PadGlobalBuffer : public OpRewritePattern<tpu::PadOp> {
-public:
-  using OpRewritePattern<tpu::PadOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::PadOp padOp,
-                                PatternRewriter &rewriter) const override {
+class PadGlobalBuffer : public OpRewriterPatternEx<tpu::PadOp> {
+public:
+ PadGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::PadOp>(context,"PadGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::PadOp padOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(padOp.getBuffer())) {
       return failure();
     }
@@ -845,14 +892,16 @@ public:
       return failure();
     }
   }
+  bool shouldPrint(tpu::PadOp padOp) const override { return false;}
 };
 
-class GatherGlobalBuffer : public OpRewritePattern<tpu::GatherOp> {
+class GatherGlobalBuffer : public OpRewriterPatternEx<tpu::GatherOp> {
 public:
-  using OpRewritePattern<tpu::GatherOp>::OpRewritePattern;
+  GatherGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GatherOp>(context, "GatherGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::GatherOp GatherOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::GatherOp GatherOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(GatherOp.getBuffer())) {
       return failure();
     }
@@ -871,14 +920,16 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::GatherOp GatherOp) const override { return false;}
 };
 
-class Pool3DGlobalBuffer : public OpRewritePattern<tpu::Pool3DOp> {
+class Pool3DGlobalBuffer : public OpRewriterPatternEx<tpu::Pool3DOp> {
 public:
-  using OpRewritePattern<tpu::Pool3DOp>::OpRewritePattern;
+  Pool3DGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Pool3DOp>(context, "Pool3DGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::Pool3DOp Pool3DOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::Pool3DOp Pool3DOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(Pool3DOp.getBuffer())) {
       return failure();
     }
@@ -898,15 +949,17 @@ public:
     });
     return success();
   }
+  bool shouldPrint(tpu::Pool3DOp Pool3DOp) const override { return false;}
 };
 
-class ScatterElementsGlobalBuffer
-    : public OpRewritePattern<tpu::ScatterElementsOp> {
-public:
-  using OpRewritePattern<tpu::ScatterElementsOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::ScatterElementsOp ScatterElementsOp,
-                                PatternRewriter &rewriter) const override {
+class ScatterElementsGlobalBuffer : public OpRewriterPatternEx<tpu::ScatterElementsOp> {
+public:
+  ScatterElementsGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ScatterElementsOp>(context, "ScatterElementsGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ScatterElementsOp ScatterElementsOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(ScatterElementsOp.getBuffer())) {
       return failure();
     }
@@ -919,14 +972,17 @@ public:
     ScatterElementsOp.setOperand(4, buffer);
     return success();
   }
+  bool shouldPrint(tpu::ScatterElementsOp ScatterElementsOp) const override { return false;}
 };
 
-class ScatterNDGlobalBuffer : public OpRewritePattern<tpu::ScatterNDOp> {
-public:
-  using OpRewritePattern<tpu::ScatterNDOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::ScatterNDOp ScatterNDOp,
-                                PatternRewriter &rewriter) const override {
+class ScatterNDGlobalBuffer : public OpRewriterPatternEx<tpu::ScatterNDOp> {
+public:
+  ScatterNDGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ScatterNDOp>(context, "ScatterNDGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ScatterNDOp ScatterNDOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(ScatterNDOp.getBuffer())) {
       return failure();
     }
@@ -941,14 +997,17 @@ public:
     ScatterNDOp.setOperand(3, buffer);
     return success();
   }
+  bool shouldPrint(tpu::ScatterNDOp ScatterNDOp) const override { return false;}
 };
 
-class NmsGlobalBuffer : public OpRewritePattern<tpu::NmsOp> {
-public:
-  using OpRewritePattern<tpu::NmsOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::NmsOp NmsOp,
-                                PatternRewriter &rewriter) const override {
+class NmsGlobalBuffer : public OpRewriterPatternEx<tpu::NmsOp> {
+public:
+  NmsGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::NmsOp>(context, "NmsGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::NmsOp NmsOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(NmsOp.getBuffer())) {
       return failure();
     }
@@ -965,15 +1024,17 @@ public:
     NmsOp.setOperand(NmsOp.getNumOperands() - 1, buffer);
     return success();
   }
+  bool shouldPrint(tpu::NmsOp NmsOp) const override { return false;}
 };
 
-class YoloDetectionGlobalBuffer
-    : public OpRewritePattern<tpu::YoloDetectionOp> {
-public:
-  using OpRewritePattern<tpu::YoloDetectionOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::YoloDetectionOp yoloDetectionOp,
-                                PatternRewriter &rewriter) const override {
+class YoloDetectionGlobalBuffer : public OpRewriterPatternEx<tpu::YoloDetectionOp> {
+public:
+  YoloDetectionGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::YoloDetectionOp>(context, "YoloDetectionGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::YoloDetectionOp yoloDetectionOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(yoloDetectionOp.getBuffer())) {
       return failure();
     }
@@ -993,15 +1054,17 @@ public:
     yoloDetectionOp.setOperand(yoloDetectionOp.getNumOperands() - 1, buffer);
     return success();
   }
+  bool shouldPrint(tpu::YoloDetectionOp yoloDetectionOp) const override { return false;}
 };
 
-class DetectionOutputGlobalBuffer
-    : public OpRewritePattern<tpu::DetectionOutputOp> {
-public:
-  using OpRewritePattern<tpu::DetectionOutputOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::DetectionOutputOp detectionOutputOp,
-                                PatternRewriter &rewriter) const override {
+class  DetectionOutputGlobalBuffer : public OpRewriterPatternEx<tpu::DetectionOutputOp> {
+public:
+   DetectionOutputGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::DetectionOutputOp>(context, "DetectionOutputGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::DetectionOutputOp detectionOutputOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(detectionOutputOp.getBuffer())) {
       return failure();
     }
@@ -1020,14 +1083,17 @@ public:
                                  buffer);
     return success();
   }
+  bool shouldPrint(tpu::DetectionOutputOp detectionOutputOp) const override { return false;}
 };
 
-class TopKGlobalBuffer : public OpRewritePattern<tpu::TopKOp> {
-public:
-  using OpRewritePattern<tpu::TopKOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::TopKOp TopKOp,
-                                PatternRewriter &rewriter) const override {
+class  TopKGlobalBuffer : public OpRewriterPatternEx<tpu::TopKOp> {
+public:
+   TopKGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::TopKOp>(context, "TopKGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::TopKOp TopKOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isNone(TopKOp.getBufferVal()) ||
         !module::isNone(TopKOp.getBufferIdx())) {
       return failure();
@@ -1055,14 +1121,17 @@ public:
     TopKOp.setOperand(TopKOp.getNumOperands() - 1, idx_buf_op);
     return success();
   }
+  bool shouldPrint(tpu::TopKOp TopKOp) const override { return false;}
 };
 
-class SortGlobalBuffer : public OpRewritePattern<tpu::SortOp> {
-public:
-  using OpRewritePattern<tpu::SortOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::SortOp op,
-                                PatternRewriter &rewriter) const override {
+class SortGlobalBuffer : public OpRewriterPatternEx<tpu::SortOp> {
+public:
+   SortGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::SortOp>(context, "SortGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SortOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily()) {
       return failure();
     }
@@ -1091,15 +1160,16 @@ public:
       return failure();
     }
   }
+  bool shouldPrint(tpu::SortOp op) const override { return false;}
 };
 
-#include "tpu_mlir/Support/CustomLayer.h"
-class CustomGlobalBuffer : public OpRewritePattern<tpu::CustomOp> {
+class CustomGlobalBuffer : public OpRewriterPatternEx<tpu::CustomOp> {
 public:
-  using OpRewritePattern<tpu::CustomOp>::OpRewritePattern;
+   CustomGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::CustomOp>(context, "CustomGlobalBuffer") {}
 
-  LogicalResult matchAndRewrite(tpu::CustomOp customOp,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(tpu::CustomOp customOp,
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily()) {
       return failure();
     }
@@ -1131,14 +1201,17 @@ public:
       return failure();
     }
   }
+  bool shouldPrint(tpu::CustomOp customOp) const override { return false;}
 };
 
-class WhereGlobalBuffer : public OpRewritePattern<tpu::WhereOp> {
-public:
-  using OpRewritePattern<tpu::WhereOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::WhereOp WhereOp,
-                                PatternRewriter &rewriter) const override {
+class WhereGlobalBuffer : public OpRewriterPatternEx<tpu::WhereOp> {
+public:
+   WhereGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::WhereOp>(context, "WhereGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::WhereOp WhereOp,
+                                    PatternRewriter &rewriter) const override {
     if (tpu::getRunMode(WhereOp) != tpu::RunMode::TPU_DYNAMIC) {
       return failure();
     }
@@ -1190,6 +1263,7 @@ public:
     WhereOp.setOperand(WhereOp.getNumOperands() - 1, buffer);
     return success();
   }
+  bool shouldPrint(tpu::WhereOp WhereOp) const override { return false;}
 };
 
 } // namespace bm168x

@@ -8,13 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct CompareToCompareConst : public OpRewritePattern<CompareOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct CompareToCompareConst : public OpRewriterPatternEx<CompareOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(CompareOp op,
+  CompareToCompareConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<CompareOp>(context, "CompareToCompareConst") {}
+
+  LogicalResult matchAndRewriteImpl(CompareOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto right_shape = op.getRhs().getType().dyn_cast<TensorType>().getShape();
@@ -55,10 +59,12 @@ struct CompareToCompareConst : public OpRewritePattern<CompareOp> {
  * Any       /
  *
  */
-struct CompareConstantFill : public OpRewritePattern<CompareOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct CompareConstantFill : public OpRewriterPatternEx<CompareOp> {
+public:
+  CompareConstantFill(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<CompareOp>(context, "CompareConstantFill") {}
 
-  LogicalResult matchAndRewrite(CompareOp op,
+  LogicalResult matchAndRewriteImpl(CompareOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto stype = module::getStorageType(op.getOutput());

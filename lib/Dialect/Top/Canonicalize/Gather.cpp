@@ -8,16 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
-  using OpRewritePattern::OpRewritePattern;
-  TopGatherToSlice(MLIRContext *context)
-      : OpRewritePattern<GatherOp>(context) {}
+struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(GatherOp op,
+  TopGatherToSlice(MLIRContext *context)
+      : OpRewriterPatternEx<GatherOp>(context,"TopGatherToSlice") {}
+
+  LogicalResult matchAndRewriteImpl(GatherOp op,
                                 PatternRewriter &rewriter) const override {
     std::shared_ptr<std::vector<float>> inds_f32;
 
@@ -105,12 +107,12 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
   }
 };
 
-struct TopGatherMulConst : public OpRewritePattern<GatherOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopGatherMulConst : public OpRewriterPatternEx<GatherOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopGatherMulConst(MLIRContext *context)
-      : OpRewritePattern<GatherOp>(context) {}
+      : OpRewriterPatternEx<GatherOp>(context,"TopGatherMulConst") {}
 
-  LogicalResult matchAndRewrite(GatherOp op,
+  LogicalResult matchAndRewriteImpl(GatherOp op,
                                 PatternRewriter &rewriter) const override {
     if (!op->hasOneUse() || !module::isWeight(op.getInput())) {
       return failure();

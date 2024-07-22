@@ -52,7 +52,6 @@ public:
     LgPass::OPTIONS.opt = opt;
     LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
     LgPass::OPTIONS.nnvlc_mode = force_nnvlc_mode(compress_mode);
-
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {

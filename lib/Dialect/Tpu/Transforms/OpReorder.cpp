@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
@@ -16,10 +17,10 @@ namespace tpu_mlir {
 namespace tpu {
 
 // make sure operands is nearest to owner op
-struct OpReorderPattern : public RewritePattern {
+struct OpReorderPattern : public OpRewriterPatternEx3 {
   OpReorderPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"OpReorderPattern",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
@@ -54,13 +55,13 @@ struct OpReorderPattern : public RewritePattern {
     }
     return fixed ? success() : failure();
   }
+  bool shouldPrint(Operation *op) const override { return false;}
 };
 
-// test by sd_decoder_pt
-struct AttentionReorderPattern : public RewritePattern {
+struct AttentionReorderPattern : public OpRewriterPatternEx3 {
   AttentionReorderPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"AttentionReorderPattern",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
@@ -116,6 +117,7 @@ struct AttentionReorderPattern : public RewritePattern {
 
     return fixed ? success() : failure();
   }
+  bool shouldPrint(Operation *op) const override { return false;}
 };
 
 static bool isLgSupport(Operation *op) {
@@ -129,11 +131,10 @@ static bool isLgSupport(Operation *op) {
   return res;
 }
 
-// move the last global ops before ReturnOp
-struct GlobalOpReorderPattern : public RewritePattern {
+struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
   GlobalOpReorderPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"GlobalOpReorderPattern",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (!isa<ReturnOp>(op)) {
       return failure();
@@ -160,6 +161,7 @@ struct GlobalOpReorderPattern : public RewritePattern {
     }
     return success();
   }
+  bool shouldPrint(Operation *op) const override { return false;}
 };
 
 class OpReorderPass : public OpReorderBase<OpReorderPass> {

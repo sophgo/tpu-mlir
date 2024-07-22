@@ -119,7 +119,7 @@ void attention_reorder(PatternRewriter &rewriter, tpu::AttentionOp op,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::AttentionOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::AttentionOp, int8_t>::matchAndRewriteImpl(
     tpu::AttentionOp op, PatternRewriter &rewriter) const {
 
   if (!module::getStorageType(op.getInput()).isInteger(8))
@@ -130,7 +130,7 @@ LogicalResult WeightReorder<tpu::AttentionOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::AttentionOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::AttentionOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::AttentionOp op, PatternRewriter &rewriter) const {
 
   if (!module::getStorageType(op.getInput()).isBF16())
@@ -141,7 +141,7 @@ LogicalResult WeightReorder<tpu::AttentionOp, BFloat16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::AttentionOp, Float16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::AttentionOp, Float16Type>::matchAndRewriteImpl(
     tpu::AttentionOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getInput()).isF16())
     return failure();

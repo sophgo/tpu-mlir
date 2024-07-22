@@ -40,7 +40,7 @@ static bool isHalfSlice(tpu::SliceOp op) {
 
 template <typename MatMulTy>
 LogicalResult
-MatMulSliceMerge<MatMulTy>::matchAndRewrite(MatMulTy op,
+MatMulSliceMerge<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
                                             PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
@@ -93,10 +93,10 @@ MatMulSliceMerge<MatMulTy>::matchAndRewrite(MatMulTy op,
   return success();
 }
 
-template LogicalResult MatMulSliceMerge<tpu::MatMulOp>::matchAndRewrite(
+template LogicalResult MatMulSliceMerge<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult MatMulSliceMerge<tpu::A16MatMulOp>::matchAndRewrite(
+template LogicalResult MatMulSliceMerge<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 template <typename MatMulTy>
@@ -262,7 +262,7 @@ template void sliceMergeSplit(tpu::A16MatMulOp mm0, PatternRewriter &rewriter,
  * Attention Tensor Parallelism
  */
 template <typename MatMulTy>
-LogicalResult AttentionSliceMerge<MatMulTy>::matchAndRewrite(
+LogicalResult AttentionSliceMerge<MatMulTy>::matchAndRewriteImpl(
     MatMulTy op, PatternRewriter &rewriter) const {
   if (module::isOpInDevParallel(op)) {
     return failure();
@@ -334,10 +334,10 @@ LogicalResult AttentionSliceMerge<MatMulTy>::matchAndRewrite(
   return success();
 }
 
-template LogicalResult AttentionSliceMerge<tpu::MatMulOp>::matchAndRewrite(
+template LogicalResult AttentionSliceMerge<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult AttentionSliceMerge<tpu::A16MatMulOp>::matchAndRewrite(
+template LogicalResult AttentionSliceMerge<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 void sliceAttentionMergeSplit(PatternRewriter &rewriter,

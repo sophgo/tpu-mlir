@@ -10,18 +10,19 @@
 #include "mlir/IR/AffineExpr.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
 namespace tpu_mlir {
 namespace tpu {
 
-class MatMulDDRInterleave : public OpRewritePattern<MatMulOp> {
-public:
-  MatMulDDRInterleave(MLIRContext *context)
-      : OpRewritePattern<MatMulOp>(context){};
+class MatMulDDRInterleave  : public OpRewriterPatternEx<MatMulOp> {
+  public:
+  MatMulDDRInterleave(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulOp>(context,"MatMulDDRInterleave") {}
 
-  LogicalResult matchAndRewrite(MatMulOp Op,
+  LogicalResult matchAndRewriteImpl(MatMulOp Op,
                                 PatternRewriter &rewriter) const override {
 
     for (auto user : Op->getUsers())
@@ -53,6 +54,7 @@ public:
     }
     return success();
   };
+  bool shouldPrint(MatMulOp Op) const override { return false;}
 };
 
 class DDRInterleavePass : public DDRInterleaveBase<DDRInterleavePass> {

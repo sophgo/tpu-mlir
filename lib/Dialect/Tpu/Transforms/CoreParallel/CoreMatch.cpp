@@ -13,6 +13,7 @@
 #include "mlir/Transforms/TopologicalSortUtils.h"
 #include <llvm/ADT/DenseSet.h>
 #include <unordered_set>
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -186,10 +187,10 @@ bool isReachable_for_training(Operation *a, Operation *b, std::unordered_set<Ope
 bool isCircularDependency(std::vector<Operation *> &beginOps,
                           std::vector<Operation *> &endOps) {
   // Operations use value in [beginOps, endOps]
-  DenseSet<Operation *> usedByOutside;
+  llvm::DenseSet<Operation *> usedByOutside;
   // Operations used by [beginOps, endOps]
-  DenseSet<Operation *> definedInOutside;
-  DenseSet<Operation *> blockOps;
+  llvm::DenseSet<Operation *> definedInOutside;
+  llvm::DenseSet<Operation *> blockOps;
 
   // All operations in usedByOutside should not dominate those in
   // definedInOutside.
@@ -357,10 +358,10 @@ static void common_match(PatternRewriter &rewriter,
 }
 
 // if operations are the same, then run in multi cores
-struct CommonMatch : public RewritePattern {
+struct CommonMatch : public OpRewriterPatternEx3 {
   CommonMatch(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"CommonMatch",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     auto num_core = module::getCoreNum();
 
@@ -457,13 +458,15 @@ struct CommonMatch : public RewritePattern {
     }
     return success();
   }
+  bool shouldPrint(Operation *op) const override { return false;}
 };
 
-class A16MatMulMatch : public OpRewritePattern<tpu::A16MatMulOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
+class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+  public:
+  A16MatMulMatch(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context,"A16MatMulMatch") {}
 
-  LogicalResult matchAndRewrite(tpu::A16MatMulOp op,
+  LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
     if (num_cores < 2 || module::isSG2380()) {
@@ -525,15 +528,18 @@ public:
     group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
     return success();
   }
+  bool shouldPrint(tpu::A16MatMulOp op) const override { return false;}
 };
 
 #if 0
 // test case: Gemma-2B block
 // RMSNorm --->A16MatMul------------> Mul -> A16MatMul
 //         --->A16MatMul--->Active /
-class MlpA16Match : public OpRewritePattern<tpu::A16MatMulOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
+class MlpA16Match  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+  public:
+  MlpA16Match(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context,"MlpA16Match") {}
+
   bool is_support(tpu::A16MatMulOp op) {
     if (module::isOpInBlock(op)) {
       return false;
@@ -550,7 +556,7 @@ public:
     return true;
   }
 
-  LogicalResult matchAndRewrite(tpu::A16MatMulOp op,
+  LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
     if (num_cores < 2) {
@@ -635,6 +641,7 @@ public:
     rewriter.replaceOpWithNewOp<top::AddOp>(op, out.getType(), add_operands);
     return success();
   }
+  bool shouldPrint(tpu::A16MatMulOp op) const override { return false;}
 };
 #endif
 

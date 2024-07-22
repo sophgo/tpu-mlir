@@ -2131,7 +2131,7 @@ BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op) : op_(op) {
 }
 
 int BMCpuOp::getCpuOpType() {
-  return StringSwitch<int>(op_.getCpuOpName())
+  return llvm::StringSwitch<int>(op_.getCpuOpName())
       .Case("topk", CPU_TOPK)
       .Case("onnx_nms", CPU_ONNX_NMS)
       .Case("gathernd_tf", CPU_GATHERND_TF)

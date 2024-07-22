@@ -45,7 +45,7 @@ canonicalize_matmul_operand_shape(tpu::MatMulOp op, PatternRewriter &rewriter) {
 }
 
 template <>
-LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
   // if (!module::getStorageType(op.getBias()).isInteger(32))
   //   return failure();
@@ -114,13 +114,13 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::MatMulOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::MatMulOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
   return canonicalize_matmul_operand_shape(op, rewriter);
 }
 
 template <>
-LogicalResult WeightReorder<tpu::MatMulOp, Float16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::MatMulOp, Float16Type>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
   return canonicalize_matmul_operand_shape(op, rewriter);
 }

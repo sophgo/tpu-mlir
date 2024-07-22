@@ -715,7 +715,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         Block *bodyBlock;
         // Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
 
-        TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
+        llvm::TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
             [&](auto op_) { bodyBlock = &(op_.getBody().front()); });
 
         auto result_index = [&](Operation *op, int k) -> std::size_t {
@@ -792,7 +792,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
               /* update the argument because of
                  loop-carried-dependency for next iteration */
               int Initial_V_size = 0;
-              TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
+              llvm::TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
                   [&](auto Op) { Initial_V_size = Op.getVInitial().size(); });
 
               for (int k = 0; k < Initial_V_size; k++) {

@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace tpu {
 
 LogicalResult
-LargePadConvPattern::matchAndRewrite(tpu::Conv2DOp op,
+LargePadConvPattern::matchAndRewriteImpl(tpu::Conv2DOp op,
                                      PatternRewriter &rewriter) const {
   if (!(module::isBM1684Family() || module::isBM1684XFamily()
         || module::isBM1690Family())) {
@@ -157,7 +157,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
 // reorder op when transpose is before unary and biary operation to optimize
 // bert
 LogicalResult
-PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
+PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
                                        PatternRewriter &rewriter) const {
 
   if (!op.getOutput().hasOneUse()) {
@@ -275,7 +275,7 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
 }
 
 // permute + pad -> pad + permute
-LogicalResult PermutePadSwap::matchAndRewrite(tpu::PermuteOp op,
+LogicalResult PermutePadSwap::matchAndRewriteImpl(tpu::PermuteOp op,
                                               PatternRewriter &rewriter) const {
   auto out = op.getOutput();
   if (out.hasOneUse() == false) {

@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
@@ -17,11 +18,10 @@ namespace tpu {
 
 // op -> reshape + op + reshape
 // (1, 1, H, W) -> (1, H, W)
-struct InsertReshapePattern : public RewritePattern {
+struct InsertReshapePattern : public OpRewriterPatternEx3 {
   InsertReshapePattern(MLIRContext *context, int level)
-      : RewritePattern(MatchAnyOpTypeTag(), level, context) {}
-
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"InsertReshapePattern",level) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
 
     if (false == isa<tpu::MatMulOp, tpu::CastOp, tpu::RequantIntAxisOp, tpu::RequantIntOp,
@@ -121,6 +121,7 @@ struct InsertReshapePattern : public RewritePattern {
 
     return success();
   }
+  bool shouldPrint(Operation *op) const override { return false;}
 };
 
 class ShapeOptimizePass : public ShapeOptimizeBase<ShapeOptimizePass> {

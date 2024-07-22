@@ -123,7 +123,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
 
       LLVM_DEBUG({
-          llvm::errs()<< "local layer cycle = " << cycle << "\n";
+          llvm::dbgs() << "local layer cycle = " << cycle << "\n";
           op->dump();
       });
       layer_cycle.push_back(layer_cycle_info_t(stage, cycle));
@@ -142,11 +142,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         }
       }
       LLVM_DEBUG({
-          llvm::errs()<< "local tensor cycle = " << cycle << "\n";
+          llvm::dbgs()<< "local tensor cycle = " << cycle << "\n";
       });
       gdma_cycle.push_back(gdma_cycle_info_t(stage, cycle, hold_in_lmem));
     }
-
     // filling time
     for (int64_t j = 0; j < swpipl_stage_num; ++j) {
       start = std::max((j - (loop_num - 1)), (int64_t)0);
@@ -171,14 +170,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       // max
       LLVM_DEBUG({
           if(total_layer_cycle > total_gdma_cycle){
-              llvm::errs()<< "[filling]take total_layer_cycle = " << total_layer_cycle << "\n";
+              llvm::dbgs()<< "[filling]take total_layer_cycle = " << total_layer_cycle << "\n";
           }else{
-              llvm::errs()<< "[filling]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+              llvm::dbgs()<< "[filling]take total_gdma_cycle = " << total_gdma_cycle << "\n";
           }
       });
       filling_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
-
     // kernel time
     if (loop_num > swpipl_stage_num) {
       // layers
@@ -195,14 +193,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       }
       LLVM_DEBUG({
           if(total_layer_cycle > total_gdma_cycle){
-              llvm::errs()<< "[kernel]take total_layer_cycle = " << total_layer_cycle << "\n";
+              llvm::dbgs()<< "[kernel]take total_layer_cycle = " << total_layer_cycle << "\n";
           }else{
-              llvm::errs()<< "[kernel]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+              llvm::dbgs()<< "[kernel]take total_gdma_cycle = " << total_gdma_cycle << "\n";
           }
       });
       kernel_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
-
     // draining time
     for (int64_t j = start + 1; j < swpipl_stage_num; ++j) {
       // layers
@@ -222,9 +219,9 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       }
       LLVM_DEBUG({
           if(total_layer_cycle > total_gdma_cycle){
-              llvm::errs()<< "[draining]take total_layer_cycle = " << total_layer_cycle << "\n";
+              llvm::dbgs()<< "[draining]take total_layer_cycle = " << total_layer_cycle << "\n";
           }else{
-              llvm::errs()<< "[draining]take total_gdma_cycle = " << total_gdma_cycle << "\n";
+              llvm::dbgs()<< "[draining]take total_gdma_cycle = " << total_gdma_cycle << "\n";
           }
       });
       draining_cycle += std::max(total_layer_cycle, total_gdma_cycle);

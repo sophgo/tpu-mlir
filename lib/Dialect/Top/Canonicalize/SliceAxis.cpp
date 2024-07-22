@@ -6,16 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 
 using namespace tpu_mlir::top;
 
-struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceAxisOp op,
+  SliceAxisToStridedSlice(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<SliceAxisOp>(context, "SliceAxisToStridedSlice") {}
+
+  LogicalResult matchAndRewriteImpl(SliceAxisOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto in_shape = module::getShape(op.getInput());

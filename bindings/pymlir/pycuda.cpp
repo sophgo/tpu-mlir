@@ -40,8 +40,8 @@ void py_cuda::load(std::string filename) {
     });
   }
   // perpare input and output
-  std::vector<Value> inputs;
-  std::vector<Value> outputs;
+  std::vector<mlir::Value> inputs;
+  std::vector<mlir::Value> outputs;
   module::getInputsOutputs(m, inputs, outputs);
 
   for (auto v : inputs) {
@@ -61,7 +61,7 @@ void py_cuda::load(std::string filename) {
   }
 }
 
-void py_cuda::cuda_malloc(std::map<std::string, cuda_ptr> &map, Value v) {
+void py_cuda::cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v) {
   auto name = module::getName(v).str();
   void *cuda_mem;
   CHECK_CUDA(cudaMalloc(&cuda_mem, module::getBytes(v)));

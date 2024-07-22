@@ -9,13 +9,17 @@
 
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct ConvertExpand : public OpRewritePattern<ExpandOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ExpandOp op,
+  ConvertExpand(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<ExpandOp>(context, "ConvertExpand") {}
+
+  LogicalResult matchAndRewriteImpl(ExpandOp op,
                                 PatternRewriter &rewriter) const override {
     if (!op.getShapeT()) {
       auto output_shape = module::getShape(op.getOutput());

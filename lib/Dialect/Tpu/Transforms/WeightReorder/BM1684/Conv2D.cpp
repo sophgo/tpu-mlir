@@ -348,7 +348,7 @@ LogicalResult winoReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
@@ -365,7 +365,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();

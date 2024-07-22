@@ -51,15 +51,15 @@ def pack_bmodel_context_generator(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, decrypt_lib: str = "") -> dict:
-    if mute:
+def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, decrypt_lib: str = "",log_level:str='normal') -> dict:
+    if mute or log_level == "quiet":
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
         return _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
     finally:
-        if mute:
+        if mute or log_level=='quiet' or log_level=='simple' or log_level=='only-layer-group':
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
@@ -225,8 +225,8 @@ g_mlir_module = None
 g_mlir_cuda = None
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, use_cuda: bool = False) -> dict:
-    if mute:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, use_cuda: bool = False, log_level:str = 'normal') -> dict:
+    if mute or log_level == "quiet":
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
@@ -236,7 +236,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bo
         else:
             return _mlir_inference_by_cuda(inputs, mlir_file, dump_all)
     finally:
-        if mute:
+        if mute or log_level == "quiet":
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 

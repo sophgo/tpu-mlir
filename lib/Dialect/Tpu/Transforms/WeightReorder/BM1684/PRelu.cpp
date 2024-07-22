@@ -14,7 +14,7 @@ using namespace bm1684;
 using namespace backend;
 
 template <>
-LogicalResult WeightReorder<tpu::PReluOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::PReluOp, int8_t>::matchAndRewriteImpl(
     tpu::PReluOp op, PatternRewriter &rewriter) const {
   // convert 1N to 4N
   if (module::isWeight(op.getSlope()) &&
