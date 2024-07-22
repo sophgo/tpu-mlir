@@ -8,13 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct ReorderDynWeight : public OpRewritePattern<DeconvOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ReorderDynWeight : public OpRewriterPatternEx<DeconvOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(DeconvOp op,
+  ReorderDynWeight(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<DeconvOp>(context, "ReorderDynWeight") {}
+
+  LogicalResult matchAndRewriteImpl(DeconvOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto filter_shape =
@@ -74,10 +78,12 @@ struct ReorderDynWeight : public OpRewritePattern<DeconvOp> {
   }
 };
 
-struct Deconv1dTo2d : public OpRewritePattern<DeconvOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct Deconv1dTo2d : public OpRewriterPatternEx<DeconvOp> {
+public:
+  Deconv1dTo2d(mlir::MLIRContext *context)
+  : OpRewriterPatternEx<DeconvOp>(context, "Deconv1dTo2d") {}
 
-  LogicalResult matchAndRewrite(DeconvOp op,
+  LogicalResult matchAndRewriteImpl(DeconvOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto kernel = module::getI64Array(op.getKernelShape());
@@ -113,10 +119,14 @@ struct Deconv1dTo2d : public OpRewritePattern<DeconvOp> {
     return success();
   }
 };
-struct CastFilterAndOutput : public OpRewritePattern<DeconvOp> {
-  using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(DeconvOp op,
+
+struct CastFilterAndOutput : public OpRewriterPatternEx<DeconvOp> {
+public:
+  CastFilterAndOutput(mlir::MLIRContext *context)
+  : OpRewriterPatternEx<DeconvOp>(context, "CastFilterAndOutput") {}
+
+  LogicalResult matchAndRewriteImpl(DeconvOp op,
                                 PatternRewriter &rewriter) const override {
   auto input_type = op.getInput().getType().cast<RankedTensorType>();
   if (!input_type.getElementType().isF32()){

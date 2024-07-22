@@ -44,7 +44,7 @@ void GroupOps::find_local_layer_base_group(Operation * op) {
     }
     auto itr = std::find(all_local_layer_nodes.begin(), all_local_layer_nodes.end(), pre_op);
     if (itr == all_local_layer_nodes.end() && isLgSupport(pre_op) && isPreOpHaveAComputeOp(pre_op)) { //isPreOpHaveAComputeOp ?? todo
-      llvm::errs()<<"i:"<<i<<", op:"<<module::getName(op).str()<<", pre_op:"<<module::getName(pre_op).str()<<"\n";
+      llvm::outs()<<"i:"<<i<<", op:"<<module::getName(op).str()<<", pre_op:"<<module::getName(pre_op).str()<<"\n";
       find_local_layer_base_group(pre_op);
     }
     i++;
@@ -54,7 +54,7 @@ void GroupOps::find_local_layer_base_group(Operation * op) {
   for (auto user : op->getUsers()) {
     auto itr = std::find(all_local_layer_nodes.begin(), all_local_layer_nodes.end(), user);
     if (itr == all_local_layer_nodes.end() && isLgSupport(user)) {
-      llvm::errs()<<"i:"<<i<<", op:"<<module::getName(op).str()<<", user:"<<module::getName(user).str()<<"\n";
+      llvm::outs()<<"i:"<<i<<", op:"<<module::getName(op).str()<<", user:"<<module::getName(user).str()<<"\n";
       find_local_layer_base_group(user);
     }
     i++;
@@ -119,7 +119,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
         }
       }
     });
-    llvm::errs()<<"last_op name:"<<module::getName(last_op).str()<<"\n";
+    llvm::outs()<<"last_op name:"<<module::getName(last_op).str()<<"\n";
     lg_pass_ir_->subnet_return_opds.push_back(last_op->getResult(0));
 
     std::vector<Operation*> last_op_all_pre_ops;
@@ -149,7 +149,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
     int i = 0;
     for (auto v : lg_pass_ir_->subnet_return_opds) {
-      llvm::errs()<<"subnet_return_opds:"<<i++<<" name:"<<module::getName(v).str()<<"\n";
+      llvm::outs()<<"subnet_return_opds:"<<i++<<" name:"<<module::getName(v).str()<<"\n";
     }
   } else {
     func.walk([&](Operation *op) {
@@ -324,13 +324,13 @@ void GroupOps::buildMlir_for_opt3() {
       all_local_ops.insert(all_local_ops.begin(), lg_infos[i].group_ops.begin(), lg_infos[i].group_ops.end());
 
       for (auto op : lg_infos[i].group_ops) {
-        llvm::errs() << "op: "<<module::getName(op).str()<<"\n";
+        llvm::outs() << "op: "<<module::getName(op).str()<<"\n";
       }
       for (auto out: lg_infos[i].group_outs) {
-        llvm::errs() <<"   group_outs: "<<module::getName(out).str()<<"\n";
+        llvm::outs() <<"   group_outs: "<<module::getName(out).str()<<"\n";
       }
       for (auto in: lg_infos[i].group_ins) {
-        llvm::errs() <<"   group_ins: "<<module::getName(in).str()<<"\n";
+        llvm::outs() <<"   group_ins: "<<module::getName(in).str()<<"\n";
       }
     }
   }
@@ -613,12 +613,12 @@ void GroupOps::buildMlir_for_opt3() {
               }
             } else {
               auto whOp = map_store_tensor_to_outbuffer_out[op_out].getDefiningOp();
-              llvm::errs() <<"change need_dump for " << module::getName(op_out)<<"\n";
+              llvm::outs() <<"change need_dump for " << module::getName(op_out)<<"\n";
               whOp->setAttr("need_dump", builder.getBoolAttr(true));
             }
           }
         }
-        llvm::errs() <<"tmp_need_store_load_value.size:" << tmp_need_store_load_value.size()<<"\n";
+        llvm::outs() <<"tmp_need_store_load_value.size:" << tmp_need_store_load_value.size()<<"\n";
         need_store_load_value.push_back(tmp_need_store_load_value);
       }
 
@@ -631,15 +631,15 @@ void GroupOps::buildMlir_for_opt3() {
       }
       bool one_grp = lg_pass_ir_->ILP_time_steps[group_idx].size() == 1;
 
-      llvm::errs() << "group"<<group_idx<<", in and out:\n";
+      llvm::outs() << "group"<<group_idx<<", in and out:\n";
       for (auto op : lg_info.group_ops) {
-        llvm::errs() << "  op:"<<module::getName(op).str()<<"\n";
+        llvm::outs() << "  op:"<<module::getName(op).str()<<"\n";
       }
       for (auto out: lg_info.group_outs) {
-        llvm::errs() << "    out:"<<module::getName(out).str()<<"\n";
+        llvm::outs() << "    out:"<<module::getName(out).str()<<"\n";
       }
       for (auto in: lg_info.group_ins) {
-        llvm::errs() << "    in:"<<module::getName(in).str()<<"\n";
+        llvm::outs() << "    in:"<<module::getName(in).str()<<"\n";
       }
       assert(lg_pass_ir_->ILP_time_steps[group_idx].size() > 0);
       auto& l2mem_alloc_ptr = lg_pass_ir_->lg_l2mem_alloc_ptr[group_idx];
@@ -1234,7 +1234,7 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
   std::string in_name = module::getName(input).str();
   int64_t slice_idx = it.slice_idx;
   if (!it.valid) {
-    llvm::errs() <<"CreateLoadToL2mOp, name:"<<in_name<<", slice_idx:"<<slice_idx<<"invalid, skiped\n";
+    llvm::outs() <<"CreateLoadToL2mOp, name:"<<in_name<<", slice_idx:"<<slice_idx<<"invalid, skiped\n";
     return;
   }
   auto builder = OpBuilder(ctx_);

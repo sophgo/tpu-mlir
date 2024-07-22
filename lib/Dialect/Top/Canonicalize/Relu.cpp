@@ -6,19 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
+struct TopFuseRelu : public OpRewriterPatternEx<ReluOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopFuseRelu(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReluOp>(context, "TopFuseRelu") {}
 
-struct TopFuseRelu : public OpRewritePattern<ReluOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(ReluOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(ReluOp op,
+                                    PatternRewriter &rewriter) const override {
     auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse())
       return failure();
@@ -47,11 +47,14 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
   }
 };
 
-struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopMoveReluAheadConcatPattern : public OpRewriterPatternEx<ReluOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReluOp op,
-                                PatternRewriter &rewriter) const override {
+  TopMoveReluAheadConcatPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReluOp>(context, "TopMoveReluAheadConcatPattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReluOp op,
+                                    PatternRewriter &rewriter) const override {
     std::string op_name = op.getOperationName().str();
     auto relu_limit = op.getReluLimit();
     // match relu Op that is following concat Ops
@@ -77,7 +80,8 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
       formerOp->setOperand(i, newOp.getResult());
     }
 
-    // change the concat Op's name to avoid comparison between concat before and after relu
+    // change the concat Op's name to avoid comparison between concat before and
+    // after relu
     concatOp->setLoc(NameLoc::get(
         rewriter.getStringAttr(module::getName(formerOp).str() + "_relu")));
 

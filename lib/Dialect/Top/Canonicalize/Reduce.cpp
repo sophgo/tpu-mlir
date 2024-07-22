@@ -6,20 +6,21 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include <algorithm>
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopReduceTranspose : public OpRewriterPatternEx<ReduceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopReduceTranspose(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewritePattern<ReduceOp>(context, benefit) {}
+      : OpRewriterPatternEx<ReduceOp>(context, "TopReduceTranspose",
+                                         benefit) {}
 
-  LogicalResult matchAndRewrite(ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->hasOneUse() || !isa<PermuteOp>(formerOp)) {
@@ -87,13 +88,14 @@ struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
   }
 };
 
-struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
+struct ReduceFusePattern : public OpRewriterPatternEx<ReduceOp> {
 
-  using OpRewritePattern::OpRewritePattern;
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ReduceFusePattern(MLIRContext *context, PatternBenefit benefit = 10)
-      : OpRewritePattern<ReduceOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+      : OpRewriterPatternEx<ReduceOp>(context, " ReduceFusePattern",
+                                         benefit) {}
+  LogicalResult matchAndRewriteImpl(ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto formerOpDefine = op.getInput().getDefiningOp();
     if (!isa<ReduceOp>(op) || !isa<ReduceOp>(formerOpDefine)) {
       return failure();
@@ -152,13 +154,14 @@ struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
-struct ReduceToReshapePattern : public OpRewritePattern<ReduceOp> {
+struct ReduceToReshapePattern : public OpRewriterPatternEx<ReduceOp> {
 
-  using OpRewritePattern::OpRewritePattern;
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ReduceToReshapePattern(MLIRContext *context, PatternBenefit benefit = 10)
-      : OpRewritePattern<ReduceOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+      : OpRewriterPatternEx<ReduceOp>(context, "ReduceToReshapePattern",
+                                         benefit) {}
+  LogicalResult matchAndRewriteImpl(ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto nofInputElts = module::getNumElements(op.getInput());
     auto nofOutputElts = module::getNumElements(op.getOutput());
     if (nofInputElts != nofOutputElts) {
@@ -170,13 +173,14 @@ struct ReduceToReshapePattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
-struct ReduceToRPoolPattern : public OpRewritePattern<ReduceOp> {
+struct ReduceToRPoolPattern : public OpRewriterPatternEx<ReduceOp> {
 
-  using OpRewritePattern::OpRewritePattern;
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ReduceToRPoolPattern(MLIRContext *context, PatternBenefit benefit = 10)
-      : OpRewritePattern<ReduceOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+      : OpRewriterPatternEx<ReduceOp>(context, "ReduceToRPoolPattern",
+                                         benefit) {}
+  LogicalResult matchAndRewriteImpl(ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto iShape = module::getShape(op.getInput());
     auto num_dims = iShape.size();
     auto mode = op.getMode().str();
@@ -211,12 +215,12 @@ struct ReduceToRPoolPattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
-struct ReduceDiscontinuousPattern : public OpRewritePattern<ReduceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ReduceDiscontinuousPattern : public OpRewriterPatternEx<ReduceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ReduceDiscontinuousPattern(MLIRContext *context, PatternBenefit benefit = 7)
-      : OpRewritePattern<ReduceOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+      : OpRewriterPatternEx<ReduceOp>(context,"ReduceDiscontinuousPattern", benefit) {}
+  LogicalResult matchAndRewriteImpl(ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto axes_val = module::getI64Array(op.getAxes());
     auto ishape = module::getShape(op.getInput());
     auto max_idx = *std::max_element(axes_val->begin(), axes_val->end());

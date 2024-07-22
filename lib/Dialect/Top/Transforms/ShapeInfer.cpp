@@ -9,6 +9,7 @@
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include <llvm/Support/Debug.h>
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #define DEBUG_TYPE "shape_infer"
 
 using namespace llvm;
@@ -16,11 +17,12 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace top {
 
-class UnTupleFusePattern : public OpRewritePattern<UnTupleOp> {
-public:
-  using OpRewritePattern<UnTupleOp>::OpRewritePattern;
+class UnTupleFusePattern  : public OpRewriterPatternEx<UnTupleOp> {
+  public:
+  UnTupleFusePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<UnTupleOp>(context,"UnTupleFusePattern") {}
 
-  LogicalResult matchAndRewrite(UnTupleOp op,
+  LogicalResult matchAndRewriteImpl(UnTupleOp op,
                                 PatternRewriter &rewriter) const override {
     auto outs = op.getOutputs();
     auto ins = op.getInputs();
@@ -37,13 +39,15 @@ public:
     rewriter.eraseOp(op);
     return success();
   }
+  bool shouldPrint(UnTupleOp op) const override { return false;}
 };
 
-class TupleFusePattern : public OpRewritePattern<TupleOp> {
-public:
-  using OpRewritePattern<TupleOp>::OpRewritePattern;
+class TupleFusePattern  : public OpRewriterPatternEx<TupleOp> {
+  public:
+  TupleFusePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<TupleOp>(context,"TupleFusePattern") {}
 
-  LogicalResult matchAndRewrite(TupleOp op,
+  LogicalResult matchAndRewriteImpl(TupleOp op,
                                 PatternRewriter &rewriter) const override {
     auto out = op.getOutput();
     for (auto user : op->getUsers()) {
@@ -62,11 +66,13 @@ public:
     rewriter.eraseOp(op);
     return success();
   }
+  bool shouldPrint(TupleOp op) const override { return false;}
 };
 
-class CopyMultiUseWeight : public OpRewritePattern<WeightOp> {
-public:
-  using OpRewritePattern<WeightOp>::OpRewritePattern;
+class CopyMultiUseWeight  : public OpRewriterPatternEx<WeightOp> {
+  public:
+  CopyMultiUseWeight(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WeightOp>(context,"CopyMultiUseWeight") {}
 
   int getOperandIndex(Operation *op, Value operand) const {
     int n = op->getNumOperands();
@@ -79,7 +85,7 @@ public:
     return -1;
   }
 
-  LogicalResult matchAndRewrite(WeightOp op,
+  LogicalResult matchAndRewriteImpl(WeightOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<Operation *> users(op->user_begin(), op->user_end());
     if (users.size() <= 1) {
@@ -95,6 +101,7 @@ public:
     rewriter.eraseOp(op);
     return success();
   }
+  bool shouldPrint(WeightOp op) const override { return false;}
 };
 
 // if all inputs is weight, convert to weight op

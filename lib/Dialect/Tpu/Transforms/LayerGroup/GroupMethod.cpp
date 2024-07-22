@@ -28,11 +28,11 @@ namespace tpu {
 #define GROUP_CHECK_RETURN(val)                                                \
   {                                                                            \
     if (val) {                                                                 \
-      llvm::errs() << "layer group is valid";                                  \
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "layer group is valid";});  \
       return true;                                                             \
     } else {                                                                   \
-      llvm::errs() << "layer group is invalid";                                \
-      return false;                                                            \
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "layer group is invalid";}); \
+      return false;                                                             \
     }                                                                          \
   }
 
@@ -83,7 +83,7 @@ class ilp_func_trace {
       _debug_info = debug_info;
       _dot_graph_log = dot_graph_log;
       string_id =  specified_id == 0?GenerateRandomString(15):std::to_string(specified_id);
-      llvm::errs() <<string_id<<" ilp_debug: "<<_debug_info<<" start\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<string_id<<" ilp_debug: "<<_debug_info<<" start\n";});
     }
 
     ~ilp_func_trace() {
@@ -92,7 +92,7 @@ class ilp_func_trace {
         std::string svg_file = _dot_graph_log->export_dot("svg_" + _debug_info +"_" + string_id);
         extra_info = ", please refer svg:" + svg_file;
       }
-      llvm::errs() <<string_id<<" ilp_debug: "<<_debug_info<<" end"<<extra_info<<"\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<string_id<<" ilp_debug: "<<_debug_info<<" end"<<extra_info<<"\n";});
     }
   private:
     std::string string_id;
@@ -325,7 +325,7 @@ void tmp_group_into_base(std::vector<std::vector<Operation *>> &base_groups,
 
 void GroupMethod::get_base_groups(
     std::vector<std::vector<Operation *>> &base_groups,
-    const SetVector<Operation *> &subnet_ops) {
+    const llvm::SetVector<Operation *> &subnet_ops) {
   std::vector<Operation *> group;
   bool is_binary = false;
   for (auto op : subnet_ops) {
@@ -353,7 +353,7 @@ void GroupMethod::get_base_groups(
 
 void GroupMethod::get_base_branch_groups(
     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-    const SetVector<Operation *> &subnet_ops,
+    const llvm::SetVector<Operation *> &subnet_ops,
     const std::vector<Value> &subnet_return_opds) {
   /*std::vector<std::vector<Operation *>> tmp_base_groups;
   for (auto v : subnet_return_opds) { // ���������value��ʼ����
@@ -363,8 +363,10 @@ void GroupMethod::get_base_branch_groups(
     tmp_base_groups.push_back(tmp);
   }
 
-  llvm::errs() << "get_base_branch_groups start, group num:"
-               << tmp_base_groups.size() << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "get_base_branch_groups start, group num:"
+                 << tmp_base_groups.size() << "\n";
+  });
   while (true) {
     bool can_break = true;
     for (auto group : tmp_base_groups) { // �ж��Ƿ����к�ѡ���Ѵ������
@@ -395,8 +397,8 @@ void GroupMethod::get_base_branch_groups(
         }
         idx++;
       }
-      llvm::errs() << "op:" << module::getName(tmp_op).str() << " have "
-                   << count << " input tensor is not weight\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "op:" << module::getName(tmp_op).str() << " have "
+                   << count << " input tensor is not weight\n";});
       if (count == 1) {
         auto tmp_op2 = tmp_op->getOperand(imm_tensor_idx).getDefiningOp();
         int user_count = 0;
@@ -405,7 +407,7 @@ void GroupMethod::get_base_branch_groups(
             user_count++;
           }
         }
-        llvm::errs() << "have " << user_count << " next node\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "have " << user_count << " next node\n";});
         if (user_count > 1) { // �����ֲ��
           group.push_back(nullptr);
           bool grp_exist = false;
@@ -416,8 +418,10 @@ void GroupMethod::get_base_branch_groups(
             }
           }
           if (!grp_exist) {
-            llvm::errs() << "meet divide node, add new group, start op name:"
-                         << module::getName(tmp_op2).str() << "\n";
+            LAYER_GROUP_LOG_DEBUG_BLOCK({
+              llvm::outs() << "meet divide node, add new group, start op name:"
+                           << module::getName(tmp_op2).str() << "\n";
+            });
             std::vector<Operation *> tmp;
             tmp.push_back(tmp_op2);
             tmp_base_groups.push_back(tmp);
@@ -433,8 +437,10 @@ void GroupMethod::get_base_branch_groups(
               isa<top::NoneOp, top::WeightOp, top::InputOp>(pre_op)) {
             continue;
           }
-          llvm::errs() << "meet merge node, add new group, start op name:"
-                       << module::getName(pre_op).str() << "\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({
+            llvm::outs() << "meet merge node, add new group, start op name:"
+                         << module::getName(pre_op).str() << "\n";
+          });
           std::vector<Operation *> tmp;
           tmp.push_back(pre_op);
           tmp_base_groups.push_back(tmp);
@@ -454,11 +460,11 @@ void GroupMethod::get_base_branch_groups(
 
   int i = 0;
   for (auto group : tmp_base_groups) {
-    llvm::errs() << ">>>tmp_base_groups grp:" << i++ << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << ">>>tmp_base_groups grp:" << i++ << "\n";});
     int j = 0;
     for (auto op : group) {
-      llvm::errs() << "  op:" << j++ << " name: " << module::getName(op).str()
-                   << "\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
+                   << "\n";});
     }
   }
 
@@ -469,8 +475,10 @@ void GroupMethod::get_base_branch_groups(
       if (isLgSupport(op)) {
         tmp.push_back(op);
       } else {
-        llvm::errs() << "global layer name: " << module::getName(op).str()
-                     << "\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({
+          llvm::outs() << "global layer name: " << module::getName(op).str()
+                       << "\n";
+        });
         if (tmp.size() > 1) {
           base_groups.push_back(tmp);
         }
@@ -484,11 +492,11 @@ void GroupMethod::get_base_branch_groups(
 
   i = 0;
   for (auto group : base_groups) {
-    llvm::errs() << ">>>base_groups grp:" << i++ << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << ">>>base_groups grp:" << i++ << "\n";});
     int j = 0;
     for (auto op : group) {
-      llvm::errs() << "  op:" << j++ << " name: " << module::getName(op).str()
-                   << "\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
+                   << "\n";});
     }
   }*/
 }
@@ -523,14 +531,14 @@ static void find_op_tree_by_root(Operation *op,
 
 void GroupMethod::get_base_dfs_topo_groups(
     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-    const SetVector<Operation *> &subnet_ops,
+    const llvm::SetVector<Operation *> &subnet_ops,
     const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups) {
   // int i = 0;
   // for (auto group : tmp_base_groups) {
-  //   llvm::errs() << ">>>tmp_base_groups grp:" << i++ << "\n";
+  //   llvm::outs() << ">>>tmp_base_groups grp:" << i++ << "\n";
   //   int j = 0;
   //   for (auto op : group) {
-  //     llvm::errs() << "  op:" << j++ << " name: " << module::getName(op).str()
+  //     llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
   //                  << "\n";
   //   }
   // }
@@ -550,7 +558,7 @@ void GroupMethod::get_base_dfs_topo_groups(
     if (LgInfo.group_ops.size() == 1) {
       continue;
     }
-    llvm::errs() << "start refine order, grp:" << --idx << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "start refine order, grp:" << --idx << "\n";});
     std::vector<Operation *> topo_ops;
     std::map<Operation *, int> indeg;
     auto ops = LgInfo.group_ops;
@@ -566,8 +574,8 @@ void GroupMethod::get_base_dfs_topo_groups(
     }
     std::vector<std::vector<Operation *>> serprated_groups;
     for (auto it : indeg) {
-      llvm::errs() << "  indeg, op name:" << module::getName(it.first).str()
-                   << ", count:" << it.second << "\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  indeg, op name:" << module::getName(it.first).str()
+                   << ", count:" << it.second << "\n";});
       if (it.second == 0) {
         if (std::find(topo_ops.begin(), topo_ops.end(), it.first) ==
             topo_ops.end()) {
@@ -582,10 +590,12 @@ void GroupMethod::get_base_dfs_topo_groups(
     }
 
     int i = 0;
-    llvm::errs() << "full_topo_ops:\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "full_topo_ops:\n";});
     for (auto op : topo_ops) {
-      llvm::errs() << "  op:" << i++ << " name:" << module::getName(op).str()
-                   << "\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({
+        llvm::outs() << "  op:" << i++ << " name:" << module::getName(op).str()
+                     << "\n";
+      });
     }
     std::vector<std::vector<Operation *>> serprated_groups_checked;
     for (auto group : serprated_groups) { // ȷ����ͼ֮���Ƿ����
@@ -617,9 +627,9 @@ void GroupMethod::get_base_dfs_topo_groups(
       if (topo_group.size() > 1) {
         base_groups.push_back(CreateIlpLgInfo(topo_group));
       }
-      llvm::errs() << "add new serprated_groups:\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "add new serprated_groups:\n";});
       for (auto op : topo_group) {
-        llvm::errs() << "  name:" << module::getName(op).str() << "\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  name:" << module::getName(op).str() << "\n";});
       }
     }
 
@@ -764,7 +774,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     *group_cost =
         cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
   }
-  // llvm::errs() << "nsecs = " << shape_secs.nsecs
+  // llvm::outs() << "nsecs = " << shape_secs.nsecs
   //              << ", hsecs = " << shape_secs.hsecs << "\n";
   return status;
 }
@@ -838,13 +848,12 @@ void GroupMethod::get_group_clusters(
       clusters.push_back(std::make_pair<int64_t, int64_t>(layer_idx, 1));
     }
   }
-
-  llvm::errs() << "clusters idx(size): ";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "clusters idx(size): ";});
   for (size_t i = 0; i < clusters.size(); ++i) {
-    llvm::errs() << llvm::format("%d(%d), ", clusters[i].first,
-                                 clusters[i].second);
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << llvm::format("%d(%d), ", clusters[i].first,
+                                 clusters[i].second);});
   }
-  llvm::errs() << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "\n";});
 }
 
 void GroupMethod::sweep_for_min_cost(
@@ -908,11 +917,11 @@ std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops) {
 }
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster(
-    std::vector<LgInfo> &lg_infos, const SetVector<Operation *> &subnet_ops) {
-  llvm::errs() << "\n"
+    std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops) {
+      LAYER_GROUP_LOG_DEBUG_BLOCK({  llvm::outs() << "\n"
                << "=======================================================\n"
                << "***** Dynamic Programming layer group with cluster ****\n"
-               << "=======================================================\n";
+               << "=======================================================\n";});
   // for debug
   // std::vector<Operation *> ops_vector;
   // for (Operation *op : subnet_ops) {
@@ -924,15 +933,15 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   get_base_groups(base_groups, subnet_ops);
-  llvm::errs() << llvm::format("total num of base_group is %d\n",
-                               base_groups.size());
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << llvm::format("total num of base_group is %d\n",
+                               base_groups.size());});
   for (size_t i = 0; i < base_groups.size(); ++i) {
     std::vector<std::pair<int64_t, int64_t>> clusters;
     get_group_clusters(clusters, base_groups[i]);
     size_t cluster_num = clusters.size();
-    llvm::errs() << llvm::format(
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << llvm::format(
         "process base group %d, layer_num=%d, cluster_num=%d\n", i,
-        base_groups[i].size(), cluster_num);
+        base_groups[i].size(), cluster_num);});
     if (cluster_num > 1) {
       auto cost_table = std::vector<std::vector<int64_t>>(
           cluster_num, std::vector<int64_t>(cluster_num, 0));
@@ -946,7 +955,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
 
         LLVM_DEBUG({
-          llvm::errs() << "cluster[" << j << "] = " << start_idx << ", "
+          llvm::dbgs() << "cluster[" << j << "] = " << start_idx << ", "
                        << end_idx << ";" << "cost = " << cost_table[j][j]
                        << "\n";
           sub_group.dump_lginfo();
@@ -954,15 +963,15 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
         cut_points[j][j] = j;
       }
-      llvm::errs() << "Searching best group slices...\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "Searching best group slices...\n";});
       progressbar bar(cluster_num - 1);
       for (size_t len = 2; len <= cluster_num; ++len) {
         bar.update();
-        // llvm::errs() << llvm::format("process cluster len = %d\n", len);
+        // llvm::outs() << llvm::format("process cluster len = %d\n", len);
         // #pragma omp parallel for private(sub_group)
         for (int64_t start = 0; start <= cluster_num - len; ++start) {
           int64_t end = start + len - 1;
-          // llvm::errs() << "start = " << start << ", end = " << end << "\n";
+          // llvm::outs() << "start = " << start << ", end = " << end << "\n";
           int64_t start_idx = clusters[start].first;
           int64_t end_idx = clusters[end].first + clusters[end].second - 1;
           get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
@@ -974,7 +983,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
           //                    cost_table);
           LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
+            llvm::dbgs() << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
                          << "; group_cost = " << group_cost << "\n";
           });
@@ -986,14 +995,14 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
               group_cost = temp_cost;
               optimal_point = sweep;
               LLVM_DEBUG({
-                llvm::errs() << "; update better" << "; start = " << start
+                llvm::dbgs() << "; update better" << "; start = " << start
                              << "; sweep = " << sweep << "; end = " << end
                              << "; temp_cost = " << temp_cost << "\n";
               });
             }
           }
           LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
+            llvm::dbgs() << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
                          << "; group_cost = " << group_cost << "\n";
           });
@@ -1002,7 +1011,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           cut_points[start][end] = optimal_point;
         }
       }
-      llvm::errs() << "\n";
+      llvm::outs() << "\n";
       std::vector<int64_t> cut_result;
       get_layer_cut_result(cut_result, clusters, cut_points, 0,
                            cluster_num - 1);
@@ -1014,28 +1023,28 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           get_layer_group(sub_group, base_groups[i], start, end);
           int64_t group_cost = MAX_COST;
           auto temp_status = is_layer_group_valid(sub_group, true, &group_cost);
-          llvm::errs() << temp_status << " ;start" << start << " - " << " end "
+          llvm::dbgs() << temp_status << " ;start" << start << " - " << " end "
                        << end << " = " << group_cost << "\n";
           start = end + 1;
         }
 
-        llvm::errs() << "\n";
-        llvm::errs() << "================FINAL GROUP================\n";
+        llvm::dbgs() << "\n";
+        llvm::dbgs() << "================FINAL GROUP================\n";
         for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
           for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-            llvm::errs() << cut_points[cost_i][cost_j] << ", " << "";
+            llvm::dbgs() << cut_points[cost_i][cost_j] << ", " << "";
           }
-          llvm::errs() << "\n";
+          llvm::dbgs() << "\n";
         }
-        llvm::errs() << "================COST TABLE================\n";
+        llvm::dbgs() << "================COST TABLE================\n";
         for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
           for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-            llvm::errs() << cost_table[cost_i][cost_j] << ", " << "";
+            llvm::dbgs() << cost_table[cost_i][cost_j] << ", " << "";
           }
-          llvm::errs() << "\n";
+          llvm::dbgs() << "\n";
         }
-        llvm::errs() << "=============================================\n";
-        llvm::errs() << "\n";
+        llvm::dbgs() << "=============================================\n";
+        llvm::dbgs() << "\n";
       });
     } else {
       cut_results_.push_back(std::vector<int64_t>(1, 0));
@@ -1044,23 +1053,31 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
   show_cut_results();
   // some post process for cluster
-  llvm::errs() << "-------------------------------------------------------\n";
-  llvm::errs() << "Consider redundant computation and gdma cost\n";
-  llvm::errs() << "-------------------------------------------------------\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "-------------------------------------------------------\n";
+    llvm::outs() << "Consider redundant computation and gdma cost\n";
+    llvm::outs() << "-------------------------------------------------------\n";
+  });
   consider_redundant_computation_and_gdma_cost(base_groups);
   show_cut_results();
 
-  llvm::errs() << "-------------------------------------------------------\n";
-  llvm::errs() << "Merge cut idx to reduce gdma cost\n";
-  llvm::errs() << "-------------------------------------------------------\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "-------------------------------------------------------\n";
+    llvm::outs() << "Merge cut idx to reduce gdma cost\n";
+    llvm::outs() << "-------------------------------------------------------\n";
+  });
   bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
   show_cut_results();
 
   if (take_effective) {
-    llvm::errs() << "-------------------------------------------------------\n";
-    llvm::errs() << "Consider redundant computation and gdma cost again\n"
-                 << "due to cut idx merged in the previous step\n";
-    llvm::errs() << "-------------------------------------------------------\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::outs()
+          << "-------------------------------------------------------\n";
+      llvm::outs() << "Consider redundant computation and gdma cost again\n"
+                   << "due to cut idx merged in the previous step\n";
+      llvm::outs()
+          << "-------------------------------------------------------\n";
+    });
     consider_redundant_computation_and_gdma_cost(base_groups);
     show_cut_results();
   }
@@ -1156,7 +1173,7 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
   }
   int64_t total_cost = group_costs[0] + group_costs[1];
   if (pre_cost_judge) {
-    LLVM_DEBUG(llvm::errs() << "The pre cost of the two group is " << total_cost
+    LLVM_DEBUG(llvm::dbgs() << "The pre cost of the two group is " << total_cost
                             << "\n";);
     if (opt_seq_info.min_cost >= 0 && opt_seq_info.min_cost < total_cost) {
       return false;
@@ -1180,7 +1197,7 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
     return false;
   }
   total_cost = group_costs[0] + group_costs[1];
-  llvm::errs() << "The final cost of the two group is " << total_cost << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "The final cost of the two group is " << total_cost << "\n";});
   if (opt_seq_info.min_cost >= 0 && opt_seq_info.min_cost <= total_cost) {
     return false;
   }
@@ -1221,8 +1238,10 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
               &left_sub_group, &right_sub_group, &left_first, seq_info);
           if (is_better) {
             optimal_cut_idx = cut_result[j];
-            llvm::errs() << "//// Group cost " << seq_info.min_cost
-                         << ", optimal cut idx " << optimal_cut_idx << "\n";
+            LAYER_GROUP_LOG_DEBUG_BLOCK({
+              llvm::outs() << "//// Group cost " << seq_info.min_cost
+                           << ", optimal cut idx " << optimal_cut_idx << "\n";
+            });
           }
         }
         cut_result[j] = optimal_cut_idx;
@@ -1265,7 +1284,7 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
         if (lg_valid) {
           if (combine_group_cost < left_group_cost + right_group_cost) {
             LLVM_DEBUG({
-              llvm::errs() << "; start_idx = " << start_cut_idx
+              llvm::dbgs() << "; start_idx = " << start_cut_idx
                            << "; end_idx = " << end_cut_idx
                            << "; group_cost = " << combine_group_cost
                            << "; base_group = " << i << "; action = "
@@ -1290,12 +1309,13 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
 }
 
 void GroupMethod::simple_layer_group(std::vector<LgInfo> &lg_infos,
-                                     const SetVector<Operation *> &subnet_ops) {
-  llvm::errs() << "\n"
-               << "=======================================================\n"
-               << "*********** Group layers as many as possible **********\n"
-               << "=======================================================\n";
-
+                                     const llvm::SetVector<Operation *> &subnet_ops) {
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "\n"
+                 << "=======================================================\n"
+                 << "*********** Group layers as many as possible **********\n"
+                 << "=======================================================\n";
+  });
   cut_results_.clear();
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
@@ -1442,7 +1462,7 @@ get_sec_per_cores(const shape_secs_t &shape_secs,
   }
 
   for (int i = 0; i < core_num; i++) {
-    llvm::errs() << "sec_per_cores:" << sec_per_cores[i] << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "sec_per_cores:" << sec_per_cores[i] << "\n";});
   }
 
   for (int n = 0; n < shape_secs.nsecs; n++) { // todo Ѱ���ø���core����ˮһ�µ�˳��
@@ -1579,10 +1599,11 @@ ExcludeOpFromGroup(LgInfo &sub_group, Operation *fail_op) {
 
   // del_ops.insert(del_ops.begin(), fail_op);
   if (del_ops.size() > 1) {
-    llvm::errs() << "get a new grp, size:"<<del_ops.size()<<"\n";
+     LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "get a new grp, size:"<<del_ops.size()<<"\n";});
+
   }
   for (auto del_op : del_ops) {
-    llvm::errs() << "  del_op name:" << show_op_info(del_op) << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  del_op name:" << show_op_info(del_op) << "\n";});
     group_ops.erase(std::remove(group_ops.begin(), group_ops.end(), del_op),
                     group_ops.end());
   }
@@ -1623,9 +1644,9 @@ void mergeEdgeOpToOtherGrp(int cur_grp_idx,
   }
   if (max_group_idx != -1) {
     base_groups[max_group_idx].push_back(fail_op);
-    llvm::errs() << "add fail_op to group" << max_group_idx << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "add fail_op to group" << max_group_idx << "\n";});
   } else {
-    llvm::errs() << "make fail_op as global layer\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "make fail_op as global layer\n";});
   }
 }
 
@@ -1639,13 +1660,13 @@ std::vector<op_var_pos_info> createOverlapStrategy(const LgInfo &lg_info,
   op_var_bound.push_back(null_var_pos);
   int k = 1;
   int op_num = lg_info.group_ops.size();
-  llvm::errs() << "old overlap:" << overlap << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "old overlap:" << overlap << "\n";});
   if (op_num <= overlap) {
     overlap = 1;
   } else if (op_num * 0.2 > overlap) {
     overlap = op_num * 0.2;
   }
-  llvm::errs() << "new overlap:" << overlap << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "new overlap:" << overlap << "\n";});
   for (int n = 0; n < slice_num; n++) {
     int group_offset = k;
     for (int m = 0; m < op_num; m++) {
@@ -1725,6 +1746,7 @@ static void find_op_in_same_block(Operation *op,
   }
 }
 
+
 void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR *pass_ir,
                                           std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups)
 {
@@ -1747,7 +1769,7 @@ void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR 
     if (opHasMultiGroupUser(cut_op, group_ops)) {
       continue;
     }
-    llvm::errs() <<"ilp_debug, idx:"<<idx++<< ", process_cut_op:"<< show_op_info(cut_op) << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"ilp_debug, idx:"<<idx++<< ", process_cut_op:"<< show_op_info(cut_op) << "\n";});
     std::vector<Operation*> tmp_ops;
     tmp_ops.assign(group_ops.begin(), group_ops.end());
     std::vector<Operation *> right_sub_ops;
@@ -1792,17 +1814,17 @@ void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR 
     int64_t global_op_cost = cycle_calculator_->getGlobalLayerCycle(cut_op);
     int64_t cut_group_cost = left_sub_group_cost + right_sub_group_cost + global_op_cost;
     if (cut_group_cost < original_group.group_cycle && cut_group_cost < min_group_cost) {
-      llvm::errs()<<"ilp_debug, find_cut_op, original_group.group_cycle:"<< original_group.group_cycle
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"ilp_debug, find_cut_op, original_group.group_cycle:"<< original_group.group_cycle
                   <<", cut_group_cost:"<< cut_group_cost <<", global_op_cost:"<< global_op_cost
                   <<", left_sub_group_cost:"<< left_sub_group_cost
-                  <<", right_sub_group_cost:"<< right_sub_group_cost << "\n";
+                  <<", right_sub_group_cost:"<< right_sub_group_cost << "\n";});
       best_cut_op = cut_op;
       min_group_cost = cut_group_cost;
     }
   }
 
   if (best_cut_op) {
-    llvm::errs() <<"ilp_debug, best_cut_op:"<< module::getName(best_cut_op).str() << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"ilp_debug, best_cut_op:"<< module::getName(best_cut_op).str() << "\n";});
     std::vector<Operation*> tmp_ops;
     tmp_ops.assign(group_ops.begin(), group_ops.end());
     std::vector<Operation *> right_sub_ops;
@@ -1835,6 +1857,7 @@ void GroupMethod::try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_
   if (module::isDebugCmdEnable("disable_group_cut")) {
     return;
   }
+
   ilp_func_trace tmp_trace(__func__);
 
   while(true) {
@@ -1866,7 +1889,7 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 
   // 判断切分后内存是否能加载
   if (!init_group_data_secs(sub_group, shape_secs, value_size)) {
-      llvm::errs() << "init_group_data_secs fail\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "init_group_data_secs fail\n";});
       return vec_op_hwsecs[0].first;
     }
 
@@ -1874,9 +1897,11 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
   TensorInfo tensor_infos;
   Operation *fail_op = nullptr;
   if (stripe_mine_idx_slice2(sub_group, shape_secs, tensor_infos, fail_op) == false) {
-      llvm::errs() << "stripe_mine_idx_slice2 fail, remove fail_op: "
-                    << module::getName(fail_op).str() << "\n";
-      return fail_op;
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::outs() << "stripe_mine_idx_slice2 fail, remove fail_op: "
+                   << module::getName(fail_op).str() << "\n";
+    });
+    return fail_op;
     }
 
   return nullptr;
@@ -1898,12 +1923,12 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 //       shape_secs_t max_shape_secs = get_group_max_secs(sub_group, vec_op_hwsecs);
 //       std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
 
-//       llvm::errs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() << "\n";
+//       llvm::outs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() << "\n";
 
 //       // 排除输出h为1的op
 //       if(max_shape_secs.nsecs*max_shape_secs.hsecs < corenum && vec_op_hwsecs[0].second==1)
 //       {
-//         llvm::errs()<<" op "<<module::getName(vec_op_hwsecs[0].first)<<" output h dim is 1, delete it!"<<"\n";
+//         llvm::outs()<<" op "<<module::getName(vec_op_hwsecs[0].first)<<" output h dim is 1, delete it!"<<"\n";
 //         processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, vec_op_hwsecs[0].first);
 //         for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
 //           if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
@@ -1919,13 +1944,13 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 
 //       std::vector<std::pair<Operation *, int>> vec_op_idx;
 //       while(max_shape_secs.nsecs*max_shape_secs.hsecs < 0.5 * corenum){
-//         llvm::errs()<< "max_shape_secs n:" << max_shape_secs.nsecs
+//         llvm::outs()<< "max_shape_secs n:" << max_shape_secs.nsecs
 //         << " c:" << max_shape_secs.csecs << " d:" << max_shape_secs.dsecs
 //         << " h:" << max_shape_secs.hsecs << " w:" << max_shape_secs.wsecs
 //         <<" corenum "<< corenum << "\n";
 //         // 删除h维度最小的算子以及其后面的算子
 //         Operation* fail_op = vec_op_hwsecs[0].first;
-//         llvm::errs() << module::getName(fail_op).str() << "  output h dim " << vec_op_hwsecs[0].second <<" too small, delete it from group!\n";
+//         llvm::outs() << module::getName(fail_op).str() << "  output h dim " << vec_op_hwsecs[0].second <<" too small, delete it from group!\n";
 
 //         auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
 //         for (; it!=sub_group.group_ops.end(); ++it) {
@@ -1933,21 +1958,21 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 //           vec_op_idx.push_back(std::make_pair(*it, index));
 //         }
 //         it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
-//         llvm::errs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         llvm::outs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
 //         sub_group.group_ops.erase(it, sub_group.group_ops.end());
 //         sub_group.update_group_io(LgPass::OPTIONS.opt);
 //         set_group_type(sub_group);
-//         llvm::errs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         llvm::outs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
 
 //         // auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
 //         // int index = std::distance(sub_group.group_ops.begin(), it);
 //         // vec_op_idx.push_back(std::make_pair(fail_op, index));
-//         // llvm::errs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() <<" erase idx "<< index << "\n";
-//         // llvm::errs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         // llvm::outs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() <<" erase idx "<< index << "\n";
+//         // llvm::outs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
 //         // sub_group.group_ops.erase(std::remove(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op),sub_group.group_ops.end());
 //         // sub_group.update_group_io(LgPass::OPTIONS.opt);
 //         // set_group_type(sub_group);
-//         // llvm::errs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
+//         // llvm::outs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
 
 //         // processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, fail_op);
 //         // for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
@@ -1987,7 +2012,7 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 
 //           if(count>=2)
 //           {
-//             llvm::errs()<<" op "<<module::getName(op)<<" has multi user in new group"<<"\n";
+//             llvm::outs()<<" op "<<module::getName(op)<<" has multi user in new group"<<"\n";
 //             tmp_group.insert(tmp_group.begin(), op);
 //             auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), op);
 //             sub_group.group_ops.erase(it);
@@ -2012,15 +2037,17 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
 // }
 
 static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int64_t>>& value_size) {
-  llvm::errs() << "process l2m...\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "process l2m...\n";});
   auto& grp_time_step = sub_group.timeStepPtrs;
   auto& map_l2m_load = sub_group.map_l2m_load;
   int ts_count = grp_time_step[0]->ts_count;
   int core_num_per_pipe0 = grp_time_step[0]->ncdhw_steps.size();
   for (auto itr : grp_time_step[0]->vec_l2m_value_info) {
-    llvm::errs() << "check Value:" << module::getName(itr.value).str()
-                  << ", slice_idx:" <<itr.slice_idx
-                  << ", pipe0 load ts:" << itr.load_ts << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::outs() << "check Value:" << module::getName(itr.value).str()
+                   << ", slice_idx:" << itr.slice_idx
+                   << ", pipe0 load ts:" << itr.load_ts << "\n";
+    });
     int parallel_core_num = core_num_per_pipe0;
     int min = itr.load_ts;
     for (int j = 1; j < grp_time_step.size(); j++) { //遍历除第1个流水外的其他流水，第1个流水最长
@@ -2028,7 +2055,10 @@ static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int6
       for (auto itr3 = grp_time_step[j]->vec_l2m_value_info.begin();
                 itr3 != grp_time_step[j]->vec_l2m_value_info.end(); ++itr3) {
         if (itr3->value == itr.value && itr3->slice_idx == itr.slice_idx) {
-          llvm::errs() << "find in pipe:" <<j<< ", load ts:" << itr3->load_ts << "\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({
+            llvm::outs() << "find in pipe:" << j
+                         << ", load ts:" << itr3->load_ts << "\n";
+          });
           if (itr3->load_ts < min) {
             min = itr3->load_ts;
           }
@@ -2046,8 +2076,11 @@ static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int6
   for (int m = -1; m < ts_count; m++) {
     if (map_l2m_load.find(m) != map_l2m_load.end()) {
       for (auto itr: map_l2m_load[m]) {
-        llvm::errs() << " Value:" << module::getName(itr.value).str()
-                    << " slice_idx:" << itr.slice_idx << " load ts:" << m<< " free ts:" << itr.free_ts << "\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({
+          llvm::outs() << " Value:" << module::getName(itr.value).str()
+                       << " slice_idx:" << itr.slice_idx << " load ts:" << m
+                       << " free ts:" << itr.free_ts << "\n";
+        });
       }
     }
   }
@@ -2117,7 +2150,7 @@ static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int6
       }
     }
   } else {
-    llvm::errs() << "l2m enough \n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "l2m enough \n";});
     for (auto it3: value_size) {
       value_l2m.push_back(it3.first);
       auto name = module::getName(it3.first).str();
@@ -2129,7 +2162,7 @@ static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int6
     if (map_l2m_load.find(m) != map_l2m_load.end()) {
       for (auto& itr: map_l2m_load[m]) {
         if (itr.slice_idx > 0 && std::find(value_l2m.begin(), value_l2m.end(), itr.value) != value_l2m.end()) {
-          llvm::errs() << "value:" << module::getName(itr.value).str() << ",set valid false\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "value:" << module::getName(itr.value).str() << ",set valid false\n";});
           itr.valid = false;
         }
       }
@@ -2163,7 +2196,7 @@ static bool is_same_pipeline(int core_id, std::vector<ILPTimeStepPtr>& timeStepP
         }
       }
       if (all_slice_same) {
-        llvm::errs() << "core " << core_id << ",all slice shape same with pipeline " << n << ", skip ILP\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "core " << core_id << ",all slice shape same with pipeline " << n << ", skip ILP\n";});
         for (int m = 0; m < sec_per_cores[core_id]; m++) {
           std::vector<int64_t> ncdhw = vec_ncdhw[vec_ncdhw_idx + m];
           timeStepPtrs[n]->addSliceNcdhwSteps(core_id, ncdhw);
@@ -2206,12 +2239,12 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
   std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
   std::string tmpStr = llvm::formatv("[{0},{1},{2},{3},{4}]", max_shape_secs.nsecs,
       max_shape_secs.csecs, max_shape_secs.dsecs, max_shape_secs.hsecs, max_shape_secs.wsecs).str();
-  llvm::errs() << "max_shape_secs:" <<tmpStr<<'\n';
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "max_shape_secs:" <<tmpStr<<'\n';});
   tmp_dot_graph_log->add_node_label("global_info", "max_shape_secs:" + tmpStr);
   auto& shape_secs = sub_group.shape_secs;
   std::vector<std::pair<Value, int64_t>> value_size;
   if (!init_group_data_secs2(sub_group._lgInfo, shape_secs, value_size, tmp_dot_graph_log)) {
-    llvm::errs() << "init_group_data_secs2 fail\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "init_group_data_secs2 fail\n";});
     fail_op = vec_op_hwsecs[0].first;
     tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
         "init_group_data_secs2 fail");
@@ -2219,7 +2252,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
   }
   tmpStr = llvm::formatv("[{0},{1},{2},{3},{4}]", shape_secs.nsecs,
       shape_secs.csecs, shape_secs.dsecs, shape_secs.hsecs, shape_secs.wsecs).str();
-  llvm::errs() << "init shape_secs:" <<tmpStr <<'\n';
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "init shape_secs:" <<tmpStr <<'\n';});
   tmp_dot_graph_log->add_node_label("global_info", "init shape_secs:" + tmpStr);
 
   int core_num = 1;
@@ -2231,15 +2264,15 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
     int new_secs = (secs + core_num - 1)/core_num*core_num;
     int sz = new_secs - secs;
     if (sz > 0) {
-      llvm::errs() <<"algin secs:"<<secs<<" to "<<new_secs<<"\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"algin secs:"<<secs<<" to "<<new_secs<<"\n";});
       shape_secs_t suitable_shape_secs = shape_secs;
       for (int m = 0; m < sz; m++) {
         if (!update_shape_secs_for_ilp_group(shape_secs, max_shape_secs)) {
           break;
         }
-        llvm::errs() << "update shape shape_secs, n:" << shape_secs.nsecs
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "update shape shape_secs, n:" << shape_secs.nsecs
         << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
-        << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs <<'\n';
+        << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs <<'\n';});
         int tmp_secs = shape_secs.nsecs *shape_secs.csecs *shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
         if (tmp_secs > new_secs) {
           break;
@@ -2261,25 +2294,25 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
 
   while (true) {
     if (++slice_try_count > max_slice_cut_count) {
-      llvm::errs() <<"layer group fail\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"layer group fail\n";});
       return false; //设为global layer
     }
     int64_t secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
     bool l2m_en = l2m_switch && secs > 1 && core_num > 1;
-    llvm::errs() << "shape_secs, n:" << shape_secs.nsecs
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "shape_secs, n:" << shape_secs.nsecs
                   << " c:" << shape_secs.csecs << " d:" << shape_secs.dsecs
                   << " h:" << shape_secs.hsecs << " w:" << shape_secs.wsecs
-                  << " slice_try_count:" << slice_try_count<< " l2m_en:" << l2m_en << "\n";
+                  << " slice_try_count:" << slice_try_count<< " l2m_en:" << l2m_en << "\n";});
 
     int max_group_cycle = 0;
     sub_group.timeStepPtrs.clear();
     do {
       // tmp_dot_graph_log->export_dot("stripe_mine_idx_slice2_before");
       ret = stripe_mine_idx_slice2(sub_group._lgInfo, shape_secs, tensor_infos, fail_op);
-      if(!ret){
+      if(!ret) {
         tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
             "stripe_mine_idx_slice2 fail");
-        llvm::errs() << "stripe_mine_idx_slice2 fail at "<< module::getName(fail_op).str()<<"\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "stripe_mine_idx_slice2 fail at "<< module::getName(fail_op).str()<<"\n";});
         if (isa<tpu::UpsampleOp>(fail_op) && shape_secs.hsecs > 1) {
           // sub_group.is_fail_op_in_grp = false;
           fail_process_mode = 2;
@@ -2323,9 +2356,9 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         while(sec_per_cores[core_id]-- > 0) {
           std::vector<int64_t> ncdhw = vec_ncdhw[vec_ncdhw_idx++];
           ilp_timeStep->addSliceNcdhwSteps(core_id, ncdhw);
-          llvm::errs() << "slice process, n:" << ncdhw[0]
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "slice process, n:" << ncdhw[0]
                         << " c:" << ncdhw[1] << " d:" << ncdhw[2]
-                        << " h:" << ncdhw[3] << " w:" << ncdhw[4]<< " ncdhw_idx:" << vec_ncdhw_idx - 1 << "\n";
+                        << " h:" << ncdhw[3] << " w:" << ncdhw[4]<< " ncdhw_idx:" << vec_ncdhw_idx - 1 << "\n";});
           ret = backward_gen_ilp_var2(
               sub_group._lgInfo, shape_secs, tensor_infos, cycle_calculator_,
               *ilp_timeStep, ncdhw, slice_idx, op_var_bound, load_bytes_for_next_ts,
@@ -2334,7 +2367,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
             tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
                 "backward_gen_ilp_var2 fail, for core_id:" + std::to_string(core_id) +
                 ", slice_idx:" + std::to_string(slice_idx));
-            llvm::errs() <<"backward_gen_ilp_var2 fail, core_id: "<<core_id<<" slice_idx: "<<slice_idx<<"\n";
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"backward_gen_ilp_var2 fail, core_id: "<<core_id<<" slice_idx: "<<slice_idx<<"\n";});
             break;
           }
           slice_idx++;
@@ -2357,7 +2390,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         ilp_timeStep->prepare(tensor_infos);
         ret = ilp_timeStep->run(fail_op);
         if (!ret) {
-          llvm::errs() << "ilp_timeStep->run fail\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "ilp_timeStep->run fail\n";});
           if (fail_op) {
             tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
               "ilp_timeStep->run fail, for core_id:" + std::to_string(core_id));
@@ -2375,7 +2408,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         mem_alloc_status alloc_status;
         ret = ilp_timeStep->mem_alloc(alloc_status, tmp_value_size, tensor_infos, fail_op);
         if (!ret) {
-          printf("ilp_timeStep->mem_alloc fail\n");
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "ilp_timeStep->mem_alloc fail\n";});
           if (fail_op) {
             tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
                 "ilp_timeStep->mem_alloc fail, for core_id:" + std::to_string(core_id));
@@ -2395,7 +2428,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         if (group_cycle > max_group_cycle) {
           max_group_cycle = group_cycle;
         }
-        llvm::errs() << "core" << core_id<< " group_cycle" << group_cycle << ", mem_alloc success\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "core" << core_id<< " group_cycle" << group_cycle << ", mem_alloc success\n";});
         tmp_dot_graph_log->add_node_label("global_info", "core" + std::to_string(core_id)
             + ", group_cycle:" + std::to_string(group_cycle) + ", mem_alloc success");
         sub_group.timeStepPtrs.push_back(ilp_timeStep);
@@ -2403,7 +2436,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
     } while(false);
 
     if(ret){
-      llvm::errs() << "ilp_timeStep success\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "ilp_timeStep success\n";});
       tmp_dot_graph_log->add_node_label("global_info", "ilp_timeStep success");
       if (fail_process_mode == 1) {
         return true;
@@ -2417,7 +2450,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
       if (!update_shape_secs_for_ilp_group(shape_secs, max_shape_secs)) {
         return false;
       }
-      llvm::errs() <<"update_shape_secs\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"update_shape_secs\n";});
       tmp_dot_graph_log->add_node_label("global_info", "update_shape_secs");
     }
   }
@@ -2458,7 +2491,7 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops, std::vector<Oper
       for (auto op: block_ops) {
         tmpStr = tmpStr + " + " + module::getName(op).str();
       }
-      llvm::errs() << "add new grp:" << tmpStr << "\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "add new grp:" << tmpStr << "\n";});
     } else {
       single_ops.insert(single_ops.end(), block_ops.begin(), block_ops.end());
     }
@@ -2517,9 +2550,9 @@ std::shared_ptr<ilp_LgInfo> ilp_LgInfo::high_solver(LgPassIR *pass_ir, std::shar
   ilp_cloned->base_solver(pass_ir, cycle_calculator_);
   if (group_cycle > ilp_cloned->group_cycle) {
     return ilp_cloned;
-    llvm::errs()<<"strategy 2 better\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"strategy 2 better\n";});
   } else {
-    llvm::errs()<<"strategy 3 better\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"strategy 3 better\n";});
     return nullptr;
   }
 }
@@ -2547,7 +2580,7 @@ void ilp_LgInfo::base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator>
     }
     auto tmpLgInfo = CreateIlpLgInfo(ops);
     tmpLgInfo->_lgInfo.group_id = pass_ir->group_count++;
-    llvm::errs()<<"add new LgInfo:"<<tmpLgInfo->_lgInfo.group_id<<"\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"add new LgInfo:"<<tmpLgInfo->_lgInfo.group_id<<"\n";});
     auto ret = ilp_for_single_group(pass_ir, *tmpLgInfo, fail_process_mode,
                                     fail_op, cycle_calculator_);
     if (!ret) {
@@ -2555,7 +2588,7 @@ void ilp_LgInfo::base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator>
         return; //搜索模式下不再嵌套group
       }
       if (fail_op && fail_process_mode == 0) {
-        llvm::errs()<<"ilp_debug: fail_op:"<<show_op_info(fail_op)<<"\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"ilp_debug: fail_op:"<<show_op_info(fail_op)<<"\n";});
         auto name = module::getName(fail_op).str();
         // tmp_dot_graph_log->add_node_label(name + "_ori", "fail_op");
         auto del_ops = ExcludeOpFromGroup(_lgInfo, fail_op);
@@ -2652,11 +2685,11 @@ bool ilp_LgInfo::binary_search_group(bool move_right, std::shared_ptr<dot_graph>
   while(true) {
     auto nodes = GetParallelNodes(group_ops_all[middle_ptr]);
     if (!nodes.size()) {
-      llvm::errs() <<"ParallelNodes is None, middle_ptr ok\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"ParallelNodes is None, middle_ptr ok\n";});
       break;
     }
     if (++middle_ptr >= right_ptr - 1) {
-      llvm::errs() <<"inc middle_ptr\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"inc middle_ptr\n";});
       break;
     }
   }
@@ -2665,8 +2698,8 @@ bool ilp_LgInfo::binary_search_group(bool move_right, std::shared_ptr<dot_graph>
     last_success_middle_ptr = pre_middle_ptr;
   }
   auto cut_op = group_ops_all[middle_ptr];
-  llvm::errs() <<"ilp_debug: binary_search_group, middle_ptr:"<<middle_ptr
-               <<", op(excluded):"<<show_op_info(cut_op)<< "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"ilp_debug: binary_search_group, middle_ptr:"<<middle_ptr
+               <<", op(excluded):"<<show_op_info(cut_op)<< "\n";});
   auto name = module::getName(cut_op).str();
   dot_graph_log->add_node_label(name + "_ori", std::string("binary_search_cut_op"));
   int i = 0;
@@ -2692,13 +2725,14 @@ std::vector<Operation*> ilp_LgInfo::GetParallelNodes(Operation* op) {
 
 static void collectAllSubLgInfoResult(std::shared_ptr<ilp_LgInfo> lgInfo, LgPassIR *pass_ir) {
   if (lgInfo->group_success) {
-    llvm::errs()<<"add group to LgPassIR:"<<lgInfo->_lgInfo.group_id<<"\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"add group to LgPassIR:"<<lgInfo->_lgInfo.group_id<<"\n";});
     lgInfo->save_result(pass_ir);
   }
 
   for (auto it: lgInfo->sub_ilp_LgInfos) {
     if (it->group_success) {
-      llvm::errs()<<"add group to LgPassIR:"<<it->_lgInfo.group_id<<"\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"add group to LgPassIR:"<<it->_lgInfo.group_id<<"\n";});
+      llvm::outs()<<"add group to LgPassIR:"<<it->_lgInfo.group_id<<"\n";
       it->save_result(pass_ir);
     } else {
       collectAllSubLgInfoResult(it, pass_ir);
@@ -2734,10 +2768,10 @@ expandAllNestedLgInfo(std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups) {
 
 
 void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
-  llvm::errs() << "\n"
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "\n"
                << "=======================================================\n"
                << "*********** ilp_layer_group **********\n"
-               << "=======================================================\n";
+               << "=======================================================\n";});
   auto start = std::chrono::high_resolution_clock::now();
   std::vector<Operation*> subnet_ops;
   for (auto it: pass_ir->subnet_ops) {
@@ -2777,12 +2811,12 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
 
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  llvm::errs() << "get ilp_layer_group time:" << elapsed.count() << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "get ilp_layer_group time:" << elapsed.count() << "\n";});
 }
 
 void GroupMethod::process(LgPassIR *pass_ir) {
   std::vector<LgInfo> &lg_infos = pass_ir->lg_infos;
-  SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
+  llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
 
   runmode_ = getRunMode(subnet_ops[0]);
   switch (LgPass::OPTIONS.opt) {
@@ -2826,11 +2860,11 @@ void GroupMethod::get_final_groups(
 void GroupMethod::show_cut_results() {
   LLVM_DEBUG(for (size_t i = 0; i < cut_results_.size(); ++i) {
     auto &cut_result = cut_results_[i];
-    llvm::errs() << "base group[" << i << "] cut results: ";
+    llvm::dbgs() << "base group[" << i << "] cut results: ";
     for (size_t j = 0; j < cut_result.size(); ++j) {
-      llvm::errs() << cut_result[j] << ", ";
+      llvm::dbgs() << cut_result[j] << ", ";
     }
-    llvm::errs() << "\n";
+    llvm::dbgs() << "\n";
   });
 }
 

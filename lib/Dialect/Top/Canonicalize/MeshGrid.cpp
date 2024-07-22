@@ -7,15 +7,18 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
-struct MeshGrid2Mul : public OpRewritePattern<MeshGridOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MeshGrid2Mul : public OpRewriterPatternEx<MeshGridOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MeshGridOp op,
+   MeshGrid2Mul(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MeshGridOp>(context, "MeshGrid2Mul") {}
+
+  LogicalResult matchAndRewriteImpl(MeshGridOp op,
                                 PatternRewriter &rewriter) const override {
 
     rewriter.setInsertionPointAfter(op);

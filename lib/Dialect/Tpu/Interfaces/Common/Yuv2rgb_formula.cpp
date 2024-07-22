@@ -42,7 +42,7 @@ typedef enum {
 
 inline void YCrCb2RGB_601_limited(u8 y, u8 u, u8 v, float *r, float *g,
                                   float *b, bool isUINT8,
-                                  RoundingMode round_mode) {
+                                  tpu_mlir::RoundingMode round_mode) {
   float r_fp, g_fp, b_fp;
   int Y = (int)y - 16;
   int U = (int)u - 128;
@@ -64,7 +64,7 @@ inline void YCrCb2RGB_601_limited(u8 y, u8 u, u8 v, float *r, float *g,
 }
 
 inline void YCrCb2RGB_601_full(u8 y, u8 u, u8 v, float *r, float *g, float *b,
-                               bool isUINT8, RoundingMode round_mode) {
+                               bool isUINT8, tpu_mlir::RoundingMode round_mode) {
   float r_fp, g_fp, b_fp;
   int Y = (int)y;
   int U = (int)u - 128;
@@ -87,7 +87,7 @@ inline void YCrCb2RGB_601_full(u8 y, u8 u, u8 v, float *r, float *g, float *b,
 
 inline void YCrCb2RGB(u8 y, u8 u, u8 v, float *r, float *g, float *b,
                       formula_mode formula_mode, bool isUINT8,
-                      RoundingMode round_mode) {
+                      tpu_mlir::RoundingMode round_mode) {
   if (formula_mode == _601_limited) {
     YCrCb2RGB_601_limited(y, u, v, r, g, b, isUINT8, round_mode);
   } else if (formula_mode == _601_full) {
@@ -148,7 +148,7 @@ LogicalResult tpu::Yuv2rgbFormulaOp::inference(InferenceParameter &p) {
   auto output_data_format =
       static_cast<image_data_format_ext>(getImageFormat());
   auto formula_mode = static_cast<::formula_mode>(getFormulaMode());
-  auto round_mode = static_cast<RoundingMode>(getRoundMode());
+  auto round_mode = static_cast<tpu_mlir::RoundingMode>(getRoundMode());
 
   size_t product = 1;
   for (auto it = YUV_shape.begin(); it != YUV_shape.end() - 2; it++) {

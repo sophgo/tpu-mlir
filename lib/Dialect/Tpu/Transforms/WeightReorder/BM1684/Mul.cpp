@@ -14,7 +14,7 @@ using namespace bm1684;
 using namespace backend;
 
 template <>
-LogicalResult WeightReorder<tpu::MulOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::MulOp, int8_t>::matchAndRewriteImpl(
     tpu::MulOp op, PatternRewriter &rewriter) const {
   /// convert 1N to 4N
   for (int32_t i = 0; i < op.getNumOperands(); i++) {

@@ -6,17 +6,20 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct RemoveUpsample : public OpRewritePattern<UpsampleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct RemoveUpsample : public OpRewriterPatternEx<UpsampleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(UpsampleOp op,
-                                PatternRewriter &rewriter) const override {
+  RemoveUpsample(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<UpsampleOp>(context, "RemoveUpsample") {}
+
+  LogicalResult matchAndRewriteImpl(UpsampleOp op,
+                                    PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto scale_h = op.getScaleH();
@@ -37,6 +40,6 @@ struct RemoveUpsample : public OpRewritePattern<UpsampleOp> {
 };
 
 void UpsampleOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                           MLIRContext *context) {
+                                             MLIRContext *context) {
   results.insert<RemoveUpsample>(context);
 }

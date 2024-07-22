@@ -6,18 +6,21 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 #include <vector>
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+  SplitSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "SplitSlicePattern") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op->hasOneUse()) {
       return failure();
     }
@@ -33,7 +36,7 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
     // }
     // Both methods might cause problems! We should cache the users first!
     std::vector<mlir::Operation *> users;
-    for (auto user: op->getUsers()) {
+    for (auto user : op->getUsers()) {
       if (!isa<SliceOp>(user)) {
         return failure();
       }
@@ -44,15 +47,16 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       }
       users.emplace_back(user);
     }
-    const auto& opd = op->getOperand(0);
-    const auto& res = op->getResult(0);
-    const auto& offset = op->getAttr("offset");
-    const auto& steps = op->getAttr("steps");
-    const auto& ends = op->getAttr("ends");
+    const auto &opd = op->getOperand(0);
+    const auto &res = op->getResult(0);
+    const auto &offset = op->getAttr("offset");
+    const auto &steps = op->getAttr("steps");
+    const auto &ends = op->getAttr("ends");
     rewriter.setInsertionPointAfterValue(opd);
-    for (const auto user: users) {
-      const std::string name_slice = module::getName(user->getOperand(0)).str() + "_slice";
-      const auto& loc_slice = NameLoc::get(rewriter.getStringAttr(name_slice));
+    for (const auto user : users) {
+      const std::string name_slice =
+          module::getName(user->getOperand(0)).str() + "_slice";
+      const auto &loc_slice = NameLoc::get(rewriter.getStringAttr(name_slice));
       std::vector<NamedAttribute> attrs;
       attrs.push_back(rewriter.getNamedAttr("offset", offset));
       attrs.push_back(rewriter.getNamedAttr("steps", steps));
@@ -63,7 +67,8 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       operands.push_back(none);
       operands.push_back(none);
       operands.push_back(none);
-      auto slice_op = rewriter.create<SliceOp>(loc_slice, res.getType(), operands, attrs);
+      auto slice_op =
+          rewriter.create<SliceOp>(loc_slice, res.getType(), operands, attrs);
       auto slice_result_var = slice_op.getResult();
       user->eraseOperand(0);
       user->insertOperands(0, slice_result_var);
@@ -74,11 +79,14 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
 };
 
 // slice + slice => slice
-struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+  MergeSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "MergeSlicePattern") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isDynamic()) {
       // SliceOps with dynamic shapes are not allowed to be merged.
       return failure();
@@ -124,11 +132,14 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
   }
 };
 
-struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct NoUseSlicePattern : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+  NoUseSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "NoUseSlicePattern") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto in_shape = module::getShape(op.getInput());
     auto out_shape = module::getShape(op.getOutput());
@@ -155,11 +166,14 @@ struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
   }
 };
 
-struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopSliceToReverse : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+  TopSliceToReverse(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "TopSliceToReverse") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto in_dims = in_shape.size();
@@ -185,11 +199,14 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
   }
 };
 
-struct TopSliceToGather : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopSliceToGather : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+  TopSliceToGather(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "TopSliceToGather") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto in_dims = in_shape.size();
@@ -217,8 +234,7 @@ struct TopSliceToGather : public OpRewritePattern<SliceOp> {
       indices.push_back(dim_length - i - 1);
     };
     auto coeff_type = RankedTensorType::get(dim_length, rewriter.getF32Type());
-    auto indices_op = WeightOp::create(
-        op, "indices", indices ,coeff_type);
+    auto indices_op = WeightOp::create(op, "indices", indices, coeff_type);
 
     // auto indices_op = b ;
     std::vector<NamedAttribute> attrs;
@@ -227,7 +243,6 @@ struct TopSliceToGather : public OpRewritePattern<SliceOp> {
         rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(keepdims)));
     attrs.push_back(
         rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(gather_dim)));
-
 
     rewriter.replaceOpWithNewOp<GatherOp>(op, op.getResult().getType(),
                                           op.getInput(), indices_op, keepdims,
@@ -238,18 +253,25 @@ struct TopSliceToGather : public OpRewritePattern<SliceOp> {
 };
 
 // Some cases can remove Slice , when Conv - Slice.
-struct ConvSlice: public OpRewritePattern<SliceOp>{
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(SliceOp op,
-                                PatternRewriter &rewriter) const override {
+struct ConvSlice : public OpRewriterPatternEx<SliceOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  ConvSlice(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "ConvSlice") {}
+
+  LogicalResult matchAndRewriteImpl(SliceOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_tensor = op.getInput();
     auto in_op = in_tensor.getDefiningOp();
-    if (!isa<ConvOp>(in_op)) return failure();
+    if (!isa<ConvOp>(in_op))
+      return failure();
 
     // conv' output is used by mult operation is illegal for this patrern.
-    if (!in_op->hasOneUse()) return failure();
+    if (!in_op->hasOneUse())
+      return failure();
     conv_attr_t conv_param = (dyn_cast<ConvOp>(in_op)).parseParam();
-    if (conv_param.sh != 1 || conv_param.sw != 1) return failure();
+    if (conv_param.sh != 1 || conv_param.sw != 1)
+      return failure();
 
     auto Steps = module::getI64Array(op.getSteps());
     auto Offsets = module::getI64Array(op.getOffset());
@@ -257,26 +279,32 @@ struct ConvSlice: public OpRewritePattern<SliceOp>{
     auto out_shape = module::getShape(op.getResult());
     auto conv_out = (dyn_cast<ConvOp>(in_op)).getResult();
     auto conv_oshape = module::getShape(conv_out);
-    if ( in_shape.size() != 4) return failure();
-    if (Steps->at(2) != 1 || Steps->at(3) != 1) return failure();
+    if (in_shape.size() != 4)
+      return failure();
+    if (Steps->at(2) != 1 || Steps->at(3) != 1)
+      return failure();
 
     int crop_h = Offsets->at(2);
     int crop_w = Offsets->at(3);
-    if (crop_h > 0 && conv_param.pht < crop_h) return failure();
-    if (crop_w > 0 && conv_param.pwl < crop_w) return failure();
+    if (crop_h > 0 && conv_param.pht < crop_h)
+      return failure();
+    if (crop_w > 0 && conv_param.pwl < crop_w)
+      return failure();
 
-    int crop_h_after = conv_oshape[2] - ( out_shape[2] + Offsets->at(2));
-    int crop_w_after = conv_oshape[3] - ( out_shape[3] + Offsets->at(3));
-    if (crop_h_after>0 && conv_param.phb < crop_h_after) return failure();
-    if (crop_w_after>0 && conv_param.pwr < crop_w_after) return failure();
+    int crop_h_after = conv_oshape[2] - (out_shape[2] + Offsets->at(2));
+    int crop_w_after = conv_oshape[3] - (out_shape[3] + Offsets->at(3));
+    if (crop_h_after > 0 && conv_param.phb < crop_h_after)
+      return failure();
+    if (crop_w_after > 0 && conv_param.pwr < crop_w_after)
+      return failure();
 
     // replace pre op's attr
     conv_param.pht -= crop_h;
     conv_param.phb -= crop_h_after;
     conv_param.pwl -= crop_w;
     conv_param.pwr -= crop_w_after;
-    dyn_cast<ConvOp>(in_op).setPadsAttr(rewriter.getI64ArrayAttr({conv_param.pht, conv_param.pwl,
-                                                                  conv_param.phb, conv_param.pwr}));
+    dyn_cast<ConvOp>(in_op).setPadsAttr(rewriter.getI64ArrayAttr(
+        {conv_param.pht, conv_param.pwl, conv_param.phb, conv_param.pwr}));
     // get rid of strideslice op
     conv_out.setType(op.getOutput().getType());
     in_op->setLoc(op.getLoc());
@@ -288,10 +316,6 @@ struct ConvSlice: public OpRewritePattern<SliceOp>{
 
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<NoUseSlicePattern,
-                 SplitSlicePattern,
-                 MergeSlicePattern,
-                 TopSliceToReverse,
-                 TopSliceToGather,
-                 ConvSlice>(context);
+  results.insert<NoUseSlicePattern, SplitSlicePattern, MergeSlicePattern,
+                 TopSliceToReverse, TopSliceToGather, ConvSlice>(context);
 }

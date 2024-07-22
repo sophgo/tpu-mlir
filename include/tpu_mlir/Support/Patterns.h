@@ -10,34 +10,75 @@
 #pragma once
 
 #include "mlir/IR/PatternMatch.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Patterns.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 // Common Patterns
 namespace tpu_mlir {
 namespace patterns {
 
-// if op0 == op1, remove op1
-struct FuseSameOp : public RewritePattern {
+struct FuseSameOp : public OpRewriterPatternEx3 {
   FuseSameOp(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override;
+      : OpRewriterPatternEx3(context,"FuseSameOp",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
+                                PatternRewriter &rewriter) const override ;
 };
 
 // if op =  op + op, fuse to one op. such as top::Reshape
 template <typename OpTy>
-struct FuseRepeatPattern : public OpRewritePattern<OpTy> {
-  using OpRewritePattern<OpTy>::OpRewritePattern;
-  LogicalResult matchAndRewrite(OpTy op,
-                                PatternRewriter &rewriter) const override;
+struct FuseRepeatPattern : public OpRewriterPatternEx<OpTy> {
+public:
+  FuseRepeatPattern(MLIRContext *context, int benifit = 1)
+      : OpRewriterPatternEx<OpTy>(context, "FuseRepeatPattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(OpTy op, PatternRewriter &rewriter) const {
+    auto in_op = op.getInput().getDefiningOp();
+    if (nullptr == in_op || in_op->hasOneUse() == false) {
+      return failure();
+    }
+    if (!isa<OpTy>(in_op)) {
+      return failure();
+    }
+    op->setOperand(0, in_op->getOperand(0));
+    rewriter.eraseOp(in_op);
+    return success();
+  }
 };
 
-// convert op a to op b, not care attributes. such as top::Sequence to
-// top::Reshape
-template <typename From, typename To>
-struct ConvertPattern : public OpRewritePattern<From> {
-  using OpRewritePattern<From>::OpRewritePattern;
-  LogicalResult matchAndRewrite(From op,
-                                PatternRewriter &rewriter) const override;
+
+// convert op a to op b, not care attributes. such as top::Sequence to top::Reshape
+template <typename SourceOp, typename TargetOp>
+struct GeneralPattern : public OpRewriterPatternEx<SourceOp> {
+  GeneralPattern(MLIRContext *context, const std::string &patternName, int benefit = 1)
+      : OpRewriterPatternEx<SourceOp>(context, patternName, benefit) {}
+
+  LogicalResult matchAndRewriteImpl(SourceOp op, PatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<TargetOp>(op, op.getOutput().getType(),
+                                          op->getOperands(),
+                                          std::vector<NamedAttribute>());
+    return success();
+  }
+};
+
+struct SqueezeToReshapePattern : public GeneralPattern<top::SqueezeOp, top::ReshapeOp> {
+  SqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
+      : GeneralPattern<top::SqueezeOp, top::ReshapeOp>(context, "SqueezeToReshapePattern", benefit) {}
+};
+
+struct UnsqueezeToReshapePattern : public GeneralPattern<top::UnsqueezeOp, top::ReshapeOp> {
+  UnsqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
+      : GeneralPattern<top::UnsqueezeOp, top::ReshapeOp>(context, "UnsqueezeToReshapePattern", benefit) {}
+};
+
+struct TPUSqueezeToReshapePattern : public GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp> {
+  TPUSqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
+      : GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp>(context, "TPUSqueezeToReshapePattern", benefit) {}
+};
+
+struct TPUUnsqueezeToReshapePattern : public GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp> {
+  TPUUnsqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
+      : GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>(context, "TPUUnsqueezeToReshapePattern", benefit) {}
 };
 
 } // namespace patterns

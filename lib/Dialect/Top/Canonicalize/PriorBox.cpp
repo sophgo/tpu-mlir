@@ -6,17 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConvertPriorBoxPattern : public OpRewriterPatternEx<PriorBoxOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PriorBoxOp op,
-                                PatternRewriter &rewriter) const override {
+  ConvertPriorBoxPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PriorBoxOp>(context, "ConvertPriorBoxPattern") {}
+
+  LogicalResult matchAndRewriteImpl(PriorBoxOp op,
+                                    PatternRewriter &rewriter) const override {
     auto result = op.getResult();
 
     auto shape = module::getShape(result);

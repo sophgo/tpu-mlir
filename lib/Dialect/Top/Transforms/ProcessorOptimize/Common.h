@@ -10,28 +10,39 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace top {
-class MergeScale2Conv : public OpRewritePattern<top::ScaleOp> {
+class MergeScale2Conv : public OpRewriterPatternEx<top::ScaleOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ScaleOp op,
-                                PatternRewriter &rewriter) const override;
+  MergeScale2Conv(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ScaleOp>(context, "MergeScale2Conv", benefit) {}
+
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(top::ScaleOp op,
+                                          mlir::PatternRewriter &rewriter) const override;
 };
 
-class ConvertScaleOp : public OpRewritePattern<top::ScaleOp> {
+
+class ConvertScaleOp : public OpRewriterPatternEx<top::ScaleOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ScaleOp op,
-                                PatternRewriter &rewriter) const override;
+  ConvertScaleOp(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ScaleOp>(context, "ConvertScaleOp", benefit) {}
+
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(top::ScaleOp op,
+                                          mlir::PatternRewriter &rewriter) const override;
 };
 
-class ConcatToSwapDimInner : public OpRewritePattern<top::ConcatOp> {
+class ConcatToSwapDimInner : public OpRewriterPatternEx<top::ConcatOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ConcatOp op,
-                                PatternRewriter &rewriter) const override;
+  ConcatToSwapDimInner(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ConcatOp>(context, "ConcatToSwapDimInner", benefit) {}
+
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(top::ConcatOp op,
+                                          mlir::PatternRewriter &rewriter) const override;
 };
 } // namespace top
 } // namespace tpu_mlir

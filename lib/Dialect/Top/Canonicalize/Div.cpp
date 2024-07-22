@@ -8,14 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct DivToMul : public OpRewritePattern<DivOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct DivToMul : public OpRewriterPatternEx<DivOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(DivOp op,
-                                PatternRewriter &rewriter) const override {
+  DivToMul(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<DivOp>(context, "DivToMul") {}
+
+  LogicalResult matchAndRewriteImpl(DivOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();
@@ -44,8 +48,8 @@ struct DivToMul : public OpRewritePattern<DivOp> {
     } else
       return failure();
 
-    auto right_weight_ =
-        WeightOp::create_float(op, "divisor", right_weight, right_shape, storage_type);
+    auto right_weight_ = WeightOp::create_float(op, "divisor", right_weight,
+                                                right_shape, storage_type);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));
@@ -57,11 +61,14 @@ struct DivToMul : public OpRewritePattern<DivOp> {
   }
 };
 
-struct DivToSoftSign : public OpRewritePattern<DivOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct DivToSoftSign : public OpRewriterPatternEx<DivOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(DivOp op,
-                                PatternRewriter &rewriter) const override {
+  DivToSoftSign(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<DivOp>(context, "DivToSoftSign") {}
+
+  LogicalResult matchAndRewriteImpl(DivOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();

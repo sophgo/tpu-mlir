@@ -320,21 +320,21 @@ struct LgInfo {
       return;
     }
 
-    llvm::errs() << "LgInfo Begin {" << "\n";
+    llvm::dbgs() << "LgInfo Begin {" << "\n";
 
-    llvm::errs() << "ins" << "\n";
+    llvm::dbgs() << "ins" << "\n";
     for( auto op: group_ins){
       op.dump();
     }
-    llvm::errs() << "ops" << "\n";
+    llvm::dbgs() << "ops" << "\n";
     for( auto op: group_ops){
       op->dump();
     }
-    llvm::errs() << "outs" << "\n";
+    llvm::dbgs() << "outs" << "\n";
     for( auto op: group_outs){
       op.dump();
     }
-    llvm::errs() << "} LgInfo End;" << "\n";
+    llvm::dbgs() << "} LgInfo End;" << "\n";
   }
 
   // group layers

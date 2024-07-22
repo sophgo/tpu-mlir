@@ -15,7 +15,7 @@ namespace tpu {
 // MatMul + Elementwise * n + TopK
 template <typename MatMulTy>
 LogicalResult
-MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
+MatMulTopK<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
                                       PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op) || !op->hasOneUse()) {
     return failure();
@@ -35,11 +35,11 @@ MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
 }
 
 template LogicalResult
-MatMulTopK<tpu::MatMulOp>::matchAndRewrite(tpu::MatMulOp op,
+MatMulTopK<tpu::MatMulOp>::matchAndRewriteImpl(tpu::MatMulOp op,
                                            PatternRewriter &rewriter) const;
 
 template LogicalResult
-MatMulTopK<tpu::A16MatMulOp>::matchAndRewrite(tpu::A16MatMulOp op,
+MatMulTopK<tpu::A16MatMulOp>::matchAndRewriteImpl(tpu::A16MatMulOp op,
                                               PatternRewriter &rewriter) const;
 
 template <typename MatMulTy>

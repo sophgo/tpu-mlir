@@ -8,14 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct RemoveInterp : public OpRewritePattern<InterpOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct RemoveInterp : public OpRewriterPatternEx<InterpOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(InterpOp op,
+    RemoveInterp(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<InterpOp>(context, "RemoveInterp") {}
+
+  LogicalResult matchAndRewriteImpl(InterpOp op,
                                 PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
@@ -34,10 +38,13 @@ struct RemoveInterp : public OpRewritePattern<InterpOp> {
   }
 };
 
-struct InterpToUpsampleMergePattern : public OpRewritePattern<InterpOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct InterpToUpsampleMergePattern : public OpRewriterPatternEx<InterpOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(InterpOp op,
+  InterpToUpsampleMergePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<InterpOp>(context, "InterpToUpsampleMergePattern") {}
+
+  LogicalResult matchAndRewriteImpl(InterpOp op,
                                 PatternRewriter &rewriter) const override {
     if (!op->hasOneUse()) {
       return failure();

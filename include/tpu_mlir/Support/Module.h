@@ -15,6 +15,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Support/ModuleEnum.h.inc"
+#include "tpu_mlir/Support/Logger.h"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -56,6 +57,10 @@ namespace module {
 
 // init module by ModuleOp in init pass
 void init(ModuleOp module);
+void init_loglevel(int32_t log_level);
+
+extern std::unordered_map<std::string, int> patternMatchCounts;
+extern std::mutex patternMatchCountsMutex;
 
 //-----------------------------------------------------------------
 // Helper for debug information

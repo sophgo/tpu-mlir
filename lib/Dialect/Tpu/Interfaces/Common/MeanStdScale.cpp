@@ -22,7 +22,7 @@ mlir::Type tpu::MeanStdScaleOp::type_verify(uint64_t opd_idx, TypeCastMode &mode
 }
 
 int32_t RightShiftRound(int32_t src, int shift_num,
-                        RoundingMode round_mode) {
+                         tpu_mlir::RoundingMode round_mode) {
   if (shift_num == 0)
     return src;
   if (shift_num > 63)
@@ -64,7 +64,7 @@ int32_t RightShiftRound(int32_t src, int shift_num,
 }
 
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                 RoundingMode round_mode) {
+                                  tpu_mlir::RoundingMode round_mode) {
   return RightShiftRound(v * multiplier, (int)rshift, round_mode);
 }
 
@@ -84,7 +84,7 @@ int saturate(int data) {
 
 void do_requant_int(int32_t *inputs, std::vector<int64_t> input_shapes,
                     const int input_dims, int multi, int shift_val, int izp,
-                    int ozp, float *outputs, RoundingMode round_mode) {
+                    int ozp, float *outputs,  tpu_mlir::RoundingMode round_mode) {
   int64_t inner = 1;
   for (int i = 2; i < input_dims; ++i) {
     inner *= input_shapes[i];
@@ -104,7 +104,7 @@ void do_requant_int(int32_t *inputs, std::vector<int64_t> input_shapes,
   return;
 }
 
-float round_float_number(float number, RoundingMode rounding_mode) {
+float round_float_number(float number,  tpu_mlir::RoundingMode rounding_mode) {
   switch (rounding_mode) {
     case ROUNDING_HALF_TO_EVEN:
       return nearbyintf(number);

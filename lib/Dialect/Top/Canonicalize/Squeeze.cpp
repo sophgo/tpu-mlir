@@ -6,41 +6,45 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
-
 
 using namespace tpu_mlir::top;
 
 // unsqueeze + squeeze && in == out
-struct TopFuseSqueeze : public OpRewritePattern<SqueezeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopFuseSqueeze : public OpRewriterPatternEx<SqueezeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopFuseSqueeze(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SqueezeOp>(context, "TopFuseSqueeze") {}
 
-  LogicalResult matchAndRewrite(SqueezeOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(SqueezeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_op = op.getInput().getDefiningOp();
     if (in_op->hasOneUse() && isa<UnsqueezeOp>(in_op)) {
       auto former_op = dyn_cast<UnsqueezeOp>(in_op);
       auto shape0 = module::getShape(op.getOutput());
       auto shape1 = module::getShape(former_op.getInput());
       if (shape0 != shape1) {
-      return failure();
+        return failure();
       }
       op.getOutput().replaceAllUsesWith(former_op.getInput());
       rewriter.eraseOp(op);
       rewriter.eraseOp(former_op);
       return success();
-      }
+    }
     return failure();
   }
 };
 
 // squeeze scalar [1] -> [1]
-struct TopSqueezeErase : public OpRewritePattern<SqueezeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopSqueezeErase : public OpRewriterPatternEx<SqueezeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(SqueezeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopSqueezeErase(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SqueezeOp>(context, "TopSqueezeErase") {}
+
+  LogicalResult matchAndRewriteImpl(SqueezeOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!op.getIsScalar()) {
       return failure();
     }

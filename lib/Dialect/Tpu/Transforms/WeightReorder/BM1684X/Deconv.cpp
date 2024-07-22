@@ -45,7 +45,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 // refer to net_compiler: bool BM1684XCoeffArranger::DeconvWeightArr(GraphEdge*
 // edge)
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
@@ -133,7 +133,7 @@ else if (dyn_cast<top::InputOp>(op.getFilter().getDefiningOp())){
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
@@ -141,7 +141,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
@@ -149,7 +149,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();

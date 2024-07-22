@@ -6,18 +6,21 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
 
 using namespace tpu_mlir::top;
 
 // reshape (in == out)
-struct TopFuseReshape2 : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopFuseReshape2 : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopFuseReshape2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "TopFuseReshape2") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto shape0 = module::getShape(op.getOutput());
     auto shape1 = module::getShape(op.getInput());
     if (shape0 != shape1) {
@@ -30,11 +33,13 @@ struct TopFuseReshape2 : public OpRewritePattern<ReshapeOp> {
 };
 
 // add + reshape + add + reshape
-struct TopFuseReshape3 : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopFuseReshape3 : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopFuseReshape3(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "TopFuseReshape3") {}
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in = op.getInput();
     auto add_op = dyn_cast<AddOp>(in.getDefiningOp());
     if (!(add_op && add_op->hasOneUse() && in.hasOneUse())) {
@@ -87,11 +92,15 @@ struct TopFuseReshape3 : public OpRewritePattern<ReshapeOp> {
 };
 
 // reshape<(0,ng,-1)> + instance_norm -> group_norm<ng> + reshape
-struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ReshapeInstanceNormPattern : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  ReshapeInstanceNormPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context,
+                                          "ReshapeInstanceNormPattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     // check param
     auto output = op.getOutput();
     if (!output.hasOneUse())
@@ -116,9 +125,9 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     }
 
     auto gn_out_type =
-      RankedTensorType::get(ishape, module::getElementType(input));
+        RankedTensorType::get(ishape, module::getElementType(input));
     auto loc = NameLoc::get(
-      rewriter.getStringAttr(module::getName(input).str() + "_GroupNorm"));
+        rewriter.getStringAttr(module::getName(input).str() + "_GroupNorm"));
 
     auto groupnorm_filter_broadcast =
         [](const std::vector<int64_t> &filter_shape, const void *filter_orig,
@@ -167,24 +176,28 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     Value insertpoint = next_op.getOutput();
     rewriter.setInsertionPointAfterValue(insertpoint);
 
-    auto gn_op = rewriter.create<GroupNormOp>(
-      loc, gn_out_type, gn_opds, attrs);
+    auto gn_op = rewriter.create<GroupNormOp>(loc, gn_out_type, gn_opds, attrs);
     rewriter.replaceOp(op, gn_op);
     auto gn_output = gn_op.getOutput();
     rewriter.setInsertionPointAfterValue(gn_output);
     auto new_reshape_out_type = next_op.getResult().getType();
-    rewriter.replaceOpWithNewOp<ReshapeOp>(
-      next_op, new_reshape_out_type, gn_output, std::vector<NamedAttribute>());
+    rewriter.replaceOpWithNewOp<ReshapeOp>(next_op, new_reshape_out_type,
+                                           gn_output,
+                                           std::vector<NamedAttribute>());
     return success();
   }
 };
 
-// merge some tanh and power(x,3) comprised gelu to gelu, first found in pytorch traced gpt2
-struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+// merge some tanh and power(x,3) comprised gelu to gelu, first found in pytorch
+// traced gpt2
+struct MergeGeluPattern : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  MergeGeluPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "MergeGeluPattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     MulOp mul_op = dyn_cast<MulOp>(op.getInput().getDefiningOp());
     if (mul_op == NULL || !mul_op.getOutput().hasOneUse())
       return failure();
@@ -200,7 +213,8 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
       else
         return failure();
     }
-    if (!mulconst_op.getOutput().hasOneUse() || !addconst_op.getOutput().hasOneUse())
+    if (!mulconst_op.getOutput().hasOneUse() ||
+        !addconst_op.getOutput().hasOneUse())
       return failure();
 
     TanhOp tanh_op = NULL;
@@ -221,7 +235,8 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
       return failure();
     else
       add_op = dyn_cast<AddOp>(mulconst_op1.getInput().getDefiningOp());
-    if (!mulconst_op1.getOutput().hasOneUse() || !add_op.getOutput().hasOneUse())
+    if (!mulconst_op1.getOutput().hasOneUse() ||
+        !add_op.getOutput().hasOneUse())
       return failure();
 
     MulConstOp mulconst_op2 = NULL;
@@ -238,11 +253,13 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
     if (!isa<PowOp>(mulconst_op2.getInput().getDefiningOp()))
       return failure();
     else
-        pow_op = dyn_cast<PowOp>(mulconst_op2.getInput().getDefiningOp());
-    if (!mulconst_op2.getOutput().hasOneUse() || !pow_op.getOutput().hasOneUse())
+      pow_op = dyn_cast<PowOp>(mulconst_op2.getInput().getDefiningOp());
+    if (!mulconst_op2.getOutput().hasOneUse() ||
+        !pow_op.getOutput().hasOneUse())
       return failure();
 
-    if (pow_op.getInput().getDefiningOp() != reshape_op || mulconst_op.getInput().getDefiningOp() != reshape_op)
+    if (pow_op.getInput().getDefiningOp() != reshape_op ||
+        mulconst_op.getInput().getDefiningOp() != reshape_op)
       return failure();
     int cnt = 0;
     int all = 0;
@@ -253,12 +270,16 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
     }
     if (cnt != 3 || all != 3)
       return failure();
-    if (pow_op.getExponent().convertToDouble() != 3.0 || fabs(mulconst_op2.getConstVal().convertToDouble()-0.044714998453855515)>1e-4 ||
-        addconst_op.getConstVal().convertToDouble() != 1.0 || fabs(mulconst_op1.getConstVal().convertToDouble()-0.79788458347320556)>1e-4 ||
-        fabs(mulconst_op.getConstVal().convertToDouble()-0.5)>1e-4)
+    if (pow_op.getExponent().convertToDouble() != 3.0 ||
+        fabs(mulconst_op2.getConstVal().convertToDouble() -
+             0.044714998453855515) > 1e-4 ||
+        addconst_op.getConstVal().convertToDouble() != 1.0 ||
+        fabs(mulconst_op1.getConstVal().convertToDouble() -
+             0.79788458347320556) > 1e-4 ||
+        fabs(mulconst_op.getConstVal().convertToDouble() - 0.5) > 1e-4)
       return failure();
     rewriter.replaceOpWithNewOp<GELUOp>(op, op.getResult().getType(),
-             ValueRange{reshape_op.getInput()});
+                                        ValueRange{reshape_op.getInput()});
     return success();
   }
 };
@@ -267,11 +288,14 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
  * Op1 -> reshape -> next  => Op1 -> next -> reshape
  * copied from Permute.cpp
  **/
-struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ReshapeMovePattern : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  ReshapeMovePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "ReshapeMovePattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     // check topo
     // have one user only
     if (!op.getOutput().hasOneUse()) {
@@ -319,9 +343,8 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
       // linear IR, tweak order
       op->moveAfter(nextOp);
       // rewrite loc for tests
-      auto loc = NameLoc::get(
-          rewriter.getStringAttr(module::getName(nextOp).str() + "_" +
-                                 op->getName().getStringRef()));
+      auto loc = NameLoc::get(rewriter.getStringAttr(
+          module::getName(nextOp).str() + "_" + op->getName().getStringRef()));
       op->setLoc(loc);
     });
     return success();
@@ -332,11 +355,15 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
  * Reshape(tensor<1xf32>) -> tensor<f32>
  * Unsqueeze(tensor<f32>) -> tensor<1xf32>
  **/
-struct InValidReshapeMergePattern : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct InValidReshapeMergePattern : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  InValidReshapeMergePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context,
+                                          "InValidReshapeMergePattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     // check topo
     // have one user only
     if (!op.getOutput().hasOneUse()) {
@@ -369,14 +396,18 @@ struct InValidReshapeMergePattern : public OpRewritePattern<ReshapeOp> {
 
 //  Do:
 //     A                                          A + Reshape
-//       + Add + Reshape + LayerNorm/Matmul -->>              + Add + LayerNorm/Matmul
+//       + Add + Reshape + LayerNorm/Matmul -->>              + Add +
+//       LayerNorm/Matmul
 //     B                                          B + Reshape
 // swint
-struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopAddReshapeSwap : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopAddReshapeSwap(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "TopAddReshapeSwap") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
@@ -393,10 +424,13 @@ struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
         break;
       }
     }
-    if (!add_can_merge) {return failure();}
+    if (!add_can_merge) {
+      return failure();
+    }
     auto add_out_elements = module::getNumElements(add_op.getOutput());
     for (auto add_in : add_op.getInputs()) {
-      if (add_in.hasOneUse() && isa<LayerNormOp, MatMulOp>(add_in.getDefiningOp())) {
+      if (add_in.hasOneUse() &&
+          isa<LayerNormOp, MatMulOp>(add_in.getDefiningOp())) {
         return failure();
       }
       auto add_in_elements = module::getNumElements(add_in);
@@ -418,7 +452,8 @@ struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
       std::string in_name = module::getName(add_in).str() + "_reshape";
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(add_op);
-      auto reshape_op = rewriter.create<ReshapeOp>(loc, op.getOutput().getType(), ValueRange{add_in});
+      auto reshape_op = rewriter.create<ReshapeOp>(
+          loc, op.getOutput().getType(), ValueRange{add_in});
       operands.push_back(reshape_op);
     }
     rewriter.replaceOpWithNewOp<AddOp>(op, op.getType(), operands,
@@ -430,11 +465,14 @@ struct TopAddReshapeSwap : public OpRewritePattern<ReshapeOp> {
 
 // Reshape + Reshape -->> Reshape
 // swint
-struct TopReshapeFuse : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopReshapeFuse : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopReshapeFuse(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "TopReshapeFuse") {}
+
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto in = op.getInput();
     auto pre_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
@@ -452,11 +490,12 @@ struct TopReshapeFuse : public OpRewritePattern<ReshapeOp> {
 
 //           OP            Reshape + Op
 // Reshape + Reshape  -->> Reshape + Reshape
-struct TopReshapeFuse2 : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+struct TopReshapeFuse2 : public OpRewriterPatternEx<ReshapeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopReshapeFuse2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReshapeOp>(context, "TopReshapeFuse2") {}
+  LogicalResult matchAndRewriteImpl(ReshapeOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto in = op.getInput();
     auto pre_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
@@ -473,10 +512,12 @@ struct TopReshapeFuse2 : public OpRewritePattern<ReshapeOp> {
     }
     int32_t index = 0;
     for (auto nextOp : pre_op.getResult().getUsers()) {
-      std::string in_name = module::getName(in).str() + "_" + std::to_string(index++);
+      std::string in_name =
+          module::getName(in).str() + "_" + std::to_string(index++);
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(pre_op);
-      auto reshape_op = rewriter.create<ReshapeOp>(loc, pre_op.getOutput().getType(), ValueRange{pre_op.getInput()});
+      auto reshape_op = rewriter.create<ReshapeOp>(
+          loc, pre_op.getOutput().getType(), ValueRange{pre_op.getInput()});
       nextOp->setOperand(0, reshape_op.getOutput());
     }
     // rewriter.eraseOp(pre_op);
@@ -502,9 +543,8 @@ OpFoldResult ReshapeOp::fold(FoldAdaptor adaptor) {
     auto data = weightOp.read_as_float();
     auto shape = module::getShape(this->getOutput());
     auto storage_type = module::getStorageType(getOutput());
-    auto new_op =
-        WeightOp::create_float(weightOp.getOperation(), "folder", *data,
-                               shape.vec(), storage_type);
+    auto new_op = WeightOp::create_float(weightOp.getOperation(), "folder",
+                                         *data, shape.vec(), storage_type);
     return new_op;
   } else {
     return {};

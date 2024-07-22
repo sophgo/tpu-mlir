@@ -6,16 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
-struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopRepeatToTile : public OpRewriterPatternEx<RepeatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(RepeatOp op,
-                                PatternRewriter &rewriter) const override {
+  TopRepeatToTile(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<RepeatOp>(context, "TopRepeatToTile") {}
+
+  LogicalResult matchAndRewriteImpl(RepeatOp op,
+                                    PatternRewriter &rewriter) const override {
 
     auto out_shape = module::getShape(op.getOutput());
     auto in_shape = module::getShape(op.getInput());
@@ -29,8 +32,8 @@ struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
       auto newType = RankedTensorType::get(in_shape_, stype);
       auto new_name = module::getName(op.getOperation()).str() + "_reshape";
       auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-      last_op = rewriter.create<ReshapeOp>(
-          name_loc, newType, ValueRange{last_op}, attrs);
+      last_op = rewriter.create<ReshapeOp>(name_loc, newType,
+                                           ValueRange{last_op}, attrs);
     }
     for (int i = out_shape.size() - 1; i >= 0; --i) {
       last_i = i;
@@ -50,9 +53,9 @@ struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
     }
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
-          rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
-    rewriter.replaceOpWithNewOp<TileOp>(
-            op, op.getResult().getType(), ValueRange{last_op}, attrs);
+        rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
+    rewriter.replaceOpWithNewOp<TileOp>(op, op.getResult().getType(),
+                                        ValueRange{last_op}, attrs);
 
     return success();
   }

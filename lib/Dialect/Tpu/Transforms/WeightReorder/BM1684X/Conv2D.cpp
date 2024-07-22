@@ -454,7 +454,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8) ||
       op.getCoeffMerged())
@@ -463,7 +463,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isFloat8E4M3FN() ||
       op.getCoeffMerged())
@@ -472,7 +472,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float8E5M2Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, Float8E5M2Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isFloat8E5M2() ||
       op.getCoeffMerged())
@@ -707,7 +707,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
@@ -718,7 +718,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
@@ -729,7 +729,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32()) {
     return failure();

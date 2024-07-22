@@ -40,7 +40,7 @@ void tpu::ArgOp::codegen_global_bm1684() {
   int axis = getAxis();
   if (axis < 0) axis += shape_size;
 
-  int method = StringSwitch<int>(getMode())
+  int method = llvm::StringSwitch<int>(getMode())
                                 .Case("ArgMax", 0)
                                 .Case("ArgMin", 1)
                                 .Default(-1);
@@ -77,7 +77,7 @@ uint32_t tpu::ArgOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   layer_param.ic = module::getShape(getInput())[1];
   layer_param.axis = getAxis();
   layer_param.input_sign = module::isSign(getInput());
-  layer_param.method = StringSwitch<int>(getMode())
+  layer_param.method = llvm::StringSwitch<int>(getMode())
                            .Case("ArgMax", 0)
                            .Case("ArgMin", 1)
                            .Default(-1);

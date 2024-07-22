@@ -423,7 +423,7 @@ static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
     time_step->reset_timestep(p_layers, p_tensors, p_lmem);
   }
   for (auto iter : ss) {
-    llvm::errs() << iter << "\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << iter << "\n";});
   }
 }
 
@@ -481,11 +481,11 @@ static void reassign_timestep_tensors(const LgInfo &lg_info,
         update_cycle_info(total_gdma_cycle_v, total_layer_cycle_v, time_step,
                           shape_secs);
         if (print_log) {
-          llvm::errs() << "===group_idx: " << group_idx;
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "===group_idx: " << group_idx;});
         }
-        llvm::errs() << "move tensor " << module::getName(sel_tensor.first)
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "move tensor " << module::getName(sel_tensor.first)
                      << " from timestep " << src_ts << " to timestep "
-                     << dst_ts;
+                     << dst_ts;});
         print_log = false;
         break;
       } else {
@@ -574,12 +574,12 @@ static void reassign_timestep_tensors(const LgInfo &lg_info,
       update_cycle_info(total_gdma_cycle_v, total_layer_cycle_v, time_step,
                         shape_secs);
       if (print_log) {
-        llvm::errs() << "===group idx: " << group_idx;
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "===group idx: " << group_idx;});
       }
-      llvm::errs() << "move tensor " << module::getName(src_tensor.first)
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "move tensor " << module::getName(src_tensor.first)
                    << " from timestep " << src_ts << " to timestep " << dst_ts;
-      llvm::errs() << "move tensor " << module::getName(dst_tensor.first)
-                   << " from timestep " << dst_ts << " to timestep " << src_ts;
+      llvm::outs() << "move tensor " << module::getName(dst_tensor.first)
+                   << " from timestep " << dst_ts << " to timestep " << src_ts;});
       print_log = false;
       break;
     } else {

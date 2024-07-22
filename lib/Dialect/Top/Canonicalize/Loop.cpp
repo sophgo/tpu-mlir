@@ -7,15 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 using namespace tpu_mlir::top;
 
-class LoopOpRewriteMaxTripCountPattern : public OpRewritePattern<top::LoopOp> {
+class LoopOpRewriteMaxTripCountPattern : public OpRewriterPatternEx<top::LoopOp> {
 public:
-  using OpRewritePattern<top::LoopOp>::OpRewritePattern;
+  using OpRewriterPatternEx<top::LoopOp>::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(
-      top::LoopOp loopOp, PatternRewriter &rewriter) const override {
+    LoopOpRewriteMaxTripCountPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<LoopOp>(context, "LoopOpRewriteMaxTripCountPattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::LoopOp loopOp,
+                                PatternRewriter &rewriter) const override {
     Location loc = loopOp.getLoc();
     Operation *op = loopOp.getOperation();
     Value maxTripCountValue = op->getOperands()[0];
@@ -26,18 +30,21 @@ public:
        firstly, eliminate the inputOp */
 
     /* the frontend maybe generate the ir as below:
-      %2 = "top.Squeeze"(%1) {axes = [0]} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc3)
-      %3 = "top.Weight"() : () -> tensor<1xf32> loc(#loc4)
-      %4 = "top.Weight"() : () -> tensor<1xf32> loc(#loc5)
-      %5 = "top.Weight"() : () -> tensor<1xf32> loc(#loc6)
-      %6:2 = "top.Loop"(%3, %2, %4, %5) ({
-      ^bb0(%arg1: tensor<1xf32> loc(unknown), %arg2: tensor<1xf32> loc(unknown), %arg3: tensor<1xf32> loc(unknown), %arg4: tensor<1xf32> loc(unknown)):
-        %9 = "top.Input"(%arg3) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc8)
-        %10 = "top.Input"(%arg4) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc9)
-        %11 = "top.AddConst"(%10) {const_val = 2.000000e+00 : f64, do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc10)
-        %12 = "top.Compare"(%11, %9) {mode = "Less"} : (tensor<1xf32>, tensor<1xf32>) -> tensor<1xf32> loc(#loc11)
-        "top.Yield"(%12, %9, %11) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> () loc(#loc)
-      }) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> (tensor<1xf32>, tensor<1xf32>) loc(#loc7)
+      %2 = "top.Squeeze"(%1) {axes = [0]} : (tensor<1xf32>) -> tensor<1xf32>
+      loc(#loc3) %3 = "top.Weight"() : () -> tensor<1xf32> loc(#loc4) %4 =
+      "top.Weight"() : () -> tensor<1xf32> loc(#loc5) %5 = "top.Weight"() : ()
+      -> tensor<1xf32> loc(#loc6) %6:2 = "top.Loop"(%3, %2, %4, %5) ({
+      ^bb0(%arg1: tensor<1xf32> loc(unknown), %arg2: tensor<1xf32> loc(unknown),
+      %arg3: tensor<1xf32> loc(unknown), %arg4: tensor<1xf32> loc(unknown)): %9
+      = "top.Input"(%arg3) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc8) %10 =
+      "top.Input"(%arg4) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc9) %11 =
+      "top.AddConst"(%10) {const_val = 2.000000e+00 : f64, do_relu = false,
+      relu_limit = -1.000000e+00 : f64} : (tensor<1xf32>) -> tensor<1xf32>
+      loc(#loc10) %12 = "top.Compare"(%11, %9) {mode = "Less"} : (tensor<1xf32>,
+      tensor<1xf32>) -> tensor<1xf32> loc(#loc11) "top.Yield"(%12, %9, %11) :
+      (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> () loc(#loc)
+      }) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) ->
+      (tensor<1xf32>, tensor<1xf32>) loc(#loc7)
     */
     Block &bodyBlock = loopOp.getBody().front();
     bodyBlock.walk<WalkOrder::PreOrder>([&](top::InputOp op) {
@@ -59,8 +66,7 @@ public:
     // ```
     bool matched;
     Value newMaxTripCountValue;
-    std::tie(matched, newMaxTripCountValue) =
-        matchOp(rewriter, loc, loopOp);
+    std::tie(matched, newMaxTripCountValue) = matchOp(rewriter, loc, loopOp);
     if (!matched)
       return failure();
 
@@ -76,23 +82,28 @@ private:
   bool isDefinedByWeightOp(Value v) const {
     if (v.isa<BlockArgument>()) {
       auto index = v.cast<BlockArgument>().getArgNumber();
-      auto vv = v.cast<BlockArgument>().getOwner()
-                    ->getParentOp()->getOperands()[index];
+      auto vv = v.cast<BlockArgument>()
+                    .getOwner()
+                    ->getParentOp()
+                    ->getOperands()[index];
       return isa<top::WeightOp>(vv.getDefiningOp());
     } else {
       Operation *definingOp = v.getDefiningOp();
-      if (isa<top::WeightOp>(definingOp)
-          && v.getType().cast<ShapedType>().
-          getElementType().isa<IntegerType, Float32Type, Float16Type,
-                                BFloat16Type>())
+      if (isa<top::WeightOp>(definingOp) &&
+          v.getType()
+              .cast<ShapedType>()
+              .getElementType()
+              .isa<IntegerType, Float32Type, Float16Type, BFloat16Type>())
         return true;
     }
     return false;
   }
 
   bool isInvariantBlockArg(Value v, Operation *returnOp) const {
-    return v.isa<BlockArgument>() && (v == returnOp
-                   ->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
+    return v.isa<BlockArgument>() &&
+           (v ==
+            returnOp
+                ->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
   }
 
   bool isConstantOrInvariantBlockArg(Value v, Operation *returnOp) const {
@@ -101,8 +112,10 @@ private:
   }
 
   bool isUpdatedArgByValue(Value v, Value newV, Operation *returnOp) const {
-    return v.isa<BlockArgument>() && (newV ==
-               returnOp->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
+    return v.isa<BlockArgument>() &&
+           (newV ==
+            returnOp
+                ->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
   }
 
   Value getFedValue(Value arg, Operation *op) const {
@@ -119,8 +132,10 @@ private:
        addconst/compareconst with add/comare */
     if (isa<BlockArgument>(v)) {
       auto index = v.cast<BlockArgument>().getArgNumber();
-      return v.cast<BlockArgument>().getOwner()
-                      ->getParentOp()->getOperands()[index];
+      return v.cast<BlockArgument>()
+          .getOwner()
+          ->getParentOp()
+          ->getOperands()[index];
     } else if (isa<top::WeightOp>(v.getDefiningOp())) {
       return v;
     } else {
@@ -128,8 +143,8 @@ private:
     }
   }
 
-  std::pair<bool, Value> matchOp(
-      PatternRewriter &rewriter, Location loc, top::LoopOp loopOp) const {
+  std::pair<bool, Value> matchOp(PatternRewriter &rewriter, Location loc,
+                                 top::LoopOp loopOp) const {
     Operation *op = loopOp.getOperation();
     Value maxTripCountValue = op->getOperands()[0];
 
@@ -150,22 +165,24 @@ private:
     if (returnOp->getOperands()[0].isa<BlockArgument>()) {
       breakCond = returnOp->getOperands()[0];
     } else {
-      TypeSwitch<Operation*>(returnOp->getOperands()[0].getDefiningOp())
-        .Case<top::CompareConstOp, top::CompareOp>([&] (auto) {
-          breakCond = returnOp->getOperands()[0];})
-        .Case<top::SqueezeOp>([&] (auto) {
-          breakCond = returnOp->getOperands()[0].getDefiningOp()
-                      ->getPrevNode()->getResults()[0];})
-        .Default([] (auto) {
-          assert(0 && "fatal error, pls let us know ASAP.");});
+      llvm::TypeSwitch<Operation *>(returnOp->getOperands()[0].getDefiningOp())
+          .Case<top::CompareConstOp, top::CompareOp>(
+              [&](auto) { breakCond = returnOp->getOperands()[0]; })
+          .Case<top::SqueezeOp>([&](auto) {
+            breakCond = returnOp->getOperands()[0]
+                            .getDefiningOp()
+                            ->getPrevNode()
+                            ->getResults()[0];
+          })
+          .Default(
+              [](auto) { assert(0 && "fatal error, pls let us know ASAP."); });
     }
 
     if (breakCond.isa<BlockArgument>())
       return std::make_pair(false, maxTripCountValue);
 
     Operation *breakCondOp = breakCond.getDefiningOp();
-    if (!isa<top::CompareConstOp,
-             top::CompareOp>(breakCondOp))
+    if (!isa<top::CompareConstOp, top::CompareOp>(breakCondOp))
       return std::make_pair(false, maxTripCountValue);
 
     Value newCounterValue = breakCondOp->getOperands()[0];
@@ -173,8 +190,8 @@ private:
     std::size_t compareConst = 1;
     /* the rhs(upbound) can be transfered
        by the loopOp operand */
-    if (isa<top::CompareOp>(breakCondOp)
-       && !isDefinedByWeightOp(breakCondOp->getOperands()[1])) {
+    if (isa<top::CompareOp>(breakCondOp) &&
+        !isDefinedByWeightOp(breakCondOp->getOperands()[1])) {
       ubValue = breakCondOp->getOperands()[1];
       compareConst = 0;
     }
@@ -182,12 +199,11 @@ private:
     if (!newCounterValue.getType()
              .cast<ShapedType>()
              .getElementType()
-             .isa<IntegerType, Float32Type,
-                  Float16Type, BFloat16Type>())
+             .isa<IntegerType, Float32Type, Float16Type, BFloat16Type>())
       return std::make_pair(false, maxTripCountValue);
 
-    if (newCounterValue.isa<BlockArgument>()
-        || !isa<top::AddOp, top::AddConstOp>(newCounterValue.getDefiningOp()))
+    if (newCounterValue.isa<BlockArgument>() ||
+        !isa<top::AddOp, top::AddConstOp>(newCounterValue.getDefiningOp()))
       return std::make_pair(false, maxTripCountValue);
 
     Operation *addOp = newCounterValue.getDefiningOp();
@@ -197,9 +213,9 @@ private:
     /* steValue can be transfered to here by
        LoopOp's operand or aslo can be defined with WeightOp
        in current subgraph, it is defined by user */
-    if (isa<top::AddOp>(newCounterValue.getDefiningOp())
-        && !isDefinedByWeightOp(newCounterValue.getDefiningOp()
-               ->getOperands()[1])) {
+    if (isa<top::AddOp>(newCounterValue.getDefiningOp()) &&
+        !isDefinedByWeightOp(
+            newCounterValue.getDefiningOp()->getOperands()[1])) {
       stepValue = newCounterValue.getDefiningOp()->getOperands()[1];
       addConst = 0;
     }
@@ -209,24 +225,22 @@ private:
       return std::make_pair(false, maxTripCountValue);
 
     // Step must be a WeightOp inside the loop or an invariant argument.
-    if (!addConst
-         && !isConstantOrInvariantBlockArg(stepValue, returnOp))
+    if (!addConst && !isConstantOrInvariantBlockArg(stepValue, returnOp))
       return std::make_pair(false, maxTripCountValue);
 
     Value lbValue = getFedValue(counterValue, loopOp);
 
-    if (!compareConst
-        && !isConstantOrInvariantBlockArg(ubValue, returnOp))
+    if (!compareConst && !isConstantOrInvariantBlockArg(ubValue, returnOp))
       return std::make_pair(false, maxTripCountValue);
 
     int ub_value = 0;
-    if (!compareConst
-        && isInvariantBlockArg(ubValue, returnOp))
+    if (!compareConst && isInvariantBlockArg(ubValue, returnOp))
       ubValue = getFedValue(ubValue, loopOp);
     else {
       if (isa<top::CompareConstOp>(breakCondOp)) {
         ub_value = (int)(cast<top::CompareConstOp>(breakCondOp)
-                            .getConstVal().convertToDouble());
+                             .getConstVal()
+                             .convertToDouble());
       } else {
         auto src_v = getSourceWeightV(breakCondOp->getOperands()[1]);
         ub_value = getOneConstant(src_v);
@@ -234,12 +248,12 @@ private:
     }
 
     int add_step_value = 0;
-    if (!addConst
-        && isInvariantBlockArg(stepValue, returnOp))
+    if (!addConst && isInvariantBlockArg(stepValue, returnOp))
       stepValue = getFedValue(stepValue, loopOp);
     else {
       if (isa<top::AddConstOp>(addOp)) {
-        add_step_value = (int)(cast<top::AddConstOp>(addOp).getConstVal().convertToDouble());
+        add_step_value =
+            (int)(cast<top::AddConstOp>(addOp).getConstVal().convertToDouble());
       } else {
         auto src_v = getSourceWeightV(addOp->getOperands()[1]);
         add_step_value = getOneConstant(src_v);
@@ -247,9 +261,7 @@ private:
     }
 
     // Case 1: the upper bound, lower bound and step are constants.
-    if (isDefinedByWeightOp(lbValue)
-        && compareConst
-        && addConst) {
+    if (isDefinedByWeightOp(lbValue) && compareConst && addConst) {
       int64_t lowerBound = getOneConstant(lbValue);
       int64_t upperBound = ub_value;
       int64_t step = add_step_value;
@@ -265,23 +277,23 @@ private:
       auto newMaxTripCount = std::make_shared<std::vector<float>>(1);
       newMaxTripCount->data()[0] = derivedTripCount;
 
-      auto shape = maxTripCountValue.getType().template cast<ShapedType>().getShape();
-      auto type = RankedTensorType::get(shape,
-                                      maxTripCountValue.getType().cast<ShapedType>().getElementType());
-      //create a new weightOp
+      auto shape =
+          maxTripCountValue.getType().template cast<ShapedType>().getShape();
+      auto type = RankedTensorType::get(
+          shape,
+          maxTripCountValue.getType().cast<ShapedType>().getElementType());
+      // create a new weightOp
       auto newValue = top::WeightOp::create(maxTripCountValue.getDefiningOp(),
-                                            "_fp32",
-                                            *newMaxTripCount,
-                                            type);
+                                            "_fp32", *newMaxTripCount, type);
       return std::make_pair(true, newValue);
     }
 
-    //other case: Todo
+    // other case: Todo
     return std::make_pair(false, Value(nullptr));
   }
 };
 
-void LoopOp::getCanonicalizationPatterns(
-    RewritePatternSet &results, MLIRContext *context) {
+void LoopOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                         MLIRContext *context) {
   results.insert<LoopOpRewriteMaxTripCountPattern>(context);
 }

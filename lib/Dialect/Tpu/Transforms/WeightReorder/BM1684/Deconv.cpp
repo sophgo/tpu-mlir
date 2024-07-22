@@ -55,7 +55,7 @@ static void deconv_weight_transform(int oc, int ic, int h, int w, T *src,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
@@ -102,7 +102,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewriteImpl(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();

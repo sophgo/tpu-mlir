@@ -80,7 +80,7 @@ static void iofg2ifog(std::shared_ptr<std::vector<float>> &filter, int num_dir,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewriteImpl(
     tpu::LSTMOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();

@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
@@ -14,11 +14,14 @@ using namespace tpu_mlir::top;
 // From: pow -> reduce_mean -> addconst -> sqrt -> reciprocal -> mul -> mul_w
 //        |_______________________________________________________↑
 // To: RMSNorm
-struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MergeToRMSNormPattern : public OpRewriterPatternEx<ReciprocalOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ReciprocalOp op,
-                                PatternRewriter &rewriter) const override {
+  MergeToRMSNormPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReciprocalOp>(context, "MergeToRMSNormPattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReciprocalOp op,
+                                    PatternRewriter &rewriter) const override {
     if (op.getConstVal().convertToDouble() != 1.0 || op.getDoRelu()) {
       return failure();
     }

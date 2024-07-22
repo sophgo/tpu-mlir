@@ -42,12 +42,12 @@ struct LgPassIR {
   /**
    * @brief the operation in the current subnet graph
    */
-  SetVector<Operation *> subnet_ops;
+  llvm::SetVector<Operation *> subnet_ops;
 
   /**
    * @brief the value in the current subnet graph
    */
-  SetVector<Value> subnet_values;
+  llvm::SetVector<Value> subnet_values;
 
   /**
    * @brief the layer groups.

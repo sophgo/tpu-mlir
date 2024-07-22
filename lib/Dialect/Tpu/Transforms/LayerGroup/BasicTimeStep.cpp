@@ -86,7 +86,7 @@ void BasicTimeStep::software_pipeline() {
 }
 
 void BasicTimeStep::show_timestep() {
-  llvm::errs() << "============= show time step =============\n";
+  llvm::outs() << "============= show time step =============\n";
   size_t timestep_num = get_timestep_num();
   std::string s;
   llvm::raw_string_ostream ss(s);
@@ -160,9 +160,9 @@ void BasicTimeStep::show_timestep() {
          << buffer_value.end_ts << "), ";
     }
     ss << "\n";
-    llvm::errs() << s;
+    llvm::outs() << s;
   }
-  llvm::errs() << "====================================\n";
+  llvm::outs() << "====================================\n";
 }
 
 void BasicTimeStep::gen_hold_coeff() {
@@ -423,8 +423,8 @@ typedef struct {
 } eltwise_to_show_t;
 
 void BasicTimeStep::show_lmem_buffer() {
-  llvm::errs() << "====================================\n";
-  llvm::errs() << "== show lmem buffer\n";
+  llvm::outs() << "====================================\n";
+  llvm::outs() << "== show lmem buffer\n";
   mem_buffer_key_t key;
   mem_buffer_value_t value;
   size_t timestep_num = get_timestep_num();
@@ -443,19 +443,19 @@ void BasicTimeStep::show_lmem_buffer() {
   }
 
   for (size_t ts = 0; ts < timestep_num; ++ts) {
-    llvm::errs() << "=== timestep = " << ts << "\n";
-    llvm::errs() << "addr(end): ";
+    llvm::outs() << "=== timestep = " << ts << "\n";
+    llvm::outs() << "addr(end): ";
     int64_t total = 0;
     std::sort(data[ts].begin(), data[ts].end());
     for (auto &iter : data[ts]) {
       total += iter.second;
-      llvm::errs() << "(" << iter.first << ", " << iter.first + iter.second
+      llvm::outs() << "(" << iter.first << ", " << iter.first + iter.second
                    << "), ";
     }
-    llvm::errs() << "total=" << total << "\n";
+    llvm::outs() << "total=" << total << "\n";
   }
 
-  llvm::errs() << "====================================\n";
+  llvm::outs() << "====================================\n";
 }
 
 int64_t BasicTimeStep::get_tensor_range_end(const GdmaElt &tensor,

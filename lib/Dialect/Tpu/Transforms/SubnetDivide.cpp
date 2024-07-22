@@ -24,9 +24,12 @@ namespace tpu {
 // For example:
 // [4,3,28,1] => [4,3,1,28]
 // [4,3,1,28] => [4,1,3,28]
-struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(PermuteOp op,
+struct TopPermuteToReshape  : public OpRewriterPatternEx<PermuteOp> {
+  public:
+  TopPermuteToReshape(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToReshape") {}
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
                                 PatternRewriter &rewriter) const override {
     // todo
     std::vector<int64_t> shape = module::getShape(op.getInput());
@@ -70,13 +73,16 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
     }
     return success();
   }
+  bool shouldPrint(PermuteOp op) const override { return false;}
 };
 
 // slice + slice => slice
-struct StaticMergeSlicePattern : public OpRewritePattern<SliceOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct StaticMergeSlicePattern  : public OpRewriterPatternEx<SliceOp> {
+  public:
+  StaticMergeSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<SliceOp>(context, "StaticMergeSlicePattern") {}
 
-  LogicalResult matchAndRewrite(SliceOp op,
+  LogicalResult matchAndRewriteImpl(SliceOp op,
                                 PatternRewriter &rewriter) const override {
     if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
         !module::isNone(op.getStepsT())) {
@@ -117,6 +123,7 @@ struct StaticMergeSlicePattern : public OpRewritePattern<SliceOp> {
     rewriter.eraseOp(in_op);
     return success();
   }
+  bool shouldPrint(SliceOp op) const override { return false;}
 };
 
 static void getInputsOutputs(std::vector<Operation *> &ops,
@@ -256,8 +263,10 @@ static inline void LoopMode(Operation *op, int &mode) {
    but at dyn runtime, if it is the output tensor, it will L2S to the target
    addr according to the tensor id, it will meet error. so it will check if need
    to swap the order*/
-struct CallOpReorderPattern : public OpRewritePattern<CallOp> {
-  using OpRewritePattern::OpRewritePattern;
+class CallOpReorderPattern  : public OpRewriterPatternEx<CallOp> {
+  public:
+  CallOpReorderPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<CallOp>(context,"CallOpReorderPattern") {}
   static bool isOrderValid(const std::vector<int> &order) {
     for (int i = 0; i < order.size(); i++) {
       if (i != order[i]) {
@@ -408,7 +417,7 @@ struct CallOpReorderPattern : public OpRewritePattern<CallOp> {
     return true;
   }
 
-  LogicalResult matchAndRewrite(CallOp call,
+    LogicalResult matchAndRewriteImpl(CallOp call,
                                 PatternRewriter &rewriter) const override {
     auto main = dyn_cast_or_null<FuncOp>(call->getParentOp());
     if (!main) {
@@ -418,6 +427,7 @@ struct CallOpReorderPattern : public OpRewritePattern<CallOp> {
     auto do_output = reorderCallOpOutput(main, call);
     return (do_input || do_output) ? success() : failure();
   }
+   bool shouldPrint(CallOp call) const override { return false;}
 };
 
 class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
@@ -442,10 +452,9 @@ public:
       for (auto func : s.getOps<FuncOp>()) {
         RewritePatternSet patterns(&ctx);
         if (getRunMode(func) == tpu::RunMode::TPU_STATIC) {
-          patterns
-              .add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
-                   patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>,
-                   TopPermuteToReshape, StaticMergeSlicePattern>(&ctx);
+          patterns.add<TopPermuteToReshape, StaticMergeSlicePattern,
+                       patterns::TPUUnsqueezeToReshapePattern,
+                       patterns::TPUSqueezeToReshapePattern>(&ctx);
         }
         patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                      patterns::FuseSameOp>(&ctx);

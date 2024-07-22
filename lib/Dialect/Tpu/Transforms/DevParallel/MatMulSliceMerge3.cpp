@@ -68,7 +68,7 @@ static Operation *isFFNPattern(Operation *op) {
 }
 
 LogicalResult
-MatMulSliceMerge3::matchAndRewrite(tpu::AddOp op,
+MatMulSliceMerge3::matchAndRewriteImpl(tpu::AddOp op,
                                    PatternRewriter &rewriter) const {
   if (!op->hasOneUse() || module::isOpInDevParallel(op)) {
     return failure();

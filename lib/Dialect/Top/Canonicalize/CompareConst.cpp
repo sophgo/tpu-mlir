@@ -8,14 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 
 using namespace tpu_mlir::top;
 
-struct CompareConstWhereToMinConst : public OpRewritePattern<CompareConstOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct CompareConstWhereToMinConst : public OpRewriterPatternEx<CompareConstOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(CompareConstOp op,
+  CompareConstWhereToMinConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<CompareConstOp>(context, "CompareConstWhereToMinConst") {}
+
+  LogicalResult matchAndRewriteImpl(CompareConstOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto compare_c_v = op.getConstVal().convertToDouble();

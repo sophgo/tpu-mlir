@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -105,10 +106,13 @@ static void replaceOpWithDepth2SpaceOp(PatternRewriter &rewriter, ConcatOp &op,
 
 // concat slices to Depth2Space.
 // test by yolov5s
-struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConcatToDepth2SpacePattern : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+  ConcatToDepth2SpacePattern(mlir::MLIRContext *context)
+  : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern") {}
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
@@ -194,10 +198,13 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
   }
 };
 
-struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConcatToDepth2SpacePattern2 : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+  ConcatToDepth2SpacePattern2(mlir::MLIRContext *context)
+    : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern2") {}
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
@@ -263,10 +270,13 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
  *      \           /
  *       -- Slice --
  **/
-struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MergeSliceConcatPattern : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+  MergeSliceConcatPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConcatOp>(context, "MergeSliceConcatPattern") {}
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     const auto &inputs = concat_op.getInputs();
     if (concat_op.getDoRelu()) {
@@ -370,10 +380,14 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
 };
 
 struct ConvertLoadWeightConcatToLoadWeightPattern
-    : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
+    : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+  ConvertLoadWeightConcatToLoadWeightPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConcatOp>(context, "ConvertLoadWeightConcatToLoadWeightPattern") {}
+
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
@@ -427,11 +441,13 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
   }
 };
 
-// Concat(A) => A
-struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+struct RemoveInvaidShapeConcatInput : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  RemoveInvaidShapeConcatInput(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConcatOp>(context, "RemoveInvaidShapeConcatInput") {}
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
@@ -449,10 +465,13 @@ struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
  * Remove meaningless Struct
  *  Concat (0, X) --> Concat(X); Concat (None, X) => Concat(X)
  * ***/
-struct RemoveInvaidConcatSlice : public OpRewritePattern<ConcatOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct RemoveInvaidConcatSlice : public OpRewriterPatternEx<ConcatOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(ConcatOp concat_op,
+  RemoveInvaidConcatSlice(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConcatOp>(context, "RemoveInvaidConcatSlice") {}
+
+  LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     auto inputs = concat_op.getInputs();
     int num_inputs = inputs.size();

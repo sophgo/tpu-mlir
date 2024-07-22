@@ -63,7 +63,7 @@ static void transposeBiasFp32(std::vector<float> &bias_f32,
 // WeightReorderInterface
 // ======================================
 template <>
-LogicalResult WeightReorder<tpu::LSTMOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::LSTMOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::LSTMOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getInput()).isBF16())
     return failure();

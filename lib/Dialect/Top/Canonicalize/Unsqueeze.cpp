@@ -6,17 +6,21 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
 // remove: reshape + unsqueeze && in == out
-struct TopRemoveReshapeAndUnsqueezeWhenScalar : public OpRewritePattern<UnsqueezeOp>
-{
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(UnsqueezeOp op,
-                                PatternRewriter &rewriter) const override {
+struct TopRemoveReshapeAndUnsqueezeWhenScalar
+    : public OpRewriterPatternEx<UnsqueezeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  TopRemoveReshapeAndUnsqueezeWhenScalar(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<UnsqueezeOp>(
+            context, "TopRemoveReshapeAndUnsqueezeWhenScalar") {}
+
+  LogicalResult matchAndRewriteImpl(UnsqueezeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_op = op.getInput().getDefiningOp();
 
     if (in_op->hasOneUse() && isa<ReshapeOp>(in_op)) {
@@ -28,7 +32,7 @@ struct TopRemoveReshapeAndUnsqueezeWhenScalar : public OpRewritePattern<Unsqueez
       }
       op.getOutput().replaceAllUsesWith(former_op.getInput());
       auto former_former_op = former_op.getInput().getDefiningOp();
-      if (!isa<top::InputOp>(former_former_op)){
+      if (!isa<top::InputOp>(former_former_op)) {
         former_former_op->setLoc(op.getLoc());
       }
       rewriter.eraseOp(op);
@@ -40,11 +44,14 @@ struct TopRemoveReshapeAndUnsqueezeWhenScalar : public OpRewritePattern<Unsqueez
 };
 
 // squeeze + unsqueeze && in == out
-struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopFuseUnsqueeze : public OpRewriterPatternEx<UnsqueezeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(UnsqueezeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopFuseUnsqueeze(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<UnsqueezeOp>(context, "TopFuseUnsqueeze") {}
+
+  LogicalResult matchAndRewriteImpl(UnsqueezeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in_op = op.getInput().getDefiningOp();
 
     if (in_op->hasOneUse() && isa<SqueezeOp>(in_op)) {
@@ -80,13 +87,14 @@ struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
 //   return;
 // }
 
-struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopGatherToSliceByUnsqueeze : public OpRewriterPatternEx<GatherOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopGatherToSliceByUnsqueeze(MLIRContext *context)
-      : OpRewritePattern<GatherOp>(context) {}
+      : OpRewriterPatternEx<GatherOp>(context,
+                                         "TopGatherToSliceByUnsqueeze") {}
 
-  LogicalResult matchAndRewrite(GatherOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(GatherOp op,
+                                    PatternRewriter &rewriter) const override {
     std::shared_ptr<std::vector<float>> inds_f32;
 
     if (auto inds = dyn_cast<WeightOp>(op.getIndices().getDefiningOp()))
@@ -110,8 +118,8 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
         // }
         // for (auto user: op->getUsers()) {
         //   for (auto res: user->getResults()) {
-        //     if (!isa<UnrankedTensorType>(res.getType()) && module::getShape(res).size() == 0)
-        //     module::setShape(res, {1});
+        //     if (!isa<UnrankedTensorType>(res.getType()) &&
+        //     module::getShape(res).size() == 0) module::setShape(res, {1});
         //   }
         // }
         // recursivelyModifyShapes(op.getOperation(), rewriter);
@@ -167,11 +175,14 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
 };
 
 // unsqueeze scalar [1] -> [1]
-struct TopUnsqueezeErase : public OpRewritePattern<UnsqueezeOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopUnsqueezeErase : public OpRewriterPatternEx<UnsqueezeOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(UnsqueezeOp op,
-                                PatternRewriter &rewriter) const override {
+  TopUnsqueezeErase(MLIRContext *context)
+      : OpRewriterPatternEx<UnsqueezeOp>(context, "TopUnsqueezeErase") {}
+
+  LogicalResult matchAndRewriteImpl(UnsqueezeOp op,
+                                    PatternRewriter &rewriter) const override {
     auto shape0 = module::getShape(op.getOutput());
     auto shape1 = module::getShape(op.getInput());
     if (shape0 != shape1) {
@@ -179,7 +190,7 @@ struct TopUnsqueezeErase : public OpRewritePattern<UnsqueezeOp> {
     }
     op.getOutput().replaceAllUsesWith(op.getInput());
     auto former_op = op.getInput().getDefiningOp();
-    if (!isa<top::InputOp>(former_op)){
+    if (!isa<top::InputOp>(former_op)) {
       former_op->setLoc(op.getLoc());
     }
     rewriter.eraseOp(op);
@@ -189,5 +200,6 @@ struct TopUnsqueezeErase : public OpRewritePattern<UnsqueezeOp> {
 
 void UnsqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
-  results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze, TopUnsqueezeErase>(context);
+  results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze,
+                 TopGatherToSliceByUnsqueeze, TopUnsqueezeErase>(context);
 }

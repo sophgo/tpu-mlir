@@ -11,12 +11,15 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
-template <typename TyOp>
-struct ShapeArithConvert : public OpRewritePattern<TyOp> {
-  using OpRewritePattern<TyOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(TyOp op,
-                                PatternRewriter &rewriter) const override {
+template <typename OpTy>
+struct  ShapeArithConvert : public OpRewriterPatternEx<OpTy> {
+public:
+   ShapeArithConvert(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context,"ShapeArithConvert") {}
+
+  LogicalResult matchAndRewriteImpl(OpTy op,
+                                    PatternRewriter &rewriter) const override {
     Value out = op.getOutput();
     if (isa<ReturnOp>(op))
       return failure();
@@ -52,6 +55,7 @@ struct ShapeArithConvert : public OpRewritePattern<TyOp> {
                                                    op.getOperands(), attrs);
     return success();
   }
+  bool shouldPrint(OpTy opTy) const override { return false;}
 };
 
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,

@@ -20,6 +20,7 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
@@ -80,14 +81,15 @@ public:
   }
 };
 
-class IfOpLowering : public ConversionPattern {
+class IfOpLowering : public ConversionPatternEx {
 public:
   explicit IfOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPattern(typeConverter, top::IfOp::getOperationName(), 1,
-                          ctx) {}
+      : ConversionPatternEx(typeConverter, top::IfOp::getOperationName(), 1, ctx) {}
+
+protected:
   LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                  ConversionPatternRewriter &rewriter) const final {
+  matchAndRewriteImpl(Operation *op, ArrayRef<Value> operands,
+                      ConversionPatternRewriter &rewriter) const override {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
     if (module::isF16Modes()) {
@@ -133,6 +135,8 @@ public:
     return success();
   }
 
+  bool shouldPrint(Operation *op) const override { return false;}
+
 private:
   void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
                         Region &tpuBranch) const {
@@ -148,14 +152,16 @@ private:
   }
 };
 
-class LoopOpLowering : public ConversionPattern {
+
+class LoopOpLowering : public ConversionPatternEx {
 public:
   explicit LoopOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPattern(typeConverter, top::LoopOp::getOperationName(), 1,
-                          ctx) {}
+      : ConversionPatternEx(typeConverter, top::LoopOp::getOperationName(), 1, ctx) {}
+
+protected:
   LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                  ConversionPatternRewriter &rewriter) const final {
+  matchAndRewriteImpl(Operation *op, ArrayRef<Value> operands,
+                      ConversionPatternRewriter &rewriter) const override {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
     if (module::isF16Modes()) {
@@ -210,6 +216,7 @@ public:
     return success();
   }
 
+  bool shouldPrint(Operation *op) const override { return false;}
 private:
   void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
                         Region &tpuBranch) const {
@@ -247,12 +254,15 @@ static module::Mode getOpQuantMode(Operation *op) {
   return real_mode;
 }
 
-template <typename OpTy> class TopLowering : public OpRewritePattern<OpTy> {
+template <typename OpTy>
+class TopLowering : public OpRewriterPatternEx<OpTy> {
 public:
-  using OpRewritePattern<OpTy>::OpRewritePattern;
+  TopLowering(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context) {}
 
-  LogicalResult matchAndRewrite(OpTy opTy,
-                                PatternRewriter &rewriter) const override {
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(OpTy opTy,
+                                          mlir::PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
 
     bool isQuantized = LoweringConfig::isQuantized;
@@ -314,6 +324,7 @@ public:
   }
 
 public:
+  bool shouldPrint(OpTy opTy) const override { return false;}
   virtual void LoweringINT8(PatternRewriter &rewriter, OpTy opTy,
                             bool asymmetric) const {
     UNREACHABLE_OP("Not Implemented", opTy);
@@ -340,12 +351,14 @@ public:
 };
 
 template <typename OpTy>
-class TopShapeLowering : public OpRewritePattern<OpTy> {
+class TopShapeLowering : public OpRewriterPatternEx<OpTy> {
 public:
-  using OpRewritePattern<OpTy>::OpRewritePattern;
+  TopShapeLowering(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context) {}
 
-  LogicalResult matchAndRewrite(OpTy opTy,
-                                PatternRewriter &rewriter) const override {
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(OpTy opTy,
+                                          mlir::PatternRewriter &rewriter) const override {
     Lowering(rewriter, opTy);
     return success();
   }
@@ -354,6 +367,8 @@ public:
   virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
     UNREACHABLE_OP("Not Implemented", opTy);
   }
+
+  bool shouldPrint(OpTy opTy) const override { return false;}
 };
 
 // Lowering to a new Operation, with the same operands and same attrs, and

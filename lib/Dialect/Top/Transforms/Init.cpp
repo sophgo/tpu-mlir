@@ -13,6 +13,7 @@
 using namespace llvm;
 
 namespace tpu_mlir {
+int32_t cur_log_level = 0;
 namespace top {
 
 class InitPass : public InitBase<InitPass> {
@@ -22,6 +23,7 @@ public:
     auto mOp = getOperation();
     module::init(mOp);
     backend::Arch::init(freq);
+    module::init_loglevel(this->level);
   }
 };
 

@@ -12,7 +12,7 @@
 
 using namespace tpu_mlir::cuda;
 
-void *py_cuda::getCudaData(Value v) {
+void *py_cuda::getCudaData(mlir::Value v) {
   auto name = module::getName(v).str();
   if (module::isWeight(v)) {
     if (weight_map_.find(name) != weight_map_.end()) {
@@ -28,7 +28,7 @@ void *py_cuda::getCudaData(Value v) {
   return nullptr;
 }
 
-data_type_t py_cuda::getCudaType(Value v) {
+data_type_t py_cuda::getCudaType(mlir::Value v) {
   auto stype = module::getStorageType(v);
   if (stype.isUnsignedInteger(8)) {
     return DT_UINT8;
@@ -66,7 +66,7 @@ cuda_ptr py_cuda::newCudaData(void *data, size_t num, data_type_t src_type,
   return std::move(wrapper);
 }
 
-cuda_ptr py_cuda::newCudaData(Value v, data_type_t dst_type) {
+cuda_ptr py_cuda::newCudaData(mlir::Value v, data_type_t dst_type) {
   auto src_type = getCudaType(v);
   auto data = getCudaData(v);
   size_t num = module::getNumElements(v);

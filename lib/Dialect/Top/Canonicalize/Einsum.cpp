@@ -8,13 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
-struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(EinsumOp op,
+    ConvertEinsum(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<EinsumOp>(context, "ConvertEinsum") {}
+
+  LogicalResult matchAndRewriteImpl(EinsumOp op,
                                 PatternRewriter &rewriter) const override {
     // if (op.getInputs().size() != 2 || module::isWeight(op.getInputs()[0])) {
     //   llvm_unreachable("Not support now.");
@@ -507,6 +511,5 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
 
 void EinsumOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  // llvm_unreachable("getCanonicalizationPatterns not Implemented");
   results.insert<ConvertEinsum>(context);
 }

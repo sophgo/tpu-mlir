@@ -19,7 +19,7 @@ void tpu::ArgOp::codegen_global_bm1684x() {
   const bool need_val = !module::isNone(getValues());
   arg_global_spec_t spec = {0};
   spec.common.axis = getAxis();
-  spec.common.method = StringSwitch<int>(getMode())
+  spec.common.method = llvm::StringSwitch<int>(getMode())
                            .Case("ArgMax", 0)
                            .Default(1);
   spec.common.need_val = need_val;
@@ -38,7 +38,7 @@ int64_t tpu::ArgOp::dyn_codegen_global_bm1684x(void *buffer) {
   const bool need_val = !getValues().getType().isa<NoneType>();
   arg_global_spec_t spec = {0};
   spec.common.axis = getAxis();
-  spec.common.method = StringSwitch<int>(getMode())
+  spec.common.method = llvm::StringSwitch<int>(getMode())
                            .Case("ArgMax", 0)
                            .Case("ArgMin", 1)
                            .Default(-1);

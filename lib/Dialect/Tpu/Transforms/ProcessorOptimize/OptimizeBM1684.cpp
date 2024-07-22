@@ -43,11 +43,14 @@ conv2d_shape_inference(tpu::Conv2DOp op,
 namespace tpu_mlir {
 
 namespace bm1684 {
-class CastWithoutScalePattern : public OpRewritePattern<tpu::CastOp> {
+class CastWithoutScalePattern : public OpRewriterPatternEx<tpu::CastOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::CastOp op,
-                                PatternRewriter &rewriter) const override {
+  CastWithoutScalePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::CastOp>(context, "CastWithoutScalePattern", benifit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::CastOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     if (!module::isBM1684Family()) {
       return failure();
     }
@@ -114,11 +117,14 @@ public:
   }
 };
 
-class LargeDilationConvPattern : public OpRewritePattern<tpu::Conv2DOp> {
+class LargeDilationConvPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override {
+  LargeDilationConvPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "LargeDilationConvPattern", benifit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     if (!module::isBM1684Family()) {
       return failure();
     }
@@ -248,11 +254,14 @@ public:
   }
 };
 
-class Use3icPadConvPattern : public OpRewritePattern<tpu::Conv2DOp> {
+class Use3icPadConvPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override {
+  Use3icPadConvPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "Use3icPadConvPattern",benifit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto prevOp = op->getOperand(0).getDefiningOp();
     auto prevInputOp = prevOp;
     if (!isa<top::InputOp>(prevOp)) {

@@ -6,17 +6,20 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct PReluToLeakRelu : public OpRewritePattern<PReluOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PReluToLeakRelu : public OpRewriterPatternEx<PReluOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PReluOp op,
-                                PatternRewriter &rewriter) const override {
+  PReluToLeakRelu(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PReluOp>(context, "PReluToLeakRelu") {}
+
+  LogicalResult matchAndRewriteImpl(PReluOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isWeight(op.getSlope()) == false) {
       return failure();
     }
@@ -36,11 +39,14 @@ struct PReluToLeakRelu : public OpRewritePattern<PReluOp> {
 };
 
 // [4, 3, 24, 24] * [3] => [4, 3, 24, 24] * [1, 3, 1, 1]
-struct PReluReshape : public OpRewritePattern<PReluOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PReluReshape : public OpRewriterPatternEx<PReluOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(PReluOp op,
-                                PatternRewriter &rewriter) const override {
+  PReluReshape(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PReluOp>(context, "PReluReshape") {}
+
+  LogicalResult matchAndRewriteImpl(PReluOp op,
+                                    PatternRewriter &rewriter) const override {
     if (module::isWeight(op.getSlope()) == false) {
       return failure();
     }

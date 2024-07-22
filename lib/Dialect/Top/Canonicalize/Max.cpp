@@ -6,20 +6,23 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
-struct MaxToMaxConst : public OpRewritePattern<MaxOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct MaxToMaxConst : public OpRewriterPatternEx<MaxOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(MaxOp op,
-                                PatternRewriter &rewriter) const override {
+  MaxToMaxConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MaxOp>(context, "MaxToMaxConst") {}
+
+  LogicalResult matchAndRewriteImpl(MaxOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInputs().size() != 2) {
       return failure();

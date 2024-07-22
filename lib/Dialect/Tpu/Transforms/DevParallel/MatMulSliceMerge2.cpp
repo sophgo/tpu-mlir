@@ -39,7 +39,7 @@ static Value isCastActive(Value in) {
 
 template <typename MatMulTy>
 LogicalResult
-MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
+MatMulSliceMerge2<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
                                              PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
@@ -105,10 +105,10 @@ MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
   return success();
 }
 
-template LogicalResult MatMulSliceMerge2<tpu::MatMulOp>::matchAndRewrite(
+template LogicalResult MatMulSliceMerge2<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult MatMulSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
+template LogicalResult MatMulSliceMerge2<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
@@ -214,7 +214,7 @@ void sliceMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
  * Attention Tensor Parallelism
  */
 template <typename MatMulTy>
-LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
+LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewriteImpl(
     MatMulTy op, PatternRewriter &rewriter) const {
   if (module::isOpInDevParallel(op)) {
     return failure();
@@ -286,10 +286,10 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewrite(
   return success();
 }
 
-template LogicalResult AttentionSliceMerge2<tpu::MatMulOp>::matchAndRewrite(
+template LogicalResult AttentionSliceMerge2<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
+template LogicalResult AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
@@ -506,7 +506,7 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
   module::removeUnusedOp();
 }
 
-LogicalResult FAttentionSliceMerge::matchAndRewrite(tpu::FAttentionOp op, PatternRewriter &rewriter) const {
+LogicalResult FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op, PatternRewriter &rewriter) const {
   // TODO: only support quant input/output for now
   if (module::isOpInDevParallel(op) || !op->hasOneUse()) {
     return failure();
@@ -617,7 +617,7 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
 }
 
 
-LogicalResult EmbeddingSliceMerge::matchAndRewrite(tpu::GatherOp op, PatternRewriter &rewriter) const {
+LogicalResult EmbeddingSliceMerge::matchAndRewriteImpl(tpu::GatherOp op, PatternRewriter &rewriter) const {
   if (module::isOpInDevParallel(op)) {
     return failure();
   }

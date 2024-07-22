@@ -60,7 +60,7 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   bool do_compress = getDoCompress().has_value() && getDoCompress().value();
   uint32_t store_mode = 0;
   if (getStoreMode().has_value()) {
-    store_mode = StringSwitch<uint32_t>(getStoreModeAttr())
+    store_mode = llvm::StringSwitch<uint32_t>(getStoreModeAttr())
                      .Case("1N", 0)
                      .Case("2N", 1)
                      .Case("4N", 2)

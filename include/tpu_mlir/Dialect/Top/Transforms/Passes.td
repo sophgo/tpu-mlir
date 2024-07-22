@@ -25,6 +25,8 @@ def Init : Pass<"init", "ModuleOp"> {
            "chip frequance">,
     Option<"weight_in_mem", "weight_in_mem", "bool", /*default=*/"false",
            "whether to save weight in shared mem instead of hard disk.">,
+    Option<"level", "level", "uint64_t", /*default=*/"",
+           "log level">,
   ];
 }
 

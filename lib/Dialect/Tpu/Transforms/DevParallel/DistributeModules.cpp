@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/Distribute.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -25,10 +26,10 @@ public:
 static constexpr llvm::StringRef DEVICE_ID = "device_id";
 static constexpr llvm::StringRef STEP = "step";
 
-struct OpReorderPattern : public RewritePattern {
+struct OpReorderPattern : public OpRewriterPatternEx3 {
   OpReorderPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
+      : OpRewriterPatternEx3(context,"OpReorderPattern",1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
@@ -68,6 +69,7 @@ struct OpReorderPattern : public RewritePattern {
     }
     return fixed ? success() : failure();
   }
+    bool shouldPrint(Operation *op) const override { return false;}
 };
 
 static void getInputsOutputs(std::vector<Operation *> &ops,
@@ -533,10 +535,13 @@ static int64_t getStep(FuncOp func) {
   return func->getAttrOfType<IntegerAttr>(STEP).getInt();
 }
 
-class Function2Module : public OpRewritePattern<func::CallOp> {
+
+class Function2Module : public OpRewriterPatternEx<func::CallOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(func::CallOp op,
+  Function2Module(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<func::CallOp>(context, "Function2Module") {}
+
+  LogicalResult matchAndRewriteImpl(func::CallOp op,
                                 PatternRewriter &rewriter) const override {
     auto m = module::getModuleOp();
     auto func = module::getFuncOp(m, op.getCallee());
@@ -551,6 +556,7 @@ public:
     func.setName("main");
     return success();
   }
+  bool shouldPrint(func::CallOp op) const override { return false; }
 };
 
 static void distributeToOneModule(ModuleOp m) {

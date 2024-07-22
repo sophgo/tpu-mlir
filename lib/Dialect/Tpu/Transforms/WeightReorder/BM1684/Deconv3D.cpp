@@ -47,7 +47,7 @@ static void deconv3d_weight_transform(const std::vector<int64_t> &weight_shape,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Deconv3DOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Deconv3DOp, Float32Type>::matchAndRewriteImpl(
     tpu::Deconv3DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32()) {
     return failure();
@@ -74,7 +74,7 @@ LogicalResult WeightReorder<tpu::Deconv3DOp, Float32Type>::matchAndRewrite(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Deconv3DOp, int8_t>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Deconv3DOp, int8_t>::matchAndRewriteImpl(
     tpu::Deconv3DOp op, PatternRewriter &rewriter) const {
   llvm_unreachable("not support");
   return failure();

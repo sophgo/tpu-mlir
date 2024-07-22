@@ -9,6 +9,7 @@
 
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 LogicalResult tpu::LoopOp::init(InferenceParameter &p) {
   return success();
@@ -33,13 +34,13 @@ Operation::result_range tpu::LoopOp::scan_outputs() {
       results.begin() + getVInitial().size(), results.end());
 }
 
-struct UpdateArgument : public OpRewritePattern<tpu::LoopOp> {
-  UpdateArgument(mlir::MLIRContext *context)
-      : OpRewritePattern<tpu::LoopOp>(context, /*benefit=*/1) {}
 
-  LogicalResult
-  matchAndRewrite(tpu::LoopOp op,
-                  mlir::PatternRewriter &rewriter) const override {
+struct UpdateArgument : public OpRewriterPatternEx<tpu::LoopOp> {
+  public:
+     UpdateArgument(MLIRContext *context)
+      : OpRewriterPatternEx<tpu::LoopOp>(context,"UpdateArgument",1) {}
+  LogicalResult matchAndRewriteImpl(tpu::LoopOp op,
+                                PatternRewriter &rewriter) const override {
     for (int i = 0; i < op.getBody().getNumArguments(); i++) {
       auto type = op.getOperand(i).getType();
       op.getBody().getArgument(i).setType(type);
@@ -79,6 +80,9 @@ struct UpdateArgument : public OpRewritePattern<tpu::LoopOp> {
       op.getResult(i).setType(type);
     }
     return success();
+  }
+  bool shouldPint(tpu::LoopOp op) {
+    return false;
   }
 };
 

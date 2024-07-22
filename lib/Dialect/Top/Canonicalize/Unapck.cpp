@@ -6,16 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 
 
 // upack => slice + reshape
-struct Unpack2Split : public OpRewritePattern<top::UnpackOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct Unpack2Split : public OpRewriterPatternEx<top::UnpackOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(top::UnpackOp op,
+   Unpack2Split(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::UnpackOp>(context, "Unpack2Split") {}
+
+  LogicalResult matchAndRewriteImpl(top::UnpackOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<int64_t> in_shape = module::getShape(op.getInput());
     auto axis = op.getAxis();

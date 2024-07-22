@@ -101,7 +101,7 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();

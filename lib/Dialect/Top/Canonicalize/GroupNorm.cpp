@@ -8,16 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopGroupNormReshape : public OpRewritePattern<GroupNormOp> {
-  using OpRewritePattern::OpRewritePattern;
-  TopGroupNormReshape(MLIRContext *context)
-      : OpRewritePattern<GroupNormOp>(context) {}
+struct TopGroupNormReshape : public OpRewriterPatternEx<GroupNormOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  LogicalResult matchAndRewrite(GroupNormOp op,
+  TopGroupNormReshape(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<GroupNormOp>(context, "TopGroupNormReshape") {}
+
+  LogicalResult matchAndRewriteImpl(GroupNormOp op,
                                 PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     auto num_dims = in_shape.size();

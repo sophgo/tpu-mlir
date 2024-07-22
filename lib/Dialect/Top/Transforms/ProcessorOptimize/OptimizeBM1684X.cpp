@@ -18,12 +18,14 @@ namespace bm1684x {
 // To
 // Right -> Transpose(Permute) -> Reshape -> Slice --> MatMul -> Concat
 // Left  ->                                  Slice -->
-class ConvertGLMTilePermute : public OpRewritePattern<top::MatMulOp> {
+class ConvertGLMTilePermute : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  ConvertGLMTilePermute(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertGLMTilePermute") {}
 
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     // 1. match the pattern with
     // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
     auto left = op.getOperand(0); // [32,1,513]
@@ -214,11 +216,14 @@ public:
 // Right -> Transpose(Permute) -> Reshape --> MatMul (do loop batch times)
 //                               Left  ->
 // support multi batch
-class ConvertGLMTilePermute2 : public OpRewritePattern<top::MatMulOp> {
+class ConvertGLMTilePermute2 : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  ConvertGLMTilePermute2(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertGLMTilePermute2") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     // [2x32x512x512;512x2x2x128] -> 2x[16x512x2x512;1x512x2x128]
     // (hdim_is_batch)
     // 1. match the pattern with
@@ -393,11 +398,14 @@ public:
   }
 };
 
-class ChatGLM3ToGQAAttention : public OpRewritePattern<top::MatMulOp> {
+class ChatGLM3ToGQAAttention : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  ChatGLM3ToGQAAttention(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ChatGLM3ToGQAAttention") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     // Rewrite to match GQA FlashAttention
     auto matmul_left = op.getOperand(0);
     auto matmul_right = op.getOperand(1);
@@ -734,11 +742,14 @@ public:
   }
 };
 
-class ConvertMatMulWithRightTranspose : public OpRewritePattern<top::MatMulOp> {
+class ConvertMatMulWithRightTranspose : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  ConvertMatMulWithRightTranspose(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMulWithRightTranspose", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto filter = op.getRight();
     if (module::isWeight(filter)) {
       return failure();
@@ -821,12 +832,14 @@ Value is_permute_reshape(Value in) {
   return reshape1.getInput();
 }
 
-class ConvertMatMul2Attention : public OpRewritePattern<top::MatMulOp> {
+class ConvertMatMul2Attention : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  ConvertMatMul2Attention(mlir::MLIRContext *context,int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMul2Attention", benefit) {}
 
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     if (module::isBM1688() || module::isBM1690Family())
       return failure();
     auto filter = op.getRight();
@@ -987,11 +1000,14 @@ public:
 
 // reorder op when reshapeOp is before matmul/mulconst/cast/softmax op to
 // eliminate reshapeOp
-class ReshapeReorderPattern : public OpRewritePattern<top::ReshapeOp> {
+class ReshapeReorderPattern : public OpRewriterPatternEx<top::ReshapeOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
+  ReshapeReorderPattern(mlir::MLIRContext *context,int benefit)
+      : OpRewriterPatternEx<top::ReshapeOp>(context, "ReshapeReorderPattern", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::ReshapeOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto output = op.getOutput();
     if (!output.hasOneUse()) {
       return failure();
@@ -1103,12 +1119,15 @@ public:
     return failure();
   }
 };
-class ConvertMultiInputAdd : public OpRewritePattern<top::AddOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(top::AddOp op,
-                                PatternRewriter &rewriter) const override {
+class ConvertMultiInputAdd : public OpRewriterPatternEx<top::AddOp> {
+public:
+  ConvertMultiInputAdd(mlir::MLIRContext *context,int benefit)
+      : OpRewriterPatternEx<top::AddOp>(context, "ConvertMultiInputAdd", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::AddOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto inputs = op.getInputs();
     auto name = module::getName(op.getOperation()).str();
     if (inputs.size() <= 2) {
@@ -1202,11 +1221,14 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
   return tensor_last_op;
 }
 
-class WhereBroadcastToTile : public OpRewritePattern<top::WhereOp> {
+class WhereBroadcastToTile : public OpRewriterPatternEx<top::WhereOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::WhereOp op,
-                                PatternRewriter &rewriter) const override {
+  WhereBroadcastToTile(mlir::MLIRContext *context,int benefit)
+      : OpRewriterPatternEx<top::WhereOp>(context, "WhereBroadcastToTile", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::WhereOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     if (module::isDynamic()) {
       return failure();
     }
@@ -1262,10 +1284,14 @@ public:
   }
 };
 
-class ConvertConv2DToImg2Col final : public OpRewritePattern<top::ConvOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ConvOp convOp,
-                                PatternRewriter &rewriter) const override {
+class ConvertConv2DToImg2Col : public OpRewriterPatternEx<top::ConvOp> {
+public:
+  ConvertConv2DToImg2Col(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConv2DToImg2Col", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::ConvOp convOp,
+                                    mlir::PatternRewriter &rewriter) const override {
     Value input = convOp.getInput();
     Value filter = convOp.getFilter();
     Value bias = convOp.getBias();
@@ -1412,11 +1438,14 @@ class ConvertConv2DToImg2Col final : public OpRewritePattern<top::ConvOp> {
                \---->SliceOp
                 \ ---->SliceOp
 */
-class SplitMatMulPattern : public OpRewritePattern<top::MatMulOp> {
+class SplitMatMulPattern : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+  SplitMatMulPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "SplitMatMulPattern", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     Value input = op.getInput();
     Value right = op.getRight();
     Value bias = op.getBias();
@@ -1677,12 +1706,14 @@ Matmul(slice weight)-->Softmax-->Reshape-->Concat-->Slice-->Reshape-->\
 1)concat(8x32x76760x1x4->8x32x76760x5x4) to slice(8x76760x5x4->8x76760x1x4) to
 reduce data move 2)eleminate permute
 */
-class ConcatWithReduceSum2SliceWithAdd
-    : public OpRewritePattern<top::ReduceOp> {
+class ConcatWithReduceSum2SliceWithAdd : public OpRewriterPatternEx<top::ReduceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+  ConcatWithReduceSum2SliceWithAdd(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ReduceOp>(context, "ConcatWithReduceSum2SliceWithAdd", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::ReduceOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     // TODO: support quantized type
     auto input = op.getInput();
     auto mode = op.getMode();
@@ -2014,12 +2045,14 @@ public:
 // concat 6([1,1,64,320,320]) + reducesum([6,1,64,320,320], keepdims=false) -> 5 add [1,1,64,320,320] + reshape
 // concat is inplace_op, but reduce performance is low with transpose to move reduce axis to H/W;
 // can be removed if backend supports reduce at N/C
-class ConcatReduceSum2AddReshape
-    : public OpRewritePattern<top::ReduceOp> {
+class ConcatReduceSum2AddReshape : public OpRewriterPatternEx<top::ReduceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ReduceOp op,
-                                PatternRewriter &rewriter) const override {
+  ConcatReduceSum2AddReshape(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ReduceOp>(context, "ConcatReduceSum2AddReshape", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::ReduceOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto input = op.getInput();
     auto mode = op.getMode();
     auto axes = module::getI64Array(op.getAxes());

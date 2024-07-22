@@ -6,18 +6,18 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopMultiScaleMergeToOne : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopMultiScaleMergeToOne(MLIRContext *context, PatternBenefit benefit = 10)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "TopMultiScaleMergeToOne", benefit) {}
 
-  LogicalResult matchAndRewrite(ScaleOp op,
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
 
     if (op.getDoRelu()) {
@@ -72,12 +72,12 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
   }
 };
 
-struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ConstbinaryMergeToTopScale : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ConstbinaryMergeToTopScale(MLIRContext *context, PatternBenefit benefit = 6)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context,"ConstbinaryMergeToTopScale", benefit) {}
 
-  LogicalResult matchAndRewrite(ScaleOp op,
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op->getOperand(0).getDefiningOp();
 
@@ -136,12 +136,12 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
   }
 };
 
-struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopScaleMergeToBatchNorm : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopScaleMergeToBatchNorm(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToBatchNorm", benefit) {}
 
-  LogicalResult matchAndRewrite(ScaleOp op,
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse() || !isa<BatchNormOp>(formerOp)) {
@@ -208,12 +208,12 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     return success();
   }
 };
-struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct ScaleShapeAlign : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   ScaleShapeAlign(MLIRContext *context, PatternBenefit benefit = 1)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "ScaleShapeAlign", benefit) {}
 
-  LogicalResult matchAndRewrite(ScaleOp op,
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     bool changed = false;
@@ -235,11 +235,11 @@ struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
   }
 };
 
-struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct TopScaleMergeToMatMul : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   TopScaleMergeToMatMul(MLIRContext *context, PatternBenefit benefit = 1)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ScaleOp op,
+      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToMatMul", benefit) {}
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto preOp = op.getInput().getDefiningOp();
     if (!preOp->hasOneUse() || !isa<MatMulOp>(preOp)) {
@@ -305,11 +305,11 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
   }
 };
 
-struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct FuseScaleIntoConv : public OpRewriterPatternEx<ScaleOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
   FuseScaleIntoConv(MLIRContext *context, PatternBenefit benefit = 1)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
-  LogicalResult matchAndRewrite(ScaleOp op,
+      : OpRewriterPatternEx<ScaleOp>(context, "FuseScaleIntoConv", benefit) {}
+  LogicalResult matchAndRewriteImpl(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto preOp = op.getInput().getDefiningOp();
     if (!preOp->hasOneUse() || !isa<ConvOp>(preOp)) {

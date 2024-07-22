@@ -10,28 +10,37 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
-class LargePadConvPattern : public OpRewritePattern<tpu::Conv2DOp> {
+class LargePadConvPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
-                                PatternRewriter &rewriter) const override;
+  LargePadConvPattern(mlir::MLIRContext *context, int benifit=1)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "LargePadConvPattern", benifit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    mlir::PatternRewriter &rewriter) const override;
 };
 
-class PermuteReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
+class PermuteReorderPattern : public OpRewriterPatternEx<tpu::PermuteOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override;
+  PermuteReorderPattern(mlir::MLIRContext *context, int benifit=1)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteReorderPattern",benifit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    mlir::PatternRewriter &rewriter) const override;
 };
 
-struct PermutePadSwap : public OpRewritePattern<tpu::PermuteOp> {
-  using OpRewritePattern::OpRewritePattern;
+struct PermutePadSwap : public OpRewriterPatternEx<tpu::PermuteOp> {
+  PermutePadSwap(mlir::MLIRContext *context, int benifit=1)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermutePadSwap", benifit) {}
 
-  LogicalResult matchAndRewrite(tpu::PermuteOp op,
-                                PatternRewriter &rewriter) const override;
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp op,
+                                    mlir::PatternRewriter &rewriter) const override;
 };
 
 Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0);

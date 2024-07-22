@@ -20,12 +20,14 @@ namespace tpu_mlir {
 
 namespace cv18xx {
 
-class MoveConvStrideToEltwiseOpPattern : public RewritePattern {
+class MoveConvStrideToEltwiseOpPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
-  MoveConvStrideToEltwiseOpPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override {
+  MoveConvStrideToEltwiseOpPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "MoveConvStrideToEltwiseOpPattern") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
 
     if (!op->hasTrait<trait::SupportEarlyStride>()) {
       return failure();
@@ -94,11 +96,14 @@ public:
   }
 };
 
-class FuseLeakReluPattern : public OpRewritePattern<tpu::LeakyReluOp> {
+class FuseLeakReluPattern : public OpRewriterPatternEx<tpu::LeakyReluOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::LeakyReluOp leakyReluOp,
-                                PatternRewriter &rewriter) const override {
+  FuseLeakReluPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::LeakyReluOp>(context, "FuseLeakReluPattern") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::LeakyReluOp leakyReluOp,
+                                    mlir::PatternRewriter &rewriter) const override {
     assert(leakyReluOp);
     auto preOp = leakyReluOp.getInput().getDefiningOp();
     if (auto convOp = dyn_cast<tpu::Conv2DOp>(preOp)) {
@@ -126,12 +131,14 @@ public:
   }
 };
 
-class SplitReluLimitPattern : public RewritePattern {
+class SplitReluLimitPattern : public OpRewriterPatternEx<tpu::ReluOp> {
 public:
-  SplitReluLimitPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override {
+  SplitReluLimitPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ReluOp>(context, "SplitReluLimitPattern") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::ReluOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
     rewriter.setInsertionPointAfter(op);
     if (isa<ReturnOp>(op)) {
       return failure();
@@ -172,11 +179,14 @@ public:
 };
 
 #define MAX_H_STRIDE 65536
-class RefineReducePattern : public OpRewritePattern<tpu::ReduceOp> {
+class RefineReducePattern : public OpRewriterPatternEx<tpu::ReduceOp> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
-                                PatternRewriter &rewriter) const override {
+  RefineReducePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ReduceOp>(context, "RefineReducePattern") {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(tpu::ReduceOp reduceOp,
+                                    mlir::PatternRewriter &rewriter) const override {
     auto mode = reduceOp.getMode();
     if (mode != "ReduceSum") {
       return failure();

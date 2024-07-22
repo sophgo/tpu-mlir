@@ -80,7 +80,7 @@ static void zrh2rzh(std::shared_ptr<std::vector<float>> &filter, int num_dir,
 }
 
 template <>
-LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
+LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewriteImpl(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
