@@ -971,7 +971,12 @@ add
 
     .. code-block:: python
 
-      def add(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
+      def add(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -991,7 +996,7 @@ add
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致（当其中一个输入为'int8'则输出默认为'int8'类型）。当输入为'float32'/'float16'时，输出数据类型必须与输入一致。
 
 处理器支持
 """""""""""
@@ -1007,7 +1012,12 @@ sub
 
     .. code-block:: python
 
-      def sub(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
+        def sub(tensor_i0: Union[Tensor, Scalar, int, float],
+                tensor_i1: Union[Tensor, Scalar, int, float],
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_dtype: str = None,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -1027,7 +1037,7 @@ sub
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float'/'float16'时，输出数据类型必须与输入一致。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。当输入为'float32'/'float16'时，输出数据类型必须与输入一致。
 
 处理器支持
 """""""""""
@@ -1043,7 +1053,12 @@ mul
 
     .. code-block:: python
 
-      def mul(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
+      def mul(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1063,7 +1078,7 @@ mul
 
 返回值
 """""""""""
-返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
+返回一个Tensor，该Tensor的数据类型由out_dtype指定，或与输入数据类型一致（当其中一个输入为'int8'则输出默认为'int8'类型）。当输入为'float32'/'float16'时，输出数据类型必须与输入一致。
 
 处理器支持
 """""""""""
@@ -1079,7 +1094,9 @@ div
 
     .. code-block:: python
 
-      def div(tensor_i0, tensor_i1, out_name = None):
+      def div(tensor_i0: Union[Tensor, Scalar],
+            tensor_i1: Union[Tensor, Scalar],
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1112,7 +1129,12 @@ max
 
     .. code-block:: python
 
-      def max(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
+      def max(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1148,7 +1170,12 @@ min
 
     .. code-block:: python
 
-      def min(tensor_i0, tensor_i1, scale = None, zero_point = None, out_dtype = None, out_name = None):
+      def min(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1208,7 +1235,7 @@ add_shift数据相加后，以INT64为中间结果保存，然后在INT64基础�
 * tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
 * shift：int型，表示移位的位数。
-* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
 * out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1254,7 +1281,7 @@ sub_shift数据相减后，以INT64为中间结果保存，然后在INT64基础�
 * tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
 * shift：int型，表示移位的位数。
-* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
 * out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'int16'/'int32'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1301,9 +1328,9 @@ mul_shift数据相乘后，以INT64为中间结果保存，然后在INT64基础�
 * tensor_i0：Tensor类型或Scalar、int，表示输入左操作Tensor或Scalar。
 * tensor_i1：Tensor类型或Scalar、int，表示输入右操作Tensor或Scalar。tensor_i0和tensor_i1至少有一个是Tensor。
 * shift：int型，表示移位的位数。
-* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，表示舍入模式。默认值为'half_away_from_zero'。取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * is_saturate：Bool型，表示结果是否需要饱和处理，默认饱和处理。
-* out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。当BM1684时，该参数应为None。
+* out_dtype：String或None，表示输出Tensor的数据类型，取默认值时则和tensor_i0的类型一致。可选参数为'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1325,7 +1352,7 @@ copy
 
     .. code-block:: python
 
-      def copy(tensor_i, out_name=None):
+        def copy(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -1355,7 +1382,7 @@ clamp
 
     .. code-block:: python
 
-      def clamp(tensor_i, min, max, out_name = None):
+      def clamp(input: Tensor, min: float, max: float, out_name: str = None):
           #pass
 
 功能描述
@@ -1367,8 +1394,8 @@ clamp
 参数说明
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor。
-* min：Scalar类型，表示阶段的下限。
-* max：Scalar类型，表示阶段的上限。
+* min：float类型，表示阶段的下限。
+* max：float类型，表示阶段的上限。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -1391,7 +1418,11 @@ gt
 
     .. code-block:: python
 
-      def gt(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+        def gt(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1426,7 +1457,11 @@ lt
 
     .. code-block:: python
 
-      def lt(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+      def lt(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1461,7 +1496,11 @@ ge
 
     .. code-block:: python
 
-      def ge(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+      def ge(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1496,7 +1535,11 @@ le
 
     .. code-block:: python
 
-      def le(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+      def le(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1531,7 +1574,11 @@ eq
 
     .. code-block:: python
 
-      def eq(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+      def eq(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1566,7 +1613,11 @@ ne
 
     .. code-block:: python
 
-      def ne(tensor_i0, tensor_i1, scale = None, zero_point = None, out_name = None):
+      def ne(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述

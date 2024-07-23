@@ -507,19 +507,25 @@ def custom(tensors_in: List[Tensor],
 
     return tensors_out
 
-def binary_dtype_check(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_dtype: str = None, sign: bool = False):
+def binary_dtype_check(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar],
+                       out_dtype: str = None, sign: bool = False, is_shift: bool = False):
+    assert isinstance(tensor_i0, Tensor) or isinstance(tensor_i1, Tensor)
     in0_dtype = tensor_i0.dtype if isinstance(tensor_i0, Tensor) else tensor_i1.dtype
     in1_dtype = tensor_i1.dtype if isinstance(tensor_i1, Tensor) else tensor_i0.dtype
+    support_dtype = ["float32", "float16", "int8", "uint8"]
+    if is_shift:
+        support_dtype = support_dtype[2:] + ["int16", "uint16", "int32", "uint32"] # no float type for shift op
+    assert not out_dtype or out_dtype in support_dtype
     if in0_dtype in ["float32", "float16"]:
         assert in0_dtype == in1_dtype
         out_dtype = in0_dtype if out_dtype == None else out_dtype
         assert in0_dtype == out_dtype
     elif in0_dtype.find("int") >= 0:
         assert in1_dtype.find("int") >= 0
-        out_dtype = "int32" if out_dtype == None else out_dtype
+        out_dtype = (in0_dtype if in0_dtype.startswith("int") else in1_dtype) if out_dtype == None else out_dtype
         assert out_dtype.find("int") >= 0
-        if sign:
-            assert out_dtype.find("uint") < 0
+        if sign and out_dtype.startswith("uint"):
+            out_dtype = out_dtype[1:] # has to be signed output
     return out_dtype
 
 def same_dtype_check(in0_dtype: str, in1_dtype: str = None, out_dtype: str = None):
@@ -1014,10 +1020,12 @@ def matmul_quant(input: Tensor,
 ############## Base Element Operator ###############
 def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], op_type: str,
         scale: List[float]=None, zero_point: List[int]=None, is_reverse : bool = None, out_dtype: str = None, out_name: str = None):
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype)
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, sign=(op_type=="top.Sub"))
     output = Tensor(dtype=o_dtype, name=out_name)
     if scale is not None:
+        assert len(scale) == 3
         zero_point = zero_point if zero_point is not None else [0, 0, 0]
+        assert len(zero_point) == 3
         if isinstance(tensor_i0, Tensor) or op_type != "top.Mul":
             tensor_i0 = tensor_i0 if isinstance(tensor_i0, Tensor) else Tensor(dtype=tensor_i0.dtype, shape=[1], data=np.array([tensor_i0.value]).astype(tensor_i0.dtype), ttype="coeff")
             tensor_i0.quantization(scale=scale[0], zero_point=zero_point[0])
@@ -1065,6 +1073,7 @@ def mul(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, Scalar, int, float],
         scale: List[float]=None, zero_point: List[int]=None, out_dtype: str = None, out_name: str = None):
     is_reverse = None if isinstance(tensor_i0, Tensor) else True
+    assert out_dtype != "uint8"
     return _base_binary(tensor_i0, tensor_i1, "top.Sub", scale, zero_point, is_reverse=is_reverse, out_dtype=out_dtype, out_name=out_name)
 
 @to_scalar(2)
@@ -1074,6 +1083,7 @@ def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_name: str = None):
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     output = Tensor([], dtype=o_dtype, name=out_name)
+    assert isinstance(tensor_i0, Tensor) or isinstance(tensor_i1, Tensor)
     if isinstance(tensor_i0, Tensor) and isinstance(tensor_i1, Tensor):
         TpuLang.insert_op("top.Div", [tensor_i0, tensor_i1], [output])
     else:
@@ -1108,7 +1118,7 @@ def __binary_shift(tensor_i0: Tensor, tensor_i1: Tensor, type: str, shift: int,
                    out_dtype: str, is_reverse: bool=None, saturation: bool=True,
                    round_mode: str='half_away_from_zero', out_name: str = None):
     assert type in ["Add", "Sub", "Mul"]
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype=out_dtype)
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype=out_dtype, sign=(type=="Sub"), is_shift=True)
     if out_name is None:
         out_name = generate_name(type)
     attr = {
@@ -1186,6 +1196,7 @@ def mul_shift(tensor_i0: Union[Tensor, Scalar, int], tensor_i1: Union[Tensor, Sc
 @annotation_check
 @assert_with_out_name
 def copy(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     if out_name is None:
         out_name = generate_name("copy")
     attr = {
@@ -1217,8 +1228,10 @@ def cast(tensor_i: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
-def clamp(input: Tensor, min:float, max:float, out_name: str = None):
+def clamp(input: Tensor, min: float, max: float, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    assert max >= min
     attr = {
         "min": Attr(min, data_type="float64"),
         "max": Attr(max, data_type="float64"),
@@ -2488,6 +2501,7 @@ def interpolate_v2(input: Tensor,
 def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     assert type in ["Greater", "Less", "GreaterOrEqual", "LessOrEqual", "Equal", "NotEqual"]
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    assert tensor_i0.dtype in ["float32", "float16", "int8", "uint8"]
     if out_name is None:
         out_name = generate_name(type)
     attr = {
@@ -2495,7 +2509,9 @@ def __compare(tensor_i0: Tensor, tensor_i1: Tensor, type: str, scale: List[float
     }
     output = Tensor(dtype=o_dtype, name=out_name)
     if scale != None:
+        assert len(scale) == 3
         zero_point = zero_point if zero_point is not None else [0, 0, 0]
+        assert len(zero_point) == 3
         assert len(scale) == 3 and len(zero_point) == 3
         assert scale[0] == scale[1] and zero_point[0] == zero_point[1]
         output.quantization(scale=scale[2], zero_point=zero_point[2])

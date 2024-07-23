@@ -560,7 +560,12 @@ The interface definition
 
     .. code-block:: python
 
-      def add(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def add(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -578,8 +583,8 @@ Explanation of parameters
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type.
-When the input is 'float'/'float16', the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
+Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is 'int8', the output defaults to 'int8' type). When the input is 'float32'/'float16', the output data type must be consistent with the input.
+
 
 Processor support
 """"""""""""""""""""""
@@ -595,7 +600,12 @@ The interface definition
 
     .. code-block:: python
 
-      def sub(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+        def sub(tensor_i0: Union[Tensor, Scalar, int, float],
+                tensor_i1: Union[Tensor, Scalar, int, float],
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_dtype: str = None,
+                out_name: str = None):
           #pass
 
 Description of the function
@@ -613,7 +623,7 @@ Explanation of parameters
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float'/'float16',
+Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float32'/'float16',
 the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output data type is 'int8'/'int16'/'int32'.
 
 Processor support
@@ -630,7 +640,12 @@ The interface definition
 
     .. code-block:: python
 
-      def mul(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def mul(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -649,8 +664,7 @@ Explanation of parameters
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type.
-When the input is 'float'/'float16', the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
+Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is 'int8', the output defaults to 'int8' type). When the input is 'float32'/'float16', the output data type must be consistent with the input.
 
 Processor support
 """"""""""""""""""""""
@@ -666,7 +680,9 @@ The interface definition
 
     .. code-block:: python
 
-      def div(tensor_i0, tensor_i1, out_name = None):
+      def div(tensor_i0: Union[Tensor, Scalar],
+            tensor_i1: Union[Tensor, Scalar],
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -700,7 +716,12 @@ The interface definition
 
     .. code-block:: python
 
-      def max(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def max(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -735,7 +756,12 @@ The interface definition
 
     .. code-block:: python
 
-      def min(tensor_i0, tensor_i1, out_dtype = None, out_name = None):
+      def min(tensor_i0: Union[Tensor, Scalar, int, float],
+            tensor_i1: Union[Tensor, Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_dtype: str = None,
+            out_name: str = None):
           #pass
 
 Description of the function
