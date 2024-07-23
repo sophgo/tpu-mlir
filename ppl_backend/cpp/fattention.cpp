@@ -31,9 +31,9 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
     block_k = 192;
     block_h = 32;
   } else {
-    block_m = 128;
-    block_k = 128;
-    block_h = 32;
+    block_m = 256;//128;
+    block_k = 256; //128;
+    block_h = 32; //32;
   }
 
   bool success = false;
@@ -60,7 +60,10 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
       break;
     } else if (ret == -1) {
       printf("local mem not enough, reduce block size");
-      assert(0);
+      //assert(0);
+      block_m -= 2;
+      block_k -= 2;
+      continue;
     } else {
       assert(0);
     }
