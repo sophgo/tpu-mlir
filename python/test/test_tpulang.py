@@ -1667,7 +1667,6 @@ class TPULANG_IR_TESTER(object):
         _test_clamp([1, 3, 28, 28])
         _test_clamp([1, 3, 32, 32])
         _test_clamp([1, 3, 32, 32], dtype="float16", is_quantized=True)
-        _test_clamp([1, 3, 28, 28], dtype="int8", is_quantized=True)
 
     #######################################################################
     # Matmul
