@@ -355,7 +355,7 @@ struct InValidReshapeMergePattern : public OpRewritePattern<ReshapeOp> {
         unsqueezeOp.replaceAllUsesWith(op.getInput());
         rewriter.eraseOp(nextOp);
       } else {
-        llvm_unreachable("not supported this situation!");
+        return failure();
       }
       // if (!isa<top::UnsqueezeOp>(nextOp)) {
       // }
