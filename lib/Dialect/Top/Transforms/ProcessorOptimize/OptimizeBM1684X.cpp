@@ -444,10 +444,13 @@ public:
     if (!unsqueeze_kv_right_op) {
       return failure();
     }
-    auto concat_kv_right_op = dyn_cast<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
-    if (!concat_kv_right_op) {
-      return failure();
-    }
+
+    Operation *concat_kv_right_op;
+    if(isa<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp()))
+      concat_kv_right_op = dyn_cast<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
+    else if(isa<top::ReshapeOp>(unsqueeze_kv_right_op.getInput().getDefiningOp()))
+      concat_kv_right_op = dyn_cast<top::ReshapeOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
+    else return failure();
     auto softmax_op = dyn_cast<top::SoftmaxOp>(reshape0_kv_left_op.getInput().getDefiningOp());
     if (!softmax_op) {
       return failure();
@@ -634,10 +637,10 @@ public:
         "shape", rewriter.getI64ArrayAttr(
                     {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]})));
     auto kv_right_reshape0_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_reshape0")),
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_reshape0")),
         RankedTensorType::get(
-            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]}, module::getElementType(concat_kv_right_op.getOutput())),
-        concat_kv_right_op.getOutput(), attrs);
+            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]}, module::getElementType(concat_kv_right_op->getResult(0))),
+        concat_kv_right_op->getResult(0), attrs);
 
     // UnsqueezeOp [1,16k,2,128] -> [1,16k,2,1,168]
     attrs.clear();
@@ -648,7 +651,7 @@ public:
         {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], 1, kv_right_shape[4]},
         module::getElementType(kv_right_reshape0_op.getOutput()));
     auto kv_right_unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_unsqueeze")),
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_unsqueeze")),
         kv_right_unsqueeze_type, kv_right_reshape0_op.getOutput(), attrs);
 
     // TileOp [1,16k,2,1,128] -> [1,16k,2,16,128]
@@ -659,7 +662,7 @@ public:
         {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[3], kv_right_shape[4]},
         module::getElementType(qk_right_unsqueeze_op.getOutput()));
     auto kv_right_tile_op = rewriter.create<top::TileOp>(
-      NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_tile")),
+      NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_tile")),
       kv_right_tile_type, ValueRange{kv_right_unsqueeze_op.getOutput()}, attrs);
 
     // ReshapeOp [1,16k,2,16,128] -> [1,16k,32,128]
@@ -668,10 +671,10 @@ public:
         "shape", rewriter.getI64ArrayAttr(
                     {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]})));
     auto kv_right_reshape1_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_reshape1")),
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_reshape1")),
         RankedTensorType::get(
             {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]},
-            module::getElementType(concat_kv_right_op.getOutput())),
+            module::getElementType(concat_kv_right_op->getResult(0))),
             kv_right_tile_op.getOutput(), attrs);
 
     // PermuteOp [1,16k,32,128] -> [1,32,16k,128]
@@ -681,9 +684,9 @@ public:
                      {0, 2, 1, 3})));
     auto kv_right_permute_type = RankedTensorType::get(
         {kv_right_shape[1], kv_right_shape[2] * kv_right_shape[3], kv_right_shape[0], kv_right_shape[4]},
-        module::getElementType(concat_kv_right_op.getOutput()));
+        module::getElementType(concat_kv_right_op->getResult(0)));
     auto kv_right_permute_op = rewriter.create<top::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op.getOperation()).str() + "_permute")),
+        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_permute")),
         kv_right_permute_type, kv_right_reshape1_op.getOutput(), attrs);
 
     // MatMulOp [(1,32,16k,16k),(1,32,16k,128)] -> [1,32,16k,128]
