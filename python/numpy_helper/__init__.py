@@ -36,28 +36,49 @@ def get_npz_shape(args):
 def npz_rename(args):
     if len(args) < 2:
         print("Usage: {} rename in.npz name1 name2".format(sys.argv[0]))
+        print("       Rename array name `name1` in in.npz to `name2`")
         exit(-1)
     npz_in = np.load(args[0])
+    old_name = args[1]
+    new_name = args[2]
+    d = npz_in[old_name]
     npz_out = {}
-    d = npz_in[args[1]]
-    npz_out[args[2]] = d
+    npz_out.update(npz_in)
+    npz_out.pop(old_name)
+    npz_out[new_name] = d
     np.savez(args[0], **npz_out)
 
 def npz_extract(args):
     if len(args) < 3:
         print("Usage: {} extract in.npz out.npz arr1,arr2,arr3".format(sys.argv[0]))
+        print("       Extract arrays `arr1`,`arr2`,`arr3` in in.npz and save them into output.npz")
         exit(-1)
     npz_in = np.load(args[0])
     npz_out = {}
     for s in args[2].split(','):
-        print(s)
+        print("extract", s)
         d = npz_in[s]
         npz_out[s] = d
     np.savez(args[1], **npz_out)
 
+def npz_remove(args):
+    if len(args) < 2:
+        print("Usage: {} remove in.npz arr1,arr2".format(sys.argv[0]))
+        print("       Remove arrays `arr1`,`arr2` in in.npz")
+        exit(-1)
+    file = args[0]
+    npz_in = np.load(file)
+    npz_out = {}
+    npz_out.update(npz_in)
+    for s in args[1].split(','):
+        print("remove", s)
+        npz_out.pop(s)
+    np.savez(file, **npz_out)
+
 def npz_merge(args):
     if len(args) < 3:
         print("Usage: {} merge a.npz b.npz output.npz".format(sys.argv[0]))
+        print("       Collect arrays in a.npz and b.npz and save them into output.npz")
         exit(-1)
     num = len(args)
     npz_out = {}
@@ -65,6 +86,17 @@ def npz_merge(args):
         data = np.load(args[i])
         npz_out.update(data)
     np.savez(args[num-1], **npz_out)
+
+def npz_insert(args):
+    if len(args) < 2:
+        print("Usage: {} insert a.npz output.npz".format(sys.argv[0]))
+        print("       Insert arrays in a.npz into output.npz")
+        exit(-1)
+    npz_out = {}
+    for i in range(2):
+        data = np.load(args[i])
+        npz_out.update(data)
+    np.savez(args[1], **npz_out)
 
 def npz_to_bin(args):
     if len(args) < 3:
@@ -125,6 +157,19 @@ def npz_bf16_to_fp32(args):
 
     np.savez(args[1], **npz_out)
 
+def npz_reshape(args):
+    if len(args) < 2:
+        print("Usage: {} reshape in.npz arr shape".format(sys.argv[0]))
+        print("       Reshape array `arr` in a.npz as `shape`, where shape should be of form e.g.'4,5,1'")
+        exit(-1)
+    npz_in = np.load(args[0])
+    name = args[1]
+    shape = [int(x) for x in args[2].split(',')]
+    d = npz_in[name].reshape(shape)
+    npz_out = {}
+    npz_out.update(npz_in)
+    npz_out[name] = d
+    np.savez(args[0], **npz_out)
 
 def npz_transpose(args):
     if len(args) < 3:

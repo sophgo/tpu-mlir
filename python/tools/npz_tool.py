@@ -14,8 +14,11 @@ npz_tool_func = {
     "visualize_diff": npz_visualize_diff,
     'dump':npz_dump,
     "extract": npz_extract,
+    "remove": npz_remove,
+    "insert": npz_insert,
     "merge": npz_merge,
     "rename": npz_rename,
+    "reshape": npz_reshape,
     "bf16_to_fp32": npz_bf16_to_fp32,
     "tranpose": npz_transpose,
     "get_shape": get_npz_shape,
@@ -29,7 +32,12 @@ npz_tool_func = {
 def main():
     args_list = sys.argv
     if len(args_list) < 2:
-        print("Usage: {} {} ".format(args_list[0], npz_tool_func.keys()))
+        funcs = npz_tool_func.keys()
+        funcs_str = "["
+        for idx, key in enumerate(npz_tool_func.keys()):
+            funcs_str += key + ("|" if idx != len(funcs)-1 else '')
+        funcs_str += "]"
+        print(f"Usage: {args_list[0]} " + funcs_str + " ...")
         exit(-1)
 
     def NoneAndRaise(func):
