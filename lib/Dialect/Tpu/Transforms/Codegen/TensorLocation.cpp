@@ -283,7 +283,8 @@ int getSubNetId(Operation *op) {
 }
 
 void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
-                                    const json::Array &results) {
+                                    const json::Array &results,
+                                    const json::Array &buffers) {
   int64_t line_num = -1; // unknown location
   int core_id = 0;
   if (auto multiCore = dyn_cast<MultiCoreInterface>(BM168x::instance())) {
@@ -294,19 +295,23 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
     line_num = it->second.first;
   }
   int subnet_id = getSubNetId(op);
+  const bool is_local = isa<tpu::GroupOp>(op->getParentOp());
+  const bool is_ld_st = isa<tpu::LoadOp, tpu::StoreOp>(op);
+  const bool is_loc_tiu = is_local && (!is_ld_st);
 
   J.object([&] {
     J.attribute("file-line", line_num);
     J.attribute("subnet_id", subnet_id);
     J.attribute("core_id", core_id);
     J.attribute("opcode", op->getName().getStringRef());
+    J.attribute("is_local", is_local);
     J.attributeArray("tiu_dma_id(before)", [&] {
       J.value(cmd_before[0]);
       J.value(cmd_before[1]);
     });
     J.attributeArray("tiu_dma_id(after)", [&] {
-      J.value((*BM168x::instance()).get_total_id("tiu:0:0"));
-      J.value((*BM168x::instance()).get_total_id("gdma:0:0"));
+      J.value(is_ld_st ? ((int*)((*BM168x::instance())->gdma_node))[0] : (*BM168x::instance()).get_total_id("tiu:0:0"));
+      J.value(is_loc_tiu ? ((int*)((*BM168x::instance())->bdc_node))[1] : (*BM168x::instance()).get_total_id("gdma:0:0"));
     });
     J.attributeArray("operands", [&] {
       for (auto &v : operands)
@@ -314,6 +319,10 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
     });
     J.attributeArray("results", [&] {
       for (auto &v : results)
+        J.value(v);
+    });
+    J.attributeArray("buffers", [&] {
+      for (auto &v : buffers)
         J.value(v);
     });
   });
@@ -330,7 +339,7 @@ void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
                              .w_step = w_step,
                              .c_step = c_step};
 
-  json::Array operands, results;
+  json::Array operands, results, buffers;
 
   for (auto &v : op->getOpOperands()) {
     if (module::isNone(v.get()))
@@ -338,18 +347,25 @@ void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
     else
       operands.push_back(record_tensor(&v, slice_i, group_type));
   }
-
   for (auto v : op->getResults()) {
     if (module::isNone(v)) {
       results.push_back(json::Object());
     } else
       results.push_back(record_tensor(v, slice_i, group_type));
   }
-  record_loc(op, operands, results);
+  auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                     .cast<tpu::LayerGroupAttr>();
+  int buffer_size = g_param.getBufferSize();
+  if (buffer_size > 0) {
+    int buffer_addr = g_param.getBufferAddr();
+    buffers.push_back(json::Object{{"address", buffer_addr}, {"size", buffer_size}});
+  }
+
+  record_loc(op, operands, results, buffers);
 }
 
 void TensorLocationImpl::after_codegen_global(Operation *op) {
-  json::Array operands, results;
+  json::Array operands, results, buffers;
 
   for (auto v : op->getOperands()) {
     if (module::isNone(v)) {
@@ -361,10 +377,16 @@ void TensorLocationImpl::after_codegen_global(Operation *op) {
   for (auto v : op->getResults()) {
     if (module::isNone(v)) {
       results.push_back(json::Object());
-    } else
-      results.push_back(record_tensor(v, GROUP_NORMAL));
+    } else {
+      if (!module::isGlobalBuffer(v)) {
+        results.push_back(record_tensor(v, GROUP_NORMAL));
+      } else {
+        buffers.push_back(json::Object{{"address", module::getAddress(v)},
+                                       {"size", module::getBytes(v)}});
+      }
+    }
   }
-  record_loc(op, operands, results);
+  record_loc(op, operands, results, buffers);
 }
 
 } // namespace mlir

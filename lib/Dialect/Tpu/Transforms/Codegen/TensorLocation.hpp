@@ -46,9 +46,10 @@ public:
   }
   ~TensorLocationImpl() { J.arrayEnd(); }
 
-  template <typename... Args> void before_codegen_local(Args...) {
-    cmd_before[0] = (*BM168x::instance()).get_total_id("tiu:0:0");
-    cmd_before[1] = (*BM168x::instance()).get_total_id("gdma:0:0");
+  template <typename... Args> void before_codegen_local(Operation *op, Args...) {
+    const bool is_ld_st = isa<tpu::LoadOp, tpu::StoreOp>(op);
+    cmd_before[0] = is_ld_st ? ((int*)((*BM168x::instance())->gdma_node))[0] : (*BM168x::instance()).get_total_id("tiu:0:0");
+    cmd_before[1] = is_ld_st ? (*BM168x::instance()).get_total_id("gdma:0:0") : ((int*)((*BM168x::instance())->bdc_node))[1];
   };
 
   void after_codegen_local(Operation *op, int64_t n_step, int64_t c_step,
@@ -65,7 +66,8 @@ public:
 
 protected:
   void record_loc(Operation *op, const json::Array &operands,
-                  const json::Array &results);
+                  const json::Array &results,
+                  const json::Array &buffers);
 
 private:
   uint64_t cmd_before[2];
