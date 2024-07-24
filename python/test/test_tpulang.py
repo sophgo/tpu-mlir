@@ -124,6 +124,7 @@ class TPULANG_IR_TESTER(object):
             "Lt": (self.test_Lt,                        Y, Y),
             "Lts": (self.test_Lts,                      Y, Y),
             "Lut": (self.test_Lut,                      Y, Y),
+            "LayerNorm":(self.test_LayerNorm,           Y, Y),
             "MatMul": (self.test_MatMul,                Y, Y),
             "Max": (self.test_Max,                      Y, Y),
             "Maxpool": (self.test_Maxpool,              Y, Y),
@@ -2963,6 +2964,21 @@ class TPULANG_IR_TESTER(object):
     #######################################################################
     # rmsnorm
     # ------------
+    def test_LayerNorm(self, case_name):
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, dtype='float32', axis=-1):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            norm_shape = [1]
+            for tmp_shape in in_shape[axis:]:
+                norm_shape[0] *= tmp_shape
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            gamma = self.coeff_tensor(shape=norm_shape, dtype=dtype)
+            beta = self.coeff_tensor(shape=norm_shape, dtype=dtype)
+
+            out = tpul.layer_norm(x, gamma, beta, axis=axis)
+            self.compile_and_check(self.unique_name(case_name), [x], [out])
+
+        _test_model_def([20, 5, 10, 10,10], axis=2)
 
     def test_RMSNorm(self, case_name):
         """rms_norm"""
