@@ -1981,6 +1981,82 @@ public:
   }
 };
 
+// concat 6([1,1,64,320,320]) + reducesum([6,1,64,320,320], keepdims=false) -> 5 add [1,1,64,320,320] + mulconst + reshape
+// concat is inplace_op, but reduce performance is low
+class ConcatReduceSum2AddDiv
+    : public OpRewritePattern<top::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input = op.getInput();
+    auto mode = op.getMode();
+    auto axes = module::getI64Array(op.getAxes());
+    auto input_shape = module::getShape(input);
+    // TODO : performance may decline after rewriting
+    if (mode != "ReduceSum" || input_shape.size() != 5 || axes->size() != 1 || axes->at(0) != 0)
+      return failure();
+    auto concat_op =
+        dyn_cast<top::ConcatOp>(op.getInput().getDefiningOp());
+    if (!concat_op || !concat_op->hasOneUse())
+      return failure();
+    int concat_input_num = concat_op.getInputs().size();
+
+    auto add_loc = NameLoc::get(
+        rewriter.getStringAttr(module::getName(op.getOperation()).str() +
+                               "_add_" + std::to_string(0)));
+    auto add_op = rewriter.create<top::AddOp>(
+        add_loc, op.getOutput().getType(),
+        mlir::ValueRange{concat_op.getInputs()[0], concat_op.getInputs()[1]});
+    module::setShape(add_op->getResult(0), module::getShape(concat_op.getInputs()[0]));
+    for (int add_idx = 1; add_idx < concat_input_num - 1; add_idx++) {
+      // if(operands[i+1].getDefiningOp()->getLoc() > add_op->getLoc())
+      //   insertpoint = operands[1];
+      // rewriter.setInsertionPointAfterValue(add_op);
+      add_loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(op.getOperation()).str() +
+                                 "_add_" + std::to_string(add_idx)));
+      add_op = rewriter.create<top::AddOp>(
+          add_loc, op.getOutput().getType(),
+          mlir::ValueRange{add_op.getOutput(), concat_op.getInputs()[add_idx+1]});
+      module::setShape(add_op->getResult(0), module::getShape(concat_op.getInputs()[0]));
+    }
+
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(
+          rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1/concat_input_num)));
+    auto mulconst_loc = NameLoc::get(
+        rewriter.getStringAttr(module::getName(op.getOperation()).str() +
+                                 "_mul"));
+    auto mulconst_op = rewriter.create<top::MulConstOp>(
+        mulconst_loc, op.getOutput().getType(),
+        mlir::ValueRange{add_op.getOutput()},attrs);
+    module::setShape(mulconst_op->getResult(0), module::getShape(add_op.getOutput()));
+
+    if(!op.getKeepdims()){
+      auto mulconst_shape = module::getShape(mulconst_op->getResult(0));
+      attrs.clear();
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "shape",
+          rewriter.getI64ArrayAttr({mulconst_shape[1], mulconst_shape[2],mulconst_shape[3],mulconst_shape[4]})));
+      auto mulconst_reshape_op = rewriter.create<top::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(mulconst_op.getOutput())
+                  .str() +
+              "_reshape")),
+          RankedTensorType::get(
+              {mulconst_shape[1], mulconst_shape[2],mulconst_shape[3],mulconst_shape[4]},
+              module::getElementType(mulconst_op.getOutput())),
+          mulconst_op.getOutput(), attrs);
+      rewriter.replaceAllUsesWith(op, mulconst_reshape_op->getResult(0));
+      return success();
+    }
+
+    rewriter.replaceAllUsesWith(op, mulconst_op->getResult(0));
+    return success();
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -1992,7 +2068,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             ConvertMatMulWithRightTranspose, ConvertMatMul2Attention,
             ReshapeReorderPattern, ConvertMultiInputAdd, WhereBroadcastToTile,
             ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
-            ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd>(
+            ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddDiv>(
           patterns->getContext(), 8);
 }
 } // namespace top
