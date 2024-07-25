@@ -211,6 +211,175 @@ struct ReduceToRPoolPattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
+struct ReduceSumToConvPattern : public OpRewritePattern<ReduceOp> {
+
+  using OpRewritePattern::OpRewritePattern;
+  ReduceSumToConvPattern(MLIRContext *context, PatternBenefit benefit = 10)
+      : OpRewritePattern<ReduceOp>(context, benefit) {}
+
+  void reduceSumPerAxis(ReduceOp op, PatternRewriter &rewriter,
+                                 int64_t axis) const {
+    std::string op_name = module::getName(op.getResult()).str();
+    auto iShape = module::getShape(op.getInput());
+
+    std::vector<Value> operands;
+    std::vector<NamedAttribute> attrs;
+
+    auto createConvAttrs = [&](int64_t kernel_h, int64_t kernel_w) {
+        attrs.clear();
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "kernel_shape", rewriter.getI64ArrayAttr({kernel_h, kernel_w})));
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "strides", rewriter.getI64ArrayAttr({1, 1})));
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "group", rewriter.getI64IntegerAttr(1)));
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "do_relu", rewriter.getBoolAttr(false)));
+    };
+
+    auto createWeightOp = [&](std::vector<int64_t> shape, float value, PatternRewriter &rewriter, ReduceOp op, std::string name) {
+        int64_t wSize = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+        std::vector<float> newWeightVec(wSize, value);
+        auto weight_type = RankedTensorType::get(shape, rewriter.getF32Type());
+        return top::WeightOp::create(op, name, newWeightVec, weight_type);
+    };
+
+    auto createConv2dOp = [&](std::vector<int64_t> output_shape, PatternRewriter &rewriter, ReduceOp op, std::string name) {
+        auto loc = NameLoc::get(rewriter.getStringAttr(name));
+        auto out_type = module::getElementType(op.getOutput());
+        auto convOp_type =
+            RankedTensorType::get(output_shape, out_type);
+        return rewriter.create<top::ConvOp>(loc, convOp_type, operands, attrs);
+    };
+
+    switch (axis) {
+    case 1: {
+      int64_t ic = iShape[1];
+
+      createConvAttrs(1, 1);
+      operands.clear();
+      operands.emplace_back(op.getInput());
+      operands.emplace_back(createWeightOp({1, ic, 1, 1}, 1, rewriter, op, op_name + "_c_dirrection_weight"));
+      operands.emplace_back(createWeightOp({1}, 0, rewriter, op, op_name + "_c_dirrection_bias"));
+
+      rewriter.replaceOpWithNewOp<top::ConvOp>(op, op.getResult().getType(), operands, attrs);
+      break;
+    }
+    case 2: {
+      int64_t ic = iShape[1];
+      int64_t h = iShape[2];
+
+      createConvAttrs(h, 1);
+      operands.clear();
+      operands.emplace_back(op.getInput());
+      operands.emplace_back(createWeightOp({ic, ic, h, 1}, 1.0 / ic, rewriter, op, op_name + "_h_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_h_dirrection_bias"));
+
+      rewriter.replaceOpWithNewOp<top::ConvOp>(op, op.getResult().getType(), operands, attrs);
+
+      break;
+    }
+    case 3: {
+      int64_t ic = iShape[1];
+      int64_t w = iShape[3];
+
+      createConvAttrs(1, w);
+      operands.clear();
+      operands.emplace_back(op.getInput());
+      operands.emplace_back(createWeightOp({ic, ic, 1, w}, 1.0 / ic, rewriter, op, op_name + "_w_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_w_dirrection_bias"));
+
+      rewriter.replaceOpWithNewOp<top::ConvOp>(op, op.getResult().getType(), operands, attrs);
+
+      break;
+    }
+    case 5: {
+      int64_t batch = iShape[0];
+      int64_t ic = iShape[1];
+      int64_t h = iShape[2];
+      int64_t w = iShape[3];
+
+      createConvAttrs(h, 1);
+      operands.clear();
+      operands.emplace_back(op.getInput());
+      operands.emplace_back(createWeightOp({ic, ic, h, 1}, 1.0 / ic, rewriter, op, op_name + "_h_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_h_dirrection_bias"));
+
+      auto convOp2 = createConv2dOp({batch, ic, 1, w}, rewriter, op, op_name + "_axis_h");
+      auto conv2_out = convOp2.getResult();
+      rewriter.setInsertionPointAfterValue(conv2_out);
+
+      createConvAttrs(1, w);
+      operands.clear();
+      operands.emplace_back(conv2_out);
+      operands.emplace_back(createWeightOp({ic, ic, 1, w}, 1.0 / ic, rewriter, op, op_name + "_w_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_w_dirrection_bias"));
+
+      rewriter.replaceOpWithNewOp<top::ConvOp>(op, op.getResult().getType(), operands, attrs);
+
+      break;
+    }
+    case 6: {
+      int64_t batch = iShape[0];
+      int64_t ic = iShape[1];
+      int64_t h = iShape[2];
+      int64_t w = iShape[3];
+
+      createConvAttrs(h, 1);
+      operands.clear();
+      operands.emplace_back(op.getInput());
+      operands.emplace_back(createWeightOp({ic, ic, h, 1}, 1.0 / ic, rewriter, op, op_name + "_h_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_h_dirrection_bias"));
+
+      auto convOp2 = createConv2dOp({batch, ic, 1, w}, rewriter, op, op_name + "_axis_h");
+      auto conv2_out = convOp2.getResult();
+      rewriter.setInsertionPointAfterValue(conv2_out);
+
+      createConvAttrs(1, w);
+      operands.clear();
+      operands.emplace_back(conv2_out);
+      operands.emplace_back(createWeightOp({ic, ic, 1, w}, 1.0 / ic, rewriter, op, op_name + "_w_dirrection_weight"));
+      operands.emplace_back(createWeightOp({ic}, 0, rewriter, op, op_name + "_w_dirrection_bias"));
+
+      auto convOp3 = createConv2dOp({batch, ic, 1, 1}, rewriter, op, op_name + "_axis_w");
+      auto conv3_out = convOp3.getResult();
+      rewriter.setInsertionPointAfterValue(conv3_out);
+
+      createConvAttrs(1, 1);
+      operands.clear();
+      operands.emplace_back(conv3_out);
+      operands.emplace_back(createWeightOp({1, ic, 1, 1}, 1, rewriter, op, op_name + "_c_dirrection_weight"));
+      operands.emplace_back(createWeightOp({1}, 0, rewriter, op, op_name + "_c_dirrection_bias"));
+
+      rewriter.replaceOpWithNewOp<top::ConvOp>(op, op.getResult().getType(), operands, attrs);
+
+      break;
+    }
+    default:
+      break;
+    }
+  }
+
+  LogicalResult matchAndRewrite(ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto mode = op.getMode().str();
+    auto axes = module::getI64Array(op.getAxes());
+    if ((mode == "ReduceSum")) {
+      int64_t axis_sum = 0;
+      for (int i = 0; i < axes->size(); ++i) {
+        int64_t axis = static_cast<int64_t>(axes->at(i));
+        axis_sum += axis;
+      }
+      reduceSumPerAxis(op, rewriter, axis_sum);
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
 struct ReduceDiscontinuousPattern : public OpRewritePattern<ReduceOp> {
   using OpRewritePattern::OpRewritePattern;
   ReduceDiscontinuousPattern(MLIRContext *context, PatternBenefit benefit = 7)
@@ -257,7 +426,7 @@ struct ReduceDiscontinuousPattern : public OpRewritePattern<ReduceOp> {
 
 void ReduceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results
-      .insert<ReduceToReshapePattern, ReduceToRPoolPattern, TopReduceTranspose,
-              ReduceFusePattern, ReduceDiscontinuousPattern>(context);
+  results.insert<ReduceToReshapePattern, ReduceToRPoolPattern,
+                 TopReduceTranspose, ReduceFusePattern,
+                 ReduceDiscontinuousPattern, ReduceSumToConvPattern>(context);
 }
