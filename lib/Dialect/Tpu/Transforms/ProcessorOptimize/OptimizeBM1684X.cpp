@@ -26,10 +26,13 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
-
-    //  if (module::isAsymmetric()) {
-    //    return failure();
-    //  }
+    auto _nextOp_ = *op.getOperation()->getResult(0).user_begin();
+    if (_nextOp_ && isa<tpu::RequantIntAxisOp>(_nextOp_)) { // First do MatMulRequantIntFusion and then do MatMulHdimBatchPattern
+      auto RequantIntAxis_Op = dyn_cast<tpu::RequantIntAxisOp>(_nextOp_);
+      auto Fuse_Rq_Axis = RequantIntAxis_Op.getFuseRqAxis();
+      if (Fuse_Rq_Axis)
+        return failure();
+    }
 
     // 1. Define Left and Right
     auto left = op.getInput();
@@ -3919,8 +3922,6 @@ struct GridSamplerFusePattern : public OpRewritePattern<tpu::GridSamplerOp> {
   }
 };
 
-
-
 // MatMul  +  RequantIntAxis ->  MatMul
 class MatMulRequantIntFusion : public OpRewritePattern<tpu::MatMulOp> {
 public:
@@ -3928,26 +3929,25 @@ public:
 
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
-    if(!module::isBM1684X()) failure();
 
-    if (!op->hasOneUse()) {
+    if (!module::isBM1684X() || !op->hasOneUse()) {
       return failure();
     }
 
     auto nextOp = *op.getOutput().user_begin();
-    if (!isa<tpu::RequantIntAxisOp>(nextOp)) {
+    if (!isa<tpu::RequantIntAxisOp>(nextOp))
       return failure();
-    }
 
     auto requantIntAxisOp = dyn_cast<tpu::RequantIntAxisOp>(nextOp);
     bool fuse_rq_axis = requantIntAxisOp.getFuseRqAxis();
-    if(!fuse_rq_axis) return failure();
+    if (!fuse_rq_axis)
+      return failure();
+
     auto shape = module::getShape(requantIntAxisOp.getOutput());
     auto quantValueOp =
         requantIntAxisOp.getQuant().getDefiningOp<top::WeightOp>();
     auto quantDataPtr = quantValueOp.read<int32_t>();
     auto &quantData = *quantDataPtr;
-
 
     int channels = shape[shape.size() - 1];
     std::vector<int64_t> new_multi0(channels);
@@ -3962,9 +3962,12 @@ public:
     std::vector<int32_t> reshaped_multi0(channels);
     std::copy(new_multi0.begin(), new_multi0.end(), reshaped_multi0.begin());
     std::vector<int64_t> multi_shape = {1, channels};
-    multi_shape.insert(multi_shape.begin(), shape.size() -  multi_shape.size(), 1);
-    auto multi_type = mlir::RankedTensorType::get(multi_shape, rewriter.getIntegerType(32, true));
-    auto weight_op = top::WeightOp::create(op, "i32", reshaped_multi0, multi_type);
+    multi_shape.insert(multi_shape.begin(), shape.size() - multi_shape.size(),
+                       1);
+    auto multi_type = mlir::RankedTensorType::get(
+        multi_shape, rewriter.getIntegerType(32, true));
+    auto weight_op =
+        top::WeightOp::create(op, "i32", reshaped_multi0, multi_type);
 
     std::vector<mlir::Value> operands(op.getOperands().begin(),
                                       op.getOperands().end());
