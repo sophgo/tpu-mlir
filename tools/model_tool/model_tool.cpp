@@ -7,11 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <fstream>
-#include <iostream>
-#include <string>
 #include "bm_tool.hpp"
 #include "cv_tool.hpp"
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 using namespace std;
 
@@ -27,6 +29,8 @@ static void usage(void) {
        << "      --print model_file : show detailed model info" << endl
        << "      --weight model_file : show model weight info" << endl
        << "      --update_weight dst_model dst_net dst_offset src_model src_net src_offset" << endl
+       << "      --encrypt -model model_file -net net_name -lib lib_path -o out_file" << endl
+       << "      --decrypt -model model_file -lib lib_path -o out_file" << endl
        << "      --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
@@ -127,6 +131,127 @@ static void update_weight(int argc, char **argv) {
   printf("update success\n");
 }
 
+static void encrypt_or_decrypt_bmodel(ModelGen &model_gen,
+                                      shared_ptr<ModelCtx> &model_ctx,
+                                      const std::vector<string> &net_names,
+                                      bool is_encrypt) {
+  // add basic info
+  model_gen.AddChip(model_ctx->model()->chip()->str());
+  model_gen.AddNumDevice(model_ctx->model()->device_num());
+  auto p_kernel = model_ctx->model()->kernel_module();
+  if (p_kernel != nullptr) {
+    auto name = p_kernel->file_name()->str();
+    auto binary = *p_kernel->binary();
+    model_gen.AddKernelModule(name, binary);
+  }
+  auto p_cpuop = model_ctx->model()->cpuop_module();
+  if (p_cpuop != nullptr) {
+    auto name = p_cpuop->file_name()->str();
+    auto binary = *p_cpuop->binary();
+    model_gen.AddCpuModule(name, binary);
+  }
+  // add net info
+  auto &builder = model_gen.Builder();
+  auto model = model_ctx->model();
+  for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
+    auto net = model->net()->Get(net_idx);
+    if (net->parameter() == NULL || net->parameter()->size() == 0) {
+      continue;
+    }
+    auto net_name = net->name()->str();
+    auto netT = net->UnPack();
+    for (auto &p : netT->parameter) {
+      auto binary = p->coeff_mem->binary_coeff.get();
+      Binary new_binary;
+      if (p->coeff_mem->encrypt_mode == 0) {
+        uint8_t *buffer = new uint8_t[binary->size()];
+        model_ctx->read_binary(binary, buffer);
+        if (is_encrypt && std::find(net_names.begin(), net_names.end(),
+                                    net_name) != net_names.end()) {
+          uint64_t en_size = 0;
+          auto en_buffer = model_gen.Encrypt(buffer, binary->size(), &en_size);
+          new_binary = model_gen.WriteBinary(en_size, en_buffer);
+          p->coeff_mem->encrypt_mode = 1;
+          free(en_buffer);
+        } else {
+          new_binary = model_gen.WriteBinary(binary->size(), buffer);
+        }
+      } else if (is_encrypt == false) {
+        uint64_t de_size = 0;
+        auto de_buffer = model_ctx->read_binary_with_decrypt(binary, &de_size);
+        new_binary = model_gen.WriteBinary(de_size, de_buffer);
+        free(de_buffer);
+      } else {
+        FATAL("Can't encrypt for bmodel has encrypted");
+      }
+      p->coeff_mem->binary_coeff->mutate_start(new_binary.start());
+      p->coeff_mem->binary_coeff->mutate_size(new_binary.size());
+    }
+    auto net_offset = Net::Pack(builder, netT);
+    model_gen.AddNet(net_offset);
+    delete netT;
+  }
+  model_gen.Finish();
+  update_model(model_gen, *model_ctx, true);
+}
+
+static void encrypt(int argc, char **argv) {
+  if (argc != 10 || 0 != strcmp(argv[2], "-model") ||
+      0 != strcmp(argv[4], "-net") || 0 != strcmp(argv[6], "-lib") ||
+      0 != strcmp(argv[8], "-o")) {
+    FATAL("parameters are not correct");
+  }
+  string model_path = argv[3];
+  auto net_strs = argv[5];
+  auto lib_path = argv[7];
+  string out_file = argv[9];
+  std::cout << model_path << std::endl;
+
+  // open src model
+  auto model_ctx = make_shared<ModelCtx>(model_path);
+  if (model_ctx == NULL || !(*model_ctx)) {
+    FATAL("file[%s] is not correct", model_path.c_str());
+  }
+
+  std::istringstream ss(net_strs);
+  std::string net_name;
+  std::vector<std::string> net_names;
+
+  while (std::getline(ss, net_name, ',')) {
+    net_names.push_back(net_name);
+  }
+  ModelGen model_gen(0x1000000, lib_path);
+  encrypt_or_decrypt_bmodel(model_gen, model_ctx, net_names, true);
+
+  std::cout << "save encrypted model" << std::endl;
+  model_gen.SaveEncrypt(out_file);
+  printf("encrypt success\n");
+}
+
+static void decrypt(int argc, char **argv) {
+  if (argc != 8 || 0 != strcmp(argv[2], "-model") ||
+      0 != strcmp(argv[4], "-lib") || 0 != strcmp(argv[6], "-o")) {
+    FATAL("parameters are not correct");
+  }
+  string model_path = argv[3];
+  auto lib_path = argv[5];
+  string out_file = argv[7];
+  std::cout << model_path << std::endl;
+
+  // open src model
+  auto model_ctx = make_shared<ModelCtx>(model_path, lib_path);
+  if (model_ctx == NULL || !(*model_ctx)) {
+    FATAL("file[%s] is not correct", model_path.c_str());
+  }
+
+  // decrypt coeff
+  std::vector<std::string> net_names;
+  ModelGen model_gen;
+  encrypt_or_decrypt_bmodel(model_gen, model_ctx, net_names, false);
+  model_gen.Save(out_file);
+  printf("decrypt success\n");
+}
+
 static void show_dynamic(const string &filename) {
   if (isCv18xx(filename)) {
     cout << "cv18xx not supported!" << endl;
@@ -172,9 +297,9 @@ static void combine(int argc, char **argv) {
 }
 
 static void update_kernel(ModelGen &model_gen,
-                          shared_ptr<MODEL_CTX_T> &model_info, bool kernel_remove,
-                          uint8_t *module_binary = nullptr, size_t binary_size = 0,
-                          string module_name = "") {
+                          shared_ptr<MODEL_CTX_T> &model_info,
+                          bool kernel_remove, uint8_t *module_binary = nullptr,
+                          size_t binary_size = 0, string module_name = "") {
   model_gen.AddChip(model_info->model_ctx->model()->chip()->str());
   model_gen.AddNumDevice(model_info->model_ctx->model()->device_num());
   auto &builder = model_gen.Builder();
@@ -200,7 +325,7 @@ static void update_kernel(ModelGen &model_gen,
       model_info->net_index_v.push_back(net_idx);
     }
   }
-  if(!kernel_remove){
+  if (!kernel_remove) {
     auto kernel_module = model_gen.WriteBinary(binary_size, module_binary);
     model_gen.AddKernelModule(module_name, kernel_module);
   }
@@ -342,6 +467,10 @@ int main(int argc, char **argv) {
     show_weight(argv[2]);
   } else if (cmd == "--update_weight") {
     update_weight(argc, argv);
+  } else if (cmd == "--encrypt") {
+    encrypt(argc, argv);
+  } else if (cmd == "--decrypt") {
+    decrypt(argc, argv);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
   } else if (cmd == "--is_dynamic") {

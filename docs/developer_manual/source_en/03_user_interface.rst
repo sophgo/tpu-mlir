@@ -970,3 +970,22 @@ Example:
 
 
 The model weights can be updated. For example, if the weight of an operator of a certain model needs to be updated, compile the operator separately into bmodel, and then update its weight to the original model.
+
+
+6) model encryption and decryption
+
+Example:
+
+.. code-block:: shell
+
+   # -model specifies the combined or regular bmodel, -net specifies the network to be encrypted, -lib specifies the library implementing the encryption algorithm, -o specifies the name of the encrypted model output
+   $ model_tool --encrypt -model combine.bmodel -net block_0 -lib libcipher.so -o encrypted.bmodel
+   $ model_tool --decrypt -model encrypted.bmodel -lib libcipher.so -o decrypted.bmodel
+
+This can achieve the encryption of model weights, flatbuffer structured data, and headers.
+The encryption and decryption interfaces must be implemented in C style, not using C++. The interface specifications are as follows:
+
+.. code-block:: text
+
+  extern "C" uint8_t* encrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
+  extern "C" uint8_t* decrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);

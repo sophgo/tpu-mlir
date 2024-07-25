@@ -969,3 +969,21 @@ model_tool
    $ model_tool --update_weight dst.bmodel dst_net 0x1000 src.bmodel src_net 0x2000
 
 可以实现将模型权重进行更新。比如某个模型的某个算子权重需要更新，则将该算子单独编译成bmodel，然后将其权重更新到原始的模型中。
+
+6) 模型加密与解密
+
+执行参考如下:
+
+.. code-block:: shell
+
+   # -model输入combine后的模型或正常bmodel，-net输入要加密的网络，-lib实现具体的加密算法，-o输出加密后模型的名称
+   $ model_tool --encrypt -model combine.bmodel -net block_0 -lib libcipher.so -o encrypted.bmodel
+   $ model_tool --decrypt -model encrypted.bmodel -lib libcipher.so -o decrypted.bmodel
+
+可以实现将模型的权重、flatbuffer结构化数据、header都进行加密。
+加解密接口必须按照C风格来实现，不能使用C++，接口规定如下：
+
+.. code-block:: text
+
+  extern "C" uint8_t* encrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
+  extern "C" uint8_t* decrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);

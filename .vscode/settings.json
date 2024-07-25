@@ -104,7 +104,7 @@
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.clang_format_style": "LLVM",
     "[python]": {
-        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.defaultFormatter": "eeyore.yapf",
         "editor.tabSize": 4
     },
     "yapf.args": [
