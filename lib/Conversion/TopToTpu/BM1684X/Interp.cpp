@@ -97,7 +97,7 @@ void InterpLowering::LoweringF8(PatternRewriter &rewriter,
 
 void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::InterpOp op) const {
-  LoweringInterp(rewriter, op, op.getOutput().getType());
+     LoweringInterp(rewriter, op, rewriter.getF16Type());
 }
 
 } // namespace bm1684x
