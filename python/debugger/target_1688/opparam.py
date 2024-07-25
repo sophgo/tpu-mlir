@@ -619,7 +619,7 @@ def sPorD_converter(context: "BM1688Context", reg: sPorD_reg):
     )
 
     opd5 = dict(
-        address=0,
+        address=tgcr.getter(6),
         dtype=DType.si32,
         shape=(1, c, 1, 2),
         layout=Layout.compact,
@@ -931,8 +931,8 @@ def SYS_TR_ACC_converter(context: "BM1688Context", reg):
     des_imm1_h32 = int(des_imm1[0:32], 2)
     des_imm1_l32 = int(des_imm1[32:64], 2)
     tgcr.setter(reg.reg_idx0, des_imm0)
-    tgcr.setter(reg.reg_idx1, des_imm1_h32)
-    tgcr.setter(reg.reg_idx2, des_imm1_l32)
+    tgcr.setter(reg.reg_idx1, des_imm1_l32)
+    tgcr.setter(reg.reg_idx2, des_imm1_h32)
     attrs = dict(
         reg_idx0=reg.reg_idx0,
         reg_idx1=reg.reg_idx1,
