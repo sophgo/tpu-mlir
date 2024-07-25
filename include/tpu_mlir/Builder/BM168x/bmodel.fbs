@@ -59,6 +59,7 @@ table CoeffMem {
     check_code:[uint8] (id: 1);  // sha256 for check binary
     binary_coeff:Binary (id: 2); // coeff binary data
     location:[Location] (id: 3); // each location in binary for coeff of operations
+    encrypt_mode:int32 (id: 4);  // 0: no encrypt; 1: encrypt by customer
 }
 
 table Tensor {

@@ -28,3 +28,5 @@
 * test_llm0:     test llm models basic
 
 * test_llm1:     test llm all
+
+* test_encrypt:  test encrypt and decrypt

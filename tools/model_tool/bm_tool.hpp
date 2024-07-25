@@ -324,7 +324,11 @@ void bm_show_dynamic(const string &filename) {
 // update binary data when copy one net to new flatbuffers
 // it's a little complicated, using reflection of flatbuffers
 static void update_table(Table *table, const StructDef *struct_def,
-                         ModelGen &model_gen, ModelCtx &model_ctx) {
+                         ModelGen &model_gen, ModelCtx &model_ctx,
+                         bool skip_coeff = false) {
+  if (skip_coeff && struct_def->name == "CoeffMem") {
+    return;
+  }
   for (auto fd : struct_def->fields.vec) {
     if (false == table->CheckField(fd->value.offset)) {
       continue;
@@ -344,13 +348,12 @@ static void update_table(Table *table, const StructDef *struct_def,
       } else {
         auto next_pointer = table->GetPointer<void *>(fd->value.offset);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff);
       }
       break;
     }
     case BASE_TYPE_VECTOR: {
       auto pointer = table->GetPointer<void *>(fd->value.offset);
-      auto vector_pointer = reinterpret_cast<Vector<Offset<void>> *>(pointer);
       auto type = fd->value.type.VectorType();
       if (type.base_type != BASE_TYPE_STRUCT) {
         break;
@@ -358,10 +361,14 @@ static void update_table(Table *table, const StructDef *struct_def,
       auto next_def = type.struct_def;
       if (next_def->fixed) {
         if (next_def->name == "Binary") {
+          auto vector_pointer =
+              reinterpret_cast<Vector<const Binary *> *>(pointer);
           for (uint32_t next_id = 0; next_id < vector_pointer->size();
                next_id++) {
-            auto next_pointer = vector_pointer->GetMutableObject(next_id);
-            auto binary = reinterpret_cast<Binary *>(next_pointer);
+            auto binary = vector_pointer->GetMutableObject(next_id);
+            if (binary == nullptr || binary->size() == 0) {
+              continue;
+            }
             uint8_t *data = new uint8_t[binary->size()];
             model_ctx.read_binary(binary, data);
             auto new_binary = model_gen.WriteBinary(binary->size(), data);
@@ -371,10 +378,11 @@ static void update_table(Table *table, const StructDef *struct_def,
         }
         break;
       }
+      auto vector_pointer = reinterpret_cast<Vector<Offset<void>> *>(pointer);
       for (uint32_t next_id = 0; next_id < vector_pointer->size(); next_id++) {
         auto next_pointer = vector_pointer->GetMutableObject(next_id);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff);
       }
       break;
     }
@@ -386,13 +394,14 @@ static void update_table(Table *table, const StructDef *struct_def,
 }
 
 // update whole model binary data
-static void update_model(ModelGen &model_gen, ModelCtx &model_ctx) {
+static void update_model(ModelGen &model_gen, ModelCtx &model_ctx,
+                         bool skip_coeff = false) {
   Parser parser;
   parser.Parse(schema_text);
   auto buffer = model_gen.GetBufferPointer();
   auto root = GetMutableRoot<Table>(buffer);
   auto root_def = parser.root_struct_def_;
-  update_table(root, root_def, model_gen, model_ctx);
+  update_table(root, root_def, model_gen, model_ctx, skip_coeff);
 }
 
 // update one net binary data
@@ -530,6 +539,22 @@ static void write_input_output_ref(vector<shared_ptr<MODEL_CTX_T>> &model_vec) {
   }
 }
 
+static bool add_kernel_module(ModelGen &model_gen,
+                              shared_ptr<ModelCtx> &model_ctx) {
+  auto km = model_ctx->model()->kernel_module();
+  if (km) {
+    auto binary = km->binary();
+    uint8_t *data = new uint8_t[binary->size()];
+    model_ctx->read_binary(binary, data);
+    auto new_binary = model_gen.WriteBinary(binary->size(), data);
+    auto filename = km->file_name()->str();
+    model_gen.AddKernelModule(filename, new_binary);
+    delete[] data;
+    return true;
+  }
+  return false;
+}
+
 static void combine_bmodels(ModelGen &model_gen,
                             vector<shared_ptr<MODEL_CTX_T>> &model_vec,
                             bool is_dir = false) {
@@ -544,17 +569,7 @@ static void combine_bmodels(ModelGen &model_gen,
       device_num = model->device_num();
     }
     if (kernel_load == false) {
-      auto km = model->kernel_module();
-      if (km) {
-        auto binary = km->binary();
-        uint8_t *data = new uint8_t[binary->size()];
-        model_info->model_ctx->read_binary(binary, data);
-        auto new_binary = model_gen.WriteBinary(binary->size(), data);
-        auto filename = km->file_name()->str();
-        model_gen.AddKernelModule(filename, new_binary);
-        kernel_load = true;
-        delete[] data;
-      }
+      kernel_load = add_kernel_module(model_gen, model_info->model_ctx);
     }
     for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
       auto net = model->net()->Get(net_idx);
