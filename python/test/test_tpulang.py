@@ -200,7 +200,7 @@ class TPULANG_IR_TESTER(object):
             "ErrorCase": (self.test_ErrorCase,          Y, Y),
         }
         # currently tpulang only supports fp quant mode
-        self.support_quant_modes = ["f32", "f16", "bf16"]
+        self.support_quant_modes = ["f32", "f16"] # no need "bf16" for now
         self.mode = mode.lower()
         self.simple = simple
         self.chip = chip.lower()

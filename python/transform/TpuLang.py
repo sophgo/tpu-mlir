@@ -1081,6 +1081,8 @@ def sub(tensor_i0: Union[Tensor, Scalar, int, float], tensor_i1: Union[Tensor, S
 @annotation_check
 @assert_with_out_name
 def div(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], out_name: str = None):
+    assert tensor_i0.dtype in ["float32", "float16"]
+    assert tensor_i1.dtype in ["float32", "float16"]
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     output = Tensor([], dtype=o_dtype, name=out_name)
     assert isinstance(tensor_i0, Tensor) or isinstance(tensor_i1, Tensor)
@@ -1591,6 +1593,7 @@ def avgpool3d(input: Tensor,
 @annotation_check
 @assert_with_out_name
 def relu(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output])
     return output
@@ -1599,6 +1602,8 @@ def relu(input: Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def prelu(input: Tensor, slope : Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
+    assert slope.ttype == "coeff"
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.PRelu", inputs=[input, slope], outputs=[output])
     return output
@@ -1607,6 +1612,7 @@ def prelu(input: Tensor, slope : Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None, round_mode : str="half_away_from_zero",):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     attr = {
         "alpha": Attr(negative_slope, data_type="float64"),
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
@@ -1619,6 +1625,7 @@ def leaky_relu(input: Tensor, negative_slope: float = 0.01, out_name: str = None
 @annotation_check
 @assert_with_out_name
 def abs(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Abs", inputs=[input], outputs=[output])
     return output
@@ -1634,6 +1641,7 @@ def _active_scale(input:Tensor, output: Tensor, scale: List[float]=None, zero_po
 @annotation_check
 @assert_with_out_name
 def ceil(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Ceil", inputs=[input], outputs=[output])
@@ -1643,6 +1651,7 @@ def ceil(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Floor", inputs=[input], outputs=[output])
@@ -1652,6 +1661,7 @@ def floor(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
 @annotation_check
 @assert_with_out_name
 def round(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Round", inputs=[input], outputs=[output])
     return output
@@ -1660,6 +1670,7 @@ def round(input: Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def sin(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Sin", inputs=[input], outputs=[output])
@@ -1669,6 +1680,7 @@ def sin(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 @annotation_check
 @assert_with_out_name
 def cos(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Cos", inputs=[input], outputs=[output])
@@ -1678,6 +1690,7 @@ def cos(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 @annotation_check
 @assert_with_out_name
 def exp(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Exp", inputs=[input], outputs=[output])
@@ -1687,6 +1700,7 @@ def exp(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 @annotation_check
 @assert_with_out_name
 def ln(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Log", inputs=[input], outputs=[output])
@@ -1695,7 +1709,8 @@ def ln(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_n
 @auto_name()
 @annotation_check
 @assert_with_out_name
-def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None, round_mode : str="half_away_from_zero",):
+def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None, round_mode : str="half_away_from_zero"):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     attr = {
@@ -1709,6 +1724,7 @@ def tanh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @assert_with_out_name
 def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
             out_name: str = None, round_mode : str="half_away_from_zero"):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     attr = {
@@ -1721,6 +1737,7 @@ def sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
 @annotation_check
 @assert_with_out_name
 def elu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     attr = {
         "alpha": Attr(1.0, "float64"),
     }
@@ -1733,7 +1750,10 @@ def elu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 @annotation_check
 @assert_with_out_name
 def square(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert not scale or len(scale) == 2
     scale = [scale[0], scale[0], scale[1]] if scale != None else scale
+    assert not zero_point or len(zero_point) == 2
     zero_point = [zero_point[0], zero_point[0], zero_point[1]] if zero_point != None else zero_point
     return mul(input, input, scale=scale, zero_point=zero_point, out_dtype=input.dtype, out_name=out_name)
 
@@ -1741,6 +1761,7 @@ def square(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, o
 @annotation_check
 @assert_with_out_name
 def sqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Sqrt", inputs=[input], outputs=[output])
@@ -1750,6 +1771,7 @@ def sqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def rsqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Rsqrt", inputs=[input], outputs=[output])
@@ -1759,6 +1781,7 @@ def rsqrt(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, ou
 @annotation_check
 @assert_with_out_name
 def silu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.SiLU", inputs=[input], outputs=[output])
@@ -1768,6 +1791,7 @@ def silu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def erf(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Erf", inputs=[input], outputs=[output])
@@ -1777,6 +1801,7 @@ def erf(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_
 @annotation_check
 @assert_with_out_name
 def log_sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Sigmoid", inputs=[input], outputs=[output], params={"log", Attr(True, bool)})
@@ -1786,6 +1811,7 @@ def log_sigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=No
 @annotation_check
 @assert_with_out_name
 def tan(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Tan", inputs=[input], outputs=[output])
     return output
@@ -1794,6 +1820,7 @@ def tan(input: Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def softmax(input: Tensor, axis: int, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
     attr = {
         "axis": Attr(axis, data_type="int32"),
     }
@@ -1806,6 +1833,7 @@ def softmax(input: Tensor, axis: int, out_name: str = None):
 @assert_with_out_name
 def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[int] = None,
                 out_name: str = None, round_mode : str="half_away_from_zero"):
+    assert input.dtype in ["int8", "uint8"]
     attr = {
         "axis": Attr(axis, data_type="int32"),
         "round_mode": Attr(round_mode_convert(round_mode), "string"),
@@ -1821,6 +1849,7 @@ def softmax_int(input: Tensor, axis: int, scale: List[float], zero_point: List[i
 @annotation_check
 @assert_with_out_name
 def mish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Mish", inputs=[input], outputs=[output])
@@ -1830,6 +1859,7 @@ def mish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def hswish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.HardSwish", inputs=[input], outputs=[output])
@@ -1839,6 +1869,7 @@ def hswish(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, o
 @annotation_check
 @assert_with_out_name
 def arccos(input: Tensor, out_name: str = None):
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Arccos", inputs=[input], outputs=[output])
     return output
@@ -1847,6 +1878,7 @@ def arccos(input: Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def arctanh(input: Tensor, out_name: str = None):
+    input.dtype in ["float32", "float16"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Arctanh", inputs=[input], outputs=[output])
     return output
@@ -1855,6 +1887,7 @@ def arctanh(input: Tensor, out_name: str = None):
 @annotation_check
 @assert_with_out_name
 def sinh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Sinh", inputs=[input], outputs=[output])
@@ -1864,6 +1897,7 @@ def sinh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def cosh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Cosh", inputs=[input], outputs=[output])
@@ -1873,6 +1907,7 @@ def cosh(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @annotation_check
 @assert_with_out_name
 def sign(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     TpuLang.insert_op("top.Sign", inputs=[input], outputs=[output])
@@ -1883,6 +1918,7 @@ def sign(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @assert_with_out_name
 def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
          out_name: str = None, round_mode : str="half_away_from_zero"):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(dtype=input.dtype, name=out_name)
     _active_scale(input, output, scale, zero_point)
     attr = {
@@ -1895,6 +1931,7 @@ def gelu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None,
 @annotation_check
 @assert_with_out_name
 def hsigmoid(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     attr = {
         "alpha": Attr(1/6, data_type="float64"),
         "beta": Attr(0.5, data_type="float64"),
@@ -2558,6 +2595,7 @@ def ne(tensor_i0: Tensor, tensor_i1: Tensor, scale: List[float]=None, zero_point
 
 @to_scalar(2)
 def __compare_const(tensor_i0: Tensor, scalar_i1: Scalar, type: str, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
+    assert tensor_i0.dtype in ["float32", "float16", "int8", "uint8"]
     if out_name is None:
         out_name = generate_name(type)
     attr = {
