@@ -103,8 +103,8 @@ class ImageResizeTool:
             ih = image.shape[0]
             iw = image.shape[1]
         scale = max(float(w) / iw, float(h) / ih)
-        rescale_w = int(iw * scale)
-        rescale_h = int(ih * scale)
+        rescale_w = int(iw * scale) if iw * scale >= w else w
+        rescale_h = int(ih * scale) if ih * scale >= h else h
         if use_pil_resize:
             resized_img = image.resize(
                 (rescale_w, rescale_h), PIL.Image.BILINEAR)
@@ -112,8 +112,8 @@ class ImageResizeTool:
         else:
             resized_img = cv2.resize(image, (rescale_w, rescale_h))
         #center_crop to make sure resized_img shape is (h,w)
-        start_h = (rescale_h - h) // 2
-        start_w = (rescale_w - w) // 2
+        start_h = (rescale_h - h) // 2 if rescale_h - h > 0 else 0
+        start_w = (rescale_w - w) // 2 if rescale_w - w > 0 else 0
         resized_img = resized_img[start_h : start_h + h, start_w : start_w + w]
         return resized_img
 
