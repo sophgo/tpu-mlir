@@ -1652,7 +1652,11 @@ gts
 
     .. code-block:: python
 
-      def gts(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+      def gts(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1663,7 +1667,7 @@ gts
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1685,7 +1689,11 @@ lts
 
     .. code-block:: python
 
-      def lts(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+        def lts(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1696,7 +1704,7 @@ lts
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1718,7 +1726,11 @@ ges
 
     .. code-block:: python
 
-      def ges(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+      def ges(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1729,7 +1741,7 @@ ges
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1742,6 +1754,8 @@ ges
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+
+
 les
 :::::::::::::::::
 
@@ -1750,7 +1764,11 @@ les
 
     .. code-block:: python
 
-      def les(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+      def les(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1761,7 +1779,7 @@ les
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1783,7 +1801,11 @@ eqs
 
     .. code-block:: python
 
-      def eqs(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+      def eqs(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1794,7 +1816,7 @@ eqs
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1816,7 +1838,11 @@ nes
 
     .. code-block:: python
 
-      def nes(tensor_i0, scalar_i1, scale = None, zero_point = None, out_name = None):
+      def nes(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -1827,7 +1853,7 @@ nes
 参数说明
 """""""""""
 * tensor_i0：Tensor类型，表示输入左操作数。
-* scalar_i1：Tensor类型，表示输入右操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -1852,7 +1878,7 @@ relu
 
     .. code-block:: python
 
-      def relu(tensor, out_name=None):
+      def relu(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -1883,7 +1909,7 @@ prelu
 
     .. code-block:: python
 
-      def prelu(input: Tensor, slope : Tensor, out_name=None):
+      def prelu(input: Tensor, slope : Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -1915,7 +1941,10 @@ leaky_relu
 
     .. code-block:: python
 
-      def leaky_relu(input, negative_slope=0.01, out_name=None):
+      def leaky_relu(input: Tensor,
+                    negative_slope: float = 0.01,
+                    out_name: str = None,
+                    round_mode : str="half_away_from_zero",):
           #pass
 
 功能描述
@@ -1926,8 +1955,9 @@ leaky_relu激活函数，逐元素实现功能 :math:`y =\begin{cases}x\quad x>0
 参数说明
 """""""""""
 * input：Tensor类型，表示输入Tensor。
+* negative_slope：float类型，表示输入的负斜率，默认值为0.01。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-* negative_slope：FLOAT类型，表示输入的负斜率。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -1946,7 +1976,7 @@ abs
 
     .. code-block:: python
 
-      def abs(tensor, out_name=None):
+      def abs(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -1976,7 +2006,10 @@ ln
 
     .. code-block:: python
 
-      def ln(tensor, scale = None, zero_point = None, out_name=None):
+      def ln(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2008,7 +2041,10 @@ ceil
 
     .. code-block:: python
 
-      def ceil(tensor, scale = None, zero_point = None, out_name=None):
+      def ceil(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2040,7 +2076,10 @@ floor
 
     .. code-block:: python
 
-      def floor(tensor, scale = None, zero_point = None, out_name=None):
+      def floor(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2072,7 +2111,7 @@ round
 
     .. code-block:: python
 
-      def round(tensor, out_name=None):
+      def round(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -2103,7 +2142,10 @@ sin
 
     .. code-block:: python
 
-      def sin(tensor, scale = None, zero_point = None, out_name=None):
+      def sin(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2124,8 +2166,8 @@ sin正弦激活函数，逐元素实现功能 :math:`y = sin(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 
 cos
@@ -2136,7 +2178,10 @@ cos
 
     .. code-block:: python
 
-      def cos(tensor, scale = None, zero_point = None, out_name=None):
+      def cos(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2157,8 +2202,8 @@ cos余弦激活函数，逐元素实现功能 :math:`y = cos(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 exp
 :::::::::::::::::
@@ -2168,7 +2213,10 @@ exp
 
     .. code-block:: python
 
-      def exp(tensor, scale = None, zero_point = None, out_name=None):
+      def exp(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2200,7 +2248,11 @@ tanh
 
     .. code-block:: python
 
-      def tanh(tensor, scale = None, zero_point = None, out_name=None):
+      def tanh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -2214,6 +2266,7 @@ tanh双曲正切激活函数，逐元素实现功能 :math:`y=tanh(x)=\frac{e^{x
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -2221,8 +2274,8 @@ tanh双曲正切激活函数，逐元素实现功能 :math:`y=tanh(x)=\frac{e^{x
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 sigmoid
 :::::::::::::::::
@@ -2232,7 +2285,11 @@ sigmoid
 
     .. code-block:: python
 
-      def sigmoid(tensor, scale = None, zero_point = None, out_name=None):
+      def sigmoid(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -2246,6 +2303,7 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -2253,8 +2311,8 @@ sigmoid激活函数，逐元素实现功能 :math:`y = 1 / (1 + e^{-x})`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 log_sigmoid
 :::::::::::::::::
@@ -2264,7 +2322,10 @@ log_sigmoid
 
     .. code-block:: python
 
-      def log_sigmoid(tensor, scale = None, zero_point = None, out_name=None):
+      def log_sigmoid(input: Tensor,
+                    scale: List[float]=None,
+                    zero_point: List[int]=None,
+                    out_name: str = None):
           #pass
 
 功能描述
@@ -2285,8 +2346,8 @@ log_sigmoid激活函数，逐元素实现功能 :math:`y = log(1 / (1 + e^{-x}))
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 elu
 :::::::::::::::::
@@ -2296,7 +2357,10 @@ elu
 
     .. code-block:: python
 
-      def elu(tensor, scale = None, zero_point = None, out_name=None):
+      def elu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2317,8 +2381,8 @@ elu激活函数，逐元素实现功能 :math:`y =  \begin{cases}x\quad x>=0\\e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 square
 :::::::::::::::::
@@ -2328,7 +2392,10 @@ square
 
     .. code-block:: python
 
-      def square(tensor, scale = None, zero_point = None, out_name=None):
+      def square(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -2360,7 +2427,10 @@ sqrt
 
     .. code-block:: python
 
-      def sqrt(tensor, scale = None, zero_point = None, out_name=None):
+      def sqrt(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2381,8 +2451,8 @@ sqrt平方根激活函数，逐元素实现功能 :math:`y = \sqrt{x}`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 rsqrt
 :::::::::::::::::
@@ -2392,7 +2462,10 @@ rsqrt
 
     .. code-block:: python
 
-      def rsqrt(tensor, scale = None, zero_point = None, out_name=None):
+      def rsqrt(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -2413,8 +2486,8 @@ rsqrt平方根取反激活函数，逐元素实现功能 :math:`y = 1 / (sqrt{x}
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 silu
 :::::::::::::::::
@@ -2424,7 +2497,10 @@ silu
 
     .. code-block:: python
 
-      def silu(tensor, scale = None, zero_point = None, out_name=None):
+      def silu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2445,8 +2521,8 @@ silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 
 erf
@@ -2457,7 +2533,10 @@ erf
 
     .. code-block:: python
 
-      def erf(tensor, scale = None, zero_point = None, out_name=None):
+      def erf(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2479,7 +2558,7 @@ erf激活函数，对于输入输出Tensor对应位置的元素x和y，逐元素
 处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 tan
 :::::::::::::::::
@@ -2489,7 +2568,7 @@ tan
 
     .. code-block:: python
 
-      def tan(tensor, out_name=None):
+      def tan(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -2508,8 +2587,8 @@ tan正切激活函数，逐元素实现功能 :math:`y = tan(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
 
 
 softmax
@@ -2520,7 +2599,9 @@ softmax
 
     .. code-block:: python
 
-      def softmax(tensor_i, axis, out_name=None):
+      def softmax(input: Tensor,
+                axis: int,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -2553,10 +2634,11 @@ softmax_int
     .. code-block:: python
 
       def softmax_int(input: Tensor,
-                      axis: int,
-                      scale: List[float],
-                      zero_point: List[int] = None,
-                      out_name: str = None):
+                    axis: int,
+                    scale: List[float],
+                    zero_point: List[int] = None,
+                    out_name: str = None,
+                    round_mode : str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -2583,8 +2665,9 @@ softmax定点运算。可参考各框架下的softmax定义。
 * tensor：Tensor类型，表示输入Tensor。
 * axis：int型，表示进行运算的轴。
 * scale：List[float]型，表示输入和输出的量化系数。长度必须时2。
-* zero_point：List[int]型或None型，表示输入和输出偏移。如果为None，则取[0, 0]。
+* zero_point：List[int]型或None型，表示输入和输出偏移，长度与scale一致。如果为None，则取[0, 0]。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -2604,7 +2687,10 @@ mish
 
     .. code-block:: python
 
-      def mish(tensor_i, scale = None, zero_point = None, out_name=None):
+      def mish(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2625,8 +2711,8 @@ mish激活函数，逐元素实现功能 :math:`y = x * tanh(ln(1 + e^{x}))`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 
 
@@ -2638,7 +2724,10 @@ hswish
 
     .. code-block:: python
 
-      def hswish(tensor_i, scale = None, zero_point = None, out_name=None):
+      def hswish(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -2663,7 +2752,6 @@ hswish激活函数，逐元素实现功能 :math:`y =\begin{cases}0\quad x<=-3\\
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 
 
-
 arccos
 :::::::::::::::::
 
@@ -2672,7 +2760,7 @@ arccos
 
     .. code-block:: python
 
-      def arccos(tensor_i, out_name=None):
+      def arccos(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -2691,8 +2779,8 @@ arccos反余弦激活函数，逐元素实现功能 :math:`y = arccos(x)`。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
 
 
 arctanh
@@ -2703,7 +2791,7 @@ arctanh
 
     .. code-block:: python
 
-      def arctanh(tensor_i, out_name=None):
+      def arctanh(input: Tensor, out_name: str = None):
           #pass
 
 功能描述
@@ -2722,8 +2810,8 @@ arctanh反双曲正切激活函数，逐元素实现功能 :math:`y = arctanh(x)
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32。FLOAT16数据会自动转换为FLOAT32。
 
 
 sinh
@@ -2734,7 +2822,10 @@ sinh
 
     .. code-block:: python
 
-      def sinh(tensor_i, scale = None, zero_point = None, out_name=None):
+      def sinh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2755,8 +2846,8 @@ sinh双曲正弦激活函数，逐元素实现功能 :math:`y = sinh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 
 
@@ -2768,7 +2859,10 @@ cosh
 
     .. code-block:: python
 
-      def cosh(tensor_i, scale = None, zero_point = None, out_name=None):
+      def cosh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2789,8 +2883,8 @@ cosh双曲余弦激活函数，逐元素实现功能 :math:`y = cosh(x)=\frac{e^
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 
 sign
@@ -2801,7 +2895,10 @@ sign
 
     .. code-block:: python
 
-      def sign(tensor_i, scale = None, zero_point = None, out_name=None):
+      def sign(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 功能描述
@@ -2834,7 +2931,11 @@ gelu
 
     .. code-block:: python
 
-      def gelu(tensor_i, scale = None, zero_point = None, out_name=None):
+      def gelu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -2848,6 +2949,7 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -2855,8 +2957,8 @@ gelu激活函数，逐元素实现功能 :math:`y = x* 0.5 * (1+ erf(\frac{x}{\s
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 hsigmoid
 :::::::::::::::::
@@ -2866,7 +2968,10 @@ hsigmoid
 
     .. code-block:: python
 
-      def hsigmoid(tensor_i, scale = None, zero_point = None, out_name=None):
+      def hsigmoid(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -2887,8 +2992,8 @@ hsigmoid激活函数，逐元素实现功能 :math:`y = min(1, max(0, \frac{x}{6
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
