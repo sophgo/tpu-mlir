@@ -1223,7 +1223,7 @@ void ConvertTopToTpu::runOnOperation() {
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
        module::getMode() == module::Mode::UINT8)) {
-    qtable_process();
+    // qtable_process();
     module::updateModuleTypes();
   }
 
@@ -2327,16 +2327,16 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
   });
 }
 
-void ConvertTopToTpu::qtable_process() {
-  bert_mix_precision();
-  swin_mix_precision();
-  cswin_mix_precision();
-  vit_mix_precision();
-  deit_mix_precision();
-  eva2_mix_precision();
-  detr_mix_precision();
-  set_add_before_softmax_fp32();
-}
+// void ConvertTopToTpu::qtable_process() {
+//   bert_mix_precision();
+//   swin_mix_precision();
+//   cswin_mix_precision();
+//   vit_mix_precision();
+//   deit_mix_precision();
+//   eva2_mix_precision();
+//   detr_mix_precision();
+//   set_add_before_softmax_fp32();
+// }
 
 // match kv cache
 void ConvertTopToTpu::match_kv_cache(std::vector<Operation *> &kv_cache) {

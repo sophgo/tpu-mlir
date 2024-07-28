@@ -17,6 +17,7 @@ from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
 from calibration.mix_precision import MixPrecSearcher
+from calibration.transformer_pattern import MatchPattern
 from utils.log_setting import logger
 
 def parse_method_list(input_str):
@@ -109,3 +110,5 @@ if __name__ == '__main__':
             elif args.search == 'False':
                 calibrator = ActivationCalibrator(args, selector, tune_ds)
                 calibrator.run()
+        match_pattern = MatchPattern(args)
+        match_pattern.run()
