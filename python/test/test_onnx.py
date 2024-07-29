@@ -164,6 +164,7 @@ class ONNX_IR_TESTER(object):
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N, Y),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y),
+            "ReduceL1":     (self.test_ReduceL1,      Y, Y, Y, N, Y),
             "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y, Y),
             "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y),
             "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y),
@@ -2248,6 +2249,20 @@ class ONNX_IR_TESTER(object):
                 o_l2 = ReduceL2<keepdims=0, axes=[3, 4]>(input)
             }
             """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_ReduceL1(self, case_name):
+        input_shape = [4, 4, 4, 16, 16, 64]
+        output_shape = [4, 4, 4, 64]
+
+        graph_txt = """
+            %s (float%s input) => (float%s o_l1)
+            {
+                o_l1 = ReduceL1<keepdims=0, axes=[3, 4]>(input)
+            }
+            """ % (case_name, input_shape, output_shape)
+
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
