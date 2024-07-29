@@ -80,7 +80,7 @@ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
 
 ``` shell
 # myname1234 is just an example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 ```
 
 After the container is created, the directory of the code in docker should be `/workspace/tpu-mlir`.
