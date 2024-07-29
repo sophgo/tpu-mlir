@@ -3308,8 +3308,8 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
     if (auto requant_op = dyn_cast<tpu::RequantIntOp>(*(op.getOutput().getUsers().begin()))) {
       if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
         return failure();
-      if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
-        return failure();
+      // if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
+      //   return failure();
       // Conv merge requant_int
       multiplier_v.assign(shape[1], requant_op.getMultiplier());
       rshift_v.assign(shape[1], requant_op.getRshift());
@@ -3327,8 +3327,8 @@ class ConvMergeRequant: public OpRewritePattern<tpu::Conv2DOp> {
     if (auto requant_op = dyn_cast<tpu::RequantIntAxisOp>(*(op.getOutput().getUsers().begin()))) {
       if (requant_op.getQuantMode() != tpu::RequantMode::MultiplierShift)
         return failure();
-      if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
-        return failure();
+      // if (!module::getStorageType(requant_op.getOutput()).isInteger(8))
+      //   return failure();
       // Conv merge requant_int_axis
       auto requant = dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
