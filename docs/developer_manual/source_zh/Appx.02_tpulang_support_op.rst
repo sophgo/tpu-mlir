@@ -3333,7 +3333,11 @@ arg
 
     .. code-block:: python
 
-      def arg(tensor, method='max', axis=0, keep_dims=True, out_name=None):
+          def arg(input: Tensor,
+                method: str = "max",
+                axis: int = 0,
+                keep_dims: bool = True,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -3343,15 +3347,16 @@ arg
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入的操作Tensor。
+* input：Tensor类型，表示输入的操作Tensor。
 * method：string类型，表示操作的方法，可选'max'，'min'。
-* axis：int型，表示指定的轴。
+* axis：int型，表示指定的轴。默认值为0。
 * keep_dims：bool型，表示是否保留运算后的指定轴，默认值为True表示保留（此时该轴长度为1）。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
+
 返回值
 """""""""""
-返回两个Tensor，INT32的indices和FLOAT32的values。
+返回两个Tensor，第一个Tensor表示indices，类型为int32；第二个Tensor表示values，类型会和input的类型一致。
 
 处理器支持
 """""""""""
@@ -3434,9 +3439,10 @@ argsort
     .. code-block:: python
 
         def argsort(input: Tensor,
-                    axis: int = 0,
+                    axis: int = -1,
                     descending : bool = True,
-                    out_name = None)
+                    out_name : str = None)
+
 
 功能描述
 """""""""""
@@ -3506,8 +3512,9 @@ squeeze
 
     .. code-block:: python
 
-      def squeeze(tensor_i, axis, out_name=None):
+        def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
           #pass
+
 
 功能描述
 """""""""""
@@ -3537,7 +3544,7 @@ reshape
 
     .. code-block:: python
 
-      def reshape(tensor, new_shape, out_name=None):
+      def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out_name: str = None):
           #pass
 
 功能描述
@@ -3568,7 +3575,11 @@ shape_fetch
 
     .. code-block:: python
 
-      def shape_fetch(tensor_i, begin_axis=0, end_axis=1, step=1, out_name=None):
+      def shape_fetch(tensor_i: Tensor,
+                begin_axis: int = None,
+                end_axis: int = None,
+                step: int = 1,
+                out_name: str = None):
           #pass
 
 功能描述
@@ -3601,7 +3612,7 @@ unsqueeze
 
     .. code-block:: python
 
-      def unsqueeze(tensor_i, axis, out_name=None):
+      def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
           #pass
 
 功能描述
@@ -3611,7 +3622,7 @@ unsqueeze
 
 参数说明
 """""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * axis：int型，表示指定的轴，设tensor_i的维度长度是D，则axis范围[-D,D-1)。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -3686,12 +3697,13 @@ requant_fp
 
     .. code-block:: python
 
-        def requant_fp(tensor_i,
-                       scale,
-                       offset,
-                       out_dtype,
-                       out_name = None,
-                       round_mode='half_away_from_zero'):
+        def requant_fp(tensor_i: Tensor,
+               scale: Union[float, List[float]],
+               offset: Union[float, List[float]],
+               out_dtype: str,
+               out_name: str=None,
+               round_mode: str='half_away_from_zero',
+               first_round_mode: str='half_away_from_zero'):
 
 功能描述
 """""""""""
@@ -3712,9 +3724,10 @@ requant_fp
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * scale：List[float]型或float型，表示量化系数。
 * offset：List[int]型或int型。表示输出偏移。
-* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * out_dtype：string类型，表示输入Tensor的类型。数据类型可以是"int16"/"uint16"/"int8"/"uint8"
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
+* first_round_mode：string型，表示之前量化tensor_i时使用的舍入模式。默认为“half_away_from_zero”。first_round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -3732,14 +3745,14 @@ requant_int
 
     .. code-block:: python
 
-        def requant_int(tensor_i,
-                        mul,
-                        shift,
-                        offset,
-                        requant_mode,
-                        out_dtype = None,
-                        out_name = None,
-                        round_mode='half_up', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
+        def requant_int(tensor_i: Tensor,
+                mul: Union[int, List[int]],
+                shift: Union[int, List[int]],
+                offset: Union[int, List[int]],
+                requant_mode: int,
+                out_dtype: str="int8",
+                out_name=None,
+                round_mode='half_away_from_zero', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
 
 功能描述
 """""""""""
@@ -3787,7 +3800,7 @@ requant_int
 * shift:List[int]型或int型，表示量化移位系数。右移为负，左移为正。
 * offset：List[int]型或int型，表示输出偏移。
 * requant_mode：int型，表示量化模式。
-* round_mode：string型，表示舍入模式。默认为“half_up”。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”, 范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * out_dtype：string类型或None，表示输出Tensor的类型。None代表输出数据类型为“int8”
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 * rq_axis：int型，表示在rq_axis维度做requant。
@@ -3800,17 +3813,21 @@ requant_int
 芯片支持
 """""""""""
 * BM1684X
+* BM1688
 
-dequant_int_to_fp32
+dequant_int_to_fp
 :::::::::::::::::::
 
+接口定义
+"""""""""""
     .. code-block:: python
 
-        def dequant_int_to_fp(tensor_i,
-                              scale,
-                              offset,
-                              out_dtype: str="float32",
-                              out_name = None):
+        def dequant_int_to_fp(tensor_i: Tensor,
+                      scale: Union[float, List[float]],
+                      offset: Union[int, List[int], float, List[float]],
+                      out_dtype: str="float32",
+                      out_name: str=None,
+                      round_mode: str='half_away_from_zero'):
 
 功能描述
 """""""""""
@@ -3832,6 +3849,8 @@ dequant_int_to_fp32
 * offset：List[int]型或int型，表示输出偏移。
 * out_dtype：string类型，表示输出Tensor的类型。默认输出数据类型为“float32”。当输入数据类型为int8/uint8时，取值范围为“float16”，“float32”。当输入类型为int16/uint16时，输出类型只能为“float32”。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。(TODO)
+
 
 返回值
 """""""""""
@@ -3844,24 +3863,26 @@ dequant_int_to_fp32
 dequant_int
 :::::::::::::::::::
 
+接口定义
+"""""""""""
     .. code-block:: python
 
-        def dequant_int(tensor_i,
-                        mul,
-                        shift,
-                        offset,
-                        lshift,
-                        quant_mode,
-                        out_dtype = None,
-                        out_name = None,
-                        round_mode='half_up'):
+        def dequant_int(tensor_i: Tensor,
+                mul: Union[int, List[int]],
+                shift: Union[int, List[int]],
+                offset: Union[int, List[int]],
+                lshift: int,
+                requant_mode: int,
+                out_dtype: str="int8",
+                out_name=None,
+                round_mode='half_up'):
 
 
 功能描述
 """""""""""
 对输入tensor进行反量化处理。
 
-当quant_mode==0时，该操作对应的计算式为：
+当requant_mode==0时，该操作对应的计算式为：
 
     ::
 
@@ -3870,7 +3891,7 @@ dequant_int
 
     * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8, output数据类型可以是INT32/INT16/UINT16
 
-当quant_mode==1时，该操作对应的计算式为：
+当requant_mode==1时，该操作对应的计算式为：
 
     ::
 
@@ -3887,11 +3908,11 @@ dequant_int
 * tensor_i：Tensor类型，表示输入Tensor，3-5维。
 * mul：List[int]型或int型，表示量化乘子系数。
 * shift:List[int]型或int型，表示量化移位系数。右移为负，左移为正。
-* offset：List[int]
+* offset：List[int]型或int型，表示输出偏移。
 * lshift：int型，表示左移位系数。
-* requant_mode：int型，表示量化模式。
-* round_mode：string型，表示舍入模式。默认为“half_up”。
-* out_dtype：string类型，表示输入Tensor的类型.
+* requant_mode：int型，表示量化模式。取值为0和1，0表示“Normal”，1表示“TFLite”。
+* round_mode：string型，表示舍入模式。默认为“half_up”, 范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
+* out_dtype：string类型，表示输入Tensor的类型。默认为“int8”。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -3901,7 +3922,41 @@ dequant_int
 芯片支持
 """""""""""
 * BM1684X
-* BM1688
+
+cast
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def cast(tensor_i: Tensor,
+         out_dtype: str = 'float32',
+         out_name: str = None,
+         round_mode: str = 'half_away_from_zero'):
+
+功能描述
+"""""""""""
+将输入张量 `tensor_i` 转换为指定的数据类型 `out_dtype`，并根据指定的舍入模式 `round_mode` 对数据进行舍入。
+注意本算子不能单独使用，必须配合其他算子。
+
+参数说明
+"""""""""""
+* tensor_i：Tensor类型，表示输入操作Tensor。
+* out_dtype: str = 'float32'，输出张量的数据类型，默认为 `float32`。
+* out_name: str = None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode: str = 'half_away_from_zero', 舍入模式，默认为 `half_away_from_zero`。取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。注意，此函数round_mode不支持“half_up”与“half_down”。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型由输入的out_dtype决定。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+
 
 Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4400,7 +4455,7 @@ nms
         def nms(boxes: Tensor,
                 scores: Tensor,
                 format: str = 'PYTORCH',
-                max_box_num_per_class: int = 0,
+                max_box_num_per_class: int = 1,
                 out_name: str = None)
 
 功能描述
@@ -4411,8 +4466,8 @@ nms
 """""""""""
 * boxes：Tensor类型，表示输入框的列表。必须是三维张量，第一维为批的个数，第二维为框的个数，第三维为框的4个坐标。
 * scores：Tensor类型，表示输入得分的列表。必须是三维张量，第一维为批的个数，第二维为类的个数，第三维为框的个数。
-* format：string类型，'TENSORFLOW'表示Tensorflow格式[y1, x1, y2, x2]，'PYTORCH'表示Pytorch格式[x_center, y_center, width, height]。
-* max_box_num_per_class：int型，表示每个类中的输出框的最大个数。默认为0。
+* format：string类型，'TENSORFLOW'表示Tensorflow格式[y1, x1, y2, x2]，'PYTORCH'表示Pytorch格式[x_center, y_center, width, height], 默认值为'PYTORCH'。
+* max_box_num_per_class：int型，表示每个类中的输出框的最大个数。必须大于0，默认值为1。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -4446,14 +4501,14 @@ interpolate
 
 参数说明
 """""""""""
-* input：Tensor类型，表示输入Tensor。
-* scale_h：float型，表示h方向的放缩系数。
-* scale_w：float型，表示w方向的放缩系数。
-* method: string类型，表示插值方法，可选项为"nearest"或"linear"。
-* coord_mode: string类型, 表示输出坐标的计算方法，可选项为"align_corners"/"pytorch_half_pixel"/ "half_pixel"/"asymmetric"等。
-* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* input：Tensor类型，表示输入的Tensor。必须是至少2维的张量。
+* scale_h：float型，表示高度方向的缩放系数，必须大于0。
+* scale_w：float型，表示宽度方向的缩放系数，必须大于0。
+* method: string类型，表示插值方法，可选项为"nearest"或"linear"。默认值为"nearest"。
+* coord_mode: string类型，表示输出坐标的计算方法，可选项为"align_corners"、"pytorch_half_pixel"、"half_pixel"、"asymmetric"。默认值为"pytorch_half_pixel"。
+* out_name：string类型或None，表示输出Tensor的名称。如果为None，内部会自动生成名称。
 
-其中， `coord_mode` 的意义跟onnx的 `Resize` 算子的参数 `coordinate_transformation_mode` 的意义时一样的。若h/w方向的放缩因子为 `scale` ，输入坐标为 `x_in` ，输入尺寸为 `l_in` ，输出坐标为 `x_out` ，输出尺寸为 `l_out` ，则逆映射定义如下：
+其中， `coord_mode` 的意义跟onnx的 `Resize` 算子的参数 `coordinate_transformation_mode` 的意义是一样的。若h/w方向的放缩因子为 `scale` ，输入坐标为 `x_in` ，输入尺寸为 `l_in` ，输出坐标为 `x_out` ，输出尺寸为 `l_out` ，则逆映射定义如下：
 
 * `"half_pixel"`：
 
@@ -4482,12 +4537,12 @@ interpolate
 
 返回值
 """""""""""
-返回一个Tensor，数据类型与输入类型相同。
+返回一个Tensor，表示插值后的结果。数据类型与输入类型相同，形状根据缩放系数进行调整。
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16(TODO)。
+* BM1688：支持的输入数据类型为FLOAT32/FLOAT16/INT8。
+* BM1684X：支持的输入数据类型为FLOAT32/FLOAT16/INT8。
 
 yuv2rgb
 :::::::::::::::::
@@ -4527,7 +4582,9 @@ yuv2rgb
 
 处理器支持
 """""""""""
-* BM1684X：输入数据类型是UINT8。
+* BM1684X：输入数据类型是INT8/UINT8, 输出UINT8。
+* BM1688：输入数据类型是INT8/UINT8，输出UINT8。
+
 
 
 Select Operator
@@ -4796,7 +4853,7 @@ mean_std_scale
                          scale: Optional[Union[List[float],List[int]]] = None,
                          zero_points: Optional[List[int]] = None,
                          out_name: str = None,
-                         odtype="float32",
+                         odtype="float16",
                          round_mode: str = "half_away_from_zero"):
           #pass
 
@@ -4807,14 +4864,14 @@ mean_std_scale
 
 参数说明
 """""""""""
-* input：Tensor类型，表示输入操作Tensor。
-* std：List[float]类型，表示数据集的标准差。
-* mean: List[float]类型，表示数据集的均值。
+* input：Tensor类型，表示输入操作Tensor。必须是4维或5维。
+* std：List[float]类型，表示数据集的标准差。mean,std维度必须和input的channel维度一致,即input的第二维。
+* mean: List[float]类型，表示数据集的均值。mean,std维度必须和input的channel维度一致，即input的第二维。
 * scale: Optional[Union[List[float],List[int]]]类型或None，缩放系数。
 * zero_points: Optional[List[int]]类型或None，表示零点。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-* odtype：String类型，表示接口输出Tensor数据类型。
-* round_mode：String类型，表示取整方法。
+* odtype：String类型，表示接口输出Tensor数据类型。默认值为"float16"。目前支持float16， int8。
+* round_mode：String类型，表示取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”
 
 返回值
 """""""""""

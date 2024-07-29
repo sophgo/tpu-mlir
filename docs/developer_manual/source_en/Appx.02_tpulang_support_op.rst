@@ -2476,8 +2476,13 @@ The interface definition
 
     .. code-block:: python
 
-      def arg(tensor, method='max', axis=0, keep_dims=True, out_name=None):
-          #pass
+        def arg(input: Tensor,
+                method: str = "max",
+                axis: int = 0,
+                keep_dims: bool = True,
+                out_name: str = None):
+        #pass
+
 
 Description of the function
 """""""""""""""""""""""""""""""""
@@ -2486,18 +2491,15 @@ This operation is considered a **restricted local operation**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* Tensor: Tensor type, representing the Tensor to be operated on.
+* input: Tensor type, representing the Tensor to be operated on.
 * method: A string type, indicating the method of operation, options include 'max' and 'min'.
-* axis: An integer, indicating the specified axis.
+* axis: An integer, indicating the specified axis. Default to 0.
 * keep_dims: A boolean, indicating whether to keep the specified axis after the operation. The default value is True, which means to keep it (in this case, the length of that axis is 1).
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor.
-
-The data type of the tensor can be FLOAT32/INT8/UINT8. The data type of tensor_o can be INT32/FLOAT32.
-When the data type of the tensor is INT8/UINT8, tensor_o can only be INT32.
+Returns two Tensors, the first Tensor represents indices, of type int32; and the second Tensor represents values, the type of which will be the same as the type of the input.
 
 Processor support
 """"""""""""""""""""""
@@ -2583,7 +2585,7 @@ Definition
         def argsort(input: Tensor,
                     axis: int = -1,
                     descending : bool = True,
-                    out_name = None)
+                    out_name : str = None)
 
 Description
 """""""""""
@@ -2653,7 +2655,7 @@ The interface definition
 
     .. code-block:: python
 
-      def squeeze(tensor_i, axis, out_name=None):
+        def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
           #pass
 
 Description of the function
@@ -2684,7 +2686,7 @@ The interface definition
 
     .. code-block:: python
 
-      def reshape(tensor, new_shape, out_name=None):
+      def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out_name: str = None):
           #pass
 
 Description of the function
@@ -2715,8 +2717,13 @@ The interface definition
 
     .. code-block:: python
 
-      def shape_fetch(tensor_i, begin_axis=0, end_axis=1, step=1, out_name=None):
+      def shape_fetch(tensor_i: Tensor,
+                begin_axis: int = None,
+                end_axis: int = None,
+                step: int = 1,
+                out_name: str = None):
           #pass
+
 
 Description of the function
 """""""""""""""""""""""""""""""""
@@ -2748,7 +2755,7 @@ The interface definition
 
     .. code-block:: python
 
-      def unsqueeze(tensor_i, axis, out_name=None):
+      def unsqueeze(input: Tensor, axes: List[int] = [1,2], out_name: str = None):
           #pass
 
 Description of the function
@@ -2758,7 +2765,7 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
+* input: Tensor type, representing the input tensor for the operation.
 * axis: A List[int] or Tuple[int] type, indicating the specified axes.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -2834,6 +2841,55 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+requant_fp
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+        def requant_fp(tensor_i: Tensor,
+               scale: Union[float, List[float]],
+               offset: Union[float, List[float]],
+               out_dtype: str,
+               out_name: str=None,
+               round_mode: str='half_away_from_zero',
+               first_round_mode: str='half_away_from_zero'):
+
+Description of the function
+"""""""""""
+Quantizes the input tensor.
+
+The calculation formula for this operation is:
+
+    ::
+
+        output = saturate(int(round(float(input) * scale + offset))),
+        where saturate saturates to the output data type.
+
+
+This operation is a **local operation**.
+
+Explanation of parameters
+"""""""""""
+* tensor_i: Tensor type, representing the input tensor, with 3-5 dimensions.
+* scale: List[float] or float, representing the quantization scale.
+* offset: List[int] or int, representing the output offset.
+* out_dtype: String type, representing the data type of the input tensor. The data type can be "int16"/"uint16"/"int8"/"uint8".
+* out_name: String type or None, representing the name of the output tensor. When set to None, the name will be automatically generated internally.
+* round_mode: String type, representing the rounding mode. Default is "half_away_from_zero". The round_mode can take values of "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* first_round_mode: String type, representing the rounding mode used for quantizing tensor_i previously. Default is "half_away_from_zero". The first_round_mode can take values of "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return Value
+"""""""""""
+Returns a Tensor. The data type of this Tensor is determined by out_dtype.
+
+Processor support
+"""""""""""
+* BM1688：Support input datatype: INT32/INT16/UINT16.
+* BM1684X：Support input datatype: INT32/INT16/UINT16.
+
 requant_int
 :::::::::::::::::
 
@@ -2842,14 +2898,14 @@ The interface definition
 
     .. code-block:: python
 
-        def requant_int(tensor_i,
-                                mul,
-                                shift,
-                                offset,
-                                requant_mode,
-                                out_dtype = None,
-                                out_name = None,
-                                round_mode='half_up', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
+        def requant_int(tensor_i: Tensor,
+                mul: Union[int, List[int]],
+                shift: Union[int, List[int]],
+                offset: Union[int, List[int]],
+                requant_mode: int,
+                out_dtype: str="int8",
+                out_name=None,
+                round_mode='half_away_from_zero', rq_axis:int = 1, fuse_rq_to_matmul: bool = False):
 
           #pass
 
@@ -2901,6 +2957,140 @@ Processor support
 """"""""""""""""""""""
 * BM1684X
 * BM1688
+
+dequant_int_to_fp
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+def dequant_int_to_fp(tensor_i: Tensor,
+                  scale: Union[float, List[float]],
+                  offset: Union[int, List[int], float, List[float]],
+                  out_dtype: str="float32",
+                  out_name: str=None,
+                  round_mode: str='half_away_from_zero'):
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Dequantizes the input tensor.
+
+The calculation formula for this operation is:
+    ::
+        output = (input - offset) * scale
+
+This operation is a **local operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor with 3-5 dimensions.
+* scale: List[float] or float, representing the quantization scale.
+* offset: List[int] or int, representing the output offset.
+* out_dtype: String type, representing the output tensor type. Default output data type is "float32". For input data types int8/uint8, the values can be "float16", "float32". For input types int16/uint16, the output type can only be "float32".
+* out_name: String type or None, representing the name of the output tensor. If set to None, the name will be automatically generated internally.
+* round_mode: String type, representing the rounding mode. Default is "half_away_from_zero". The round_mode can take values of "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor. The data type of this Tensor is specified by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X: Input data types can be INT16/UINT16/INT8/UINT8.
+
+
+dequant_int
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+def dequant_int(tensor_i: Tensor,
+        mul: Union[int, List[int]],
+        shift: Union[int, List[int]],
+        offset: Union[int, List[int]],
+        lshift: int,
+        requant_mode: int,
+        out_dtype: str="int8",
+        out_name=None,
+        round_mode='half_up'):
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Dequantizes the input tensor.
+
+When requant_mode==0, the calculation formula for this operation is:
+
+    ::
+        output = (input - offset) * multiplier
+        output = saturate(output >> -shift)
+
+    *BM1684X*: Input data types can be INT16/UINT16/INT8/UINT8, output data types can be INT32/INT16/UINT16.
+
+When requant_mode==1, the calculation formula for this operation is:
+
+    ::
+        output = ((input - offset) * multiplier) << lshift
+        output = saturate(output >> 31)
+        output = saturate(output >> -shift)
+
+
+    *BM1684X*: Input data types can be INT16/UINT16/INT8/UINT8, output data types can be INT32/INT16/INT8.
+
+This operation is a **local operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, representing the input tensor with 3-5 dimensions.
+* mul: List[int] or int, representing the quantization multiplier.
+* shift: List[int] or int, representing the quantization shift. Negative for right shift, positive for left shift.
+* offset: List[int] or int, representing the output offset.
+* lshift: int, representing the left shift coefficient.
+* requant_mode: int, representing the quantization mode. Values can be 0 or 1, where 0 is "Normal" and 1 is "TFLite".
+* round_mode: String type, representing the rounding mode. Default is "half_up", with options "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* out_dtype: String type, representing the input tensor type. Default is "int8".
+* out_name: String type or None, representing the name of the output tensor. If set to None, the name will be automatically generated internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor. The data type of this Tensor is determined by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X
+
+
+cast
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def cast(tensor_i: Tensor,
+         out_dtype: str = 'float32',
+         out_name: str = None,
+         round_mode: str = 'half_away_from_zero'):
+
+Description of the function
+"""""""""""
+Converts the input tensor `tensor_i` to the specified data type `out_dtype`, and rounds the data according to the specified rounding mode `round_mode`.
+Note that this operator cannot be used alone and must be used in conjunction with other operators.
+
+Explanation of parameters
+"""""""""""
+* tensor_i: Tensor type, representing the input Tensor.
+* out_dtype: str = 'float32', the data type of the output tensor, default is `float32`.
+* out_name: str = None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* round_mode: str = 'half_away_from_zero', the rounding mode, default is `half_away_from_zero`. Possible values are “half_away_from_zero”, “half_to_even”, “towards_zero”, “down”, “up”. Note that this function does not support the rounding modes “half_up” and “half_down”.
+
+Return value
+"""""""""""
+Returns a Tensor whose data type is determined by the input `out_dtype`.
+
+Processor Support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 
 Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3396,7 +3586,7 @@ Definition
         def nms(boxes: Tensor,
                 scores: Tensor,
                 format: str = 'PYTORCH',
-                max_box_num_per_class: int = 0,
+                max_box_num_per_class: int = 1,
                 out_name: str = None)
 
 Description
@@ -3407,8 +3597,8 @@ Parameters
 """""""""""
 * boxes: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of box, the third dimension is 4 coordinates of boxes.
 * scores: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of classes, the third dimension is number of boxes.
-* format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height].
-* max_box_num_per_class: Int type, representing max number of boxes per class. The default value is 0.
+* format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height]. The default value is 'PYTORCH'.
+* max_box_num_per_class: Int type, representing max number of boxes per class. It must be greater than 0. The default value is 1.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
@@ -3442,11 +3632,11 @@ Perform interpolation upon input tensor.
 
 Parameters
 """""""""""
-* input: Tensor type, representing the input Tensor.
-* scale_h: Float type, representing the resize scale along h-axis.
-* scale_w: Float type, representing the resize scale along w-axis.
-* method: String type, representing the interpolation method. Optional values are "nearest" or "linear".
-* coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric".
+* input: Tensor type, representing the input Tensor. Must be at least a 2-dimensional tensor.
+* scale_h: Float type, representing the resize scale along h-axis. Must be greater than 0.
+* scale_w: Float type, representing the resize scale along w-axis. Must be greater than 0.
+* method: String type, representing the interpolation method. Optional values are "nearest" or "linear". Default is "nearest".
+* coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric". Default is "pytorch_half_pixel".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the defintion of inverse map of coordinates is as follows:
@@ -3477,12 +3667,13 @@ Note that, parameter `coord_mode` defined here is the same as the parameter `coo
 
 Returns
 """""""""""
-Returns one Tensor, whose data type is the same as that of the input tensor.
+Returns a Tensor representing the interpolated result. The data type is the same as the input type, and the shape is adjusted based on the scaling factors.
 
 Processor support
 """""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16(TODO).
-* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO).
+* BM1688: Supports input data types FLOAT32/FLOAT16/INT8.
+* BM1684X: Supports input data types FLOAT32/FLOAT16/INT8.
+
 
 
 yuv2rgb
@@ -3523,7 +3714,8 @@ One rgb tensor will be output, with shape=[n,3,h,w], where n represents `batch`,
 
 Processor support
 """""""""""
-* BM1684X: The input data type must be UINT8.
+* BM1684X: The input data type must be UINT8/INT8. Output data type is INT8.
+* BM1688: The input data type must be UINT8/INT8. Output data type is INT8.
 
 
 Select Operator
@@ -3793,7 +3985,7 @@ The interface definition
                          scale: Optional[Union[List[float],List[int]]] = None,
                          zero_points: Optional[List[int]] = None,
                          out_name: str = None,
-                         odtype="float32",
+                         odtype="float16",
                          round_mode: str = "half_away_from_zero"):
           #pass
 
@@ -3805,13 +3997,13 @@ This operation is considered a **global operation**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input data.
-* std: List[float] type, representing the standard deviation(Std) of data.
-* mean: List[float] type, representing the mean value of data.
+* std: List[float], representing the standard deviation of the dataset. The dimensions of mean and std must match the channel dimension of the input, i.e., the second dimension of the input.
+* mean: List[float], representing the mean of the dataset. The dimensions of mean and std must match the channel dimension of the input, i.e., the second dimension of the input.
 * scale: Optional[Union[List[float],List[int]]] type or None, reprpesenting the scale factor.
 * zero_points: Optional[List[int]] type or None,representing the zero point.
 * out_name: string type or None, representing the name of Tensor, tpulang will auto generate name if out_name is None.
-* odtype: String type, representing data type of output Tensor.
-* round_mode: String type, representing rounding type.
+* odtype: String, representing the data type of the output Tensor. Default is "float16". Currently supports float16 and int8.
+* round_mode: String, representing the rounding method. Default is "half_away_from_zero", with options "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
 """"""""""""""""""""""
