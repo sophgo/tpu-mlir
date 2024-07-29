@@ -2785,9 +2785,9 @@ def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, S
 @assert_with_out_name
 def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name: str = None):
     assert lhs.shape == rhs.shape
-    cond = __compare(lhs, rhs, type, f"{out_name}_compare")
+    cond = __compare(lhs, rhs, type, out_name=f"{out_name}_compare")
     cond.shape = lhs.shape
-    return cond_select(cond, tbrn, fbrn, f"{out_name}_cond_select")
+    return cond_select(cond, tbrn, fbrn, out_name=f"{out_name}_cond_select")
 
 @auto_name()
 @annotation_check

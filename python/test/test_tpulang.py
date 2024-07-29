@@ -164,7 +164,7 @@ class TPULANG_IR_TESTER(object):
             "Silu": (self.test_Silu,                    Y, Y),
             "Sin": (self.test_Sin,                      Y, Y),
             "Sinh": (self.test_Sinh,                    Y, Y),
-            # "Select": (self.test_Select,                Y, Y),
+            "Select": (self.test_Select,                Y, Y),
             "Softmax": (self.test_Softmax,              Y, Y),
             "Sort": (self.test_Sort,                    Y, Y),
             # "SortByKey": (self.test_SortByKey,          Y, Y),
@@ -3728,7 +3728,7 @@ class TPULANG_IR_TESTER(object):
             tbrn = tpul.Tensor(dtype=dtype, shape=shape, data=tbrn_data)
             fbrn_data = rand_data(shape, dtype)
             fbrn = tpul.Tensor(dtype=dtype, shape=shape, data=fbrn_data)
-            y = tpul.cond_select(lhs, rhs, tbrn, fbrn, type)
+            y = tpul.select(lhs, rhs, tbrn, fbrn, type)
             self.compile_and_check(self.unique_name(case_name), [lhs, rhs, tbrn, fbrn], [y], dtype!="float32")
 
         _test_select([2, 3, 24, 28], "Greater")
