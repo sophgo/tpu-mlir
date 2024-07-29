@@ -2452,14 +2452,14 @@ def topk(input: Tensor,
 def nms(boxes: Tensor,
         scores: Tensor,
         box_format: str = 'PYTORCH',
-        max_box_num_per_class: int = 0,
+        max_box_num_per_class: int = 1,
         out_name: str = None):
     boxes_dims = len(boxes.shape)
     scores_dims = len(scores.shape)
     assert boxes_dims == 3, f"dims of boxes expect 3 but get {boxes_dims}"
     assert scores_dims == 3, f"dims of boxes expect 3 but get {scores_dims}"
     assert box_format in ['TENSORFLOW', 'PYTORCH'], f"box_format:{box_format} is not supported"
-    assert max_box_num_per_class >= 0, f"max_box_num_per_class:{max_box_num_per_class} is not valid"
+    assert max_box_num_per_class > 0, f"max_box_num_per_class:{max_box_num_per_class} is not valid"
     if box_format == 'PYTORCH':
         center_point_box = 1
     else:
@@ -2823,13 +2823,13 @@ def index_select(input: Tensor, index : Tensor, axis : int = -1, out_name: str =
 @assert_with_out_name
 def mean_std_scale(input: Tensor, std: List[float], mean: List[float],
                 scale: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None,
-                out_name: str = None, odtype="float32", round_mode: str = "half_away_from_zero"):
+                out_name: str = None, odtype="float16", round_mode: str = "half_away_from_zero"):
     idtype = input.dtype
     if idtype in ["float32", "uint8", "int8"] and odtype == "float16":
         #Align with IEEE 754 standard
         round_mode = "HALF_TO_EVEN"
 
-    assert len(std) == len(mean)
+    assert len(std) == len(mean) == input.shape[1]
     assert len(input.shape) == 4 or len(input.shape) == 5
 
     h = input.shape[2]

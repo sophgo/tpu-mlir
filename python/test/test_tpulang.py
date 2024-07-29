@@ -105,6 +105,7 @@ class TPULANG_IR_TESTER(object):
             "Cosh": (self.test_Cosh,                    Y, Y),
             "Deconv2d": (self.test_Deconv2d,            Y, Y),
             # "Deconv3d": (self.test_Deconv3d,            N, N), # not support
+            # "Dequantint": (self.test_dequantint,        Y, Y),
             "Div": (self.test_Div,                      Y, Y),
             "Elu": (self.test_Elu,                      Y, Y),
             "Eq": (self.test_Eq,                        Y, Y),
@@ -181,7 +182,7 @@ class TPULANG_IR_TESTER(object):
             "TopK": (self.test_TopK,                    Y, Y),
             "Upsample": (self.test_Upsample,            Y, Y),
             "Unsqueeze": (self.test_Unsqueeze,          Y, Y),
-            "Yuv2rgb": (self.test_Yuv2rgb,              Y, N),
+            "Yuv2rgb": (self.test_Yuv2rgb,              Y, Y),
             #### model ####
             "AttenQuantBlock": (self.test_AttenQuant,   Y, Y),
             "Bert": (self.test_Bert,                    Y, Y),
@@ -604,6 +605,41 @@ class TPULANG_IR_TESTER(object):
 
         _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
         _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3, dtype="float16")
+
+    #######################################################################
+    # Dequantint
+    # ------------
+    # def dequant_int_op(self, tensor_i, out_dtype="int8", mul=0.875, shift=0, offset=None, lshift=0, requant_mode=0):
+    #     print(f"dequant_int_op: tensor_i={tensor_i}, out_dtype={out_dtype}, mul={mul}, shift={shift}, offset={offset}, lshift={lshift}, requant_mode={requant_mode}")
+    #     dequant = tpul.dequant_int(tensor_i=tensor_i, mul = mul, shift = shift, offset = offset , lshift= lshift, requant_mode = requant_mode, out_dtype= out_dtype)
+    #     return dequant
+
+    # def test_dequantint(self, case_name):
+    #     """Dequant_int"""
+
+    #     @tpulang(self.chip)
+    #     def _test_dequantint(shape: List[int], dtype="int8", out_dtype='int32'):
+    #         x_data = rand_data(shape, dtype)
+    #         print(f"Generated random data: {x_data}")
+    #         x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+    #         print(f"Created tensor x: {x}")
+    #         dq1= self.dequant_int_op(x, out_dtype, requant_mode=0)
+
+    #         y_data = rand_data(shape, dtype)
+    #         print(f"Generated random data: {x_data}")
+    #         y = tpul.Tensor(dtype=dtype, shape=shape, data=y_data)
+    #         print(f"Created tensor x: {x}")
+    #         dq2 = self.dequant_int_op(y, out_dtype, requant_mode=0)
+
+    #         r = tpul.add(dq1, dq2)
+    #         print(f"Add operation result: {r}")
+    #         self.compile_and_check(self.unique_name(case_name), [x], [r])
+
+    #     # input int8, output int32
+    #     _test_dequantint([1, 3, 32, 32])
+
+
+
 
     #######################################################################
     # HModel
@@ -1631,22 +1667,27 @@ class TPULANG_IR_TESTER(object):
     # #######################################################################
     # # Cast
     # # ------------
-    # def cast_op(self, input):
-    #     cast = tpul.cast(input)
+    # def cast_op(self, input, out_dtype):
+    #     cast = tpul.cast(input, out_dtype)
     #     return cast
 
     # def test_Cast(self, case_name):
     #     """Cast"""
 
     #     @tpulang(self.chip)
-    #     def _test_cast(shape: List[int], dtype="float32"):
+    #     def _test_cast(shape: List[int], dtype="float32",out_dtype ='float32'):
     #         x_data = rand_data(shape, dtype)
     #         x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
-    #         cast = self.cast_op(x)
+    #         cast = self.cast_op(x, out_dtype)
     #         self.compile_and_check(self.unique_name(case_name), [x], [cast])
 
-    #     _test_cast([1, 3, 28, 28], dtype="uint16")
+    #     # input f32, output f32
     #     _test_cast([1, 3, 32, 32])
+    #     # input f16, output f32
+    #     _test_cast([1, 3, 28, 28], dtype="float16")
+    #     # input int8, output
+    #     _test_cast([1, 3, 28, 28], out_dtype="int8")
+
 
     #######################################################################
     # Clamp
@@ -3965,7 +4006,6 @@ class TPULANG_IR_TESTER(object):
         _test_int8_to_f16_()
         _test_uint8_to_f16_()
         _test_f32_to_f16_()
-
 
     ########################################################################
     # ScatterElements case
