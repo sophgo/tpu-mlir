@@ -1216,7 +1216,7 @@ void ConvertTopToTpu::runOnOperation() {
   // adjust reshape
   patterns.clear();
   patterns.add<
-      ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>,
+      ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>, ForwardTypePattern<tpu::SqueezeOp>,
       ForwardTypePattern<tpu::TileOp>, ForwardInt32TypePattern<tpu::SqueezeOp>,
       ForwardInt32TypePattern<tpu::SliceOp>, ForwardInt32TypePattern<tpu::PermuteOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
