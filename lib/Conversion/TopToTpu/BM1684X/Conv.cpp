@@ -89,12 +89,20 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_size);
   auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_size);
+  float bias_max = 1e-6;
   if (p.has_bias) {
     auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
+    float max = findMaxabs(bias_fp32->data(), bias_fp32->size());
+    bias_max = max;
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
   } else if (in_zp) {
     bias_int32 = std::make_shared<std::vector<int32_t>>(p.oc, 0);
+  }
+
+  if (in_scale <= 1e-5) {  // if the input is all zero, in th would be 1e-5 in calibration, and the bias may be overflow in quant. if no bias or bias too small, follow filter. occur in sam model from xm.
+    in_scale = bias_max <= 1e-5? std::max(std::abs(fmax),std::abs(fmin))/127.0:bias_max/127.0;
+    llvm::errs() << module::getName(op.getOperation()).str() << " : found input too small in conv lowering int8, scale change to " << in_scale  << " bias is: " << bias_max << "\n";
   }
 
   std::vector<int64_t> rshift_v;
