@@ -57,7 +57,7 @@ struct Conv3dTo2d : public OpRewritePattern<ConvOp> {
   LogicalResult matchAndRewrite(ConvOp op,
                                 PatternRewriter &rewriter) const override {
     auto p = op.parseParam();
-    if (op.getKernelShape().size() != 3 || p.id != p.kd) {
+    if (op.getKernelShape().size() != 3 || p.id != p.kd || p.od != 1) {
       return failure();
     }
     static int callCount  = 0;
