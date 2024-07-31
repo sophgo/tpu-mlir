@@ -78,13 +78,13 @@ def plot_float_vs_fixpoint(index, data, **keywords):
     return fig
 
 def plot_weight_and_transposed(index, data, **keywords):
-    fp_data, int_data, fpt_data, intt_data = data
-    fig, plot = fig_sub_plot([2, 1],
+    weight, weight_t, bias = data
+    fig, plot = fig_sub_plot([3, 1],
                              **dict(shared_xaxes=True,
                                     vertical_spacing=0.03,
                                     horizontal_spacing=0.07,
                                     **keywords))
-    style = dict(name=('float32', 'int8'),
+    style = dict(name=('param',),
                  mode='lines+markers',
                  marker=({
                      "size": 6,
@@ -95,8 +95,10 @@ def plot_weight_and_transposed(index, data, **keywords):
                      "opacity": 0.8
                  }),
                  line={"width": 1})
-    plot(index, (fp_data, int_data), **style)
-    plot(index, (fpt_data, intt_data), **style)
+    plot(index, (weight), **style)
+    plot(index, (weight_t), **style)
+    if type(bias) != None:
+        plot(index, (bias), **style)
     return fig
 
 def plot_dist_fp_fixpoint(fig, index, data, **keywords):
