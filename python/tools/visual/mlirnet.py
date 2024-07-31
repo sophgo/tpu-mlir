@@ -237,36 +237,18 @@ class analysis_data():
             f32 = quant
         return f32, quant
 
-    def weight(self, fweight, name):
+    def weight(self, name, name1):
         fp32_exist = False
-        if name in self.quant_net.all_weight_names():
-            quant = self.quant_net.tensor(name).copy()
+        if name in self.f32_net.all_weight_names():
+            weight = self.f32_net.tensor(name).copy()
         else:
             return None, None
-        if fweight in self.f32_net.all_weight_names():
-            f32 = self.f32_net.tensor(fweight).copy()
-            fp32_exist = True
+        if name1 != None:
+            if name1 in self.f32_net.all_weight_names():
+                bias = self.f32_net.tensor(name1).copy()
         else:
-            f32 = quant.copy()
-        if fp32_exist:
-            for op in self.f32_net.mlir_parser.get_op_name_list():
-                if fweight in self.f32_net.mlir_parser.get_opds_by_op_name(op):
-                    if self.f32_net.mlir_parser.get_op_type_by_op_name(op) == "top.Conv": # for perchannel weight ops, add later
-                        if self.quant_net.mlir_parser.module_chip != "bm1684":
-                            oc = f32.shape[0]
-                            max = np.max(np.abs(f32.reshape(oc,-1)),axis=1).reshape(oc,1)
-                            quant = (quant.reshape(oc,-1) * ((max/127.0))).reshape(f32.shape)
-                        else:
-                            oc = f32.shape[0]
-                            max = np.max(np.abs(f32))
-                            quant = quant* ((max/127.0))
-                    else: # for per layer weight ops
-                        fmax = np.max(np.abs(f32))
-                        if self.quant_net.tensor_qtype(name) == "I8":
-                            quant = quant.astype(np.float32)* (fmax/127.0)
-                        if self.quant_net.tensor_qtype(name) == "U8":
-                            quant = quant.astype(np.float32)* (fmax/255.0)
-        return f32, quant, quant.shape
+            bias = None
+        return weight, weight.shape, bias, bias.shape
 
     def run_metrics(self):
         m_work = Thread(target=self.__metrics)

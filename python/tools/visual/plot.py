@@ -20,12 +20,12 @@ class figure_cache():
         self.figure = dict()
 
 
-def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None):
+def linear_plot(data, name=None, max_sampling=1000, bias=None):
     import numpy as np
     from . import plot_utils as plt
     shape = None
-    if weight:
-        blob_fp, blob_int, shape = data.weight(f32weight, name)
+    if name != None:
+        weight, shape, bias, bshape = data.weight(name, bias)
     else:
         blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
@@ -54,6 +54,37 @@ def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None
                         hovermode='x unified')
     return fig
 
+def param_plot(data, name=None, max_sampling=1000, bias=None):
+    import numpy as np
+    from . import plot_utils as plt
+    shape = None
+    if name == None:
+        return None
+    weight, weight_shape, bias, bias_shape = data.weight(name, bias)
+    data_size = weight.size
+    if data_size > max_sampling:
+        stepw = data_size // max_sampling
+    else:
+        stepw = 1
+    if type(bias) != None:
+        data_size = bias.size
+        if data_size > max_sampling:
+            stepb = data_size // max_sampling
+        else:
+            stepb = 1
+    indexw = np.arange(0, data_size, stepw)
+    indexb = np.arange(0, data_size, stepb)
+    if type(bias) != None:
+        fig = plt.plot_weight_and_transposed(indexw, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], bias.flatten()[::stepb]),
+            subplot_titles=(name, name+"-transposed", name+"-bias"))
+    else:
+        fig = plt.plot_weight_and_transposed(indexw, (weight.flatten()[::stepw], None),
+            subplot_titles=(name, name+"-transposed", name+"-bias"))
+    fig.update_layout(legend=dict(yanchor="top", y=0.99,
+                    xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+    fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
+                    hovermode='x unified')
+    return fig
 
 def dist_plot(data, name=None, scale=1.0, dtype='I8'):
     import numpy as np
