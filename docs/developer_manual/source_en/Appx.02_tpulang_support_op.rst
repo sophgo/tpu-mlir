@@ -2146,7 +2146,9 @@ The interface definition
 
     .. code-block:: python
 
-      def permute(tensor, order=(), out_name=None):
+      def permute(input:tensor,
+                  order:Union[List[int], Tuple[int]],
+                  out_name:str=None):
           #pass
 
 Description of the function
@@ -2158,7 +2160,7 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: Tensor type, reprsenting input Tensor.
+* input: Tensor type, reprsenting input Tensor.
 * order: List[int] or Tuple[int] type, reprsenting permutation order. The length of `order` should be the same as the dimensions of input tensor.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -2179,9 +2181,10 @@ The interface definition
 
     .. code-block:: python
 
-      def tile(tensor_i, reps, out_name=None):
+      def tile(tensor_i: Tensor,
+               reps: Union[List[int], Tuple[int]],
+               out_name: str = None):
           #pass
-
 Description of the function
 """""""""""""""""""""""""""""""""
 Repeat the data by copying it along the specified dimension(s).
@@ -2210,7 +2213,9 @@ The interface definition
 
     .. code-block:: python
 
-      def broadcast(tensor_i, reps, out_name=None):
+      def broadcast(input: Tensor,
+                    reps: Union[List[int], Tuple[int]],
+                    out_name: str = None):
           #pass
 
 Description of the function
@@ -2220,7 +2225,7 @@ This operation is considered a **restricted local operation**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input tensor for the operation.
+* input: Tensor type, representing the input tensor for the operation.
 * `reps`: A `List[int]` or `Tuple[int]` indicating the number of copies for each dimension. The length of `reps` must match the number of dimensions of the tensor.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -2242,7 +2247,13 @@ The interface definition
 
     .. code-block:: python
 
-    def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+        def concat(inputs: List[Tensor],
+               scales: Optional[Union[List[float],List[int]]] = None,
+               zero_points: Optional[List[int]] = None,
+               axis: int = 0,
+               out_name: str = None,
+               dtype="float32",
+               round_mode: str="half_away_from_zero"):
         #pass
 
 Description of the function
@@ -2253,12 +2264,13 @@ This operation is considered a **restricted local operation**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensors: A `List[Tensor]` type, containing multiple tensors. All tensors must have the same data type and the same number of shape dimensions.
+* inputs: A `List[Tensor]` type, containing multiple tensors. All tensors must have the same data type and the same number of shape dimensions.
 * scales: An optional Union[List[float], List[int]] type, containing multiple input scales and one output scale, where the last element is the scale for the output.
 * zero_points: An optional List[int] type, containing multiple input zero points and one output zero point, with the last one being the zero point for the output.
 * axis: An `int` type, indicating the axis along which the concatenation operation will be performed.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 * dtype: A string type, defaulting to "float32".
+* round_mode: String type, representing rounding type. default to "half_away_from_zero".
 
 Return value
 """"""""""""""""""""""
@@ -2277,7 +2289,11 @@ The interface definition
 
     .. code-block:: python
 
-      def split(tensor, axis=0, num=1, size=(), out_name=None):
+      def split(input:tensor,
+                axis:int=0,
+                num:int=1,
+                size:Union[List[int], Tuple[int]]=None,
+                out_name:str=None):
           #pass
 
 Description of the function
@@ -2289,7 +2305,7 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A `Tensor` type, indicating the tensor that is to be split.
+* input: A `Tensor` type, indicating the tensor that is to be split.
 * axis: An `int` type, indicating the axis along which the tensor will be split.
 * num: An `int` type, indicating the number of parts to split the tensor into.
 * size: A `List[int]` or `Tuple[int]` type. When not splitting evenly, this specifies the size of each part. For even splitting, it can be set to empty.
@@ -2312,7 +2328,11 @@ The interface definition
 
     .. code-block:: python
 
-      def pad(tensor, padding=None, value=None, method='constant', out_name=None):
+      def pad(input:tensor,
+              method='constant',
+              value:Union[Scalar, Variable, None]=None,
+              padding:Union[List[int], Tuple[int], None]=None,
+              out_name:str=None):
           #pass
 
 Description of the function
@@ -2323,10 +2343,10 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A `Tensor` type, indicating the tensor that is to be padded.
-* padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used. For example, the padding of a hw 2D Tensor is [h_top, w_left, h_bottom, w_right]
-* value: A `Scalar`, `Variable` type, or `None`, representing the value to be filled. The data type is consistent with that of the tensor.
+* input: A `Tensor` type, indicating the tensor that is to be padded.
 * method: string type, representing the padding method. Optional values are "constant", "reflect","symmetric" or "edge".
+* value: A `Scalar`, `Variable` type, or `None`, representing the value to be filled. The data type is consistent with that of the tensor.
+* padding: A `List[int]`, `Tuple[int]`, or `None`. If `padding` is `None`, a zero-filled list of length `2 * len(tensor.shape)` is used. For example, the padding of a hw 2D Tensor is [h_top, w_left, h_bottom, w_right].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2346,7 +2366,9 @@ The interface definition
 
     .. code-block:: python
 
-      def repeat(tensor_i, reps, out_name=None):
+       def repeat(tensor_i:Tensor,
+                 reps:Union[List[int], Tuple[int]],
+                 out_name:str=None):
           #pass
 
 Description of the function
@@ -2883,6 +2905,92 @@ Processor support
 Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+maxpool2d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool2d(input: Tensor,
+                    kernel: Union[List[int],Tuple[int],None] = None,
+                    stride: Union[List[int],Tuple[int],None] = None,
+                    pad:    Union[List[int],Tuple[int],None] = None,
+                    ceil_mode: bool = False,
+                    scale: List[float] = None,
+                    zero_point: List[int] = None,
+                    out_name: str = None,
+                    round_mode: str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Max Pooling on the input Tensor.The Max Pooling 2d operation can refer to the maxpool2d operator of each framework This operation is a  **local operation** 。
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, indicating the input operation Tensor.
+* kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
+* stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
+* pad: List[int] or Tuple[int] type or None, indicating the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
+* ceil: bool type, indicating whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the scales of input and output respectively.
+* zero_point: List[int] type or None, offset parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the zero_points of input and output respectively.
+* out_name: string type or None, indicating the name of the output Tensor. If it is None, the name will be automatically generated internally.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+
+
+maxpool2d_with_mask
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool2d_with_mask(input: Tensor,
+                              kernel: Union[List[int],Tuple[int],None] = None,
+                              stride: Union[List[int],Tuple[int],None] = None,
+                              pad:    Union[List[int],Tuple[int],None] = None,
+                              ceil_mode: bool = False,
+                              out_name: str = None,
+                              mask_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""
+Perform Max pooling on the input Tensor and output its mask index. Please refer to the pooling operations under various frameworks.
+This operation belongs to **local operation**.
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, indicating the input operation Tensor.
+* kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
+* pad: List[int] or Tuple[int] type or None. Indicates the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
+* stride: List[int] or Tuple[int] type or None. Indicates the stride size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
+* ceil: bool type, indicating whether to round up when calculating the output shape.
+* out_name: string type or None. Indicates the name of the output Tensor. If None, the name is automatically generated internally.
+* mask_name: string type or None. Indicates the name of the output Mask. If None, the name is automatically generated internally.
+
+Return value
+"""""""""""
+Returns two Tensors, one of which has the same data type as the input Tensor and the other returns a coordinate Tensor, which records the coordinates selected when using comparison operation pooling.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32
+* BM1684X: The input data type can be FLOAT32
+
 upsample
 :::::::::::::::::
 
@@ -2891,7 +2999,9 @@ The interface definition
 
     .. code-block:: python
 
-      def upsample(tensor_i, scale = 1, out_name=None):
+      def upsample(tensor_i: Tensor,
+                   scale: int = 2,
+                   out_name: str = None):
           #pass
 
 Description of the function
@@ -2911,8 +3021,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8.
 
 reduce
 :::::::::::::::::
@@ -2922,7 +3032,11 @@ The interface definition
 
     .. code-block:: python
 
-      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+      def reduce(tensor_i: Tensor,
+                 method: str = 'ReduceSum',
+                 axis: Union[List[int],Tuple[int],int] = None,
+                 keep_dims: bool = False,
+                 out_name: str = None):
           #pass
 
 Description of the function
@@ -2933,7 +3047,7 @@ This operation is considered a **restricted local operation**. This operation is
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i: Tensor type, representing the input tensor for the operation.
-* method: string type, representing the reduce method.The method The can be mean, max, min, sum, product, L1, or l2.
+* method: string type, representing the reduce method.The method The can be "ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum".
 * axis: A List[int] or Tuple[int] type, indicating the specified axes.
 * keep_dims: A boolean, indicating whether to keep the specified axis after the operation.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -2970,9 +3084,9 @@ Description of the function
 """""""""""
 Performs Max Pooling on the input Tensor.The Max Pooling 3d operation can refer to the maxpool3d operator of each framework This operation is a  **local operation** 。
 
-Parameters
+Explanation of parameters
 """""""""""
-* tensor: Tensor type, representing the input tensor for the operation.
+* input: Tensor type, representing the input tensor for the operation.
 * kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
 * pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
 * stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
@@ -2980,7 +3094,7 @@ Parameters
 * scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
 * zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
 * out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
-round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
 """""""""""
@@ -2991,6 +3105,53 @@ Processor support
 * BM1688: The input data type can be FLOAT32/UINT8/INT8.
 * BM1684X: The input data type can be FLOAT32/UINT8/INT8.
 
+avgpool2d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool2d(input: Tensor,
+                    kernel: Union[List[int],Tuple[int],None] = None,
+                    stride: Union[List[int],Tuple[int],None] = None,
+                    pad:    Union[List[int],Tuple[int],None] = None,
+                    ceil_mode: bool = False,
+                    scale: List[float] = None,
+                    zero_point: List[int] = None,
+                    out_name: str = None,
+                    count_include_pad : bool = False,
+                    round_mode : str="half_away_from_zero",
+                    first_round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Avg Pooling on the input Tensor.The Avg Pooling 2d operation can refer to the avgpool2d operator of each framework This operation is a  **local operation** 。
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, indicating the input operation Tensor.
+* kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
+* stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
+* pad: List[int] or Tuple[int] type or None, indicating the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
+* ceil: bool type, indicating whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the scales of input and output respectively.
+* zero_point: List[int] type or None, offset parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the zero_points of input and output respectively.
+* out_name: string type or None, indicating the name of the output Tensor. If it is None, the name will be automatically generated internally.
+* count_include_pad: Bool type, indicating whether the pad value is included when calculating the average value. The default value is False.
+* round_mode: String type, when the input and output Tensors are quantized, it indicates the second rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* first_round_mode: String type, when the input and output Tensors are quantized, it indicates the first rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
 
 avgpool3d
 :::::::::::::::::::
@@ -3016,7 +3177,7 @@ Description of the function
 """""""""""
 Performs Avg Pooling on the input Tensor.The Avg Pooling 3d operation can refer to the avgpool3d operator of each framework This operation is a  **local operation** 。
 
-Parameters
+Explanation of parameters
 """""""""""
 * tensor: Tensor type, representing the input tensor for the operation.
 * kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
@@ -3026,8 +3187,8 @@ Parameters
 * scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
 * zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
 * out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
-* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
-*first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
 """""""""""
@@ -3131,8 +3292,8 @@ Returns the Tensor type, representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 group_norm
 :::::::::::::::::::
@@ -3174,8 +3335,8 @@ Returns the Tensor type, representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 rms_norm
@@ -3376,7 +3537,9 @@ The interface definition
 
     .. code-block:: python
 
-      def nonzero(tensor_i, dtype = 'int32', out_name=None):
+      def nonzero(tensor_i:Tensor,
+                  dtype = 'int32',
+                  out_name=None):
           #pass
 
 Description of the function
@@ -3410,7 +3573,8 @@ Definition
 
         def lut(input: Tensor,
                 table: Tensor,
-                out_name: str = None)
+                out_name: str = None):
+        #pass
 
 Description
 """""""""""
@@ -3444,7 +3608,8 @@ Definition
                    tbrn: Tensor,
                    fbrn: Tensor,
                    type: str,
-                   out_name = None)
+                   out_name = None):
+        #pass
 
 Description
 """""""""""
@@ -3479,9 +3644,10 @@ Definition
     .. code-block:: python
 
         def cond_select(cond: Tensor,
-                        tbrn: Union[Tensor, Scalar, float, int],
-                        fbrn: Union[Tensor, Scalar, float, int],
-                        out_name = None)
+                        tbrn: Union[Tensor, Scalar],
+                        fbrn: Union[Tensor, Scalar],
+                        out_name:str = None):
+        #pass
 
 Description
 """""""""""

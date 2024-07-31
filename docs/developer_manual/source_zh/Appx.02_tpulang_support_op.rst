@@ -3006,7 +3006,9 @@ permute
 
     .. code-block:: python
 
-      def permute(tensor, order=(), out_name=None):
+      def permute(input:tensor,
+                  order:Union[List[int], Tuple[int]],
+                  out_name:str=None):
           #pass
 
 功能描述
@@ -3017,7 +3019,7 @@ permute
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * order：List[int]或Tuple[int]型，表示置换参数。要求order长度和tensor维度一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -3038,7 +3040,9 @@ tile
 
     .. code-block:: python
 
-      def tile(tensor_i, reps, out_name=None):
+      def tile(tensor_i: Tensor,
+               reps: Union[List[int], Tuple[int]],
+               out_name: str = None):
           #pass
 
 功能描述
@@ -3069,7 +3073,9 @@ broadcast
 
     .. code-block:: python
 
-      def broadcast(tensor_i, reps, out_name=None):
+      def broadcast(input: Tensor,
+                    reps: Union[List[int], Tuple[int]],
+                    out_name: str = None):
           #pass
 
 功能描述
@@ -3079,7 +3085,7 @@ broadcast
 
 参数说明
 """""""""""
-* tensor_i：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * reps：List[int]或Tuple[int]型，表示每个维度的复制份数。要求order长度和tensor维度一致。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
@@ -3101,7 +3107,13 @@ concat
 
     .. code-block:: python
 
-    def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] = None, zero_points: Optional[List[int]] = None, axis: int = 0, out_name: str = None, dtype="float32"):
+    def concat(inputs: List[Tensor],
+               scales: Optional[Union[List[float],List[int]]] = None,
+               zero_points: Optional[List[int]] = None,
+               axis: int = 0,
+               out_name: str = None,
+               dtype="float32",
+               round_mode: str="half_away_from_zero"):
         #pass
 
 功能描述
@@ -3112,12 +3124,13 @@ concat
 
 参数说明
 """""""""""
-* tensors：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。
+* inputs：List[Tensor]类型，存放多个Tensor，所有的Tensor要求数据格式一致并具有相同的shape维度数，且除了待拼接的那一维，shape其他维度的值应该相等。
 * scales：Optional[Union[List[float],List[int]]]类型，存放多个输入和一个输出scale，最后一个为输出的scale。
 * zero_points：Optional[List[int]]类型，存放多个输入和一个输出的zero_point, 最后一个为输出的zero_point。
 * axis：int型，表示进行拼接运算的轴。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 * dtype：string类型,默认是"float32"。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 
 返回值
 """""""""""
@@ -3136,7 +3149,11 @@ split
 
     .. code-block:: python
 
-      def split(tensor, axis=0, num=1, size=(), out_name=None):
+      def split(input:tensor,
+                axis:int=0,
+                num:int=1,
+                size:Union[List[int], Tuple[int]]=None,
+                out_name:str=None):
           #pass
 
 功能描述
@@ -3147,7 +3164,7 @@ split
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示将要进行切分的Tensor。
+* input：Tensor类型，表示将要进行切分的Tensor。
 * axis：int型，表示进行切分运算的轴。
 * num：int型，表示切分的份数；
 * size：List[int]或Tuple[int]型，非平均分裂时，指定每一份大小，平均分裂时，设置为空即可。
@@ -3170,7 +3187,11 @@ pad
 
     .. code-block:: python
 
-      def pad(tensor, padding=None, value=None, method='constant', out_name=None):
+      def pad(input:tensor,
+              method='constant',
+              value:Union[Scalar, Variable, None]=None,
+              padding:Union[List[int], Tuple[int], None]=None,
+              out_name:str=None):
           #pass
 
 功能描述
@@ -3181,10 +3202,10 @@ pad
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示将要进行填充的Tensor。
-* padding：List[int]或Tuple[int]型或None。padding为None时使用一个长度为2*len(tensor.shape)的全 0 list。例如，一个hw的二维Tensor对应的padding是 [h_top, w_left, h_bottom,  w_right]。
-* value：Saclar或Variable型或None，表示待填充的数值。数据类型和tensor一致；
+* input：Tensor类型，表示将要进行填充的Tensor。
 * method：string类型，表示填充方法，可选方法"constant"，"reflect"，"symmetric"，"edge"。
+* value：Saclar或Variable型或None，表示待填充的数值。数据类型和tensor一致；
+* padding：List[int]或Tuple[int]型或None。padding为None时使用一个长度为2*len(tensor.shape)的全 0 list。例如，一个hw的二维Tensor对应的padding是 [h_top, w_left, h_bottom,  w_right]。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -3204,7 +3225,9 @@ repeat
 
     .. code-block:: python
 
-      def repeat(tensor_i, reps, out_name=None):
+      def repeat(tensor_i:Tensor,
+                 reps:Union[List[int], Tuple[int]],
+                 out_name:str=None):
           #pass
 
 功能描述
@@ -3892,13 +3915,14 @@ maxpool2d
     .. code-block:: python
 
       def maxpool2d(input: Tensor,
-                    kernel: List[int]=None,
-                    stride: List[int] = None,
-                    pad: List[int] = None,
+                    kernel: Union[List[int],Tuple[int],None] = None,
+                    stride: Union[List[int],Tuple[int],None] = None,
+                    pad:    Union[List[int],Tuple[int],None] = None,
                     ceil_mode: bool = False,
                     scale: List[float] = None,
                     zero_point: List[int] = None,
-                    out_name: str = None):
+                    out_name: str = None,
+                    round_mode: str="half_away_from_zero"):
           #pass
 
 功能描述
@@ -3908,14 +3932,15 @@ maxpool2d
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
-* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
 * stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
+* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
 * ceil：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* round_mode：String型，当输入输出Tensor为量化时，表示舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
 
 返回值
 """""""""""
@@ -3936,9 +3961,9 @@ maxpool2d_with_mask
     .. code-block:: python
 
       def maxpool2d_with_mask(input: Tensor,
-                              kernel: List[int]=None,
-                              stride: List[int] = None,
-                              pad: List[int] = None,
+                              kernel: Union[List[int],Tuple[int],None] = None,
+                              stride: Union[List[int],Tuple[int],None] = None,
+                              pad:    Union[List[int],Tuple[int],None] = None,
                               ceil_mode: bool = False,
                               out_name: str = None,
                               mask_name: str = None):
@@ -3995,15 +4020,15 @@ maxpool3d
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * kernel：List[int]或Tuple[int]型或int或None，输入None表示使用global_pooling，不为None时若输入单个整数，表示在3个维度上的kernel大小相同，若输入List或Tuple，要求该参数长度为3。
-* pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
 * stride：List[int]或Tuple[int]型或int或None，表示步长尺寸，输入None使用默认值[1,1,1]，不为None时若输入单个整数，表示在3个维度上的stride大小相同，若输入List或Tuple，要求该参数长度为3。
+* pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
 * ceil：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
-* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，当输入输出Tensor为量化时，表示舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
 
 返回值
 """""""""""
@@ -4025,9 +4050,9 @@ avgpool2d
     .. code-block:: python
 
       def avgpool2d(input: Tensor,
-                    kernel: List[int]=None,
-                    stride: List[int] = None,
-                    pad: List[int] = None,
+                    kernel: Union[List[int],Tuple[int],None] = None,
+                    stride: Union[List[int],Tuple[int],None] = None,
+                    pad:    Union[List[int],Tuple[int],None] = None,
                     ceil_mode: bool = False,
                     scale: List[float] = None,
                     zero_point: List[int] = None,
@@ -4044,17 +4069,17 @@ avgpool2d
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
-* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
 * stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
+* pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
 * ceil：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 * count_include_pad：Bool类型，表示在计算平均值时，是否将pad值计算在内，默认值为False。
-* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
-* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，当输入输出Tensor为量化时，表示舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
+* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
 
 返回值
 """""""""""
@@ -4103,8 +4128,8 @@ avgpool3d
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 * count_include_pad：Bool类型，表示在计算平均值时，是否将pad值计算在内，默认值为False。
-* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。
-* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。
+* round_mode：String型，当输入输出Tensor为量化时，表示第二次的舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
+* first_round_mode：String型，当输入输出Tensor为量化时，表示第一次的舍入模式。默认值为'half_away_from_zero'。round_mode取值范围为"half_away_from_zero", "half_to_even", "towards_zero", "down", "up"。
 
 返回值
 """""""""""
@@ -4124,7 +4149,9 @@ upsample
 
     .. code-block:: python
 
-      def upsample(tensor_i, scale = 1, out_name=None):
+      def upsample(tensor_i: Tensor,
+                   scale: int = 2,
+                   out_name: str = None):
           #pass
 
 功能描述
@@ -4144,8 +4171,8 @@ upsample
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8。
 
 reduce
 :::::::::::::::::
@@ -4155,7 +4182,11 @@ reduce
 
     .. code-block:: python
 
-      def reduce(tensor_i, method='sum', axis=0, keep_dims=False, out_name=None):
+      def reduce(tensor_i: Tensor,
+                 method: str = 'ReduceSum',
+                 axis: Union[List[int],Tuple[int],int] = None,
+                 keep_dims: bool = False,
+                 out_name: str = None):
           #pass
 
 功能描述
@@ -4166,7 +4197,7 @@ reduce
 参数说明
 """""""""""
 * tensor_i：Tensor类型，表示输入操作Tensor。
-* method：string类型，表示reduce方法，目前可选”mean”,”max”,”min”,”sum”,”prod”,"L1","L2"。
+* method：string类型，表示reduce方法，目前可选"ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"。
 * axis：List[int]或Tuple[int]或int，表示需要reduce的轴。
 * keep_dims：bool型，表示是否要保留原先的维度。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -4269,8 +4300,8 @@ layer_norm
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 group_norm
 :::::::::::::::::::
@@ -4312,8 +4343,8 @@ group_norm
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 rms_norm
 :::::::::::::::::::
@@ -4510,7 +4541,9 @@ nonzero
 
     .. code-block:: python
 
-      def nonzero(tensor_i, dtype = 'int32', out_name=None):
+      def nonzero(tensor_i:Tensor,
+                  dtype: str = 'int32',
+                  out_name: str = None):
           #pass
 
 功能描述
@@ -4543,7 +4576,8 @@ lut
 
         def lut(input: Tensor,
                 table: Tensor,
-                out_name: str = None)
+                out_name: str = None):
+        #pass
 
 功能描述
 """""""""""
@@ -4577,7 +4611,8 @@ select
                    tbrn: Tensor,
                    fbrn: Tensor,
                    type: str,
-                   out_name = None)
+                   out_name = None):
+        #pass
 
 功能描述
 """""""""""
@@ -4613,9 +4648,10 @@ cond_select
     .. code-block:: python
 
         def cond_select(cond: Tensor,
-                        tbrn: Union[Tensor, Scalar, float, int],
-                        fbrn: Union[Tensor, Scalar, float, int],
-                        out_name = None)
+                        tbrn: Union[Tensor, Scalar],
+                        fbrn: Union[Tensor, Scalar],
+                        out_name:str = None):
+        #pass
 
 功能描述
 """""""""""
