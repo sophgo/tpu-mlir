@@ -171,7 +171,8 @@ LogicalResult ConcatToSwapDimInner::matchAndRewrite(top::ConcatOp concat_op,
     return failure();
   }
   auto from = slice0_op.getInput();
-  if (from != slice1_op.getInput()) {
+  // ensure slice'ancestor has only two slices
+  if (from != slice1_op.getInput() || std::distance(from.user_begin(), from.user_end()) != 2) {
     return failure();
   }
   auto steps0 = module::getI64Array(slice0_op.getSteps());
