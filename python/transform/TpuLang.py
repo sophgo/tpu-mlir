@@ -1380,9 +1380,9 @@ def requant_fp(tensor_i: Tensor,
 @annotation_check
 @assert_with_out_name
 def maxpool2d(input: Tensor,
-            kernel: List[int]=None,
-            stride: List[int] = None,
-            pad: List[int] = None,
+            kernel: Union[List[int],Tuple[int],None] = None,
+            stride: Union[List[int],Tuple[int],None] = None,
+            pad:    Union[List[int],Tuple[int],None] = None,
             ceil_mode: bool = False,
             scale: List[float] = None,
             zero_point: List[int] = None,
@@ -1394,6 +1394,7 @@ def maxpool2d(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
 
     attr = {
@@ -1439,6 +1440,7 @@ def maxpool3d(input: Tensor,
     if isinstance(pad, int):
         pad = [pad] * 6
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
     attr = {
         "kernel_shape": ArrayAttr(kernel),
@@ -1466,9 +1468,9 @@ def maxpool3d(input: Tensor,
 @annotation_check
 @assert_with_out_name
 def maxpool2d_with_mask(input: Tensor,
-                        kernel: List[int]=None,
-                        stride: List[int] = None,
-                        pad: List[int] = None,
+                        kernel: Union[List[int],Tuple[int],None] = None,
+                        stride: Union[List[int],Tuple[int],None] = None,
+                        pad:    Union[List[int],Tuple[int],None] = None,
                         ceil_mode: bool = False,
                         out_name: str = None,
                         mask_name: str = None):
@@ -1478,6 +1480,7 @@ def maxpool2d_with_mask(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert input.dtype in ["float32"]
     o_dtype = input.dtype
 
     attr = {
@@ -1501,9 +1504,9 @@ def maxpool2d_with_mask(input: Tensor,
 @annotation_check
 @assert_with_out_name
 def avgpool2d(input: Tensor,
-            kernel: List[int]=None,
-            stride: List[int] = None,
-            pad: List[int] = None,
+            kernel: Union[List[int],Tuple[int],None] = None,
+            stride: Union[List[int],Tuple[int],None] = None,
+            pad:    Union[List[int],Tuple[int],None] = None,
             ceil_mode: bool = False,
             scale: List[float] = None,
             zero_point: List[int] = None,
@@ -1514,6 +1517,7 @@ def avgpool2d(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
 
     attr = {
@@ -1562,6 +1566,7 @@ def avgpool3d(input: Tensor,
     if isinstance(pad, int):
         pad = [pad] * 6
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
     attr = {
         "kernel_shape": ArrayAttr(kernel),
@@ -1576,7 +1581,7 @@ def avgpool3d(input: Tensor,
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
         "first_round_mode": Attr(round_mode_convert(first_round_mode), data_type="string"),
     }
-    output = Tensor(dtype=input.dtype, name=out_name)
+    output = Tensor(dtype=o_dtype, name=out_name)
     if scale is not None:
         zero_point = zero_point if zero_point is not None else [0,0]
         input.quantization(scale=scale[0], zero_point=zero_point[0])
@@ -2044,6 +2049,7 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
     attr = {
         "tile": ArrayAttr(reps),
     }
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
     return output
@@ -2078,18 +2084,20 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
 @assert_with_out_name
 def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     TpuLang.insert_op("top.Expand", inputs=[input], outputs=[output], params={"shape": ArrayAttr(reps)})
     return output
 
 @auto_name()
 @annotation_check
 @assert_with_out_name
-def nonzero(inputs: Tensor, dtype = "int32", out_name: str = None):
+def nonzero(input: Tensor, dtype = "int32", out_name: str = None):
     attr = {
         "order": Attr("ColMajor", "string"),
         }
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(dtype=dtype, name=out_name)
-    TpuLang.insert_op("top.NonZero", inputs=[inputs], outputs=[output], params=attr)
+    TpuLang.insert_op("top.NonZero", inputs=[input], outputs=[output], params=attr)
     return output
 
 @auto_name()
@@ -2100,6 +2108,7 @@ def upsample(input: Tensor, scale: int = 2, out_name: str = None):
         "scale_h": Attr(scale, data_type="int64"),
         "scale_w": Attr(scale, data_type="int64"),
     }
+    assert input.dtype in ["float32", "float16", "int8"]
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Upsample", inputs=[input], outputs=[output], params=attr)
     return output
@@ -2111,6 +2120,7 @@ def reduce(input: Tensor, method: str = "ReduceSum", axes: Union[List[int], int]
     assert(method in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1","ReduceSum"])
     if isinstance(axes, int):
         axes = [axes]
+    assert input.dtype in ["float32", "float16"]
     attr = {
         "axes": ArrayAttr(axes, "int64"),
         "keepdims": Attr(keep_dims, "bool"),
@@ -2194,6 +2204,7 @@ def split(input: Tensor,
         "axis": Attr(axis, "int32"),
         "num": Attr(num),
     }
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     if len(size) != 0:
         attr["split_size"] = ArrayAttr(size)
 
@@ -2243,11 +2254,10 @@ def pad(input: Tensor,
         padding: Union[Tuple[int], List[int]] = None,
         out_name: str = None):
     assert(method in ["constant","reflect","symmetric","edge"] and "Not supported pad type")
-    assert(not padding or len(padding) == 2 * len(input.shape) and "Invalid padding length")
-    if out_name is None:
-        out_name = generate_name("pad")
     if padding is None:
         padding = [0] * (len(input.shape)*2)
+    assert(not padding or len(padding) == 2 * len(input.shape) and "Invalid padding length")
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     attr = {
         "paddings": ArrayAttr(padding, "int64"),
         "val": Attr(value.value if value is not None else 0.0, "float64"),
@@ -2261,10 +2271,9 @@ def pad(input: Tensor,
 @annotation_check
 @assert_with_out_name
 def repeat(input: Tensor, reps: Tensor, out_name: str = None):
-    if out_name is None:
-        out_name = generate_name("repeat")
     # reps = Tensor(data = reps, shape = input.shape)
     output = Tensor(dtype=input.dtype, name=out_name)
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     TpuLang.insert_op("top.Repeat", inputs=[input, reps], outputs=[output])
     return output
 
@@ -2287,6 +2296,7 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
         stride = [1] * dims
     if out_name is None:
         out_name = generate_name("extract")
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {
         "offset": ArrayAttr(start),
@@ -2321,7 +2331,7 @@ def roll(input:Tensor,
     #
     #    concat(concat_0, ···， concat_dims)
     #
-
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
     in_shape = input.shape
     if dims is None:
@@ -2699,6 +2709,8 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
                gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, out_name: str = None):
     assert epsilon >= 0
+    assert input.dtype in ["float32", "float16"]
+    assert mean.shape == variance.shape
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"epsilon": Attr(epsilon, 'float64')}
     TpuLang.insert_op("top.BatchNorm", inputs=[input, mean, variance, gamma, beta], outputs=[output], params=attr)
@@ -2710,6 +2722,8 @@ def batch_norm(input: Tensor, mean: Tensor, variance: Tensor,
 def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, axis: int = 2, out_name: str = None):
     assert epsilon >= 0, "invalid epsilon"
+    assert gamma is None or beta is None or gamma.shape == beta.shape
+    assert input.dtype in ["float32", "float16"]
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {"eps": Attr(epsilon, 'float64'), "axis":  Attr(axis, 'int32'), "normalized_shape":  ArrayAttr([], "int64")}
     TpuLang.insert_op("top.LayerNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
@@ -2721,6 +2735,7 @@ def layer_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
 def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
                epsilon: float = 1e-5, num_groups: int = 1, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
+    assert input.dtype in ["float32", "float16"]
     attr = {"eps": Attr(epsilon, 'float64'), "num_groups":  Attr(num_groups, 'int64')}
     TpuLang.insert_op("top.GroupNorm", inputs=[input, gamma, beta], outputs=[output], params=attr)
     return output
@@ -2758,6 +2773,7 @@ def lut(input: Tensor, table: Tensor, out_name: str = None):
 def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, Scalar], out_name: str = None):
     assert tbrn.dtype == fbrn.dtype
     out_dtype = tbrn.dtype
+    assert cond.dtype == "float32"
     params = {}
     if isinstance(tbrn, Tensor):
         assert tbrn.shape == cond.shape, "shape of `tbrn` and `cond` should be the same"
@@ -2782,6 +2798,7 @@ def cond_select(cond: Tensor, tbrn: Union[Tensor, Scalar], fbrn: Union[Tensor, S
 @assert_with_out_name
 def select(lhs: Tensor, rhs: Tensor, tbrn: Tensor, fbrn: Tensor, type: str, out_name: str = None):
     assert lhs.shape == rhs.shape
+    assert lhs.dtype == "float32"
     cond = __compare(lhs, rhs, type, out_name=f"{out_name}_compare")
     cond.shape = lhs.shape
     return cond_select(cond, tbrn, fbrn, out_name=f"{out_name}_cond_select")

@@ -91,6 +91,7 @@ class TPULANG_IR_TESTER(object):
             "Avgpool": (self.test_Avgpool,              Y, Y),
             "Avgpool3d":(self.test_Avgpool3d,           Y, Y),
             "Broadcast": (self.test_Broadcast,          Y, Y),
+            "BatchNorm": (self.test_BatchNorm,          Y, Y),
             # "Cast": (self.test_Cast,                  Y, Y),
             "Ceil": (self.test_Ceil,                    Y, Y),
             "Clamp": (self.test_Clamp,                  Y, Y),
@@ -1887,7 +1888,7 @@ class TPULANG_IR_TESTER(object):
 
         @tpulang(self.chip)
         def _test_maxpool_mask(shape_x: List[int],
-                                kshape: List[int] = [1,1],
+                                kshape: List[int] = [1, 1],
                                 stride: List[int] = [1, 1],
                                 pad: List[int] = None,
                                 dtype="float32",
@@ -1896,11 +1897,11 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             maxpool, mask = tpul.maxpool2d_with_mask(x, kshape, stride, pad)
             self.compile_and_check(self.unique_name(case_name), [x], [maxpool, mask], is_quantized=is_quantized)
-
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
-    #  _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
+    # _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
+
     def test_Maxpool3d(self, case_name):
         """Maxpool3d"""
         @tpulang(self.chip)
@@ -1920,6 +1921,7 @@ class TPULANG_IR_TESTER(object):
         _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
         _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
+
     #######################################################################
     # Avgpool
     # ------------
@@ -2897,6 +2899,7 @@ class TPULANG_IR_TESTER(object):
 
         _test_upsample([1, 3, 28, 28])
         _test_upsample([1, 3, 28, 28], dtype="float16", is_quantized=True)
+        _test_upsample([1, 3, 28, 28], dtype="int8", is_quantized=True)
 
     #######################################################################
     # reduce
@@ -3120,20 +3123,20 @@ class TPULANG_IR_TESTER(object):
         """group_norm"""
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, dtype='float32'):
+        def _test_model_def(in_shape, dtype='float32',is_quantized=False):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             out = self.group_norm_op(x)
-            self.compile_and_check(self.unique_name(case_name), [x], [out])
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([1, 3, 224, 224])
-
+        _test_model_def([1, 3, 224, 224], dtype='float16',is_quantized=True)
+        _test_model_def([1, 3, 224, 224], dtype='float32')
     #######################################################################
-    # rmsnorm
+    # LayerNorm
     # ------------
     def test_LayerNorm(self, case_name):
         @tpulang(self.chip)
-        def _test_model_def(in_shape, dtype='float32', axis=-1):
+        def _test_model_def(in_shape, dtype='float32', axis=-1,is_quantized=False):
             x_data = rand_data(in_shape, dtype, -10, 10)
             norm_shape = [1]
             for tmp_shape in in_shape[axis:]:
@@ -3143,10 +3146,35 @@ class TPULANG_IR_TESTER(object):
             beta = self.coeff_tensor(shape=norm_shape, dtype=dtype)
 
             out = tpul.layer_norm(x, gamma, beta, axis=axis)
-            self.compile_and_check(self.unique_name(case_name), [x], [out])
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([20, 5, 10, 10,10], axis=2)
+        _test_model_def([20, 5, 10, 10,10],dtype='float16',axis=2,is_quantized=True)
+        _test_model_def([20, 5, 10, 10,10],dtype='float32', axis=2)
 
+    #######################################################################
+    # BatchNorm
+    # ------------
+    def test_BatchNorm(self, case_name):
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, dtype=None,axis =-1,is_quantized=False):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            if len(in_shape) == 1:
+                oc = in_shape[0]
+            else:
+                oc = in_shape[1]
+            mean = self.coeff_tensor([oc], x.dtype, scale=0.2)
+            var = self.coeff_tensor([oc], x.dtype, data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
+            gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
+            beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
+            y = tpul.batch_norm(x, mean, var, epsilon=1e-5)
+            self.compile_and_check(self.unique_name(case_name), [x], [y],is_quantized=False)
+        _test_model_def([1, 3, 224, 224],dtype="float32")
+        _test_model_def([1, 3, 224, 224],dtype="float16",is_quantized=True)
+
+    #######################################################################
+    # rmsnorm
+    # ------------
     def test_RMSNorm(self, case_name):
         """rms_norm"""
 
@@ -3802,7 +3830,7 @@ class TPULANG_IR_TESTER(object):
         """Select"""
 
         @tpulang(self.chip)
-        def _test_select(shape: List[int], type: str, dtype="float32"):
+        def _test_select(shape: List[int], type: str, dtype="float32",out_name=None):
             lhs_data = rand_data(shape, dtype)
             lhs = tpul.Tensor(dtype=dtype, shape=shape, data=lhs_data)
             rhs_data = rand_data(shape, dtype)
