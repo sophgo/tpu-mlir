@@ -1904,7 +1904,7 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
             ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
             ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
             convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
-            ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>,
+            ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>, ConvertPoolOp<top::MulConstOp>,
             patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
             patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
             ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
