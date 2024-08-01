@@ -63,7 +63,9 @@ class SummaryStyle:
     title_font = Font(u'等线', size=10, bold=True, italic=False, strike=False, color='000000')
     title_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='000000')
 
-    content_pattern = PatternFill(fgColor='F2F2F2', fill_type="solid")
+    # content0_pattern = PatternFill(fgColor='F2F2F2', fill_type="solid")
+    content1_pattern = PatternFill(fgColor='FDF5E6', fill_type="solid")
+    content2_pattern = PatternFill(fgColor='F5DEB3', fill_type="solid")
     content_header1_pattern = PatternFill(fgColor='C6E0B4', fill_type="solid")
     content_header2_pattern = PatternFill(fgColor='548235', fill_type="solid")
     content_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='ffffff')

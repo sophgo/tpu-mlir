@@ -20,6 +20,7 @@ from include.layer import LayerInfo
 from include.summary import GlobalInfo, SubnetInfo, TensorInfo, StaticRunNode, jsonObj
 from utils.utils import enum_cast, re_key_value, get_memory_type, get_layer_info_by_opcode
 from src.common.common import *
+import mlir.ir as ir
 
 
 
@@ -31,6 +32,17 @@ class GlobalProfileParser:
         self.subnet_list = []
         self.layer_list = []
 
+    def _parse_mlir(self, ginfo):
+        # update flops/net_name/quant_type from mlir_file
+        with open(self.mlir_filename, encoding='utf-8') as f:
+            content = f.read()
+        ctx = ir.Context()
+        ctx.allow_unregistered_dialects = True
+        module = ir.Module.parse(content, ctx)
+        attr = module.operation.attributes
+        ginfo.flops = attr['module.FLOPs'].value
+        ginfo.net_name = attr['sym_name'].value
+        ginfo.quant_type = attr['module.mode'].value.lower()
 
     def parse(self, filename):
         json_file = filename + 'tensor_location.json'
@@ -65,9 +77,7 @@ class GlobalProfileParser:
                 json_layer.operands = d['operands']
                 json_layer.results = d['results']
                 json_layer_list.append(json_layer)
-        with open(self.mlir_filename, encoding='utf-8') as f:
-            # todo. Need to check if mlir_file is neccessary
-            pass
+        self._parse_mlir(ginfo)
         tensor_id = 1
         for index, j_layer in enumerate(json_layer_list):
             layer_info = LayerInfo()
@@ -80,7 +90,7 @@ class GlobalProfileParser:
                 tensor = TensorInfo()
                 tensor.tensor_id = tensor_id
                 tensor.shape, tensor.dtype = get_memory_type(in_tensor['memory_type'])
-                tensor.is_const = 1 if idx == 2 else 0 # Todo, Needs to infer from MLIR.
+                tensor.is_const = 1 if idx > 1 else 0 # Todo, Needs to infer from MLIR.
                 tensor.address = in_tensor['address']
                 # tensor.gsize = self.int_val("gsize")
                 # tensor.nslice = self.int_val("nslice")

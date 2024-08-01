@@ -19,7 +19,7 @@ from include.dma import Gdma, Sdma, Cdma
 from include.instr_world import InstrWorld
 from include.asic_summary import AsicSummary
 from include.tiu import Tiu
-from utils.utils import get_instr_cols, get_instr_reg_list, get_active_cores
+from utils.utils import get_instr_cols, get_instr_reg_list, get_active_cores, get_total_time
 from include.summary import GlobalInfo
 
 
@@ -92,7 +92,9 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         tiu_instance.add_kpi_field()
         tiu_instance.write()
         if str(core_id) == '0':
-            tiu_instance_map = tiu_instance.pop_data()
+            tiu_instance_map = tiu_instance.pop_data(core_id)
+        else:
+            tiu_instance_map.update(tiu_instance.pop_data(core_id))
         # gdma
         cur_dma_reg_file = dma_reg_file + '_' + str(core_id) + '.txt'
         gdma_instance = Gdma(core_id, writer, 'GDMA')
@@ -135,6 +137,8 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         summary_instance = AsicSummary(writer, tiu_instances, gdma_instances, sdma_instances, cdma_instances, act_core_num)
         summary_instance.load(chip_arch_act)
         summary_instance.write()
+    chip_arch_act['concurrency'] = summary_instance.data[-1][3]
+    chip_arch_act['total_time(us)'] = summary_instance.data[-1][4]
     return tiu_instance_map, gdma_instance_map, chip_arch_act
 
 

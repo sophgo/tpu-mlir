@@ -35,13 +35,15 @@ def get_simulator_total_cycle(simulator_cycle_file):
     return simulator_total_cycle
 
 
-def get_total_time(tius, gdmas, sdmas, cdmas):
+def get_total_time(tius, gdmas, sdmas=None, cdmas=None):
     start, end = sys.maxsize, 0
     for i in range(len(tius)):
         start, end = (min(start, tius[i].start_time), max(end, tius[i].end_time)) if len(tius) > 0 else (start, end)
         start, end = (min(start, gdmas[i].start_time), max(end, gdmas[i].end_time)) if len(gdmas) > 0 else (start, end)
-        start, end = (min(start, sdmas[i].start_time), max(end, sdmas[i].end_time)) if len(sdmas) > 0 else (start, end)
-        start, end = (min(start, cdmas[i].start_time), max(end, cdmas[i].end_time)) if len(cdmas) > 0 else (start, end)
+        if sdmas is not None:
+            start, end = (min(start, sdmas[i].start_time), max(end, sdmas[i].end_time)) if len(sdmas) > 0 else (start, end)
+        if cdmas is not None:
+            start, end = (min(start, cdmas[i].start_time), max(end, cdmas[i].end_time)) if len(cdmas) > 0 else (start, end)
     total_time = end - start
     return total_time if total_time > 0 else 0
 
@@ -275,10 +277,26 @@ def enum_cast(value, enum_type, default_val=-1):
 
 
 def get_memory_type(s):
+    dtype_map = {
+        'f32': DataType.FP32,
+        'f16': DataType.FP16,
+        'bf16': DataType.BF16,
+        'si8': DataType.INT8,
+        'u8': DataType.UINT8,
+        'i16': DataType.INT16,
+        'u16': DataType.UINT16,
+        'i32': DataType.INT32,
+        'u32': DataType.UINT32
+    }
+
     s = s[1:-1]
     shape = s.split('x')[:-1]
     data_type = s.split('x')[-1]
     shape = [int(num) for num in shape]
+    import pdb
+    if data_type not in dtype_map:
+        pdb.set_trace()
+    data_type = dtype_map[data_type]
     return shape, data_type
 
 
@@ -335,11 +353,11 @@ def get_ratio_float_6f(x, y):
 
 
 def cycle_to_us(cycles, frequency):
-    return str((Decimal(cycles / frequency)).quantize(Decimal("0.00"))) + 'us'
+    return str((Decimal(cycles / frequency)).quantize(Decimal("0.00")))
 
 
-def ops_to_tops(ops):
-    return Decimal(ops / 4096).quantize(Decimal("0.00"))
+def ops_to_gops(ops):
+    return Decimal(ops / 1e9).quantize(Decimal("0.000000"))
 
 
 def cycle_to_fps(cycles):

@@ -96,7 +96,6 @@ class SummaryProcessor:
         CoreIdList = [str(i) for i in range(0, max_corenum)]
         CoreIdList.append('Overall')
         self._get_totalTime()
-        # import pdb; pdb.set_trace()
         if self.tiuProcessor.regList:
             self._process_tiu(self.tiuProcessor)
         else:
@@ -158,7 +157,6 @@ class SummaryProcessor:
         self.data[0] = CoreIdList
         self.data[1] = ParallelismList
         self.data[2] = self.total_time_list
-        # import pdb;pdb.set_trace()
         summaryData = transpose(self.data).tolist()
         summaryDf = pd.DataFrame(summaryData, columns=self.columns, index=None)
         return summaryDf

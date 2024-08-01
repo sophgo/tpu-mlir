@@ -36,7 +36,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             exit(-1)
         no_perf_data = True
         global_file_path = os.path.join(in_dir, self.global_filename)
-        gobal_info = self.__parse_global_file(global_file_path)
+        global_info = self.__parse_global_file(global_file_path)
         iter_count = 0
         while True:
             block_filename = self.iter_prefix+str(iter_count)+".profile"
