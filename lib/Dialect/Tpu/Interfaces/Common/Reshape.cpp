@@ -30,7 +30,7 @@ LogicalResult tpu::ReshapeOp::LocalGenSupport() {
   // complete Vit-B optimization: reference to
   // 93774065ae20c7f2d1eb5f0ee83c8c94e23b4fe0
   if (inputOp && isa<tpu::MatMulOp>(inputOp) && ishape.size() == 3 &&
-      ishape[1] == 197) {
+      ishape[1] == 197 && ishape[0] > 1 && module::isUniformQuantized(getInput())) {
     return failure();
   }
 
