@@ -234,7 +234,7 @@ if __name__ == "__main__":
     # compute
     cmd_points = sorted(values_in_pkl.keys())
     tqdm_iter = tqdm(cmds_pkl)
-    history = Counter
+    history = Counter({"tiu": 0, "dma": 0})
     for idx, struct in enumerate(tqdm_iter):
         in_values = values_in_pkl[cmd_points[idx]]
         for value in in_values:
