@@ -22,6 +22,7 @@ from src.generator.layer import generate_layer
 from src.generator.style import set_details_style, set_summary_style, set_layer_style, set_sim_summary_style
 from src.generator.summary import generate_summary
 from src.parser.exfile_parser import GlobalProfileParser
+from utils.utils import get_total_time
 
 def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0, divided=0):
     input_fold = input if input[-1] == '/' else input + '/'
@@ -30,11 +31,15 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
     global_info = parser.parse(input_fold)
     # PerfAI.doc do not support showing layer info without global.profile
     network = global_info.net_name if global_info and global_info.net_name else '--'
+    flops = global_info.flops if global_info and global_info.flops else '--'
+    quant_type = global_info.quant_type if global_info and global_info.quant_type else '--'
     with pd.ExcelWriter(out_file) as writer:
         if divided == 0:
             tiu_instance_map, gdma_instance_map, chip_arch = generate_details(input_fold, out_file, global_info, writer,
                                                                 core_num=cores, split_instr_world=speedup)
             chip_arch['network'] = network
+            chip_arch['flops'] = flops
+            chip_arch['quant_type'] = quant_type
             if global_info is not None:
                 layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
                 generate_summary(layer_info_map, writer, chip_arch)

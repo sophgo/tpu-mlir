@@ -264,13 +264,13 @@ class TotalLayerInfo:
                 if layer.layer_name.lower() == 'matmul' and len(layer_info.in_tensors) == 3:
                     in_tensor_0 = layer_info.in_tensors[0]
                     in_tensor_1 = layer_info.in_tensors[1]
-                    assert in_tensor_0.shape[-1] == in_tensor_1.shape[-2]
-                    layer.m, layer.k, layer.n = in_tensor_0.shape[-2], in_tensor_0.shape[-1], in_tensor_1.shape[-1]
+                    # assert in_tensor_0.shape[-1] == in_tensor_1.shape[-2]
+                    # layer.m, layer.k, layer.n = in_tensor_0.shape[-2], in_tensor_0.shape[-1], in_tensor_1.shape[-1]
                 elif layer.layer_name.lower() == 'batch_matmul' and len(layer_info.in_tensors) == 3:
                     in_tensor_0 = layer_info.in_tensors[0]
                     in_tensor_1 = layer_info.in_tensors[1]
-                    assert in_tensor_0.shape[2] == in_tensor_1.shape[1]
-                    layer.m, layer.k, layer.n = in_tensor_0.shape[1], in_tensor_0.shape[2], in_tensor_1.shape[2]
+                    # assert in_tensor_0.shape[2] == in_tensor_1.shape[1]
+                    # layer.m, layer.k, layer.n = in_tensor_0.shape[1], in_tensor_0.shape[2], in_tensor_1.shape[2]
                 layer.weight_size = get_layer_weight_size(layer_info)
                 layer.feature_size = get_layer_feature_size(layer_info)
                 if len(layer_info.in_tensors) > 1:

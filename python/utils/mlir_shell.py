@@ -181,6 +181,24 @@ def mlir_to_model(tpu_mlir: str,
         "--mlir-disable-threading",
         strip_io_quant_param,
         "--processor-tpu-optimize",
+    ]
+    # yapf: enable
+
+    if embed_debug_info:
+        # save the optimized tpu.mlir
+        tpu_opt_mlir = final_mlir[:-10] + "tpu_opt.mlir"
+        cmd.extend([
+            "-o",
+            tpu_opt_mlir,
+            debug_cmd
+        ])
+        _os_system(cmd)
+        cmd = [
+            "tpuc-opt",
+            tpu_opt_mlir
+        ]
+
+    cmd.extend([
         distribute_param,
         "--weight-reorder",
         op_divide_param,
@@ -192,8 +210,7 @@ def mlir_to_model(tpu_mlir: str,
         "-o",
         final_mlir,
         debug_cmd
-    ]
-    # yapf: enable
+    ])
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"

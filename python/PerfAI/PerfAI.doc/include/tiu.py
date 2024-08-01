@@ -259,10 +259,10 @@ class Tiu(object):
             self.total_instr += 1
         self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)']) if self.chip_arch_dict else 0
 
-    def pop_data(self):
+    def pop_data(self, core_id):
         tiu_instance_map = dict()
         for reg in self.reg_list:
-            tiu_instance_map[int(reg['Cmd Id'])] = TiuNode(reg)
+            tiu_instance_map[(int(reg['Cmd Id']), core_id)] = TiuNode(reg)
         return tiu_instance_map
 
     def write(self):
