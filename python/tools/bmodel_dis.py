@@ -68,10 +68,7 @@ def BModel2Bin(bmodel_file):
         suffix = ""
 
         def __str__(self):
-            return (
-                bmodel_file
-                + f".core({self.core_id}).subnet({self.subnet_id}).group({self.gid}).len({self.length}){self.suffix}"
-            )
+            return bmodel_file.split(".")[0] + f"{self.suffix}.{self.core_id}"
 
     fname = FName()
     bmodel = dis.BModel(bmodel_file)
@@ -79,31 +76,31 @@ def BModel2Bin(bmodel_file):
         fname.core_id = 0
         fname.subnet_id = subnet.id
         for fname.gid, cmds in enumerate(subnet.cmd_group):
-            fname.length, fname.suffix = cmds.tiu_num, ".tiu.bin"
+            fname.length, fname.suffix = cmds.tiu_num, ".BD"
             with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.tiu_cmd))
-            fname.length, fname.suffix = cmds.dma_num, ".dma.bin"
+            fname.length, fname.suffix = cmds.dma_num, ".GDMA"
             with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.dma_cmd))
         for fname.core_id, _cmds in enumerate(subnet.core_commands):
             for fname.gid, cmds in enumerate(_cmds.gdma_tiu_commands):
-                fname.length, fname.suffix = cmds.tiu_num, ".tiu.bin"
+                fname.length, fname.suffix = cmds.tiu_num, ".BD"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.tiu_cmd))
-                fname.length, fname.suffix = cmds.dma_num, ".dma.bin"
+                fname.length, fname.suffix = cmds.dma_num, ".GDMA"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.dma_cmd))
             for fname.gid, cmds in enumerate(_cmds.sdma_commands):
                 # cmds contains system-end.
-                fname.length, fname.suffix = math.ceil(len(cmds) / 96), ".sdma.bin"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 96), ".SDMA"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
             for fname.gid, cmds in enumerate(_cmds.hau_commands):
-                fname.length, fname.suffix = math.ceil(len(cmds) / 80), ".hau.bin"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 80), ".HAU"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
             for fname.gid, cmds in enumerate(_cmds.cdma_commands):
-                fname.length, fname.suffix = math.ceil(len(cmds) / 120), ".hau.bin"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 120), ".HAU"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
 
