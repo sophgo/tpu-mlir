@@ -2582,7 +2582,7 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
   let results = (outs Variadic<AnyTensorOrNone>:$outputs);
 }
 
-def Tpu_InterpOp: Tpu_Op<"Interp"> {
+def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Interp operation";
   let description = [{
     Perform Interp on input.

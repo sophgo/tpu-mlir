@@ -469,6 +469,8 @@ public:
       return true;
     } else if (isa<SliceOp>(op)) {
       return !module::isNone(dyn_cast<SliceOp>(op).getOffsetT());
+    } else if (isa<InterpOp>(op)) {
+      return !module::isNone(dyn_cast<InterpOp>(op).getShapeT());
     } else if (module::isBM1684Family()) {
       if (isa<tpu::GatherOp>(op)) {
         return true;
