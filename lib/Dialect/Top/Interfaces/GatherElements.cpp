@@ -89,6 +89,7 @@ LogicalResult top::GatherElementsOp::inference(InferenceParameter &p) {
   module::getGlobalShape(getInput(), src_shape, src_dim);
   module::getGlobalShape(getIndices(), indices_shape, dst_dim);
 
+  // fix aix doesn't work here
   if (axis < 0) {
     axis += src_dim;
   }
@@ -103,6 +104,14 @@ LogicalResult top::GatherElementsOp::inference(InferenceParameter &p) {
 }
 
 void top::GatherElementsOp::shape_inference() {
+  int axis = getAxis();
+  auto src_dim = module::getShape(getInput()).size();
+  if (axis < 0) {
+    axis += src_dim;
+    // setAxis(axis);
+    Builder builder(getContext());
+    setAxisAttr(builder.getI64IntegerAttr(axis));
+  }
   auto indices_shape = module::getShape(getIndices());
   module::setShapeOrVerify(getOutput(), indices_shape);
 }
