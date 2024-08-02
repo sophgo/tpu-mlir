@@ -1,7 +1,7 @@
 **注意：所有提交到代码库的第三方依赖库都必须是release版本的；nntoolchain和libsophon需要与tpu-mlir同级目录**
 
-## TPU1684 2024-07-30
-sha256: 1a09f922f5ec360910d579bef79fee0205c6a5d5
+## TPU1684 2024-08-02
+sha256: 7c48749bf881b951c8b82bb34ebb08bc0ee34f37
 
 ``` bash
 cd  nntoolchain/net_compiler/
