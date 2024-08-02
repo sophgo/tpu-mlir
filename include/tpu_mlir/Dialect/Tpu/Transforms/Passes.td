@@ -134,4 +134,10 @@ def OpDivide : Pass<"op-divide", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def ShapeOptimize : Pass<"shape-optimize", "ModuleOp"> {
+  let summary = "optimize bad shape in tpu by tpuc-opt";
+  let constructor = "createShapeOptimizePass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif

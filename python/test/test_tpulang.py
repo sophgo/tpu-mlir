@@ -1107,7 +1107,90 @@ class TPULANG_IR_TESTER(object):
             out = vit(x, shape, d, head, num, dtype=dtype, atten_dtype=atten_dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
+        def matmul_weight2(x, shape, multi, shift, dtype='int8'):
+            weight = self.coeff_tensor(shape, dtype)
+            b_data = np.random.randint(-32768, 32767, size=[1, 1, 1, shape[-1]]).astype('int32')
+            bias = self.coeff_tensor(shape = [1, 1, 1, shape[-1]], dtype="int32", data=b_data)
+            mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
+            return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero')
+
+        def attention_block2(x0, x1, x2, shape, d, head, musk=None, dtype="int8"):
+            B = shape[0]
+            S_q = shape[2]
+            H_q = shape[3]
+            S_k = shape[2]
+            H_k = shape[3]
+            S_v = shape[2]
+            H_v = shape[3]
+            q = matmul_weight2(x0, [H_q, d * head], 8158145, -31, dtype)
+            q = tpul.reshape(q, [B, S_q, head, d])
+            q = tpul.permute(q, [0, 2, 1, 3])
+            k = matmul_weight2(x1, [H_k, d * head], 8158145, -31, dtype)
+            k = tpul.reshape(k, [B, S_k, head, d])
+            k = tpul.permute(k, [0, 2, 1, 3])
+            k = tpul.permute(k, [0, 1, 3, 2])
+            v = matmul_weight2(x2, [H_v, d * head], 8158145, -31, dtype)
+            v = tpul.reshape(v, [B, S_v, head, d])
+            v = tpul.permute(v, [0, 2, 1, 3])
+            m0 = tpul.matmul_int(q, k, input_zp=0, right_zp=0, out_dtype='int32')
+            m0 = tpul.requant_int(m0, 8158145, -32, 0, 2, dtype, round_mode='half_away_from_zero')
+            dq0 = tpul.dequant_int_to_fp(m0, 0.875, 0)
+            m0 = tpul.softmax(dq0, 3)
+            rq0 = tpul.requant_fp_to_int(m0, 0.000178125, 0, 2, dtype)
+            m1 = tpul.matmul_int(rq0, v, input_zp=0, right_zp=0, out_dtype='int32')
+            m1 = tpul.requant_int(m1, 8158145, -32, 0, 2, dtype, round_mode='half_away_from_zero')
+            m1 = tpul.permute(m1, [0, 2, 1, 3])
+            m1 = tpul.reshape(m1, shape)
+            out = matmul_weight(m1, [d*head, H_q], 8158145, -31, dtype=dtype)
+            return out
+
+        def transformer_block2(x, shape, d, head, dtype="int8"):
+            cast = tpul.dequant_int_to_fp(x, 0.832, 0)
+            norm = layer_norm(cast, shape[3], -1, 1e-6, dtype="float32")
+            rq0 = tpul.requant_fp_to_int(norm, 0.875, 0, 2, dtype)
+            atten = attention_block2(rq0, rq0, rq0, shape, d, head, dtype=dtype)
+            dq0 = tpul.dequant_int_to_fp(atten, 0.875, 0)
+            # add0 = tpul.add(norm, dq0)
+            # norm1 = layer_norm(add0, shape[3], -1, 1e-6, dtype="float32")
+            # rq1 = tpul.requant_fp_to_int(norm1, 0.875, 0, 2, dtype)
+            # mlp = mlp_block(rq1, shape, dtype=dtype)
+            # dq1 = tpul.dequant_int_to_fp(mlp, 0.875, 0)
+            # add1 = tpul.add(add0, dq1)
+            return dq0
+
+        def vit2(x, shape, d, head, num, dtype='int8'):
+            H = d * head
+            # conv0 = self.conv_op(x, [H, 3, 14, 14], [14, 14], bias=True, dtype=dtype)
+            conv0 = self.conv_int_op(x, [H, 3, 14, 14], [14, 14], [0,0,0,0], zp=[0, 0], out_dtype='int32')
+            rq0 = tpul.requant_int(conv0, [5324]*H, [-27]*H, 0, 2, 'int8', round_mode='half_away_from_zero')
+            reshape0 = tpul.reshape(rq0, [shape[0], shape[3], 1, shape[2]])
+            permut1 = tpul.permute(reshape0, [0, 2, 3, 1])
+            add1 = tpul.add_shift(permut1, 0, 3, out_dtype="int16")
+            weight1 = self.coeff_tensor(shape, dtype=dtype)
+            add2 = tpul.add_shift(add1, weight1, -2, out_dtype="int8")
+            transformer = add2
+            for i in range(num):
+                trans = transformer_block2(transformer, shape, d, head, dtype=dtype)
+                transformer = trans
+            # norm3 = layer_norm(transformer, shape[2], -1, 1e-6, dtype=dtype)
+            # slice3 = tpul.slice(norm3, [0, 0, 0], [np.iinfo(np.int64).max, 1, np.iinfo(np.int64).max])
+            # reshape3 = tpul.squeeze(slice3, [1])
+            # rq3 = tpul.requant_fp_to_int(reshape3, 0.875, 0, 2, dtype)
+            # mat3 = matmul_weight(rq3, [shape[2], 1000], 8158145, -30, dtype=dtype)
+            # dq3 = tpul.dequant_int_to_fp(mat3, 0.875, 0)
+            return transformer
+
+        @tpulang(self.chip)
+        def _test_insert_shape(in_shape, d, head, num, dtype='int8'):
+            x_data = rand_data(in_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            shape = [in_shape[0], 1, int(in_shape[2] * in_shape[3] / 14 / 14), head*d]
+            out = vit2(x, shape, d, head, num, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
+
+
         _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8", is_quantized=True)
+        _test_insert_shape([1, 3, 224, 224], 64, 8, 1)
 
     #######################################################################
     # vit
