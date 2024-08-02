@@ -11,7 +11,17 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
+
+static void _try_insert_device2host(top:: InterpOp op) {
+  const bool is_dynamic = !module::isNone(op.getTargetShape());
+  if (is_dynamic) {
+    if (!module::isNone(op->getOperand(1)))
+      try_insert_device2host(op.getOperation(), 1);
+  }
+}
+
 static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type type) {
+  _try_insert_device2host(op);
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();

@@ -305,3 +305,23 @@ LogicalResult tpu::InterpOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 #endif
+
+mlir::Type tpu::InterpOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 1) {
+    // output_shape
+    auto opd = op->getOperand(1);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    auto stype = module::getStorageType(opd);
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwidth = 32;
+    return Builder(op).getIntegerType(bitwidth);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}
