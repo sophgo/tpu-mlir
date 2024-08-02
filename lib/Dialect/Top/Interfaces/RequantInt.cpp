@@ -99,5 +99,11 @@ LogicalResult top::RequantIntOp::inference(InferenceParameter &p) {
 
 void top::RequantIntOp::shape_inference() {
   common_shape_inference(getOperation());
+  auto axis = getRqAxis();
+  if (axis < 0) {
+    auto in_shape = module::getShape(getInput());
+    axis += in_shape.size();
+    setRqAxis(axis);
+  }
 }
 

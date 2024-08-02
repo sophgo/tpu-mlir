@@ -866,6 +866,13 @@ public:
       return failure();
     }
     auto next_op_ = *output.user_begin();
+    auto ishape = module::getShape(op.getInput());
+    auto oshape = module::getShape(op.getOutput());
+    if (ishape.size() == 4 && ishape[0] == 1 && ishape[1] == 1 &&
+        oshape.size() == 3 && ishape[2] == oshape[1] && ishape[3] == oshape[2]) {
+      // InsertReshape optimize, do not shape reorder
+      return failure();
+    }
 
     if (auto next_op = dyn_cast<tpu::MatMulOp>(next_op_)) {
       // right is from Reshape too
@@ -920,7 +927,6 @@ public:
       return success();
     } else if (isa<tpu::MulConstOp, tpu::CastOp, tpu::SoftmaxOp>(next_op_)) {
       // check input is Reshape(n, c, h, w) --> (nxc, h, w)
-      auto ishape = SmallVector<int64_t>(module::getShape(op.getInput()));
       auto next_ishape = module::getShape(op.getOutput());
       if (!(next_ishape.size() == 3 && ishape.size() == 4 &&
             next_ishape[0] == ishape[0] * ishape[1] &&
@@ -957,7 +963,6 @@ public:
       rewriter.eraseOp(op);
       return success();
     } else if (auto next_op = dyn_cast<tpu::ReshapeOp>(next_op_)) {
-      auto ishape = module::getShape(op.getInput());
       auto next_oshape = module::getShape(next_op.getOutput());
       if (ishape != next_oshape) {
         return failure();
