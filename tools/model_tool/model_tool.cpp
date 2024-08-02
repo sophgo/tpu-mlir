@@ -172,6 +172,7 @@ static void encrypt_or_decrypt_bmodel(ModelGen &model_gen,
           auto en_buffer = model_gen.Encrypt(buffer, binary->size(), &en_size);
           new_binary = model_gen.WriteBinary(en_size, en_buffer);
           p->coeff_mem->encrypt_mode = 1;
+          p->coeff_mem->decrypt_size = binary->size();
           free(en_buffer);
         } else {
           new_binary = model_gen.WriteBinary(binary->size(), buffer);
@@ -180,6 +181,8 @@ static void encrypt_or_decrypt_bmodel(ModelGen &model_gen,
         uint64_t de_size = 0;
         auto de_buffer = model_ctx->read_binary_with_decrypt(binary, &de_size);
         new_binary = model_gen.WriteBinary(de_size, de_buffer);
+        p->coeff_mem->encrypt_mode = 0;
+        p->coeff_mem->decrypt_size = 0;
         free(de_buffer);
       } else {
         FATAL("Can't encrypt for bmodel has encrypted");
