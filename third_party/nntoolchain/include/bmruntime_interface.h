@@ -22,8 +22,12 @@
 #include "bmdef.h"
 
 #ifdef _WIN32
+#ifndef DECL_EXPORT
 #define DECL_EXPORT _declspec(dllexport)
+#endif
+#ifndef DECL_IMPORT
 #define DECL_IMPORT _declspec(dllimport)
+#endif
 #else
 #define DECL_EXPORT
 #define DECL_IMPORT
@@ -77,6 +81,12 @@ DECL_EXPORT size_t bmrt_tensor_device_size(const bm_tensor_t* tensor);
 
 /* print net info for debug */
 DECL_EXPORT void bmrt_print_network_info(const bm_net_info_t* net_info);
+
+/* get bmodel basic memory information. which is store in mem_info */
+DECL_EXPORT bool bmrt_get_bmodel_info(const char *bmodel_path, mem_info_t *mem_info);
+
+/* get bmodel basic memory information. which is store in mem_info */
+DECL_EXPORT bool bmrt_get_bmodel_data_info(const void* bmodel_data, size_t size, mem_info_t *mem_info);
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -191,6 +201,80 @@ DECL_EXPORT bool bmrt_load_bmodel(void* p_bmrt, const char *bmodel_path);
  */
 DECL_EXPORT bool bmrt_load_bmodel_data(void* p_bmrt, const void * bmodel_data, size_t size);
 
+/* load bmodel with given memory. bmruntime do not alloc memory any more */
+/**
+ * @name    bmrt_load_bmodel_with_mem
+ * @brief   Load bmodel with given memory. bmruntime do not alloc memory any more.
+ * @ingroup bmruntime
+ *
+ * This API is to load bmodel created by BM compiler.
+ * After loading bmodel, we can run the inference of neuron network.
+ * Different with bmrt_load_bmodel, device memory has been set by mem_info.
+ *
+ * @param   [in]   p_bmrt        Bmruntime that had been created
+ * @param   [in]   bmodel_path   Bmodel file directory.
+ * @param   [in]   mem_info      memory information
+ *
+ * @retval true    Load context sucess.
+ * @retval false   Load context failed.
+ */
+DECL_EXPORT bool bmrt_load_bmodel_with_mem(void* p_bmrt, const char* bmodel_path, mem_info_t* mem_info);
+
+/* load encrypted bmodel with given library. bmruntime do not alloc memory any more */
+/**
+ * @name    bmrt_load_bmodel_with_decrypt_lib
+ * @brief   Load encrypted bmodel.
+ * @ingroup bmruntime
+ *
+ * This API is to load encrypted bmodel created by BM compiler.
+ * After loading encrypted bmodel, we can run the inference of neuron network.
+ *
+ * @param   [in]   p_bmrt        Bmruntime that had been created
+ * @param   [in]   bmodel_path   Bmodel file directory.
+ * @param   [in]   decrypt_lib   Lib path by user with decrypt function
+ *
+ * @retval true    Load context sucess.
+ * @retval false   Load context failed.
+ */
+DECL_EXPORT bool bmrt_load_bmodel_with_decrypt_lib(void* p_bmrt, const char* bmodel_path, const char* decrypt_lib);
+
+/* load encrypted bmodel with given decrypt function. bmruntime do not alloc memory any more */
+/**
+ * @name    bmrt_load_bmodel_with_decrypt
+ * @brief   Load encrypted bmodel.
+ * @ingroup bmruntime
+ *
+ * This API is to load encrypted bmodel created by BM compiler.
+ * After loading encrypted bmodel, we can run the inference of neuron network.
+ *
+ * @param   [in]   p_bmrt        Bmruntime that had been created
+ * @param   [in]   bmodel_path   Bmodel file directory.
+ * @param   [in]   f             Function pointer to decrypt func
+ *
+ * @retval true    Load context sucess.
+ * @retval false   Load context failed.
+ */
+DECL_EXPORT bool bmrt_load_bmodel_with_decrypt(void* p_bmrt, const char* bmodel_path, decrypt_func f);
+
+/**
+ * @name    bmrt_load_bmodel_data_with_mem
+ * @brief   To load the bmodel which is created by BM compiler from buffer
+ * @ingroup bmruntime
+ *
+ * This API is to load bmodel created by BM compiler.
+ * After loading bmodel, we can run the inference of neuron network.
+ * Different with bmrt_load_bmodel_data, device memory has been set by mem_info.
+ *
+ * @param   [in]   p_bmrt        Bmruntime that had been created
+ * @param   [in]   bmodel_data   Bmodel data pointer to buffer
+ * @param   [in]   size          Bmodel data size
+ * @param   [in]   mem_info      memory information
+ *
+ * @retval true    Load context sucess.
+ * @retval false   Load context failed.
+ */
+DECL_EXPORT bool bmrt_load_bmodel_data_with_mem(void* p_bmrt, const void * bmodel_data, size_t size, mem_info_t* mem_info);
+
 /**
  * @name    bmrt_show_neuron_network
  * @brief   To print the name of all neuron network
@@ -224,6 +308,18 @@ DECL_EXPORT int bmrt_get_network_number(void* p_bmrt);
 DECL_EXPORT void bmrt_get_network_names(void* p_bmrt, const char*** network_names);
 
 /**
+ * @name    bmrt_get_network_name
+ * @brief   To get the network name by index in the bmruntime
+ * @ingroup bmruntime
+ *
+ * @param [in]     p_bmrt         Bmruntime that had been created
+ * @param [in]     index          The network index. index must be less than net_name size.
+ *
+ * @retval   const char*          Pointer to network name.
+ */
+DECL_EXPORT const char *bmrt_get_network_name(void* p_bmrt, int index);
+
+/**
  * @name    bmrt_get_network_info
  * @brief   To get network info by net name
  * @ingroup bmruntime
@@ -234,6 +330,20 @@ DECL_EXPORT void bmrt_get_network_names(void* p_bmrt, const char*** network_name
  * @retval  bm_net_info_t*        Pointer to net info, needn't free by user; if net name not found, will return NULL.
  */
 DECL_EXPORT const bm_net_info_t* bmrt_get_network_info(void* p_bmrt, const char* net_name);
+
+/**
+ * @name    bmrt_get_stage_index
+ * @brief   To get network stage index by input tensor
+ * @ingroup bmruntime
+ *
+ * @param [in]     p_bmrt         Bmruntime that had been created
+ * @param [in]     net_name       Network name
+ * @param [in]     input_tensors  Network input tensor
+ *
+ * @retval  int                   Stage index; if net name or input_tensor not found, will return -1.
+ */
+DECL_EXPORT int bmrt_get_stage_index(void* p_bmrt, const char* net_name, bm_tensor_t *input_tensor);
+
 
 /**
  * @name    bmrt_launch_tensor
@@ -414,6 +524,86 @@ DECL_EXPORT bool bmrt_launch_tensor_multi_cores(
     int core_num);
 
 /**
+ * @name    bmrt_launch_tensor_multi_thread
+ * @brief   To launch the inference of the neuron network with setting input tensors, and support multi thread inference.
+ * @ingroup bmruntime
+ *
+ * This API supports the neuron nework that is static-compiled or dynamic-compiled
+ * After calling this API, inference on TPU is launched. And the CPU program will not
+ * be blocked. bmrt_pre_alloc_mem_multi_thread should be called to make sure inference is finished.
+ * This API support multiple inputs, and multi thread safety
+ *
+ * @param [in]    p_bmrt            Bmruntime that had been created
+ * @param [in]    net_name          The name of the neuron network
+ * @param [in]    input_tensors     Array of input tensor, defined like bm_tensor_t input_tensors[input_num],
+ *                                  User should initialize each input tensor.
+ * @param [in]    input_num         Input number
+ * @param [out]   output_tensors    Array of output tensor, defined like bm_tensor_t output_tensors[output_num].
+ *                                  User can set device_mem or stmode of output tensors. If user_mem is true, this interface
+ *                                  will use device mem of output_tensors to store output data, and not alloc device mem;
+ *                                  Or it will alloc device mem to store output. If user_stmode is true, it will use stmode in
+ *                                  each output tensor; Or stmode will be BM_STORE_1N as default.
+ * @param [in]    output_num        Output number
+ * @param [in]    thread_idx        thread index
+ * @param [in]    user_mem          whether device_mem of output tensors are set
+ * @param [in]    user_stmode       whether stmode of output tensors are set
+ * @param [in]    core_list         core id list those will be used to inference
+ * @param [in]    core_num          number of the core list
+ *
+ * @retval true    Launch success.
+ * @retval false   Launch failed.
+ */
+DECL_EXPORT bool bmrt_launch_tensor_multi_thread(
+    void *p_bmrt,
+    const char *net_name,
+    const bm_tensor_t input_tensors[],
+    int input_num,
+    bm_tensor_t output_tensors[],
+    int output_num,
+    uint64_t thread_idx,
+    bool user_mem,
+    bool user_stmode,
+    const int *core_list,
+    int core_num);
+
+/**
+ * @name    bmrt_launch_data_multi_thread
+ * @brief   To launch the inference of the neuron network with setting input datas in system memory on the assigned cores
+ * @ingroup bmruntime
+ *
+ * This API supports the neuron nework that is static-compiled or dynamic-compiled
+ * After calling this API, inference on TPU is launched. And the CPU
+ * program will be blocked.
+ * This API support multiple inputs, and multi thread safety
+ *
+ * @param [in]    p_bmrt         Bmruntime that had been created
+ * @param [in]    net_name       The name of the neuron network
+ * @param [in]    input_datas    Array of input data, defined like void * input_datas[input_num]. User should
+ *                               initialize each data pointer as input.
+ * @param [in]    input_shapes   Array of input shape, defined like bm_shape_t input_shapes[input_num].
+ *                               User should set each input shape
+ * @param [in]    input_num      Input number
+ * @param [out]   output_datas   Array of output data, defined like void * output_datas[output_num].
+ *                               If user don't alloc each output data, set user_mem to false, and this api will alloc
+ *                               output mem, user should free each output mem when output data not used. Also
+ *                               user can alloc system memory for each output data by self and set user_mem = true.
+ * @param [out]   output_shapes  Array of output shape, defined like bm_shape_t output_shapes[output_num].
+ *                               It will store each output shape.
+ * @param [in]    output_num     Output number
+ * @param [in]    thread_idx        thread index
+ * @param [in]    user_mem       whether output_datas[i] have allocated memory
+ * @param [in]    core_list      the cores to launch on. If core_list = NULL, core_num must be 0
+ * @param [in]    core_num       number of cores to use. If core_num=0, bmruntime will alloc the proper cores automatically to launch
+ *
+ * @retval true    Launch success.
+ * @retval false   Launch failed.
+ */
+DECL_EXPORT bool bmrt_launch_data_multi_thread(void* p_bmrt, const char* net_name, void* const input_datas[],
+                      const bm_shape_t input_shapes[], int input_num, void * output_datas[],
+                      bm_shape_t output_shapes[], int output_num, uint64_t thread_idx, bool user_mem, const int* core_list, int core_num);
+
+
+/**
  * @name    bmrt_pre_alloc_neuron_multi_cores
  * @brief   To pre-allocate the neuron network compute memory during multi-cores arch inference.
  * @ingroup bmruntime
@@ -437,6 +627,27 @@ DECL_EXPORT bool bmrt_pre_alloc_neuron_multi_cores(
     int stage_idx,
     const int *core_list,
     int core_num);
+
+/**
+ * @name    bmrt_pre_alloc_mem_multi_thread
+ * @brief   To pre-allocate the neuron network compute memory during multi-cores arch inference for thread.
+ * @ingroup bmruntime
+ *
+ * This API only used for multi-thread runtime, need call before bmrt_launch_tensor_multi_thread API.
+ * After calling this API, the memory during neuron network inference is pre-allocated.
+ * If no use this API, bmrt_launch_tensor_multi_thread return faild.
+ *
+ * @param [in]    p_bmrt            Bmruntime that had been created
+ * @param [in]    thread_idx        Witch thread need to be pre-allocate
+ * @param [in]    mem_info          neuron memory addr & size
+ *
+ * @retval true    Pre-allocate success.
+ * @retval false   Pre-allocate failed.
+ */
+DECL_EXPORT bool bmrt_pre_alloc_mem_multi_thread(
+    void *p_bmrt,
+    uint64_t thread_idx,
+    const mem_info_t* mem_info);
 
 /**
  *  @name    bmrt_memcpy_s2d_parallel
@@ -514,6 +725,43 @@ DECL_EXPORT bool bmrt_memcpy_d2d_byte_parallel(
     bm_tensor_t src_tensors[],
     size_t src_offsets[],
     size_t sizes[],
+    int tensor_num[],
+    int device_num);
+
+/**
+ *  @name    bmrt_memcpy_d2d_stride_ex_parallel
+ *  @brief   To copy a piece of data according to a specified shape and stride from a particular addr offset
+ *           of source tensor to another offset of the destination tensor. The two tensors are in the same device
+ *           and the process between different devices is performed in parallel.
+ *  @ingroup bmruntime
+ *
+ *  This API only could be used when the p_bmrt is created with bmrt_create_ex on multi devices.
+ *  After calling this API, data in src_tensors[:tensor_num[0]] on the first device will be copied
+ *  to dst_tensors[:tensor_num[0]] , and src_tensors[tensor_num[0]:tensor_num[0]+tensor_num[1]] on the
+ *  second device will be copied to dst_tensors[tensor_num[0]:tensor_num[0]+tensor_num[1]] and so on.
+ *  The process is in parallel across different devices and is in sequence within the same device.
+ *
+ *  @param [in]     p_bmrt      Bmruntime that had been created with multi bm_handles
+ *  @param [in]     dst_tensors Array of tensors that will be copied to devices
+ *  @param [in]     dst_offsets Array of offsets for each dst_tensor (in bytes)
+ *  @param [in]     dst_strides Array of strides that are specified for writing each piece of data
+ *  @param [in]     src_tensors Array of tensors that will be copied from devices
+ *  @param [in]     src_offsets Array of offsets for each src_tensor (in bytes)
+ *  @param [in]     src_strides Array of strides that are specified for reading each piece of data
+ *  @param [in]     shapes      Array of shapes that are specified for each piece of data
+ *  @param [in]     tensor_num  Array of tensor_num that will be copied for each device
+ *  @param [in]     device_num  Device number
+*/
+
+DECL_EXPORT bool bmrt_memcpy_d2d_stride_ex_parallel(
+    void *p_bmrt,
+    bm_tensor_t dst_tensors[],
+    size_t dst_offsets[],
+    bm_shape_t dst_strides[],
+    bm_tensor_t src_tensors[],
+    size_t src_offsets[],
+    bm_shape_t src_strides[],
+    bm_shape_t shapes[],
     int tensor_num[],
     int device_num);
 

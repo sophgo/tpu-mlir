@@ -273,14 +273,19 @@ private:
 };
 
 struct PythonModel {
-  PythonModel(const std::string &model_file, int dev_id) {
+  PythonModel(const std::string &model_file, int dev_id, const std::string &decrypt_lib) {
     auto ret = bm_dev_request(&bm_handle, dev_id);
     assert(ret == 0);
     ret = bm_get_chipid(bm_handle, &chip_id);
     assert(ret == 0);
     p_bmrt = bmrt_create(bm_handle);
     assert(p_bmrt != nullptr);
-    bool flag = bmrt_load_bmodel(p_bmrt, model_file.c_str());
+    bool flag = true;
+    if (decrypt_lib.empty()) {
+      flag = bmrt_load_bmodel(p_bmrt, model_file.c_str());
+    } else {
+      flag = bmrt_load_bmodel_with_decrypt_lib(p_bmrt, model_file.c_str(), decrypt_lib.c_str());
+    }
     assert(flag == true);
     const char **net_names = NULL;
     bmrt_get_network_names(p_bmrt, &net_names);
@@ -374,8 +379,8 @@ PYBIND11_MODULE(pyruntime_bm, m) {
       .def_readwrite("outputs", &PythonNet::outputs);
 
   py::class_<PythonModel>(m, "Model")
-      .def(py::init<const std::string &, int>(), py::arg("model_file"),
-           py::arg("device_id") = 0)
+      .def(py::init<const std::string &, int, const std::string &>(), py::arg("model_file"),
+           py::arg("device_id") = 0, py::arg("decrypt_lib") = "")
       .def("Net", &PythonModel::Net)
       .def_readonly("networks", &PythonModel::networks);
 
