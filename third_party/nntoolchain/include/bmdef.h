@@ -141,6 +141,26 @@ typedef struct api_info_s {
   size_t output_addr_offset_number;
 } api_info_c;
 
+typedef struct {
+  int64_t addr;     // -1: addr is invalid
+  uint64_t size;
+  int type;         // 0: device, 1: host
+  int number;
+  char reserved[124];
+} memory_t;
+
+typedef struct {
+  memory_t instruction_mem;             // bdc_cmd + hau_cmd + dynamic_ir
+  memory_t variable_instruction_mem;    // gdma_cmd + sdma_cmd
+  memory_t neuron_mem;                  // neuron + middle_buffer + dynamic_output
+  memory_t coeff_mem;                   // coeff
+  memory_t io_mem;                      // input + output
+  memory_t reserved[4];
+} mem_info_t;
+
+/* define decrypt_func type for decrypt bmodel */
+typedef uint8_t *(*decrypt_func)(const uint8_t *, uint64_t, uint64_t *);
+
 #if defined(__cplusplus)
 }
 #endif

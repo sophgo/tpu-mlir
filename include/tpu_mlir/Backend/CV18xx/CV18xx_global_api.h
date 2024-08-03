@@ -428,6 +428,9 @@ void cvi_backend_tg_argmax_kernel(uint32_t layer_id, gaddr_t ga_input,
                                   gaddr_t ga_output, int outer, int inner,
                                   int w_tile_size, cvk_fmt_t fmt);
 
+/* for example: 2 3 4 5 0 1 0
+if positive == ture, => 1 1 1 1 0 1 0
+if positive == false, => 0 0 0 0 1 0 1 */
 void cvi_backend_zero_mask_kernel(uint32_t layer_id, gaddr_t ga_input,
                                   gaddr_t ga_output, int n, int c, int h, int w,
                                   bool positive, cvk_fmt_t fmt);

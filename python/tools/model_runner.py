@@ -51,20 +51,20 @@ def pack_bmodel_context_generator(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False) -> dict:
+def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, decrypt_lib: str = "") -> dict:
     if mute:
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
     try:
-        return _model_inference(inputs, model_file, dump_all, out_fixed)
+        return _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
     finally:
         if mute:
             os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=False) -> dict:
+def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=False, decrypt_lib: str = "") -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
@@ -109,7 +109,7 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
 
     outputs = dict()
     if not is_cv18xx:
-        model = pyruntime.Model(model_file)
+        model = pyruntime.Model(model_file, 0, decrypt_lib)
         net = model.Net(model.networks[0])
     else:
         model = pyruntime.Model(model_file, output_all_tensors=dump_all)
@@ -543,6 +543,8 @@ if __name__ == '__main__':
                         help="no float number transforming, only for int8/uint8.")
     parser.add_argument("--cuda", action="store_true",
                         help="use cuda to do inference")
+    parser.add_argument("--decrypt_lib", type=str, default="",
+                        help="use decrypt_lib to load encrypted bmodel")
     # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
@@ -560,7 +562,7 @@ if __name__ == '__main__':
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):
         output = torch_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model, out_fixed=args.out_fixed)
+        output = model_inference(data, args.model, out_fixed=args.out_fixed, decrypt_lib=args.decrypt_lib)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     print("\nSaving ...")
