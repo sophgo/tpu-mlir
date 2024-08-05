@@ -110,7 +110,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     anchors = YOLOV5_ANCHORS_DEFAULT;
     for (int i = 0; i < num_opds; i++) {
       auto idx = result[i].first;
-      operands.push_back(opds[idx]);    
+      operands.push_back(opds[idx]);
     }
     return;
   }
@@ -183,6 +183,29 @@ void AddPostprocessPass::insertYoloOp(OpBuilder &builder) {
       builder.getNamedAttr("version", builder.getStringAttr(post_type)));
   auto new_type =
       RankedTensorType::get({1, 1, batch * topk, 7}, builder.getF32Type());
+
+  // The last operand is one of the output tensors from the YOLO layer
+  auto output_shape = module::getShape(operands.back());
+  int num_classes = 80; // default num_classes set to 80
+
+  if (post_type == "yolov3") {
+    if (output_shape[1] % 3 != 0) {
+      terminator->dump();
+      llvm_unreachable(("output_shape[1] (" + std::to_string(output_shape[1]) + ") is not divisible by 3").c_str());
+    }
+    num_classes = output_shape[1] / 3 - 5;
+  }else if (post_type == "yolov5") {
+    // In yolov5, the output shape is (BatchSize, 25200, 85), 85 = Numclasses + Box[x,y,w,h] + Confidence[c]
+    num_classes = output_shape[2] - 5; // Subtract 5 for bbox coordinates and objectness score
+  }else if (post_type == "yolov8") {
+    // In yolov8, the output shape is (batchSize, 84, 8400), 84 = Num classes + Box[x,y,w,h]
+    num_classes = output_shape[1] - 4; // Subtract 4 for bbox coordinates
+  }
+
+  // Add the num_classes attribute
+  attrs.emplace_back(
+      builder.getNamedAttr("num_classes", builder.getI64IntegerAttr(num_classes)));
+
   auto post_op =
       builder.create<top::YoloDetectionOp>(loc, new_type, operands, attrs);
   terminator->setOperands({post_op.getOutput()});
