@@ -1084,18 +1084,17 @@ struct PermuteFuse2 : public OpRewritePattern<tpu::PermuteOp> {
     // op order
     auto in0_order = module::getI64Array(permute_op.getOrder());
     auto in1_order = module::getI64Array(op.getOrder());
-    // if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
-    //   return failure();
-    // }
-    // strict restrictions
-    if (false == (in1_order->size() == 4 && in1_order->at(0) == 0 &&
-                  in1_order->at(1) == 1 && in1_order->at(2) == 3 &&
-                  in1_order->at(3) == 2) ||
-        false == (in0_order->size() == 4 && in0_order->at(0) == 0 &&
-                  in0_order->at(1) == 2 && in0_order->at(2) == 1 &&
-                  in0_order->at(3) == 3)) {
+    if (in0_order == in1_order || in0_order->size() != in1_order->size()) {
       return failure();
     }
+    // strict restrictions
+    if(in1_order->size() == 4) {
+      if (false == (in1_order->at(0) == 0 && in1_order->at(1) == 1 && in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
+         false == (in0_order->at(0) == 0 && in0_order->at(1) == 2 && in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
+        return failure();
+      }
+    }
+
     std::vector<int64_t> new_order;
     for (auto o : *in1_order) {
       new_order.push_back((*in0_order)[o]);
