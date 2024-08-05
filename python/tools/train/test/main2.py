@@ -159,7 +159,8 @@ if __name__ == '__main__':
                         help="enable cmp")
     parser.add_argument("--only_test_bwd", action='store_true',
                         help="only_test_bwd")
-
+    parser.add_argument("--num_core", default=1, type=int, 
+                        help='The numer of TPU cores used for parallel computation')    
     args = parser.parse_args()
     if args.chip == 'bm1690':
         os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')

@@ -324,6 +324,7 @@ commonShapeValInfer(mlir::Operation *op,
                     const std::vector<std::vector<int64_t>> &in_shapes_v,
                     const std::vector<int64_t> &out_shape);
 bool startsWith(const std::string& fullString, const std::string& startingSubstring);
+bool endsWith(const std::string& fullString, const std::string& suffix);
 } // namespace module
 
 #define ASSERT_OP(COND, OP)                                                    \

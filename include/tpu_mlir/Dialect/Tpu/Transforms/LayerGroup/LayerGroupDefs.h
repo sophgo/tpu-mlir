@@ -43,7 +43,7 @@ typedef enum ld_st_type2 {
   TIMESTEP2_MOVE = 4,    // move between global mem
   TIMESTEP2_LD_G2L2 = 8, // load from gmem to l2mem
   TIMESTEP2_STORE_AND_LOAD = 16, //first store, and skip some timesteps, then load
-  TIMESTEP2_STORE_ONLY_FREE = 32, //only free
+  // TIMESTEP2_STORE_ONLY_FREE = 32, //only free
   TIMESTEP2_MOVE_BTW_LMEM = 64,    // move between lmem mem
   TIMESTEP2_LDST_UNKNOWN
 } TIMESTEP_LD_ST2;
@@ -181,13 +181,13 @@ struct op_related_info_t {
   std::map<Value, std::vector<std::string>, value_compare> need_load_var;
   std::map<Value, int, value_compare> tensor_size;
   std::map<Value, int, value_compare> load_tensor_cycles;
-  std::vector<ts_var_t>  ada_var_for_free_mem; //在本op执行后可以释放的自动驻留输入tensor
+  // std::vector<ts_var_t>  ada_var_for_free_mem; //在本op执行后可以释放的自动驻留输入tensor
   op_related_info_t()
       : op(nullptr){}
 };
 
 typedef struct TimestepRow2 {
-  int cycle_diff;
+  // int cycle_diff;
   bool can_merge = false;
   std::vector<ts_var_t>  vec_ts_var;
   std::vector<op_related_info_t>  vec_op_infos;
@@ -224,15 +224,19 @@ struct LgInfo {
   LgInfo() { this->clear(); }
   ~LgInfo() { this->clear(); }
   void clear() {
+    this->group_banked_tensors.clear();
     this->group_ops.clear();
     this->group_ins.clear();
     this->group_outs.clear();
+    this->group_op_outs.clear();
     this->type = GROUP_NORMAL;
   }
 
   void update_group_io(int opt = 2) {
+    _opt = opt;
     this->group_ins.clear();
     this->group_outs.clear();
+    this->group_op_outs.clear();
 
     for (auto op : group_ops) {
       // update group_ins
@@ -312,6 +316,10 @@ struct LgInfo {
     }
   }
   void const dump_lginfo() const {
+    if (!module::isDebugCmdEnable("detail_info_show")) {
+      return;
+    }
+
     llvm::errs() << "LgInfo Begin {" << "\n";
 
     llvm::errs() << "ins" << "\n";
@@ -328,6 +336,7 @@ struct LgInfo {
     }
     llvm::errs() << "} LgInfo End;" << "\n";
   }
+
   // group layers
   std::vector<Operation *> group_ops;
   // std::vector<Operation *> edge_ops; //寻找所有preOp或nextOp都在组外的op，即组的边缘op
@@ -342,10 +351,68 @@ struct LgInfo {
   shape_secs_t shape_secs;
   // layer group type
   group_type_t type;
-  int group_id = 0;
+  int64_t group_id = 0;
 
   std::vector<int> free_cores;
   std::map<std::string, std::vector<std::string>> group_banked_tensors;
+  int _opt = 2;
+};
+
+typedef enum {
+  STRATEGY_NORMAL = 0,
+  STRATEGY_SEARCH_CONV_CUT = 1,
+  STRATEGY_SLICE_CUT_FIRST = 2,
+  STRATEGY_GROUP_CUT_FIRST = 3
+} solver_strategy_type_t;
+
+struct LgPassIR;
+class CycleCalculator;
+class dot_graph;
+class l2mem_alloc;
+class ILPTimeStep;
+struct ilp_LgInfo {
+  solver_strategy_type_t _cur_strategy = STRATEGY_NORMAL;
+  LgInfo _lgInfo;
+  std::vector<Operation*> global_layers;
+  std::vector<std::shared_ptr<ilp_LgInfo>> sub_ilp_LgInfos;
+  bool group_success = false;
+
+  //考察是否将global conv作为分割点
+  int  group_cycle = 0;
+  bool conv_cut_optimized = false;
+  bool is_fail_op_in_grp = true; //当前失败op是否仍包含在组中，仅作信息传递用
+
+  //二进制搜索可行分割点
+  std::vector<Operation *> group_ops_all;
+  std::vector<Operation *> divided_group_ops;
+  std::map<Operation*, std::vector<Operation*>> map_parallel_node;
+  int middle_ptr = -1;
+  int last_success_middle_ptr = -1;
+  int pre_middle_ptr = -1;
+  int left_ptr = 0;
+  int right_ptr = 0;
+
+  shape_secs_t shape_secs;
+  TensorInfo tensor_infos;
+  std::vector<std::shared_ptr<ILPTimeStep>> timeStepPtrs;
+  std::map<int, std::vector<l2m_value_info>> map_l2m_load;
+  TensorInfo lg_tensor_infos_;
+  std::shared_ptr<l2mem_alloc> l2mem_alloc = nullptr;
+
+  ilp_LgInfo(solver_strategy_type_t cur_strategy = STRATEGY_NORMAL){
+    _cur_strategy = cur_strategy;
+  }
+  ilp_LgInfo(const ilp_LgInfo& other){
+    _lgInfo.group_ops.assign(other._lgInfo.group_ops.begin(), other._lgInfo.group_ops.end());
+    _lgInfo.update_bank_info();
+    _lgInfo.update_group_io();
+  }
+
+  void base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_);
+  std::shared_ptr<ilp_LgInfo> high_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_);
+  bool binary_search_group(bool move_right, std::shared_ptr<dot_graph> dot_graph_log = nullptr);
+  std::vector<Operation*> GetParallelNodes(Operation* op);
+  void save_result(LgPassIR *pass_ir);
 };
 
 } // namespace tpu

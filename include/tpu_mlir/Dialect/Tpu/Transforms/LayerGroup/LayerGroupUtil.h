@@ -27,6 +27,9 @@ typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 shape_secs_t get_group_max_secs(const LgInfo &lg_info, std::vector<std::pair<Operation*, int>>& vec_op_hsecs);
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
                           std::vector<std::pair<Value, int64_t>>& value_size);
+bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
+                          std::vector<std::pair<Value, int64_t>> &value_size,
+                          std::shared_ptr<dot_graph> dot_graph_log);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs);
@@ -40,6 +43,11 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
                                 int64_t c, int64_t h, int64_t d, int64_t w,
                                 int64_t bitwidth);
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
+                             Operation *op, Value in,
+                             const shape_secs_t &shape_secs,
+                             group_type_t group_type, bool &hold_in_lmem,
+                             bool is_group_in);
+bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
@@ -102,13 +110,25 @@ bool backward_gen_ilp_var2(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos, std::shared_ptr<CycleCalculator> cycle_calculator_, ILPTimeStep& ilp_timeStep,
                            const std::vector<int64_t>& ncdhw_idx, int ts_offset,
-                           std::vector<op_var_pos_info>& op_var_bound, Operation* returnOp, int64_t& load_bytes_for_next_ts,
+                           std::vector<op_var_pos_info>& op_var_bound, int64_t& load_bytes_for_next_ts,
                            std::vector<std::pair<Value, int64_t>> tmp_value_size, Operation*& failOp,
+                           std::map<std::string, std::string>& node_labels,
                            bool l2m_en = true, bool last_slice = false, int max_ahead_or_delay_ts = 4);
 bool isLgSupport(Operation *op);
-void find_all_pre_ops(Operation * op, std::vector<Operation*>& glayer_pre_ops);
-void find_all_next_ops(Operation * op, std::vector<Operation*>& glayer_next_ops);
+std::vector<Operation*> sortOpsByOtherOpsOrder(const std::vector<Operation*>& exp_ops, const std::vector<Operation*>& ops);
+void find_all_pre_ops(Operation * op, std::vector<Operation*>& glayer_pre_ops, std::vector<Operation*>* grp_ops = nullptr);
+void find_all_next_ops(Operation * op, std::vector<Operation*>& glayer_next_ops, std::vector<Operation*>* grp_ops = nullptr);
+std::shared_ptr<ilp_LgInfo> CreateIlpLgInfo(std::vector<Operation*> ops, solver_strategy_type_t cur_strategy = STRATEGY_NORMAL);
+void GetAllParallelNodes(const std::vector<Operation*>& ops,
+                        std::map<Operation*, std::vector<Operation*>>& map_parallel_node,
+                        std::vector<Operation*>* grp_ops = nullptr);
+void prune_group_ops_by_global_layer(const std::vector<Operation*>& global_layers,
+                              std::vector<std::shared_ptr<ilp_LgInfo>>& tmp_base_groups);
+bool opHasMultiGroupUser(Operation *op, const std::vector<Operation*>& ops);
+int get_user_count_in_group(Value opd);
 std::string replaceChars_for_dot(std::string str);
+std::string show_op_info(Operation* op);
+void show_group(const LgInfo *sub_group);
 bool isPreOpHaveAComputeOp(Operation * op);
 
 
@@ -118,8 +138,21 @@ struct dot_graph {
   }
   ~dot_graph() { }
 
-  bool endsWith(const std::string& str, const std::string& suffix) {
-      return str.rfind(suffix) == str.length() - suffix.length();
+  void clear() {
+    for (auto& it: main_graph_nodes) {
+      if (it.second.size()) {
+        auto type = it.second[0];
+        it.second.clear();
+        it.second.push_back(type);
+      }
+    }
+  }
+
+  std::shared_ptr<dot_graph> clone() {
+    auto dot_graph_log = std::make_shared<dot_graph>();
+    dot_graph_log->main_graph_nodes = main_graph_nodes;
+    dot_graph_log->main_graph_edges = main_graph_edges;
+    return dot_graph_log;
   }
 
   void add_node_into_graph(std::string node_name) {
@@ -139,7 +172,7 @@ struct dot_graph {
   }
   void add_all_node_label(std::string info, std::string filter = "_ori") {
     for (auto& itr: main_graph_nodes) {
-      if (endsWith(itr.first, filter)) {
+      if (module::endsWith(itr.first, filter)) {
         itr.second.push_back(info);
       }
     }
@@ -157,16 +190,12 @@ struct dot_graph {
     }
   }
 
-  void export_dot(std::string file_name) {
+  std::string export_dot(std::string file_name) {
     if (module::isDebugCmdEnable("disable_dot")) {
-      return;
+      return "";
     }
-    std::stringstream ssTime;
-    auto clockNow = std::chrono::system_clock::now();
-    auto t = std::chrono::system_clock::to_time_t(clockNow);
-    ssTime << std::put_time(std::localtime(&t), "%Y%m%d-%H%M%S");
-    file_name =  file_name + "-" +ssTime.str() + ".dot";
-    llvm::errs() << "export_dot to file:"<<file_name<<"\n";
+    file_name =  file_name + ".dot";
+    llvm::errs() << "export_dot to file: "<<file_name<<".svg\n";
     std::ofstream log_stream(file_name, std::ios::out);
     log_stream << "digraph G { " <<std::endl;
     log_stream << " graph [label=\"GroupOps\";";
@@ -195,7 +224,8 @@ struct dot_graph {
 
     log_stream << "}" <<std::endl;
     log_stream.close();
-    system(llvm::formatv("dot -Tsvg {0} -o ./{0}.svg", file_name.c_str()).str().c_str());
+    system(llvm::formatv("dot -Tsvg {0} -o ./{0}.svg && rm -f {0}", file_name.c_str()).str().c_str());
+    return file_name + ".svg";
   }
   std::map<std::string, std::vector<std::string>> main_graph_nodes;
   std::map<std::string, std::vector<std::string>> main_graph_edges;

@@ -29,6 +29,7 @@ typedef struct {
   NnvlcMode nnvlc_mode;
 } LgOptions;
 
+// struct node_info;
 struct LgPassIR {
   LgPassIR(){returnOp = nullptr;};
   ~LgPassIR() { clear(); };
@@ -62,9 +63,10 @@ struct LgPassIR {
    */
   std::vector<BasicTimeStepPtr> time_steps;
   std::vector<std::vector<ILPTimeStepPtr>> ILP_time_steps;
-  std::vector<std::map<int, std::vector<l2m_value_info>>> map_l2m_load;
+  std::vector<std::map<int, std::vector<l2m_value_info>>> map_l2m_loads;
   std::vector<TensorInfo> lg_tensor_infos_;
   std::vector<l2mem_alloc_Ptr> lg_l2mem_alloc_ptr;
+  std::vector<int> group_cycles;
 
   /**
    * @brief shape split sections of layer groups
@@ -75,8 +77,11 @@ struct LgPassIR {
 
   std::vector<Value> subnet_return_opds;
   bool branch_parallel;
-  std::vector<std::vector<Operation*>> tmp_base_groups;
+  std::vector<std::shared_ptr<ilp_LgInfo>> tmp_base_groups;
+  std::map<Operation*, std::vector<Operation*>> map_parallel_op_subnet;
   Operation* returnOp;
+  std::shared_ptr<dot_graph> dot_graph_log_subnet;
+  int group_count = 0;
 };
 
 class LgPass {

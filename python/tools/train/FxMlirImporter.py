@@ -167,7 +167,9 @@ class FxMIIRImportor(object):
             init_args["output"] = RankedTensorType.get(output_shapes[0], F32Type.get())
 
         input_op = top.InputOp(**init_args).output
-        if len(node.users) > 0 and node.name.startswith('tangents_'):
+        # if len(node.users) > 0 and node.name.startswith('tangents_'):
+        users = [user for user in node.users if user.target != 'output']
+        if len(users) > 1:
             op1 = np.atleast_1d(0).astype(np.float32)
             dtype = self.get_output_dtypes(node)
             input_op = top.AddConstOp(*self.get_tensor_type(output_shapes, dtype),

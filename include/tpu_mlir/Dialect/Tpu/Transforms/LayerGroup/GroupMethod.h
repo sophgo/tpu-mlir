@@ -80,24 +80,15 @@ public:
       const std::vector<std::vector<Operation *>> &base_groups);
 
   void show_cut_results();
-
   void ilp_layer_group(LgPassIR *pass_ir);
-  void get_base_branch_groups(std::vector<std::vector<Operation *>> &base_groups,
+  void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
                        const SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
-  void get_base_dfs_topo_groups(std::vector<std::vector<Operation *>> &base_groups,
-                       const SetVector<Operation *> &subnet_ops, const std::vector<std::vector<Operation *>> &tmp_base_groups);
-  std::vector<int> get_sec_per_cores(const shape_secs_t& shape_secs,
-                                                  std::vector<std::vector<int64_t>>& vec_ncdhw,
-                                                  int core_num, TensorInfo& tensor_infos);
-  int64_t get_group_cycle(LgInfo *sub_group);
-  Operation* cut_this_group_is_better(LgInfo *sub_group);
-  void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups);
-  void l2m_process(LgPassIR *pass_ir, int grp_idx, std::vector<std::pair<Value, int64_t>>& value_size);
-  bool is_same_pipeline(LgPassIR *pass_ir, int core_id, int grp_idx, int& vec_ncdhw_idx,
-                        TensorInfo& tensor_infos, LgInfo &sub_group,
-                        std::vector<std::vector<int64_t>> vec_ncdhw, std::vector<int>& sec_per_cores);
-  Operation* ilp_for_single_group(LgPassIR *pass_ir, LgInfo &sub_group, int grp_idx, int core_num, bool l2m_switch, bool train);
-  void init_ilp_base_groups(LgPassIR* pass_ir, LgInfo& sub_group, std::vector<std::vector<Operation *>> &base_groups);
+  void get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+                       const SetVector<Operation *> &subnet_ops, const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups);
+  void cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR *pass_ir,
+                                std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups);
+  void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+  void init_ilp_base_groups(LgPassIR* pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
 
 protected:
   BasicTimeStepPtr time_step_;

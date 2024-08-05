@@ -90,8 +90,8 @@ class test_model3(nn.Module):
     def forward(self, x): #带2个conv分支
         x = self.conv1(x)
         identity = x
-        x = self.relu(x)
         x = self.conv2(x)
+        x = self.relu(x)
         identity = self.conv3(identity)
         x += identity
         # if self.for_train:
@@ -106,19 +106,52 @@ class test_model4(nn.Module):
         self.conv2 = nn.Conv2d(32, 32, 3, 1, 1, bias=False)
         self.conv3 = nn.Conv2d(32, 32, 3, 1, 1, bias=False)
         self.relu = nn.ReLU()
+        self.silu = nn.SiLU()
+        self.sig = nn.Sigmoid()
         self.for_train = for_train
+
 
     def forward(self, x): #带2个conv分支+加1个残差分支
         x = self.conv1(x)
         identity = x
-        identity2 = x
-        x = self.relu(x)
+        # x = self.relu(x) #todo 加上这个relu会出错
         x = self.conv2(x)
+        x = self.silu(x)
+        x = self.sig(x)
+        x = self.silu(x)
         identity = self.conv3(identity)
-        y = torch.cat([x, identity, identity2], dim=1)
-        if self.for_train:
-            y = y.sum()
-        return y
+        identity = self.silu(identity)
+        identity += x
+        return identity
+
+    # def forward(self, x): #带2个conv分支+加1个残差分支
+    #     x = self.conv1(x)
+    #     identity = x
+    #     identity2 = x
+    #     x = self.relu(x)
+    #     x = self.conv2(x)
+    #     x = self.silu(x)
+    #     x = self.sig(x)
+    #     x = self.silu(x)
+    #     identity = self.conv3(identity)
+    #     identity = self.silu(identity)
+    #     y = torch.cat([x, identity, identity2], dim=1)
+    #     if self.for_train:
+    #         y = y.sum()
+    #     return y
+
+    # def forward(self, x): #带2个conv分支+加1个残差分支
+    #     x = self.conv1(x)
+    #     identity = x
+    #     identity2 = x
+    #     x = self.relu(x)
+    #     x = self.conv2(x)
+    #     identity = self.conv3(identity)
+    #     y = torch.cat([x, identity], dim=1)
+    #     # y = torch.cat([x, identity, identity2], dim=1) #fail
+    #     if self.for_train:
+    #         y = y.sum()
+    #     return y
 
 class test_model5(nn.Module):
     def __init__(self, for_train = False):

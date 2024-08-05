@@ -153,7 +153,8 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     }
   } else {
     func.walk([&](Operation *op) {
-      if (isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op)) {
+      // if (isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op)) {
+      if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
         // do nothing
       } else if (isa<ReturnOp>(op)) {
         lg_pass_ir_->returnOp = op;
@@ -162,99 +163,25 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
         auto itr = std::find(all_local_layer_nodes.begin(), all_local_layer_nodes.end(), op);
         if (itr == all_local_layer_nodes.end() && isLgSupport(op)) {
           find_local_layer_base_group(op);
-          lg_pass_ir_->tmp_base_groups.push_back(tmp_local_layer_group);
+          lg_pass_ir_->tmp_base_groups.push_back(CreateIlpLgInfo(tmp_local_layer_group));
         }
       }
     });
-    int i = 0;
-    llvm::errs()<<"initial group:\n";
-    for (auto group : lg_pass_ir_->tmp_base_groups) {
-      llvm::errs()<<"  grp:"<<i++<<"\n";
-      for (auto op : group) {
-        llvm::errs()<<"    op_name: "<<module::getName(op).str()<<"\n";
-      }
-    }
   }
 
-  auto start = std::chrono::high_resolution_clock::now();
-  std::map<Operation*, std::vector<Operation*>> glayer_pre_ops;
-  std::map<Operation*, std::vector<Operation*>> glayer_next_ops;
+  std::vector<Operation*> global_layers;
   func.walk([&](Operation *op) {
-    if (isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, ReturnOp>(op)) {
-      // do nothing
-    } else {
-      if (!isLgSupport(op)) {
-        std::vector<Operation*> pre_ops;
-        find_all_pre_ops(op, pre_ops);
-        pre_ops.erase(std::remove(pre_ops.begin(), pre_ops.end(), op), pre_ops.end());
-        glayer_pre_ops[op] = pre_ops;
-
-        std::vector<Operation*> next_ops;
-        find_all_next_ops(op, next_ops);
-        next_ops.erase(std::remove(next_ops.begin(), next_ops.end(), op), next_ops.end());
-        glayer_next_ops[op] = next_ops;
-      }
+    if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, ReturnOp>(op) && !isLgSupport(op)) {
+      global_layers.push_back(op);
     }
   });
 
-  if (module::isDebugCmdEnable("print_glayer_next_ops")) {
-    for (auto it: glayer_next_ops) {
-      llvm::errs()<<"glayer_op: "<<module::getName(it.first).str()<<"\n";
-      for (auto it2: it.second) {
-        llvm::errs()<<"  next layer: "<<module::getName(it2).str()<<"\n";
-      }
-    }
+  std::vector<Operation*> tmp_ops;
+  for (auto itr: lg_pass_ir_->subnet_ops) {
+    tmp_ops.push_back(itr);
   }
-
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  llvm::errs()<<"get pre or next ops time:"<<elapsed.count()<<"\n";
-  Operation* glayer_op = nullptr;
-  int round = 0;
-  while(true) {
-    int count = 0;
-    llvm::errs()<<"start prune, round:"<<round++<<"\n";
-    for (auto& group: lg_pass_ir_->tmp_base_groups) {
-      std::set<Operation*> del_ops;
-      for (auto op: group) {
-        for (auto itr = glayer_pre_ops.begin(); itr != glayer_pre_ops.end(); ++itr) {
-          if (std::find(itr->second.begin(), itr->second.end(), op) != itr->second.end()) {
-            glayer_op = itr->first;
-            for (auto op2: group) {
-              auto itr2 = std::find(glayer_next_ops[glayer_op].begin(), glayer_next_ops[glayer_op].end(), op2);
-              if (itr2 != glayer_next_ops[glayer_op].end()) {
-                del_ops.insert(op2);
-              }
-            }
-          }
-        }
-      }
-
-      std::vector<Operation*> new_grp_ops;
-      for (auto del_op: del_ops) {
-        new_grp_ops.push_back(del_op);
-        group.erase(std::remove(group.begin(), group.end(), del_op), group.end());
-      }
-      if (del_ops.size() > 0) {
-        llvm::errs()<<"pruned group:\n";
-        for (auto op: group) {
-          llvm::errs()<<"  name:"<<module::getName(op).str()<<"\n";
-        }
-        lg_pass_ir_->tmp_base_groups.push_back(new_grp_ops);
-        break;
-      }
-      count++;
-    }
-    if (count == lg_pass_ir_->tmp_base_groups.size()) {
-      break;
-    }
-  }
-
-
-
-  auto end1 = std::chrono::high_resolution_clock::now();
-  auto elapsed1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start);
-  llvm::errs()<<"prune time:"<<elapsed1.count()<<"\n";
+  GetAllParallelNodes(tmp_ops, lg_pass_ir_->map_parallel_op_subnet);
+  prune_group_ops_by_global_layer(global_layers, lg_pass_ir_->tmp_base_groups);
 }
 
 void GroupOps::process(int64_t opt) {
@@ -263,7 +190,7 @@ void GroupOps::process(int64_t opt) {
     buildMlir_for_opt3();
   } else {
     buildMlir();
-  if (module::isBM1688() &&
+    if (module::isBM1688() &&
       (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ACTIVATION ||
        LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)) {
       buildNnvlcActivation();
@@ -388,6 +315,7 @@ void GroupOps::buildMlir_for_opt3() {
   //添加group node
   std::vector<node_info> nodes;
   std::vector<Operation*> all_local_ops;
+  std::map<node_info*, std::vector<node_info*>> map_parallel_node_subnet;
   for (int64_t i = 0; i < group_num; i++) {
     if (lg_infos[i].group_ops.size() > 1) {
       node_info tmp(&lg_infos[i]);
@@ -560,6 +488,9 @@ void GroupOps::buildMlir_for_opt3() {
       }
     }
   }
+
+  //lg_pass_ir_->map_parallel_node_subnet
+
   std::sort(topo_nodes.begin(), topo_nodes.end(), node_info_Sort_by_int);
   LOG(INFO) <<"topo_nodes.size: "<<topo_nodes.size();
   for (auto& node : nodes) {
@@ -590,7 +521,6 @@ void GroupOps::buildMlir_for_opt3() {
     }
   }
 
-  // dot_graph_log->add_node_into_graph("start");
   map_old_grp_out_to_new_grp_out.clear();
   std::map<Value, Value, value_compare> map_new_grp_out_to_old_grp_out;
   for (int64_t group_idx = 0; group_idx < group_num; group_idx++) {
@@ -647,7 +577,7 @@ void GroupOps::buildMlir_for_opt3() {
               if (it.info.mode2 & TIMESTEP2_STORE) {
                 LOG(INFO) <<"add into will_store_value for store, name:"<<out_name;
                 tmp_will_store_value.push_back(it.value);
-              } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD && ILP_time_step->mapILPVarInfo[it.varName].mode == 0) {
+              } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD && ILP_time_step->mapILPVarInfo[it.varName].store_load_mode == 0) {
                 LOG(INFO) <<"add into will_store_value for store_and_load, name:"<<out_name;
                 tmp_will_store_value.push_back(it.value);
               }
@@ -738,8 +668,6 @@ void GroupOps::buildMlir_for_opt3() {
         }
         for (auto in : need_store_load_value[pipe_id]) {
           auto outbuffer_out = map_store_tensor_to_outbuffer_out[in];
-          // llvm::errs() <<"wxc1" << module::getName(in).str()<<"\n";
-          // llvm::errs() <<"wxc2" << module::getName(outbuffer_out).str()<<"\n";
           in_types.push_back(outbuffer_out.getType());
           operands.push_back(outbuffer_out);
         }
@@ -823,27 +751,28 @@ void GroupOps::buildMlir_for_opt3() {
         bool one_slice = ILP_time_step->slice_num == 1;
 
         for (size_t ts = 0, ts_id = 0; ts < ts_count; ts++, ts_id++) {
-          auto& map_l2m_load = lg_pass_ir_->map_l2m_load[group_idx];
-          if (ts == 0) {
-            if (map_l2m_load.find(-1) != map_l2m_load.end()) {
+          if (lg_pass_ir_->map_l2m_loads.size() > 0) {
+            auto& map_l2m_load = lg_pass_ir_->map_l2m_loads[group_idx];
+            if (ts == 0) {
+              if (map_l2m_load.find(-1) != map_l2m_load.end()) {
+                LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLoadToL2mOp-----------------";
+                for (auto it: map_l2m_load[-1]) {
+                  CreateLoadToL2mOp(ts_id, it, pipe_id, l2mem_alloc_ptr);
+                }
+                ts_id++;
+              }
+            }
+            if (map_l2m_load.find(ts) != map_l2m_load.end()) {
               LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLoadToL2mOp-----------------";
-              for (auto it: map_l2m_load[-1]) {
+              for (auto it: map_l2m_load[ts]) {
                 CreateLoadToL2mOp(ts_id, it, pipe_id, l2mem_alloc_ptr);
               }
-              ts_id++;
             }
           }
-          if (map_l2m_load.find(ts) != map_l2m_load.end()) {
-            LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLoadToL2mOp-----------------";
-            for (auto it: map_l2m_load[ts]) {
-              CreateLoadToL2mOp(ts_id, it, pipe_id, l2mem_alloc_ptr);
-            }
-          }
-
           bool can_merge = ILP_time_step->timestep_table_new[ts].can_merge;
           if (ILP_time_step->inserted_timestep_table_.find(ts) != ILP_time_step->inserted_timestep_table_.end()) {
             LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLmemMoveOp-----------------";
-            CreateLmemMoveOp(ts_id, ILP_time_step->inserted_timestep_table_[ts]);
+            CreateLmemMoveOp(ts_id, ILP_time_step->inserted_timestep_table_[ts][0]);
             ts_id++;
           }
           LOG(INFO) <<"----------------ts"<<ts_id<<"-----------------";
@@ -857,7 +786,7 @@ void GroupOps::buildMlir_for_opt3() {
                 map_output_to_merge_slice[it.value].push_back(storeOp_out);
                 map_group_out_to_yield_in[it.value] = storeOp_out;
               } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD) {
-                if (ILP_time_step->mapILPVarInfo[it.varName].mode == 0) {
+                if (ILP_time_step->mapILPVarInfo[it.varName].store_load_mode == 0) {
                   CreateStoreOp2(it.value, it.info, ts_id, it.slice_idx, pipe_id, lg_info.type, can_merge);
                 } else {
                   CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info.type, can_merge);
@@ -900,10 +829,10 @@ void GroupOps::buildMlir_for_opt3() {
             auto ncdhw_idx = ILP_time_step->ncdhw_steps.begin()->second[it.slice_idx];
             UpdateOpLgParam2(new_op, it.op, ts_id, it.slice_idx, tensor_info, ncdhw_idx, lg_info.type, can_merge);
             current_op_ = new_op;
-            // LOG(INFO) <<"new_op: ";
-            // new_op->dump();
 
             bool first_time = true;
+            //针对复合op的情形，下面处理应该在完成vec_op_infos的遍历后再统一处理，目前的处理会在复合op中插入多个dump的时隙
+            //但考虑到dump只是调试功能，不会影响正常运行的性能，而目前的实现大致是可行的，也还没有发现bug，故暂不修改
             for (auto res : llvm::enumerate(it.op->getResults())) {
               if (std::find(will_store_value[pipe_id].begin(), will_store_value[pipe_id].end(), res.value())
                             == will_store_value[pipe_id].end()) {
@@ -914,8 +843,7 @@ void GroupOps::buildMlir_for_opt3() {
                     LOG(INFO) <<"----------------ts"<<ts_id<<" for op result dump-----------------";
                     first_time = false;
                   }
-                  auto storeOp_out = CreateStoreOp2(res.value(), tensor_info[res.value()], ts_id, it.slice_idx, pipe_id, lg_info.type, false);
-                  map_old_to_new_value[res.value()][it.slice_idx] = storeOp_out;
+                  CreateStoreOp2(res.value(), tensor_info[res.value()], ts_id, it.slice_idx, pipe_id, lg_info.type, false);
                 }
               }
             }
@@ -1491,6 +1419,7 @@ Value GroupOps::CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int
   auto label = llvm::formatv("ts:{0}", ts).str();
   map_name_output_to_merge_slice_for_grp[output].push_back(name);
   current_op_ = storeOp;
+  map_old_to_new_value[output][slice_idx] = storeOp->getResult(0);
   return storeOp->getResult(0);
 }
 
@@ -1628,7 +1557,8 @@ void GroupOps::UpdateOpLgParam2(Operation *op, Operation *old_op, int64_t ts,  i
   auto mem_s_size = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].size;
   std::string imm_key = llvm::formatv("{0}_buffer_slice{1}", name, slice_idx).str();
   int imm_mem_s_addr = 0, imm_mem_s_size = 0;
-  if (ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his.find(imm_key) != ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his.end()) {
+  if (ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his.find(imm_key)
+      != ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his.end()) {
     imm_mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[imm_key].vec_reload_addr[0].second.addr;
     imm_mem_s_size = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[imm_key].size;
   }
