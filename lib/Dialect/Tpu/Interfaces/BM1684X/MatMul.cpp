@@ -102,7 +102,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   }
 
   // CoreParallel setMultiCore(true)
-  if (module::getCoreNum() > 1 && supports_multi_core() && this->getMultiCore()) {
+  if (supports_multi_core()) {
     if (!module::isNone(getBuffer())) {
       spec.need_buffer = true;
     }
