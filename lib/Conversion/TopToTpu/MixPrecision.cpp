@@ -1362,6 +1362,8 @@ bool ConvertTopToTpu::detr_mix_precision() {
     }
   }
 
+  spread_q_config();
+
   return true;
 }
 
