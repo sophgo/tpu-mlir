@@ -26,6 +26,8 @@ if __name__ == '__main__':
                         help="enable cmp")
     parser.add_argument("--only_test_bwd", action='store_true',
                         help="only_test_bwd")
+    parser.add_argument("--num_core", default=1, type=int,
+                        help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--model", default="",help="model name")
     start_time = time.time()
     args = parser.parse_args()
@@ -215,19 +217,42 @@ if __name__ == '__main__':
         loss_d.sum().backward()
         optimizer.step()
     elif args.model == "test_model":
-        from tools.train.test_model import test_model
-        mod = test_model()
-        input = torch.randn((5,10))
-        net_d = copy.deepcopy(mod)
-        net_d.to(device)
-        net_d.train()
+        batch_size = args.num_core
+        input = torch.randn((batch_size, 3, 224, 224))
         input_d = input.to(device)
-        optimizer = torch.optim.SGD(net_d.parameters(), lr=0.01)
-        optimizer.zero_grad()
-        model_opt = torch.compile(net_d, backend=aot_backend)
-        loss_d = model_opt(input_d)
-        loss_d.sum().backward()
-        optimizer.step()
+
+        print('start test test_model1')
+        from tools.train.test_model import test_model1
+        mod = test_model1(for_train = True)
+        mod.to(device)
+        model_opt = torch.compile(mod, backend=aot_backend)
+        for i in range(1):
+            print(f"now run forward{i}")
+            res = model_opt(input_d)
+            print(f"now run backward{i}")
+            res.sum().backward()
+
+        print('start test test_model2')
+        from tools.train.test_model import test_model2
+        mod = test_model2(for_train = True)
+        mod.to(device)
+        model_opt = torch.compile(mod, backend=aot_backend)
+        for i in range(1):
+            print(f"now run forward{i}")
+            res = model_opt(input_d)
+            print(f"now run backward{i}")
+            res.sum().backward()
+
+        print('start test resnet50')
+        from tools.train.resnet import resnet50
+        mod = resnet50()
+        mod.to(device)
+        model_opt = torch.compile(mod, backend=aot_backend)
+        for i in range(1):
+            print(f"now run forward{i}")
+            res = model_opt(input_d)
+            print(f"now run backward{i}")
+            res.sum().backward()
     elif args.model == "bert_large":
         from transformers import BertTokenizer, BertModel
         max_len = 256

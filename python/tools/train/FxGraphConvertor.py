@@ -81,10 +81,7 @@ class fx2mlir(object):
         # self.weights_data = dict()
         # self.load_weight = dict()
         # self.const_val = dict()
-        # self.num_core = 1
-        self.num_core = 8
-        if self.args.chip =="sg2260":
-            self.num_core = 8
+        self.num_core = args.num_core
 
         self.op_factory = {
             #############################

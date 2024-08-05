@@ -1900,5 +1900,8 @@ bool startsWith(const std::string& fullString, const std::string& startingSubstr
     }
 }
 
+bool endsWith(const std::string& fullString, const std::string& suffix) {
+    return fullString.rfind(suffix) == fullString.length() - suffix.length();
+}
 } // namespace module
 } // namespace tpu_mlir
