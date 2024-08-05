@@ -258,6 +258,11 @@ def _soc_upload_dir(sftp, local_dir, remote_dir):
             except:
                 pass
 
+def _soc_mk_dir(client, remote_dir):
+    command = f"mkdir -p {remote_dir}"
+    stdin, stdout, stderr = client.exec_command(command)
+    if stderr:
+        print(stderr.read().decode("utf-8"))
 
 def _soc_rm_dir(client, remote_dir):
     command = f"rm -rf {remote_dir}"
@@ -354,10 +359,7 @@ def bmodel_inference_combine(
             print()
 
         sftp = paramiko.SFTPClient.from_transport(client.get_transport())
-        try:
-            sftp.stat(tmp_path)
-        except:
-            sftp.mkdir(tmp_path)
+        _soc_mk_dir(client, tmp_path)
         sftp.chdir(tmp_path)
         progress_put("cmds.pkl", os.path.join(save_path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
         progress_put("values_in.pkl", os.path.join(save_path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
@@ -1459,8 +1461,6 @@ def maxpool3d(input: Tensor,
     return output
 
 
-
-
 @auto_name('out_name')
 @auto_name('mask_name')
 @annotation_check
@@ -1583,9 +1583,6 @@ def avgpool3d(input: Tensor,
         output.quantization(scale=scale[1], zero_point=zero_point[1])
     TpuLang.insert_op("top.AvgPool", inputs=[input], outputs=[output], params=attr)
     return output
-
-
-
 
 
 ######### Activation Operator ###############

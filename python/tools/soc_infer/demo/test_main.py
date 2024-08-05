@@ -31,4 +31,4 @@ cmp_command2 = f"npz_tool.py compare {os.path.join(local_tools_path, 'soc_infer/
 print(f"[Comparing soc_infer and bmodel_infer.npz]: {cmp_command2}")
 os.system(cmp_command2)
 
-os.system(f"rm {os.path.join(local_tools_path, 'failed_bmodel_outputs.npz')}")
+os.system(f"rm {os.path.join(os.getcwd(), 'failed_bmodel_outputs.npz')}")
