@@ -161,6 +161,9 @@ static void encrypt_or_decrypt_bmodel(ModelGen &model_gen,
     auto net_name = net->name()->str();
     auto netT = net->UnPack();
     for (auto &p : netT->parameter) {
+      if (p->coeff_mem == nullptr) {
+        continue;
+      }
       auto binary = p->coeff_mem->binary_coeff.get();
       Binary new_binary;
       if (p->coeff_mem->encrypt_mode == 0) {
