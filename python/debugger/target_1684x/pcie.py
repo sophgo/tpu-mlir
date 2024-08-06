@@ -309,54 +309,26 @@ class Memory(DeviceMemory):
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
 
-        def get_64ic_data():
+        def get_alignic_data():
             n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, (c + 63) // 64, 64, h, w)
+            cube_num = CUBE_NUM(memref.dtype)
+            shape = (div_up(n, NPU_NUM), NPU_NUM, div_up(c, cube_num), cube_num, h, w)
             stride = (
-                (c + 63) // 64 * 64 * h * w,
+                align_up(c, cube_num) * h * w,
                 LANE_SIZE // itemsize,
-                64 * h * w,
+                cube_num * h * w,
                 1,
-                64 * w,
-                64,
+                cube_num * w,
+                cube_num,
             )
             return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
-
-        def get_32ic_data():
-            n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
-            stride = (
-                (c + 32) // 32 * 32 * h * w,
-                LANE_SIZE // itemsize,
-                32 * h * w,
-                1,
-                32 * w,
-                32,
-            )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
-
-        def get_1ic_data():
-            n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, c, h, w)
-            stride = (
-                c * h * w,
-                LANE_SIZE // itemsize,
-                h * w,
-                w,
-                1,
-            )
-            return data_view(shape, stride).reshape(-1, c, h, w)[
                 :n, NPU_OFFSET : NPU_OFFSET + c, :, :
             ]
 
         def get_matrix_data():
             r, c = memref.shape
             w = memref.layout.args[0]
-            shape = (r, (c + w - 1) // w, 1, w)
+            shape = (r, div_up(c, w), 1, w)
             _memref = copy(memref)
             _memref.shape = shape
             _memref.layout = Layout.alignEU
@@ -376,16 +348,16 @@ class Memory(DeviceMemory):
             lane_mask = np.unpackbits(
                 np.uint64([lane_mask]).view(np.uint8), bitorder="little"
             )
-            _c = (NPU_OFFSET + c + 63) // 64
-            index = np.zeros(_c * 64, bool)
+            _c = div_up(NPU_OFFSET + c, NPU_NUM)
+            index = np.zeros(_c * NPU_NUM, bool)
             index[NPU_OFFSET : NPU_OFFSET + c] = True
-            index = index.reshape(_c, 64)
+            index = index.reshape(_c, NPU_NUM)
             index[:, lane_mask == 0] = False
             return index.flatten()
 
         def get_dma4bank_data():
             n, c, h, w = memref.shape
-            shape = (4, n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            shape = (4, n, div_up(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w)
             n_s, c_s, h_s, w_s = memref.stride
             stride = (BANK_SIZE, n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, memref.layout.args[0])
@@ -393,7 +365,7 @@ class Memory(DeviceMemory):
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            shape = (n, div_up(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w)
             n_s, c_s, h_s, w_s = _memref.stride
             stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
@@ -402,7 +374,7 @@ class Memory(DeviceMemory):
         def get_dma_matrix_data():
             r, c = memref.shape
             w = memref.layout.args[1]
-            shape = (r, (c + w - 1) // w, 1, w)
+            shape = (r, div_up(c, w), 1, w)
             _memref = copy(memref)
             _memref.shape = shape
             return get_dma_stride_data(_memref).reshape(r, -1)[:r, :c]
@@ -415,12 +387,10 @@ class Memory(DeviceMemory):
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
             Layout.stride: get_stride_data,
-            Layout._64IC: get_64ic_data,
-            Layout._32IC: get_32ic_data,
-            Layout._1IC: get_1ic_data,
+            Layout.alignIC: get_alignic_data,
             Layout.matrix: get_matrix_data,
             Layout.matrix2: get_matrix2_data,
-            Layout.T3: get_stride_data,
+            Layout.alignLine: get_stride_data,
             Layout.T4: get_stride_data,
             Layout.T5: get_stride_data,
             Layout.DMA4Bank: get_dma4bank_data,

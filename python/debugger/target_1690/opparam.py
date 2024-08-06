@@ -22,7 +22,7 @@ from ..target_common import (
 )
 
 from .regdef import *
-from .memmap import LANE_SIZE, memmap
+from .memmap import memmap
 
 if TYPE_CHECKING:
     from .context import BM1690Context
@@ -124,7 +124,7 @@ def sCONV_converter(context: "BM1690Context", reg: sCONV_reg):
         shape=[reg.res0_c, reg.opd0_c, reg.opd1_h, reg.opd1_w],
         dtype=(reg.opt_opd0_prec, reg.opt_opd1_sign),
         is_const=reg.opt_opd1_const,
-        layout=Layout._1IC,
+        layout=Layout.alignIC,
     )
     opd2 = dict(
         address=reg.opd2_addr,
@@ -164,14 +164,7 @@ def sCONV_converter(context: "BM1690Context", reg: sCONV_reg):
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
-    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8 :
-        opd1["layout"] = Layout._64IC
-    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8 :
-        opd1["layout"] = Layout._64IC
-    elif reg.opt_opd0_prec == FP16 or reg.opt_opd0_prec == BF16:
-        opd1["layout"] = Layout._32IC
-    elif reg.opt_opd0_prec == FP32 and reg.tsk_eu_typ == CONV_TF32:
-        opd1["layout"] = Layout._16IC
+    opd1["layout"] = Layout.alignIC
 
     results = [get_value(context, **res0)]
 
@@ -754,7 +747,7 @@ def cw_trans_reg_format(context, reg: sCW_sBC_reg):
     )
 
     if reg.tsk_eu_typ == 0:  # cw_ts
-        opd0["layout"] = Layout.T3
+        opd0["layout"] = Layout.alignLine
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
@@ -968,7 +961,7 @@ def sSGL_converter(context: "BM1690Context", reg: sSGL_reg):
     )
     opd0["shape"] = (1, c, reg.opd0_h, w)
     if reg.short_short_opd0_str == 3:
-        opd0["layout"] = Layout.T3
+        opd0["layout"] = Layout.alignLine
     else:
         opd0["layout"] = Layout.T4
 
@@ -976,7 +969,7 @@ def sSGL_converter(context: "BM1690Context", reg: sSGL_reg):
     assert reg.tsk_eu_typ in [17, 18]
     opd1_h = reg.res0_h if reg.tsk_eu_typ == 17 else reg.opd0_h
     opd1["shape"] = (n, c, opd1_h, 1)
-    res0["layout"] = Layout.T3
+    res0["layout"] = Layout.alignLine
 
     attr = dict(
         limit_enable=bool(reg.opt_opd3_const),
@@ -1216,7 +1209,7 @@ def DMA_general_converter(context: "BM1690Context", reg: DMA_general_reg):
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
-        res0["stride"] = (LANE_SIZE, 1)
+        res0["stride"] = (info.LANE_SIZE, 1)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
