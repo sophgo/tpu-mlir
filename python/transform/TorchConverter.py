@@ -106,6 +106,7 @@ class TorchConverter(BaseConverter):
             "aten::chunk": lambda node: self.convert_chunk_op(node),
             "aten::copy": lambda node: self.convert_skip_op(node),
             "aten::clamp": lambda node: self.convert_clamp_op(node),
+            "aten::clone": lambda node: self.convert_clone_op(node),
             "aten::cos": lambda node: self.convert_math_op(node, "cos"),
             "aten::cosh": lambda node: self.convert_math_op(node, "cosh"),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
@@ -1721,6 +1722,12 @@ class TorchConverter(BaseConverter):
                                 loc=self.get_loc("{}_{}_{}".format(torch_node.name, torch_node.op_type, "min")),
                                 ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op_min)
+
+    def convert_clone_op(self, torch_node: TorchNode):
+        # clone = identity
+        op = self.getOp(torch_node.inputs[0])
+        # remove the clone node
+        self.addOperand(torch_node.name, op)
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
