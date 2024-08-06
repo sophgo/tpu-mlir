@@ -10,7 +10,7 @@
 from typing import Dict, Tuple
 
 from ..target_common import OpInfo, atomic_reg, BaseTpuCmd, Tiu, Dma, ALIGN, RegIndex
-from .memmap import NPU_NUM, EU_NUM
+from .memmap import *
 from .regdef import *
 from .opparam import opparam_converter, default_converter
 
@@ -174,14 +174,14 @@ class conv_op(TiuCmd):
         has_bias = len(self.operands) > 2
         if is_arch:
             dtype = self.operands[0].dtype
-            ic = ALIGN(ic, NPU_NUM)
-            ow = ALIGN(oh * ow, EU_NUM(dtype))
+            ic = ALIGN(ic, info.NPU_NUM)
+            ow = ALIGN(oh * ow, info.EU_NUM(dtype))
             oh = 1
-            oc = ALIGN(oc, NPU_NUM)
-            # iw = ALIGN(ih * iw, EU_NUM(dtype))
+            oc = ALIGN(oc, info.NPU_NUM)
+            # iw = ALIGN(ih * iw, info.EU_NUM(dtype))
             # ih = 1
             # kw = ALIGN(kw, 64)
-            # remain_hw = ALIGN(ih*iw, EU_NUM) - ih*iw
+            # remain_hw = ALIGN(ih*iw, info.EU_NUM) - ih*iw
         out_size = n * oc * oh * ow
         kh, kw = self.attribute["kernel"]
         return out_size * (2 * ic * kh * kw - 1 + has_bias)
@@ -211,7 +211,7 @@ class mm_op(TiuCmd):
         if is_arch:
             dtype = self.operands[0].dtype
             # align the column of B
-            n = ALIGN(reg.res0_c, NPU_NUM) * ALIGN(reg.res0_w, EU_NUM(dtype))
+            n = ALIGN(reg.res0_c, info.NPU_NUM) * ALIGN(reg.res0_w, info.EU_NUM(dtype))
         return m * n * (2 * k - 1 + has_bias + res_add)
 
 
@@ -242,8 +242,8 @@ class mm2_op(TiuCmd):
 
         if is_arch:
             dtype = self.operands[0].dtype
-            k = ALIGN(k, EU_NUM(dtype))
-            m = ALIGN(m, NPU_NUM)
+            k = ALIGN(k, info.EU_NUM(dtype))
+            m = ALIGN(m, info.NPU_NUM)
 
         return m * n * (2 * k - 1 + has_bias)
 
@@ -273,8 +273,8 @@ class cmp_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(h * w, info.EU_NUM(dtype))
         return n * c * hw * 2
 
 
@@ -309,8 +309,8 @@ class sfu_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(w * h, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(w * h, info.EU_NUM(dtype))
 
         return res_num * n * c * hw * factor
 
@@ -348,8 +348,8 @@ class vc_op(TiuCmd):
         n, c, h, w = self.results[0].shape
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w
 
 
@@ -370,8 +370,8 @@ class lin_op(TiuCmd):
         factor = 2
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
 
@@ -426,8 +426,8 @@ class ar_op(TiuCmd):
             factor = 5  # TODO: fix the factor
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(w * h, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(w * h, info.EU_NUM(dtype))
         return n * c * hw * factor
 
 
@@ -468,8 +468,8 @@ class pord_op(TiuCmd):
             factor = 2 * 4 - 1  # bilinar, ignore coords generate
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(h * w, info.EU_NUM(dtype))
             h = 1
         return n * c * h * w * (factor * kh * kw - 1)
 
@@ -499,8 +499,8 @@ class rqdq_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(h * w, info.EU_NUM(dtype))
         return n * c * hw * factor
 
 
@@ -539,8 +539,8 @@ class sg_op(TiuCmd):
         factor = 1
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
 
@@ -561,8 +561,8 @@ class sgl_op(TiuCmd):
         factor = 1
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
 
@@ -591,16 +591,16 @@ class transbc_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
+            c = ALIGN(c, info.NPU_NUM)
             if self.eu_name in (
                 "tsbc.l_copy",
                 "tsbc.l_bc",
                 "tsbc.s_bc",
                 "tsbc.s_distribute",
             ):
-                hw = ALIGN(h * w, EU_NUM(dtype))
+                hw = ALIGN(h * w, info.EU_NUM(dtype))
             else:
-                hw = h * ALIGN(w, EU_NUM(dtype))
+                hw = h * ALIGN(w, info.EU_NUM(dtype))
         return n * c * hw * factor
 
 
@@ -622,8 +622,8 @@ class lar_op(TiuCmd):
         factor = 1
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
 

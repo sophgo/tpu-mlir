@@ -26,6 +26,8 @@ from .context import (
     use_backend,
 )
 from .op_support import (
+    div_up,
+    align_up,
     DType,
     MType,
     Layout,

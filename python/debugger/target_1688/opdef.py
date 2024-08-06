@@ -10,7 +10,7 @@
 from typing import Dict, Tuple
 from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex, ALIGN, DType, DIV_UP
 from .regdef import SYS_TR_ACC_reg
-from .memmap import NPU_NUM, EU_NUM, LANE_NUMBER, CUBE_NUM, CubeOutputHeightWidthAlignNum, ExecutionUnitNumber
+from .memmap import info, CubeOutputHeightWidthAlignNum, ExecutionUnitNumber
 from abc import abstractmethod
 import math
 # global data and type
@@ -218,15 +218,15 @@ class conv_op(TiuCmd):
         biasLat = 1 if self.reg.opt_opd2_const else 0
         dtype = self.operands[0].dtype
         if is_arch:
-            channelNumPerCyc = CUBE_NUM(dtype)
+            channelNumPerCyc = info.CUBE_NUM(dtype)
             if dtype == DType.f32:
-                activatedEuNumber = EU_NUM(dtype)
+                activatedEuNumber = info.EU_NUM(dtype)
             else:
                 ic = ALIGN(ic, channelNumPerCyc)
                 activatedEuNumber = CubeOutputHeightWidthAlignNum
             ow = ALIGN(oh * ow, activatedEuNumber)
             oh = 1
-            oc = ALIGN(oc, LANE_NUMBER)
+            oc = ALIGN(oc, info.NPU_NUM)
         out_size = n * oc * oh * ow
         kh, kw = self.reg.opd1_h, self.reg.opd1_w
         return out_size * (2 * ic * kh * kw - 1 + biasLat)
@@ -242,13 +242,13 @@ class conv_op(TiuCmd):
     def alg_cycle(self, alg_ops):
         # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
         dtype = self.operands[0].dtype
-        channelNumPerCyc = CUBE_NUM(dtype)
+        channelNumPerCyc = info.CUBE_NUM(dtype)
         if dtype == DType.f32:
             channelNumPerCyc = 1
-            activatedEuNumber = EU_NUM(dtype)
+            activatedEuNumber = info.EU_NUM(dtype)
         else:
             activatedEuNumber = CubeOutputHeightWidthAlignNum # CubeOutputHeightWidthAlignNum
-        return DIV_UP(alg_ops, NPU_NUM * channelNumPerCyc * activatedEuNumber * 2)
+        return DIV_UP(alg_ops, info.NPU_NUM * channelNumPerCyc * activatedEuNumber * 2)
 
 class sconv_op(conv_op):
     name = "sCONV"
@@ -272,7 +272,7 @@ class mm_op(TiuCmd):
         if is_arch:
             dtype = self.operands[0].dtype
             # align the column of B
-            n = ALIGN(self.reg.res0_c, LANE_NUMBER) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
+            n = ALIGN(self.reg.res0_c, info.NPU_NUM) * ALIGN(self.reg.res0_w, info.EU_NUM(dtype))
         return m * n * (2 * k - 1 + has_bias)
 
     def initial_cycle(self) -> int:
@@ -283,7 +283,7 @@ class mm_op(TiuCmd):
 
     def alg_cycle(self, alg_ops: int) -> int:
         dtype = self.operands[0].dtype
-        return DIV_UP(alg_ops, EU_NUM(dtype) * LANE_NUMBER * 2)
+        return DIV_UP(alg_ops, info.EU_NUM(dtype) * info.NPU_NUM * 2)
 
 class smm_op(mm_op):
     name = "sMM"
@@ -308,11 +308,11 @@ class mm2_op(TiuCmd):
         elif self.eu_name == "mm2.tt":
             m, k, n = k, m, k
         dtype = self.results[0].dtype
-        channelNumPerCyc = CUBE_NUM(dtype)
+        channelNumPerCyc = info.CUBE_NUM(dtype)
         activatedEuNumber = CubeOutputHeightWidthAlignNum
         if is_arch:
             k = ALIGN(k, activatedEuNumber)
-            m = ALIGN(m, LANE_NUMBER)
+            m = ALIGN(m, info.NPU_NUM)
             n = ALIGN(n, channelNumPerCyc)
 
         return m * n * k * 2
@@ -327,9 +327,9 @@ class mm2_op(TiuCmd):
 
     def alg_cycle(self, alg_ops: int) -> int:
         dtype = self.operands[0].dtype
-        channelNumPerCyc = CUBE_NUM(dtype)
+        channelNumPerCyc = info.CUBE_NUM(dtype)
         activatedEuNumber = CubeOutputHeightWidthAlignNum
-        return DIV_UP(alg_ops, channelNumPerCyc * activatedEuNumber * LANE_NUMBER * 2)
+        return DIV_UP(alg_ops, channelNumPerCyc * activatedEuNumber * info.NPU_NUM * 2)
 
 class smm2_op(mm2_op):
     name = "sMM2"
@@ -356,15 +356,15 @@ class cmp_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(h * w, info.EU_NUM(dtype))
         return n * c * hw * 2
 
     def alg_cycle(self, alg_ops: int) -> int:
-        perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
+        perLaneEuNumber = ExecutionUnitNumber // info.NPU_NUM
         activatedEuNumber = perLaneEuNumber // math.ceil(
             self.results[0].dtype.itemsize)
-        return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * 2)
+        return DIV_UP(alg_ops, activatedEuNumber * info.NPU_NUM * 2)
 
     def initial_cycle(self) -> int:
         return 9
@@ -399,8 +399,8 @@ class sfu_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(w * h, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(w * h, info.EU_NUM(dtype))
 
         return res_num * n * c * hw * factor
 
@@ -409,7 +409,7 @@ class sfu_op(TiuCmd):
         factor = 1
         if self.eu_name == "sfu.taylor_4x" or self.eu_name == "sfu.taylor":
             factor = 2
-        return DIV_UP(alg_ops, EU_NUM(dtype) * LANE_NUMBER * factor)
+        return DIV_UP(alg_ops, info.EU_NUM(dtype) * info.NPU_NUM * factor)
 
     def initial_cycle(self) -> int:
         if self.eu_name == "sfu.rsqrt":
@@ -435,16 +435,16 @@ class lin_op(TiuCmd):
         factor = 2
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
     def alg_cycle(self, alg_ops: int) -> int:
         factor = 2
-        perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
+        perLaneEuNumber = ExecutionUnitNumber // info.NPU_NUM
         activatedEuNumber = perLaneEuNumber // math.ceil(
             self.results[0].dtype.itemsize)
-        return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * factor)
+        return DIV_UP(alg_ops, activatedEuNumber * info.NPU_NUM * factor)
 
     def initial_cycle(self) -> int:
         return 12
@@ -484,24 +484,24 @@ class vc_op(TiuCmd):
         n, c, h, w = self.results[0].shape
         if is_arch:
             dtype = self.operands[0].dtype
-            perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
+            perLaneEuNumber = ExecutionUnitNumber // info.NPU_NUM
             opd0Byte = math.ceil(self.operands[0].dtype.itemsize)
             opd1Byte = math.ceil(self.operands[1].dtype.itemsize)
             res0Byte = math.ceil(self.results[1].dtype.itemsize)
             maxByte = max(opd0Byte, opd1Byte, res0Byte)
             activatedEuNumber = perLaneEuNumber // maxByte
-            c = ALIGN(c, NPU_NUM)
+            c = ALIGN(c, info.NPU_NUM)
             w = ALIGN(w, activatedEuNumber)
         return n * c * h * w
 
     def alg_cycle(self, alg_ops: int) -> int:
-        perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
+        perLaneEuNumber = ExecutionUnitNumber // info.NPU_NUM
         opd0Byte = math.ceil(self.operands[0].dtype.itemsize)
         opd1Byte = math.ceil(self.operands[1].dtype.itemsize)
         res0Byte = math.ceil(self.results[1].dtype.itemsize)
         maxByte = max(opd0Byte, opd1Byte, res0Byte)
         activatedEuNumber = perLaneEuNumber // maxByte
-        return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER)
+        return DIV_UP(alg_ops, activatedEuNumber * info.NPU_NUM)
 
     def initial_cycle(self) -> int:
         return 0
@@ -556,8 +556,8 @@ class ar_op(TiuCmd):
             factor = 5  # TODO: fix the factor
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, LANE_NUMBER)
-            hw = ALIGN(w * h, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(w * h, info.EU_NUM(dtype))
         return n * c * hw * factor
 
     def initial_cycle(self) -> int:
@@ -575,7 +575,7 @@ class ar_op(TiuCmd):
         if self.reg['tsk_eu_typ'] == 12:
             factor = 5
         dtype = self.operands[0].dtype
-        return DIV_UP(alg_ops, EU_NUM(dtype) * factor * NPU_NUM)
+        return DIV_UP(alg_ops, info.EU_NUM(dtype) * factor * info.NPU_NUM)
 
 
 class sar_op(ar_op):
@@ -616,8 +616,8 @@ class pord_op(TiuCmd):
             factor = 2 * 4 - 1  # bilinar, ignore coords generate
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, LANE_NUMBER)
-            w = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(h * w, info.EU_NUM(dtype))
             h = 1
         return n * c * h * w * (factor * kh * kw - 1)
 
@@ -638,7 +638,7 @@ class pord_op(TiuCmd):
             4: 1
             }
         factor = switcher.get(self.reg["tsk_eu_typ"], 7)
-        return DIV_UP(alg_ops, factor * EU_NUM(self.operands[0].dtype) * NPU_NUM)
+        return DIV_UP(alg_ops, factor * info.EU_NUM(self.operands[0].dtype) * info.NPU_NUM)
 
 class spord_op(pord_op):
     name = "sPorD"
@@ -666,15 +666,15 @@ class rqdq_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            hw = ALIGN(h * w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            hw = ALIGN(h * w, info.EU_NUM(dtype))
         return n * c * hw * factor
 
     def alg_cycle(self, alg_ops: int) -> int:
         factor = 3
         dtype = self.operands[0].dtype
-        activatedEuNumber = EU_NUM(dtype)
-        return DIV_UP(alg_ops, activatedEuNumber * LANE_NUMBER * factor)
+        activatedEuNumber = info.EU_NUM(dtype)
+        return DIV_UP(alg_ops, activatedEuNumber * info.NPU_NUM * factor)
 
     def initial_cycle(self) -> int:
         return 11
@@ -717,12 +717,12 @@ class sg_op(TiuCmd):
         factor = 1
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
     def alg_cycle(self, alg_ops: int) -> int:
-        return DIV_UP(alg_ops, LANE_NUMBER)
+        return DIV_UP(alg_ops, info.NPU_NUM)
 
     def initial_cycle(self) -> int:
         return 11
@@ -747,12 +747,12 @@ class sgl_op(TiuCmd):
         factor = 1
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
-            w = ALIGN(w, EU_NUM(dtype))
+            c = ALIGN(c, info.NPU_NUM)
+            w = ALIGN(w, info.EU_NUM(dtype))
         return n * c * h * w * factor
 
     def alg_cycle(self, alg_ops: int) -> int:
-        return DIV_UP(alg_ops, LANE_NUMBER * LANE_NUMBER)
+        return DIV_UP(alg_ops, info.NPU_NUM * info.NPU_NUM)
 
     def initial_cycle(self) -> int:
         return 24
@@ -785,21 +785,21 @@ class transbc_op(TiuCmd):
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
-            c = ALIGN(c, NPU_NUM)
+            c = ALIGN(c, info.NPU_NUM)
             if self.eu_name in (
                 "tsbc.l_copy",
                 "tsbc.l_bc",
                 "tsbc.s_bc",
                 "tsbc.s_distribute",
             ):
-                hw = ALIGN(h * w, EU_NUM(dtype))
+                hw = ALIGN(h * w, info.EU_NUM(dtype))
             else:
-                hw = h * ALIGN(w, EU_NUM(dtype))
+                hw = h * ALIGN(w, info.EU_NUM(dtype))
         return n * c * hw * factor
 
     def alg_cycle(self, alg_ops: int) -> int:
-        perLaneEuNumber = ExecutionUnitNumber // LANE_NUMBER
-        channelNumPerCyc = LANE_NUMBER
+        perLaneEuNumber = ExecutionUnitNumber // info.NPU_NUM
+        channelNumPerCyc = info.NPU_NUM
         resByte = math.ceil(self.results[0].dtype.itemsize)
         activatedEuNumber = perLaneEuNumber // resByte
         if self.eu_name in ("tsbc.cw_ts", "tsbc.wc_ts", "tsbc.l_copy", "tsbc.s_distribute"):
