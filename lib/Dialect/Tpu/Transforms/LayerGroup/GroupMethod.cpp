@@ -114,6 +114,13 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
              SoftmaxOp, RMSNormOp, ReshapeOp, LutOp>(op)) {
       return false;
     }
+    if(isa<ReshapeOp>(op)){
+      auto ishape = module::getShape(op->getOperand(0));
+      auto oshape = module::getShape(op->getResult(0));
+      if(ishape.size() > 5 || oshape.size() > 5){
+        return false;
+      }
+    }
     auto shape = module::getShape(op->getOperand(0));
     if (auto op_ = dyn_cast<LayerNormOp>(op)) {
       if (op_.getAxis() != shape.size() - 1) {
