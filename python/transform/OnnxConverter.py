@@ -247,6 +247,7 @@ class OnnxConverter(BaseConverter):
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
+            "ReverseSequence": lambda node: self.convert_reverse_sequence_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
             "Round": lambda node: self.convert_round_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
@@ -1200,6 +1201,21 @@ class OnnxConverter(BaseConverter):
                                    shapeT=shape,
                                    loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_reverse_sequence_op(self, onnx_node):
+        assert (onnx_node.op_type == 'ReverseSequence')
+        op = self.getOperand(onnx_node.inputs[0])
+        batch_axis = onnx_node.attrs['batch_axis']
+        time_axis = onnx_node.attrs['time_axis']
+        axis_dict = {'batch_axis': batch_axis, 'time_axis': time_axis}
+        assert(sorted(axis_dict.values()) == [0,1])
+        # not suppport length of the sequences each batch equals to time temporarily
+        new_op = top.ReverseOp(self.unranked_type,
+                               op,
+                               axis = time_axis,
+                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                               ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     # when resize by linear or nearst, with float scale_h or float scale_w
