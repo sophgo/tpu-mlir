@@ -20,8 +20,8 @@
 #include <vector>
 
 // encrypt definiton
-typedef uint8_t *(*EncryptFunc)(const uint8_t *, uint64_t, uint64_t *);
-typedef uint8_t *(*DecryptFunc)(const uint8_t *, uint64_t, uint64_t *);
+typedef uint8_t *(*encrypt_func)(const uint8_t *, uint64_t, uint64_t *);
+typedef uint8_t *(*decrypt_func)(const uint8_t *, uint64_t, uint64_t *);
 
 namespace bmodel {
 #ifdef __linux__
@@ -136,12 +136,13 @@ private:
   // encrypt
   std::string encrypt_lib_; // lib path by user, such as libcipher.so to encrypt
   void *encrypt_handle_;    // handle of encrypt lib
-  EncryptFunc encrypt_func_; // encrypt func from lib
+  encrypt_func encrypt_func_; // encrypt func from lib
 };
 
 class ModelCtx {
 public:
-  ModelCtx(const std::string &filename, const std::string &decrypt_lib = "");
+  ModelCtx(const std::string &filename, const std::string &decrypt_lib = "",
+           decrypt_func f = nullptr);
   ModelCtx(const void *bmodel_data, size_t size);
   virtual ~ModelCtx();
   operator bool();
@@ -187,7 +188,7 @@ private:
   const void *bmodel_pointer_; // bmodel in buffer
   std::string decrypt_lib_; // lib path by user, such as libcipher.so to decrypt
   void *decrypt_handle_;    // handle of decrypt lib
-  DecryptFunc decrypt_func_; // decrypt func from lib
+  decrypt_func decrypt_func_; // decrypt func from lib
 };
 
 } // namespace bmodel
