@@ -195,7 +195,7 @@ void ModelGen::InitEncrypt() {
                       << std::endl;
     exit(-1);
   }
-  encrypt_func_ = (EncryptFunc)dlsym(encrypt_handle_, "encrypt");
+  encrypt_func_ = (encrypt_func)dlsym(encrypt_handle_, "encrypt");
   auto error = dlerror();
   if (error) {
     BMODEL_LOG(FATAL) << "Decrypt lib [" << encrypt_lib_
@@ -454,9 +454,10 @@ void ModelGen::SaveEncrypt(const string &filename) {
 //===------------------------------------------------------------===//
 // ModelCtx
 //===------------------------------------------------------------===//
-ModelCtx::ModelCtx(const string &filename, const string &decrypt_lib)
+ModelCtx::ModelCtx(const string &filename, const string &decrypt_lib,
+                   decrypt_func f)
     : model_gen_(NULL), model_(NULL), bmodel_pointer_(NULL),
-      decrypt_lib_(decrypt_lib), decrypt_handle_(nullptr) {
+      decrypt_lib_(decrypt_lib), decrypt_handle_(nullptr), decrypt_func_(f) {
   // read file
   file_.open(filename, std::ios::binary | std::ios::in | std::ios::out);
   if (!file_) {
@@ -469,7 +470,7 @@ ModelCtx::ModelCtx(const string &filename, const string &decrypt_lib)
     BMODEL_LOG(FATAL) << "File[" << filename << "] is broken ." << std::endl;
     exit(-1);
   }
-  if (!decrypt_lib_.empty()) {
+  if (!decrypt_lib_.empty() || decrypt_func_ != nullptr) {
     init_decrypt();
     decrypt_bmodel(filename);
     return;
@@ -713,13 +714,16 @@ bool ModelCtx::get_weight(const std::string &net_name, int stage_idx,
 }
 
 void ModelCtx::init_decrypt() {
+  if (decrypt_func_ != nullptr) {
+    return;
+  }
   decrypt_handle_ = dlopen(decrypt_lib_.c_str(), RTLD_LAZY);
   if (!decrypt_handle_) {
     BMODEL_LOG(FATAL) << "Decrypt lib [" << decrypt_lib_ << "] load failed."
                       << std::endl;
     exit(-1);
   }
-  decrypt_func_ = (DecryptFunc)dlsym(decrypt_handle_, "decrypt");
+  decrypt_func_ = (decrypt_func)dlsym(decrypt_handle_, "decrypt");
   auto error = dlerror();
   if (error) {
     BMODEL_LOG(FATAL) << "Decrypt lib [" << decrypt_lib_

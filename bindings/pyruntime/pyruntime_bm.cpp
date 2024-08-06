@@ -12,7 +12,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
-
+#include <dlfcn.h>
 #include "bmcpu.h"
 #include "bmruntime_interface.h"
 
@@ -171,7 +171,9 @@ struct PythonNet {
       // caculate all_input_size
       size_t all_input_size = 0;
       for (int input_idx = 0; input_idx < net_info->input_num; input_idx++) {
-        all_input_size += bmrt_shape_count(&input_shapes_[input_idx]) * bmrt_data_type_size(net_info->input_dtypes[input_idx]);
+        all_input_size +=
+            bmrt_shape_count(&input_shapes_[input_idx]) *
+            bmrt_data_type_size(net_info->input_dtypes[input_idx]);
       }
       // malloc all_input_device_mem
       bm_malloc_device_byte(bm_handle, &all_input_device_mem, all_input_size);
@@ -180,28 +182,43 @@ struct PythonNet {
       size_t in_offset = 0;
       for (int input_idx = 0; input_idx < net_info->input_num; input_idx++) {
         auto &input_tensor = input_tensors[input_idx];
-        size_t tensor_size = bmrt_shape_count(&input_shapes_[input_idx]) * bmrt_data_type_size(net_info->input_dtypes[input_idx]);
-        auto tensor_mem = bm_mem_from_device(all_input_addr + in_offset, tensor_size);
-        bmrt_tensor_with_device(&input_tensor, tensor_mem, net_info->input_dtypes[input_idx], input_shapes_[input_idx]);
-        bm_memcpy_s2d(bm_handle, input_tensor.device_mem, (void *)input_datas[input_idx]);
+        size_t tensor_size =
+            bmrt_shape_count(&input_shapes_[input_idx]) *
+            bmrt_data_type_size(net_info->input_dtypes[input_idx]);
+        auto tensor_mem =
+            bm_mem_from_device(all_input_addr + in_offset, tensor_size);
+        bmrt_tensor_with_device(&input_tensor, tensor_mem,
+                                net_info->input_dtypes[input_idx],
+                                input_shapes_[input_idx]);
+        bm_memcpy_s2d(bm_handle, input_tensor.device_mem,
+                      (void *)input_datas[input_idx]);
         in_offset += tensor_size;
       }
       /* prepare output */
       // caculate all_output_size
       size_t all_output_size = 0;
-      for (int output_idx = 0; output_idx < net_info->output_num; output_idx++) {
-        all_output_size += bmrt_shape_count(&output_shapes_[output_idx]) * bmrt_data_type_size(net_info->output_dtypes[output_idx]);
+      for (int output_idx = 0; output_idx < net_info->output_num;
+           output_idx++) {
+        all_output_size +=
+            bmrt_shape_count(&output_shapes_[output_idx]) *
+            bmrt_data_type_size(net_info->output_dtypes[output_idx]);
       }
       // malloc all_output_device_mem
       bm_malloc_device_byte(bm_handle, &all_output_device_mem, all_output_size);
       uint64_t all_output_addr = bm_mem_get_device_addr(all_output_device_mem);
       // setup output tensors
       size_t out_offset = 0;
-      for (int output_idx = 0; output_idx < net_info->output_num; output_idx++) {
+      for (int output_idx = 0; output_idx < net_info->output_num;
+           output_idx++) {
         auto &output_tensor = output_tensors[output_idx];
-        size_t tensor_size = bmrt_shape_count(&output_shapes_[output_idx]) * bmrt_data_type_size(net_info->output_dtypes[output_idx]);
-        auto tensor_mem = bm_mem_from_device(all_output_addr + out_offset, tensor_size);
-        bmrt_tensor_with_device(&output_tensor, tensor_mem, net_info->output_dtypes[output_idx], output_shapes_[output_idx]);
+        size_t tensor_size =
+            bmrt_shape_count(&output_shapes_[output_idx]) *
+            bmrt_data_type_size(net_info->output_dtypes[output_idx]);
+        auto tensor_mem =
+            bm_mem_from_device(all_output_addr + out_offset, tensor_size);
+        bmrt_tensor_with_device(&output_tensor, tensor_mem,
+                                net_info->output_dtypes[output_idx],
+                                output_shapes_[output_idx]);
         out_offset += tensor_size;
       }
     } else {
@@ -273,7 +290,8 @@ private:
 };
 
 struct PythonModel {
-  PythonModel(const std::string &model_file, int dev_id, const std::string &decrypt_lib) {
+  PythonModel(const std::string &model_file, int dev_id,
+              const std::string &decrypt_lib) {
     auto ret = bm_dev_request(&bm_handle, dev_id);
     assert(ret == 0);
     ret = bm_get_chipid(bm_handle, &chip_id);
@@ -284,7 +302,14 @@ struct PythonModel {
     if (decrypt_lib.empty()) {
       flag = bmrt_load_bmodel(p_bmrt, model_file.c_str());
     } else {
-      flag = bmrt_load_bmodel_with_decrypt_lib(p_bmrt, model_file.c_str(), decrypt_lib.c_str());
+      // flag = bmrt_load_bmodel_with_decrypt_lib(p_bmrt, model_file.c_str(),
+      // decrypt_lib.c_str());
+      auto handle = dlopen(decrypt_lib.c_str(), RTLD_LAZY);
+      assert(handle != nullptr);
+      auto f = (decrypt_func)dlsym(handle, "decrypt");
+      assert(f != nullptr);
+      flag = bmrt_load_bmodel_with_decrypt(p_bmrt, model_file.c_str(), f);
+      dlclose(handle);
     }
     assert(flag == true);
     const char **net_names = NULL;
@@ -379,8 +404,9 @@ PYBIND11_MODULE(pyruntime_bm, m) {
       .def_readwrite("outputs", &PythonNet::outputs);
 
   py::class_<PythonModel>(m, "Model")
-      .def(py::init<const std::string &, int, const std::string &>(), py::arg("model_file"),
-           py::arg("device_id") = 0, py::arg("decrypt_lib") = "")
+      .def(py::init<const std::string &, int, const std::string &>(),
+           py::arg("model_file"), py::arg("device_id") = 0,
+           py::arg("decrypt_lib") = "")
       .def("Net", &PythonModel::Net)
       .def_readonly("networks", &PythonModel::networks);
 
