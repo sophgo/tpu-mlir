@@ -827,7 +827,7 @@ public:
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
 
-    if (module::isBM1688() || module::isBM1690Family())
+    if (module::isBM1688())
       return failure();
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
