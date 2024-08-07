@@ -408,6 +408,7 @@ class NetStatParser:
 class BMProfileParser:
     def __init__(self):
         self.global_filename = "global.profile"
+        self.mlir_filename = "final.mlir"
         self.iter_prefix = "iter"
         self.archlib = None
 
@@ -425,6 +426,20 @@ class BMProfileParser:
         shape_str = self.str_val(name)
         shape_str = shape_str.replace("x", ",")
         return eval(shape_str)
+
+    # def __parse_mlir_file(self, filename, ginfo):
+    #     if not os.path.exists(filename):
+    #         print(f'{filename} not found, please copy it here')
+    #     import mlir.ir as ir
+    #     with open(filename, encoding='utf-8') as f:
+    #         content = f.read()
+    #     ctx = ir.Context()
+    #     ctx.allow_unregistered_dialects = True
+    #     module = ir.Module.parse(content, ctx)
+    #     attr = module.operation.attributes
+    #     ginfo.flops = attr['module.FLOPs'].value
+    #     ginfo.net_name = attr['sym_name'].value
+    #     ginfo.quant_type = attr['module.mode'].value.lower()
 
     def __parse_global_file(self, filename):
         assert os.path.isfile(filename)
@@ -906,8 +921,11 @@ class BMProfileParser:
             logging.fatal("'{}' does not exist".format(in_dir))
             exit(-1)
         global_file_path = os.path.join(in_dir,self.global_filename)
+        mlir_file_path = os.path.join(in_dir,self.mlir_filename)
         iter_data = []
         global_info = self.__parse_global_file(global_file_path)
+        # self.__parse_mlir_file(mlir_file_path, global_info)
+
         no_perf_data = True
         iter_count = 0
         while True:
