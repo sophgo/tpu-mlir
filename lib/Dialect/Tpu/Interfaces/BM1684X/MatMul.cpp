@@ -56,6 +56,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
+        if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
@@ -272,6 +273,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
       common.fuse_rq = getFuseRq();
+      if(common.fuse_rq) common.round_mode = (RoundingMode)getRoundMode();
     }
   } else if (odtype.isFloat8E4M3FN()) {
     common.requant_mode = 0;
@@ -321,6 +323,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
+        spec.round_mode = (RoundingMode)getRoundMode();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
