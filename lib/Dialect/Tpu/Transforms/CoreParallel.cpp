@@ -381,16 +381,18 @@ public:
           return WalkResult::skip();
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
           if (matmulOp.supports_multi_core()) {
-            if (module::getCoreNum() > 1) {
-              matmulOp.setMultiCore(true);
-            }
+            matmulOp.setMultiCore(true);
             return WalkResult::skip();
+          } else {
+            matmulOp.setMultiCore(false);
           }
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
           if (a16matmulOp.supports_multi_core()) {
             if (module::getCoreNum() > 1) {
               a16matmulOp.setMultiCore(true);
+            } else {
+              a16matmulOp.setMultiCore(false);
             }
             return WalkResult::skip();
           }

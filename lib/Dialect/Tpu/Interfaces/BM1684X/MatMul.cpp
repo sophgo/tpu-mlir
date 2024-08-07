@@ -24,7 +24,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   auto odtype = module::getStorageType(getOutput());
 
-  if (p.hdim_is_batch || p.batch != 1 || module::getMode() == module::Mode::F8E4M3 || module::getMode() == module::Mode::F8E5M2) {
+  if (p.hdim_is_batch || p.batch != 1 ||
+      module::getMode() == module::Mode::F8E4M3 ||
+      module::getMode() == module::Mode::F8E5M2) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
@@ -61,7 +63,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.requant_mode = 0;
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       float scale = scales->at(0);
-      spec.mul_val = *(int*)&scale;
+      spec.mul_val = *(int *)&scale;
     }
 
     BM168x::call_global_func("backend_api_batch_matmul_global", &spec,
@@ -97,12 +99,15 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
       spec.fuse_rq = getFuseRq();
-      if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
+      if (spec.fuse_rq)
+        spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
 
-  // CoreParallel setMultiCore(true)
-  if (supports_multi_core()) {
+  // Need to check if multi_core attribute has been set cuz we will call
+  // codegen interface at layergroup stage as well
+  if (module::getCoreNum() > 1 && supports_multi_core() &&
+      (!getOperation()->hasAttr("multi_core") || getMultiCore() == true)) {
     if (!module::isNone(getBuffer())) {
       spec.need_buffer = true;
     }
@@ -162,9 +167,9 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   int out_type_len = BM168x::getFmtBytes(out_type);
   if (p.hdim_is_batch && in_hslice > 1) {
     /// if use buffer optimize, L_row_slice == NPU_NUM
-    int64_t mm2_cycle =
-        (ceiling_func(p.left_transpose ? oshape[1] : w0, BM168x::eu_num(in_type_len)) *
-         ceiling_func(oshape[3], (int64_t)4));
+    int64_t mm2_cycle = (ceiling_func(p.left_transpose ? oshape[1] : w0,
+                                      BM168x::eu_num(in_type_len)) *
+                         ceiling_func(oshape[3], (int64_t)4));
     bool buffer_optimize = mm2_cycle > (int64_t)200;
     // arrange left
     int64_t shape[4] = {1, oshape[1], 1, w0};
@@ -176,7 +181,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     // arrange right
     shape[1] = c1;
     shape[3] = w1;
-    if ((w1 * in_type_len ) % Arch::EU_BYTES != 0 ||
+    if ((w1 * in_type_len) % Arch::EU_BYTES != 0 ||
         (c1 > BM168x::NPU_NUM && (!p.left_transpose || !buffer_optimize))) {
       buffer_size += in_type_len * ceiling_func(shape[1], BM168x::NPU_NUM) *
                      align_up(shape[3], BM168x::eu_num(in_type_len));
@@ -194,32 +199,38 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
       // store output
       if (!odtype.isFloat8E4M3FN()) {
         buffer_size += out_type_len * ceiling_func(oshape[1], BM168x::NPU_NUM) *
-                     align_up(oshape[3], BM168x::eu_num(out_type_len));
+                       align_up(oshape[3], BM168x::eu_num(out_type_len));
       } else {
-        buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
-                     align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+        buffer_size += sizeof(int32_t) *
+                       ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                       align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
       }
     }
   } else if (in_type_len == 1 && out_type_len != 4) {
     if (!odtype.isFloat8E4M3FN()) {
       if (!p.left_transpose && !p.hdim_is_batch) {
         if (n0 != n1) {
-          // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep oshape[1]
+          // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep
+          // oshape[1]
           oshape[1] *= n0;
         }
       }
       bool buffer_optimize =
           (ceiling_func(p.left_transpose ? oshape[1] : h0 * w0,
                         BM168x::eu_num(in_type_len)) *
-          ceiling_func(oshape[2] * oshape[3], (int64_t)4)) > 200;
+           ceiling_func(oshape[2] * oshape[3], (int64_t)4)) > 200;
       oshape[1] =
           buffer_optimize ? std::min(oshape[1], BM168x::NPU_NUM) : oshape[1];
       // store mm2 output as int32
-      buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
-                    align_up(p.hdim_is_batch ? oshape[3] : oshape[2], BM168x::eu_num(sizeof(int32_t)));
+      buffer_size += sizeof(int32_t) *
+                     ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                     align_up(p.hdim_is_batch ? oshape[3] : oshape[2],
+                              BM168x::eu_num(sizeof(int32_t)));
     } else {
-      buffer_size += sizeof(int32_t) * n0 * ceiling_func(oshape[1], BM168x::NPU_NUM) *
-                    align_up(p.hdim_is_batch ? oshape[3] : oshape[2], BM168x::eu_num(sizeof(int32_t)));
+      buffer_size += sizeof(int32_t) * n0 *
+                     ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                     align_up(p.hdim_is_batch ? oshape[3] : oshape[2],
+                              BM168x::eu_num(sizeof(int32_t)));
     }
   }
 
@@ -228,7 +239,9 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
         align_up(p.hdim_is_batch ? w1 : h1, BM168x::eu_num(sizeof(int32_t))) *
         sizeof(int32_t);
     if (p.right_transpose) {
-      buffer_size += ceiling_func(c1, BM168x::NPU_NUM) * align_up(1, BM168x::eu_num(sizeof(int32_t))) * sizeof(int32_t);
+      buffer_size += ceiling_func(c1, BM168x::NPU_NUM) *
+                     align_up(1, BM168x::eu_num(sizeof(int32_t))) *
+                     sizeof(int32_t);
     }
   }
 
@@ -277,7 +290,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     common.requant_mode = 0;
     f64_array_t scales = module::getF64Array(getOutF8Scales().value());
     float scale = scales->at(0);
-    common.mul_val = *(int*)&scale;
+    common.mul_val = *(int *)&scale;
   }
 
   BM168x::call_local_func("backend_api_batch_matmul_local", &param,
@@ -295,8 +308,8 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto output_spec = BM168x::get_output_spec(op);
   if (!buffer)
     return (DYN_BMM_CONDITION(p, input_spec))
-                ? sizeof(batch_matmul_common_spec_t)
-                : sizeof(fc_global_spec_t);
+               ? sizeof(batch_matmul_common_spec_t)
+               : sizeof(fc_global_spec_t);
   if (DYN_BMM_CONDITION(p, input_spec)) {
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
@@ -326,7 +339,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.requant_mode = 0;
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       float scale = scales->at(0);
-      spec.mul_val = *(int*)&scale;
+      spec.mul_val = *(int *)&scale;
     }
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
   }
@@ -353,7 +366,8 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
       spec.fuse_rq = getFuseRq();
-      if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
+      if (spec.fuse_rq)
+        spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
@@ -363,9 +377,8 @@ int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
   auto op = getOperation();
   auto p = parseParam();
   auto input_spec = BM168x::get_input_spec(op);
-  return (DYN_BMM_CONDITION(p, input_spec)
-              ? FW_BMNET_BATCH_MATMUL
-              : FW_BMNET_FC);
+  return (DYN_BMM_CONDITION(p, input_spec) ? FW_BMNET_BATCH_MATMUL
+                                           : FW_BMNET_FC);
 }
 
 int64_t tpu::MatMulOp::dyn_codegen_local_bm1684x(void *buffer) {
