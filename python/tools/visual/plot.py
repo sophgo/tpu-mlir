@@ -24,10 +24,7 @@ def linear_plot(data, name=None, max_sampling=1000, bias=None):
     import numpy as np
     from . import plot_utils as plt
     shape = None
-    if name != None:
-        weight, shape, bias, bshape = data.weight(name, bias)
-    else:
-        blob_fp, blob_int = data.tensor(name)
+    blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
     if data_size > max_sampling:
         step = data_size // max_sampling
