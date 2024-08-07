@@ -126,6 +126,22 @@ class DeployTool:
     def cleanup(self):
         file_clean()
 
+    def pack_profile(self):
+        import shutil
+        profile_path = f'./{self.prefix}_profile/'
+        os.makedirs(profile_path, exist_ok=True)
+
+        shutil.copy2(self.mlir_file, os.path.join(profile_path, 'top.mlir'))
+        mlir2onnx(self.mlir_file, os.path.join(profile_path, 'top.onnx'))
+
+        shutil.copy2(self.tpu_mlir, os.path.join(profile_path, 'tpu.mlir'))
+        mlir2onnx(self.tpu_mlir, os.path.join(profile_path, 'tpu.onnx'))
+
+        shutil.copy2(self.tpu_opt_mlir, os.path.join(profile_path, 'tpu_opt.mlir'))
+        mlir2onnx(self.tpu_opt_mlir, os.path.join(profile_path, 'tpu_opt.onnx'))
+
+        shutil.copy2(self.final_mlir, os.path.join(profile_path, 'final.mlir'))
+
     def lowering(self):
         if self.chip == 'cpu':
             top_to_tosa(self.mlir_file, "tmp_tosa.mlir", self.includeWeight)
@@ -140,6 +156,7 @@ class DeployTool:
             return {}
         else:
             self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+            self.tpu_opt_mlir = "{}_tpu_opt.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
             self.final_mlir = "{}_final.mlir".format(self.prefix)
             patterns = mlir_lowering(self.mlir_file,
@@ -429,6 +446,8 @@ if __name__ == '__main__':
     tpu_patterns = tool.build_model()
     if not args.debug:
         tool.cleanup()
+    else:
+        tool.pack_profile()
 
     total_patterns = {**lowering_patterns, **tpu_patterns}
     if args.patterns_count:

@@ -443,3 +443,7 @@ def model_inference_cpu(objfile: str, output_size: str):
 def delete_file(file: str):
     cmd = ["rm -f", file]
     _os_system(cmd)
+
+def mlir2onnx(mlir_file: str, onnx_file: str):
+    cmd = ['mlir2onnx.py -m', mlir_file, '-o', onnx_file]
+    _os_system(cmd)
