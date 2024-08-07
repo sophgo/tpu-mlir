@@ -1271,6 +1271,7 @@ class BMProfileGenerator:
         layer_file = os.path.join(out_dir, "layer.csv")
         inst_file = os.path.join(out_dir, "instruction.csv")
         summary_file = os.path.join(out_dir, "summary.csv")
+        mac_util_file = os.path.join(out_dir, "mac_util.csv")
 
         layer_summary_header = [
             "Function",
@@ -1302,37 +1303,76 @@ class BMProfileGenerator:
         ]
         summary_df = pd.DataFrame(columns = layer_summary_header)
         layer_summary_row_map = {
-            "conv":"Conv",
-            "conv2d":"Conv",
-            "deconv": "Deconv",
-            "deconv2d": "Deconv",
-            "pool":"Pool",
-            "pool2d":"Pool",
-            "fc":"Matmul",
-            "matmul":"Matmul",
-            "batch_matmul":"Matmul",
-            "softmax":"Softmax",
-            "batchnorm":"BatchNorm",
-            "layernorm":"LayerNorm",
-            "layer_norm":"LayerNorm",
-            "group_norm":"LayerNorm",
-            "groupnorm":"LayerNorm",
-            "eltwise":"Eltwise",
-            "eltwise_binary":"Eltwise",
-            "mul":"Eltwise",
-            "add":"Eltwise",
-            "mulconst":"Eltwise",
-            "addconst":"Eltwise",
-            "broadcast_binary":"Eltwise",
-            "mulshift": "Eltwise",
+            # Active
             "active": "Active",
-            "load": "Load",
-            "store": "Store",
+            "leakyrelu": "Active",
+            "prelu": "Active",
+            # Attention
             "attention": "Attention",
+            "fattention": "Attention",
+            # BatchNorm
+            # "batchnorm": "BatchNorm",
+            # "batch_norm": "BatchNorm",
+            # Conv
+            "conv": "Conv",
+            "conv2d": "Conv",
+            "conv3d": "Conv",
+            "deconv": "Conv",
+            "deconv3d": "Conv",
+            # Cast
             "cast": "Cast",
+            # Eltwise
+            "addconst": "Eltwise",
+            "mulconst": "Eltwise",
+            "subconst": "Eltwise",
+            "maxconst": "Eltwise",
+            "minconst": "Eltwise",
+            "add": "Eltwise",
+            "mul": "Eltwise",
+            "sub": "Eltwise",
+            "div": "Eltwise",
+            "max": "Eltwise",
+            "min": "Eltwise",
+            "broadcast_binary": "Eltwise",
+            "eltwise": "Eltwise",
+            "eltwise_binary": "Eltwise",
+            "binaryshift": "Eltwise",
+            "binaryconstshift": "Eltwise",
+            "clip": "Eltwise",
+            "compare": "Eltwise",
+            "compareconst": "Eltwise",
+            # FC
+            "fc": "FC",
+            # MulShift
+            "mulshift": "MulShift",
+            # LayerNorm
+            "groupnorm": "LayerNorm",
+            "layernorm": "LayerNorm",
+            "group_norm": "LayerNorm",
+            "layer_norm": "LayerNorm",
+            "instancenorm": "LayerNorm",
+            "pixelnorm": "LayerNorm",
+            # Lut
             "lut": "Lut",
-            "gather": "Gather",
-            "a16matmul": "A16MatMul"
+            # MatMul
+            "a16matmul": "MatMul",
+            "batch_matmul": "MatMul",
+            "matmul": "MatMul",
+            # Pool
+            "pool": "Pool",
+            "pool2d": "Pool",
+            # Reduce
+            "reduce": "Reduce",
+            # Requant
+            # "requantfp": "Requant",
+            # "requantint": "Requant",
+            # "requantfpaxis": "Requant",
+            # "requantintaxis": "Requant",
+            # Slice
+            # "slice": "StrideSlice",
+            # "strideslice": "StrideSlice",
+            # Softmax
+            "softmax": "Softmax",
         }
         total_weight_size = 0
         total_s2l_bytes = 0
@@ -1390,7 +1430,7 @@ class BMProfileGenerator:
 
         total_tiu_theo_time = summary_df['tiuPTheoTime(us)'].sum()
         total_gdma_theo_time = summary_df['gdmaPTheoTime(us)'].sum()
-        peak_tops = get_peak_tops(dtype_ops_map, BDPeriod)
+        model_peak_tops = get_peak_tops(dtype_ops_map, BDPeriod)
         total_arch_urate = get_ratio_str(total_alg_ops, total_arch_ops)
         total_ddr_rate = get_ratio_str(total_gdma_theo_time, total_gdma_time)
         model_total_time = total_end_time - total_begin_time
@@ -1402,17 +1442,66 @@ class BMProfileGenerator:
             total_alg_ops, "100%", total_arch_ops, "100%",
             total_tiu_cycles, total_tiu_time, "100%",
             total_tiu_theo_time, total_arch_urate,
-            peak_tops, "", "",
+            model_peak_tops, "", "",
             model_total_time,
             get_parallelism(total_tiu_time, total_gdma_time, model_total_time),
             get_concurrency(total_tiu_time, total_gdma_time, model_total_time),
             1e6/(total_tiu_cycles*BDPeriod) if total_tiu_cycles != 0 else None,
         ]
 
+        # mac util analysis
+        def profile_with_peak_tops(layer_type, layer_tiu_us, layer_alg_ops, peak_tops, current_time, model_theo_time):
+            tiu_theo_us = layer_alg_ops / peak_tops / 1e6
+            reduced_us = layer_tiu_us - tiu_theo_us
+            cur_time = current_time - reduced_us
+            mac_util = round(model_theo_time/cur_time * 100, 2)
+            return [layer_type + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
+                    reduced_us, cur_time, 100.0, mac_util,
+                    f'{layer_type}的耗时用ModelPeakTops得到的理论耗时替换']
+
+        def profile_with_layer_peak_tops(layer_type, layer_tiu_us, layer_alg_ops, dtypes, BDPeriod, current_time, model_theo_time):
+            peak_tops = get_layer_peak_tops(dtypes, layer_type, BDPeriod)
+            tiu_theo_us = layer_alg_ops / peak_tops / 1e6
+            reduced_us = layer_tiu_us - tiu_theo_us
+            cur_time = current_time - reduced_us
+            mac_util = round(model_theo_time/cur_time * 100, 2)
+            return [layer_type + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
+                    reduced_us, cur_time, 100.0, mac_util,
+                    f'{layer_type}的耗时用LayerPeakTops得到的理论耗时替换']
+
+        mac_util_rows = []
+        origin_concurrency = summary_df.loc['Overall'][-2]
+        theo_time_us = global_data.flops / (model_peak_tops * 1024 * 1e3)
+        origin_mac_util = theo_time_us / model_total_time * 100
+        mac_util_rows.append(
+            ['origin', 0, model_total_time, origin_concurrency, round(origin_mac_util, 3), '排除CPU耗时及输入输出在runtime空间和用户空间的搬运耗时']
+        )
+        mac_util_rows.append(
+            ['100% Concurrency', model_total_time - total_tiu_time, total_tiu_time, 100.0, round(theo_time_us / total_tiu_time * 100, 3), 'TIU和GDMA的并行度100%']
+        )
+        current_time = mac_util_rows[1][2]
+        for layer_type in summary_df.index[:-1]:
+            row = summary_df.loc[layer_type]
+            mac_util_rows.append(
+                profile_with_peak_tops(row['Function'], row['tiuTime(us)'], row['AlgOps'], model_peak_tops, current_time, theo_time_us)
+            )
+            current_time = mac_util_rows[-1][2]
+        current_time = mac_util_rows[1][2]
+        for layer_type in summary_df.index[:-1]:
+            row = summary_df.loc[layer_type]
+            mac_util_rows.append(
+                profile_with_layer_peak_tops(row['Function'], row['tiuTime(us)'], row['AlgOps'], row['DataTypes'], BDPeriod, current_time, theo_time_us)
+            )
+            current_time = mac_util_rows[-1][2]
+
+        mac_util_header = ['Case', 'ReducedTime(us)', 'CurrentTotalTime(us)', 'Concurrency(%)', 'macUtil(%)', 'Remark']
+        mac_util_df = pd.DataFrame(mac_util_rows, columns = mac_util_header)
+
         self.__write_csv(inst_file, inst_header, inst_data)
         if len(layer_df.index):
             self.__write_csv(layer_file, layer_header, layer_df)
             self.__write_csv(summary_file, layer_summary_header, summary_df)
+            self.__write_csv(mac_util_file, mac_util_header, mac_util_df)
         else:
             print("No static layer info found!")
 

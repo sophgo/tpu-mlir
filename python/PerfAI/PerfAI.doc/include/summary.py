@@ -315,7 +315,7 @@ class Summary:
         tiu_theo_us = layer_alg_ops / peak_tops / 1e6
         reduced_us = layer_tiu_us - tiu_theo_us
         cur_time = current_time - reduced_us
-        mac_util = round(model_theo_time/cur_time * 100, 2)
+        mac_util = round(model_theo_time/cur_time * 100, 3)
         return [layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
                 reduced_us, cur_time, 100.0, mac_util,
                 f'{layer_name}的耗时用ModelPeakTops得到的理论耗时替换']
@@ -325,7 +325,7 @@ class Summary:
         tiu_theo_us = layer_alg_ops / peak_tops / 1e6
         reduced_us = layer_tiu_us - tiu_theo_us
         cur_time = current_time - reduced_us
-        mac_util = round(model_theo_time/cur_time * 100, 2)
+        mac_util = round(model_theo_time/cur_time * 100, 3)
         return [layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
                 reduced_us, cur_time, 100.0, mac_util,
                 f'{layer_name}的耗时用LayerPeakTops得到的理论耗时替换']
@@ -390,12 +390,12 @@ class Summary:
         tiu_time = float(self.data_rows[-1][8])
         total_time = float(chip_arch['total_time(us)'])
         model_theo_time = chip_arch['flops'] / self._get_peak_tops(quant_type, platform, tpu_freq) / 1e6
-        mac_util = round(model_theo_time / total_time * 100, 2)
+        mac_util = round(model_theo_time / total_time * 100, 3)
         self.mac_util_rows.append(
             ['origin', 0, total_time, float(chip_arch['concurrency'][:-1]), mac_util, '排除CPU耗时及输入输出在runtime空间和用户空间的搬运耗时']
         )
         self.mac_util_rows.append(
-            ['100% Concurrency', total_time - tiu_time, tiu_time, 100.0, round(model_theo_time / tiu_time * 100, 2), 'TIU和GDMA的并行度100%']
+            ['100% Concurrency', total_time - tiu_time, tiu_time, 100.0, round(model_theo_time / tiu_time * 100, 3), 'TIU和GDMA的并行度100%']
         )
         current_time = self.mac_util_rows[1][2]
         for row in self.data_rows[:-1]:
