@@ -23,7 +23,6 @@ class figure_cache():
 def linear_plot(data, name=None, max_sampling=1000, bias=None):
     import numpy as np
     from . import plot_utils as plt
-    shape = None
     blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
     if data_size > max_sampling:
@@ -31,24 +30,13 @@ def linear_plot(data, name=None, max_sampling=1000, bias=None):
     else:
         step = 1
     index = np.arange(0, data_size, step)
-    if shape != None and (len(shape) == 2 or len(shape) == 1): # matmul
-        blob_fp_t = blob_fp.transpose()
-        blob_int_t = blob_int.transpose()
-        fig = plt.plot_weight_and_transposed(
-            index, (blob_fp.flatten()[::step], blob_int.flatten()[::step], blob_fp_t.flatten()[::step], blob_int_t.flatten()[::step]),
-            subplot_titles=(name, name+"-transposed"))
-        fig.update_layout(legend=dict(yanchor="top", y=0.99,
-                        xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
-        fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
-                        hovermode='x unified')
-    else:
-        fig = plt.plot_float_vs_fixpoint(
-            index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
-            subplot_titles=(name, "float - int8\t "))
-        fig.update_layout(legend=dict(yanchor="top", y=0.99,
-                        xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
-        fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
-                        hovermode='x unified')
+    fig = plt.plot_float_vs_fixpoint(
+        index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
+        subplot_titles=(name, "float - int8\t "))
+    fig.update_layout(legend=dict(yanchor="top", y=0.99,
+                    xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+    fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
+                    hovermode='x unified')
     return fig
 
 def param_plot(data, name=None, max_sampling=1000, bias=None):
@@ -58,24 +46,25 @@ def param_plot(data, name=None, max_sampling=1000, bias=None):
     if name == None:
         return None
     weight, weight_shape, bias, bias_shape = data.weight(name, bias)
-    data_size = weight.size
-    if data_size > max_sampling:
-        stepw = data_size // max_sampling
+    data_sizew = weight.size
+    if data_sizew > max_sampling:
+        stepw = data_sizew // max_sampling
     else:
         stepw = 1
     if type(bias) != None:
-        data_size = bias.size
-        if data_size > max_sampling:
-            stepb = data_size // max_sampling
+        data_sizeb = bias.size
+        if data_sizeb > max_sampling:
+            stepb = data_sizeb // max_sampling
         else:
             stepb = 1
-    indexw = np.arange(0, data_size, stepw)
-    indexb = np.arange(0, data_size, stepb)
+    indexw = np.arange(0, data_sizew, stepw)
+    indexb = np.arange(0, data_sizeb, stepb)
+
     if type(bias) != None:
-        fig = plt.plot_weight_and_transposed(indexw, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], bias.flatten()[::stepb]),
+        fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], bias.flatten()[::stepb]),
             subplot_titles=(name, name+"-transposed", name+"-bias"))
     else:
-        fig = plt.plot_weight_and_transposed(indexw, (weight.flatten()[::stepw], None),
+        fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], None),
             subplot_titles=(name, name+"-transposed", name+"-bias"))
     fig.update_layout(legend=dict(yanchor="top", y=0.99,
                     xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))

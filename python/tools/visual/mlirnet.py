@@ -238,14 +238,17 @@ class analysis_data():
         return f32, quant
 
     def weight(self, name, name1):
-        fp32_exist = False
         if name in self.f32_net.all_weight_names():
             weight = self.f32_net.tensor(name).copy()
+        elif name in self.quant_net.all_weight_names():
+            weight = self.quant_net.tensor(name).copy()
         else:
             return None, None
         if name1 != None:
             if name1 in self.f32_net.all_weight_names():
                 bias = self.f32_net.tensor(name1).copy()
+            elif name1 in self.quant_net.all_weight_names():
+                bias = self.quant_net.tensor(name1).copy()
         else:
             bias = None
         return weight, weight.shape, bias, bias.shape

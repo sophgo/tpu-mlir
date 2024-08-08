@@ -286,16 +286,24 @@ def show_weight(app):
         layer = app.Global.analysis_data.quant_net.layer_by_idx(id).name
         top_opsq = {op.name:op for op in app.Global.analysis_data.f32_net.mlir_parser.ops}
         if layer not in top_opsq:
-            return dash.no_update
-        if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
-            weight = top_opsq[layer].opds[1]
+            top_opsq = {op.name:op for op in app.Global.analysis_data.quant_net.mlir_parser.ops}
+            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.quant_net.all_weight_names():
+                weight = top_opsq[layer].opds[1]
+            else:
+                return dash.no_update
+            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[2] in app.Global.analysis_data.quant_net.all_weight_names():
+                bias = top_opsq[layer].opds[2]
+            else:
+                bias = None
         else:
-            return dash.no_update
-        if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[2] in app.Global.analysis_data.f32_net.all_weight_names():
-            bias = top_opsq[layer].opds[2]
-        else:
-            bias = None
-
+            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
+                weight = top_opsq[layer].opds[1]
+            else:
+                return dash.no_update
+            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[2] in app.Global.analysis_data.f32_net.all_weight_names():
+                bias = top_opsq[layer].opds[2]
+            else:
+                bias = None
 
         fig = app.Global.weight_cache.get_figure(plot.param_plot,
                                                  name=weight,

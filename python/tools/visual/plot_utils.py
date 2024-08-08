@@ -77,10 +77,10 @@ def plot_float_vs_fixpoint(index, data, **keywords):
     plot(index, fp_data - int_data, **dict(name='diff', line={"width": 1}))
     return fig
 
-def plot_weight_and_transposed(index, data, **keywords):
+def plot_weight_and_transposed(indexw, indexb, data, **keywords):
     weight, weight_t, bias = data
     fig, plot = fig_sub_plot([3, 1],
-                             **dict(shared_xaxes=True,
+                             **dict(shared_xaxes=False,
                                     vertical_spacing=0.03,
                                     horizontal_spacing=0.07,
                                     **keywords))
@@ -95,10 +95,10 @@ def plot_weight_and_transposed(index, data, **keywords):
                      "opacity": 0.8
                  }),
                  line={"width": 1})
-    plot(index, (weight), **style)
-    plot(index, (weight_t), **style)
+    plot(indexw, (weight), **style)
+    plot(indexw, (weight_t), **style)
     if type(bias) != None:
-        plot(index, (bias), **style)
+        plot(indexb, (bias), **style)
     return fig
 
 def plot_dist_fp_fixpoint(fig, index, data, **keywords):
