@@ -104,7 +104,11 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
     auto op = (Operation *)value.op;
     if (isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op))
       continue;
-
+    if (auto tileOp = dyn_cast<tpu::TileOp>(op)) {
+      if (!module::isNone(tileOp.getBuffer())) {
+        continue;
+      }
+    }
     if (buffer_must_in_l2(op)
           && live.tensor_size > l2memSize)
     llvm_unreachable("BufferOp with L2 and size > l2memSize");
