@@ -33,6 +33,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createCoreParallelPass();
 std::unique_ptr<OperationPass<ModuleOp>> createWeightFoldPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDDRInterleavePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeOptimizePass();
+std::unique_ptr<OperationPass<ModuleOp>> createShowAddressPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

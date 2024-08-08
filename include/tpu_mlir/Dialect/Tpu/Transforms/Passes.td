@@ -140,4 +140,10 @@ def ShapeOptimize : Pass<"shape-optimize", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def ShowAddress : Pass<"show-address", "ModuleOp"> {
+  let summary = "print final mlir address by tpuc-opt";
+  let constructor = "createShowAddressPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif
