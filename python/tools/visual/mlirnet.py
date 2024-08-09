@@ -244,14 +244,17 @@ class analysis_data():
             weight = self.quant_net.tensor(name).copy()
         else:
             return None, None
-        if name1 != None:
+        if not name1 is None:
             if name1 in self.f32_net.all_weight_names():
                 bias = self.f32_net.tensor(name1).copy()
             elif name1 in self.quant_net.all_weight_names():
                 bias = self.quant_net.tensor(name1).copy()
         else:
             bias = None
-        return weight, weight.shape, bias, bias.shape
+        if not bias is None:
+            return weight, weight.shape, bias, bias.shape
+        else:
+            return weight, weight.shape, bias, None
 
     def run_metrics(self):
         m_work = Thread(target=self.__metrics)
