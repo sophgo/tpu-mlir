@@ -145,7 +145,7 @@ std::vector<Operation *> cloneFlashAttention(PatternRewriter &rewriter,
                                              std::vector<Value> &pos_ids,
                                              std::vector<Value> &past_kv,
                                              int num_devices, int cur_device,
-                                             int num_head);
+                                             int q_head, int kv_head);
 
 // ===================================
 // distribute helper functions for chatglm2
