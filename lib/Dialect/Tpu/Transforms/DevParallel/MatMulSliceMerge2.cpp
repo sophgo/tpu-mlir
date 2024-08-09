@@ -513,8 +513,16 @@ LogicalResult FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op, Pa
   }
   std::vector<Operation *> begin_ops;
   std::vector<Operation *> end_ops;
+  // if fattention pattern is matched, no need to match GQA pattern
+  // GQA is fixed to false
+  bool GQA = false;
   int num_head = 0;
-  if (!isFAttentionPattern(op, begin_ops, end_ops, false, &num_head)) {
+  if (!isFAttentionPattern(op, begin_ops, end_ops, GQA, &num_head)) {
+    return failure();
+  }
+  // if kv_head < num_device, only support num_device % num_head == 0
+  int num_device = module::getDeviceNum();
+  if (num_head < num_device && num_device % num_head) {
     return failure();
   }
   std::vector<int64_t> begin_methods{1, 1, 1, 1, 1};
@@ -528,14 +536,15 @@ LogicalResult FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op, Pa
              begin_methods, end_methods, num_head);
   return success();
 }
-
 void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
                                int64_t num_devices){
   std::vector<Operation *> users(op->user_begin(), op->user_end());
   Operation *residual = users[0];
   Operation *attn_ln = users[1];
   std::vector<Operation *> pos = {users[2], users[3]};
-  int num_head = op.getNumHead();
+  Operation *attn = users[4];
+  int q_head = module::getShape(attn->getOperand(0))[2];
+  int kv_head = op.getNumHead();
 
   std::vector<Value> end_operands;
   std::vector<Value> operands;
@@ -550,7 +559,9 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
     if (isa<tpu::AddOp>(next_op) && cur_out.getDefiningOp() != op.getOperation()){
       cur_out = next_op->getOperand(1);
     }
-    createMulConstOp(rewriter, cur_out, cur_device, 1./num_devices);
+    if (!isa<tpu::MatMulOp>(next_op) && !isa<tpu::A16MatMulOp>(next_op)) {
+      createMulConstOp(rewriter, cur_out, cur_device, 1./num_devices);
+    }
     Value residual_out = cur_out;
 
     // clone pos_ids input branch
@@ -582,7 +593,7 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
         next_op = input_kv[j];
         cur_out = next_op->getOperand(0);
         next_op = createSliceOp(rewriter, next_op, cur_out, 2, num_devices,
-                                cur_device, num_head);
+                                cur_device, kv_head);
         past_kv.push_back(cur_out);
       }
     }
@@ -592,13 +603,14 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
     cur_out = next_op->getOperand(0);
     next_op = cloneFlashAttention(rewriter, next_op, cur_out,
                                   pos_ids, past_kv, num_devices,
-                                  cur_device, num_head)[0];
+                                  cur_device, q_head, kv_head)[0];
     next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                     cur_device, num_head);
-    operands = {residual_out, cur_out};
-    next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, -1,
-                              num_devices, cur_device);
-
+                                    cur_device, q_head);
+    if (isa<tpu::AddOp>(residual)) {
+      operands = {residual_out, cur_out};
+      next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, -1,
+                                num_devices, cur_device);
+    }
     end_operands.push_back(cur_out);
     end_operands.push_back(past_kv[0]);
     end_operands.push_back(past_kv[1]);
