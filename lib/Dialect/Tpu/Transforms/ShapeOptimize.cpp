@@ -55,12 +55,23 @@ struct InsertReshapePattern : public RewritePattern {
       if (module::isWeight(matmul_op.getRight()) == false) {
         return failure();
       }
+      if (module::isNone(matmul_op.getBias()) == false) {
+        auto b_shape = module::getShape(matmul_op.getBias());
+        if (b_shape.size() == 4) {
+          auto b_type = RankedTensorType::get(b_shape.drop_front(), module::getElementType(matmul_op.getBias()));
+          matmul_op.getBias().setType(b_type);
+        }
+      }
     }
     if (auto rq_op = dyn_cast<tpu::RequantIntAxisOp>(op)) {
       auto axis = rq_op.getRqAxis();
       axis = axis < 0 ? axis + shape.size() : axis;
       auto new_axis = axis > 0 ? axis - 1 : axis;
       rq_op.setRqAxis(new_axis);
+      auto q_shape = module::getShape(rq_op.getQuant());
+      auto q_new_shape = axis > 0 ? q_shape.drop_front() : q_shape.drop_back();
+      auto q_type = RankedTensorType::get(q_new_shape, module::getElementType(rq_op.getQuant()));
+      rq_op.getQuant().setType(q_type);
     }
     if (auto norm_op = dyn_cast<tpu::LayerNormOp>(op)) {
       auto axis = norm_op.getAxis();
@@ -100,7 +111,7 @@ struct InsertReshapePattern : public RewritePattern {
       out_new_shape[i] = out_shape[i + 1];
     }
     auto op_loc = NameLoc::get(
-        rewriter.getStringAttr(module::getName(op->getResult(0)).str() + "_expand_dim"));
+        rewriter.getStringAttr(module::getName(op->getResult(0)).str() + "_op_squeeze_dim"));
     op->setLoc(op_loc);
     op->setOperands(0, 1, {squeeze_op.getOutput()});
     auto new_type = RankedTensorType::get(out_new_shape, module::getElementType(op->getResult(0)));

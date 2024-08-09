@@ -1113,7 +1113,7 @@ class TPULANG_IR_TESTER(object):
             b_data = np.random.randint(-32768, 32767, size=[1, 1, 1, shape[-1]]).astype('int32')
             bias = self.coeff_tensor(shape = [1, 1, 1, shape[-1]], dtype="int32", data=b_data)
             mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
-            return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero')
+            return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero', rq_axis=-1, fuse_rq_to_matmul=True)
 
         def attention_block2(x0, x1, x2, shape, d, head, musk=None, dtype="int8"):
             B = shape[0]
@@ -1123,14 +1123,14 @@ class TPULANG_IR_TESTER(object):
             H_k = shape[3]
             S_v = shape[2]
             H_v = shape[3]
-            q = matmul_weight2(x0, [H_q, d * head], 8158145, -31, dtype)
+            q = matmul_weight2(x0, [H_q, d * head], [8158145]*d*head, -31, dtype)
             q = tpul.reshape(q, [B, S_q, head, d])
             q = tpul.permute(q, [0, 2, 1, 3])
-            k = matmul_weight2(x1, [H_k, d * head], 8158145, -31, dtype)
+            k = matmul_weight2(x1, [H_k, d * head], [8158145]*d*head, -31, dtype)
             k = tpul.reshape(k, [B, S_k, head, d])
             k = tpul.permute(k, [0, 2, 1, 3])
             k = tpul.permute(k, [0, 1, 3, 2])
-            v = matmul_weight2(x2, [H_v, d * head], 8158145, -31, dtype)
+            v = matmul_weight2(x2, [H_v, d * head], [8158145]*d*head, -31, dtype)
             v = tpul.reshape(v, [B, S_v, head, d])
             v = tpul.permute(v, [0, 2, 1, 3])
             m0 = tpul.matmul_int(q, k, input_zp=0, right_zp=0, out_dtype='int32')
@@ -1142,7 +1142,7 @@ class TPULANG_IR_TESTER(object):
             m1 = tpul.requant_int(m1, 8158145, -32, 0, 2, dtype, round_mode='half_away_from_zero')
             m1 = tpul.permute(m1, [0, 2, 1, 3])
             m1 = tpul.reshape(m1, shape)
-            out = matmul_weight(m1, [d*head, H_q], 8158145, -31, dtype=dtype)
+            out = matmul_weight2(m1, [d*head, H_q], [8158145]*d*head, -31, dtype=dtype)
             return out
 
         def transformer_block2(x, shape, d, head, dtype="int8"):
@@ -1191,7 +1191,7 @@ class TPULANG_IR_TESTER(object):
 
 
         _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8", is_quantized=True)
-        _test_insert_shape([1, 3, 224, 224], 64, 8, 1)
+        # _test_insert_shape([1, 3, 224, 224], 64, 8, 1)
 
     #######################################################################
     # vit

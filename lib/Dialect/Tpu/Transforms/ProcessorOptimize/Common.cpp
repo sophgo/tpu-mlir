@@ -347,5 +347,19 @@ Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *
       loc, operands[0].getType(), mlir::ValueRange{operands[0], operands[1]});
   return add.getOutput();
 }
+
+// reshape (in == out)
+LogicalResult RemoveReshape::matchAndRewrite(tpu::ReshapeOp op,
+                                              PatternRewriter &rewriter) const {
+  auto shape0 = module::getShape(op.getOutput());
+  auto shape1 = module::getShape(op.getInput());
+  if (shape0 != shape1) {
+    return failure();
+  }
+  op.getOutput().replaceAllUsesWith(op.getInput());
+  rewriter.eraseOp(op);
+  return success();
+}
+
 } // namespace tpu
 } // namespace tpu_mlir
