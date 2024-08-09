@@ -43,7 +43,7 @@ def param_plot(data, name=None, max_sampling=1000, bias=None):
     import numpy as np
     from . import plot_utils as plt
     shape = None
-    if name == None:
+    if name is None:
         return None
     weight, weight_shape, bias, bias_shape = data.weight(name, bias)
     data_sizew = weight.size
@@ -51,20 +51,22 @@ def param_plot(data, name=None, max_sampling=1000, bias=None):
         stepw = data_sizew // max_sampling
     else:
         stepw = 1
-    if type(bias) != None:
+    indexw = np.arange(0, data_sizew, stepw)
+    if not bias is None:
         data_sizeb = bias.size
         if data_sizeb > max_sampling:
             stepb = data_sizeb // max_sampling
         else:
             stepb = 1
-    indexw = np.arange(0, data_sizew, stepw)
-    indexb = np.arange(0, data_sizeb, stepb)
+        indexb = np.arange(0, data_sizeb, stepb)
+    else:
+        indexb = None
 
-    if type(bias) != None:
+    if not bias is None:
         fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], bias.flatten()[::stepb]),
             subplot_titles=(name, name+"-transposed", name+"-bias"))
     else:
-        fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], None),
+        fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], None),
             subplot_titles=(name, name+"-transposed", name+"-bias"))
     fig.update_layout(legend=dict(yanchor="top", y=0.99,
                     xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))

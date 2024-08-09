@@ -97,7 +97,7 @@ def plot_weight_and_transposed(indexw, indexb, data, **keywords):
                  line={"width": 1})
     plot(indexw, (weight), **style)
     plot(indexw, (weight_t), **style)
-    if type(bias) != None:
+    if not bias is None:
         plot(indexb, (bias), **style)
     return fig
 
