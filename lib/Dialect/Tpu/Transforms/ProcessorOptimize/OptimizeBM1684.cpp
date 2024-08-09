@@ -336,7 +336,7 @@ void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns->add<CastWithoutScalePattern, LargeDilationConvPattern,
-                PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern>(
+                PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern, RemoveReshape>(
       ctx, 8);
 };
 } // namespace tpu
