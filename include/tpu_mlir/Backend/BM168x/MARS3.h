@@ -23,7 +23,7 @@ typedef void (*tpu_core_context_setup)(int, int, int);
 namespace tpu_mlir {
 namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
-class MARS3 : public BM1684X, MultiCoreInterface::Base<MARS3> {
+class MARS3 : public BM1684X {
 public:
   static bool classof(const BM168x *bm168x) {
     return bm168x->getTypeID() == TypeID::get<MARS3>();
@@ -31,7 +31,7 @@ public:
 
   static MARS3 &instance(int frequency) {
     static MARS3 MARS3;
-    MARS3.set_simulation_freq(frequency);
+    // MARS3.set_simulation_freq(frequency);
     return MARS3;
   }
   virtual void before_codegen() override;
@@ -42,27 +42,7 @@ public:
   set_gdma_bw_s2l dl_set_gdma_bw_s2l;
   set_gdma_bw_l2s dl_set_gdma_bw_l2s;
   set_gdma_bw_l2l dl_set_gdma_bw_l2l;
-  tpu_sync_all dl_tpu_sync_all;
-  tpu_core_context_setup dl_tpu_core_context_setup;
-
-  void setCoreNum(int core = 1) final;
-  int getCoreNum() final { return multiCode.size(); };
-  int getCurrentCoreID() final;
-
-  void useCore(int coreID = 0) final;
-  void setupMultiCoreContext(int core_idx, int core_num,
-                             int core_msg_id) final {
-    dl_tpu_core_context_setup(core_idx, core_num, core_msg_id);
-  }
-  void syncAll() final {
-    dl_tpu_set_id_node(code->cmdid_node);
-    dl_tpu_sync_all();
-    dl_tpu_get_id_node(code->cmdid_node);
-  }
-
-  std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() final {
-    return multiCode;
-  }
+  set_id_node dl_set_id_node;
 
 private:
   void set_simulation_freq(int frequency) {
@@ -101,11 +81,12 @@ private:
 protected:
   MARS3() {
     typeID = TypeID::get<MARS3>();
-    NPU_NUM = NPU_NUM_test_fp16; // origin=32;
-    EU_BYTES = (EU_NUM_test_fp16)*2; // origin=16;
-    LMEM_BYTES = 1 << LOCAL_MEM_SHIFT; // 128KB
+    code = std::make_unique<BM168x::Code>();
+    NPU_NUM = 8;
+    EU_BYTES = 16;
+    LMEM_BYTES = 65536;
     LMEM_BANKS = 16;
-    IC_PARALLEL = (IC_PARALLEL_test_fp16)*2; // origin=32;
+    IC_PARALLEL = 16;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     GMEM_START_ADDR = 0x1ul << 39; // tag for global memory address
@@ -121,14 +102,12 @@ protected:
     GDMA_VALUE_FORMAT_BFLOAT16 = 5;
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
-    multiCode.push_back(std::make_unique<BM168x::Code>());
-    code = multiCode.back();
+    core_num = module::getCoreNum();
     start_env();
+    dl_tpu_set_id_node(code->cmdid_node);
   };
   virtual void load_functions() override;
   virtual ~MARS3(){};
-  bool useCode0 = true;
-  std::vector<std::shared_ptr<BM168x::Code>> multiCode;
 };
 
 } // namespace backend
