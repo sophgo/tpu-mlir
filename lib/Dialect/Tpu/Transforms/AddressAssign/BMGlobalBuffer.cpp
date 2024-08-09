@@ -521,7 +521,7 @@ public:
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
       auto buffer = tpu::BufferOp::create(matmulOp, buffer_type, tpu::BufferType::L2);
-      matmulOp.setOperand(module::isNone(matmulOp.getBias()) ? 2 : 3, buffer);
+      matmulOp.setOperand(4, buffer);
       return success();
     }
     return failure();
@@ -1226,7 +1226,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       TopKGlobalBuffer,
       SortGlobalBuffer,
       CustomGlobalBuffer,
-      WhereGlobalBuffer
+      WhereGlobalBuffer,
+      MatMulGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }
