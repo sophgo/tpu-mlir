@@ -74,6 +74,10 @@ def type_map(element_type):
         ret_type = TensorProto.UINT32
     elif str_element_type == 'ui64':
         ret_type = TensorProto.UINT64
+    elif str_element_type == 'f8E4M3FN':
+        ret_type = TensorProto.FLOAT8E4M3FN
+    elif str_element_type == 'f8E5M2':
+        ret_type = TensorProto.FLOAT8E5M2
     else:
         raise TypeError(
             "{} type in mlir file is not supported by mlir2onnx.py".format(str_element_type))
