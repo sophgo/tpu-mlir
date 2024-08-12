@@ -108,13 +108,14 @@ public:
       return failure();
     }
     auto relu = op.getDoRelu();
+    auto axis = op.getAxis();
     std::vector<Operation *> cat_ops;
     std::vector<Value> operands;
     bool fix = false;
     for (auto in : op.getInputs()) {
       auto concat_in = dyn_cast_or_null<tpu::ConcatOp>(in.getDefiningOp());
       if (concat_in && concat_in->hasOneUse() &&
-          concat_in.getDoRelu() == relu) {
+          concat_in.getDoRelu() == relu && concat_in.getAxis() == axis) {
         for (auto pre_in : concat_in.getInputs()) {
           operands.push_back(pre_in);
         }
