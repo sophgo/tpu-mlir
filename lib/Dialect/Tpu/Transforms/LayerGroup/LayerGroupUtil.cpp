@@ -940,7 +940,7 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
 
 bool is_broadcast_binary(Operation *op, Value in) {
   if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
-           tpu::MinOp>(op)) {
+           tpu::MinOp, tpu::BinaryShiftOp>(op)) {
     return false;
   }
   auto other = in == op->getOperand(0) ? op->getOperand(1) : op->getOperand(0);
@@ -2571,7 +2571,8 @@ void set_weight_allow_split_attr(Operation *op) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
-          tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp, tpu::MatMulOp>(op) &&
+          tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp, tpu::MatMulOp,
+          tpu::BinaryShiftOp>(op) &&
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
 
