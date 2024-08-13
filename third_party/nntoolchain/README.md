@@ -30,6 +30,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #bm1688 sha256: be1d03895dec86c5f2508424b906fbace3952506
 # + 47674245ed4620df8b7330e70256bc081521573f
+# - f5765faa67ef1da74bf3d56c7002aecf83fe844c (will lead to yolov6m, yolov6l, yoloworld fp mode compare failed)
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
