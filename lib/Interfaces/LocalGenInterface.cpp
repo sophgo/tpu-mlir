@@ -212,7 +212,7 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
     return failure();
   if (module::isWeight(op->getOperand(0)) ||
       module::isWeight(op->getOperand(1)))
-    if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp, tpu::MaxOp>(op)){
+    if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp, tpu::MaxOp, tpu::BinaryShiftOp>(op)){
       return failure();
     }
   if (module::isCV18xx()) {
