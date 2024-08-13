@@ -147,6 +147,7 @@ class TPULANG_IR_TESTER(object):
             "Nes": (self.test_Nes,                      Y, Y),
             "NMS": (self.test_NMS,                      Y, Y),
             "Nonzero": (self.test_Nonzero,              Y, Y),
+            "Normalize": (self.test_normalize,          Y, Y),
             "NoSave": (self.test_NoSave,                Y, Y),
             "Pad": (self.test_Pad,                      Y, Y),
             "Permute": (self.test_Permute,              Y, Y),
@@ -3124,6 +3125,24 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [out])
 
         _test_model_def([1, 3, 224, 224])
+
+    #######################################################################
+    # normalize
+    # ------------
+    def test_normalize(self, case_name):
+        """normalize"""
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, p = 2.0, axes = 1, dtype='float32', is_quantized=False):
+            x_data = rand_data(in_shape, dtype, -10, 10, seed=10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+
+            out = tpul.normalize(x, p, axes)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
+
+        # float16
+        _test_model_def([1, 3, 224, 224], dtype='float16')
+        _test_model_def([1, 3, 224, 224],p=3.0, axes=[1,2], dtype='float16')
 
     ######################################################################
     # Split

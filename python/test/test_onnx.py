@@ -244,6 +244,7 @@ class ONNX_IR_TESTER(object):
             "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y),
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     N, Y, Y, N, Y),
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N, Y),
+            "TorchNormalize":       (self.test_TorchNormalize,      N, Y, Y, N, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y, Y),
             "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N, Y),
@@ -2697,6 +2698,23 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(5, 3).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchNormalize(self, case_name):
+        class Model(nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = nn.functional.normalize(x,p=3.0, dim=[1,2])
+                return y
+
+        # x = torch.randn(1, 3, 224, 224).float()
+
+        np.random.seed(10)
+        t = np.clip(np.random.randn(1,3,224,224).astype('float16'), a_min=-10, a_max=10)
+        x = torch.tensor(t).float()
+
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchIdentity(self, case_name):

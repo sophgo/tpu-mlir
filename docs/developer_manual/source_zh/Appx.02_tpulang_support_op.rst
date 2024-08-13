@@ -4313,7 +4313,7 @@ batch_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出归一化后的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
 芯片支持
 """""""""""
@@ -4356,7 +4356,7 @@ layer_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出归一化后的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
 芯片支持
 """""""""""
@@ -4399,7 +4399,7 @@ group_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出归一化后的Tensor。
+返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
 芯片支持
 """""""""""
@@ -4439,12 +4439,55 @@ rms_norm
 
 返回值
 """""""""""
-返回Tensor类型，表示输出归一化的后的Tensor。
+返回Tensor类型，表示输出归一化的后的Tensor，数据类型与输入一致。
 
 芯片支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
+
+
+normalize
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def normalize(input: Tensor,
+              p: float = 2.0,
+              axes: Union[List[int], int] = 1,
+              eps : float = 1e-12,
+              out_name: str = None):
+
+功能描述
+"""""""""""
+对输入张量input的指定维度进行 :math:`L_p`  归一化。
+
+对于大小为 :math:`(n_0, ..., n_{dim}, ..., n_k)` 的张量输入，每个 :math:`n_{dim}`元素向量:math:`v`沿维度:attr:`axes` 的变换为
+.. math::
+v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
+
+在默认参数下，它对向量的维度1上进行L2归一化。
+
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input: Tensor类型。表示输入Tensor。数据类型为float32, float16。
+* p: float类型，默认值为2.0。表示是归一化过程中的指数值。
+* axes: Union[List[int], int]类型，默认为1。表示要归一化的维度。如果是list，那么list内的值必须是连续的。注意，axes = [0,-1]并不是连续的。
+* eps : float类型，默认值为1e-12。 一个极小值，用来避免除以0。
+* out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回Tensor类型，表示输出归一化的后的Tensor，数据类型与输入一致。
+
+芯片支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 Vision Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

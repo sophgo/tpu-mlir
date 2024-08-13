@@ -136,6 +136,7 @@ class TORCH_IR_TESTER(object):
             "MulConst":         (self.test_MulConst,          N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
             "NonZero":          (self.test_NonZero,           N, Y, Y, N),
+            # "Normalize":        (self.test_Normalize,         N, Y, Y, N),
             "New_full":         (self.test_New_full,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
@@ -1014,6 +1015,29 @@ class TORCH_IR_TESTER(object):
 
         input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
+
+    #######################################################################
+    # Normalize
+    # ------------
+    # # Currently(2024/08/14), out chips does not support the operator used in nn.functional.normalize including 'aten::linalg_vector_norm', 'aten::clamp_min'
+    # def test_Normalize(self):
+    #     p = 2.0
+    #     dim = 2
+    #     normalize_shape = [40, 80]
+
+    #     class Model(torch.nn.Module):
+
+    #         def __init__(self):
+    #             super(Model, self).__init__()
+    #             self.prelu = nn.PReLU()
+
+    #         def forward(self, x):
+    #             x = nn.functional.normalize(x, p = p, dim = dim) # current chip does not support noramlize operator
+    #             y = self.prelu(x)
+    #             return x, y
+
+    #     input_shape = [1, 3] + normalize_shape
+    #     self.trace_and_test([input_shape], Model())
 
     #######################################################################
     # Roll
