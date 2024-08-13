@@ -2767,6 +2767,85 @@ def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, axis: i
     TpuLang.insert_op("top.RMSNorm", inputs=[input, gamma], outputs=[output], params=attr)
     return output
 
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def normalize(input: Tensor, p: float = 2.0, axes: Union[List[int], int] = 1, eps : float = 1e-12, out_name: str = None):
+    assert input.dtype in ["float32", "float16"], "invalid input dtype"
+    assert axes is not None, "axes is None"
+
+    # axes in range [-l, l), l = len(input.shape)
+    if isinstance(axes, list):
+        axes_sort = sorted(axes)
+        b = None
+        for a in axes_sort:
+            assert a < len(input.shape) or a >= -len(input.shape), "axes={} is out of range [-{}, {}).".format(a, len(input.shape), len(input.shape))
+            # in axes list, axis must be continous
+            if b is None:
+                b = a
+            else:
+                assert a == b+1, "axes are not continuous"
+                b = a
+
+        assert not (-1 in axes and 0 in axes), "axes are not continuous"
+
+    if isinstance(axes, int):
+        assert axes < len(input.shape) or axes >= -len(input.shape), "axes={} is out of range [-{}, {}).".format(axis, len(input.shape), len(input.shape))
+        axes = [axes]
+
+
+    abs_tensor = Tensor(input.shape, dtype=input.dtype,name = out_name+"/Abs_output_0_Abs")
+    TpuLang.insert_op("top.Abs", inputs=[input], outputs=[abs_tensor])
+
+    pow_tensor = Tensor(input.shape, dtype=input.dtype, name=out_name+"/Pow_output_0_Pow")
+    attr_pow = {"exponent": Attr(p, 'float64')}
+
+    # pow = pow(abs , p)
+    if p == 1.0:
+        attr_copy = {
+        "shape": ArrayAttr(abs_tensor.shape),
+        "input_stride": ArrayAttr([1] * (len(abs_tensor.shape))),
+        "output_stride": ArrayAttr([1] * (len(abs_tensor.shape))),
+        }
+        TpuLang.insert_op("top.Copy", [abs_tensor], [pow_tensor], params=attr_copy)
+    if p == 2.0:
+        TpuLang.insert_op("top.Mul", [abs_tensor,abs_tensor], [pow_tensor])
+    else:
+        TpuLang.insert_op("top.Pow", inputs=[abs_tensor], outputs=[pow_tensor], params=attr_pow)
+
+    # sum = sum(exp_p)
+    attr_reduce = {
+        "axes": ArrayAttr(axes, "int64"),
+        "keepdims": Attr(True, "bool"),
+        "mode": Attr("ReduceSum", "string"),
+        }
+    sum_tensor = Tensor(dtype=input.dtype, name=out_name+"/ReduceSum_output_0_ReduceSum")
+    TpuLang.insert_op("top.Reduce", inputs=[pow_tensor], outputs=[sum_tensor], params=attr_reduce)
+    # TpuLang.insert_op("top.Reduce", inputs=[exp_p_tensor], outputs=[sum_tensor], params=attr_reduce)
+
+    # norm = pow(sum, 1/p)
+    norm_tensor = Tensor(sum_tensor.shape, dtype=input.dtype,name=out_name+'/Pow_1_output_0_Pow')
+    attr_root = {"exponent": Attr(1/p, 'float64')}
+    TpuLang.insert_op("top.Pow", inputs=[sum_tensor], outputs=[norm_tensor], params=attr_root)
+
+    # clip the norm with epsilon to aviod division by zero
+    norm_clip_tensor = Tensor(norm_tensor.shape, dtype=input.dtype, name=out_name+"_clipNorm")
+    attr_clip = {"min": Attr(eps, data_type="float64"), "max": Attr(float('inf'), data_type="float64")}
+    TpuLang.insert_op("top.Clip", [norm_tensor], [norm_clip_tensor], params=attr_clip)
+
+    # broadcast clipped norm tensor to input shape
+    broadcast_tensor = Tensor(input.shape, dtype=input.dtype, name=out_name+"+_bcNorm")
+    attr_bc = {"shape":ArrayAttr(input.shape)}
+    TpuLang.insert_op("top.Expand", [norm_clip_tensor],[broadcast_tensor], params=attr_bc)
+
+    # Normalize the tensor
+    # output = input / norm
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.Div", [input, broadcast_tensor], [output])
+
+    return output
+
+
 ######### Select Operator ############
 
 @auto_name()

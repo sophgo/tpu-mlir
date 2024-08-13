@@ -3440,7 +3440,7 @@ Explanation of parameters
 
 Return value
 """""""""""
-Returns the Tensor type, representing the normalized output.
+Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
@@ -3483,7 +3483,8 @@ Explanation of parameters
 
 Return value
 """""""""""
-Returns the Tensor type, representing the normalized output.
+Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
+
 
 Processor support
 """"""""""""""""""""""
@@ -3526,7 +3527,7 @@ Explanation of parameters
 
 Return value
 """""""""""""
-Returns the Tensor type, representing the normalized output.
+Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
@@ -3569,13 +3570,54 @@ Explanation of parameters
 
 Return value
 """""""""""""
-Returns the Tensor type, representing the normalized output.
+Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
 """"""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+normalize
+:::::::::::::::::
+
+Definition
+"""""""""""
+    .. code-block:: python
+
+      def normalize(input: Tensor,
+                        p: float = 2.0,
+                        axes: Union[List[int], int] = 1,
+                        eps : float = 1e-12,
+                        out_name: str = None):
+
+Description
+"""""""""""
+Perfrom :math:`L_p` normalization over specified dimension of input tensor.
+For a tensor input of sizes :math:`(n_0, ..., n_{dim}, ..., n_k)`,
+each :math:`n_{dim}`-element vector :math:`v` along dimension :attr:`axes`  is transformed as:
+.. math::
+v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
+
+With the default arguments, it uses the Euclidean norm over vectors along dimension (1) for normalization.
+
+This operation belongs to **local operations**.
+
+Parameters
+"""""""""""
+* input: Tensor type, representing the input Tensor.The dimension of input is not limited. Support data type included: float32, float16.
+* p: float type, representing the exponent vaue in the norm operation. Default to 2.0 .
+* axes: Union[list[int], int] type, representing the dimension need to normalized. Default to 1. If axes is list, all the values in the list must be continuous. Caution: axes = [0, -1] is not continuous.
+* eps: float type, the epsilon value to use to avoid division by zero. Default to 1e-12.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""
+Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 Vision Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
