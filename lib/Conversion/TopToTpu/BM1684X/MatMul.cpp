@@ -17,13 +17,27 @@ void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 
+
+
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                   bool asymmetric) const {
   // refer quantize_convlike_layer_int8
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   auto p = op.parseParam();
-  int scale = 1, shift = 0;
+  std::vector<int64_t> scales;
+  std::vector<int64_t> shifts;
+  bool fuse_rq = false;
+  bool use_perchannel = false;
+
+  auto per_channel_quant_attr = op->getAttr("matmulPerchannelQuant");
+  if (per_channel_quant_attr) {
+    if (per_channel_quant_attr.isa<mlir::BoolAttr>()) {
+      mlir::BoolAttr per_channel_quant = per_channel_quant_attr.cast<mlir::BoolAttr>();
+      use_perchannel = per_channel_quant.getValue();
+    }
+  }
+
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = module::getNumElements(op.getBias());
     if (bias_size > p.N)
@@ -67,25 +81,67 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     auto filterOp = dyn_cast<top::WeightOp>(rightOp);
     auto filter_f32 = filterOp.read<float>();
     int64_t in_zp = 0, out_zp = 0;
-    double in_scale = 1, out_scale = 1, w_scale = 1;
+    double in_scale = 1, out_scale = 1;
+    std::vector<double> w_scale(p.N, 1.0);
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
+    bool right_transpose = op.getRightTranspose();
     if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
       LoweringF32(rewriter, op);
       return;
     }
     if (filterOp.getScale().has_value()) {
       auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
-      w_scale = weight_scale_v->data()[0];
+      if (use_perchannel) {
+        assert(weight_scale_v->size() == p.N);
+        w_scale.assign(weight_scale_v->data(), weight_scale_v->data()+weight_scale_v->size());
+      } else {
+        w_scale[0] = weight_scale_v->data()[0];
+      }
     } else {
-      double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
-      w_scale = w_max / 127.0;
+      if (use_perchannel) {
+        if (!right_transpose) {
+          for (int n=0;n<p.N;n++) {
+            float tmp = std::abs(filter_f32->data()[n]);
+            for (int k=1;k<p.K;k++) {
+              tmp = tmp>=std::abs(filter_f32->data()[n+k*p.N])?tmp:std::abs(filter_f32->data()[n+k*p.N]);
+            }
+            w_scale[n] = tmp/127.0;
+          }
+        } else {
+          for (size_t n=0;n<p.N;n++) {
+            float tmp = std::abs(filter_f32->data()[n*p.K]);
+            for (size_t k=1;k<p.K;k++) {
+              tmp = tmp>=std::abs(filter_f32->data()[k+n*p.K])?tmp:std::abs(filter_f32->data()[k+n*p.K]);
+            }
+            w_scale[n] = tmp/127.0;
+          }
+        }
+      } else {
+        w_scale[0] = findMaxabs(filter_f32->data(), filter_f32->size())/127.0;
+      }
     }
 
     auto filter_int8 =
         std::make_shared<std::vector<int8_t>>(filter_f32->size());
-    for (uint64_t t = 0; t < filter_f32->size(); t++) {
-      filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale);
+    if (use_perchannel) {
+      if (!right_transpose) {
+        for (size_t k=0;k<p.K;k++) {
+          for (size_t n=0;n<p.N;n++) {
+            filter_int8->at(k*p.N+n)=to_int8(filter_f32->at(k*p.N+n)/w_scale[n]);
+          }
+        }
+      } else {
+        for (size_t n=0;n<p.N;n++) {
+          for (size_t k=0;k<p.K;k++) {
+            filter_int8->at(n*p.K+k)=to_int8(filter_f32->at(n*p.K+k)/w_scale[n]);
+          }
+        }
+      }
+    } else {
+      for (uint64_t t = 0; t < filter_f32->size(); t++) {
+        filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale[0]);
+      }
     }
 
     i32_array_t bias_int32;
@@ -107,15 +163,62 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       }
 
       if (p.with_bias) {
-        bias_int32->data()[j] =
-            std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
+        if (use_perchannel) {
+          bias_int32->data()[j] =
+              std::round(bias_fp32->at(j) / (w_scale[j] * in_scale) - bias_w_xz);
+        } else {
+          bias_int32->data()[j] =
+              std::round(bias_fp32->at(j) / (w_scale[0] * in_scale) - bias_w_xz);
+        }
       } else if (in_zp) {
         bias_int32->data()[j] = -bias_w_xz;
       }
     }
     bool with_bias = p.with_bias || in_zp != 0;
-    float scale_f = in_scale * w_scale / out_scale;
-    get_scale_and_shift(scale_f, scale, shift, 32);
+    std::vector<float> scale_f;
+    if (use_perchannel) {
+      int common_shift = -1;
+      for (size_t n=0;n<p.N;n++) {
+        scale_f.push_back(in_scale * w_scale[n] / out_scale);
+      }
+      for (int shift_limit = 32;shift_limit>0;shift_limit--) {
+        int max_shift = 0;
+        for (size_t n=0;n<p.N;n++) {
+          int scale_ =1, shift_=0;
+          get_scale_and_shift(scale_f[n], scale_, shift_, shift_limit);
+          scales.push_back(scale_);
+          shifts.push_back(shift_);
+          max_shift=shift_>max_shift?shift_:max_shift;
+        }
+        bool overflow = false;
+        for (size_t n=0;n<p.N;n++) {
+          long long multi = ((long long )scales[n])<<(max_shift-shifts[n]);
+          if (multi > 0x80000000ll) {
+            overflow = true;
+            scales[n] = 0x7fffffff;
+            shifts[n] = max_shift;
+          } else {
+            scales[n]= scales[n] << (max_shift-shifts[n]);
+            shifts[n] = max_shift;
+          }
+        }
+        if (!overflow) {
+          common_shift = max_shift;
+          break;
+        }
+        scales.clear();
+        shifts.clear();
+      }
+      if (common_shift < 0){
+        llvm_unreachable("found overflow in per-channel quant");;
+      }
+    } else {
+      int scale_ =1, shift_=0;
+      scale_f.push_back(in_scale * w_scale[0] / out_scale);
+      get_scale_and_shift(scale_f[0], scale_, shift_);
+      shifts.push_back(shift_);
+      scales.push_back(scale_);
+    }
     auto filter_type = op.getRight().getType().cast<RankedTensorType>();
     auto new_type =
         RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -134,18 +237,32 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       auto none = module::getNoneOp(op);
       operands.push_back(none);
     }
+    if (use_perchannel) {
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1] = p.N;
+      std::vector<int> scales32;
+      for (auto s : scales)
+        scales32.push_back((int)s);
+      new_type = RankedTensorType::get(shape, rewriter.getI32Type());
+      auto multi = top::WeightOp::create(op, "multi_int32", scales32, new_type);
+      operands.push_back(multi);
+      fuse_rq = true;
+    }
   } else if (asymmetric) {
     LoweringF32(rewriter, op);
     return;
   } else { // mutable tensor or MatMul
     int64_t in_zp = 0, w_zp = 0, out_zp = 0;
     double in_scale = 1, w_scale = 1, out_scale = 1;
+    int scale = 1, shift = 0;
 
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getRight(), w_scale, w_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
     float scale_f = in_scale * w_scale / out_scale;
     get_scale_and_shift(scale_f, scale, shift, 32);
+    shifts.push_back(shift);
+    scales.push_back(scale);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
     if (p.with_bias) {
@@ -166,19 +283,25 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     }
   }
   attrs.push_back(
-      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));
+      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts)));
   attrs.push_back(
-      rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scale)));
+      rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scales)));
 
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto noneOp_multi = module::getNoneOp(op);
-  operands.push_back(noneOp_multi);
+  if (!fuse_rq) {
+    auto noneOp_multi = module::getNoneOp(op);
+    operands.push_back(noneOp_multi);
+  }
   // buffer
   operands.push_back(module::getNoneOp(op));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  auto newmm = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  if (fuse_rq) {
+    newmm.setFuseRqAttr(rewriter.getBoolAttr(true));
+  }
+
   //trick for Img2Col
   eliminateInvalidOp(righIsReshapeOp, rightReshapeOp);
   eliminateInvalidOp(biasIsReshapeOp, biasReshapeOp);

@@ -122,6 +122,7 @@ class DeployTool:
         self.patterns_count = args.patterns_count
         self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
         self.mute = args.not_gen_bmodel
+        self.matmul_perchannel = args.matmul_perchannel
 
     def cleanup(self):
         file_clean()
@@ -179,7 +180,8 @@ class DeployTool:
                                      self.q_group_size,
                                      True if self.patterns_count else False,
                                      addr_mode=self.addr_mode,
-                                     mute=self.mute)
+                                     mute=self.mute,
+                                     matmul_perchannel=self.matmul_perchannel)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
@@ -423,6 +425,9 @@ if __name__ == '__main__':
     parser.add_argument("--compress_mode", default="none", type=str.lower,
                         choices=["none", "weight", "activation", "all"],
                         help="set compress mode")
+    # for bm1684x and bm1688
+    parser.add_argument("--matmul_perchannel", action="store_true", default=False,
+                        help="if quantize matmul in per-channel mode for BM1684x and BM1688")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')

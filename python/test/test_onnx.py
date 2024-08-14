@@ -142,6 +142,7 @@ class ONNX_IR_TESTER(object):
             "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y, Y),
             "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y),
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y),
+            "MatMul2PC":    (self.test_MatMul2PC,     N, Y, Y, N, N),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y),
             "Not":          (self.test_Not,           N, Y, Y, N, Y),
@@ -438,7 +439,7 @@ class ONNX_IR_TESTER(object):
 
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
-    def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False):
+    def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False, matmul_perchannel: bool = False):
 
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
@@ -456,7 +457,8 @@ class ONNX_IR_TESTER(object):
                       chip=self.chip,
                       num_core=self.num_core,
                       cali_table=table,
-                      asymmetric=isAsym)
+                      asymmetric=isAsym,
+                      matmul_perchannel=matmul_perchannel)
 
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
@@ -678,7 +680,9 @@ class ONNX_IR_TESTER(object):
                       check_last: bool = False,
                       support_modes=None,
                       version=14,
-                      dynamic=False):
+                      dynamic=False,
+                      matmul_perchannel=False):
+        print(matmul_perchannel)
         if support_modes is None:
             quant_modes = self.quant_modes
         else:
@@ -720,7 +724,7 @@ class ONNX_IR_TESTER(object):
         for quant_mode in quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
-                    tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
+                    tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym, matmul_perchannel)
                     self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
                                                isAsym)
             else:
@@ -1600,7 +1604,7 @@ class ONNX_IR_TESTER(object):
         graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
-    def test_MatMul2(self, case_name):
+    def test_MatMul2(self, case_name, per_channel=False):
         M = 50
         K = 100
         N = 25
@@ -1623,7 +1627,10 @@ class ONNX_IR_TESTER(object):
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
         graph_def.initializer.extend([weight, bias])
-        self.onnx_and_test(graph_def)
+        self.onnx_and_test(graph_def, matmul_perchannel=per_channel)
+
+    def test_MatMul2PC(self, case_name):
+        return self.test_MatMul2(case_name, per_channel=True)
 
     # def test_MatMul3(self, case_name):
     #     M = 50

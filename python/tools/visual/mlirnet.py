@@ -251,7 +251,7 @@ class analysis_data():
                 bias = self.quant_net.tensor(name1).copy()
         else:
             bias = None
-        if not bias is None:
+        if bias is not None:
             return weight, weight.shape, bias, bias.shape
         else:
             return weight, weight.shape, bias, None

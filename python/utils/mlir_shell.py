@@ -108,7 +108,8 @@ def mlir_lowering(top_mlir: str,
                   count_patterns: bool = False,
                   addr_mode: str = "auto",
                   mute: bool = False,
-                  log_level: str = "normal"):
+                  log_level: str = "normal",
+                  matmul_perchannel: bool = False):
     mode = mode.upper()
     cmd = [
         "tpuc-opt", top_mlir,
@@ -132,8 +133,8 @@ def mlir_lowering(top_mlir: str,
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
         qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}\"".format(
-        qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size)
+    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={} matmul_perchannel={}\"".format(
+        qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size, matmul_perchannel)
     cmd.extend([
         lower_param,
         "--canonicalize",
