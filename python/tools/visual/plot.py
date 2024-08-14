@@ -52,7 +52,7 @@ def param_plot(data, name=None, max_sampling=1000, bias=None):
     else:
         stepw = 1
     indexw = np.arange(0, data_sizew, stepw)
-    if not bias is None:
+    if bias is not None:
         data_sizeb = bias.size
         if data_sizeb > max_sampling:
             stepb = data_sizeb // max_sampling
@@ -62,7 +62,7 @@ def param_plot(data, name=None, max_sampling=1000, bias=None):
     else:
         indexb = None
 
-    if not bias is None:
+    if bias is not None:
         fig = plt.plot_weight_and_transposed(indexw, indexb, (weight.flatten()[::stepw], weight.transpose().flatten()[::stepw], bias.flatten()[::stepb]),
             subplot_titles=(name, name+"-transposed", name+"-bias"))
     else:

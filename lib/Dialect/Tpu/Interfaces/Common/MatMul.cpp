@@ -211,10 +211,11 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       }
     } else {
       auto o_qtype = module::getUniformQuantizedType(getOutput());
-      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-      assert(rshift_v->size() == 1);
-      assert(multiplier_v->size() == 1);
+      auto output_shape = module::getShape(getOutput());
+      int N = output_shape[output_shape.size()-1];
+      int shift_num = getFuseRq()?N:1;
+      auto rshift_v = module::getI64Array(getRshifts(), shift_num, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), shift_num, 1);
       auto num_output = module::getNumElements(getOutput());
       if (qmode == tpu::RequantMode::TFLite_LShift ||
           qmode == tpu::RequantMode::TFLite) {
@@ -223,18 +224,28 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
           // rft);
           auto v = MultiplyByQuantizedMultiplier((int32_t)(p.outputs[0][i]),
-                                                 (int32_t)multiplier_v->at(0),
-                                                 -(int32_t)rshift_v->at(0)) +
-                   o_qtype.getZeroPoint();
+                                                (int32_t)multiplier_v->at(0),
+                                                -(int32_t)rshift_v->at(0)) +
+                  o_qtype.getZeroPoint();
           p.outputs[0][i] = saturate(v, out_type);
         }
       } else if (qmode == tpu::RequantMode::MultiplierShift) {
+        if (getFuseRq()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
-        for (int i = 0; i < num_output; ++i) {
-          auto v = applyMultiplierAndRShift(
-                       p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0)) +
-                   o_qtype.getZeroPoint();
-          p.outputs[0][i] = saturate(v, out_type);
+          for (int i = 0; i < num_output; ++i) {
+            auto v = applyMultiplierAndRShift(
+                        p.outputs[0][i], p.inputs[3][i%N], rshift_v->at(0)) +
+                    o_qtype.getZeroPoint();
+            p.outputs[0][i] = saturate(v, out_type);
+          }
+        } else {
+#pragma omp parallel for schedule(static, omp_schedule(num_output))
+          for (int i = 0; i < num_output; ++i) {
+            auto v = applyMultiplierAndRShift(
+                        p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0)) +
+                    o_qtype.getZeroPoint();
+            p.outputs[0][i] = saturate(v, out_type);
+          }
         }
       }
     }

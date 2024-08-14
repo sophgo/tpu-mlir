@@ -1223,6 +1223,24 @@ void ConvertTopToTpu::runOnOperation() {
     module::updateModuleTypes();
   }
 
+  if ((module::isBM1684X() || module::isBM1688()) &&
+      !LoweringConfig::isQuantized &&
+      (module::getMode() == module::Mode::INT8 ||
+       module::getMode() == module::Mode::UINT8)) {
+    // handle matmul perchannel setting
+    if (matmulPerchannel) {
+      mainFunc_.walk([&](Operation *op) {
+        if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
+                ReturnOp>(op)) {
+          return;
+        }
+        if (isa<top::MatMulOp>(op)) {
+          mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+          op->setAttr("matmulPerchannelQuant", tmp);
+        }
+      });
+    }
+  }
   // process W4A16 MatMul
   if (!module::isState(module::State::TOP_QUANTIZED)) {
     module::applyPatternOnce<W4A16MatMulPreparePattern>(module_);

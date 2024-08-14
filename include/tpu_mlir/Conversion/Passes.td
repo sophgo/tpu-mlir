@@ -32,7 +32,9 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
            "weight file name to save">,
     Option<"quantGroupSize", "q_group_size", "int", /*default=*/"",
-           "group size for per-group W4A16 quant">
+           "group size for per-group W4A16 quant">,
+    Option<"matmulPerchannel", "matmul_perchannel", "bool", /*default=*/"false",
+           "true if matmul uses perchannel quant, or false for pertensor quant">,
   ];
 }
 
