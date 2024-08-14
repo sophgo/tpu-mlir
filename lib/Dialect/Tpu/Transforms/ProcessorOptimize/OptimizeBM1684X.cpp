@@ -26,12 +26,17 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
-    auto _nextOp_ = *op.getOperation()->getResult(0).user_begin();
-    if (_nextOp_ && isa<tpu::RequantIntAxisOp>(_nextOp_)) { // First do MatMulRequantIntFusion and then do MatMulHdimBatchPattern
-      auto RequantIntAxis_Op = dyn_cast<tpu::RequantIntAxisOp>(_nextOp_);
-      auto Fuse_Rq_Axis = RequantIntAxis_Op.getFuseRqAxis();
-      if (Fuse_Rq_Axis)
-        return failure();
+    auto userIt = op.getOutput().user_begin();
+    if (userIt != op.getOutput().user_end()) {
+      auto _nextOp_ = *userIt;
+      if (_nextOp_ && isa<tpu::RequantIntAxisOp>(
+                          _nextOp_)) { // First do MatMulRequantIntFusion and
+                                       // then do MatMulHdimBatchPattern
+        auto RequantIntAxis_Op = dyn_cast<tpu::RequantIntAxisOp>(_nextOp_);
+        auto Fuse_Rq_Axis = RequantIntAxis_Op.getFuseRqAxis();
+        if (Fuse_Rq_Axis)
+          return failure();
+      }
     }
 
     // 1. Define Left and Right
