@@ -578,7 +578,7 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -618,7 +618,7 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string type or None, representing the data type of the output tensor. If None, it is consistent with the input tensors' dtype. The optional parameters are 'float'/'float16'/'int8'/'int16'/'int32'.
+* out_dtype: A string type or None, representing the data type of the output tensor. If None, it is consistent with the input tensors' dtype. The optional parameters are 'float32'/'float16'/'int8'/'int16'/'int32'.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -659,7 +659,7 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -734,18 +734,18 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float'/'float16',
+Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float32'/'float16',
 the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 
 
 min
@@ -774,18 +774,18 @@ Explanation of parameters
 """"""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""
 Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type.
-When the input is 'float'/'float16', the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
+When the input is 'float32'/'float16', the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 
 
 copy

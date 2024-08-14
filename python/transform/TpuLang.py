@@ -510,13 +510,14 @@ def custom(tensors_in: List[Tensor],
     return tensors_out
 
 def binary_dtype_check(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar],
-                       out_dtype: str = None, sign: bool = False, is_shift: bool = False):
+                       out_dtype: str = None, sign: bool = False, is_shift: bool = False, is_compare: bool = False):
     assert isinstance(tensor_i0, Tensor) or isinstance(tensor_i1, Tensor)
     in0_dtype = tensor_i0.dtype if isinstance(tensor_i0, Tensor) else tensor_i1.dtype
     in1_dtype = tensor_i1.dtype if isinstance(tensor_i1, Tensor) else tensor_i0.dtype
     support_dtype = ["float32", "float16", "int8", "uint8"]
-    if is_shift:
-        support_dtype = support_dtype[2:] + ["int16", "uint16", "int32", "uint32"] # no float type for shift op
+    if is_shift or is_compare:
+        start_idx = 0 if is_compare else 2
+        support_dtype = support_dtype[start_idx:] + ["int16", "uint16", "int32", "uint32"] # no float type for shift op
     assert not out_dtype or out_dtype in support_dtype
     if in0_dtype in ["float32", "float16"]:
         assert in0_dtype == in1_dtype
@@ -1022,7 +1023,7 @@ def matmul_quant(input: Tensor,
 ############## Base Element Operator ###############
 def _base_binary(tensor_i0: Union[Tensor, Scalar], tensor_i1: Union[Tensor, Scalar], op_type: str,
         scale: List[float]=None, zero_point: List[int]=None, is_reverse : bool = None, out_dtype: str = None, out_name: str = None):
-    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, sign=(op_type=="top.Sub"))
+    o_dtype = binary_dtype_check(tensor_i0, tensor_i1, out_dtype, sign=(op_type=="top.Sub"), is_compare=op_type in ["top.Max", "top.Min"])
     output = Tensor(dtype=o_dtype, name=out_name)
     if scale is not None:
         assert len(scale) == 3

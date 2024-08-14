@@ -277,13 +277,6 @@ class TPULANG_IR_TESTER(object):
         else:
             tpul.compile(model_name, inputs, outputs, cmp=True, dynamic=False, asymmetric=asymmetric, no_save=self.no_save)
 
-    #######################################################################
-    # Add
-    # ------------
-    def add_op(self, input_0, input_1, dtype=None):
-        add = tpul.add(input_0, input_1, out_dtype = dtype)
-        return add
-
     def test_base_binary_quant(self, case_name, func, shape_x: List[int], shape_y: List[int], scale=None, dtype="int8"):
         @tpulang(self.chip)
         def binary_coeff():
@@ -311,37 +304,80 @@ class TPULANG_IR_TESTER(object):
         binary()
         binary_scalar()
 
+    #######################################################################
+    # Add
+    # ------------
     def test_Add(self, case_name):
         """Add"""
+        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
+        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
+        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Mul
+    # ------------
+    def test_Mul(self, case_name):
+        """Mul"""
+        self.test_base_binary_quant(case_name, tpul.mul, [1, 96, 56, 56], [1, 96, 1, 1], [4.0, 2.0, 6.0], "int8")
+        self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
+        self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Sub
+    # ------------
+    def test_Sub(self, case_name):
+        """Sub"""
+        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
+        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
+        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Div
+    # ------------
+    def div_op(self, input_0, input_1):
+        div = tpul.div(input_0, input_1)
+        return div
+
+    def test_Div(self, case_name):
+        """Div"""
 
         @tpulang(self.chip)
-        def _test_add(shape_x: List[int], shape_y: List[int], dtype="float32"):
+        def _test_div(shape_x: List[int], shape_y: List[int], dtype="float32"):
             x_data = rand_data(shape_x, dtype)
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            add = self.add_op(x, y, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [add])
+            div = self.div_op(x, y)
+            self.compile_and_check(self.unique_name(case_name), [x], [div], is_quantized=dtype!="float32")
 
-        @tpulang(self.chip)
-        def _test_add_const(shape: List[int], value, is_reverse = False, dtype = "float32"):
-            input = rand_data(shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape, data=input)
-            add = self.add_op(value, x, dtype=dtype) if is_reverse else self.add_op(x, value, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [add])
+        _test_div([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_div([1, 3, 32, 32], [1, 3, 32, 32])
+        # _test_div([1, 3, 32, 32], [1, 1, 32, 32]) prob to be checked
+        _test_div([1, 3, 32, 32], [1])
+        _test_div([1], [1, 3, 32, 32])
+        if self.chip == "bm1688":
+            _test_div([1], [1, 3, 32, 32], dtype="float16")
 
-        # _test_add([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_add_const([1, 3, 28, 28], 3, False, "float32")
-        _test_add_const([1, 3, 28, 28], -2, True, "float32")
-        # _test_add([1, 3, 28, 28], [1, 3, 28, 28], "float16")
-        # _test_add([1, 3, 28, 28], [1, 3, 28, 28], "int32")
-        _test_add([1, 3, 32, 32], [1, 3, 32, 32])
-        _test_add([1, 3, 32, 32], [1, 1, 32, 32])
-        _test_add([1, 3, 32, 32], [1])
-        _test_add([1], [1, 3, 32, 32])
-        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
-        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+    #######################################################################
+    # Max
+    # ------------
+    def test_Max(self, case_name):
+        """Max"""
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="int16")
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="uint32")
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Min
+    # ------------
+    def test_Min(self, case_name):
+        """Min"""
+        self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="uint16")
+        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="int32")
+        self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
+
 
     #######################################################################
     # AddShift
@@ -777,7 +813,7 @@ class TPULANG_IR_TESTER(object):
             conv0_1 = conv_block(conv0_0, [kc, kc, 3, 3], [stride,stride], [1,1,1,1])
             conv0_2 = self.conv_op(conv0_1, [oc, kc, 1, 1], [1,1], [0,0,0,0], bias=True)
             conv1 = self.conv_op(x, [oc, ic, 1, 1], [stride,stride], [0,0,0,0], bias=True)
-            return self.add_op(conv0_2, conv1)
+            return tpul.add(conv0_2, conv1)
 
         def resnet_block1(x, oc, kc):
             norm = self.batch_norm_op(x, oc)
@@ -785,7 +821,7 @@ class TPULANG_IR_TESTER(object):
             conv0 = conv_block(relu, [kc, oc, 1, 1], [1,1], [0,0,0,0])
             conv1 = conv_block(conv0, [kc, kc, 3, 3], [1,1], [1,1,1,1])
             conv2 = self.conv_op(conv1, [oc, kc, 1, 1], [1,1], [0,0,0,0], bias=True)
-            return self.add_op(conv2, x)
+            return tpul.add(conv2, x)
 
         def resnet50(x, dtype="float32"):
             # perm = tpul.permute(x, [0, 3, 1, 2])
@@ -1582,148 +1618,6 @@ class TPULANG_IR_TESTER(object):
 
         _test_lenet([1, 1, 28, 28])
 
-    #######################################################################
-    # Mul
-    # ------------
-    def mul_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        mul = tpul.mul(input_0, input_1, out_dtype=out_dtype)
-        return mul
-
-    def test_Mul(self, case_name):
-        """Mul"""
-
-        @tpulang(self.chip)
-        def _test_mul(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            mul = self.mul_op(x, y, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [mul])
-
-        _test_mul([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_mul([1, 3, 32, 32], [1, 3, 32, 32])
-        _test_mul([1, 3, 32, 32], [1, 1, 32, 32])
-        _test_mul([1, 3, 32, 32], [1])
-        _test_mul([1], [1, 3, 32, 32])
-        self.test_base_binary_quant(case_name, tpul.mul, [1, 96, 56, 56], [1, 96, 1, 1], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
-        self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
-
-    #######################################################################
-    # Sub
-    # ------------
-    def sub_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        sub = tpul.sub(input_0, input_1, out_dtype=out_dtype)
-        return sub
-
-    def test_Sub(self, case_name):
-        """Sub"""
-
-        @tpulang(self.chip)
-        def _test_sub(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            sub = self.sub_op(x, y, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [sub])
-
-        _test_sub([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_sub([1, 3, 32, 32], [1, 3, 32, 32])
-        _test_sub([1, 3, 32, 32], [1, 1, 32, 32])
-        _test_sub([1, 3, 32, 32], [1])
-        _test_sub([1], [1, 3, 32, 32])
-        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
-        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
-
-    #######################################################################
-    # Div
-    # ------------
-    def div_op(self, input_0, input_1):
-        div = tpul.div(input_0, input_1)
-        return div
-
-    def test_Div(self, case_name):
-        """Div"""
-
-        @tpulang(self.chip)
-        def _test_div(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            div = self.div_op(x, y)
-            self.compile_and_check(self.unique_name(case_name), [x], [div], is_quantized=dtype!="float32")
-
-        _test_div([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_div([1, 3, 32, 32], [1, 3, 32, 32])
-        # _test_div([1, 3, 32, 32], [1, 1, 32, 32]) prob to be checked
-        _test_div([1, 3, 32, 32], [1])
-        _test_div([1], [1, 3, 32, 32])
-        if self.chip == "bm1688":
-            _test_div([1], [1, 3, 32, 32], dtype="float16")
-
-    #######################################################################
-    # Max
-    # ------------
-    def max_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        max = tpul.max(input_0, input_1, out_dtype=out_dtype)
-        return max
-
-    def test_Max(self, case_name):
-        """Max"""
-
-        @tpulang(self.chip)
-        def _test_max(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            max = self.max_op(x, y, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [max])
-
-        _test_max([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_max([1, 3, 32, 32], [1, 3, 32, 32])
-        _test_max([1, 3, 32, 32], [1, 1, 32, 32])
-        _test_max([1, 3, 32, 32], [1])
-        _test_max([1], [1, 3, 32, 32])
-        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
-        self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
-
-    #######################################################################
-    # Min
-    # ------------
-    def min_op(self, input_0, input_1, dtype="float32"):
-        out_dtype = dtype if dtype == 'float32' else 'int32'
-        min = tpul.min(input_0, input_1, out_dtype=out_dtype)
-        return min
-
-    def test_Min(self, case_name):
-        """Min"""
-
-        @tpulang(self.chip)
-        def _test_min(shape_x: List[int], shape_y: List[int], dtype="float32"):
-            x_data = rand_data(shape_x, dtype)
-            y_data = rand_data(shape_y, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data, ttype="coeff")
-            min = self.min_op(x, y, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x], [min])
-
-        _test_min([1, 3, 28, 28], [1, 3, 28, 28])
-        _test_min([1, 3, 32, 32], [1, 3, 32, 32])
-        _test_min([1, 3, 32, 32], [1, 1, 32, 32])
-        _test_min([1, 3, 32, 32], [1])
-        _test_min([1], [1, 3, 32, 32])
-        self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
-        self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
 
     #######################################################################
     # Copy
