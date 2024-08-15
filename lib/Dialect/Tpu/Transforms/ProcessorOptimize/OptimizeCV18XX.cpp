@@ -20,14 +20,12 @@ namespace tpu_mlir {
 
 namespace cv18xx {
 
-class MoveConvStrideToEltwiseOpPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
+class MoveConvStrideToEltwiseOpPattern : public OpRewriterPatternEx3 {
 public:
-  MoveConvStrideToEltwiseOpPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "MoveConvStrideToEltwiseOpPattern") {}
-
-protected:
-  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  MoveConvStrideToEltwiseOpPattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "MoveConvStrideToEltwiseOpPattern") {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
+                                    PatternRewriter &rewriter) const override {
 
     if (!op->hasTrait<trait::SupportEarlyStride>()) {
       return failure();
@@ -131,14 +129,12 @@ protected:
   }
 };
 
-class SplitReluLimitPattern : public OpRewriterPatternEx<tpu::ReluOp> {
+class SplitReluLimitPattern : public OpRewriterPatternEx3 {
 public:
-  SplitReluLimitPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ReluOp>(context, "SplitReluLimitPattern") {}
-
-protected:
-  LogicalResult matchAndRewriteImpl(tpu::ReluOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  SplitReluLimitPattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "SplitReluLimitPattern") {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
+                                    PatternRewriter &rewriter) const override {
     rewriter.setInsertionPointAfter(op);
     if (isa<ReturnOp>(op)) {
       return failure();
