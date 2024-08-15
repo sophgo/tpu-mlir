@@ -1923,6 +1923,7 @@ typedef struct pack_raw_spec {
   float black_level;
   float threshold;
   int channel_order[4];
+  int start_point[2];
 } pack_raw_spec_t;
 
 typedef struct depack_raw_spec {
@@ -1930,6 +1931,7 @@ typedef struct depack_raw_spec {
   float white_level;
   float black_level;
   int channel_order[4];
+  int start_point[2];
 } depack_raw_spec_t;
 #ifdef __cplusplus
 }
