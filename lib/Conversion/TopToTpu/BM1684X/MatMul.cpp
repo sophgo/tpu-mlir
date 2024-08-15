@@ -420,7 +420,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       // requant
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
-      if (module::isBM1688()) {
+      if (module::isBM1688() || module::isSG2380()) {
         quant_w_size = 2;
         quant.resize(quant_w_size, 0);
         quant[i * 2] = scale;
