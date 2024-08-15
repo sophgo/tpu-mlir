@@ -547,17 +547,17 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       // success!
 
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
-      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to4dim"));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + name + "_to4dim"));
       auto newType = RankedTensorType::get({lshape[0], lshape[1], lshape[2], 1}, module::getElementType(op));
       auto lhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
       operands.push_back(lhsOp.getOutput());
 
       rewriter.setInsertionPointAfter(rhs.getDefiningOp());
-      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to4dim"));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + name + "_to4dim"));
       newType = RankedTensorType::get({1, rshape[0], 1, rshape[1]}, module::getElementType(op));
       auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
 
-      loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + name + "_tile"));
       attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({lshape[0], 1, 1, 1})));
       newType = RankedTensorType::get({lshape[0], rshape[0], 1, rshape[1]}, module::getElementType(rhs));
       auto rhs_tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
@@ -614,12 +614,12 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       std::string dname = module::getName(dhs).str();
 
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
-      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to4dim"));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + name + "_to4dim"));
       auto newType = RankedTensorType::get({lshape[0], lshape[1], 1, lshape[2]}, module::getElementType(op));
       auto lhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
 
       rewriter.setInsertionPointAfter(dhs.getDefiningOp());
-      loc = NameLoc::get(rewriter.getStringAttr(dname + "_to4dim"));
+      loc = NameLoc::get(rewriter.getStringAttr(dname + name + "_to4dim"));
       newType = RankedTensorType::get({dshape[0], dshape[1], 1, dshape[2]}, module::getElementType(op));
       auto dhsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{dhs});
 
