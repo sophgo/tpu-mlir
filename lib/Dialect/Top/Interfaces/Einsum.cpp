@@ -60,6 +60,10 @@ void top::EinsumOp::shape_inference() {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[1], lhs_shape[1]});
   } else if (mode == "abc,cde->abde") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[1], rhs_shape[2]});
+  } else if (mode == "abcd,aeb->aecd") {
+    module::setShapeOrVerify(getOutput(), {rhs_shape[0], rhs_shape[1], lhs_shape[2], lhs_shape[3]});
+  } else if (mode =="abcde,afbc->abdef") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[3], lhs_shape[4], rhs_shape[1]});
   } else {
     llvm_unreachable("Not support now.");
   }
