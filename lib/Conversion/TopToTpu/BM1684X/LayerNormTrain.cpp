@@ -65,7 +65,7 @@ void LayerNormTrainLowering::LoweringF32(PatternRewriter &rewriter,
 
 void LayerNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormTrainOp op) const {
-  if (module::isBM1688()) {
+  if (module::isBM1688() || module::isSG2380()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());

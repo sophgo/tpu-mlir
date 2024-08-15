@@ -38,7 +38,7 @@ void LogBLowering::LoweringINT8(PatternRewriter &rewriter, top::LogBOp op,
 }
 
 void LogBLowering::LoweringBF16(PatternRewriter &rewriter, top::LogBOp op) const {
-  if (!module::isBM1688()){
+  if (!(module::isBM1688() || module::isSG2380())){
     LoweringF32(rewriter, op);
     return;
   }
@@ -52,7 +52,7 @@ void LogBLowering::LoweringBF16(PatternRewriter &rewriter, top::LogBOp op) const
 }
 
 void LogBLowering::LoweringF16(PatternRewriter &rewriter, top::LogBOp op) const {
-  if (!module::isBM1688()){
+  if (!(module::isBM1688() || module::isSG2380())){
     LoweringF32(rewriter, op);
     return;
   }

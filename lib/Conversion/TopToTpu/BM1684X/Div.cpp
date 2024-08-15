@@ -41,7 +41,7 @@ void DivLowering::LoweringINT4(PatternRewriter &rewriter, top::DivOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
-  if(module::isBM1688()){
+  if(module::isBM1688() || module::isSG2380()){
     lowering_common_bf16<tpu::DivOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::DivOp>(rewriter, op);
@@ -49,7 +49,7 @@ void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
 }
 
 void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
-  if(module::isBM1688()){
+  if(module::isBM1688() || module::isSG2380()){
     lowering_common_f16<tpu::DivOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::DivOp>(rewriter, op);

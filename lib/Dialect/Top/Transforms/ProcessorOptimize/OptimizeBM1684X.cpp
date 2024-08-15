@@ -840,7 +840,7 @@ public:
 protected:
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
                                     mlir::PatternRewriter &rewriter) const override {
-    if (module::isBM1688() || module::isBM1690Family())
+    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380())
       return failure();
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
