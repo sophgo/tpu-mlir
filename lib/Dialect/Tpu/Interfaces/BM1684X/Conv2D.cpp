@@ -13,31 +13,45 @@
 using namespace tpu_mlir::backend;
 
 #define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
+#define ALIGN(x, a) ((((x) + (a) - 1) / (a)) * (a))
 
-static int64_t sd_gt_15_buffer(const conv_attr_t& p, double dtype_len,
-    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
-    int64_t out_dslice, int64_t out_wslice){
+static int64_t sd_gt_15_buffer(const conv_attr_t &p, double dtype_len,
+                               int64_t in_cslice, int64_t in_hslice,
+                               int64_t in_dslice, int64_t in_wslice,
+                               int64_t out_nslice, int64_t out_cslice,
+                               int64_t out_hslice, int64_t out_dslice,
+                               int64_t out_wslice) {
   int64_t sz = 0;
   int cell_num_h = 1, cell_num_w = 1;
   int max_cell_h = p.kh, max_cell_w = p.kw;
-  if (p.sh > 15){cell_num_h = DIV_UP(p.kh, 15); max_cell_h = DIV_UP(p.kh, cell_num_h);}
-  if (p.sw > 15){cell_num_w = DIV_UP(p.kw, 15); max_cell_w = DIV_UP(p.kw, cell_num_w);}
+  if (p.sh > 15) {
+    cell_num_h = DIV_UP(p.kh, 15);
+    max_cell_h = DIV_UP(p.kh, cell_num_h);
+  }
+  if (p.sw > 15) {
+    cell_num_w = DIV_UP(p.kw, 15);
+    max_cell_w = DIV_UP(p.kw, cell_num_w);
+  }
   bool use_buffer_h = (p.dh < 16 && p.sh < 16) ? false : true;
   bool use_buffer_w = (p.dw < 16 && p.sw < 16) ? false : true;
-  int64_t buffer_h_sz = use_buffer_h ?
-                                    ( 1 * DIV_UP( p.ic / p.groups, BM168x::NPU_NUM ) *
-                                      ALIGN(max_cell_h * out_hslice * in_wslice, BM168x::eu_num(dtype_len)) * dtype_len )
-                                    : 0;
-  int64_t buffer_w_sz = use_buffer_w ?
-                      ( 1 * DIV_UP( p.ic / p.groups, BM168x::NPU_NUM ) *
-                        ALIGN( (use_buffer_h ? (max_cell_h * out_hslice): in_hslice ) * max_cell_w * out_wslice,
-                              BM168x::eu_num(dtype_len) ) * dtype_len)
-                      : 0;
+  int64_t buffer_h_sz = use_buffer_h
+                            ? (1 * DIV_UP(p.ic / p.groups, BM168x::NPU_NUM) *
+                               ALIGN(max_cell_h * out_hslice * in_wslice,
+                                     BM168x::eu_num(dtype_len)) *
+                               dtype_len)
+                            : 0;
+  int64_t buffer_w_sz =
+      use_buffer_w
+          ? (1 * DIV_UP(p.ic / p.groups, BM168x::NPU_NUM) *
+             ALIGN((use_buffer_h ? (max_cell_h * out_hslice) : in_hslice) *
+                       max_cell_w * out_wslice,
+                   BM168x::eu_num(dtype_len)) *
+             dtype_len)
+          : 0;
   auto f32_len = BM168x::getFmtBytes(DTYPE_FP32);
-  int64_t output_buffer_sz = DIV_UP( p.oc , BM168x::NPU_NUM ) *
-                             ALIGN(out_hslice * out_wslice, BM168x::eu_num(f32_len)) * f32_len;
+  int64_t output_buffer_sz =
+      DIV_UP(p.oc, BM168x::NPU_NUM) *
+      ALIGN(out_hslice * out_wslice, BM168x::eu_num(f32_len)) * f32_len;
   sz += buffer_h_sz;
   sz += buffer_w_sz;
   sz += output_buffer_sz;
@@ -101,19 +115,29 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
       spec.merge_coeff = 2;
     }
     common.is_asym = true;
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     spec.merge_coeff = 2;
   }
   if (op->hasAttr("compress_info")) {
     auto cinfo = getCompressInfo();
-    common.nnvlc_param = {cinfo->getDoCompress(),
-                          cinfo->getDoDecompress(),
-                          cinfo->getBias0(),
-                          cinfo->getBias1(),
+    common.nnvlc_param = {cinfo->getDoCompress(), cinfo->getDoDecompress(),
+                          cinfo->getBias0(), cinfo->getBias1(),
                           cinfo->getZeroGuard()};
   }
+#if 0
+  if (module::getStorageType(getOutput()).isF16()) {
+    BM168x::call_ppl_func("api_conv_global", &spec, sizeof(spec),
+                             input_spec->data(), output_spec->data());
+
+  } else {
+    BM168x::call_global_func("backend_api_conv_global", &spec, sizeof(spec),
+                             input_spec->data(), output_spec->data());
+  }
+#else
   BM168x::call_global_func("backend_api_conv_global", &spec, sizeof(spec),
                            input_spec->data(), output_spec->data());
+#endif
 }
 
 // ======================================
@@ -146,12 +170,13 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
       sz += ic_per_npu * 2 * in_type_len;
       return sz;
     }
-    if(use_3ic_optimize == 0)
+    if (use_3ic_optimize == 0)
       return 0;
   }
-  if (p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15){
-    sz += sd_gt_15_buffer(p, in_type_len, in_cslice, in_cslice, in_dslice, in_wslice,
-                          out_nslice, out_cslice, out_hslice, out_dslice, out_wslice);
+  if (p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15) {
+    sz += sd_gt_15_buffer(p, in_type_len, in_cslice, in_cslice, in_dslice,
+                          in_wslice, out_nslice, out_cslice, out_hslice,
+                          out_dslice, out_wslice);
   }
 
   if (getCoeffMerged()) {
@@ -189,8 +214,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   auto Filter_type = BM168x::getDataType(getFilter());
   auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
   if (!module::isTrain() && !module::isWeight(getFilter())) {
-    if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 || Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8 || Filter_type == DTYPE_F8E4M3 || Filter_type == DTYPE_F8E5M2){
-      sz += p.kh * p.kw * p.oc * align_up(p.ic / p.groups, eu_num) * Filter_type_len;
+    if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 ||
+        Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8 ||
+        Filter_type == DTYPE_F8E4M3 || Filter_type == DTYPE_F8E5M2) {
+      sz += p.kh * p.kw * p.oc * align_up(p.ic / p.groups, eu_num) *
+            Filter_type_len;
     }
   }
   return sz;
@@ -232,9 +260,11 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.pad_w_l = (in_gi.w_idx == 0 ? attr.pwl : 0);
   common.pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
   common.pad_h_t = (sec_info.h_idx == 0 ? attr.pht : 0);
-  common.pad_h_b = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
+  common.pad_h_b =
+      (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
   common.pad_w_l = (sec_info.w_idx == 0 ? attr.pwl : 0);
-  common.pad_w_r = (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
+  common.pad_w_r =
+      (sec_info.w_idx + sec_info.w_slice == attr.iw ? attr.pwr : 0);
   common.round_mode = round_mode_convert(getRoundMode());
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
@@ -290,7 +320,8 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       p.spec.merge_coeff = 2;
       p.spec.with_requant = 1;
     }
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     p.spec.merge_coeff = 2;
     p.spec.with_requant = 1;
   }
@@ -356,7 +387,8 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
       param.spec.merge_coeff = 2;
       param.spec.with_requant = 1;
     }
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     param.spec.merge_coeff = 2;
     param.spec.with_requant = 1;
   }
@@ -413,7 +445,8 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     } else {
       spec.merge_coeff = 2;
     }
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     spec.merge_coeff = 2;
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
