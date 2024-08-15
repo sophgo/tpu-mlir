@@ -25,6 +25,8 @@ void tpu::DepackRawOp::codegen_global_bm1684x() {
   param.white_level = getWhiteLevel().convertToDouble();
   param.black_level = getBlackLevel().convertToDouble();
   auto channel_order = module::getI64Array(getChannelOrder());
+  param.start_point[0] = 0;
+  param.start_point[1] = 0;
   for (int i=0; i<4; i++)
   {
     param.channel_order[i] = channel_order->at(i);
