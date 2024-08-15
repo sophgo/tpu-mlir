@@ -106,6 +106,8 @@ class ONNX_IR_TESTER(object):
             "Einsum10":     (self.test_Einsum10,      N, Y, Y, N, Y),
             "Einsum11":     (self.test_Einsum11,      N, Y, Y, N, Y),
             "Einsum12":     (self.test_Einsum12,      N, Y, Y, N, Y),
+            "Einsum13":     (self.test_Einsum13,      N, Y, N, N, Y),
+            "Einsum14":     (self.test_Einsum14,      N, Y, Y, N, Y),
             "Elu":          (self.test_Elu,           Y, Y, Y, N, Y),
             "Erf":          (self.test_Erf,           N, Y, Y, N, Y),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y),
@@ -4990,6 +4992,43 @@ class ONNX_IR_TESTER(object):
             <float%s weight>
             {
                 output = Einsum<equation="abc,cde->abde">(input, weight)
+            }
+            """ % (case_name, input_shape, output_shape, filter_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([weight])
+        self.onnx_and_test(graph_def)
+
+    def test_Einsum13(self, case_name):
+        input_shape = [1, 8, 32, 50, 50]
+        filter_shape = [1, 80, 8, 32]
+        output_shape = [1, 8, 50, 50, 80]
+
+        # bm1688 f16、int8 raise failure
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float%s weight>
+            {
+                output = Einsum<equation="abcde,afbc->abdef">(input, weight)
+            }
+            """ % (case_name, input_shape, output_shape, filter_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([weight])
+        self.onnx_and_test(graph_def)
+
+    def test_Einsum14(self, case_name):
+        input_shape = [1, 768, 50, 50]
+        filter_shape = [1, 80, 768]
+        output_shape = [1, 80, 50, 50]
+
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float%s weight>
+            {
+                output = Einsum<equation="abcd,aeb->aecd">(input, weight)
             }
             """ % (case_name, input_shape, output_shape, filter_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)

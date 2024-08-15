@@ -500,8 +500,79 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto tranOp = rewriter.create<PermuteOp>(loc, newType, mul_op2.getOutput(), attrs);
       op.getOutput().replaceAllUsesWith(tranOp);
       rewriter.eraseOp(op);
-    }
-      else {
+    } else if (mode == "abcd,aeb->aecd"){
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto lreshape_loc = NameLoc::get(rewriter.getStringAttr(lname + "_reshape"));
+      auto lreshape_type = RankedTensorType::get({lshape[0], lshape[1], lshape[2]*lshape[3]}, module::getElementType(lhs));
+      auto lreshape_op = rewriter.create<top::ReshapeOp>(lreshape_loc, lreshape_type, ValueRange{lhs});
+
+      rewriter.setInsertionPointAfter(op);
+      auto newType = RankedTensorType::get({rshape[0], rshape[1], lshape[2]*lshape[3]}, module::getElementType(op));
+      operands.push_back(rhs);
+      operands.push_back(lreshape_op);
+      operands.push_back(none);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if (mode == "abcde,afbc->abdef"){
+      // TODO : top/tpu matmul inference set left_transpose false by defalut, maybe can support true
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto lreshape_loc = NameLoc::get(rewriter.getStringAttr(lname + "_reshape"));
+      auto lreshape_type = RankedTensorType::get({lshape[0], lshape[1], lshape[2], lshape[3]*lshape[4]}, module::getElementType(lhs));
+      auto lreshape_op = rewriter.create<top::ReshapeOp>(lreshape_loc, lreshape_type, ValueRange{lhs});
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_trans"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], lshape[3]*lshape[4], lshape[2]}, module::getElementType(lreshape_op));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 3, 2})));
+      auto ltranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{lreshape_op}, attrs);
+      attrs.clear();
+      operands.push_back(ltranOp);
+      // operands.push_back(lreshape_op);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      // if (auto wOp = dyn_cast<top::WeightOp>(rhs.getDefiningOp())) {
+      //   // TODO: check weight type other F32 can satisfy
+      //   auto storage_type = module::getStorageType(rhs);
+      //   assert(storage_type.isF32() && "Todo, supoort more weight type");
+      //   auto data = wOp.read_as_byte();
+      //   uint8_t *dptr;
+      //   newType = RankedTensorType::get({rshape[0], rshape[2], rshape[1], rshape[3]}, module::getElementType(rhs));
+      //   std::vector<float_t> new_filter(newType.getNumElements(), 0);
+      //   dptr = (uint8_t *)new_filter.data();
+      //   // TODO : use continious data copy
+      //   for (int32_t i = 0; i < rshape[0]; i++) {
+      //       for (int32_t j = 0; j < rshape[2]; j++) {
+      //           for (int32_t k = 0; k < rshape[1]; k++) {
+      //               for (int32_t l = 0; l < rshape[3]; l++) {
+      //                   auto offset = (i * rshape[2] * rshape[1] * rshape[3] + j * rshape[1] * rshape[3] + k * rshape[3] + l) * data->size();
+      //                   memcpy(dptr + offset, data->data(), data->size());
+      //               }
+      //           }
+      //       }
+      //   }
+
+      //   auto new_op = top::WeightOp::create(op, "folder", new_filter, newType);
+      //   wOp.replaceAllUsesWith(new_op.getDefiningOp());
+      //   operands.push_back(new_op);
+      //   rewriter.eraseOp(wOp);
+      // } else {
+        loc = NameLoc::get(rewriter.getStringAttr(rname + "_trans"));
+        newType = RankedTensorType::get({rshape[0], rshape[2], rshape[1], rshape[3]}, module::getElementType(rhs));
+        attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
+        auto rtranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{rhs}, attrs);
+        attrs.clear();
+        operands.push_back(rtranOp);
+      // }
+      operands.push_back(none);
+      newType = RankedTensorType::get({lshape[0], lshape[1], lshape[3] * lshape[4], rshape[1]}, module::getElementType(op));
+      rewriter.setInsertionPoint(op);
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else {
       llvm_unreachable("Einsum not support this mode now");
     }
     return success();
