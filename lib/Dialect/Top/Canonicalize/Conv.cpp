@@ -91,7 +91,7 @@ struct Conv3dTo2d : public OpRewriterPatternEx<ConvOp> {
     op.setPadsAttr(rewriter.getI64ArrayAttr({p.pht, p.pwl, p.phb, p.pwr}));
     auto kernel = op.getFilter();
     newType = RankedTensorType::get({p.oc, p.ic * p.kd / p.groups, p.kh, p.kw},
-                                    module::getElementType(out));
+                                    module::getElementType(kernel));
     kernel.setType(newType);
     callCount++;
     return success();
