@@ -980,6 +980,18 @@ bool is_attention_not_input_tensor(Operation *op, Value v) {
   return res;
 }
 
+void slice_distributor(std::vector<slice_pair_t> &slice_pairs, int64_t vec_length, int64_t secs){
+  int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
+  int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
+
+  int64_t start_idx = 0; // 当前分片的起始索引
+  for (int64_t i = 0; i < secs; ++i) {
+    int64_t current_slice = per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
+    slice_pairs.emplace_back(slice_pair_t(start_idx, current_slice));
+    start_idx += current_slice; // 更新下一个分片的起始索引
+  }
+}
+
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
                                 int64_t c, int64_t h, int64_t d, int64_t w,
                                 int64_t bitwidth) {
@@ -996,54 +1008,30 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
       slice_info.n.emplace_back(slice_pair_t(idx, slice));
     }
   } else {
-    for (int64_t i = 0; i < secs; ++i) {
-      step = n / secs + (n % secs > i ? 1 : 0);
-      idx = n / secs * i + (n % secs > i ? i : n % secs);
-      slice = (n - idx) > step ? step : (n - idx);
-      // assert(idx < n);
-      slice_info.n.emplace_back(slice_pair_t(idx, slice));
-    }
+    slice_distributor(slice_info.n, n, shape_secs.nsecs);
   }
   // c slice info
   secs = shape_secs.csecs;
   int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+  int64_t c_per_npu_div_secs = c_per_npu / secs;
+  int64_t c_per_npu_mod_secs = c_per_npu % secs;
   for (int64_t i = 0; i < secs; ++i) {
-    step = (c_per_npu / secs + (c_per_npu % secs > i)) * Arch::NPU_NUM;
-    idx =
-        (c_per_npu / secs * i + (c_per_npu % secs > i ? i : c_per_npu % secs)) *
-        Arch::NPU_NUM;
-    slice = (c - idx) > step ? step : (c - idx);
-    // assert(idx < c);
+    // 计算每一步的步长和索引
+    bool extra = c_per_npu_mod_secs > i;
+    int64_t step = (c_per_npu_div_secs + extra) * Arch::NPU_NUM;
+    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * Arch::NPU_NUM;
+
+    // 计算切片大小
+    int64_t slice = std::min(step, c - idx);
+    assert(idx < c);
     slice_info.c.emplace_back(slice_pair_t(idx, slice));
   }
   // h slice_info
-  secs = shape_secs.hsecs;
-  for (int64_t i = 0; i < secs; ++i) {
-    step = h / secs + (h % secs > i ? 1 : 0);
-    idx = h / secs * i + (h % secs > i ? i : h % secs);
-    slice = (h - idx) > step ? step : (h - idx);
-    // assert(idx < h);
-    slice_info.h.emplace_back(slice_pair_t(idx, slice));
-  }
-  // d slice_info
-  secs = shape_secs.dsecs;
-  for (int64_t i = 0; i < secs; ++i) {
-    step = d / secs + (d % secs > i ? 1 : 0);
-    idx = d / secs * i + (d % secs > i ? i : d % secs);
-    slice = (d - idx) > step ? step : (d - idx);
-    // assert(idx < d);
-    slice_info.d.emplace_back(slice_pair_t(idx, slice));
-  }
+  slice_distributor(slice_info.h, h, shape_secs.hsecs);
+   // d slice_info
+  slice_distributor(slice_info.d, d, shape_secs.dsecs);
   // w slice_info
-  secs = shape_secs.wsecs;
-  for (int64_t i = 0; i < secs; ++i) {
-    step = w / secs + (w % secs > i ? 1 : 0);
-    idx = w / secs * i + (w % secs > i ? i : w % secs);
-    slice = (w - idx) > step ? step : (w - idx);
-    // assert(idx < w);
-    slice_info.w.emplace_back(slice_pair_t(idx, slice));
-  }
-
+  slice_distributor(slice_info.w, w, shape_secs.wsecs);
   return slice_info;
 }
 
