@@ -161,6 +161,7 @@ class TPULANG_IR_TESTER(object):
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
             "Scatter": (self.test_ScatterElements,      Y, Y),
+            "ScatterND": (self.test_ScatterND,          Y, Y),
             "ShapeFetch": (self.test_Shape_fetch,       Y, Y),
             "Sign": (self.test_Sign,                    Y, Y),
             "Sigmoid": (self.test_Sigmoid,              Y, Y),
@@ -4053,6 +4054,41 @@ class TPULANG_IR_TESTER(object):
         _test_roll((6,8,4,5,4),[1,2],[0,4], dtype="int8", is_quantized=True)
         _test_roll((4,2), 1, dtype="float16", is_quantized=True)
         _test_roll((4,2), (123,-133), (1,0))
+
+    ########################################################################
+    # ScatterND case
+    # ------------
+    def test_ScatterND(self,case_name):
+        """ScatterND"""
+
+        @tpulang(self.chip)
+        def _test_scatterND(inputs:List[int] = None,
+                          indices:List[int] = None,
+                          updates:List[int] = None,
+                          dtype="float32",
+                          is_quantized=False):
+            inputs = np.array(inputs, dtype=dtype)
+            indices = np.array(indices, dtype=np.uint32)
+            updates = np.array(updates, dtype=dtype)
+            inputs_shapes = list(inputs.shape)
+            indices_shapes = list(indices.shape)
+            updates_shapes = list(updates.shape)
+            x = tpul.Tensor(dtype=dtype, shape=inputs_shapes, data=inputs)
+            y = tpul.Tensor(dtype='uint32', shape=indices_shapes, data=indices)
+            z = tpul.Tensor(dtype=dtype, shape=updates_shapes, data=updates)
+
+            outputs = tpul.scatterND(x, y, z)
+            self.compile_and_check(self.unique_name(case_name), [x, y, z], [outputs], is_quantized=is_quantized)
+
+        _test_scatterND(
+            inputs = [[[1, 2, 3, 4], [5, 6, 7, 8], [8, 7, 6, 5], [4, 3, 2, 1]],
+            [[1, 2, 3, 4], [5, 6, 7, 8], [8, 7, 6, 5], [4, 3, 2, 1]],
+            [[8, 7, 6, 5], [4, 3, 2, 1], [1, 2, 3, 4], [5, 6, 7, 8]],
+            [[8, 7, 6, 5], [4, 3, 2, 1], [1, 2, 3, 4], [5, 6, 7, 8]]] ,
+            indices = [[0], [2]],
+            updates = [[[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]] ,
+            dtype="float16")
 
 
     #######################################################################
