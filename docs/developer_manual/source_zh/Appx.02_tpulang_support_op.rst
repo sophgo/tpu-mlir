@@ -4884,6 +4884,42 @@ scatter
 * BM1684X：输入数据类型可以是FLOAT32,FLOAT16,INT8。
 * BM1688：输入数据类型可以是FLOAT32,FLOAT16,INT8。
 
+scatterND
+:::::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def scatterND(input: Tensor,
+            indices: Tensor,
+            updates: Tensor,
+            out_name: str = None):
+        #pass
+
+功能描述
+"""""""""""
+根据指定的索引，将输入数据写入目标Tensor的特定位置。该操作允许将更新输入Tensor的元素散布到输出Tensor的指定位置。请参考ONNX 11下的ScatterND操作。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作Tensor，即需要更新的目标Tensor。
+* indices：Tensor类型，表示指定更新位置的索引Tensor。
+* updates：Tensor类型，表示要写入目标Tensor的值。Rank(updates) = Rank(input) + Rank(indices) - shape(indices)[-1] -1 。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+
+返回值
+"""""""""""
+返回一个新的Tensor，该Tensor在指定位置上进行了更新操作，其他位置保持了原始输入的Tensor值。形状与数据类型和input一致。
+
+芯片支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32,FLOAT16,INT8。
+* BM1688：输入数据类型可以是FLOAT32,FLOAT16,INT8。
+
 
 Preprocess Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

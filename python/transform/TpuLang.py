@@ -2987,3 +2987,19 @@ def matmulrq_int_op(input: Tensor,
     shift = [-sft for sft in shift]
     requantized_output = requant_int(matmul_output, multiplier, shift, offset, requant_mode, out_dtype=out_dtype, out_name=out_name, round_mode=round_mode, rq_axis=rq_axis, fuse_rq_to_matmul=True)
     return requantized_output
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def scatterND(input: Tensor,
+        indices: Tensor,
+        updates: Tensor,
+        out_name: str = None):
+    o_dtype = input.dtype
+
+    assert len(input.shape) + len(indices.shape) - indices.shape[-1] -1 == len(updates.shape),  "The shapes of inputs are not correct."
+
+    output = Tensor(dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op("top.ScatterND", inputs=[input, indices, updates], outputs=[output])
+    return output

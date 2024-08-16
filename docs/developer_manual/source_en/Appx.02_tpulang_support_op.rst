@@ -4014,6 +4014,41 @@ Processor Support
 * BM1688: The input data type can be FLOAT32/UINT8/INT8.
 
 
+scatterND
+:::::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+      def scatterND(input: Tensor,
+            indices: Tensor,
+            updates: Tensor,
+            out_name: str = None):
+        #pass
+
+Description
+"""""""""""
+Based on the specified indices, write the input data to specific positions in the target Tensor. This operation allows the elements of the input Tensor to be scattered to the specified positions in the output Tensor. Refer to the scatterND operation in ONNX 11 for more details.
+This operation belongs to **local operation**。
+
+Parameters
+"""""""""""
+* input: Tensor type, represents the input operation Tensor, i.e., the target Tensor that needs to be updated.
+* indices: Tensor type, represents the index Tensor that specifies the update positions.
+* updates: Tensor type, represents the values to be written into the target Tensor. Rank(updates) = Rank(input) + Rank(indices) - shape(indices)[-1] -1.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+
+Returns
+"""""""""""
+Returns a new Tensor with updates applied at the specified positions, while other positions retain the original values from the input Tensor. The shape and datatype are the same with the input tensor.
+
+Processor Support
+"""""""""""
+* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+* BM1688: The input data type can be FLOAT32/UINT8/INT8.
+
 
 Preprocess Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
