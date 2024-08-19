@@ -110,6 +110,20 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     if (isa<tpu::LoadToL2MOp>(inputOp)) {
       g_addr = BM1690::L2_SRAM_START_ADDR + cast<LoadToL2MOp>(inputOp).getL2mAddr();
     }
+
+    for (auto user: inputOp->getUsers()) {
+      if (isa<tpu::StoreOp>(user)) {
+        auto user2 = *user->getUsers().begin();
+        if (isa<tpu::SliceMergeOp>(user2)) {
+          g_addr = module::getAddress(user2->getResult(0));
+        } else {
+          g_addr = module::getAddress(user->getResult(0));
+          // for (auto [i, opd]: llvm::enumerate(user2->getOperands())) {
+          // }
+        }
+        break;
+      }
+    }
   } else {
     g_addr = module::getAddress(getInput());
   }

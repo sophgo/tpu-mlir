@@ -49,24 +49,34 @@ void tpu::MoveOp::codegen_only_for_moveOp(std::vector<int64_t>& move_src_add, st
   DATA_TYPE_T dtype = BM168x::getDataType(op->getOperand(0));
   auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
   int move_num = move_src_add.size(), src_addr = 0, dest_addr = 0;
+  llvm::errs() <<"codegen_only_for_moveOp:\n";
   for (int i = 0; i < move_num; i++) {
     if (move_dest_add[i] > move_src_add[i]) { //目标地址在后面
       if (move_dest_add[i] < move_src_add[i] + move_size[i]) { //重叠
+        llvm::errs() <<"move_src_add[i]:"<<move_src_add[i]<<", move_dest_add[i]:"
+          <<move_dest_add[i]<<", move_size[i]:"<<move_size[i]<<"\n";
         int size_per_copy = move_dest_add[i] - move_src_add[i];
         int copy_num = move_size[i] / size_per_copy;
+        src_addr = move_src_add[i] + move_size[i];
+        dest_addr = move_dest_add[i] + move_size[i];
         for (int j = 0; j < copy_num; j++) {
           bm168x->divide_sync_id();
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op, j).c_str());
-          src_addr = move_src_add[i] + move_size[i] - j*size_per_copy;
-          dest_addr = move_dest_add[i] + move_size[i] - j*size_per_copy;
+          src_addr -= size_per_copy;
+          dest_addr -= size_per_copy;
+          llvm::errs() <<"tensor"<<i<<", "<<j<<"th copy, src_addr:"
+            <<src_addr<<", dest_addr:"<<dest_addr<<", size:"<<size_per_copy<<"\n";
           move_slice(src_addr, dest_addr, size_per_copy, dtype);
           bm168x->merge_sync_id();
         }
         int last_move_size = move_size[i] - copy_num*size_per_copy;
-        llvm::errs() <<"codegen_only_for_moveOp, copy_num:"<<copy_num<<", last_move_size:"<<last_move_size<<"\n";
         if (last_move_size) {
           bm168x->divide_sync_id();
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op, copy_num).c_str());
+          src_addr -= last_move_size;
+          dest_addr -= last_move_size;
+          llvm::errs() <<"tensor"<<i<<", copy tail, src_addr:"
+            <<src_addr<<", dest_addr:"<<dest_addr<<", size:"<<last_move_size<<"\n";
           move_slice(move_src_add[i], move_dest_add[i], last_move_size, dtype);
           bm168x->merge_sync_id();
         }

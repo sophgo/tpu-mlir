@@ -380,7 +380,6 @@ struct ilp_LgInfo {
   //考察是否将global conv作为分割点
   int  group_cycle = 0;
   bool conv_cut_optimized = false;
-  bool is_fail_op_in_grp = true; //当前失败op是否仍包含在组中，仅作信息传递用
 
   //二进制搜索可行分割点
   std::vector<Operation *> group_ops_all;
@@ -391,6 +390,8 @@ struct ilp_LgInfo {
   int pre_middle_ptr = -1;
   int left_ptr = 0;
   int right_ptr = 0;
+  int group_id = 0;
+  static int group_count;
 
   shape_secs_t shape_secs;
   TensorInfo tensor_infos;
@@ -401,8 +402,10 @@ struct ilp_LgInfo {
 
   ilp_LgInfo(solver_strategy_type_t cur_strategy = STRATEGY_NORMAL){
     _cur_strategy = cur_strategy;
+    group_id = group_count++;
   }
   ilp_LgInfo(const ilp_LgInfo& other){
+    group_id = other.group_id;
     _lgInfo.group_ops.assign(other._lgInfo.group_ops.begin(), other._lgInfo.group_ops.end());
     _lgInfo.update_bank_info();
     _lgInfo.update_group_io();

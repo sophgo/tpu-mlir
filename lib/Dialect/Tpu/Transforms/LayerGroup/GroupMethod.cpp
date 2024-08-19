@@ -529,39 +529,17 @@ static void find_op_tree_by_root(Operation *op,
   }
 }
 
-void GroupMethod::get_base_dfs_topo_groups(
-    std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-    const llvm::SetVector<Operation *> &subnet_ops,
-    const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups) {
-  // int i = 0;
-  // for (auto group : tmp_base_groups) {
-  //   llvm::outs() << ">>>tmp_base_groups grp:" << i++ << "\n";
-  //   int j = 0;
-  //   for (auto op : group) {
-  //     llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
-  //                  << "\n";
-  //   }
-  // }
-
-  std::vector<LgInfo> LgInfos;
-  for (auto itr : tmp_base_groups) {
-    auto group = itr->_lgInfo.group_ops;
-    LgInfo lg_info;
-    lg_info.group_ops.assign(group.begin(), group.end());
-    lg_info.update_group_io(LgPass::OPTIONS.opt);
-    LgInfos.push_back(lg_info);
-  }
-
+void GroupMethod::get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups) {
   int idx = 0;
-  for (auto LgInfo : LgInfos) {
+  for (auto& grp : tmp_base_groups) {
+    auto& ops = grp->_lgInfo.group_ops;
     idx++;
-    if (LgInfo.group_ops.size() == 1) {
+    if (ops.size() == 1) {
       continue;
     }
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "start refine order, grp:" << --idx << "\n";});
-    std::vector<Operation *> topo_ops;
-    std::map<Operation *, int> indeg;
-    auto ops = LgInfo.group_ops;
+    llvm::errs() << "start refine order, grp:" << --idx << "\n";
+    std::vector<Operation*> topo_ops;
+    std::map<Operation*, int> indeg;
     for (auto op : ops) {
       indeg[op] = 0;
       for (auto v : op->getOperands()) {
@@ -572,77 +550,21 @@ void GroupMethod::get_base_dfs_topo_groups(
         }
       }
     }
-    std::vector<std::vector<Operation *>> serprated_groups;
     for (auto it : indeg) {
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  indeg, op name:" << module::getName(it.first).str()
-                   << ", count:" << it.second << "\n";});
       if (it.second == 0) {
         if (std::find(topo_ops.begin(), topo_ops.end(), it.first) ==
             topo_ops.end()) {
           topo_order_dfs(it.first, ops, indeg, topo_ops);
         }
-
-        std::vector<Operation *> op_tree;
-        find_op_tree_by_root(it.first, op_tree,
-                             ops); // ����ͼ���룬���ﶨ���ҵ�����ͼ��op_tree
-        serprated_groups.push_back(op_tree);
       }
     }
 
     int i = 0;
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "full_topo_ops:\n";});
+    llvm::errs() << "full_topo_ops:\n";
     for (auto op : topo_ops) {
-      LAYER_GROUP_LOG_DEBUG_BLOCK({
-        llvm::outs() << "  op:" << i++ << " name:" << module::getName(op).str()
-                     << "\n";
-      });
+      llvm::errs() << "  op:" << i++ << ": " <<show_op_info(op)<< "\n";
     }
-    std::vector<std::vector<Operation *>> serprated_groups_checked;
-    for (auto group : serprated_groups) { // ȷ����ͼ֮���Ƿ����
-      bool separate = true;
-      for (auto op : group) {
-        for (auto group2 : serprated_groups) {
-          if (group != group2 &&
-              std::find(group2.begin(), group2.end(), op) != group2.end()) {
-            separate = false;
-            break;
-          }
-        }
-        if (!separate) {
-          break;
-        }
-      }
-      if (separate) {
-        serprated_groups_checked.push_back(group);
-      }
-    }
-
-    for (auto group : serprated_groups_checked) { // ������topoͼ�л�ȡ��ֲ�topoͼ
-      std::vector<Operation *> topo_group;
-      for (auto op : topo_ops) {
-        if (std::find(group.begin(), group.end(), op) != group.end()) {
-          topo_group.push_back(op);
-        }
-      }
-      if (topo_group.size() > 1) {
-        base_groups.push_back(CreateIlpLgInfo(topo_group));
-      }
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "add new serprated_groups:\n";});
-      for (auto op : topo_group) {
-        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  name:" << module::getName(op).str() << "\n";});
-      }
-    }
-
-    // ������topoͼ��ɾ������Ľڵ㣬ʣ�µ�ͼ�����������
-    for (auto group : serprated_groups_checked) {
-      for (auto op : group) {
-        topo_ops.erase(std::remove(topo_ops.begin(), topo_ops.end(), op),
-                       topo_ops.end());
-      }
-    }
-    if (topo_ops.size() > 1) {
-      base_groups.push_back(CreateIlpLgInfo(topo_ops));
-    }
+    ops.assign(topo_ops.begin(), topo_ops.end());
   }
 }
 
@@ -1572,84 +1494,6 @@ get_sec_per_cores(const shape_secs_t &shape_secs,
 //   return std::move(tmp);
 // }
 
-std::vector<Operation *>
-ExcludeOpFromGroup(LgInfo &sub_group, Operation *fail_op) {
-  std::vector<Operation *> pre_ops, next_ops;
-  auto& group_ops = sub_group.group_ops;
-  find_all_pre_ops(fail_op, pre_ops, &group_ops);
-  find_all_next_ops(fail_op, next_ops, &group_ops);
-  pre_ops.erase(std::remove(pre_ops.begin(), pre_ops.end(), fail_op),
-                pre_ops.end());
-  next_ops.erase(std::remove(next_ops.begin(), next_ops.end(), fail_op),
-                 next_ops.end());
-
-  std::vector<Operation *> del_ops;
-  for (auto op : group_ops) {
-    if (std::find(pre_ops.begin(), pre_ops.end(), op) != pre_ops.end()) {
-      //组中若存在op在待删除op的前驱子网中，才需要在下面删除待删除op子树，剩下前驱子网;若不存在，就会只删除待删除op，剩下其后继子树
-      for (auto op2 : group_ops) {
-        if (std::find(next_ops.begin(), next_ops.end(), op2) != //找到组中以待删除op为根的子树
-                next_ops.end() &&
-            std::find(del_ops.begin(), del_ops.end(), op2) == del_ops.end()) {
-          del_ops.push_back(op2);
-        }
-      }
-    }
-  }
-
-  // del_ops.insert(del_ops.begin(), fail_op);
-  if (del_ops.size() > 1) {
-     LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "get a new grp, size:"<<del_ops.size()<<"\n";});
-
-  }
-  for (auto del_op : del_ops) {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  del_op name:" << show_op_info(del_op) << "\n";});
-    group_ops.erase(std::remove(group_ops.begin(), group_ops.end(), del_op),
-                    group_ops.end());
-  }
-  group_ops.erase(std::remove(group_ops.begin(), group_ops.end(), fail_op),
-                  group_ops.end());
-  //不管待删除op位于group头部或尾部，留下的都是除它之外的所有ops；若位于中间，则留下除待删除op为根的子树外的所有ops;
-  sub_group.update_group_io(LgPass::OPTIONS.opt);
-  set_group_type(sub_group);
-  return del_ops;
-}
-
-void mergeEdgeOpToOtherGrp(int cur_grp_idx,
-                           std::vector<std::vector<Operation *>> &base_groups,
-                           Operation *fail_op) {
-  std::vector<Operation *> vec_near_op;
-  for (auto user : fail_op->getUsers()) {
-    if (!isa<ReturnOp>(user)) {
-      vec_near_op.push_back(user);
-    }
-  }
-  for (auto v : fail_op->getOperands()) {
-    auto pre_op = v.getDefiningOp();
-    if (pre_op && !isa<top::NoneOp>(pre_op)) {
-      vec_near_op.push_back(pre_op);
-    }
-  }
-  int max_group_idx = -1;
-  for (
-      auto it :
-      vec_near_op) { // 寻找在del_op的各个方向,相邻的，有最多op的group，然后把del_op融合进去
-    for (int j = cur_grp_idx + 1; j < base_groups.size();
-         j++) { // 只融合到后面还未规划的group
-      if (std::find(base_groups[j].begin(), base_groups[j].end(), it) !=
-          base_groups[j].end()) {
-        max_group_idx = std::max(max_group_idx, j);
-      }
-    }
-  }
-  if (max_group_idx != -1) {
-    base_groups[max_group_idx].push_back(fail_op);
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "add fail_op to group" << max_group_idx << "\n";});
-  } else {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "make fail_op as global layer\n";});
-  }
-}
-
 std::vector<op_var_pos_info> createOverlapStrategy(const LgInfo &lg_info,
                                                    int slice_num, int type = 0,
                                                    int overlap = 2,
@@ -1907,135 +1751,6 @@ Operation* check_single_group_could_be_load(LgInfo &sub_group)
   return nullptr;
 }
 
-
-// void make_sure_enough_slice_for_multicore(LgPassIR *pass_ir, std::vector<std::vector<Operation *>> &base_groups, int corenum)
-// {
-//   int grp_num = base_groups.size();
-//   LgInfo sub_group;
-//   for (int64_t i = 0; i < grp_num; i++) {
-//     if (base_groups[i].size() > 1) {
-//       sub_group.group_id = i;
-//       sub_group.group_ops.assign(base_groups[i].begin(), base_groups[i].end());
-//       sub_group.update_group_io(LgPass::OPTIONS.opt);
-//       set_group_type(sub_group);
-
-//       std::vector<std::pair<Operation *, int>> vec_op_hwsecs;
-//       shape_secs_t max_shape_secs = get_group_max_secs(sub_group, vec_op_hwsecs);
-//       std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
-
-//       llvm::outs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() << "\n";
-
-//       // 排除输出h为1的op
-//       if(max_shape_secs.nsecs*max_shape_secs.hsecs < corenum && vec_op_hwsecs[0].second==1)
-//       {
-//         llvm::outs()<<" op "<<module::getName(vec_op_hwsecs[0].first)<<" output h dim is 1, delete it!"<<"\n";
-//         processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, vec_op_hwsecs[0].first);
-//         for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
-//           if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
-//               it = base_groups[i].erase(it);
-//           } else {
-//               ++it;
-//           }
-//         }
-//         vec_op_hwsecs.clear();
-//         max_shape_secs = get_group_max_secs(sub_group, vec_op_hwsecs);
-//         std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
-//       }
-
-//       std::vector<std::pair<Operation *, int>> vec_op_idx;
-//       while(max_shape_secs.nsecs*max_shape_secs.hsecs < 0.5 * corenum){
-//         llvm::outs()<< "max_shape_secs n:" << max_shape_secs.nsecs
-//         << " c:" << max_shape_secs.csecs << " d:" << max_shape_secs.dsecs
-//         << " h:" << max_shape_secs.hsecs << " w:" << max_shape_secs.wsecs
-//         <<" corenum "<< corenum << "\n";
-//         // 删除h维度最小的算子以及其后面的算子
-//         Operation* fail_op = vec_op_hwsecs[0].first;
-//         llvm::outs() << module::getName(fail_op).str() << "  output h dim " << vec_op_hwsecs[0].second <<" too small, delete it from group!\n";
-
-//         auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
-//         for (; it!=sub_group.group_ops.end(); ++it) {
-//           int index = std::distance(sub_group.group_ops.begin(), it);
-//           vec_op_idx.push_back(std::make_pair(*it, index));
-//         }
-//         it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
-//         llvm::outs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
-//         sub_group.group_ops.erase(it, sub_group.group_ops.end());
-//         sub_group.update_group_io(LgPass::OPTIONS.opt);
-//         set_group_type(sub_group);
-//         llvm::outs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
-
-//         // auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op);
-//         // int index = std::distance(sub_group.group_ops.begin(), it);
-//         // vec_op_idx.push_back(std::make_pair(fail_op, index));
-//         // llvm::outs()<< "attention!!! sub_group op size:" << sub_group.group_ops.size() <<" erase idx "<< index << "\n";
-//         // llvm::outs()<<" grp_idx "<< i << " before erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
-//         // sub_group.group_ops.erase(std::remove(sub_group.group_ops.begin(), sub_group.group_ops.end(), fail_op),sub_group.group_ops.end());
-//         // sub_group.update_group_io(LgPass::OPTIONS.opt);
-//         // set_group_type(sub_group);
-//         // llvm::outs()<<" grp_idx "<< i << " after erase size: " << sub_group.group_ops.size() << " ins: " <<sub_group.group_ins.size() << " outs: " <<sub_group.group_outs.size() <<"\n";
-
-//         // processWhenOpFail(pass_ir, sub_group, base_groups, grp_num, fail_op);
-//         // for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
-//         //   if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
-//         //       it = base_groups[i].erase(it);
-//         //   } else {
-//         //       ++it;
-//         //   }
-//         // }
-
-//         if(sub_group.group_ops.size()==0){
-//           break;
-//         }
-//         vec_op_hwsecs.clear();
-//         max_shape_secs = get_group_max_secs(sub_group, vec_op_hwsecs);
-//         std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
-//       }
-
-//       //h 维度比较小的分成一组
-//       if(vec_op_idx.size()>0){
-//         std::sort(vec_op_idx.begin(), vec_op_idx.end(), pair_op_int_Sort_by_int);
-
-//         std::vector<Operation*> tmp_group;
-//         for(auto op_with_index:vec_op_idx){
-//           tmp_group.push_back(op_with_index.first);
-//         }
-
-//         // 处理同一个tensor输入两个op的情况
-//         for(auto op : sub_group.group_ops)
-//         {
-//           int count = 0;
-//           for (auto user : op->getUsers())
-//           {
-//             if(std::find(tmp_group.begin(), tmp_group.end(), user)!=tmp_group.end())
-//               count++;
-//           }
-
-//           if(count>=2)
-//           {
-//             llvm::outs()<<" op "<<module::getName(op)<<" has multi user in new group"<<"\n";
-//             tmp_group.insert(tmp_group.begin(), op);
-//             auto it = std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), op);
-//             sub_group.group_ops.erase(it);
-//           }
-//         }
-
-//         base_groups.push_back(tmp_group);
-//         pass_ir->ILP_time_steps.push_back(std::vector<ILPTimeStepPtr>());
-//         pass_ir->map_l2m_load.push_back(
-//         std::map<std::pair<Value, int>, int, value_compare2>());
-
-//         for (auto it = base_groups[i].begin(); it != base_groups[i].end();) {
-//           if (std::find(sub_group.group_ops.begin(), sub_group.group_ops.end(), *it) == sub_group.group_ops.end()) {
-//               it = base_groups[i].erase(it);
-//           } else {
-//               ++it;
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
-
 static void l2m_process(ilp_LgInfo &sub_group, std::vector<std::pair<Value, int64_t>>& value_size) {
   LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "process l2m...\n";});
   auto& grp_time_step = sub_group.timeStepPtrs;
@@ -2223,7 +1938,7 @@ static bool isOpTypeInGroup(const std::vector<Operation *>& group_ops, std::vect
 
 
 static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& fail_process_mode,
-                                Operation*& fail_op, std::shared_ptr<CycleCalculator> cycle_calculator_) {
+                                Operation*& fail_op, bool& is_fail_op_in_grp, std::shared_ptr<CycleCalculator> cycle_calculator_) {
   auto tmp_dot_graph_log = pass_ir->dot_graph_log_subnet->clone();
   for (auto [index, op] : llvm::enumerate(sub_group._lgInfo.group_ops)) {
     tmp_dot_graph_log->add_node_label(module::getName(op).str(),
@@ -2245,6 +1960,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
   std::vector<std::pair<Value, int64_t>> value_size;
   if (!init_group_data_secs2(sub_group._lgInfo, shape_secs, value_size, tmp_dot_graph_log)) {
     LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "init_group_data_secs2 fail\n";});
+    is_fail_op_in_grp = false;
     fail_op = vec_op_hwsecs[0].first;
     tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
         "init_group_data_secs2 fail");
@@ -2309,16 +2025,16 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
     do {
       // tmp_dot_graph_log->export_dot("stripe_mine_idx_slice2_before");
       ret = stripe_mine_idx_slice2(sub_group._lgInfo, shape_secs, tensor_infos, fail_op);
-      if(!ret) {
+      if(!ret){
         tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
             "stripe_mine_idx_slice2 fail");
         LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "stripe_mine_idx_slice2 fail at "<< module::getName(fail_op).str()<<"\n";});
         if (isa<tpu::UpsampleOp>(fail_op) && shape_secs.hsecs > 1) {
-          // sub_group.is_fail_op_in_grp = false;
+          // is_fail_op_in_grp = false;
           fail_process_mode = 2;
           return false;
         }
-        if (sub_group._cur_strategy == STRATEGY_GROUP_CUT_FIRST) {
+        if (sub_group._cur_strategy != STRATEGY_SLICE_CUT_FIRST) {
           return false;
         } else {
           break;
@@ -2341,16 +2057,6 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
 
         int slice_idx = 0;
         std::vector<op_var_pos_info> op_var_bound = createOverlapStrategy(sub_group._lgInfo, sec_per_cores[core_id]);
-        std::vector<std::pair<Value, int64_t>> tmp_value_size;
-        if (sec_per_cores[core_id] > 0) { // 始终将小的权重提前加进来,放在lmem的最后区域，减少后续数据依赖，减少时隙间同步
-          tmp_value_size.assign(value_size.begin(), value_size.end());
-        }
-        // 预先去掉最大的20%的权重，以便backward_gen_ilp_var2中可提前更多时隙加载它们
-        for (int i = 0; i < tmp_value_size.size() * 0.2; i++) { // 0.2是经验值，不一定恰当
-          tmp_value_size.pop_back();
-        }
-
-        int64_t load_bytes_for_next_ts = 0;
         std::map<std::string, std::string> node_labels;
         auto ilp_timeStep = std::make_shared<ILPTimeStep>(sub_group._lgInfo, tmp_dot_graph_log, sec_per_cores[core_id]);
         while(sec_per_cores[core_id]-- > 0) {
@@ -2359,17 +2065,10 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
           LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "slice process, n:" << ncdhw[0]
                         << " c:" << ncdhw[1] << " d:" << ncdhw[2]
                         << " h:" << ncdhw[3] << " w:" << ncdhw[4]<< " ncdhw_idx:" << vec_ncdhw_idx - 1 << "\n";});
-          ret = backward_gen_ilp_var2(
+          backward_gen_ilp_var2(
               sub_group._lgInfo, shape_secs, tensor_infos, cycle_calculator_,
-              *ilp_timeStep, ncdhw, slice_idx, op_var_bound, load_bytes_for_next_ts,
-              tmp_value_size, fail_op, node_labels, l2m_en, sec_per_cores[core_id] == 0, 4);
-          if(!ret){
-            tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
-                "backward_gen_ilp_var2 fail, for core_id:" + std::to_string(core_id) +
-                ", slice_idx:" + std::to_string(slice_idx));
-            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() <<"backward_gen_ilp_var2 fail, core_id: "<<core_id<<" slice_idx: "<<slice_idx<<"\n";});
-            break;
-          }
+              *ilp_timeStep, ncdhw, slice_idx, op_var_bound,
+              fail_op, node_labels, l2m_en, sec_per_cores[core_id] == 0, 4);
           slice_idx++;
         }
         if (core_id == 0) {
@@ -2378,7 +2077,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
           }
         }
         if(!ret){
-          if (sub_group._cur_strategy == STRATEGY_GROUP_CUT_FIRST) {
+          if (sub_group._cur_strategy != STRATEGY_SLICE_CUT_FIRST) {
             return false; //里面会校验内存是否满足，需要切割
           } else {
             break;
@@ -2386,33 +2085,35 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         }
 
         ilp_timeStep->merge_small_cycle_op(tensor_infos, tmp_dot_graph_log);
-        // dot_graph_log->export_dot("merge_small_cycle_op_after");
         ilp_timeStep->prepare(tensor_infos);
+        // tmp_dot_graph_log->export_dot("merge_small_cycle_op_after", true);
         ret = ilp_timeStep->run(fail_op);
         if (!ret) {
           LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "ilp_timeStep->run fail\n";});
           if (fail_op) {
             tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
-              "ilp_timeStep->run fail, for core_id:" + std::to_string(core_id));
-            if (sub_group._cur_strategy == STRATEGY_GROUP_CUT_FIRST) {
+              "ilp_timeStep run fail, for core_id:" + std::to_string(core_id));
+            if (sub_group._cur_strategy != STRATEGY_SLICE_CUT_FIRST) {
+              is_fail_op_in_grp = false;
               return false;
             }
           } else {
             tmp_dot_graph_log->add_node_label("global_info",
-                "ilp_timeStep->run fail, for core_id:" + std::to_string(core_id));
+                "ilp_timeStep run fail, for core_id:" + std::to_string(core_id));
           }
           // fail_process_mode = 1; //求解失败则二分搜索能成功group的分割点，大组分小组
           break;
         }
 
         mem_alloc_status alloc_status;
-        ret = ilp_timeStep->mem_alloc(alloc_status, tmp_value_size, tensor_infos, fail_op);
+        ret = ilp_timeStep->mem_alloc(alloc_status, value_size, tensor_infos, fail_op);
         if (!ret) {
           LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "ilp_timeStep->mem_alloc fail\n";});
           if (fail_op) {
             tmp_dot_graph_log->add_node_label(module::getName(fail_op).str(),
                 "ilp_timeStep->mem_alloc fail, for core_id:" + std::to_string(core_id));
-            if (sub_group._cur_strategy == STRATEGY_GROUP_CUT_FIRST) {
+            if (sub_group._cur_strategy != STRATEGY_SLICE_CUT_FIRST) {
+              is_fail_op_in_grp = false;
               return false;
             }
           } else {
@@ -2499,39 +2200,15 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops, std::vector<Oper
   return new_grps;
 }
 
-void GroupMethod::init_ilp_base_groups(LgPassIR* pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups){
-  std::vector<Operation*> oringal_ops;
-  std::vector<Operation*> single_ops;
-  int grp_num = pass_ir->tmp_base_groups.size();
-  for (int64_t i = 0; i < grp_num; i++) {
-    auto& group_ops = pass_ir->tmp_base_groups[i]->_lgInfo.group_ops;
-    if (group_ops.size() > 1) {
-      bool first = true;
-      oringal_ops.assign(group_ops.begin(), group_ops.end());
-      auto new_grps = ConvertDisconnectedBlocksToGroups(group_ops, single_ops);
-      for (auto new_grp: new_grps) {
-        if (first) {
-          group_ops.assign(new_grp.begin(), new_grp.end());
-          first = false;
-        } else {
-          pass_ir->tmp_base_groups.push_back(CreateIlpLgInfo(sortOpsByOtherOpsOrder(oringal_ops, new_grp)));
-        }
-      }
-      if (!new_grps.size()) {
-        group_ops.clear();
-      }
-    }
-  }
-
+void GroupMethod::init_ilp_base_groups(LgPassIR* pass_ir){
   if (pass_ir->branch_parallel) {
-    get_base_branch_groups(base_groups, pass_ir->subnet_ops,
-                           pass_ir->subnet_return_opds);
+    // get_base_branch_groups(base_groups, pass_ir->subnet_ops,
+    //                        pass_ir->subnet_return_opds);
   } else {
-    get_base_dfs_topo_groups(base_groups, pass_ir->subnet_ops,
-                             pass_ir->tmp_base_groups);
+    get_base_dfs_topo_groups(pass_ir->tmp_base_groups);
   }
 }
-
+int ilp_LgInfo::group_count = 0;
 void ilp_LgInfo::save_result(LgPassIR *pass_ir) {
   pass_ir->ILP_time_steps.push_back(timeStepPtrs);
   pass_ir->shape_secs.push_back(shape_secs);
@@ -2543,18 +2220,24 @@ void ilp_LgInfo::save_result(LgPassIR *pass_ir) {
 }
 
 std::shared_ptr<ilp_LgInfo> ilp_LgInfo::high_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_) {
+  auto ops_ori = _lgInfo.group_ops;
   _cur_strategy = STRATEGY_GROUP_CUT_FIRST;
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: STRATEGY_GROUP_CUT_FIRST test\n";});
   base_solver(pass_ir, cycle_calculator_);
-
-  auto ilp_cloned = CreateIlpLgInfo(_lgInfo.group_ops, STRATEGY_SLICE_CUT_FIRST);
-  ilp_cloned->base_solver(pass_ir, cycle_calculator_);
-  if (group_cycle > ilp_cloned->group_cycle) {
-    return ilp_cloned;
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"strategy 2 better\n";});
-  } else {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"strategy 3 better\n";});
-    return nullptr;
+  if (module::isDebugCmdEnable("enable_high_solver")) {
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: STRATEGY_SLICE_CUT_FIRST test\n";});
+    auto ilp_cloned = CreateIlpLgInfo(ops_ori, STRATEGY_SLICE_CUT_FIRST);
+    ilp_cloned->base_solver(pass_ir, cycle_calculator_);
+    if (group_cycle > ilp_cloned->group_cycle) {
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug:strategy STRATEGY_SLICE_CUT_FIRST better, "
+        <<group_cycle<<" vs "<<ilp_cloned->group_cycle<<"\n";});
+      return ilp_cloned;
+    } else {
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug:strategy STRATEGY_GROUP_CUT_FIRST better, "
+        <<group_cycle<<" vs "<<ilp_cloned->group_cycle<<"\n";});
+    }
   }
+  return nullptr;
 }
 
 void ilp_LgInfo::base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_) {
@@ -2565,83 +2248,59 @@ void ilp_LgInfo::base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator>
       "grp_ts" + std::to_string(index + 1) +"*");
   }
   ilp_func_trace tmp_trace(__func__);
-  std::vector<Operation *> all_del_ops;
   int fail_process_mode = 0;
   Operation* fail_op = nullptr;
-  std::vector<Operation*> oringal_ops;
   _lgInfo.update_group_io(LgPass::OPTIONS.opt);
-  oringal_ops.assign(ops.begin(), ops.end());
+  std::map<Operation*, bool> break_op_reside;
+  std::map<Operation*, bool>* break_op_reside_ptr = nullptr;
+  std::vector<Operation *> break_ops;
 
-  while(true) {
-    if (ops.size() == 1) { //排除掉失败op及其子树后，剩下ops不能成组,放弃其为global layer
-      group_cycle += cycle_calculator_->getGlobalLayerCycle(ops[0]);
-      global_layers.push_back(ops[0]);
-      break;
+  bool is_fail_op_in_grp = true;
+  auto ret = ilp_for_single_group(pass_ir, *this, fail_process_mode,
+                                  fail_op, is_fail_op_in_grp, cycle_calculator_);
+  if (!ret) {
+    if (_cur_strategy == STRATEGY_SEARCH_CONV_CUT) {
+      return; //搜索模式下不再嵌套group
     }
-    auto tmpLgInfo = CreateIlpLgInfo(ops);
-    tmpLgInfo->_lgInfo.group_id = pass_ir->group_count++;
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"add new LgInfo:"<<tmpLgInfo->_lgInfo.group_id<<"\n";});
-    auto ret = ilp_for_single_group(pass_ir, *tmpLgInfo, fail_process_mode,
-                                    fail_op, cycle_calculator_);
-    if (!ret) {
-      if (_cur_strategy == STRATEGY_SEARCH_CONV_CUT) {
-        return; //搜索模式下不再嵌套group
+    if (fail_op && fail_process_mode == 0) {
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: ilp_for_single_group fail_op:"
+        <<show_op_info(fail_op)<<"\n";});
+      break_op_reside[fail_op] = is_fail_op_in_grp;
+      break_op_reside_ptr = &break_op_reside;
+      break_ops.push_back(fail_op);
+      if (!is_fail_op_in_grp) {
+        global_layers.push_back(fail_op);
       }
-      if (fail_op && fail_process_mode == 0) {
-        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs()<<"ilp_debug: fail_op:"<<show_op_info(fail_op)<<"\n";});
-        auto name = module::getName(fail_op).str();
-        // tmp_dot_graph_log->add_node_label(name + "_ori", "fail_op");
-        auto del_ops = ExcludeOpFromGroup(_lgInfo, fail_op);
-        all_del_ops.insert(all_del_ops.end(), del_ops.begin(), del_ops.end());
-        if (is_fail_op_in_grp) {
-          all_del_ops.push_back(fail_op);
-        } else {
-          global_layers.push_back(fail_op);
+    }  else if (fail_process_mode == 2) {
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: fail_process_mode 2\n";});
+      if (isOpTypeInGroup<tpu::UpsampleOp>(ops, break_ops)) {
+        for (auto op: break_ops) {
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: break_op:"<<show_op_info(op)<<"\n";});
+          global_layers.push_back(op);
         }
-      } else if (fail_process_mode == 1) {
-        if (!binary_search_group(ret?true:false, tmp_dot_graph_log)) {
-          all_del_ops.insert(all_del_ops.end(),
-                            divided_group_ops.begin(), divided_group_ops.end());
-          fail_process_mode = 0;
-          break;
-        }
-      } else if (fail_process_mode == 2) {
-        fail_process_mode = 0;
-        std::vector<Operation *> cut_ops;
-        if (isOpTypeInGroup<tpu::UpsampleOp>(ops, cut_ops)) {
-          global_layers.insert(global_layers.end(), cut_ops.begin(), cut_ops.end());
-          for (auto cut_op: cut_ops) {
-            auto del_ops = ExcludeOpFromGroup(_lgInfo, cut_op);
-            all_del_ops.insert(all_del_ops.end(), del_ops.begin(), del_ops.end());
-          }
-          auto last = std::unique(all_del_ops.begin(), all_del_ops.end());
-          all_del_ops.erase(last, all_del_ops.end());
-        }
-      } else {
-        break;
       }
     } else {
-      tmpLgInfo->group_success = true;
-      sub_ilp_LgInfos.push_back(tmpLgInfo);
-      break;
+      global_layers.assign(ops.begin(), ops.end());
+    }
+  } else {
+    group_success = true;
+    return;
+  }
+
+  if (break_ops.size() > 0) {
+    for (auto [i, grp] : llvm::enumerate(seg_grp_ops_by_global_op(ops, break_ops, break_op_reside_ptr))) {
+      if (grp.size() > 1) {
+        ilp_func_trace tmp_trace(llvm::formatv("ilp_debug: process_sub_group, i:{0}", i).str());
+        auto tmpLgInfo= CreateIlpLgInfo(sortOpsByOtherOpsOrder(_lgInfo.group_ops, grp));
+        tmpLgInfo->base_solver(pass_ir, cycle_calculator_);
+        group_cycle += tmpLgInfo->group_cycle;
+        sub_ilp_LgInfos.push_back(tmpLgInfo);
+      } else {
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: add global_layer:"<<show_op_info(grp[0])<<"\n";});
+        global_layers.push_back(grp[0]);
+      }
     }
   }
-  std::vector<Operation*> single_ops;
-  std::vector<std::shared_ptr<ilp_LgInfo>> tmp_base_groups;
-  //将从候选group排除所有op，不连通的block分成不同组来处理
-  for (auto new_grp: ConvertDisconnectedBlocksToGroups(all_del_ops, single_ops)) {
-    tmp_base_groups.push_back(CreateIlpLgInfo(sortOpsByOtherOpsOrder(oringal_ops, new_grp)));
-  }
-  prune_group_ops_by_global_layer(global_layers, tmp_base_groups);
-  for (auto tmp_base_group: tmp_base_groups) {
-    auto sorted_ops = sortOpsByOtherOpsOrder(oringal_ops, tmp_base_group->_lgInfo.group_ops);
-    tmp_base_group->_lgInfo.group_ops.assign(sorted_ops.begin(), sorted_ops.end());
-    tmp_base_group->base_solver(pass_ir, cycle_calculator_);
-    group_cycle += tmp_base_group->group_cycle;
-    sub_ilp_LgInfos.push_back(tmp_base_group);
-  }
-  //统计global layer cycle
-  global_layers.insert(global_layers.end(), single_ops.begin(), single_ops.end());
   for (auto global_layer: global_layers) {
     group_cycle += cycle_calculator_->getGlobalLayerCycle(global_layer);
   }
@@ -2772,23 +2431,23 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
                << "=======================================================\n"
                << "*********** ilp_layer_group **********\n"
                << "=======================================================\n";});
-  auto start = std::chrono::high_resolution_clock::now();
   std::vector<Operation*> subnet_ops;
   for (auto it: pass_ir->subnet_ops) {
     subnet_ops.push_back(it);
   }
   pass_ir->dot_graph_log_subnet = createSubnetGraph(subnet_ops);
   //------------------------part0: pre processing----------------------------------------------------
-  std::vector<std::shared_ptr<ilp_LgInfo>> base_groups, base_groups2;
-  init_ilp_base_groups(pass_ir, base_groups);
+  init_ilp_base_groups(pass_ir);
   pass_ir->dot_graph_log_subnet->add_node_label("global_info",
-    "init group_num:" + std::to_string(base_groups.size()));
+    "init group_num:" + std::to_string(pass_ir->tmp_base_groups.size()));
+  // pass_ir->dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
 
   //------------------------part1: processing----------------------------------------------------
-  for (int64_t i = 0, grp_num = base_groups.size(); i < grp_num; i++) {
+  std::vector<std::shared_ptr<ilp_LgInfo>> base_groups2;
+  for (int64_t i = 0, grp_num = pass_ir->tmp_base_groups.size(); i < grp_num; i++) {
     ilp_func_trace tmp_trace(llvm::formatv("high_solver, i:{0}", i).str());
-    auto best_lgInfo = base_groups[i]->high_solver(pass_ir, cycle_calculator_);
-    base_groups2.push_back(best_lgInfo?best_lgInfo:base_groups[i]);
+    auto best_lgInfo = pass_ir->tmp_base_groups[i]->high_solver(pass_ir, cycle_calculator_);
+    base_groups2.push_back(best_lgInfo?best_lgInfo:pass_ir->tmp_base_groups[i]);
   }
 
   auto base_groups3 = expandAllNestedLgInfo(base_groups2);
@@ -2808,16 +2467,12 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
     }
   }
   pass_ir->dot_graph_log_subnet->export_dot("svg_" + module::getName(module::getModuleOp()).str());
-
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "get ilp_layer_group time:" << elapsed.count() << "\n";});
 }
 
 void GroupMethod::process(LgPassIR *pass_ir) {
   std::vector<LgInfo> &lg_infos = pass_ir->lg_infos;
   llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
-
+  auto start = std::chrono::high_resolution_clock::now();
   runmode_ = getRunMode(subnet_ops[0]);
   switch (LgPass::OPTIONS.opt) {
   case 1:
@@ -2833,6 +2488,9 @@ void GroupMethod::process(LgPassIR *pass_ir) {
     simple_layer_group(lg_infos, subnet_ops);
     break;
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  llvm::errs() << "GroupMethod_process time:" << elapsed.count() << "\n";
 }
 
 void GroupMethod::get_final_groups(

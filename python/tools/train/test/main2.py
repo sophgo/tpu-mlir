@@ -37,8 +37,6 @@ def hook(module, fea_in, fea_out):
 #                         help="debug")
 #     parser.add_argument("--cmp", action='store_true',
 #                         help="enable cmp")
-#     parser.add_argument("--only_test_bwd", action='store_true',
-#                         help="only_test_bwd")
 
 #     args = parser.parse_args()
 #     tpu_mlir_jit.args = args
@@ -157,10 +155,10 @@ if __name__ == '__main__':
                         help="debug")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
-    parser.add_argument("--only_test_bwd", action='store_true',
-                        help="only_test_bwd")
-    parser.add_argument("--num_core", default=1, type=int, 
-                        help='The numer of TPU cores used for parallel computation')    
+    parser.add_argument("--skip_module_num", default=0, type=int,
+                        help='skip_module_num')
+    parser.add_argument("--num_core", default=1, type=int,
+                        help='The numer of TPU cores used for parallel computation')
     args = parser.parse_args()
     if args.chip == 'bm1690':
         os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')

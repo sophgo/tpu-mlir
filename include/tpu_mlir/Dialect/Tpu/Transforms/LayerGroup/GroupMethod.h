@@ -83,12 +83,12 @@ public:
   void ilp_layer_group(LgPassIR *pass_ir);
   void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
                        const llvm::SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
-  void get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                       const llvm::SetVector<Operation *> &subnet_ops, const std::vector<std::shared_ptr<ilp_LgInfo>> &tmp_base_groups);
+  void get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR *pass_ir,
                                 std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups);
   void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
-  void init_ilp_base_groups(LgPassIR* pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+  void init_ilp_base_groups(LgPassIR* pass_ir);
+
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;

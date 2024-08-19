@@ -39,7 +39,7 @@ typedef struct his_mem_struct {
 
 
 typedef struct mem_struct {
- int type; //0: normal tensor mem, 1:free mem , 2:reside value mem
+ int type; //0: normal tensor mem, 1:free mem , 2:reside value mem, 3:op buffer mem
  int addr;
  int size;
  int refc;
@@ -98,6 +98,7 @@ typedef struct mem_alloc_req_info {
   int size;
   std::string name;
   Value value;
+  bool isBuffer = false;
   mem_alloc_req_info()
       : slice_idx(0), size(0) {}
 } mem_alloc_req_info;
@@ -125,7 +126,7 @@ public:
   virtual ~lmem_alloc();
 
   std::shared_ptr<std::vector<std::pair<std::string, mem_struct>>> show_mem(int& total_free_size, int& max_free_mem_idx, int& max_free_mem_size);
-  bool alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size);
+  bool alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size, bool isBuffer = false);
   bool alloc2(int slice_idx, const std::string& name, Value value, int addr, int size);
   bool free(const std::string& name, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem = nullptr);
   bool get_mem_struct(const std::string& key, mem_struct& mem_s);
@@ -133,7 +134,8 @@ public:
 // private:
   std::vector<int> get_bank(const std::string& name);
   bool _alloc(int slice_idx, const std::string& name, Value value, int size, std::vector<int>& ret_bank_id,
-                        int& free_addr, int& confict_size, bool force_not_care_bank = false, bool for_move = false);
+              int& free_addr, int& confict_size, bool force_not_care_bank = false,
+              bool isBuffer = false, bool for_move = false);
   bool alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_mem_req, bool sort_by_size);
 
 // private:
