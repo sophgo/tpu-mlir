@@ -2036,4 +2036,38 @@ typedef struct
     int32_t out_zp;
     int32_t round_mode;
 } mean_std_scale_param_t;
+
+typedef struct {
+  int32_t groups;
+  int32_t ic;
+  int32_t n;
+  int32_t ih;
+  int32_t iw;
+  int32_t oc;
+  int32_t oh;
+  int32_t ow;
+  int32_t kh;
+  int32_t kw;
+  int32_t sh;
+  int32_t sw;
+  int32_t dh;
+  int32_t dw;
+  int32_t pt;
+  int32_t pb;
+  int32_t pl;
+  int32_t pr;
+  int32_t insh;
+  int32_t insw;
+} Convbwd_common_spec_t;
+
+typedef struct
+{
+  Convbwd_common_spec_t common;
+  uint64_t buffer_addr;
+  int32_t grad_input_enable;
+  int32_t grad_weight_enable;
+  int32_t grad_bias_enable;
+  int32_t use_multi_core;
+} Convbwd_param_t;
+
 #endif

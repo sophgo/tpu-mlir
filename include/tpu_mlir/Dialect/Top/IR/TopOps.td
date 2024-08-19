@@ -3474,4 +3474,32 @@ def Top_LogicalAndOp :Top_Op<"LogicalAnd">{
     AnyTensor:$output
   );
 }
+def Top_ConvbwdOp :Top_Op<"Convbwd">{
+  let summary = "convolution backward";
+  let description = [{calculate grad_input,grad_weight,grad_bias of convolution operation}];
+  let arguments = (ins
+    AnyTensor:$grad_out,
+    AnyTensor:$input,
+    AnyTensor:$kernel,
+    I64Attr:$groups,
+    I64ArrayAttr:$input_shape,
+    I64ArrayAttr:$grad_out_shape,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$stride,
+    I64ArrayAttr:$dilations,
+    I64ArrayAttr:$padding,
+    I64ArrayAttr:$inserts,
+    BoolAttr:$grad_input_enable,
+    BoolAttr:$grad_weight_enable,
+    BoolAttr:$grad_bias_enable
+  );
+  let results = (outs
+    AnyTensorOrNone:$grad_input,
+    AnyTensorOrNone:$grad_weight,
+    AnyTensorOrNone:$grad_bias
+  );
+  let extraClassDeclaration = [{
+    convbwd_attr_t parseParam();
+  }];
+}
 #endif // Top_OPS

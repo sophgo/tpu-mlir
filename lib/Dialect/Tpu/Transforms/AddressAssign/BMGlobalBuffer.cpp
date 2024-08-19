@@ -1266,6 +1266,53 @@ public:
   bool shouldPrint(tpu::WhereOp WhereOp) const override { return false;}
 };
 
+class ConvbwdGlobalBuffer : public OpRewriterPatternEx<tpu::ConvbwdOp> {
+public:
+  ConvbwdGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "ConvbwdGlobalBuffer") {}
+  LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp ConvbwdOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1690Family()) {
+      return failure();
+    }
+    #define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+    auto gradout_shape = module::getI64Array(ConvbwdOp.getGradOutShape());
+    auto kernel_shape = module::getI64Array(ConvbwdOp.getKernelShape());
+    int _32oc_gradout_shape[4] = {0,0,0,0};
+    int _32oc_kernel_shape[4] = {0,0,0,0};
+    // 32oc shape
+    _32oc_gradout_shape[0] = gradout_shape->at(1);
+    _32oc_gradout_shape[1] = gradout_shape->at(2)*gradout_shape->at(3);
+    _32oc_gradout_shape[2] = DIV_UP( gradout_shape->at(0), 32 ); // =0 ?
+    _32oc_gradout_shape[3] = 32;
+    _32oc_kernel_shape[0] = kernel_shape->at(1);
+    _32oc_kernel_shape[1] = kernel_shape->at(2)*kernel_shape->at(3);
+    _32oc_kernel_shape[2] = DIV_UP( kernel_shape->at(0), 32 ); // =0 ?
+    _32oc_kernel_shape[3] = 32;
+    // get32OCShape(gradout_shape,_32oc_gradout_shape);
+    // get32OCShape(kernel_shape,_32oc_kernel_shape);
+    int gradout_size = 1;
+    int kernel_size = 1;
+    int dim = 4;
+    for(int i = 0;i < dim;i++){
+      gradout_size *= _32oc_gradout_shape[i];
+      kernel_size *= _32oc_kernel_shape[i];
+    }
+    int64_t buffer_size = gradout_size>kernel_size ? gradout_size : kernel_size;
+    if (buffer_size > 0) {
+      auto type = module::getStorageType(ConvbwdOp.getInput());
+      std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+      auto buffer_type = RankedTensorType::get(buffer_shape, type);
+      auto buffer = tpu::BufferOp::create(ConvbwdOp, buffer_type);
+      ConvbwdOp.setOperand(ConvbwdOp.getNumOperands() - 1,
+                                  buffer);
+      return success();
+    }else{
+      return failure();
+    }
+  }
+  bool shouldPrint(tpu::ConvbwdOp ConvbwdOp) const override { return false;}
+};
 } // namespace bm168x
 
 namespace tpu {
@@ -1301,7 +1348,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       SortGlobalBuffer,
       CustomGlobalBuffer,
       WhereGlobalBuffer,
-      MatMulGlobalBuffer
+      MatMulGlobalBuffer,
+      ConvbwdGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }
