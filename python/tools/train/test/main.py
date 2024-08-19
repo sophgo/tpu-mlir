@@ -18,18 +18,23 @@ def enable_dynamo_debug_info():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chip", default="bm1684x", choices=['bm1684x', 'bm1690','sg2260'],
+    parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1690','sg2260'],
                         help="chip name")
     parser.add_argument("--debug", default="",
                         help="debug")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
-    parser.add_argument("--only_test_bwd", action='store_true',
-                        help="only_test_bwd")
+    parser.add_argument("--fast_test", action='store_true',
+                        help="fast_test")
+    parser.add_argument("--skip_module_num", default=0, type=int,
+                        help='skip_module_num')
     parser.add_argument("--num_core", default=1, type=int,
                         help='The numer of TPU cores used for parallel computation')
+    parser.add_argument("--opt", default=3, type=int,
+                        help='layer group opt')
+    parser.add_argument("--fp", default="",help="fp")
+    parser.add_argument("--rank",type=int,default=4,help="The dimension of the LoRA update matrices.")
     parser.add_argument("--model", default="",help="model name")
-    start_time = time.time()
     args = parser.parse_args()
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
@@ -99,7 +104,7 @@ if __name__ == '__main__':
         # exit(0)
         # with autocast(): #tpu device
     elif args.model == "resnet":
-        input = torch.randn((1, 3, 224, 224))
+        input = torch.randn((args.num_core, 3, 224, 224))
         import torchvision.models as models
         mod = models.resnet50()
         # from resnet50 import resnet50
@@ -114,8 +119,131 @@ if __name__ == '__main__':
         loss_d = model_opt(input_d)
         loss_d.sum().backward()
         optimizer.step()
+    elif args.model == "sd_lora":
+        batch_size = 1
+        from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler,DiffusionPipeline,DDPMScheduler,UNet2DConditionModel
+        from transformers import CLIPTokenizer
+        import torch.nn.functional as F
+        from diffusers.models.attention_processor import LoRAAttnProcessor
+        from diffusers.loaders import AttnProcsLayers
+        import torch.nn as nn
+        model_id = "runwayml/stable-diffusion-v1-5"
+        cliptokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+        # noise_scheduler = DDPMScheduler.from_pretrained(model_id, subfolder="scheduler")
+        num_train_timesteps = 1
+        beta_start = 0.0001
+        beta_end = 0.02
+        in_size = 512
+        in_size2 = 64
+        if args.fast_test:
+            in_size = 32
+            in_size2 = 4
+        if args.fp == "fp16":
+            mod = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+            vae_input = torch.randn(batch_size,3,in_size,in_size,dtype = torch.float16).to(device)
+            noise = torch.randn(batch_size,4,in_size2,in_size2,dtype = torch.float16).to(device)
+            # beta = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
+            # alpha = 1.0 - beta
+            # alphas_cumprod = torch.cumprod(alpha, dim=0).to(device,dtype=torch.float16)
+            alphas_cumprod = torch.tensor(1,dtype=torch.float16).to(device)
+        else:
+            mod = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32) #float16
+            vae_input = torch.randn(batch_size,3,in_size,in_size).to(device)
+            noise = torch.randn(batch_size,4,in_size2,in_size2).to(device)
+            beta = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
+            alpha = 1.0 - beta
+            alphas_cumprod = torch.cumprod(alpha, dim=0).to(device)
+        timesteps = torch.tensor(1).to(device)
+        timesteps = timesteps.long()
+        example_text = ['hello world']*batch_size
+        clip_input = cliptokenizer(example_text,padding='max_length',
+                            max_length = 77,
+                            truncation=True,#True
+                            return_tensors="pt")
+        # mask = clip_input['attention_mask'].to(device)
+        input_id = clip_input['input_ids'].to(device)
+
+        unet = mod.unet.to(device)
+        vae = mod.vae.to(device)
+        text_encoder = mod.text_encoder.to(device)
+
+        unet.requires_grad_(False)
+        vae.requires_grad_(False)
+        text_encoder.requires_grad_(False)
+        ########## set lora_layers ############
+        lora_attn_procs = {}
+        for name in unet.attn_processors.keys():
+            cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
+            if name.startswith("mid_block"):
+                hidden_size = unet.config.block_out_channels[-1]
+            elif name.startswith("up_blocks"):
+                block_id = int(name[len("up_blocks.")])
+                hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+            elif name.startswith("down_blocks"):
+                block_id = int(name[len("down_blocks.")])
+                hidden_size = unet.config.block_out_channels[block_id]
+
+            lora_attn_procs[name] = LoRAAttnProcessor(
+                hidden_size=hidden_size,
+                cross_attention_dim=cross_attention_dim,
+                rank=args.rank,
+            )
+        unet.set_attn_processor(lora_attn_procs)
+        lora_layers = AttnProcsLayers(unet.attn_processors)
+
+        unet = unet.to(device)
+
+        optimizer = torch.optim.SGD(lora_layers.parameters(), lr=0.01)
+        optimizer.zero_grad()
+
+        class noise_module(nn.Module):
+            def __init__(self):
+                super(noise_module,self).__init__()
+            def forward(self,original_samples,noise,timesteps,alphas_cumprod):
+                alphas_cumprod = alphas_cumprod.to(device=original_samples.device, dtype=original_samples.dtype)
+                timesteps = timesteps.to(original_samples.device)
+
+                # sqrt_alpha_prod = alphas_cumprod[timesteps] ** 0.5
+                sqrt_alpha_prod = alphas_cumprod ** 0.5
+                sqrt_alpha_prod = sqrt_alpha_prod.flatten()
+                while len(sqrt_alpha_prod.shape) < len(original_samples.shape):
+                    sqrt_alpha_prod = sqrt_alpha_prod.unsqueeze(-1)
+
+                # sqrt_one_minus_alpha_prod = (1 - alphas_cumprod[timesteps]) ** 0.5
+                sqrt_one_minus_alpha_prod = (1 - alphas_cumprod) ** 0.5
+                sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.flatten()
+                while len(sqrt_one_minus_alpha_prod.shape) < len(original_samples.shape):
+                    sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.unsqueeze(-1)
+
+                noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
+                return noisy_samples
+
+        class sd_module(nn.Module):
+            def __init__(self,unet,vae,text_encoder,noise_scheduler,tokenizer):
+                super(sd_module, self).__init__()
+                self.unet = unet
+                self.vae = vae
+                self.text_encoder = text_encoder
+                self.noise_scheduler = noise_scheduler
+                self.mse_loss = nn.MSELoss(reduction='sum')
+                self.tokenizer = tokenizer
+                self.seq_len = 77
+
+            def forward(self,noise,vae_input,timesteps,input_id,alphas_cumprod):
+                latents = self.vae.encode(vae_input).latent_dist.sample()
+                noisy_latents = self.noise_scheduler(latents.to(device), noise, timesteps,alphas_cumprod)
+                encoder_hidden_state = self.text_encoder(input_id)[0]
+                model_pred = self.unet(noisy_latents, timesteps, encoder_hidden_state)[0]
+                loss = self.mse_loss(model_pred.float(), noise.float())
+                return loss
+        noise_scheduler = noise_module()
+        sd = sd_module(unet,vae,text_encoder,noise_scheduler,cliptokenizer)
+        sd_opt = torch.compile(sd,backend=aot_backend)
+        loss = sd_opt(noise,vae_input,timesteps,input_id,alphas_cumprod)
+        loss.backward()
+        optimizer.step()
     elif args.model == "yolo":
-        input = torch.randn((1,3,224,224))
+        input = torch.randn((args.num_core,3,224,224))
         from nets.yolo import YoloBody
         anchors_mask    = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
         num_classes = 80
@@ -217,8 +345,7 @@ if __name__ == '__main__':
         loss_d.sum().backward()
         optimizer.step()
     elif args.model == "test_model":
-        batch_size = args.num_core
-        input = torch.randn((batch_size, 3, 224, 224))
+        input = torch.randn((args.num_core, 3, 224, 224))
         input_d = input.to(device)
 
         print('start test test_model1')

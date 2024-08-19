@@ -76,10 +76,10 @@ def _get_disc_decomp():
             # aten.native_group_norm,
             aten.native_group_norm_backward,
             # aten.native_layer_norm,
-            # aten.native_layer_norm_backward,
+            aten.native_layer_norm_backward,
             # aten.std_mean.correction,
             # aten._softmax,
-            # aten._softmax_backward_data,
+            aten._softmax_backward_data,
             # aten.stack,
             # aten.t,
             aten.tanh_backward,
@@ -105,6 +105,8 @@ def _get_disc_decomp():
             aten.nll_loss_backward,
             aten._log_softmax_backward_data,
             aten.nll_loss_forward,
+            aten.mse_loss,
+            aten.mse_loss_backward,
         ]
     )
     return decompositions_dict
@@ -134,23 +136,21 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         graph_idx += 1
     os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
     print('run tpu_mlir_compiler, original graph:')
-    # fx_g.graph.print_tabular()
+    #fx_g.graph.print_tabular()
     save_fxgraph_dot(f"fx_g_{time_str}", fx_g)
 
-
-    for i, node in enumerate(fx_g.graph.nodes):
-        print(f'>>> {i}th op, name:', node.name, 'target:',node.target, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs,
-              'val:', node.meta['val'] if 'val' in node.meta else 'None')
-
-    if args.only_test_bwd:
-        args.only_test_bwd = False
+    # for i, node in enumerate(fx_g.graph.nodes):
+    #     print(f'>>> {i}th op, name:', node.name, 'target:',node.target, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs,
+    #           'val:', node.meta['val'] if 'val' in node.meta else 'None')
+    if args.skip_module_num > 0:
+        args.skip_module_num -= 1
+        print('skip_module_num:', args.skip_module_num)
         return make_boxed_func(fx_g.forward)
-
 
     fx_g_bk = copy.deepcopy(fx_g)
 
     from torch.fx.passes.fake_tensor_prop import FakeTensorProp
-    FakeTensorProp(fx_g).propagate(*example_inputs)
+    # FakeTensorProp(fx_g).propagate(*example_inputs)
 
     if fx_pass_for_bmm_expand(fx_g):
         print('run tpu_mlir_compiler, updated graph:')
@@ -180,15 +180,15 @@ def tpu_mlir_compiler(fx_g, example_inputs):
             # if node.target == torch.ops.aten.view:
             #     node.target = torch.ops.aten.reshape
 
-        for node in fx_g.graph.nodes:
-            new_kwargs = {}
-            for k, v in node.kwargs.items():
-                if isinstance(v, torch.device):
-                    v = v.type # device(type='cuda', index=0)
-                new_kwargs[k] = v #将device改为字符串形式, why?
-            node.kwargs = new_kwargs
-        fx_g.graph.lint()
-        fx_g.recompile()
+        # for node in fx_g.graph.nodes:
+        #     new_kwargs = {}
+        #     for k, v in node.kwargs.items():
+        #         if isinstance(v, torch.device):
+        #             v = v.type # device(type='cuda', index=0)
+        #         new_kwargs[k] = v #将device改为字符串形式, why?
+        #     node.kwargs = new_kwargs
+        # fx_g.graph.lint()
+        # fx_g.recompile()
 
         bwd_graph = len([node for node in fx_g.graph.nodes if node.op == 'placeholder' and node.name == 'tangents_1']) > 0
         # partitioned_module = partition(fx_g, min_block_size = 3)
@@ -207,6 +207,7 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         partitioned_module = convert_module_fx(f'{time_str}_main_mod', fx_g, args, bwd_graph)
 
     return make_boxed_func(partitioned_module.forward)
+
 
 def skip_compiler(gm, example_inputs):
     print('run compiler, graph:')
@@ -240,6 +241,5 @@ device = torch.device(tpu_dev)
 #     else "cpu"
 # )
 
-### end
 #from functorch.compile import min_cut_rematerialization_partition
 aot_backend = aot_autograd(bw_compiler = tpu_mlir_compiler,fw_compiler=tpu_mlir_compiler,decompositions=_get_disc_decomp())#fw_compiler=skip_compiler,

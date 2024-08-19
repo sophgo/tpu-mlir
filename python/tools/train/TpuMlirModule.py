@@ -51,16 +51,26 @@ def torch_dtype_from_tpu_mlir(dtype) -> torch.dtype:
     else:
         raise TypeError("%s is not supported by torch" % dtype)
 
+def get_np_type_from_torch_type2(type):
+    if type == torch.float16:
+        return np.float16
+    elif type == torch.float32:
+        return np.float32
+    elif type == torch.bool:
+        return np.bool_
+    else:
+        return np.float32
 
 class TpuMlirModule(torch.nn.Module):
     def __init__(
-        self, args, model_file, in_tensor_name_to_idx_dict, output_changed_shapes, output_tensor_names = None, output_dtypes = None, return_none_count = 0
+        self, args, model_file, in_tensor_name_to_idx_dict, output_changed_shapes, output_tensor_names = None, output_dtypes = None, output_shapes = [], return_none_count = 0
     ):
         super(TpuMlirModule, self).__init__()
-        print(f'TpuMlirModule __init__ output_dtypes:{output_dtypes}')
         self._register_state_dict_hook(TpuMlirModule._on_state_dict)
         self.args = args
+        output_shapes = [[1] if i == [] else i for i in output_shapes]
         self.output_dtypes = output_dtypes
+        self.output_shapes = output_shapes
         self.model_file = model_file
         self.initialized = False
         self.return_none_count = return_none_count
@@ -68,7 +78,8 @@ class TpuMlirModule(torch.nn.Module):
         self.in_tensor_name_to_idx_dict = in_tensor_name_to_idx_dict
         self.output_tensor_names = output_tensor_names
         self.output_tensor_names = None
-        if model_file:
+        self.skip_runtime_call = False
+        if model_file and not self.skip_runtime_call:
             self._initialize()
 
     def _initialize(self):
@@ -120,6 +131,16 @@ class TpuMlirModule(torch.nn.Module):
 
     def forward(self, *inputs):
         print(f'>>>runtime call bmodel:{self.model_file}:')
+
+        tpu_outputs: List[torch.Tensor] = []
+        if self.skip_runtime_call:
+            if self.output_dtypes is not None:
+                for shape, dtype in zip(self.output_shapes, self.output_dtypes):
+                    output = np.random.rand(*shape).astype(get_np_type_from_torch_type2(dtype))
+                    tpu_outputs.append(torch.from_numpy(output).to(device))
+            if self.return_none_count > 0:
+                tpu_outputs.extend([None for i in range(self.return_none_count)])
+            return tuple(tpu_outputs)
         print('input info:')
         new_inputs = []
         for net_input in self.net.inputs:
@@ -162,10 +183,12 @@ class TpuMlirModule(torch.nn.Module):
                 else:
                     t0 = time.time()
                     dyn_output_shapes = self.net.forward()
-                    print(f'time:{time.time()-t0}')
+                    elapsed_time = time.time() - t0
+                    print(f'time: {elapsed_time}')
+                    with open('model_runtime.txt', 'a') as f:
+                        f.write(f'Model run time: {elapsed_time} seconds\n')
             with torch.autograd.profiler.record_function("TpuMlirModule:ProcessOutputs"):
                 # create output tensors
-                tpu_outputs: List[torch.Tensor] = []
                 dyn_idx = 0
                 for i in self.net.outputs:
                     if self.output_tensor_names is not None and i.name not in self.output_tensor_names:
@@ -189,6 +212,10 @@ class TpuMlirModule(torch.nn.Module):
                     for output, dtype in zip(tpu_outputs, self.output_dtypes):
                         if dtype == torch.int64:
                             output = output.int()
+                        elif dtype == torch.float16:
+                            output = output.half()
+                        else:
+                            output = output.float()
                 print('forward output shape:', [i.shape for i in tpu_outputs])
                 if self.return_none_count > 0:
                     tpu_outputs.extend([None for i in range(self.return_none_count)])
@@ -202,6 +229,9 @@ class TpuMlirModule(torch.nn.Module):
             for i in range(len(tpu_outputs)):
                 if tpu_outputs[i]!=None:
                     tpu_outputs[i] = tpu_outputs[i].to(device)
+            ### destory ###
+            del self.model
+            del self.net
             return tuple(tpu_outputs)
 
     def get_layer_info(self) -> str:

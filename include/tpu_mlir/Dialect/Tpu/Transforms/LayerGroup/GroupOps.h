@@ -61,7 +61,7 @@ protected:
   void CreateLmemMoveOp(int64_t ts, ts_move_info& move_info);
   void CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
                      const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
-                     group_type_t group_type, bool can_merge);
+                     const LgInfo& lgInfo, bool can_merge);
   void CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id, l2mem_alloc_Ptr l2mem_alloc_ptr);
   Value CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int64_t slice_idx, int64_t pipe_id,
                        group_type_t group_type, bool can_merge);

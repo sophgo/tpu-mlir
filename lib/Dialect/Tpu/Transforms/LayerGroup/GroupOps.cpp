@@ -151,37 +151,30 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     for (auto v : lg_pass_ir_->subnet_return_opds) {
       llvm::outs()<<"subnet_return_opds:"<<i++<<" name:"<<module::getName(v).str()<<"\n";
     }
-  } else {
-    func.walk([&](Operation *op) {
-      // if (isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op)) {
-      if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
-        // do nothing
-      } else if (isa<ReturnOp>(op)) {
-        lg_pass_ir_->returnOp = op;
-      } else {
-        tmp_local_layer_group.clear();
-        auto itr = std::find(all_local_layer_nodes.begin(), all_local_layer_nodes.end(), op);
-        if (itr == all_local_layer_nodes.end() && isLgSupport(op)) {
-          find_local_layer_base_group(op);
-          lg_pass_ir_->tmp_base_groups.push_back(CreateIlpLgInfo(tmp_local_layer_group));
-        }
-      }
-    });
   }
 
-  std::vector<Operation*> global_layers;
-  func.walk([&](Operation *op) {
-    if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, ReturnOp>(op) && !isLgSupport(op)) {
-      global_layers.push_back(op);
-    }
-  });
-
-  std::vector<Operation*> tmp_ops;
+  std::vector<Operation*> global_layers, tmp_ops;
   for (auto itr: lg_pass_ir_->subnet_ops) {
     tmp_ops.push_back(itr);
   }
+  func.walk([&](Operation *op) {
+    if (isa<ReturnOp>(op)) {
+      lg_pass_ir_->returnOp = op;
+    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op) && !isLgSupport(op)) {
+      if (op->getResults().size() == 1 && is_value_weight(op->getResults()[0])) {
+        tmp_ops.erase(std::remove(tmp_ops.begin(), tmp_ops.end(), op), tmp_ops.end());
+        return WalkResult::skip();
+      }
+      global_layers.push_back(op);
+      llvm::errs()<<"find global_layer: "<<show_op_info(op)<<"\n";
+    }
+    return WalkResult::advance();
+  });
+
   GetAllParallelNodes(tmp_ops, lg_pass_ir_->map_parallel_op_subnet);
-  prune_group_ops_by_global_layer(global_layers, lg_pass_ir_->tmp_base_groups);
+  for (auto grp: seg_grp_ops_by_global_op(tmp_ops, global_layers)) {
+    lg_pass_ir_->tmp_base_groups.push_back(CreateIlpLgInfo(grp));
+  }
 }
 
 void GroupOps::process(int64_t opt) {
@@ -564,6 +557,10 @@ void GroupOps::buildMlir_for_opt3() {
                   break;
                 }
               }
+
+              if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD) {
+                tmp_need_store_load_value.push_back(it.value);
+              }
             }
           }
         }
@@ -577,7 +574,8 @@ void GroupOps::buildMlir_for_opt3() {
               if (it.info.mode2 & TIMESTEP2_STORE) {
                 LOG(INFO) <<"add into will_store_value for store, name:"<<out_name;
                 tmp_will_store_value.push_back(it.value);
-              } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD && ILP_time_step->mapILPVarInfo[it.varName].store_load_mode == 0) {
+              } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD
+                        && ILP_time_step->mapILPVarInfo[it.varName].store_load_mode == 0) {
                 LOG(INFO) <<"add into will_store_value for store_and_load, name:"<<out_name;
                 tmp_will_store_value.push_back(it.value);
               }
@@ -631,9 +629,9 @@ void GroupOps::buildMlir_for_opt3() {
       }
       bool one_grp = lg_pass_ir_->ILP_time_steps[group_idx].size() == 1;
 
-      llvm::outs() << "group"<<group_idx<<", in and out:\n";
+      llvm::outs() << "group"<<group_idx<< ", group_id:"<<lg_info.group_id<<", in and out:\n";
       for (auto op : lg_info.group_ops) {
-        llvm::outs() << "  op:"<<module::getName(op).str()<<"\n";
+        llvm::outs() << "  op:"<<show_op_info(op)<<"\n";
       }
       for (auto out: lg_info.group_outs) {
         llvm::outs() << "    out:"<<module::getName(out).str()<<"\n";
@@ -667,9 +665,11 @@ void GroupOps::buildMlir_for_opt3() {
           }
         }
         for (auto in : need_store_load_value[pipe_id]) {
-          auto outbuffer_out = map_store_tensor_to_outbuffer_out[in];
-          in_types.push_back(outbuffer_out.getType());
-          operands.push_back(outbuffer_out);
+          if (map_store_tensor_to_outbuffer_out.find(in) != map_store_tensor_to_outbuffer_out.end()) {
+            auto outbuffer_out = map_store_tensor_to_outbuffer_out[in];
+            in_types.push_back(outbuffer_out.getType());
+            operands.push_back(outbuffer_out);
+          }
         }
         std::map<Value, std::vector<Value>, value_compare> map_output_to_merge_slice;
         std::map<Value, Value, value_compare> map_group_out_to_yield_in;
@@ -729,7 +729,6 @@ void GroupOps::buildMlir_for_opt3() {
         groupOp.getBody().push_back(body_);
 
         //  replace outputs
-        int i = 0;
         for (auto it : llvm::enumerate(groupOp.getResults())) {
           if (one_grp) {
             outputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
@@ -741,7 +740,6 @@ void GroupOps::buildMlir_for_opt3() {
           } else {
             map_output_to_merge_slice_for_grp[outputs[it.index()]].push_back(it.value());
           }
-          i++;
         }
 
         current_op_ = nullptr;
@@ -780,16 +778,21 @@ void GroupOps::buildMlir_for_opt3() {
             if (it.var_value == 1) {
               std::vector<int64_t> ncdhw_idx = ILP_time_step->ncdhw_steps.begin()->second[it.slice_idx];
               if (it.info.mode2 & TIMESTEP2_LOAD) {
-                CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info.type, can_merge);
+                CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge);
               } else if (it.info.mode2 & TIMESTEP2_STORE) {
                 auto storeOp_out = CreateStoreOp2(it.value, it.info, ts_id, it.slice_idx, pipe_id, lg_info.type, can_merge);
                 map_output_to_merge_slice[it.value].push_back(storeOp_out);
                 map_group_out_to_yield_in[it.value] = storeOp_out;
               } else if (it.info.mode2 & TIMESTEP2_STORE_AND_LOAD) {
                 if (ILP_time_step->mapILPVarInfo[it.varName].store_load_mode == 0) {
-                  CreateStoreOp2(it.value, it.info, ts_id, it.slice_idx, pipe_id, lg_info.type, can_merge);
+                  auto storeOp_out = CreateStoreOp2(it.value, it.info, ts_id, it.slice_idx, pipe_id, lg_info.type, can_merge);
+                  if (std::find(lg_info.group_outs.begin(), lg_info.group_outs.end(), it.value)
+                            != lg_info.group_outs.end()) {
+                    map_output_to_merge_slice[it.value].push_back(storeOp_out);
+                    map_group_out_to_yield_in[it.value] = storeOp_out;
+                  }
                 } else {
-                  CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info.type, can_merge);
+                  CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge);
                 }
               }
             }
@@ -868,6 +871,14 @@ void GroupOps::buildMlir_for_opt3() {
           new_stores.push_back(map_group_out_to_yield_in[out]);
         }
         builder.setInsertionPointAfter(current_op_);
+#if 0
+        for (auto [i, new_store] : llvm::enumerate(new_stores)) {
+          LOG(INFO) <<"idx:"<<i<<", store value:";
+          new_store.dump();
+        }
+        LOG(INFO) <<"group_loc:";
+        group_loc.dump();
+#endif
         builder.create<tpu::YieldOp>(group_loc, new_stores);
         LOG(INFO) <<"groupOp.dump: ";
         groupOp.dump();
@@ -1276,7 +1287,7 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
 
 void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
                             const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
-                            group_type_t group_type, bool can_merge) {
+                            const LgInfo& lgInfo, bool can_merge) {
   Value &input = ts_var.value;
   tensor_info_t& ti = ts_var.info;
   int64_t slice_idx = ts_var.slice_idx;
@@ -1286,7 +1297,7 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
   bool train = true;
   std::string name = "load_";
   std::string in_name = module::getName(input).str();
-  LOG(INFO) <<"op in_name: " << in_name;
+  LOG(INFO) <<"load_value: " << in_name;
   if (inputOp != nullptr) {
     name = name + in_name;
   } else {
@@ -1331,12 +1342,13 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
   std::string key = llvm::formatv("{0}_slice{1}", in_name, slice_idx).str();
   auto mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.addr;
   if (map_store_to_load_value.find(input) != map_store_to_load_value.end()) {
+    //load的value曾被store过，则使用第2次分配的lmem地址
     mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[1].second.addr;
   }
   auto mem_s_size = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].size;
   attrs.push_back(builder.getNamedAttr(
       LocalGenInterface::kLayerGroupAttrName,
-      getLgParam(ti, ts, mem_s_addr, mem_s_size, group_type, 0, 0, slice_idx, can_merge)));
+      getLgParam(ti, ts, mem_s_addr, mem_s_size, lgInfo.type, 0, 0, slice_idx, can_merge)));
   if (current_op_ == nullptr) {
     builder.setInsertionPointToStart(body_);
   } else {
@@ -1356,12 +1368,18 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
   }
 
   std::vector<Value> operands;
-  if (map_old_grp_out_to_new_grp_out.find(input) != map_old_grp_out_to_new_grp_out.end()) {
+  if (map_old_grp_out_to_new_grp_out.find(input) != map_old_grp_out_to_new_grp_out.end()
+   && std::find(lgInfo.group_ins.begin(), lgInfo.group_ins.end(), input) != lgInfo.group_ins.end()) {
     operands.push_back(map_old_grp_out_to_new_grp_out[input]);
   } else {
     // map_old_to_new_value for moveOp, wxc todo
     if (map_store_to_load_value.find(input) != map_store_to_load_value.end()) {
-      operands.push_back(map_store_to_load_value[input]);
+      auto store_op = dyn_cast<tpu::StoreOp>(map_store_to_load_value[input].getDefiningOp());
+      if (isa<top::NoneOp>(store_op->getOperand(1).getDefiningOp())) {
+        operands.push_back(store_op->getOperand(0));
+      } else {
+        operands.push_back(map_store_to_load_value[input]);
+      }
     } else if (map_l2m_out_to_load_in.find(input) != map_l2m_out_to_load_in.end()){
       operands.push_back(map_l2m_out_to_load_in[input]);
     } else {
@@ -1383,12 +1401,8 @@ Value GroupOps::CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int
   auto new_value = map_old_to_new_value[output][slice_idx];
   operands.push_back(new_value);
   auto out_tensor_name = module::getName(output).str();
-
-
   std::string name = "store_" + out_tensor_name + "_pipe" +std::to_string(pipe_id) + "_slice" + std::to_string(slice_idx);
-  LOG(INFO) <<"sotre op output_name: " << name;
-  // dot_graph_log->add_edge_into_subgraph(module::getName(new_value).str(), name);
-
+  LOG(INFO) <<"store_value: " << name;
   std::string key = llvm::formatv("{0}_slice{1}", out_tensor_name, slice_idx).str();
   auto mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.addr;
   auto mem_s_size = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].size;
@@ -1404,16 +1418,16 @@ Value GroupOps::CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int
     storeOp =
         builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
                                     output.getType(), operands, attrs);
-    if (std::find(need_store_load_value[pipe_id].begin(), need_store_load_value[pipe_id].end(), output)
-                  != need_store_load_value[pipe_id].end()) {
-      map_store_to_load_value[output] = storeOp->getResult(0);
-    }
   } else {
     auto noneOp = module::getNoneOp(output.getDefiningOp());
     operands.push_back(noneOp);
     storeOp =
         builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
                                     output.getType(), operands, attrs);
+  }
+  if (std::find(need_store_load_value[pipe_id].begin(), need_store_load_value[pipe_id].end(), output)
+                != need_store_load_value[pipe_id].end()) {
+    map_store_to_load_value[output] = storeOp->getResult(0);
   }
 
   auto label = llvm::formatv("ts:{0}", ts).str();

@@ -271,7 +271,7 @@ lmem_alloc::show_mem(int& total_free_size, int& max_free_mem_idx, int& max_free_
 }
 
 bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int size, std::vector<int>& ret_bank_id,
-                        int& free_addr, int& conflict_size, bool force_not_care_bank, bool for_move) {
+                        int& free_addr, int& conflict_size, bool force_not_care_bank, bool isBuffer, bool for_move) {
   std::vector<int> vec_bank_id, all_conf_bank_id;
   bool care_bank = false;
   if (!force_not_care_bank) {
@@ -366,7 +366,7 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
       mem_s.size = size;
       mem_s.value = value;
       mem_s.slice_idx = slice_idx;
-      mem_s.type = 0;
+      mem_s.type = isBuffer?3:0;
       std::string key = convert_name_to_key(name, slice_idx);
       if (mem_dict.find(key) == mem_dict.end()) {
         mem_dict[key] = mem_s;
@@ -380,12 +380,18 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
         tmp_mem_s.addr = free_addr;
         tmp_mem_s.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
         if (vec_mem_alloc_his.find(key) != vec_mem_alloc_his.end()) {
-          if (for_move) {
-            // auto& itr = vec_mem_alloc_his[key].vec_reload_addr.back();
-            // itr.second.addr = free_addr;
-            // itr.second.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
+          if (isBuffer) {
+            auto& itr = vec_mem_alloc_his[key].vec_reload_addr.back();
+            itr.second.addr = free_addr;
+            itr.second.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
           } else {
-            vec_mem_alloc_his[key].vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
+            if (for_move) {
+              // auto& itr = vec_mem_alloc_his[key].vec_reload_addr.back();
+              // itr.second.addr = free_addr;
+              // itr.second.bank_id.assign(ret_bank_id.begin(), ret_bank_id.end());
+            } else {
+              vec_mem_alloc_his[key].vec_reload_addr.push_back(std::make_pair(0xFFFFBBBB, tmp_mem_s));
+            }
           }
         } else {
           his_mem_struct his_mem_s;
@@ -417,7 +423,7 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
     std::vector<Value> vec_req_mem_value;
     for (auto it : vec_mem_req) {
       vec_req_mem_value.push_back(it.value);
-      if (!alloc(ts_idx, it.slice_idx, it.name, it.value, it.size)) {
+      if (!alloc(ts_idx, it.slice_idx, it.name, it.value, it.size, it.isBuffer)) {
         fprintf(stderr, "_alloc fail\n");
         return false;
       }
@@ -493,7 +499,7 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
     for (auto i : order_idx) {
       fprintf(stderr, "  alloc %dth tensor\n", i);
       if (!_alloc(vec_mem_req[i].slice_idx, vec_mem_req[i].name, vec_mem_req[i].value, vec_mem_req[i].size,
-                  ret_bank_id, free_addr, conflict_size)) {
+                  ret_bank_id, free_addr, conflict_size, false, vec_mem_req[i].isBuffer)) {
         fprintf(stderr, "_alloc fail\n");
         success = false;
         break;
@@ -529,7 +535,7 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
   for (int i : min_conflict_order_idx) {
     fprintf(stderr, "      start alloc %dth tensor\n", i);
     if (!_alloc(vec_mem_req[i].slice_idx, vec_mem_req[i].name, vec_mem_req[i].value, vec_mem_req[i].size,
-                  ret_bank_id, free_addr, conflict_size)) {
+                  ret_bank_id, free_addr, conflict_size, false, vec_mem_req[i].isBuffer)) {
       fprintf(stderr, "_alloc fail\n");
       return false;
     }
@@ -543,12 +549,12 @@ bool lmem_alloc::alloc_multi(int ts_idx, std::vector<mem_alloc_req_info>& vec_me
 
 
 //refc：暂时只使用默认值1，考虑弃用
-bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size) {
+bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value value, int size, bool isBuffer) {
   fprintf(stderr, "%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}", name, size, slice_idx).str().c_str());
   assert(size > 0);
   int free_addr = -1, conflict_size = -1;
   std::vector<int> ret_bank_id;
-  if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, conflict_size)) {
+  if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, conflict_size, false, isBuffer)) {
     fprintf(stderr, "      alloc fail, current mem status:\n");
     // return false;
     int total_free_size = 0, max_free_mem_idx = 0, max_free_mem_size = 0;
@@ -704,7 +710,8 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
           fprintf(stderr, "  start alloc %dth tensor\n", i);
           if (i == -1) {
             fprintf(stderr, "  alloc size:%d\n", size);
-            if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, conflict_size, force_not_care_bank)) {
+            if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr,
+                        conflict_size, force_not_care_bank, isBuffer)) {
               fprintf(stderr, "_alloc fail 1\n");
               int unused;
               // (void)lmem_alloc_ptr->show_mem(unused, unused, unused);
@@ -714,8 +721,10 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
             }
           } else {
             auto mem_s = vec_mem_struct2[i].second;
-            auto name = module::getName(vec_mem_struct2[i].second.value).str();
-            if (!_alloc(mem_s.slice_idx, name, mem_s.value, mem_s.size, ret_bank_id, free_addr, conflict_size, force_not_care_bank)) {
+            std::string tmpStr = "slice_" + std::to_string(mem_s.slice_idx);
+            auto name = vec_mem_struct2[i].first.substr(0, vec_mem_struct2[i].first.size() - tmpStr.size());
+            if (!_alloc(mem_s.slice_idx, name, mem_s.value, mem_s.size, ret_bank_id, free_addr,
+                        conflict_size, force_not_care_bank, isBuffer)) {
               fprintf(stderr, "_alloc fail 2\n");
               int unused;
               // (void)lmem_alloc_ptr->show_mem(unused, unused, unused);
@@ -760,14 +769,15 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
       auto i = new_vec_move_mem[it];
       fprintf(stderr, "  i:%d\n", i);
       if (i == -1) {
-        if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, conflict_size, force_not_care_bank)) {
+        if (!_alloc(slice_idx, name, value, size, ret_bank_id, free_addr, conflict_size, force_not_care_bank, isBuffer)) {
           return false;
         }
       } else {
-        auto op_name = module::getName(vec_mem_struct2[i].second.value).str();
         auto mem_s = vec_mem_struct2[i].second;
+        std::string tmpStr = "slice_" + std::to_string(mem_s.slice_idx);
+        auto op_name = vec_mem_struct2[i].first.substr(0, vec_mem_struct2[i].first.size() - tmpStr.size());
         if (!_alloc(mem_s.slice_idx, op_name, mem_s.value, mem_s.size,
-             ret_bank_id, free_addr, conflict_size, force_not_care_bank, true)) {
+             ret_bank_id, free_addr, conflict_size, force_not_care_bank, isBuffer, true)) {
           return false;
         }
         new_vec_move_mem_new_addr[i] = free_addr;
@@ -780,13 +790,13 @@ bool lmem_alloc::alloc(int ts_idx, int slice_idx, const std::string& name, Value
     ts_move_info tmp;
     for (int it : min_conflict_order_idx) {
       auto i = new_vec_move_mem[it];
-      if (i != -1) {
-       tmp.move_value.push_back(new_vec_move_value[i]);
-       tmp.move_src_add.push_back(new_vec_move_mem_old_addr[i]);
-       tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);
-       tmp.move_size.push_back(new_vec_move_size[i]);
-       tmp.slice_idx.push_back(new_vec_slice_idx[i]);
-      }
+      if (i != -1 && vec_mem_struct2[i].second.type != 3) {
+          tmp.move_value.push_back(new_vec_move_value[i]);
+          tmp.move_src_add.push_back(new_vec_move_mem_old_addr[i]);
+          tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);
+          tmp.move_size.push_back(new_vec_move_size[i]);
+          tmp.slice_idx.push_back(new_vec_slice_idx[i]);
+        }
     }
     tmp.name = "lmem_tensor_move_at_ts"+std::to_string(ts_idx);
     if (m_pILPTimeStep->inserted_timestep_table_.find(ts_idx) == m_pILPTimeStep->inserted_timestep_table_.end()) {
@@ -1030,9 +1040,9 @@ int ILPTimeStep::addConstraint(double lb, double ub, std::vector<std::pair<int, 
       }
       MPSolver::ResultStatus result_status = solver->Solve();
       if (result_status == MPSolver::OPTIMAL || result_status == MPSolver::FEASIBLE) {
-        llvm::errs() << "Solve success"<<", info_for_tips:"<<info_for_tips<<", idx:"<<vec_constraints.size() - 1<<"\n";
+        llvm::errs() << "Solve success, info_for_tips:"<<info_for_tips<<", idx:"<<vec_constraints.size() - 1<<"\n";
       } else {
-        llvm::errs() << "Solve fail"<<", info_for_tips:"<<info_for_tips<<", idx:"<<vec_constraints.size() - 1<<"\n";
+        llvm::errs() << "Solve fail, info_for_tips:"<<info_for_tips<<", idx:"<<vec_constraints.size() - 1<<"\n";
       }
     }
   }
@@ -1202,18 +1212,25 @@ bool ILPTimeStep::run(Operation*& fail_op) {
     showAllConstraint();
     solver->EnableOutput();
   }
-  llvm::errs() << "solve start\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "solve start\n";});
   MPSolver::ResultStatus result_status = solver->Solve();
   // Check that the problem has an optimal solution.
   if (result_status != MPSolver::OPTIMAL && result_status != MPSolver::FEASIBLE) {
-    llvm::errs() << "The problem does not have an optimal or feasible solution!, result_status:"<<(int)result_status<<"\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()
+      << "The problem does not have an optimal or feasible solution!, result_status:"<<(int)result_status<<"\n";});
+    if (module::isDebugCmdEnable("solve_per_constraint")) {
+      exit(0);
+    }
     for (auto ts_mem_con : ts_mem_contrains) {
       auto cons = vec_constraints[ts_mem_con.cons_idx];
       cons.cons_var->SetBounds(-MPSolver::infinity(), MPSolver::infinity());
       result_status = solver->Solve();
       if (result_status == MPSolver::OPTIMAL || result_status == MPSolver::FEASIBLE) {
         fail_op = ts_mem_con.op;
-        llvm::errs() << "success, mem constraint fail at op:"<<module::getName(fail_op).str()<<"\n";
+        //The check on whether there is enough memory in backward_gen_ilp_var2::load_bytes_for_next_ts is removed,
+        //it is completely checked here, and it can be more complete/simple check here!
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "success, mem constraint fail at op:"
+          <<module::getName(fail_op).str()<<"\n";});
         break;
       }
       cons.cons_var->SetBounds(cons.lb, cons.ub);
@@ -1221,13 +1238,13 @@ bool ILPTimeStep::run(Operation*& fail_op) {
     return false;
   }
 
-  llvm::errs() << "Solution:\n";;
-  llvm::errs() << "Objective value = " << objective->Value()<<"\n";
-  llvm::errs() << "\nAdvanced usage:\n";;
-  llvm::errs() << "Problem solved in " << solver->wall_time() << " milliseconds\n";;
-  llvm::errs() << "Problem solved in " << solver->iterations() << " iterations\n";;
-  llvm::errs() << "Problem solved in " << solver->nodes()
-            << " branch-and-bound nodes\n";;
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "Solution:\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "Objective value = " << objective->Value()<<"\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "\nAdvanced usage:\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "Problem solved in " << solver->wall_time() << " milliseconds\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "Problem solved in " << solver->iterations() << " iterations\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "Problem solved in " << solver->nodes()
+            << " branch-and-bound nodes\n";});
   return true;
 }
 
@@ -1296,25 +1313,26 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
 
   int dma_cycle = -1, merge_start = 0, min_pos = 0, max_merge_op_num = 5;
   std::vector<Value> big_load_tensor;
-  llvm::errs() << "merge_small_cycle_op starting\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "merge_small_cycle_op starting\n";});
   for(int ts_idx = ts_count - 1; ts_idx >= 0; ts_idx--) {
     if (!(ts_idx == 0 || ts_idx == ts_count - 1)) {
       auto slice_idx = timestep_table_[ts_idx].vec_op_infos[0].slice_idx;
       auto op = timestep_table_[ts_idx].vec_op_infos[0].op;
-      llvm::errs() << "begin, ts_idx:"<<ts_idx<< ", op:"<<module::getName(op).str()
-                   << ", type:"<<op->getName().getStringRef().str()<<"\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "begin, ts_idx:"<<ts_idx<< ", op:"<<module::getName(op).str()
+                   << ", type:"<<op->getName().getStringRef().str()<<"\n";});
       if (dma_cycle == -1) {
         if (isa<tpu::Conv2DOp>(op)) {
           auto in = op->getOperand(1);
           dma_cycle = load_tensor_cycles[std::make_pair(in, slice_idx)];
-          llvm::errs() <<"weight load cycle:"<<dma_cycle<<"\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"weight load cycle:"<<dma_cycle<<"\n";});
           merge_start = ts_idx - 1;
         } else {
           continue;
         }
       } else {
         merge_start = ts_idx;
-        llvm::errs() << "ts_idx:"<<ts_idx<< " achor dma_cycle:"<<dma_cycle<<" for merged op\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "ts_idx:"<<ts_idx
+          << " achor dma_cycle:"<<dma_cycle<<" for merged op\n";});
       }
 
       std::vector<int> cycle_sum;
@@ -1326,8 +1344,9 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         auto bdc_cycle = vec_op_info.bdc_cycle;
         auto type = vec_op_info.op->getName().getStringRef().str();
         sum += bdc_cycle;
-        llvm::errs() << "merge op"<<merge_start - k<< ", name:"<<module::getName(vec_op_info.op).str()
-                      << ", type:"<<type <<", bdc_cycle:"<<bdc_cycle<<", sum:"<<sum<<"\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "merge op"<<merge_start - k
+                      << ", name:"<<module::getName(vec_op_info.op).str()
+                      << ", type:"<<type <<", bdc_cycle:"<<bdc_cycle<<", sum:"<<sum<<"\n";});
         cycle_sum.push_back(std::abs(dma_cycle - sum));
       }
       min_pos = 0;
@@ -1338,7 +1357,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
           min_pos = std::distance(cycle_sum.begin(), it2);
           if (min_pos > 0) {
             map_merge_start_to_merge_len[merge_start] = min_pos;
-            llvm::errs() << "find min_pos:"<<min_pos<<"\n";
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "find min_pos:"<<min_pos<<"\n";});
             std::string tmp_str = merge_start == ts_idx - 1? "merge next ":"merge ";
             dot_graph_log->add_node_label(module::getName(op).str(), tmp_str + std::to_string(min_pos + 1) + "ops");
 
@@ -1386,7 +1405,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         int slice_idx = timestep_table_[merge_start - m].vec_op_infos[0].slice_idx;
         auto op = timestep_table_[merge_start - m].vec_op_infos[0].op;
         auto name = module::getName(op).str();
-        llvm::errs() << "idx: "<<merge_start - m<< ", name: "<<name<< ", slice_idx: "<<slice_idx<<"\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "idx: "<<merge_start - m<< ", name: "<<name
+          << ", slice_idx: "<<slice_idx<<"\n";});
         for (auto in : get_input_values(op)) {
           if (mapConsInfo.find(in) != mapConsInfo.end()) {
             int64_t min_merge_start = llvm::maxIntN(64);
@@ -1397,11 +1417,12 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
                   tmp_var = var_name;
                 }
               }
-              llvm::errs() << "min_merge_start:"<<min_merge_start<< ", low_merge_merge_start:"<<merge_start - min_pos<<"\n";
+              LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "min_merge_start:"<<min_merge_start
+                << ", low_merge_merge_start:"<<merge_start - min_pos<<"\n";});
               if (min_merge_start < llvm::maxIntN(64) && min_merge_start >= merge_start - min_pos) {
                 int tmp_merge_start = merge_start - min_pos - 1;
                 auto var_name2 = tmp_var + "_extend_to_ts" + std::to_string(tmp_merge_start);
-                llvm::errs() << "define "<<var_name2<<"\n";
+                LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "define "<<var_name2<<"\n";});
                 auto key = std::make_pair(in, slice_idx);
                 if (dam_tensor_size.find(key) == dam_tensor_size.end()) {
                   assert(false);
@@ -1425,7 +1446,6 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         }
 
         for (auto out : get_output_values(op)) {
-          llvm::errs() << "mapConsInfo2: "<<module::getName(out).str()<< " slice_idx "<<slice_idx<<"\n";
           if (mapConsInfo.find(out) != mapConsInfo.end()) {
             if (mapConsInfo[out][slice_idx].store_var_names.size() > 0) {
               int64_t max_merge_start = -1;
@@ -1435,11 +1455,12 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
                   tmp_var = var_name;
                 }
               }
-              llvm::errs() << "max_merge_start "<<max_merge_start<< ", high_merge_merge_start: "<<merge_start<<"\n";
+              LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "max_merge_start "<<max_merge_start
+                << ", high_merge_merge_start: "<<merge_start<<"\n";});
               if (max_merge_start > 0 && max_merge_start <= merge_start) {
                 int tmp_merge_start = merge_start + 1;
                 auto var_name2 = tmp_var + "_extend_to_ts" + std::to_string(tmp_merge_start);
-                llvm::errs() << "define "<<var_name2<<"\n";
+                LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "define "<<var_name2<<"\n";});
                 auto key = std::make_pair(out, slice_idx);
                 auto full_slice_bytes = dam_tensor_size[key];
                 for (int idx = merge_start - m + 1; idx <= tmp_merge_start; idx++) {
@@ -1488,7 +1509,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 1)) {
-          llvm::errs() << "for loadVar, setVarExpectValue:"<<it3.second<<" to const_0\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for loadVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
           auto op2 = timestep_table_[merge_start - m].vec_op_infos[0].op;
           dot_graph_log->add_node_label(module::getName(op2).str(),  "set loadVar:" + it3.second + " to 0\n");
           setVarExpectValue(it3.second, 0);
@@ -1508,7 +1529,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_STORE || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 0)) {
-          llvm::errs() << "for storeVar, setVarExpectValue:"<<it3.second<<" to const_0\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for storeVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
           auto op2 = timestep_table_[merge_start - m].vec_op_infos[0].op;
           dot_graph_log->add_node_label(module::getName(op2).str(),  "set storeVar:" + it3.second + " to 0\n");
           setVarExpectValue(it3.second, 0);
@@ -1545,15 +1566,31 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
 
     //更新cycle约束、内存约束
     std::vector<std::pair<int, std::string>> new_cycle;
-    std::vector<std::pair<int, std::string>> new_mem;
-    for (int m = 0; m <= min_pos; m++) {
-      for (auto it2: cycle_contrains[merge_start - m]) {
-        // llvm::errs() << "add "<<it2.second<<" to new_cycle\n";
+    for (auto it2: cycle_contrains[merge_start]) {
+      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
+      if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 1)) {
         new_cycle.push_back(it2);
       }
+    }
+    for (auto it2: cycle_contrains[merge_start - min_pos]) {
+      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
+      if (mode2&TIMESTEP2_STORE ||
+          (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 0)) {
+        new_cycle.push_back(it2);
+      }
+    }
 
-      for (auto it2: mem_contrains[merge_start - m]) {
-        // llvm::errs() << "add "<<it2.second<<" to new_mem\n";
+    std::vector<std::pair<int, std::string>> new_mem;
+    for (auto it2: mem_contrains[merge_start]) {
+      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
+      if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 1)) {
+        new_mem.push_back(it2);
+      }
+    }
+    for (auto it2: mem_contrains[merge_start - min_pos]) {
+      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
+      if (mode2&TIMESTEP2_STORE ||
+          (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 0)) {
         new_mem.push_back(it2);
       }
     }
@@ -1568,7 +1605,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
   reverse(cycle_contrains_new.begin(), cycle_contrains_new.end());
   reverse(mem_contrains_new.begin(), mem_contrains_new.end());
   ts_count = timestep_table_new.size();
-  llvm::errs() << "new ts_count:"<<ts_count<<"\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "new ts_count:"<<ts_count<<"\n";});
   return true;
 }
 
@@ -1602,7 +1639,7 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
     addConstraint(0, MPSolver::infinity(), coeff_var_items);
   }
 
-  llvm::errs() << ">>>>> add cycle_contrains:\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << ">>>>> add cycle_contrains:\n";});
   std::string op_name;
   for(int i = 0; i < ts_count; i++) {
     double bdc_cycle = 0;
@@ -1621,14 +1658,14 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
     }
     std::vector<std::pair<int, MPVariable*>> coeff_var_items;
     coeff_var_items.push_back(std::make_pair(1, objective_var[i].second));
-    llvm::errs() <<"  i:"<<i<<", op_name:"<<op_name<<", bdc_cycle:"<<(int)bdc_cycle<<"\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  i:"<<i<<", op_name:"<<op_name<<", bdc_cycle:"<<(int)bdc_cycle<<"\n";});
     for (auto it: cycle_contrains_new[i]) {
       coeff_var_items.push_back(std::make_pair(it.first, mapILPVarInfo[it.second].ilp_var));
     }
     addConstraint(bdc_cycle, bdc_cycle, coeff_var_items);
   }
 
-  llvm::errs() << ">>>>> add mem_contrains:\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << ">>>>> add mem_contrains:\n";});
   for(int i = 0; i < ts_count; i++) {
     if (i == 0 || i == ts_count - 1) {
       continue;
@@ -1672,7 +1709,7 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
       if (timestep_table_new[i].vec_op_infos.size() > 1) {
         op_name = "super_op_" + op_name;
       }
-      // llvm::errs() <<"  op_name:"<<op_name<<":\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  op_name:"<<op_name<<":\n";});
       std::vector<std::pair<int, MPVariable*>> coeff_var_items;
       for (auto it: mem_contrains_new[i]) {
         coeff_var_items.push_back(std::make_pair(it.first, mapILPVarInfo[it.second].ilp_var));
@@ -1728,7 +1765,7 @@ void ILPTimeStep::get_group_cycle_info(int& total_cycle, int& total_diff,
 
 bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
                             TensorInfo& tensor_infos, Operation*& fail_op) {
-  llvm::errs() << "mem_alloc start:\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "mem_alloc start:\n";});
   fail_op = nullptr;
   AutoIndent auto_indent;
   lmem_alloc_ptr = std::make_shared<lmem_alloc>(_group_info.group_banked_tensors, this, ts_count);
@@ -1754,9 +1791,9 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         }
       }
     }
-    llvm::errs() << "min_always_free_mem_size:"<<min_always_free_mem_size<<"\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "min_always_free_mem_size:"<<min_always_free_mem_size<<"\n";});
 
-    llvm::errs() << "add reside_value:\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "add reside_value:\n";});
     if (min_always_free_mem_size > 0) {
       int addr = lmem_alloc_ptr->total_size - 16, new_addr = 0; //todo 减16的根因
       for (auto itr: value_size) {
@@ -1768,9 +1805,9 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
           tmp.size = itr.second;
           map_reside_value_info[itr.first] = tmp;
           min_always_free_mem_size -= itr.second + addr - new_addr;
-          llvm::errs() << "  name:"<<module::getName(itr.first).str()<< ", addr:"<<addr<<"\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "  name:"<<module::getName(itr.first).str()<< ", addr:"<<addr<<"\n";});
         } else {
-          llvm::errs() << "residual min_always_free_mem_size:"<<min_always_free_mem_size<<"\n";
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "residual min_always_free_mem_size:"<<min_always_free_mem_size<<"\n";});
           break;
         }
       }
@@ -1781,9 +1818,9 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
   std::string name;
   bool ret = false;
 
-  llvm::errs() << "show var value:\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "show var value:\n";});
   for (auto &itr: timestep_table_new) {
-    llvm::errs() << "-------------------ts"<<i<<"--------------------\n";;
+    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "-------------------ts"<<i<<"--------------------\n";});
     int cycle = 0, total_cycle = 0;
     for (auto &itr2: itr.vec_ts_var) {
       if (mapILPVarInfo[itr2.varName].ilp_var->solution_value() == 1) {
@@ -1794,7 +1831,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
             break;
           }
         }
-        llvm::errs() <<"  dma var, name: " << itr2.varName <<", cycle:"<<cycle<<"\n";
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  dma var, name: " << itr2.varName <<", cycle:"<<cycle<<"\n";});
         if (itr2.slice_idx == 0 || map_reside_value_info.find(itr2.value) == map_reside_value_info.end()) {
           total_cycle += cycle;
         }
@@ -1803,8 +1840,8 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
 
     for (auto itr2: itr.vec_op_infos) {
       auto outs = get_output_values(itr2.op);
-      llvm::errs() <<"  op name: " << module::getName(outs[0]).str()
-                <<" , cycle:"<<itr2.bdc_cycle<<", free mem_size:"<<itr2.mem_size_for_load<<"\n";
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  op name: " << module::getName(outs[0]).str()
+                <<" , cycle:"<<itr2.bdc_cycle<<", free mem_size:"<<itr2.mem_size_for_load<<"\n";});
     }
     i++;
   }
@@ -1912,17 +1949,6 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         auto outs = get_output_values(it2.op);
         name = module::getName(outs[0]).str();
         llvm::errs() << "    op name: "<<name<<"\n";
-        int buffer_size = it2.buffer_size;
-        if (buffer_size > 0) {
-          Value tmp_value;
-          mem_alloc_req_info tmp;
-          tmp.slice_idx = it2.slice_idx;
-          tmp.name = name + "_buffer";
-          tmp.value = tmp_value;
-          tmp.size = buffer_size;
-          vec_mem_req.push_back(tmp);
-        }
-
         for (auto out : outs) {
           mem_alloc_req_info tmp;
           tmp.slice_idx = it2.slice_idx;
@@ -1939,10 +1965,22 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
           vec_mem_req.push_back(tmp);
         }
 
-        bool sort_by_size = true;
-        if (module::isDebugCmdEnable("disable_alloc_multi_sort_by_size")) {
-          sort_by_size = false;
+        int buffer_size = it2.buffer_size;
+        if (buffer_size > 0) { //将op buffer分配放在outs分配后面能避免碎片处理复杂化
+          Value tmp_value;
+          mem_alloc_req_info tmp;
+          tmp.slice_idx = it2.slice_idx;
+          tmp.name = name + "_buffer";
+          tmp.value = tmp_value;
+          tmp.size = buffer_size;
+          tmp.isBuffer = true;
+          vec_mem_req.push_back(tmp);
         }
+
+        bool sort_by_size = false;
+        // if (module::isDebugCmdEnable("disable_alloc_multi_sort_by_size")) {
+        //   sort_by_size = false;
+        // }
         ret = lmem_alloc_ptr->alloc_multi(ts_idx, vec_mem_req, sort_by_size);
         if (!ret) {
           fprintf(stderr, "      alloc_multi fail\n");
@@ -1973,7 +2011,10 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         vec_mem_req.clear();
 
         fprintf(stderr, "    deal input free:\n");
-        for (auto in : get_input_values(it2.op)) {
+        auto ins = get_input_values(it2.op);
+        auto last = std::unique(ins.begin(), ins.end());
+        ins.erase(last, ins.end());
+        for (auto in : ins) {
           // if (mapValueUserCount.find(in) == mapValueUserCount.end()) {
           //   mapValueUserCount[in] = 0;
           // }

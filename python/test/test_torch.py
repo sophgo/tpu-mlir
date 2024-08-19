@@ -3581,42 +3581,43 @@ class TORCH_IR_TESTER(object):
     def user_define_net(self):
         """user_define_net"""
         # return
-
         self.group_opt = 3
-        # print('start test test_model1')
-        # from tools.train.test_model import test_model1
-        # model = test_model1()
-        # self.trace_and_test([(1,3,224,224)], model)
+        batch_size = self.num_core
 
-        # print('start test test_model2')
-        # from tools.train.test_model import test_model2
-        # model = test_model2()
-        # self.trace_and_test([(1,3,224,224)], model)
+        print('start test test_model1')
+        from tools.train.test_model import test_model1
+        model = test_model1()
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
-        # print('start test test_model3')
-        # from tools.train.test_model import test_model3
-        # model = test_model3()
-        # self.trace_and_test([(1,3,224,224)], model)
+        print('start test test_model2')
+        from tools.train.test_model import test_model2
+        model = test_model2()
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
-        # print('start test test_model4')
-        # from tools.train.test_model import test_model4
-        # model = test_model4()
-        # self.trace_and_test([(1,3,224,224)], model)
+        print('start test test_model3')
+        from tools.train.test_model import test_model3
+        model = test_model3()
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
-        # print('start test resnet18')
-        # from tools.train.resnet import resnet18
-        # model = resnet18()
-        # self.trace_and_test([(1,3,224,224)], model)
+        print('start test test_model4')
+        from tools.train.test_model import test_model4
+        model = test_model4()
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
-        # print('start test mobilenet_v2')
-        # import torchvision.models as models
-        # model = models.mobilenet_v2()
-        # self.trace_and_test([(1,3,224,224)], model)
+        print('start test resnet18')
+        from tools.train.resnet import resnet18
+        model = resnet18()
+        self.trace_and_test([(batch_size,3,224,224)], model)
+
+        print('start test mobilenet_v2')
+        import torchvision.models as models
+        model = models.mobilenet_v2()
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test resnet50')
         from tools.train.resnet import resnet50
         model = resnet50()
-        self.trace_and_test([(1,3,224,224)], model)
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test yolov5s')
         from nets.yolo import YoloBody
@@ -3624,7 +3625,7 @@ class TORCH_IR_TESTER(object):
         num_classes = 80
         phi = 's'
         model = YoloBody(anchors_mask, num_classes, phi)
-        self.trace_and_test([(1,3,224,224)], model)
+        self.trace_and_test([(batch_size,3,224,224)], model)
 
         # print('start test test_model6')
         # from tools.train.test_model import test_model6
