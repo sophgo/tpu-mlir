@@ -252,5 +252,5 @@ class MatchPattern:
                             fp_layer_list.append(all_tensors[i])
                     else:
                         fp_layer_list.append(all_tensors[i])
-        self.gen_qtable(fp_layer_list)
+            self.gen_qtable(fp_layer_list)
         return
