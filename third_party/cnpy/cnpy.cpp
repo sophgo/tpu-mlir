@@ -584,7 +584,7 @@ void npz_save_all(std::string zipname, npz_t &map) {
         NpyArray &arr = it->second;
         if (arr.type == 'f') {
             // support float only for now
-            assert(arr.word_size = sizeof(float));
+            assert(arr.word_size == sizeof(float));
             npz_save<float>(zipname, it->first, it->second, mode);
         } else if (arr.type == 'i') {
             // support int8/int16/int32 only
