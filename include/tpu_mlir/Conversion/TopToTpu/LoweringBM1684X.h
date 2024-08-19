@@ -197,5 +197,6 @@ LOWERING_BM1684X(Yuv2rgbFormula)
 LOWERING_BM1684X(LogicalAnd)
 LOWERING_BM1684X(MeanStdScale)
 LOWERING_BM1684X(DtypeCast)
+LOWERING_BM1684X(Convbwd)
 } // namespace bm1684x
 } // namespace tpu_mlir
