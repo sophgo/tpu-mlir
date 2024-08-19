@@ -205,6 +205,75 @@ def sCONV_converter(context: "BM1690Context", reg: sCONV_reg):
     return (results, attr, operands)
 
 
+@opparam_converter_regitstry("sCONV_BW")
+def sCONV_BW_converter(context: "BM1690Context", reg: sCONV_BW_reg):
+    INT8 = 0
+    FP16 = 1
+    FP32 = 2
+    INT16 = 3
+    INT32 = 4
+    BF16 = 5
+    INT4 = 6
+    FP8 = 7
+
+    opd0 = dict(
+        address=reg.opd0_addr,
+        shape=(reg.opd0_n, reg.opd0_c, reg.opd0_h, reg.opd0_w),
+        stride=[reg[f"opd0_{i}_str"] for i in "nchw"],
+        dtype=(reg.opt_opd0_prec, reg.opt_opd0_sign),
+        layout=reg.short_opd0_str,
+    )
+    opd1 = dict(
+        address=reg.opd1_addr,
+        is_const=reg.opt_opd1_const,
+        shape=[reg.res0_c, reg.opd0_c, reg.opd1_h, reg.opd1_w],
+        dtype=(reg.opt_opd1_prec, reg.opt_opd1_sign),
+        layout=Layout._1IC,
+    )
+    opd2 = dict(
+        address=reg.opd2_addr,
+        is_const=reg.opt_opd2_const,
+        shape=[1, reg.res0_c, 1, 1],
+        dtype=(reg.opt_opd2_prec, reg.opt_opd2_sign),
+        layout=Layout.compact,
+    )
+    res0 = dict(
+        address=reg.res0_addr,
+        shape=(reg.opd0_n, reg.res0_c, reg.res0_h, reg.res0_w),
+        dtype=(reg.opt_res0_prec, reg.opt_res0_sign),
+        layout=Layout.alignEU,
+    )
+    opds = [opd0, opd1, opd2]
+    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8:
+        opd1["layout"] = Layout._64IC
+    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8:
+        opd1["layout"] = Layout._64IC
+    elif reg.opt_opd0_prec == FP16 or reg.opt_opd0_prec == BF16:
+        opd1["layout"] = Layout._32IC
+    elif reg.opt_opd0_prec == FP32:
+        opd1["layout"] = Layout._1IC
+
+    results = [get_value(context, **res0)]
+
+    attr = dict(
+        kernel=[reg.opd1_h, reg.opd1_w],
+        stride=[reg.res_op_y_str, reg.res_op_x_str],
+        in_zero=[reg.opd0_y_ins0, reg.opd0_x_ins0],
+        ke_zero=[reg.opd1_y_ins0, reg.opd1_x_ins0],
+        opt_kernel_rotate=bool(reg.opt_kernel_rotate),
+        pad_mode=reg.pad_mode,
+        pad=[reg[f"opd0_{x}_pad"] for x in ("up", "dn", "lf", "rt")],
+        opt_res_add=bool(reg.opt_res_add),
+        do_relu=bool(reg.opt_relu),
+        sym_range=bool(reg.sym_range),
+        do_rq=bool(reg.opt_rq),
+        round_mode=reg.opd2_n_str,
+    )
+
+    operands = [get_value(context, **x) for x in opds]
+    return (results, attr, operands)
+
+
 @opparam_converter_regitstry("sMM")
 def sMM_converter(context: "BM1690Context", reg: sMM_reg):
     L_row = reg.opd0_n
