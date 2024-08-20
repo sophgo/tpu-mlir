@@ -74,8 +74,8 @@ private:
 
   enum TagType {
     TAG_USERS = 0,
-    TAG_WEIGHT = (1ul << 36),
-    TAG_ACTIVATION = (2ul << 36),
+    TAG_WEIGHT = (1ul << 40),
+    TAG_ACTIVATION = (2ul << 40),
   };
 
 protected:
@@ -89,7 +89,7 @@ protected:
     IC_PARALLEL = 16;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
-    GMEM_START_ADDR = 0x1ul << 39; // tag for global memory address
+    GMEM_START_ADDR = 0x80000000UL;
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     LIB_BACKEND_NAME = "libbackend_mars3.so";
