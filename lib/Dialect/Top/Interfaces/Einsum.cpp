@@ -32,6 +32,12 @@ void top::EinsumOp::shape_inference() {
   auto rhs_shape = module::getShape(getInputs()[1]);
   if (mode == "a,b->ab")  {      // outer product
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[0]});
+  } else if (mode == "ab,ab->a") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0]});
+  } else if (mode == "ab,cdb->acd") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[0], rhs_shape[1]});
+  } else if (mode == "abc,db->adc") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[0], lhs_shape[2]});
   } else if (mode == "abcd,cde->abe") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[2]});
   } else if (mode == "abcd,bed->abce") {
@@ -44,6 +50,8 @@ void top::EinsumOp::shape_inference() {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[3]});
   } else if (mode == "abc,adc->abd") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[1]});
+  } else if (mode == "abc,adc->adb") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[1], lhs_shape[1]});
   } else if (mode == "abcd,cde->abce") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[2]});
   } else if (mode == "abc,acde->abde") {

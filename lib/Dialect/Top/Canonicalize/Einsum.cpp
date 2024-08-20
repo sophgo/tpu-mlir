@@ -52,6 +52,59 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
       op.replaceAllUsesWith(matmulOp.getOperation());
       rewriter.eraseOp(op);
+    } else if (mode == "ab,ab->a") {
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0], 1, lshape[1]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({rshape[0], rshape[1], 1}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsop);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      newType = RankedTensorType::get({lshape[0], 1, 1}, module::getElementType(op));
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if(mode == "ab,cdb->acd") {
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({1, lshape[0], lshape[1]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({1, rshape[0] * rshape[1], rshape[2]}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsop);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      attrs.clear();
+      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+      newType = RankedTensorType::get({1, lshape[0],  rshape[0] * rshape[1]}, module::getElementType(op));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if(mode == "abc,db->adc") {
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      auto newType = RankedTensorType::get({1, rshape[0], rshape[1]}, module::getElementType(rhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      auto rrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsOp);
+      operands.push_back(lhs);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
+      op.replaceAllUsesWith(matmulOp.getOperation());
+      rewriter.eraseOp(op);
     } else if (mode == "abcd,cde->abe") {
       // lhs_reshape_rst = [lhs_shape[0] * lhs_shape[1], lhs_shape[2] * lhs_shape[3]]
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
@@ -215,6 +268,16 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       op.replaceAllUsesWith(matmulOp.getOperation());
       rewriter.eraseOp(op);
 
+    } else if (mode == "abc,adc->adb") {
+      operands.push_back(rhs);
+      operands.push_back(lhs);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      attrs.clear();
+      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+      auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
+      op.replaceAllUsesWith(matmulOp.getOperation());
+      rewriter.eraseOp(op);
     } else if (mode == "abcd,aecd->aeb") {
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto lreshape_loc = NameLoc::get(rewriter.getStringAttr(lname + "_reshape"));
