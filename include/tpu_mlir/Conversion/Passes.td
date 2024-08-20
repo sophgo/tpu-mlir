@@ -21,8 +21,6 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
   let constructor = "tpu_mlir::createConvertTopToTpu()";
   let dependentDialects = ["tpu_mlir::top::TopDialect", "tpu_mlir::tpu::TpuDialect"];
   let options = [
-    Option<"mode", "mode", "std::string", /*default=*/"",
-           "default quantization mode: INT8/BF16/F32/F8/F8E4M3/F8E5M2">,
     Option<"qtable", "qtable", "std::string", /*default=*/"",
            "a table of Ops that quantized to specific mode">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",

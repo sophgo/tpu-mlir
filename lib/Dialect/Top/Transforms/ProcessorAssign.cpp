@@ -33,6 +33,10 @@ public:
       // only one core
       num_core = 1;
     }
+    auto mode_ = StringRef(mode).upper();
+    auto quant_mode = module::symbolizeMode(mode_);
+    assert(quant_mode.has_value());
+    module::setMode(quant_mode.value());
     assert(num_device > 0);
     module::setDeviceNum(num_device);
     assert(num_core > 0);
