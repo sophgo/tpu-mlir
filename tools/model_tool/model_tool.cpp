@@ -34,6 +34,7 @@ static void usage(void) {
        << "      --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
+       << "      --combine_coeff file1 .. fileN -o new_dir: combine bmodels to one bmodel by filepath, all models' coeff is same" << endl
        << "      --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel" << endl
        << "      --kernel_dump model_file -o kernel_file_name : dump kernel_module file" << endl
        << "      --kernel_update model_file kernel_name : add/update kernel_module file" << endl
@@ -302,6 +303,22 @@ static void combine(int argc, char **argv) {
   }
 }
 
+static void combine_coeff(int argc, char **argv) {
+  if (isCv18xx(argv[2])) {
+    cout << "cv18xx not supported!" << endl;
+  } else {
+    bm_combine_bmodels(argc, argv, false, true);
+  }
+}
+
+static void combine_coeff(int argc, char **argv, bool is_dir) {
+  // if (isCv18xx(argv[2])) {
+  //   cout << "cv18xx not supported!" << endl;
+  // } else {
+    bm_combine_bmodels(argc, argv, is_dir, true);
+  // }
+}
+
 static void update_kernel(ModelGen &model_gen,
                           shared_ptr<MODEL_CTX_T> &model_info,
                           bool kernel_remove, uint8_t *module_binary = nullptr,
@@ -487,6 +504,10 @@ int main(int argc, char **argv) {
     combine(argc, argv);
   } else if (cmd == "--combine_dir") {
     combine(argc, argv, true);
+  } else if (cmd == "--combine_coeff") {
+    combine_coeff(argc, argv);
+  } else if (cmd == "--combine_coeff_dir") {
+    combine_coeff(argc, argv, true);
   } else if (cmd == "--dump") {
     dump(argc, argv);
   } else if (cmd == "--version") {

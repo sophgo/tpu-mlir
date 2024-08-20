@@ -325,8 +325,11 @@ void bm_show_dynamic(const string &filename) {
 // it's a little complicated, using reflection of flatbuffers
 static void update_table(Table *table, const StructDef *struct_def,
                          ModelGen &model_gen, ModelCtx &model_ctx,
-                         bool skip_coeff = false) {
+                         bool skip_coeff = false, bool skip_cmd = false) {
   if (skip_coeff && struct_def->name == "CoeffMem") {
+    return;
+  }
+  if (skip_cmd && struct_def->name == "CmdGroup") {
     return;
   }
   for (auto fd : struct_def->fields.vec) {
@@ -348,7 +351,7 @@ static void update_table(Table *table, const StructDef *struct_def,
       } else {
         auto next_pointer = table->GetPointer<void *>(fd->value.offset);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff, skip_cmd);
       }
       break;
     }
@@ -382,7 +385,7 @@ static void update_table(Table *table, const StructDef *struct_def,
       for (uint32_t next_id = 0; next_id < vector_pointer->size(); next_id++) {
         auto next_pointer = vector_pointer->GetMutableObject(next_id);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff, skip_cmd);
       }
       break;
     }
@@ -406,7 +409,8 @@ static void update_model(ModelGen &model_gen, ModelCtx &model_ctx,
 
 // update one net binary data
 static void update_net(ModelGen &model_gen, ModelCtx &model_ctx,
-                       uint32_t net_idx = 0, uint32_t sub_idx = 0) {
+                       uint32_t net_idx = 0, uint32_t sub_idx = 0,
+                       bool skip_coeff = false, bool skip_cmd = false) {
   Parser parser;
   parser.Parse(schema_text);
   auto buffer = model_gen.GetBufferPointer();
@@ -425,7 +429,267 @@ static void update_net(ModelGen &model_gen, ModelCtx &model_ctx,
   auto sub_net_pointer = reinterpret_cast<Vector<Offset<void>> *>(sub_pointer)
                              ->GetMutableObject(sub_idx);
   auto sub_net_table = reinterpret_cast<Table *>(sub_net_pointer);
-  update_table(sub_net_table, sub_net_def, model_gen, model_ctx);
+  update_table(sub_net_table, sub_net_def, model_gen, model_ctx, skip_coeff, skip_cmd);
+}
+
+// bmodel combine coeff
+struct addr_update_t {
+  uint64_t addr;
+  uint64_t size;
+  int64_t offset;
+};
+
+uint64_t update_addr(const uint64_t coeff_limit, const int64_t ctx_offset, uint64_t origin_addr, std::vector<addr_update_t>& addr_v)
+{
+  if (origin_addr < coeff_limit) {
+    // coeff addr
+    for (int i = 0; i < addr_v.size(); ++i) {
+      if (origin_addr >= addr_v[i].addr && origin_addr < addr_v[i].addr + addr_v[i].size) {
+        return origin_addr + addr_v[i].offset;
+      }
+    }
+  } else {
+    // neuron addr
+    return origin_addr + ctx_offset;
+  }
+  return origin_addr;
+}
+
+inline void update_addr_1684x(uint32_t *cmd, uint64_t coeff_limit, const int64_t ctx_offset, std::vector<addr_update_t>& addr_v) {
+  uint64_t addr = ((uint64_t)(cmd[1] & 0xff) << 32) | ((uint64_t)cmd[0]);
+  uint64_t GLOBAL_MEM_START_ADDR = 0x100000000;
+  if (addr >= GLOBAL_MEM_START_ADDR) {
+    uint64_t fix_addr = update_addr(coeff_limit, ctx_offset, addr, addr_v);
+    if (fix_addr != addr) {
+      cmd[0] = fix_addr & 0xffffffff;
+      cmd[1] = ((uint32_t)((fix_addr >> 32) & 0xff)) | (cmd[1] & 0xffffff00);
+    }
+  }
+}
+
+inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit, const int64_t ctx_offset, std::vector<addr_update_t>& addr_v) {
+  uint64_t addr = ((uint64_t)(cmd[1] & 0xff) << 32) | ((uint64_t)cmd[0]);
+  if (((addr >> 39) & 0x1) && (((addr >> 36) & 0x7) == 0)) {
+    uint64_t fix_addr = update_addr(coeff_limit, ctx_offset, addr & ((1ull << 35) - 1), addr_v);
+    fix_addr |= (1ull << 39);
+    if (fix_addr != addr) {
+      cmd[0] = fix_addr & 0xffffffff;
+      cmd[1] = ((uint32_t)((fix_addr >> 32) & 0xff)) | (cmd[1] & 0xffffff00);
+    }
+  }
+}
+
+void update_cmd(uint32_t* cmd, bool last_cmd, uint64_t coeff_limit, int64_t ctx_offset,
+                std::vector<addr_update_t>& addr_v, std::string arch) {
+  // cmd type: 0:DMA_tensor, 1:DMA_matrix, 2:DMA_masked_select, 3:DMA_general
+  // 4:DMA_cw_trans, 5:DMA_nonzero, 6:DMA_sys, 7:DMA_gather, 8:DMA_scatter
+  // 9:DMA_reverse 10:DMA_compress 11: DMA_decompress
+  if ("BM1684X" == arch) {
+    if (!last_cmd) {
+      update_addr_1684x(cmd+16, coeff_limit, ctx_offset, addr_v);
+      update_addr_1684x(cmd+18, coeff_limit, ctx_offset, addr_v);
+      // fix index_tensor or mask_tensor addr
+      int cmd_type = (cmd[1] & 0x0f);
+      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8) {
+        update_addr_1684x(cmd+20, coeff_limit, ctx_offset, addr_v);
+      }
+    }
+  } else if ("BM1688" == arch) {
+    if (!last_cmd) {
+      int cmd_type = (cmd[1] & 0x0f);
+      if(cmd_type == 6) return;
+      update_addr_1688(cmd+16, coeff_limit, ctx_offset, addr_v);
+      update_addr_1688(cmd+18, coeff_limit, ctx_offset, addr_v);
+      // fix index_tensor or mask_tensor addr
+      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8 || cmd_type == 0xa || cmd_type == 0xb) {
+        update_addr_1688(cmd+20, coeff_limit, ctx_offset, addr_v);
+      }
+    }
+  } else {
+    FATAL("Unkown BM TPU");
+  }
+}
+
+static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer, uint64_t start_offset,
+                                 bool last_cmd, std::string arch) {
+  uint32_t len = 96; // default: common gdma instrution size
+
+  if ("BM1688" == arch || "BM1690" == arch || "MARS3" == arch || "SG2380" == arch) {
+    uint32_t cmd_head[2] = {0};
+    memcpy(cmd_head, gdma_buffer + start_offset, sizeof(cmd_head));
+    uint32_t tsk_type = cmd_head[1] & 0xf;
+    if (tsk_type == 0x6) { // DMA_sys
+      len = 16;
+    }
+    // sys end
+    if (last_cmd) {
+      len = (start_offset + 16 - 1 + 128) / 128 - start_offset;
+    }
+  } else if ("BM1684X" == arch) {
+    // sys end
+    if (last_cmd) {
+      len = (start_offset + 16 - 1 + 128) / 128 - start_offset;
+    }
+  } else {
+    FATAL("Unkown BM TPU");
+  }
+  return len;
+}
+
+void update_cmd_group(ModelGen &model_gen, ModelCtx* model_ctx,
+                      const std::vector<std::unique_ptr<bmodel::CmdGroupT>> &cmd_group,
+                      std::vector<addr_update_t>& addr_update_v, uint64_t coeff_limit,
+                      int64_t ctx_offset) {
+  uint32_t gdam_total_cmd_byte = 0;
+  if (cmd_group.size() == 0) {
+    return;
+  }
+  for (uint32_t i = 0; i < cmd_group.size(); i++) {
+    gdam_total_cmd_byte += cmd_group[i]->gdma_cmd_byte;
+  }
+  if (gdam_total_cmd_byte > 0) {
+    for (uint32_t group_idx = 0; group_idx < cmd_group.size(); group_idx++) {
+      uint64_t gdma_offset = 0;
+      // copy bdc command, do not change
+      if (cmd_group[group_idx]->bdc_num > 0) {
+        uint8_t *data = new uint8_t[cmd_group[group_idx]->binary_bdc->size()];
+        model_ctx->read_binary(cmd_group[group_idx]->binary_bdc.get(), data);
+        auto new_binary = model_gen.WriteBinary(cmd_group[group_idx]->binary_bdc->size(), data);
+        cmd_group[group_idx]->binary_bdc->mutate_start(new_binary.start());
+        delete[] data;
+      }
+      if (0 == cmd_group[group_idx]->gdma_num) {
+        continue;
+      }
+      // update gdma command, include coeff & neuron addr
+      Binary new_binary;
+      uint8_t *gdma_buffer = new uint8_t[cmd_group[group_idx]->binary_gdma->size()];
+      model_ctx->read_binary(cmd_group[group_idx]->binary_gdma.get(), gdma_buffer);
+      for (uint32_t cmd_idx = 0; cmd_idx < cmd_group[group_idx]->gdma_num - 1; cmd_idx++) {
+        uint32_t gdma_size = get_gdma_cmd_len(gdma_buffer, gdma_offset, false, model_ctx->model()->chip()->str());
+        update_cmd((uint32_t*)(gdma_buffer + gdma_offset), false, coeff_limit,
+                  ctx_offset, addr_update_v, model_ctx->model()->chip()->str());
+        gdma_offset += gdma_size;
+      }
+      new_binary = model_gen.WriteBinary(cmd_group[group_idx]->binary_gdma->size(), gdma_buffer);
+      cmd_group[group_idx]->binary_gdma->mutate_start(new_binary.start());
+      cmd_group[group_idx]->binary_gdma->mutate_size(new_binary.size());
+      delete[] gdma_buffer;
+    }
+  }
+}
+
+void update_static_cmd(ModelGen &model_gen, ModelCtx* model_ctx, const NetParameterT* param,
+                       std::vector<addr_update_t>& addr_update_v, uint64_t coeff_limit,
+                       int64_t ctx_offset) {
+  const auto core_num = param->core_num != 0 ? param->core_num : 1;
+  auto &cmd_group = param->cmd_group;
+  for (uint32_t core_idx = 0; core_idx < core_num; core_idx++) {
+    if (param->sub_net.size() > 0) {
+      for (auto &subnet : param->sub_net) {
+        auto &core_commands = subnet->core_commands;
+        if (core_commands.size() > 0) {
+          auto &cmd_group = core_commands[core_idx]->gdma_tiu_commands;
+          update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+        } else {
+          update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+        }
+      }
+    } else {
+      update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+    }
+  }
+}
+
+void update_tensor(const NetParameterT* param, const int64_t ctx_offset)
+{
+  for (auto &tensor : param->input_tensor) {
+    tensor->device_addr += ctx_offset;
+  }
+  for (auto &tensor : param->output_tensor) {
+    tensor->device_addr += ctx_offset;
+  }
+  for (auto &subnet: param->sub_net) {
+    for (auto &tensor : subnet->input_tensor) {
+      tensor->device_addr += ctx_offset;
+    }
+    for (auto &tensor : subnet->output_tensor) {
+      tensor->device_addr += ctx_offset;
+    }
+  }
+}
+
+struct location_t {
+  string name;
+  uint64_t offset;
+  uint64_t size;
+};
+
+uint64_t coeff_combine(
+    uint8_t *base_buffer, uint64_t base_size, std::vector<location_t> *location_vector,
+    uint8_t *coeff_buffer, uint64_t coeff_size, const Vector<Offset<bmodel::Location>> *coeff_locations,
+    bool is_first, std::vector<addr_update_t> *addr_update_v)
+{
+  uint64_t buffer_offset = 0;
+  addr_update_v->clear();
+  flatbuffers::FlatBufferBuilder fbb;
+  if (is_first) {
+    assert(base_size == 0);
+    // copy first coeff to buffer.
+    memcpy(base_buffer, coeff_buffer, coeff_size);
+    // copy first location to location_vector.
+    for (int i = 0; i < coeff_locations->size(); ++i) {
+      auto location = coeff_locations->Get(i);
+      location_t loc;
+      loc.name.assign(location->name()->str());
+      loc.offset = location->offset();
+      loc.size = location->size();
+      location_vector->push_back(loc);
+    }
+    return coeff_size;
+  }
+  // check & copy coeff, update location_vector, update addr_update_v
+  buffer_offset += base_size;
+  auto location_num = location_vector->size();
+  for (int i = 0; i < coeff_locations->size(); ++i) {
+    auto location = coeff_locations->Get(i);
+    bool is_same = false;
+    for (int j = 0; j < location_num; ++j) {
+      auto location_base = location_vector->at(j);
+      if (location_base.name != location->name()->str()) {
+        continue;
+      }
+      if (location_base.size != location->size()) {
+        continue;
+      }
+      if (memcmp(base_buffer + location_base.offset, coeff_buffer + location->offset(), location->size()) == 0) {
+        addr_update_t addr_update;
+        addr_update.addr = location->offset();
+        addr_update.size = location->size();
+        // TODO: coeff base addr
+        addr_update.offset = location_base.offset - location->offset();
+        addr_update_v->push_back(addr_update);
+        is_same = true;
+        break;
+      }
+    }
+    if (is_same) {
+      continue;
+    }
+    addr_update_t addr_update;
+    addr_update.addr = location->offset();
+    addr_update.size = location->size();
+    addr_update.offset = buffer_offset - location->offset();
+    addr_update_v->push_back(addr_update);
+    location_t loc;
+    loc.name = location->name()->str();
+    loc.offset = buffer_offset;
+    loc.size = location->size();
+    location_vector->push_back(loc);
+    memcpy(base_buffer + buffer_offset, coeff_buffer + location->offset(), location->size());
+    buffer_offset += location->size();
+  }
+  return buffer_offset;
 }
 
 // extract multi-net bmodel to multi one-net bmodels
@@ -612,6 +876,153 @@ static void combine_bmodels(ModelGen &model_gen,
   }
 }
 
+static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_CTX_T>>& model_vec, bool is_dir = false)
+{
+  model_gen.AddChip(model_vec[0]->model_ctx->model()->chip()->str());
+  auto &builder = model_gen.Builder();
+  uint32_t device_num = 0;
+
+  std::vector<uint8_t> base_buffer;
+  uint64_t base_size = 0;
+  std::vector<location_t> loc_v;
+  std::vector<std::vector<addr_update_t>> addr_update_v(model_vec.size());
+  uint64_t coeff_addr;
+  for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
+    auto &model_info = model_vec[model_idx];
+    auto model = model_info->model_ctx->model();
+    auto param = model->net()->Get(0)->parameter()->Get(0);
+    coeff_addr = param->coeff_mem()->address();
+    // check model is signal net, signal stage. or combined model
+    assert(model->net()->size() == 1 && model->net()->Get(0)->parameter()->size() == 1 ||
+           model->bmodel_type() == 1);
+    if (model->bmodel_type() == 1) {
+      // use first net/stage to combine
+      uint64_t start = param->coeff_mem()->binary_coeff()->start();
+      uint64_t size = param->coeff_mem()->binary_coeff()->size();
+      for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
+        auto net = model->net()->Get(net_idx);
+        for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
+          auto parameter = net->parameter()->Get(idx);
+          assert(start == parameter->coeff_mem()->binary_coeff()->start());
+          assert(size == parameter->coeff_mem()->binary_coeff()->size());
+        }
+      }
+    }
+    // combine coeff
+    auto coeff = param->coeff_mem()->binary_coeff();
+    base_buffer.resize(base_size + coeff->size());
+    std::unique_ptr<uint8_t[]> new_buffer(new uint8_t[coeff->size()]);
+    model_info->model_ctx->read_binary(coeff, new_buffer.get());
+    if (param->coeff_mem()->location() == NULL) {
+      assert(0);
+    }
+    base_size = coeff_combine(base_buffer.data(), base_size, &loc_v,
+                               new_buffer.get(), coeff->size(),
+                               param->coeff_mem()->location(),
+                               model_idx == 0, &(addr_update_v[model_idx]));
+  }
+
+  Binary new_binary;
+  new_binary = model_gen.WriteBinary(base_size, base_buffer.data());
+  std::vector<uint8_t> crc32(bmodel::SHA256_LEN);
+  bmodel::CalcSha256(base_buffer.data(), base_size, crc32.data());
+  for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
+    auto &model_info = model_vec[model_idx];
+    auto model = model_info->model_ctx->model();
+    for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
+      auto net = model->net()->Get(net_idx);
+      if (net->parameter() == NULL || net->parameter()->size() == 0) {
+        continue;
+      }
+      auto net_name = net->name()->str();
+      auto cascade = net->cascade();
+      if (cascade) {
+        // no more stage
+        assert(net->parameter()->size() == 1);
+      }
+      auto addr_mode = net->addr_mode();
+      for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
+        shared_ptr<NET_INDEX_T> netidx(new NET_INDEX_T);
+        if (is_dir) {
+          read_input_output_ref(net->parameter()->Get(idx), model_info->input_f,
+                                model_info->output_f, netidx.get());
+        }
+        auto param = net->parameter()->Get(idx)->UnPack();
+        // update coeff mem
+        param->coeff_mem->binary_coeff->mutate_start(new_binary.start());
+        param->coeff_mem->binary_coeff->mutate_size(new_binary.size());
+        param->coeff_mem->check_code = crc32;
+        int location_size = param->coeff_mem->location.size();
+        int i = 0;
+        for (; i < location_size; ++i) {
+          param->coeff_mem->location[i]->name = loc_v[i].name;
+          param->coeff_mem->location[i]->offset = loc_v[i].offset;
+          param->coeff_mem->location[i]->size = loc_v[i].size;
+        }
+        for (; i < loc_v.size(); ++i) {
+          std::unique_ptr<LocationT> loc(new LocationT);
+          loc->name = loc_v[i].name;
+          loc->offset = loc_v[i].offset;
+          loc->size = loc_v[i].size;
+          param->coeff_mem->location.push_back(std::move(loc));
+        }
+        param->coeff_mem->address = coeff_addr;
+        int64_t ctx_offset = coeff_addr + base_size - (param->io_size > 0 ? param->io_addr : param->ctx_addr);
+        ctx_offset = ctx_offset > 0 ? ctx_offset : 0;
+        // update static cmd
+        uint64_t coeff_limit = param->io_size > 0 ? param->io_addr : param->ctx_addr;
+        update_static_cmd(model_gen, model_info->model_ctx.get(), param,
+                          addr_update_v[model_idx], coeff_limit, ctx_offset);
+        if (param->io_size > 0) {
+          param->io_addr += ctx_offset;
+        }
+        param->ctx_addr += ctx_offset;
+        // update tensor
+        update_tensor(param, ctx_offset);
+        auto net_offset = NetParameter::Pack(builder, param);
+        model_gen.AddNet(net_name, net_offset, &netidx->net_idx,
+                         &netidx->stage_idx, cascade, addr_mode);
+        delete param;
+        model_info->net_index_v.push_back(netidx);
+      }
+    }
+  }
+  addr_update_v.clear();
+  loc_v.clear();
+
+  auto kernel_module = model_vec[0]->model_ctx->model()->kernel_module();
+  if (kernel_module) {
+    auto module_binary = kernel_module->binary();
+    auto module_name = kernel_module->file_name()->str();
+    std::unique_ptr<uint8_t[]> binary(new uint8_t[module_binary->size()]);
+    model_vec[0]->model_ctx->read_binary(module_binary, binary.get());
+    auto module_tmp = model_gen.WriteBinary(module_binary->size(), binary.get());
+    model_gen.AddKernelModule(module_name, module_tmp);
+  }
+  auto cpuop_module = model_vec[0]->model_ctx->model()->cpuop_module();
+  if (cpuop_module) {
+    auto module_binary = cpuop_module->binary();
+    auto module_name = cpuop_module->file_name()->str();
+    std::unique_ptr<uint8_t[]> binary(new uint8_t[module_binary->size()]);
+    model_vec[0]->model_ctx->read_binary(module_binary, binary.get());
+    auto module_tmp = model_gen.WriteBinary(module_binary->size(), binary.get());
+    model_gen.AddCpuModule(module_name, module_tmp);
+  }
+  model_gen.AddNumDevice(device_num);
+  model_gen.AddBmodelType(1);
+  model_gen.Finish();
+  for (uint32_t idx = 0; idx < model_vec.size(); idx++) {
+    auto &model_info = model_vec[idx];
+    for (auto &net_index : model_info->net_index_v) {
+      update_net(model_gen, *model_info->model_ctx, net_index->net_idx,
+                 net_index->stage_idx, true, true);
+    }
+  }
+  if (is_dir) {
+    write_input_output_ref(model_vec);
+  }
+}
+
 static bool make_directory(const char *dirname) {
   if (dirname == NULL || dirname[0] == '\0') {
     return false;
@@ -659,7 +1070,7 @@ static void prepare_output(string &path, bool is_dir = false) {
 }
 
 // combine bmodels
-void bm_combine_bmodels(int argc, char **argv, bool is_dir = false) {
+void bm_combine_bmodels(int argc, char **argv, bool is_dir = false, bool combine_coeff = false) {
   vector<shared_ptr<MODEL_CTX_T>> model_vec;
 
   string ofile = "";
@@ -692,7 +1103,11 @@ void bm_combine_bmodels(int argc, char **argv, bool is_dir = false) {
   }
   prepare_output(ofile, is_dir);
   ModelGen model_gen;
-  combine_bmodels(model_gen, model_vec, is_dir);
+  if (combine_coeff) {
+    combine_bmodels_coeff(model_gen, model_vec, is_dir);
+  } else {
+    combine_bmodels(model_gen, model_vec, is_dir);
+  }
   model_gen.Save(ofile);
   cout << "Success: combined to [" << ofile << "]." << endl;
 }

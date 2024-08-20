@@ -200,6 +200,8 @@ table Model {
     kernel_module:KernelModule (id: 6);
     device_num:uint32 (id: 7);     // The model may be run in multi devices
     cpuop_module:CpuopModule (id: 8);
+    bmodel_type:uint32 (id: 9);    // 0 : coeff not combine
+                                   // 1 : coeff has been combine
 }
 
 root_type Model;

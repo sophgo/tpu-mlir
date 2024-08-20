@@ -55,6 +55,9 @@ typedef struct {
   uint64_t host_coeff_mem_size;  // total mem size for cpu layer coeff on host
 } bmodel_mem_info_t;
 
+const int SHA256_LEN = 32;
+void CalcSha256(const uint8_t *buffer, uint64_t size, uint8_t sha256[SHA256_LEN]);
+
 class ModelGen {
 
 public:
@@ -85,6 +88,7 @@ public:
   // firmware_core.so save into bmodel
   void AddKernelModule(std::string &filename, Binary &tpu_module);
   void AddCpuModule(std::string &version, Binary &lib_cpu);
+  void AddBmodelType(const uint32_t type);
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -137,6 +141,8 @@ private:
   std::string encrypt_lib_; // lib path by user, such as libcipher.so to encrypt
   void *encrypt_handle_;    // handle of encrypt lib
   encrypt_func encrypt_func_; // encrypt func from lib
+  // coeff combine
+  uint32_t bmodel_type_; // 0: bmodel coeff do not combine; 1: bmodel coeff has been combine
 };
 
 class ModelCtx {
