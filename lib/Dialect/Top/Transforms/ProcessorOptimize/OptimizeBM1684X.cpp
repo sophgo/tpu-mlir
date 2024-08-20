@@ -750,6 +750,12 @@ public:
 protected:
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
                                     mlir::PatternRewriter &rewriter) const override {
+    if(module::isSG2380()){
+      if(module::Mode::F32 == module::getMode()) {
+        // sg2380 can't support GDMA transpose instruction in FP32 mode
+        return failure();
+      }
+    }
     auto filter = op.getRight();
     if (module::isWeight(filter)) {
       return failure();
@@ -1339,7 +1345,10 @@ protected:
     if (module::isBM1688() && !(kh < 29 && kw < 29)) {
       return failure();
     }
-
+    if (module::isSG2380() && module::getMode() == module::Mode::F32) {
+      // sg2380 can't support GDMA transpose instruction in FP32 mode
+      return failure();
+    }
     int id = 0;
     auto loc_name = module::getName(convOp.getOperation()).str();
     // 1. Input->Reshape+permute+Reshape(reorder the input)

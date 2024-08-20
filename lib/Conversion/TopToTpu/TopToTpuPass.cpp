@@ -1184,10 +1184,6 @@ void ConvertTopToTpu::runOnOperation() {
   ctx_ = &getContext();
   mainFunc_ = module::getMainFuncOp(module_);
   LoweringConfig::isQuantized = false;
-  auto mode_ = StringRef(mode).upper();
-  auto mode = module::symbolizeMode(mode_);
-  assert(mode.has_value());
-  module::setMode(mode.value());
   module::setQuantGroupSize(quantGroupSize);
   if (weightFileName != "") {
     module::setWeightFileName(weightFileName);

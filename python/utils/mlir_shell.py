@@ -109,12 +109,13 @@ def mlir_lowering(top_mlir: str,
                   addr_mode: str = "auto",
                   mute: bool = False,
                   log_level: str = "normal"):
+    mode = mode.upper()
     cmd = [
         "tpuc-opt", top_mlir,
-        "--processor-assign=\"chip={} num_device={} num_core={} addr_mode={}\"".format(
-            chip.lower(), num_device, num_core, addr_mode)
+        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
+            chip.lower(), mode, num_device, num_core, addr_mode)
     ]
-    mode = mode.upper()
+
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
@@ -131,8 +132,8 @@ def mlir_lowering(top_mlir: str,
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
         qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}\"".format(
-        mode, qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size)
+    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}\"".format(
+        qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size)
     cmd.extend([
         lower_param,
         "--canonicalize",
@@ -310,13 +311,12 @@ def origin_mlir_txt_to_bmodel(
     if len(add_postprocess) > 0:
         options.extend([f'--add-postprocess="type={add_postprocess}"'])
     options.extend(["--canonicalize", "--extra-optimize"])
-
+    mode = mode.upper()
     options.extend(
         [
-            f'--processor-assign="chip={chip.lower()} num_device={num_device} num_core={num_core} addr_mode={addr_mode}"'
+            f'--processor-assign="chip={chip.lower()} mode={mode} num_device={num_device} num_core={num_core} addr_mode={addr_mode}"'
         ]
     )
-    mode = mode.upper()
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = '--import-calibration-table="file={} asymmetric={}"'.format(
@@ -336,8 +336,8 @@ def origin_mlir_txt_to_bmodel(
         )
         options.extend([fuse_pre_param])
 
-    lower_param = '--convert-top-to-tpu="mode={} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}"'.format(
-        mode, asymmetric, do_winograd, ignore_f16_overflow, q_group_size
+    lower_param = '--convert-top-to-tpu="asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}"'.format(
+        asymmetric, do_winograd, ignore_f16_overflow, q_group_size
     )
     options.extend(
         [
