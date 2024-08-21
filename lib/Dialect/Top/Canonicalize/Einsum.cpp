@@ -81,13 +81,15 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       newType = RankedTensorType::get({1, rshape[0] * rshape[1], rshape[2]}, module::getElementType(rhs));
       loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
       auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
-      operands.push_back(rrsop);
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_trans"));
+      newType = RankedTensorType::get({1, rshape[2], rshape[0] * rshape[1]}, module::getElementType(rrsop));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto tranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{rrsop}, attrs);
+      operands.push_back(tranOp);
       operands.push_back(none);
       rewriter.setInsertionPoint(op);
 
       loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
-      attrs.clear();
-      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
       newType = RankedTensorType::get({1, lshape[0],  rshape[0] * rshape[1]}, module::getElementType(op));
       auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
@@ -131,6 +133,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       op.replaceAllUsesWith(orsOp.getOperation());
       rewriter.eraseOp(op);
     } else if (mode == "abcd,bed->abce") {
+      // TODO ： remove right_transpose to meet sg2380 gdma update
       rewriter.setInsertionPointAfter(rhs.getDefiningOp());
       // batch matmul does not support broadcast
       // temporary solution
@@ -269,12 +272,14 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       rewriter.eraseOp(op);
 
     } else if (mode == "abc,adc->adb") {
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_trans"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[2], lshape[1]}, module::getElementType(lhs));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto tranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{lhs}, attrs);
       operands.push_back(rhs);
-      operands.push_back(lhs);
+      operands.push_back(tranOp);
       operands.push_back(none);
       rewriter.setInsertionPoint(op);
-      attrs.clear();
-      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
       auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
       op.replaceAllUsesWith(matmulOp.getOperation());
       rewriter.eraseOp(op);
@@ -620,8 +625,8 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       //   rewriter.eraseOp(wOp);
       // } else {
         loc = NameLoc::get(rewriter.getStringAttr(rname + "_trans"));
-        newType = RankedTensorType::get({rshape[0], rshape[2], rshape[1], rshape[3]}, module::getElementType(rhs));
-        attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
+        newType = RankedTensorType::get({rshape[0], rshape[2], rshape[3], rshape[1]}, module::getElementType(rhs));
+        attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 3, 1})));
         auto rtranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{rhs}, attrs);
         attrs.clear();
         operands.push_back(rtranOp);
@@ -630,7 +635,6 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       newType = RankedTensorType::get({lshape[0], lshape[1], lshape[3] * lshape[4], rshape[1]}, module::getElementType(op));
       rewriter.setInsertionPoint(op);
       loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
-      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
       auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
       op.replaceAllUsesWith(reshapeOp.getOperation());
