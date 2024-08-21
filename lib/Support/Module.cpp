@@ -1888,13 +1888,16 @@ void unreachable(const char *info, Operation *op, const char *file,
   std::cerr << "ASSERT executed at" << file << ":" << line << std::endl;
   std::cerr << "ASSERT INFO:" << info << std::endl << "Operation:" << std::endl;
   if (op != nullptr) {
-    if (auto prev = op->getPrevNode()) {
-      prev->dump();
+    auto inputs = op->getOperands();
+    if (!inputs.empty()) {
+        for (auto input : inputs)
+          input.dump();
     }
     std::cerr << "-> ";
     op->dump();
-    if (auto next = op->getNextNode()) {
-      next->dump();
+    for (auto out : op->getResults()) {
+      for (auto user : out.getUsers())
+        user->dump();
     }
   }
   exit(-1);
