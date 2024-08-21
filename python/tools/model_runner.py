@@ -78,6 +78,7 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
             lib_so = 'libcmodel_1684.so'
         elif chip == "BM1690":
             lib_so = 'libcmodel_bm1690.so'
+            pyruntime = "pyruntime_" + "tpuv7"
         elif chip == "MARS3":
             lib_so = 'libcmodel_mars3.so'
         elif chip == "SG2380":

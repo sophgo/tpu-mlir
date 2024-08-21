@@ -19,4 +19,11 @@ pybind11_add_module(pyruntime_cvi pyruntime_cvi.cpp)
 target_link_libraries(pyruntime_cvi PRIVATE
   cviruntime
 )
-install(TARGETS pyruntime_bm pyruntime_cvi DESTINATION python)
+
+pybind11_add_module(pyruntime_tpuv7 pyruntime_tpuv7.cpp)
+target_link_libraries(pyruntime_tpuv7 PRIVATE
+  tpuv7_rt
+  tpuv7_modelrt
+  cdm_daemon_emulator
+)
+install(TARGETS pyruntime_bm pyruntime_cvi pyruntime_tpuv7 DESTINATION python)

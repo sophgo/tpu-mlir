@@ -6377,7 +6377,7 @@ def test_fp8(tester: ONNX_IR_TESTER):
     else:
         error_cases = []
         success_cases = []
-        for case in test_cases:
+        for case in tester.test_cases:
             if tester.check_support(case):
                 test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))

@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 253d8e58e7b2764d625bfcdd9d049d0184a0f602
+#bm1690 sha256: b76308b0f729c1291a5f051d5e49e8db3b5f32d1
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -47,6 +47,7 @@ cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_p
 rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
+cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 
 #sg2380 sha256: 18586a9b5167f6f3959978032d6acc4371e3c116
 cd TPU1686
@@ -89,4 +90,18 @@ rebuild_cpuop
 cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 
 # libbmcpu.so/libusercpu.so are deprecated
+```
+
+## tpuv7-runtime 2024-08-21
+build from tpuv7-runtime 1d1c1fbc4c876be4bcce8d7a79afafae447270e9
+```bash
+mkdir -p -p build/emulator
+cd -p build/emulator
+cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
+make -j$(nproc)
+cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp cdmlib/host/cdm_runtime/libtpuv7_rt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp cdmlib/ap/daemon/cdm_daemon/libcdm_daemon_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
+cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 ```
