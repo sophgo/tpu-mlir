@@ -573,6 +573,7 @@ def conv(input: Tensor,
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 2 and len(stride) == 2 and len(pad) == 4
     o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype == o_dtype
     _conv_float_check(input, weight, bias)
@@ -614,6 +615,7 @@ def conv_int(input: Tensor,
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 2 and len(stride) == 2 and len(pad) == 4
     assert input.is_quantized is True or input_zp is not None
     assert weight.is_quantized is True or weight_zp is not None
 
@@ -657,6 +659,7 @@ def conv_quant(input: Tensor,
     dilation = [1, 1] if dilation is None else dilation
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 2 and len(stride) == 2 and len(pad) == 4
     o_dtype = out_dtype if out_dtype is not None else input.dtype
     assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"] and o_dtype in ["int8", "uint8"]
     if bias:
@@ -694,6 +697,7 @@ def conv3d(input: Tensor,
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 3 and len(stride) == 3 and len(pad) == 6
     o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype == o_dtype
     _conv_float_check(input, weight, bias)
@@ -729,6 +733,7 @@ def conv3d_int(input: Tensor,
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 3 and len(stride) == 3 and len(pad) == 6
     o_dtype = "int32" if out_dtype is None else out_dtype
     assert o_dtype in ["int32", "uint32"]
     assert input.is_quantized is True or input_zp is not None
@@ -775,6 +780,7 @@ def conv3d_quant(input: Tensor,
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    assert len(dilation) == 3 and len(stride) == 3 and len(pad) == 6
     o_dtype = out_dtype if out_dtype is not None else input.dtype
     assert o_dtype in ["int8", "uint8"]
     assert input.is_quantized is True or input_scale is not None
@@ -812,6 +818,7 @@ def deconv(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0] if output_padding is None else output_padding
+    assert len(dilation) == 2 and len(stride) == 2 and len(pad) == 4 and len(output_padding) == 2
     o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype == o_dtype
     _conv_float_check(input, weight, bias)
@@ -853,6 +860,7 @@ def deconv_int(input: Tensor,
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0] if output_padding is None else output_padding
+    assert len(dilation) == 2 and len(stride) == 2 and len(pad) == 4 and len(output_padding) == 2
     o_dtype = "int32" if out_dtype is None else out_dtype
     assert o_dtype in ["int32", "uint32"]
     assert input.is_quantized is True or input_zp is not None
@@ -891,6 +899,7 @@ def deconv3d(input: Tensor,
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     output_padding = [0, 0, 0] if output_padding is None else output_padding
+    assert len(dilation) == 3 and len(stride) == 3 and len(pad) == 6 and len(output_padding) == 3
     o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype == o_dtype
     _conv_float_check(input, weight, bias)

@@ -386,9 +386,9 @@ conv
 * input：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]，oc表示输出Channel数。
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为1或2。
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1]，不为None时要求长度2。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1]，不为None时要求长度为2。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0]，不为None时要求长度为4。
 * groups：int型，表示卷积层的组数。
 * out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -440,14 +440,14 @@ conv_int
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
-* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
-* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1]，不为None时要求长度为2。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1]，不为None时要求长度为2。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0]，不为None时要求长度为4。
+* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv。
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -503,18 +503,18 @@ conv_quant
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
-* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
-* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1]，不为None时要求长度为2。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1]，不为None时要求长度为2。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0]，不为None时要求长度为4。
+* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv。
 * input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。当前不支持List[float]型。
 * weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
 * output_scale：List[float]型或float型，表示卷积核量化参数。不可以取None，取List时要求长度为oc。当前不支持List[float]型。
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
 * output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。当前不支持List[int]型。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -556,10 +556,10 @@ deconv
 * input：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]，oc表示输出Channel数。
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为1或2。
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为1或2。
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为1或2或4。
-* output_padding：List[int]，表示输出的填充大小，取None则表示[0,0]，不为None时要求长度为1或2。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1]，不为None时要求长度为2。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1]，不为None时要求长度为2。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0]，不为None时要求长度为4。
+* output_padding：List[int]，表示输出每个空间维度的填充大小，取None则表示[0,0]，不为None时要求长度为2。
 * group：int类型，表示表示反卷积层的组数。
 * out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -612,9 +612,9 @@ deconv_int
 * tensor_i：Tensor类型，表示输入Tensor，4维NCHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维[oc, ic, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kh是kernel_h，kw是kernel_w。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1]。bias的数据类型为int32
-* stride：List[int]，表示步长大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* dilation：List[int]，表示空洞大小，取None则表示[1,1]，不为None时要求长度为2。List中顺序为[长，宽]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0]，不为None时要求长度为4。List中顺序为[上， 下， 左， 右]
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1]，不为None时要求长度为2。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1]，不为None时要求长度为2。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0]，不为None时要求长度为4。
 * output_padding：List[int]，表示输出的填充大小，取None则表示[0,0]，不为None时要求长度为1或2。
 * groups：int型，表示反卷积层的组数。
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
@@ -660,9 +660,9 @@ conv3d
 * input：Tensor类型，表示输入Tensor，5维NCDHW格式。
 * weight：Tensor类型，表示卷积核Tensor，4维NCDHW格式。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1, 1]或[oc]，oc表示输出Channel数。
-* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为1或3。
-* dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为1或3。
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为1或3或6。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0,0,0]，不为None时要求长度为6。
 * groups：int型，表示卷积层的组数。
 * out_dtype：string类型或None，为None时与input数据类型一致。取值为范围为“float32”，“float16”。表示输出Tensor的数据类型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -718,10 +718,10 @@ conv3d_int
 * tensor_i：Tensor类型，表示输入Tensor，5维NCTHW格式。
 * weight：Tensor类型，表示卷积核Tensor，5维[oc, ic, kt, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kt是kernel_t，kh是kernel_h，kw是kernel_w。
 * bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1, 1]。
-* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[stride_t, stride_h, stride_w]
-* dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
-* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0,0,0]。不为None时要求长度6。
+* groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d。
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
 * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：int32/uint32。
@@ -780,10 +780,10 @@ conv3d_quant
 """""""""""
 * tensor_i：Tensor类型，表示输入Tensor，5维NCTHW格式。
 * weight：Tensor类型，表示卷积核Tensor，5维[oc, ic, kt, kh, kw]格式。其中oc表示输出Channel数，ic表示输入channel数，kt是kernel_t，kh是kernel_h，kw是kernel_w。
-* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1， 1]。bias的数据类型为int32
-* stride：List[int]，表示步长大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[stride_t, stride_h, stride_w]
-* dilation：List[int]，表示空洞大小，取None则表示[1,1,1]，不为None时要求长度为2。List中顺序为[dilation_t, dilation_h, dilation_w]
-* pad：List[int]，表示填充大小，取None则表示[0,0,0,0,0,0]，不为None时要求长度为4。List中顺序为[前， 后， 上， 下， 左， 右]
+* bias：Tensor类型，表示偏置Tensor。为None时表示无偏置，反之则要求shape为[1, oc, 1, 1， 1]。bias的数据类型为int32。
+* stride：List[int]，表示每个空间维度的步长大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* dilation：List[int]，表示每个空间维度的空洞大小，取None则表示[1,1,1]，不为None时要求长度为3。
+* pad：List[int]，表示每个空间维度的填充大小，遵循[x1_begin, x2_begin…x1_end, x2_end,…]顺序。取None则表示[0,0,0,0,0,0]。不为None时要求长度6。
 * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv3d
 * input_scale：List[float]型或float型，表示输入量化参数。取None则使用input Tensor中的量化参数，取List时要求长度为ic。当前不支持List[float]型。
 * weight_scale：List[float]型或float型，表示卷积核量化参数。取None则使用weight Tensor中的量化参数，取List时要求长度为oc。
@@ -791,7 +791,7 @@ conv3d_quant
 * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。当前不支持List[int]型。
 * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。
 * output_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为oc。当前不支持List[int]型。
-* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8
+* out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int8。取值范围：int8/uint8。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
