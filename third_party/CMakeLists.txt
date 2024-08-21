@@ -27,6 +27,11 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbm1690_kernel_module.a
               nntoolchain/lib/liblibtorch_plugin.so
               nntoolchain/lib/libmodel_combine.so
+              nntoolchain/lib/libtpuv7_rt.so
+              nntoolchain/lib/libtpuv7_modelrt.so
+              nntoolchain/lib/libtpuv7_emulator.so
+              nntoolchain/lib/libcdm_daemon_emulator.so
+              nntoolchain/lib/libtpuv7_scalar_emulator.so
               or-tools/lib/libortools.so
               or-tools/lib/libortools.so.9
               or-tools/lib/libortools.so.9.8.3296
