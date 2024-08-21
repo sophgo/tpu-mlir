@@ -227,9 +227,9 @@ Explanation of parameters
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1], where oc represents the number of output channels.
 * kernel: This parameter is currently deprecated and not used.
-* dilation: List of integers, representing the dilation size. If None, it is [1, 1]. If not None, it requires a length of 1 or 2.
-* pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 1 or 2 or 4.
-* stride: List of integers, representing the stride size. If None, it is [1, 1]. If not None, it requires a length of 1 or 2.
+* dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
+* pad: List of integers, representing the padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * groups: An integer, representing the number of groups in the convolution layer.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -332,11 +332,10 @@ Explanation of parameters
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1], where oc represents the number of output channels.
 * kernel: This parameter is currently deprecated and not used.
-* dilation: List of integers, representing the dilation size. If None, it is [1, 1]. If not None, it requires a length of 1 or 2.
-* pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 1 or 2 or 4.
-* output_padding: List of integers, representing the output padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 1 or 2 or 4.
-* stride: List of integers, representing the stride size. If None, it is [1, 1]. If not None, it requires a length of 1 or 2.
-* output_padding: List of integers, representing the padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 1 or 2 or 4.
+* dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
+* pad: List of integers, representing the padding size along each spatial axis. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
+* output_padding: List of integers, representing the output padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -439,9 +438,9 @@ Explanation of parameters
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCDHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1, 1] or [oc], where oc represents the number of output channels.
 * kernel: This parameter is currently deprecated and not used.
-* dilation: List of integers, representing the dilation size. If None, it is [1, 1, 1]. If not None, it requires a length of 1 or 3.
-* pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0, 0, 0]. If not None, it requires a length of 1 or 3 or 6.
-* stride: List of integers, representing the stride size. If None, it is [1, 1, 1]. If not None, it requires a length of 1 or 3.
+* dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1, 1]. If not None, it requires a length of 3.
+* pad: List of integers, representing the padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0, 0, 0]. If not None, it requires a length of 6.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1, 1]. If not None, it requires a length of 3.
 * groups: An integer, representing the number of groups in the convolution layer.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
