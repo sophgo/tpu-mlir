@@ -225,6 +225,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y, Y),
             "TorchArg":             (self.test_TorchArg,            N, Y, Y, N, Y),
+            "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          N, Y, Y, Y, Y),
             "TorchConv2d":          (self.test_TorchConv2d,         N, N, N, Y, N),
@@ -3600,6 +3601,27 @@ class ONNX_IR_TESTER(object):
 
         # generate data with duplicate values
         x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
+        x = torch.from_numpy(x)
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchBatchNorm(self, case_name):
+
+        class Model(nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.bm = nn.BatchNorm2d(3, affine=True, eps=9.9999997473787516E-6)
+                if self.bm.weight is not None:
+                    torch.nn.init.uniform_(self.bm.weight.data)
+                if self.bm.bias is not None:
+                    torch.nn.init.uniform_(self.bm.bias.data)
+
+            def forward(self, x):
+                y = self.bm(x)
+
+                return y
+
+        # generate data with duplicate values
+        x = np.random.randint(-666, 666, size=(32, 3, 112, 112)).astype(np.float32)
         x = torch.from_numpy(x)
         self.torch_and_test(x, Model(), case_name)
 
