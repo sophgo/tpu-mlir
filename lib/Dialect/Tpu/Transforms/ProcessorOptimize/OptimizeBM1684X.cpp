@@ -873,6 +873,10 @@ public:
     auto r_reshape_op = op.getOperand(1).getDefiningOp<tpu::ReshapeOp>();
     if (!l_reshape_op || !r_reshape_op)
       return failure();
+    if (l_reshape_op.getOutput().hasOneUse() == false ||
+        r_reshape_op.getOutput().hasOneUse() == false) {
+      return failure();
+    }
     auto l_in_shape = module::getShape(l_reshape_op.getInput()).vec();
     auto r_in_shape = module::getShape(r_reshape_op.getInput()).vec();
     if (l_in_shape != r_in_shape)
@@ -893,6 +897,8 @@ public:
     auto new_reshape_op =
         rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
     output.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+    rewriter.eraseOp(l_reshape_op);
+    rewriter.eraseOp(r_reshape_op);
     return success();
   }
 };
