@@ -16,7 +16,7 @@
 #include <list>
 #include <map>
 #include <set>
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 
 namespace tpu_mlir {

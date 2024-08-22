@@ -17,7 +17,7 @@ from profile_helper.interface import *
 def profileArgParser():
     parser = arg.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "perfAI"],
+    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "perfAI", "lg"],
                         help="time: parse profile data to visualize. "
                         "sim: parse net_stat.sim in profile to visualize. "
                         "command: parse static commands in profile to analyse the command params. ",
@@ -36,7 +36,7 @@ def profileArgParser():
 
 if __name__ == "__main__":
     parser = profileArgParser()
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args(sys.argv[1:] + ['profile_out'])
     if args.mode == "time":
         bmprofile_analyze(args.input_dir, args.output_dir, args.format, args.option)
     elif args.mode == "sim":
@@ -46,6 +46,8 @@ if __name__ == "__main__":
     elif args.mode == "check":
         bmprofile_check_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
     elif args.mode == "perfAI":
-        bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch, debug = args.debug)
+        bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch, debug=args.debug)
+    elif args.mode == "lg":
+        bmprofile_parse_layergroup_log(args.input_dir, args.output_dir, *unknown)
     else:
         assert 0, "Not support mode={}".format(args.mode)

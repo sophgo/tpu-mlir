@@ -7,11 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_profiling.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "layer-group"
@@ -91,9 +93,200 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
   }
 }
 
+
+SmallVector<Operation *> createTempCoreParallelOp(Operation *_op) {
+  SmallVector<Operation *> computeOps;
+  if (!isa<IndexingMapsInterface>(_op)) {
+    return computeOps;
+  }
+
+  auto gl = dyn_cast<GlobalGenInterface>(_op);
+  if (gl && gl.support_multi_core()) {
+    return computeOps;
+  }
+
+  auto op = dyn_cast<IndexingMapsInterface>(_op);
+  // int offset = 0;
+  int num_core = module::getCoreNum();
+
+  LLVM_DEBUG({
+    llvm::errs() << "IndexingMap" << '\n';
+    op.dump();
+  });
+
+  if (getRunMode(op) == RunMode::TPU_DYNAMIC)
+    return computeOps;
+  if (num_core < 2)
+    return computeOps;
+  auto indexMap = op.getIndexingMaps();
+  if (!indexMap || indexMap.empty())
+    return computeOps;
+
+  auto operandsMap = indexMap.getValue().slice(0, op->getNumOperands());
+  auto resultsMap =
+      indexMap.getValue().slice(op->getNumOperands(), op->getNumResults());
+
+  // use the first resultsMap as a sample, each AffineMap in indexingMap have
+  // the same dimCount.
+  auto resultMap = cast<AffineMapAttr>(resultsMap[0]).getValue();
+  if (!resultMap.isIdentity() || resultMap.isEmpty())
+    return computeOps;
+
+  // :load balance:
+  // shape = [a, b]; other situations can be reduced to this formula.
+  // a * b = a * \sum_{i=1}^n (b_i)
+  // a * n <= num_core
+  // Find the largest n
+  // This implement use the maxSlice as much as possible, but it does not take
+  // the number of NPU into account. #please improve This
+  auto shapeParallel = SmallVector<int64_t>(
+      module::getShape(op->getResult(0)).slice(0, resultMap.getNumInputs()));
+
+  int splitDim = 0, splitMax = 1;
+  SmallVector<int64_t, 4> iterationShape;
+
+  { // This is a temporary fix for GroupNorm support; Try to refactor this out.
+    if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(op.getOperation())) {
+      shapeParallel[1] = groupNormOp.getNumGroups();
+    }
+  }
+
+  for (int64_t i = 0, n = shapeParallel.size(), iterSpace = 1; i < n; ++i) {
+    if (iterSpace * shapeParallel[i] >= num_core) {
+      splitDim = i;
+      int coreK = num_core / iterSpace;                  // This is the lower n
+      splitMax = (shapeParallel[i] + coreK - 1) / coreK; // This is max(b_i)
+      auto n = (shapeParallel[i] + splitMax - 1) / splitMax;
+      iterationShape.push_back(n);
+      break;
+    } else {
+      iterationShape.push_back(shapeParallel[i]);
+      iterSpace *= shapeParallel[i];
+    }
+  }
+
+  if (splitDim == 0 && iterationShape[0] == 1)
+    return computeOps;
+
+  if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op.getOperation())) {
+    auto l_shape = module::getShape(matmulOp.getInput());
+    auto r_shape = module::getShape(matmulOp.getRight());
+
+    if (l_shape.size() == 4 && r_shape.size() == 4 &&
+        l_shape[0] == r_shape[0] && l_shape[1] != r_shape[1] &&
+        l_shape[2] == r_shape[2] && l_shape[3] == r_shape[3])
+      return computeOps;
+  }
+
+  { // This is a temporary fix for GroupNorm support; Try to refactor this out.
+    if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(op.getOperation())) {
+      auto channel = module::getShape(groupNormOp.getInput())[1];
+      shapeParallel[1] = channel;
+      if (splitDim == 1)
+        splitMax *= channel / groupNormOp.getNumGroups();
+    }
+  }
+
+  // auto rewriter = IRRewriter(op.getContext());
+  // rewriter.setInsertionPoint(op);
+  auto builder = OpBuilder(op.getContext());
+
+  // rewriter.setInsertionPointToStart(body);
+  // rewriter.replaceAllUsesWith(op->getResults(), parallelOp.getResults());
+
+  // Travel the multi-dimensional iteration space.
+  // 1. build split operation for each operand.
+  SmallVector<Operation *, 4> splitOps;
+  SmallVector<SmallVector<int64_t, 4>, 4> operandsStride;
+  for (auto [index, valueMap, value] :
+       llvm::enumerate(operandsMap, op->getOperands())) {
+    if (auto outTypes = getSplitTypes(valueMap, value, ArrayRef(shapeParallel),
+                                      splitDim, splitMax)) {
+      auto name = module::getName(value) + "_" + Twine(index).str();
+      auto nameLoc = NameLoc::get(builder.getStringAttr(name));
+
+      splitOps.push_back(builder.create<tpu::SplitOp>(
+          nameLoc, TypeRange(outTypes.value()), value));
+    } else {
+      splitOps.push_back(value.getDefiningOp());
+    }
+    operandsStride.push_back(
+        getValidStride(valueMap, ArrayRef(iterationShape)));
+  }
+
+  // 2. build distributing compute operation for each num_core.
+
+  SmallVector<SmallVector<Type>> outputsTypes;
+  for (auto [valueMap, value] : llvm::zip(resultsMap, op->getResults())) {
+    outputsTypes.push_back(getSplitTypes(valueMap, value,
+                                         ArrayRef(shapeParallel), splitDim,
+                                         splitMax)
+                               .value());
+  }
+
+  auto resultStride = getValidStride(resultsMap[0], ArrayRef(iterationShape));
+
+  auto createComputeOp = [&](ArrayRef<int64_t> dims) {
+    SmallVector<Value, 4> operands;
+    for (auto [index, spOp] : llvm::enumerate(splitOps)) {
+      ArrayRef stride(operandsStride[index]);
+      if (spOp)
+        operands.push_back(spOp->getResult(getValidIndex(dims, stride)));
+      else // inputs
+        operands.push_back(op->getOperand(index));
+    }
+
+    SmallVector<Type, 2> resultsType;
+    for (auto types : outputsTypes)
+      resultsType.push_back(types[getValidIndex(dims, ArrayRef(resultStride))]);
+
+    auto suffix =
+        llvm::formatv("_{0:$[_]}", make_range(dims.begin(), dims.end()));
+    auto name = module::getName(op, 0) + suffix.str().c_str();
+    auto nameLoc = NameLoc::get(builder.getStringAttr(name));
+
+    computeOps.push_back(builder.create(nameLoc, op->getName().getIdentifier(),
+                                        operands, resultsType, op->getAttrs()));
+    { // This is a temporary fix for GroupNorm support; Try to refactor this
+      // out.
+      if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(computeOps.back())) {
+        auto numGroup = groupNormOp.getNumGroups();
+        auto itemPerGroup = module::getShape(op->getOperand(0))[1] / numGroup;
+        auto channel = module::getShape(groupNormOp.getInput())[1];
+        groupNormOp.setNumGroups(channel / itemPerGroup);
+      }
+    }
+  };
+
+  invokeInIterationSpace(ArrayRef(iterationShape), createComputeOp);
+
+  return computeOps;
+}
+
+void removeTempCoreParallelOp(SmallVector<Operation *> ops) {
+  std::set<Operation *> splits;
+  for (auto op : ops) {
+    for (auto v : op->getOperands()) {
+      if (auto splitOp = dyn_cast<tpu::SplitOp>(v.getDefiningOp())) {
+        splits.insert(splitOp.getOperation());
+      }
+    }
+  }
+
+  for (auto op : splits) {
+    auto rewriter = IRRewriter(op->getContext());
+    for (auto user : op->getUsers()) {
+      // user->dump();
+      rewriter.eraseOp(user);
+    }
+    rewriter.eraseOp(op);
+  }
+}
+
 int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                                        shape_secs_t &shape_secs,
                                        group_type_t group_type) {
+  // (void*)invokeInIterationSpace;
   int64_t loop_num =
       shape_secs.nsecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs;
   std::vector<layer_cycle_info_t> layer_cycle;
@@ -121,28 +314,45 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t stage = time_step->get_layer_swpipl_stage(op);
       int64_t cycle =
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
-
       LLVM_DEBUG({
-          llvm::dbgs() << "local layer cycle = " << cycle << "\n";
-          op->dump();
+        llvm::errs() << "; event = getLocalLayerCycle"
+                     << "; op_name = " << module::getName(op)
+                     << "; value = " << cycle << "\n";
+        op->dump();
       });
       layer_cycle.push_back(layer_cycle_info_t(stage, cycle));
     }
     for (auto tensor : timestep_tensors) {
       int64_t stage = time_step->get_tensor_swpipl_stage(tensor.first);
-      int64_t cycle =
-          this->getGdmaCycle(tensor.first, tensor.second, group_type);
-      int64_t hold_in_lmem =
-          time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
-      if(auto srcOp = tensor.first.getDefiningOp<top::WeightOp>()){
-        bool allow_split = (srcOp.getAllowSplitAttr() != nullptr);
-        if (!allow_split && enable_multi_core){
-          // consider BW conflict
-          cycle *= 1.67; // experimental value from mm_resnet50
+      auto tensor_info = tensor.second;
+      if (module::getChip() == module::Chip::BM1688) {
+        auto bm1688 = (BM1688 *)BM168x::instance();
+        float BW = 24;
+        if (enable_multi_core) {
+          BW = 15.f;
+          LLVM_DEBUG({
+            llvm::errs() << "; event = multi_core_align"
+                         << "; BW = " << BW
+                         << "\n";
+          });
+          bm1688->dl_set_gdma_bw_s2l(BW);
+          bm1688->dl_set_gdma_bw_l2s(BW);
         }
       }
+      int64_t cycle = this->getGdmaCycle(tensor.first, tensor_info, group_type);
+      if (module::getChip() == module::Chip::BM1688) {
+        auto bm1688 = (BM1688 *)BM168x::instance();
+        float BW = 24;
+        bm1688->dl_set_gdma_bw_s2l(BW);
+        bm1688->dl_set_gdma_bw_l2s(BW);
+      }
+      int64_t hold_in_lmem =
+          time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
       LLVM_DEBUG({
-          llvm::dbgs()<< "local tensor cycle = " << cycle << "\n";
+        llvm::errs() << "; event = getGdmaCycle"
+                     << "; op_name = " << module::getName(tensor.first)
+                     << "; value = " << cycle << "\n";
+        tensor.first.dump();
       });
       gdma_cycle.push_back(gdma_cycle_info_t(stage, cycle, hold_in_lmem));
     }
@@ -154,6 +364,11 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       for (auto &layer : layer_cycle) {
         if (layer.stage <= j && layer.stage >= start) {
           total_layer_cycle += layer.cycle;
+          LLVM_DEBUG({
+            llvm::errs() << "; event = group_filling_time_tiu"
+                         << "; value" << layer.cycle
+                         << "\n";
+          });
         }
       }
       // tensors
@@ -162,19 +377,28 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (tensor.stage <= j && tensor.stage >= start &&
             tensor.hold_in_lmem < 2) {
           total_gdma_cycle += tensor.cycle;
+          LLVM_DEBUG({
+            llvm::errs() << "; event = group_filling_time_gdma"
+                         << "; value" << tensor.cycle
+                         << "\n";
+          });
           if (tensor.hold_in_lmem == 1) {
             tensor.hold_in_lmem = 2;
           }
         }
       }
-      // max
       LLVM_DEBUG({
-          if(total_layer_cycle > total_gdma_cycle){
-              llvm::dbgs()<< "[filling]take total_layer_cycle = " << total_layer_cycle << "\n";
-          }else{
-              llvm::dbgs()<< "[filling]take total_gdma_cycle = " << total_gdma_cycle << "\n";
-          }
+        if (total_layer_cycle > total_gdma_cycle) {
+          llvm::dbgs() << "[filling]take total_layer_cycle = "
+                       << total_layer_cycle
+                       << "\n";
+        } else {
+          llvm::dbgs() << "[filling]take total_gdma_cycle = "
+                       << total_gdma_cycle
+                       << "\n";
+        }
       });
+      // max
       filling_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
     // kernel time
@@ -183,20 +407,30 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       total_layer_cycle = 0;
       for (auto &layer : layer_cycle) {
         total_layer_cycle += layer.cycle;
+        LLVM_DEBUG({
+          llvm::errs() << "[kernel] consider tiu cycle = " << layer.cycle
+                       << "\n";
+        });
       }
       // tensors
       total_gdma_cycle = 0;
       for (auto &tensor : gdma_cycle) {
         if (tensor.hold_in_lmem == 0) {
           total_gdma_cycle += tensor.cycle;
+          LLVM_DEBUG({
+            llvm::errs() << "[kernel] consider gdma cycle = " << tensor.cycle
+                         << "\n";
+          });
         }
       }
       LLVM_DEBUG({
-          if(total_layer_cycle > total_gdma_cycle){
-              llvm::dbgs()<< "[kernel]take total_layer_cycle = " << total_layer_cycle << "\n";
-          }else{
-              llvm::dbgs()<< "[kernel]take total_gdma_cycle = " << total_gdma_cycle << "\n";
-          }
+        if (total_layer_cycle > total_gdma_cycle) {
+          llvm::dbgs() << "[kernel]take total_layer_cycle = "
+                       << total_layer_cycle << "\n";
+        } else {
+          llvm::dbgs() << "[kernel]take total_gdma_cycle = " << total_gdma_cycle
+                       << "\n";
+        }
       });
       kernel_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
@@ -207,6 +441,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       for (auto &layer : layer_cycle) {
         if (layer.stage >= j && layer.stage < swpipl_stage_num) {
           total_layer_cycle += layer.cycle;
+          LLVM_DEBUG({
+            llvm::errs() << "[draining] consider tiu cycle = " << layer.cycle
+                         << "\n";
+          });
         }
       }
       // tensors
@@ -215,14 +453,20 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (tensor.hold_in_lmem == 0 && tensor.stage >= j &&
             tensor.stage < swpipl_stage_num) {
           total_gdma_cycle += tensor.cycle;
+          LLVM_DEBUG({
+            llvm::errs() << "[draining] consider gdma cycle = " << tensor.cycle
+                         << "\n";
+          });
         }
       }
       LLVM_DEBUG({
-          if(total_layer_cycle > total_gdma_cycle){
-              llvm::dbgs()<< "[draining]take total_layer_cycle = " << total_layer_cycle << "\n";
-          }else{
-              llvm::dbgs()<< "[draining]take total_gdma_cycle = " << total_gdma_cycle << "\n";
-          }
+        if (total_layer_cycle > total_gdma_cycle) {
+          llvm::dbgs() << "[draining]take total_layer_cycle = "
+                       << total_layer_cycle << "\n";
+        } else {
+          llvm::dbgs() << "[draining]take total_gdma_cycle = "
+                       << total_gdma_cycle << "\n";
+        }
       });
       draining_cycle += std::max(total_layer_cycle, total_gdma_cycle);
     }
@@ -230,20 +474,66 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   int64_t total_cycle =
       filling_cycle + draining_cycle +
       std::max(loop_num - swpipl_stage_num, (int64_t)0) * kernel_cycle;
+  LLVM_DEBUG({
+    llvm::errs() << "; filling_cycle = " << filling_cycle
+                 << "; event = " << "total_cycle_of_group"
+                 << "; draining_cycle = " << draining_cycle
+                 << "; loop_num = " << loop_num
+                 << "; swpipl_stage_num = " << swpipl_stage_num
+                 << "; kernel_cycle = " << kernel_cycle
+                 << "; total_cycle = " << total_cycle << "\n";
+  });
   return total_cycle;
 }
 
 int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
+  auto splitedOps = createTempCoreParallelOp(op);
+  // SmallVector<Operation *> splitedOps;
+  if (splitedOps.size() == 0) {
+    splitedOps.push_back(op);
+  }
+
   auto bm168x = BM168x::instance();
-  bm168x->set_command_issue_flag(false);
-  bm168x->reset_cmd_id_node();
 
-  // generate_fake_global_addr(op);
-  auto castOp = dyn_cast<GlobalGenInterface>(op);
-  castOp.codegen_global_bm168x();
+  if (module::getChip() == module::Chip::BM1688) {
+    auto bm1688 = (BM1688 *)bm168x;
+    bool imp_multi_core_global = isa<tpu::Conv2DOp>(op) || splitedOps.size() > 1;
+    float BW = 24;
+    if (imp_multi_core_global) {
+      BW = 15.f;
+      LLVM_DEBUG({
+        llvm::errs() << "; event = multi_core_global_align"
+                     << "; BW = " << BW << "; op_name = " << module::getName(op)
+                     << "\n";
+      });
+    }
+    // for other targets, writer
+    bm1688->dl_set_gdma_bw_s2l(BW);
+    bm1688->dl_set_gdma_bw_l2s(BW);
+  }
+  int64_t cycle = 0;
 
-  int64_t cycle = bm168x->get_cmd_cycle();
-  bm168x->dl_sg_stas_reset();
+  for (auto _op : splitedOps) {
+    if (auto castOp = dyn_cast<GlobalGenInterface>(_op)) {
+      bm168x->set_command_issue_flag(false);
+      bm168x->reset_cmd_id_node();
+      castOp.codegen_global_bm168x();
+      cycle = std::max(cycle, bm168x->get_cmd_cycle());
+      bm168x->dl_sg_stas_reset();
+    }
+  }
+  if (splitedOps.size() > 1) {
+    removeTempCoreParallelOp(splitedOps);
+  }
+
+  // restore default BW
+  if (module::getChip() == module::Chip::BM1688) {
+    auto bm1688 = (BM1688 *)bm168x;
+    float BW = 24;
+    // for other targets, writer
+    bm1688->dl_set_gdma_bw_s2l(BW);
+    bm1688->dl_set_gdma_bw_l2s(BW);
+  }
   return cycle;
 }
 
