@@ -142,6 +142,7 @@ class TORCH_IR_TESTER(object):
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
+            "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
             "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N),
             "Roll":             (self.test_Roll,              N, Y, Y, N),
@@ -1471,6 +1472,46 @@ class TORCH_IR_TESTER(object):
 
         in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
+
+    #######################################################################
+    # Depth2Space
+    # ------------
+    def test_D2SPattern(self):
+        """Depth2Space"""
+        def _test_case1(in_shape):
+            class Model1(nn.Module):
+
+                def __init__(self):
+                    super(Model1, self).__init__()
+
+                def forward(self, x):
+                    a = torch.reshape(x, (1,14,14,-1))      # 1,14,14,16
+                    b = torch.reshape(a, (1,7,2,7,2,-1))    # 1,7,2,7,2,16
+                    c = b.permute(0,1,3,4,2,5)              # 1,7,7,2,2,16
+                    d = torch.reshape(c, (1,7,7,64))        # 1,7,7,64
+                    return d
+
+            self.trace_and_test([in_shape], Model1())
+
+        def _test_case2(in_shape):
+            class Model2(nn.Module):
+
+                def __init__(self):
+                    super(Model2, self).__init__()
+
+                def forward(self, x):
+                    b = torch.reshape(x, (1,7,2,7,2,-1))    # 1,7,2,7,2,16
+                    c = b.permute(0,1,3,4,2,5)              # 1,7,7,2,2,16
+                    d = torch.reshape(c, (1,7,7,64))        # 1,7,7,64
+                    return d
+
+            self.trace_and_test([in_shape], Model2())
+
+        in_shape1 = (1,196,16)
+        _test_case1(in_shape1)
+
+        in_shape2 = (1,14,14,16)
+        _test_case2(in_shape2)
 
     #######################################################################
     # PRelu
