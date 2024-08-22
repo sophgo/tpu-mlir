@@ -1045,7 +1045,8 @@ struct PermuteFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
     if (in.hasOneUse() == false) {
       return failure();
     }
-    if (auto rop = dyn_cast<tpu::ReshapeOp>(in.getDefiningOp())) {
+    auto rop = dyn_cast<tpu::ReshapeOp>(in.getDefiningOp());
+    if (rop) {
       in = rop.getInput();
       if (in.hasOneUse() == false) {
         return failure();
@@ -1117,6 +1118,9 @@ struct PermuteFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
           loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});
       op.getOutput().replaceAllUsesWith(rs_op.getOutput());
       rewriter.eraseOp(op);
+    }
+    if (rop) {
+      rewriter.eraseOp(rop);
     }
     return success();
   }
