@@ -10,6 +10,9 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <llvm/Support/Debug.h>
+
+#define DEBUG_TYPE "layer-group"
 
 using namespace tpu_mlir::backend;
 
@@ -873,6 +876,16 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
    * whether the change can still ensure the validity of `shape_sec`
    * generated from `update_multi_core_secs`.
   */
+  LLVM_DEBUG({
+      llvm::errs() << "; event = update_multi_core_start"
+          << "; nsecs = " << shape_secs.nsecs
+          << "; dsecs = " << shape_secs.dsecs
+          << "; hsecs = " << shape_secs.hsecs
+          << "; wsecs = " << shape_secs.wsecs
+          << "; csecs = " << shape_secs.csecs
+          << "\n";
+      lg_info.dump_lginfo();
+  });
   shape_secs_t multi_core_secs = shape_secs;
   bool multi_core_status = false;
   update_multi_core_secs(max_shape_secs, multi_core_secs);
@@ -898,6 +911,20 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
 
   if (multi_core_status) {
     shape_secs = multi_core_secs;
+    LLVM_DEBUG({
+      llvm::errs() << "; event = use_multi_core_split"
+          << "; nsecs = " << shape_secs.nsecs
+          << "; dsecs = " << shape_secs.dsecs
+          << "; hsecs = " << shape_secs.hsecs
+          << "; wsecs = " << shape_secs.wsecs
+          << "; csecs = " << shape_secs.csecs
+          << "\n";
+    });
+  }else{
+    LLVM_DEBUG({
+      llvm::errs() << "; event = drop_multi_core_split"
+          << "\n";
+    });
   }
 
   int64_t try_num = 0;

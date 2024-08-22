@@ -877,10 +877,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
 
         LLVM_DEBUG({
-          llvm::dbgs() << "cluster[" << j << "] = " << start_idx << ", "
-                       << end_idx << ";" << "cost = " << cost_table[j][j]
-                       << "\n";
-          sub_group.dump_lginfo();
+            llvm::errs() << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx
+                         << "; group_idx = " << i
+                         << "; group_cost = " << cost_table[j][j] << "\n";
+            sub_group.dump_lginfo();
         });
 
         cut_points[j][j] = j;
@@ -897,6 +898,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           int64_t start_idx = clusters[start].first;
           int64_t end_idx = clusters[end].first + clusters[end].second - 1;
           get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
+          LLVM_DEBUG({
+            llvm::errs() << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx
+                         << "; group_idx_start = " << i << "\n";
+          });
 
           int64_t group_cost = MAX_COST;
           is_layer_group_valid(sub_group, true, &group_cost);
@@ -905,8 +911,9 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
           //                    cost_table);
           LLVM_DEBUG({
-            llvm::dbgs() << "; start_idx = " << start_idx
+            llvm::errs() << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
+                         << "; group_idx = " << i
                          << "; group_cost = " << group_cost << "\n";
           });
 
@@ -917,15 +924,19 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
               group_cost = temp_cost;
               optimal_point = sweep;
               LLVM_DEBUG({
-                llvm::dbgs() << "; update better" << "; start = " << start
-                             << "; sweep = " << sweep << "; end = " << end
-                             << "; temp_cost = " << temp_cost << "\n";
+                llvm::errs() << "; update better"
+                            << "; start = " << start
+                            << "; sweep = " << sweep
+                            << "; end = " << end
+                            << "; temp_cost = " << temp_cost << "\n";
               });
             }
           }
           LLVM_DEBUG({
-            llvm::dbgs() << "; start_idx = " << start_idx
+            llvm::errs() << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
+                         << "; group_idx = " << i
+                         << "; type = " << "sweeped"
                          << "; group_cost = " << group_cost << "\n";
           });
 
@@ -970,6 +981,23 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
       });
     } else {
       cut_results_.push_back(std::vector<int64_t>(1, 0));
+      LLVM_DEBUG({
+        if (!isa<ReturnOp>(base_groups[i][0])) {
+          int64_t start_idx = clusters[0].first;
+          // int64_t end_idx = start_idx + clusters[0].second - 1;
+          get_layer_group(sub_group, base_groups[i], start_idx, start_idx);
+          int64_t cost;
+
+          assert(is_layer_group_valid(sub_group, true, &cost));
+          llvm::errs() << "; start_idx = " << 0 << "; end_idx = " << 0
+                       << "; group_idx = " << i << "; group_cost = " << cost
+                       << "\n";
+        }else{
+          llvm::errs() << "; start_idx = " << 0 << "; end_idx = " << 0
+                       << "; group_idx = " << i << "; group_cost = " << 0
+                       << "\n";
+        }
+      });
     }
   }
 
@@ -1004,8 +1032,15 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     show_cut_results();
   }
 
+  // for debug, fix cut results
+  // std::vector<int64_t> override_is = {8, 10, 12, 16, 24, 26, 36, 42, 77, 91, 126, 133};
+  // std::vector<int64_t> override_is = {8, 10, 12, 20, 22, 24, 26, 32, 34, 36, 44, 45, 46, 47, 54, 58, 74, 76, 78, 90, 98, 105, 107, 109, 112, 119, 120, 121, 122, 126, 133};
+  // cut_results_[0] = override_is;
+  // show_cut_results();
+
   // update lg_infos
   get_final_groups(lg_infos, base_groups);
+
   // for debug
   // int grp_idx = 0;
   // for (auto lg_info : lg_infos) {
@@ -1124,6 +1159,8 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
     return false;
   }
   opt_seq_info.min_cost = total_cost;
+  opt_seq_info.left_cost = group_costs[0];
+  opt_seq_info.right_cost = group_costs[1];
   memcpy(p_shape_secs[0], &shape_secs[0], sizeof(shape_secs_t));
   memcpy(p_shape_secs[1], &shape_secs[1], sizeof(shape_secs_t));
 
@@ -1167,6 +1204,20 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
           }
         }
         cut_result[j] = optimal_cut_idx;
+        LLVM_DEBUG({
+          llvm::dbgs() << "; start_idx = " << left_cut_idx
+                        << "; end_idx = " << cut_result[j]
+                        << "; group_cost = " << seq_info.left_cost
+                        << "; group_idx = " << i
+                        << "; action = " << "consider_redundant_computation_and_gdma_cost"
+                        << "\n";
+          llvm::dbgs() << "; start_idx = " << cut_result[j] + 1
+                        << "; end_idx = " << cut_result[j + 1]
+                        << "; group_cost = " << seq_info.right_cost
+                        << "; group_idx = " << i
+                        << "; action = " << "consider_redundant_computation_and_gdma_cost"
+                        << "\n";
+        });
       }
     }
   }
@@ -1209,8 +1260,9 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
               llvm::dbgs() << "; start_idx = " << start_cut_idx
                            << "; end_idx = " << end_cut_idx
                            << "; group_cost = " << combine_group_cost
-                           << "; base_group = " << i << "; action = "
-                           << "merge_cut_idx_to_reduce_gdma_cost" << "\n";
+                           << "; group_idx = " << i
+                           << "; action = " << "merge_cut_idx_to_reduce_gdma_cost"
+                           << "\n";
             });
             cut_result.erase(cut_result.begin() + j);
             size_ = cut_result.size();
@@ -2509,7 +2561,18 @@ void GroupMethod::get_final_groups(
           false == LgPass::OPTIONS.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
-      LLVM_DEBUG({ lg_info.dump_lginfo(); });
+      LLVM_DEBUG({
+          int64_t cost = 0;
+
+          assert(is_layer_group_valid(lg_info, true, &cost));
+          llvm::errs() << "; start_idx = " << start_idx
+                        << "; end_idx = " << end_idx
+                        << "; group_cost = " << cost
+                        << "; final_group_idx = " << i
+                        << "\n";
+          lg_info.dump_lginfo();
+
+      });
       start_idx = end_idx + 1;
     }
   }
