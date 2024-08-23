@@ -23,7 +23,7 @@ from calibration.data_selector import DataSelector
 
 from utils.mlir_shell import mlir_lowering
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 
 def quant_requant_active(data, scale, unsigned=False, bits=8):

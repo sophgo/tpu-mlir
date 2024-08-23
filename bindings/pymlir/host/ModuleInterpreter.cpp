@@ -1546,5 +1546,7 @@ void ModuleInterpreter::clear_hooks() {
 void ModuleInterpreter::set_mem_mode(std::string mem_mode_str) {
   if (mem_mode_str == "reused_mem" || mem_mode_str.empty())
     mem_mode = mem_mode_t::ALL_TENSOR_IN_REUSED_MEM;
+  if (mem_mode_str == "force_value_mem")
+    mem_mode = mem_mode_t::ALL_TENSOR_IN_MEM;
 }
 } // namespace tpu_mlir

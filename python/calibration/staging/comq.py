@@ -26,7 +26,7 @@ from .utils import cosine_sim
 
 from .lapq import LossAwareQuant
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 
 class COMQ_Layer:

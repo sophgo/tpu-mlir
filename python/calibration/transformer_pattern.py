@@ -18,7 +18,7 @@ import math
 import numpy as np
 import pymlir
 import torch
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime

@@ -13,7 +13,7 @@ import sys
 import time
 import datetime
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 import tools.run_calibration
 import numpy as np
 import copy
