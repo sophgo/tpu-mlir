@@ -1040,9 +1040,13 @@ class BMProfileGenerator:
             gdma_theo_time = get_gdma_theo_time(x['s2lBytes'], x['l2sBytes'], x['s2sBytes'], GDMAPeriod)
             return get_ratio_str(gdma_theo_time, x['gdmaTime(us)'])
         def get_layer_parallelism(x):
+            if not x['totalTime(us)']:
+                return None
             parallelism = get_ratio_str(x['tiuTime(us)'] + x['gdmaTime(us)'], x['totalTime(us)'])
             return parallelism if x['Type'] == "global" else None
         def get_layer_concurrency(x):
+            if not x['totalTime(us)']:
+                return None
             concurrency = get_concurrency(x['tiuTime(us)'], x['gdmaTime(us)'], x['totalTime(us)'])
             return concurrency if x['Type'] == "global" else None
 
@@ -1263,7 +1267,7 @@ class BMProfileGenerator:
         layer_df['tiuTimeRatio'] = layer_df.apply(lambda x: get_ratio_str(x['tiuCycles'], total_tiu_cycles), axis = 1)
         layer_df['tiuPTheoTime(us)'] = layer_df.apply(lambda x: x['AlgOps'] / (x['PeakTops'] * 1024 * 1e3), axis = 1)
         layer_df['uArchRate'] = layer_df.apply(lambda x: get_ratio_str(x['AlgOps'], x['uArchOps']), axis = 1)
-        layer_df['ActualTops'] = layer_df.apply(lambda x: x['AlgOps'] / x['totalTime(us)'] / 1e6 if x['totalTime(us)'] > 0 else None, axis = 1)
+        layer_df['ActualTops'] = layer_df.apply(lambda x: x['AlgOps'] / x['totalTime(us)'] / 1e6 if x['totalTime(us)'] else None, axis = 1)
         layer_df['Parallelism'] = layer_df.apply(get_layer_parallelism, axis = 1)
         layer_df['Concurrency'] = layer_df.apply(get_layer_concurrency, axis = 1)
         layer_df.sort_values(by="tiuTimeRatio", ascending=False, inplace=True)

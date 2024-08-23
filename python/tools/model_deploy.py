@@ -128,19 +128,22 @@ class DeployTool:
 
     def pack_profile(self):
         import shutil
-        profile_path = f'./{self.prefix}_profile/'
+        import datetime
+        t = datetime.datetime.now()
+        date = t.strftime("%y%m%d")
+        profile_path = f'./{self.prefix}_profile_{date}/'
         os.makedirs(profile_path, exist_ok=True)
 
-        shutil.copy2(self.mlir_file, os.path.join(profile_path, 'top.mlir'))
-        mlir2onnx(self.mlir_file, os.path.join(profile_path, 'top.onnx'))
+        shutil.copy2(self.mlir_file, os.path.join(profile_path, f'{self.prefix}_top.mlir'))
+        mlir2onnx(self.mlir_file, os.path.join(profile_path, f'{self.prefix}_top.onnx'))
 
-        shutil.copy2(self.tpu_mlir, os.path.join(profile_path, 'tpu.mlir'))
-        mlir2onnx(self.tpu_mlir, os.path.join(profile_path, 'tpu.onnx'))
+        shutil.copy2(self.tpu_mlir, os.path.join(profile_path, f'{self.prefix}_tpu.mlir'))
+        mlir2onnx(self.tpu_mlir, os.path.join(profile_path, f'{self.prefix}_tpu.onnx'))
 
-        shutil.copy2(self.tpu_opt_mlir, os.path.join(profile_path, 'tpu_opt.mlir'))
-        mlir2onnx(self.tpu_opt_mlir, os.path.join(profile_path, 'tpu_opt.onnx'))
+        shutil.copy2(self.tpu_opt_mlir, os.path.join(profile_path, f'{self.prefix}_tpu_opt.mlir'))
+        mlir2onnx(self.tpu_opt_mlir, os.path.join(profile_path, f'{self.prefix}_tpu_opt.onnx'))
 
-        shutil.copy2(self.final_mlir, os.path.join(profile_path, 'final.mlir'))
+        shutil.copy2(self.final_mlir, os.path.join(profile_path, f'{self.prefix}_final.mlir'))
 
     def lowering(self):
         if self.chip == 'cpu':
