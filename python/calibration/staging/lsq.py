@@ -20,7 +20,7 @@ from .utils import quant_requant_active
 from .utils import cal_loss
 
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 SKIP_OPERATION = [
     'top.Input', 'top.Reshape', 'top.Softmax', 'top.Weight', 'top.MaxPool', 'top.Slice', 'top.Tile',

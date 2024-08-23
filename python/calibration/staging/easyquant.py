@@ -25,7 +25,7 @@ from .utils import cal_loss
 from .utils import cosine_sim
 
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 
 EASY_QUANT_OPERATION = [

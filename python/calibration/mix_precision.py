@@ -9,7 +9,7 @@
 # ==============================================================================
 
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 import numpy as np
 import os
 import math

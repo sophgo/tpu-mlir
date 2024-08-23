@@ -18,7 +18,7 @@ import math
 import numpy as np
 import pymlir
 import torch
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime
@@ -997,6 +997,20 @@ class ActivationCalibrator(BaseKldCalibrator):
                 tensor_list.append(op)
         return tensor_list
 
+    def calculate_kurtosis(self, signal):
+        """Calculates the kurtosis of a given signal.
+        """
+        signal = signal.flatten()
+        mean = np.mean(signal)
+        std = np.std(signal)
+        if std == 0:
+            return float('inf')
+
+        standardized_signal = (signal - mean) / (std + 1e-8)
+        kurtosis = np.mean(standardized_signal**4)
+
+        return kurtosis.item()
+
     def process_statistic_muti(self, muti_output_tensor, idx):
         if muti_output_tensor == []:
             return
@@ -1086,6 +1100,13 @@ class ActivationCalibrator(BaseKldCalibrator):
                         self.aciq[out].append(beta * b)
                 elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
                     self.max_abs_value[out] = max(np.max(np.abs(activation)), self.max_abs_value[out])
+                if self.args.kurtosis_analysis:
+                    kurtosis = self.calculate_kurtosis(activation)
+                    if out not in self.kurtosis:
+                        self.kurtosis[out] = []
+                        self.kurtosis[out].append(kurtosis)
+                    else:
+                        self.kurtosis[out].append(kurtosis)
                 if out not in self.histogram_data_map:
                     hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
                     self.histogram_data_map[out] = hist
@@ -1165,6 +1186,14 @@ class ActivationCalibrator(BaseKldCalibrator):
                 abs_value = 1e-5
                 print("WARNING: layer {} is all zeros. Please check the "
                         "input data correctness.".format(out))
+            if self.args.kurtosis_analysis:
+                mean_kurtosis = sum(self.kurtosis[out])/len(self.kurtosis[out])
+                #print("op:{} and kurtosis:{}".format(out,mean_kurtosis))
+                if out not in self.kurtosis_result:
+                    self.kurtosis_result[out] = []
+                    self.kurtosis_result[out].append(mean_kurtosis)
+                else:
+                    self.kurtosis_result[out].append(mean_kurtosis)
             self.activations_statistics[out] = (self.min_value[out], self.max_value[out], abs_value)
         return
 
@@ -1200,6 +1229,8 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.perd = {}
         self.mse = {}
         self.aciq = {}
+        self.kurtosis = {}
+        self.kurtosis_result = {}
         self.input_op = []
         self.last_five_tensors_threshold = {}
         self.histogram_data_map = {}
@@ -1255,7 +1286,6 @@ class ActivationCalibrator(BaseKldCalibrator):
                     thresholds_map_absmax[out] = threshold
                     thresholds_map_scale[out] = scale.numpy()[0]
                     thresholds_map_zp[out] = zp.numpy()[0]
-
         if 'use_mse' in self.debug_cmd or 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_laplace' in self.debug_cmd or 'use_mse' in self.args.cali_method or 'use_aciq_gauss' in self.args.cali_method or 'use_aciq_laplace' in self.args.cali_method:
             for tensor in self.last_five_tensors:
                 if self.last_five_tensors_threshold[tensor] != max(abs(self.activations_statistics[tensor][0]), abs(self.activations_statistics[tensor][1])):
@@ -1799,3 +1829,19 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.tunner.tune_steps)
             save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list,
                                      'before_tuned', 'after_tuned', file_prefix)
+        if self.args.kurtosis_analysis:
+            if '/' in self.args.calibration_table:
+                last_index = self.args.calibration_table.rfind('/')
+                kurtosis_result = self.args.calibration_table[:last_index + 1] + "kurtosis_analysis"
+            else:
+                kurtosis_result = "kurtosis_analysis"
+            # 按照值降序排序
+            sorted_kurtosis_result = dict(sorted(self.kurtosis_result.items(), key=lambda item: item[1], reverse=True))
+            with open(kurtosis_result, "w") as f:
+                f.write("# op_name   kurtosis   op_type\n")
+                for layer,kurtosis in sorted_kurtosis_result.items():
+                    op_type =  self.parser.get_op_type_by_op_name(layer)
+                    if op_type in ['top.LayerNorm','top.Softmax']:
+                        pass
+                    else:
+                        f.write("{}  {:.7f}  {}\n".format(layer, kurtosis[0], op_type))

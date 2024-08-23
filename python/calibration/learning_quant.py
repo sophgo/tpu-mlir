@@ -40,7 +40,7 @@ from staging.lapq import LossAwareQuant
 from staging.comq import Comq
 
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 
 def learning_adaweight_wrap(reqs):

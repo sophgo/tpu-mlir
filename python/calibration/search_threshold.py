@@ -12,7 +12,7 @@ import sys
 import time
 import datetime
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 import numpy as np
 import copy
 import logging

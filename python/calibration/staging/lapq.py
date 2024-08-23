@@ -28,7 +28,7 @@ from .utils import cosine_sim
 from .utils import lower_and_eval
 
 import pymlir
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 
 
 LAPQ_OPERATION = [
