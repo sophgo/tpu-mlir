@@ -730,6 +730,7 @@ def conv3d_int(input: Tensor,
                out_dtype: str = None,
                out_name: str = None):
     assert not isinstance(input_zp, list), "not supported yet"
+    assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
@@ -776,6 +777,7 @@ def conv3d_quant(input: Tensor,
     assert not isinstance(output_zp, list), "not supported yet"
     assert not isinstance(input_scale, list), "not supported yet"
     assert not isinstance(output_scale, list), "not supported yet"
+    assert input.dtype in ["int8", "uint8"] and weight.dtype in ["int8", "uint8"]
 
     dilation = [1, 1, 1] if dilation is None else dilation
     stride = [1, 1, 1] if stride is None else stride
