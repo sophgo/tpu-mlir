@@ -245,6 +245,9 @@ struct TopScaleMergeToMatMul : public OpRewriterPatternEx<ScaleOp> {
     if (!preOp->hasOneUse() || !isa<MatMulOp>(preOp)) {
       return failure();
     }
+    if (isa<MatMulOp>(preOp) && preOp->getAttr("do_relu").cast<BoolAttr>() == rewriter.getBoolAttr(true)) {
+      return failure();
+    }
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
