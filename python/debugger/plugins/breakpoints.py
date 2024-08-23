@@ -70,7 +70,7 @@ class AddrBreakpoint(Breakpoint):
 
 class CmdIdBreakpoint(Breakpoint):
     type = "cmd-id"
-    pattern = re.compile("^[TD][0-9]+")
+    pattern = re.compile("^[BD][0-9]+")
 
     def __init__(self, text, cond=None, index=-1) -> None:
         super().__init__(text, cond, index)
