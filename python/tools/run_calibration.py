@@ -57,6 +57,8 @@ if __name__ == '__main__':
     parser.add_argument('--transformer', type=str, default='False', help='model include attention structure')
     parser.add_argument('--quantize_method_list', type=parse_method_list, default='MSE', help='threshold method for search qtable')
     parser.add_argument('--benchmark_method', type=str, default='cos', choices=['cos', 'snr'], help='method for search optimal threshold')
+    parser.add_argument('--kurtosis_analysis', help='kurtosis analysis', action="store_true")
+    parser.add_argument('--part_quantize', help='only quantize conv and matmul', action="store_true")
     parser.add_argument('-o', '--calibration_table', type=str, help='output threshold table')
     parser.add_argument('--quantize_table', help='output search qtable')
     parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')

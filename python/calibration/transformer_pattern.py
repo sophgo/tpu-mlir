@@ -155,11 +155,13 @@ class MatchPattern:
                 print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
                 exit(1)
 
-    def gen_qtable(self, fp_layer_list):
+    def gen_qtable(self, fp_layer_list, flag):
         with open(self.quantize_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
             f.write("# number of {} layer: {}\n".format(self.mix_mode, len(fp_layer_list)))
+            if self.args.part_quantize and flag == 0:
+                f.write("# part_quantize \n")
             f.write("###\n")
             f.write("# op_name   quantize_mode\n")
             for layer in fp_layer_list:
@@ -170,6 +172,7 @@ class MatchPattern:
         count = 0
         type_tensors = []
         fp_layer_list = []
+        fp_layer_list_part_quantize = []
         all_tensors = self.parser.get_op_name_list()
         num_tensors = len(all_tensors)
         model_block_name = None
@@ -252,5 +255,13 @@ class MatchPattern:
                             fp_layer_list.append(all_tensors[i])
                     else:
                         fp_layer_list.append(all_tensors[i])
-            self.gen_qtable(fp_layer_list)
+            self.gen_qtable(fp_layer_list, flag)
+        if flag == 0 and self.args.part_quantize:
+            for j in range(num_tensors):
+                op_type = self.parser.get_op_type_by_op_name(all_tensors[j])
+                if op_type == 'top.Conv' or op_type == 'top.MatMul':
+                    pass
+                else:
+                    fp_layer_list_part_quantize.append(all_tensors[j])
+            self.gen_qtable(fp_layer_list_part_quantize, flag)
         return
