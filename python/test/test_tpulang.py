@@ -2622,6 +2622,7 @@ class TPULANG_IR_TESTER(object):
         _test_permute([1, 1024, 10, 128])
         _test_permute([1, 1024, 10, 128], scale=3.0, dtype="int8", is_quantized=True)
         _test_permute([1, 1024, 10, 128], dtype="float16", is_quantized=True)
+        _test_permute([1, 1024, 10, 128], dtype="int16")
 
     #######################################################################
     # Reshape
@@ -2717,6 +2718,7 @@ class TPULANG_IR_TESTER(object):
         _test_pad([1, 32, 28, 28])
         _test_pad([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_pad([1, 32, 28, 28], dtype="float16", is_quantized=True)
+        _test_pad([1, 32, 28, 28], dtype="int16")
 
     #######################################################################
     # Tile
@@ -2738,6 +2740,7 @@ class TPULANG_IR_TESTER(object):
         _test_tile([1, 32, 28, 28])
         _test_tile([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_tile([1, 32, 28, 28], dtype="float16", is_quantized=True)
+        _test_tile([1, 32, 28, 28], dtype="int16")
 
     #######################################################################
     # Concat
@@ -2759,6 +2762,7 @@ class TPULANG_IR_TESTER(object):
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], scale=3.0,zero_point=0, dtype="int8", is_quantized=True)
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="float16", is_quantized=True)
+        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="int16")
 
     def test_Concat2(self, case_name):
         """test concat for int8 with different scales and zerp points"""
@@ -2796,6 +2800,7 @@ class TPULANG_IR_TESTER(object):
         _test_broadcast([1, 2, 1], [2, 1, 6])
         _test_broadcast([1, 2, 1], [2, 1, 6], scale=3.0, dtype="int8", is_quantized=True)
         _test_broadcast([1, 2, 1], [2, 1, 6], dtype="float16", is_quantized=True)
+        _test_broadcast([1, 2, 1], [2, 1, 6], dtype="int16")
 
     #######################################################################
     # nonzero
@@ -3165,6 +3170,7 @@ class TPULANG_IR_TESTER(object):
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22])
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], scale=3.0, dtype="int8", is_quantized=True)
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], dtype="float16", is_quantized=True)
+        _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], dtype="int16")
 
     #######################################################################
     # Repeat
@@ -3187,6 +3193,7 @@ class TPULANG_IR_TESTER(object):
         _test_repeat([1, 3, 28, 28])
         _test_repeat([1, 3, 28, 28], dtype="float16", is_quantized=True)
         _test_repeat([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
+        _test_repeat([1, 3, 28, 28], dtype="int16")
 
     #######################################################################
     # Gt
@@ -3747,6 +3754,7 @@ class TPULANG_IR_TESTER(object):
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1])
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1], dtype="float16", is_quantized=True)
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1], scale=3.0, dtype="int8", is_quantized=True)
+        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1], dtype="int16")
 
     #######################################################################
     # CondSelect
@@ -4054,6 +4062,7 @@ class TPULANG_IR_TESTER(object):
         _test_roll((6,8,4,5,4),[1,2],[0,4], dtype="int8", is_quantized=True)
         _test_roll((4,2), 1, dtype="float16", is_quantized=True)
         _test_roll((4,2), (123,-133), (1,0))
+        _test_roll((6,8,4,5,4),[1,2],[0,4], dtype="int16")
 
     ########################################################################
     # ScatterND case

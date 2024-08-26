@@ -173,7 +173,9 @@ compile
             no_save=False,
             opt=2,
             mlir_inference=True,
-            bmodel_inference=True,log_level="normal")
+            bmodel_inference=True,
+            log_level="normal",
+            embed_debug_info=False):
 
 
 功能描述
@@ -201,6 +203,7 @@ compile
   - only-layer-group: 主要打印layer group 信息。
   - normal: 编译生成bmodel的日志都会打印出来
   - quiet: 什么都不打印
+* embed_debug_info: bool类型，是否开启profile模式。
 
 .. _deinit:
 
@@ -3034,8 +3037,8 @@ permute
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 tile
 :::::::::::::::::
@@ -3067,8 +3070,8 @@ tile
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 broadcast
 :::::::::::::::::
@@ -3100,8 +3103,8 @@ broadcast
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8/INT16/UINT16。
 
 
 concat
@@ -3143,8 +3146,8 @@ concat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 split
 :::::::::::::::::
@@ -3181,8 +3184,8 @@ split
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 pad
 :::::::::::::::::
@@ -3219,8 +3222,8 @@ pad
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 repeat
 :::::::::::::::::
@@ -3252,8 +3255,8 @@ repeat
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 extract
 :::::::::::::::::
@@ -3287,8 +3290,8 @@ extract
 
 处理器支持
 """""""""""
-* BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1688： 输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8/INT16/UINT16。
 
 
 roll
@@ -3323,8 +3326,8 @@ roll
 
 处理器支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
-* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 
 
 Sort Operator
