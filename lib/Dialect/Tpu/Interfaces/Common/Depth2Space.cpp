@@ -103,3 +103,6 @@ LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::Depth2SpaceOp::support_multi_core() { return false; }
+

@@ -68,3 +68,6 @@ LogicalResult tpu::MaskedFillOp::canonicalize(tpu::MaskedFillOp op,
   op.setConstVal(APFloat(const_val));
   return success();
 }
+
+bool tpu::MaskedFillOp::support_multi_core() { return false; }
+

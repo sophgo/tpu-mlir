@@ -72,3 +72,5 @@ mlir::Type tpu::ShapeSliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) 
   }
   return do_nothing(mode);
 }
+
+bool tpu::ShapeSliceOp::support_multi_core() { return false; }

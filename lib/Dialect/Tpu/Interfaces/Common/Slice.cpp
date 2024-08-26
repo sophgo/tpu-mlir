@@ -411,3 +411,5 @@ void tpu::SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
   results.insert<SliceCastSwapPattern>(context);
 }
+
+bool tpu::SliceOp::support_multi_core() { return false; }

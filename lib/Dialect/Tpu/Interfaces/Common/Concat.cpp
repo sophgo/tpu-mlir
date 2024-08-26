@@ -139,3 +139,6 @@ LogicalResult tpu::ConcatOp::AllowDataSplit(int64_t axis,
                                             group_type_t group_type) {
   return getAxis() == axis ? failure() : success();
 }
+
+bool tpu::ConcatOp::support_multi_core() { return false; }
+

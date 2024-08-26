@@ -57,3 +57,5 @@ void tpu::LutOp::assign_fw_param(void *param) {
 ArrayAttr tpu::LutOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::LutOp::support_multi_core() { return false; }

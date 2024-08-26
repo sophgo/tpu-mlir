@@ -42,3 +42,5 @@ LogicalResult tpu::TriluOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::TriluOp::support_multi_core() { return false; }

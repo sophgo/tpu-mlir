@@ -206,3 +206,5 @@ void tpu::MulOp::assign_fw_param(void *param) {
 ArrayAttr tpu::MulOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::MulOp::support_multi_core() { return false; }

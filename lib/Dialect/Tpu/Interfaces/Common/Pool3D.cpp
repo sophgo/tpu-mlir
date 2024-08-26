@@ -246,3 +246,5 @@ ArrayAttr tpu::Pool3DOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{map, empty, map};
   return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::Pool3DOp::support_multi_core() { return false; }

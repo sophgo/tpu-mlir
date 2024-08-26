@@ -49,3 +49,5 @@ LogicalResult tpu::PoolMaskOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::PoolMaskOp::support_multi_core() { return false; }

@@ -556,3 +556,5 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
   }
   return type_verify_case_same(op, opd_idx, mode);
 }
+
+bool tpu::GenericCpuOp::support_multi_core() { return false; }

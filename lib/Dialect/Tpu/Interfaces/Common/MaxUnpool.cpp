@@ -72,3 +72,5 @@ void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t c_step,
 }
 
 LogicalResult tpu::MaxUnpoolOp::LocalGenSupport() { return failure(); }
+
+bool tpu::MaxUnpoolOp::support_multi_core() { return false; }

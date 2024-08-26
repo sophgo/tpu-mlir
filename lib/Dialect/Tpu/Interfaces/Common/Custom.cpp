@@ -166,3 +166,5 @@ LogicalResult tpu::CustomOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   if (ret) return success();
   else return failure();
 }
+
+bool tpu::CustomOp::support_multi_core() { return false; }

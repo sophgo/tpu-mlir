@@ -90,3 +90,5 @@ void tpu::LoopOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
   results.insert<UpdateArgument>(context);
 }
+
+bool tpu::LoopOp::support_multi_core() { return false; }

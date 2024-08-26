@@ -120,3 +120,5 @@ LogicalResult tpu::WhereOp::LocalGenSupport() {
   }
   return success();
 }
+
+bool tpu::WhereOp::support_multi_core() { return false; }

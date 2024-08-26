@@ -285,3 +285,5 @@ void tpu::PadOp::assign_fw_param(void *param) {
   }
   memcpy(param, &fw_pad_layer_param, sizeof(fw_pad_layer_param_t));
 }
+
+bool tpu::PadOp::support_multi_core() { return false; }

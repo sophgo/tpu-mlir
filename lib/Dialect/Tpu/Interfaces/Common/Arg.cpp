@@ -118,3 +118,5 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   // }
   return do_nothing(mode);
 }
+
+bool tpu::ArgOp::support_multi_core() { return false; }

@@ -48,3 +48,5 @@ LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
 
   return failure();
 }
+
+bool tpu::ReshapeOp::support_multi_core() { return false; }

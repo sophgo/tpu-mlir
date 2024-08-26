@@ -73,3 +73,5 @@ ArrayAttr tpu::DequantIntOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::DequantIntOp::support_multi_core() { return false; }

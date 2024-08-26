@@ -48,3 +48,6 @@ LogicalResult tpu::ScaleLutOp::LocalGenSupport() {
   }
   return success();
 }
+
+bool tpu::ScaleLutOp::support_multi_core() { return false; }
+

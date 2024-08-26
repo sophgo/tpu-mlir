@@ -380,7 +380,7 @@ public:
         if (isa<tpu::GroupOp>(op))
           return WalkResult::skip();
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-          if (matmulOp.supports_multi_core()) {
+          if (supportMultiCore(op)) {
             matmulOp.setMultiCore(true);
             return WalkResult::skip();
           } else {
@@ -388,7 +388,7 @@ public:
           }
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-          if (a16matmulOp.supports_multi_core()) {
+          if (supportMultiCore(op)) {
             if (module::getCoreNum() > 1) {
               a16matmulOp.setMultiCore(true);
             } else {

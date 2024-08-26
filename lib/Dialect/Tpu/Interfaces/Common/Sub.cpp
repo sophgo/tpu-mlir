@@ -232,3 +232,5 @@ void tpu::SubOp::assign_fw_param(void *param) {
 ArrayAttr tpu::SubOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::SubOp::support_multi_core() { return false; }

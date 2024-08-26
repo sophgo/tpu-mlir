@@ -58,3 +58,5 @@ LogicalResult tpu::ShapePackOp::inference(InferenceParameter &p) {
   concat->run();
   return success();
 }
+
+bool tpu::ShapePackOp::support_multi_core() { return false; }

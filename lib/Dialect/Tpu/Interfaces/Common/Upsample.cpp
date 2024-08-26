@@ -68,3 +68,5 @@ LogicalResult tpu::UpsampleOp::LocalGenSupport() {
   }
   return success();
 }
+
+bool tpu::UpsampleOp::support_multi_core() { return false; }

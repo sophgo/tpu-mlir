@@ -23,3 +23,5 @@ LogicalResult tpu::IfOp::inference(InferenceParameter &p) {
   else
     return failure(); //else_branch
 }
+
+bool tpu::IfOp::support_multi_core() { return false; }

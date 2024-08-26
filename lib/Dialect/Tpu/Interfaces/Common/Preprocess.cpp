@@ -549,3 +549,5 @@ LogicalResult tpu::PreprocessOp::canonicalize(PreprocessOp op,
   replacer.replacePreprocess(rewriter, op);
   return success();
 }
+
+bool tpu::PreprocessOp::support_multi_core() { return false; }

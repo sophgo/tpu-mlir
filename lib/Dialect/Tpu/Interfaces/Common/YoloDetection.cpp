@@ -58,10 +58,12 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
     yolo_func.invoke();
   } else if (process.starts_with("yolov8")) {
     Yolov8DetectionFunc yolo_func(param);
-    yolo_func.invoke(); 
+    yolo_func.invoke();
   } else {
     YoloDetectionFunc_v2 yolo_func(param);
     yolo_func.invoke();
   }
   return success();
 }
+
+bool tpu::YoloDetectionOp::support_multi_core() { return false; }

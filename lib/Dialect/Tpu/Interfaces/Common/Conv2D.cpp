@@ -486,7 +486,8 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   } else if (module::isBM1684Family()) {
     auto attr = parseParam();
-    if (attr.fn == attr.ic && attr.fc == attr.n) return failure();
+    if (attr.fn == attr.ic && attr.fc == attr.n)
+      return failure();
     if (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15 ||
         attr.ic >= (1 << 12) || attr.oc >= (1 << 12)) {
       return failure();
@@ -580,4 +581,15 @@ ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
   }
   indexingMaps.push_back(outputMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}
+
+bool tpu::Conv2DOp::support_multi_core() {
+  auto &attr = getConv2DParam(*this);
+  bool is_depthwise =
+      attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
+  auto in_etype = module::getStorageType(getInput());
+  if (is_depthwise == false && in_etype.isIntOrIndex() == false) {
+    return true;
+  }
+  return false;
 }

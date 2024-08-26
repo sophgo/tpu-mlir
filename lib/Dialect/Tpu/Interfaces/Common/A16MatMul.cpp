@@ -446,6 +446,6 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   return success();
 };
 
-bool tpu::A16MatMulOp::supports_multi_core() {
-  return module::getCoreNum() > 1 && module::isSG2380();
+bool tpu::A16MatMulOp::support_multi_core() {
+  return module::isSG2380();
 }

@@ -19,3 +19,5 @@ LogicalResult tpu::LoadToL2MOp::inference(InferenceParameter &p) {
   UNREACHABLE_THIS("Not Implemented");
   return success();
 }
+
+bool tpu::LoadToL2MOp::support_multi_core() { return false; }

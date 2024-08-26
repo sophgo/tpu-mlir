@@ -21,3 +21,5 @@ void tpu::IdentityOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::IdentityOp::inference(InferenceParameter &p) {
   return success();
 }
+
+bool tpu::IdentityOp::support_multi_core() { return false; }

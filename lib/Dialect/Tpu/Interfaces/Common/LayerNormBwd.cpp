@@ -32,3 +32,5 @@ uint32_t tpu::LayerNormBwdOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
 int64_t tpu::LayerNormBwdOp::get_fw_type_bm1684() {
   return -1;
 }
+
+bool tpu::LayerNormBwdOp::support_multi_core() { return false; }

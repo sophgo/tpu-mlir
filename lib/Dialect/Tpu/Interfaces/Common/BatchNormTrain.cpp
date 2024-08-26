@@ -34,3 +34,4 @@ int64_t tpu::BatchNormTrainOp::get_fw_type_bm1684() {
   return -1;
 }
 
+bool tpu::BatchNormTrainOp::support_multi_core() { return false; }

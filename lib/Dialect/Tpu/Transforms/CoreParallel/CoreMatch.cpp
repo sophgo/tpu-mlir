@@ -373,12 +373,12 @@ struct CommonMatch : public OpRewriterPatternEx3 {
       return failure();
     }
     if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-      if (matmulOp.supports_multi_core()) {
+      if (supportMultiCore(op)) {
         return failure();
       }
     }
     if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-      if (a16matmulOp.supports_multi_core()) {
+      if (supportMultiCore(op)) {
         return failure();
       }
     }
@@ -410,12 +410,14 @@ struct CommonMatch : public OpRewriterPatternEx3 {
           continue;
         }
         if (auto matmulOp = dyn_cast<tpu::MatMulOp>(left_op)) {
-          if (matmulOp.supports_multi_core())
+          if (supportMultiCore(left_op)) {
             continue;
+          }
         }
         if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(left_op)) {
-          if (a16matmulOp.supports_multi_core())
+          if (supportMultiCore(left_op)) {
             continue;
+          }
         }
         if (find_f(same_ops, left_op)) {
           continue;

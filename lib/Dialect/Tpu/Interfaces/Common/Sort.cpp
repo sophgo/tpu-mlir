@@ -36,3 +36,5 @@ mlir::Type tpu::SortOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     return type_verify_case_same(op, 0, mode);
   }
 }
+
+bool tpu::SortOp::support_multi_core() { return false; }

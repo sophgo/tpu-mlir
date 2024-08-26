@@ -134,3 +134,5 @@ mlir::Type tpu::RequantIntAxisOp::type_verify(uint64_t opd_idx,
   }
   return do_nothing(mode);
 }
+
+bool tpu::RequantIntAxisOp::support_multi_core() { return false; }

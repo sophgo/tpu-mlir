@@ -21,3 +21,6 @@ LogicalResult tpu::D2DOp::inference(InferenceParameter &p) {
   // assistanted op, don;t need to implement it
   return success();
 }
+
+bool tpu::D2DOp::support_multi_core() { return false; }
+

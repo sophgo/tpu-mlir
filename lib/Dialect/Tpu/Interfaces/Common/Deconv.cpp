@@ -344,3 +344,5 @@ LogicalResult tpu::DeconvOp::AllowDataSplit(int64_t axis,
     return success();
   }
 }
+
+bool tpu::DeconvOp::support_multi_core() { return false; }

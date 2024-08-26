@@ -467,8 +467,8 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
 
-bool tpu::MatMulOp::supports_multi_core() {
-  if (module::getCoreNum() < 2 || !module::isBM1690Family()) {
+bool tpu::MatMulOp::support_multi_core() {
+  if (!module::isBM1690Family()) {
     return false;
   }
   auto p = parseParam();

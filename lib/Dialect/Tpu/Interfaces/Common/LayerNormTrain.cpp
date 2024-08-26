@@ -41,3 +41,5 @@ int64_t tpu::LayerNormTrainOp::get_fw_type_bm1684() {
 int64_t tpu::LayerNormTrainOp::get_fw_type_bm1684x() {
   return -1;
 }
+
+bool tpu::LayerNormTrainOp::support_multi_core() { return false; }

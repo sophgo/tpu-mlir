@@ -212,3 +212,5 @@ LogicalResult tpu::Yuv2rgbFormulaOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::Yuv2rgbFormulaOp::support_multi_core() { return false; }

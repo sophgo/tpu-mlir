@@ -79,3 +79,5 @@ mlir::Type tpu::RequantFpAxisOp::type_verify(uint64_t opd_idx,
   }
   return do_nothing(mode);
 }
+
+bool tpu::RequantFpAxisOp::support_multi_core() { return false; }

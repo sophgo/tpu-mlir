@@ -21,3 +21,5 @@ LogicalResult tpu::AutoIncreaseOp::inference(InferenceParameter &p) {
   // assistanted op, don;t need to implement it
   return success();
 }
+
+bool tpu::AutoIncreaseOp::support_multi_core() { return false; }

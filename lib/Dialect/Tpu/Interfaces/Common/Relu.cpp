@@ -28,3 +28,5 @@ ArrayAttr tpu::ReluOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::ReluOp::support_multi_core() { return false; }

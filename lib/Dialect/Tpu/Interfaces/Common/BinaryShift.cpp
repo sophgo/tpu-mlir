@@ -75,3 +75,5 @@ LogicalResult tpu::BinaryShiftOp::LocalGenSupport() {
 ArrayAttr tpu::BinaryShiftOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::BinaryShiftOp::support_multi_core() { return false; }

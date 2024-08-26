@@ -402,3 +402,5 @@ LogicalResult tpu::GRUOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::GRUOp::support_multi_core() { return false; }

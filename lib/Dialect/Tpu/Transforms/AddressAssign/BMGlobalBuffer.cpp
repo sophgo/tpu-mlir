@@ -508,7 +508,7 @@ public:
     if (!module::isNone(matmulOp.getBuffer()))
       return failure();
 
-    if(module::getCoreNum() == 1 || !matmulOp.supports_multi_core() || !matmulOp.getMultiCore())
+    if(module::getCoreNum() == 1 || !supportMultiCore(matmulOp) || !matmulOp.getMultiCore())
       return failure();
 
 

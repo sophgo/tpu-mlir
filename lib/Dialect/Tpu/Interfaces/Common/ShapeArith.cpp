@@ -63,7 +63,7 @@ LogicalResult tpu::ShapeArithOp::inference(InferenceParameter &p) {
   std::string op_type = getType().str();
   if (op_type == "Div"){
     auto ops=getOperands();
-    if (backend::BM168x::getDataType(ops[0])==DTYPE_INT32 
+    if (backend::BM168x::getDataType(ops[0])==DTYPE_INT32
     && backend::BM168x::getDataType(ops[1])==DTYPE_INT32 ){
       auto num_elem = module::getNumElements(getOutput());
 
@@ -76,3 +76,5 @@ LogicalResult tpu::ShapeArithOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::ShapeArithOp::support_multi_core() { return false; }

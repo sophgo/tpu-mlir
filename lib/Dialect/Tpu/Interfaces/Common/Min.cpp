@@ -97,3 +97,5 @@ void tpu::MinOp::assign_fw_param(void *param) {
 ArrayAttr tpu::MinOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::MinOp::support_multi_core() { return false; }

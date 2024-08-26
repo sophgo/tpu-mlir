@@ -22,3 +22,5 @@ LogicalResult tpu::ShapeCastOp::inference(InferenceParameter &p) {
   std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
   return success();
 }
+
+bool tpu::ShapeCastOp::support_multi_core() { return false; }

@@ -45,3 +45,5 @@ LogicalResult tpu::GridSamplerOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+bool tpu::GridSamplerOp::support_multi_core() { return false; }

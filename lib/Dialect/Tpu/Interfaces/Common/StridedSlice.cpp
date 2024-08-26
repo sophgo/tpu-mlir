@@ -82,3 +82,5 @@ LogicalResult tpu::StridedSliceOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::StridedSliceOp::support_multi_core() { return false; }

@@ -63,3 +63,5 @@ LogicalResult tpu::CompareOp::LocalGenSupport() {
 ArrayAttr tpu::CompareOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::CompareOp::support_multi_core() { return false; }

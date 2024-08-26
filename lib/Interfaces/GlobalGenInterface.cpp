@@ -8,7 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
-
-
-
 #include "tpu_mlir/Interfaces/GlobalGenInterface.cpp.inc"
+
+using namespace mlir;
+
+namespace tpu_mlir {
+
+bool supportMultiCore(mlir::Operation *op) {
+  auto gl = dyn_cast<GlobalGenInterface>(op);
+  if (!gl) {
+    return false;
+  }
+  return gl.support_multi_core();
+}
+
+} // namespace tpu_mlir

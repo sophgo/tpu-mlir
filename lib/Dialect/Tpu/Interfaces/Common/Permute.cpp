@@ -77,3 +77,13 @@ ArrayAttr tpu::PermuteOp::getIndexingMaps() {
   }
   return Builder(getContext()).getAffineMapArrayAttr({});
 };
+
+bool tpu::PermuteOp::support_multi_core() {
+  auto order = *(module::getI64Array(getOrder()));
+  auto in_shape = module::getShape(getInput());
+  if (in_shape.size() == 4 && order[0] == 0 && order[1] == 3 && order[2] == 1 &&
+      order[3] == 2 && in_shape[3] == 3) {
+    return true;
+  }
+  return false;
+}
