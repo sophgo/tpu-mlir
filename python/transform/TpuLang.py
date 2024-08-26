@@ -81,7 +81,9 @@ def compile(name: str,
             no_save=False,
             opt=2,
             mlir_inference=True,
-            bmodel_inference=True, log_level:str = 'normal'):
+            bmodel_inference=True,
+            log_level:str = 'normal',
+            embed_debug_info = False):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
@@ -106,7 +108,7 @@ def compile(name: str,
                                     inference=mlir_inference, cmp=compare, asymmetric=asymmetric,\
                                     ctm_format=ctm_format, fuse=fuse, log_level=log_level)
         bmodel_generate_and_inference(model_name=name, quant_mode="int8", inference=bmodel_inference,\
-                                        dynamic=dynamic, opt=opt, log_level=log_level)
+                                        dynamic=dynamic, opt=opt, log_level=log_level, embed_debug_info=embed_debug_info)
     else:
         origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode="int8",
                                   chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic, log_level=log_level)
@@ -124,7 +126,9 @@ def compile_f32(name: str,
             mlir_inference=True,
             bmodel_inference=True,
             top_mlir_inference=True,
-            tpu_mlir_inference=True,log_level:str = 'normal'):
+            tpu_mlir_inference=True,
+            log_level:str = 'normal',
+            embed_debug_info=False):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -149,7 +153,7 @@ def compile_f32(name: str,
             model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
                                         inference=tpu_mlir_inference, cmp=tpu_mlir_compare, log_level=log_level)
             bmodel_generate_and_inference(model_name=name, quant_mode=m, inference=bmodel_inference,\
-                                        dynamic=dynamic, opt=opt, log_level=log_level)
+                                        dynamic=dynamic, opt=opt, log_level=log_level,embed_debug_info=embed_debug_info)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode=m,
@@ -217,14 +221,14 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, as
                 top_npz = model_name + '_top_outputs.npz'
                 npz_compare([top_npz, tpu_npz, "--tolerance", "0.95,0.80", "-v"], log_level=log_level)
 
-def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, opt: int=2, log_level:str='normal'):
+def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: bool = True, dynamic: bool = False, opt: int=2, log_level:str='normal', embed_debug_info=False):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
     bmodel = tpu_mlir + ".bmodel"
     disable_layer_group = opt == 0
     assert opt in [0, 1, 2]
-    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group,log_level=log_level)
+    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group,log_level=log_level, embed_debug_info=embed_debug_info)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
@@ -2072,7 +2076,7 @@ def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None
     attr = {
         "tile": ArrayAttr(reps),
     }
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     output = Tensor(dtype=input.dtype, name=out_name)
     TpuLang.insert_op("top.Tile", inputs=[input], outputs=[output], params=attr)
     return output
@@ -2107,7 +2111,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
 @assert_with_out_name
 def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     TpuLang.insert_op("top.Expand", inputs=[input], outputs=[output], params={"shape": ArrayAttr(reps)})
     return output
 
@@ -2227,7 +2231,7 @@ def split(input: Tensor,
         "axis": Attr(axis, "int32"),
         "num": Attr(num),
     }
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     if len(size) != 0:
         attr["split_size"] = ArrayAttr(size)
 
@@ -2280,7 +2284,7 @@ def pad(input: Tensor,
     if padding is None:
         padding = [0] * (len(input.shape)*2)
     assert(not padding or len(padding) == 2 * len(input.shape) and "Invalid padding length")
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     attr = {
         "paddings": ArrayAttr(padding, "int64"),
         "val": Attr(value.value if value is not None else 0.0, "float64"),
@@ -2296,7 +2300,7 @@ def pad(input: Tensor,
 def repeat(input: Tensor, reps: Tensor, out_name: str = None):
     # reps = Tensor(data = reps, shape = input.shape)
     output = Tensor(dtype=input.dtype, name=out_name)
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     TpuLang.insert_op("top.Repeat", inputs=[input, reps], outputs=[output])
     return output
 
@@ -2319,7 +2323,7 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
         stride = [1] * dims
     if out_name is None:
         out_name = generate_name("extract")
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     output = Tensor(dtype=input.dtype, name=out_name)
     attr = {
         "offset": ArrayAttr(start),
@@ -2354,7 +2358,7 @@ def roll(input:Tensor,
     #
     #    concat(concat_0, ···， concat_dims)
     #
-    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     o_dtype = input.dtype
     in_shape = input.shape
     if dims is None:
