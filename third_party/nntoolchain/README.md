@@ -48,7 +48,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#sg2380 sha256: d9bf2445a6968346965f08ad2311a27d64013a3c
+#sg2380 sha256: 44a3e41e8109aebb43aeed6c86ec4fcc49c3b4a5
 cd TPU1686
 source  scripts/envsetup.sh sg2380
 **debug: rebuild_backend_lib_cmodel**
