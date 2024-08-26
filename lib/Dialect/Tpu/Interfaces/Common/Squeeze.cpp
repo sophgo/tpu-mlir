@@ -39,3 +39,5 @@ LogicalResult tpu::SqueezeOp::LocalGenSupport() {
   }
   return success();
 }
+
+bool tpu::SqueezeOp::support_multi_core() { return false; }

@@ -27,3 +27,5 @@ LogicalResult tpu::ShapeSqueezeOp::inference(InferenceParameter &p) {
 mlir::Type tpu::ShapeSqueezeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+bool tpu::ShapeSqueezeOp::support_multi_core() { return false; }

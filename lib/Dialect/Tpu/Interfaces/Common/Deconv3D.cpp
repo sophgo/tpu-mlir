@@ -140,3 +140,6 @@ void tpu::Deconv3DOp::assign_fw_param(void *param) {
   deconv3d_param.relu_upper_limit = p.relu_limit;
   memcpy(param, &deconv3d_param, sizeof(fw_deconv3d_layer_param_t));
 }
+
+bool tpu::Deconv3DOp::support_multi_core() { return false; }
+

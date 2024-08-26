@@ -91,3 +91,5 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::ScaleOp::support_multi_core() { return false; }

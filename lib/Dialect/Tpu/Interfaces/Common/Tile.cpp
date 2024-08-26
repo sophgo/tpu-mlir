@@ -83,3 +83,5 @@ void tpu::TileOp::assign_fw_param(void *param) {
   }
   memcpy(param, &tile_param, sizeof(fw_tile_layer_param_t));
 }
+
+bool tpu::TileOp::support_multi_core() { return false; }

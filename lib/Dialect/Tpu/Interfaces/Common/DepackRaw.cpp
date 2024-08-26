@@ -43,3 +43,6 @@ LogicalResult tpu::DepackRawOp::inference(InferenceParameter &p) {
 mlir::Type tpu::DepackRawOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+bool tpu::DepackRawOp::support_multi_core() { return false; }
+

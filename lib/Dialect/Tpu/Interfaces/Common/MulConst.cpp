@@ -179,3 +179,5 @@ void tpu::MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                   MLIRContext *context) {
   results.insert<FuseMultiMulConst, FuseCastToF8MulConst>(context);
 }
+
+bool tpu::MulConstOp::support_multi_core() { return false; }

@@ -46,3 +46,5 @@ LogicalResult tpu::ShuffleChannelOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::ShuffleChannelOp::support_multi_core() { return false; }

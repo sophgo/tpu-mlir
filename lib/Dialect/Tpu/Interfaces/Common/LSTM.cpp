@@ -267,3 +267,5 @@ LogicalResult tpu::LSTMOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::LSTMOp::support_multi_core() { return false; }

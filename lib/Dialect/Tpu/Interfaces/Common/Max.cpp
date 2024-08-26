@@ -99,3 +99,5 @@ void tpu::MaxOp::assign_fw_param(void *param) {
 ArrayAttr tpu::MaxOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::MaxOp::support_multi_core() { return false; }

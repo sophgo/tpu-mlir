@@ -24,3 +24,5 @@ LogicalResult tpu::Weight2ActivationOp::inference(InferenceParameter &p) {
   memcpy(p.outputs[0], p.inputs[0], bytes);
   return success();
 }
+
+bool tpu::Weight2ActivationOp::support_multi_core() { return false; }

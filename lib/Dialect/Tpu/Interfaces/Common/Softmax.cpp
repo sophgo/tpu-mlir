@@ -208,3 +208,5 @@ LogicalResult tpu::SoftmaxOp::AllowDataSplit(int64_t axis,
   }
   return axis < ax ? success() : failure();
 }
+
+bool tpu::SoftmaxOp::support_multi_core() { return false; }

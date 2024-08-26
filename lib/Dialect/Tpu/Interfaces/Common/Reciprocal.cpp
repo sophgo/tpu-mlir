@@ -45,3 +45,5 @@ ArrayAttr tpu::ReciprocalOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::ReciprocalOp::support_multi_core() { return false; }

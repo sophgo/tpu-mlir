@@ -88,3 +88,5 @@ int64_t tpu::MeanRstdOp::dyn_codegen_global_bm1684x(void *ir_layer_info) {
 int64_t tpu::MeanRstdOp::get_fw_type_bm1684() { return -1; }
 
 int64_t tpu::MeanRstdOp::get_fw_type_bm1684x() { return -1; }
+
+bool tpu::MeanRstdOp::support_multi_core() { return false; }

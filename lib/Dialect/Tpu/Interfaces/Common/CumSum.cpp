@@ -45,3 +45,6 @@ LogicalResult tpu::CumSumOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::CumSumOp::support_multi_core() { return false; }
+

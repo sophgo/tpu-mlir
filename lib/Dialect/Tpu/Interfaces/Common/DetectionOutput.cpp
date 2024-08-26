@@ -51,3 +51,6 @@ LogicalResult tpu::DetectionOutputOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::DetectionOutputOp::support_multi_core() { return false; }
+

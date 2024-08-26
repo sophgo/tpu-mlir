@@ -143,3 +143,5 @@ LogicalResult tpu::LRNOp::LocalGenSupport() {
   }
   return failure();
 }
+
+bool tpu::LRNOp::support_multi_core() { return false; }

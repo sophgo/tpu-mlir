@@ -55,3 +55,5 @@ LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   // module::setShape(getOutput(), output_shape);
   return success();
 }
+
+bool tpu::NmsOp::support_multi_core() { return false; }

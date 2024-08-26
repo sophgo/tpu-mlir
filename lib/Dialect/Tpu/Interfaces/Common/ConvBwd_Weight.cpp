@@ -74,7 +74,7 @@ void tpu::ConvBwdWeightOp::assign_sec_info(int64_t n_step, int64_t c_step,
                                     int64_t h_step, int64_t d_step,
                                     int64_t w_step, group_type_t group_type,
                                     local_sec_info_t &sec_info) {
-  
+
 }
 
 mlir::Type tpu::ConvBwdWeightOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
@@ -136,3 +136,6 @@ ArrayAttr tpu::ConvBwdWeightOp::getIndexingMaps() {
   indexingMaps.push_back(identity1Map);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
+
+bool tpu::ConvBwdWeightOp::support_multi_core() { return false; }
+

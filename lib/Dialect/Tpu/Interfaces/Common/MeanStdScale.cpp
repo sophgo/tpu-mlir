@@ -212,3 +212,6 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::MeanStdScaleOp::support_multi_core() { return false; }
+

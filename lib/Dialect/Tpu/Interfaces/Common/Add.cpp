@@ -338,4 +338,4 @@ ArrayAttr tpu::AddOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
 
-
+bool tpu::AddOp::support_multi_core() { return false; }

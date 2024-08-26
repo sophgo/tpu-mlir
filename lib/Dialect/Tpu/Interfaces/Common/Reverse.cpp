@@ -43,3 +43,5 @@ LogicalResult tpu::ReverseOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::ReverseOp::support_multi_core() { return false; }

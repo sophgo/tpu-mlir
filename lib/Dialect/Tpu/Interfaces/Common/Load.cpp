@@ -47,3 +47,5 @@ void tpu::LoadOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.out_w_idx = gi.w_idx;
   sec_info.out_w_slice = gi.w_slice;
 }
+
+bool tpu::LoadOp::support_multi_core() { return false; }

@@ -65,3 +65,5 @@ mlir::Type tpu::NonZeroOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   }
   return type_verify_case_same(op, opd_idx, mode);
 }
+
+bool tpu::NonZeroOp::support_multi_core() { return false; }

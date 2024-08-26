@@ -242,3 +242,6 @@ LogicalResult tpu::CscOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::CscOp::support_multi_core() { return false; }
+

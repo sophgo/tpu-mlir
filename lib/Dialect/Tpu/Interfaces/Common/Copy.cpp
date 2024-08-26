@@ -50,3 +50,6 @@ LogicalResult tpu::CopyOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::CopyOp::support_multi_core() { return false; }
+

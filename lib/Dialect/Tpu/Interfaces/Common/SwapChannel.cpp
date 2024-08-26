@@ -41,3 +41,5 @@ LogicalResult tpu::SwapChannelOp::LocalGenSupport() {
   // return success();
   return failure();
 }
+
+bool tpu::SwapChannelOp::support_multi_core() { return false; }

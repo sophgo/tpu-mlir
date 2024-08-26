@@ -263,3 +263,5 @@ int64_t tpu::Conv3DOp::DynForwardHeight(int64_t in_height) {
   // Todo
   return in_height;
 }
+
+bool tpu::Conv3DOp::support_multi_core() { return false; }

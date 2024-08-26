@@ -48,3 +48,5 @@ ArrayAttr tpu::CompareConstOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::CompareConstOp::support_multi_core() { return false; }

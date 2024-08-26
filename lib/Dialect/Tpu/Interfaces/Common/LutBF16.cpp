@@ -41,3 +41,5 @@ LogicalResult tpu::LutBF16Op::inference(InferenceParameter &p) {
 LogicalResult tpu::LutBF16Op::LocalGenSupport() {
   return success();
 }
+
+bool tpu::LutBF16Op::support_multi_core() { return false; }

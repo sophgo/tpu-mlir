@@ -18,7 +18,7 @@ deform_gather_attr_t tpu::DeformGatherOp::parseParam() {
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
   auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
   auto of_s = getOffset().getType().cast<RankedTensorType>().getShape();
-  
+
   p.n = i_s[0];
   p.ic = i_s[1];
   p.ih = i_s.size() > 2 ? i_s[2] : 1;
@@ -36,7 +36,7 @@ deform_gather_attr_t tpu::DeformGatherOp::parseParam() {
     p.mkh = mk_s.size() > 2 ? mk_s[2] : 1;
     p.mkw = mk_s.size() > 3 ? mk_s[3] : 1;
   }
-  
+
   auto kernel = module::getI64Array(getKernelShape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
@@ -76,3 +76,6 @@ LogicalResult tpu::DeformGatherOp::inference(InferenceParameter &p) {
   processDeformGather(p, attr, p.outputs[0], false);
   return success();
 }
+
+bool tpu::DeformGatherOp::support_multi_core() { return false; }
+

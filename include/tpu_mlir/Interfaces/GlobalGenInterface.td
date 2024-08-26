@@ -50,6 +50,12 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
         /*methodName=*/"codegen_global_cv18xx",
         /*args=*/(ins "int64_t":$layer_id)
       >,
+      InterfaceMethod<
+        /*desc=*/[{Check whether support multi core for global codegen}],
+        /*retType=*/"bool",
+        /*methodName=*/"support_multi_core",
+        /*args=*/(ins)
+      >,
   ];
 }
 #endif // TPU_MLIR_GLOBAL_CODEGEN_INTERFACE

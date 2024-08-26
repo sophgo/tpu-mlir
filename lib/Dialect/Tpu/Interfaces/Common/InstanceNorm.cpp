@@ -153,3 +153,5 @@ LogicalResult tpu::InstanceNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {
   return axis < 1 ? success() : failure();
 }
+
+bool tpu::InstanceNormOp::support_multi_core() { return false; }

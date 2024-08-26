@@ -159,3 +159,5 @@ ArrayAttr tpu::LayerNormOp::getIndexingMaps() {
   indexingMaps.push_back(inputMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
+
+bool tpu::LayerNormOp::support_multi_core() { return false; }

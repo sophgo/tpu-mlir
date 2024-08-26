@@ -103,3 +103,5 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
 ArrayAttr tpu::PReluOp::getIndexingMaps() {
   return getBinaryIndexingMaps(getOperation());
 };
+
+bool tpu::PReluOp::support_multi_core() { return false; }

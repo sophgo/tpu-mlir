@@ -72,3 +72,5 @@ LogicalResult tpu::SwapDimInnerOp::AllowDataSplit(int64_t axis,
   }
   return failure();
 }
+
+bool tpu::SwapDimInnerOp::support_multi_core() { return false; }

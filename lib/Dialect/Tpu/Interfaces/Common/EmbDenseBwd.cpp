@@ -34,3 +34,5 @@ int64_t tpu::EmbDenseBwdOp::get_fw_type_bm1684() {
   return -1;
 }
 
+bool tpu::EmbDenseBwdOp::support_multi_core() { return false; }
+

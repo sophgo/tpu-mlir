@@ -23,3 +23,5 @@ LogicalResult tpu::ShapeUnsqueezeOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+bool tpu::ShapeUnsqueezeOp::support_multi_core() { return false; }

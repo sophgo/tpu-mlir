@@ -133,3 +133,6 @@ ArrayAttr tpu::AddConstOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::AddConstOp::support_multi_core() { return false; }
+

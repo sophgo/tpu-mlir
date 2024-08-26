@@ -37,3 +37,5 @@ mlir::Type tpu::RangeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   mode = TypeCastMode::DO_CAST;
   return Builder(op).getIntegerType(32);
 }
+
+bool tpu::RangeOp::support_multi_core() { return false; }

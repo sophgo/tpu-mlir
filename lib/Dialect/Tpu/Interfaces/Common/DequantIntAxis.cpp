@@ -79,3 +79,5 @@ mlir::Type tpu::DequantIntAxisOp::type_verify(uint64_t opd_idx,
   }
   return do_nothing(mode);
 }
+
+bool tpu::DequantIntAxisOp::support_multi_core() { return false; }

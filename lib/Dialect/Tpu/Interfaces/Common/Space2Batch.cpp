@@ -84,3 +84,5 @@ LogicalResult tpu::Space2BatchOp::inference(InferenceParameter &p) {
   delete[] in_addr_pad;
   return success();
 }
+
+bool tpu::Space2BatchOp::support_multi_core() { return false; }

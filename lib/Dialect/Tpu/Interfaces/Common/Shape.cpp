@@ -25,3 +25,5 @@ LogicalResult tpu::ShapeOp::inference(InferenceParameter &p) {
 mlir::Type tpu::ShapeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+bool tpu::ShapeOp::support_multi_core() { return false; }

@@ -23,3 +23,5 @@ mlir::Type tpu::Host2DeviceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode)
   auto op = getOperation();
   return type_verify_case_same(op, 0, mode);
 }
+
+bool tpu::Host2DeviceOp::support_multi_core() { return false; }

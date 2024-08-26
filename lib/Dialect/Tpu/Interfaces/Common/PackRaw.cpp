@@ -45,3 +45,5 @@ LogicalResult tpu::PackRawOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+bool tpu::PackRawOp::support_multi_core() { return false; }

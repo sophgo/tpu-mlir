@@ -114,3 +114,5 @@ mlir::Type tpu::AttentionOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 // void tpu::AttentionOp::assign_fw_param(void *param) {
 
 // }
+
+bool tpu::AttentionOp::support_multi_core() { return false; }

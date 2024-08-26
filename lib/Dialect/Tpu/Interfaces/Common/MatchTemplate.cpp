@@ -98,3 +98,5 @@ mlir::Type tpu::MatchTemplateOp::type_verify(uint64_t opd_idx,
   return type_verify_case_type(op, opd_idx,
                                Builder(op).getIntegerType(8, false), mode);
 }
+
+bool tpu::MatchTemplateOp::support_multi_core() { return false; }

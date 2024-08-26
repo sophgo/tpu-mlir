@@ -98,3 +98,5 @@ LogicalResult tpu::RMSNormOp::AllowDataSplit(int64_t axis,
   }
   return axis < ax ? success() : failure();
 }
+
+bool tpu::RMSNormOp::support_multi_core() { return false; }

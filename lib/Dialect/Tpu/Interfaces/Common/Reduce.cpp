@@ -258,3 +258,4 @@ LogicalResult tpu::ReduceOp::canonicalize(tpu::ReduceOp op,
   return success();
 }
 
+bool tpu::ReduceOp::support_multi_core() { return false; }

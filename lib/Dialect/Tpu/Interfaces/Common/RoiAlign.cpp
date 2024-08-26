@@ -37,3 +37,5 @@ LogicalResult tpu::RoiAlignOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+bool tpu::RoiAlignOp::support_multi_core() { return false; }

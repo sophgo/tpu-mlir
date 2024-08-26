@@ -56,3 +56,5 @@ ArrayAttr tpu::MulShiftOp::getIndexingMaps() {
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+bool tpu::MulShiftOp::support_multi_core() { return false; }

@@ -35,3 +35,6 @@ void tpu::ConstantFillOp::assign_fw_param(void *param) {
 mlir::Type tpu::ConstantFillOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+bool tpu::ConstantFillOp::support_multi_core() { return false; }
+

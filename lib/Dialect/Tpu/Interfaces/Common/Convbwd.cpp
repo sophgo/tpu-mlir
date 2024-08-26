@@ -342,3 +342,6 @@ int64_t tpu::ConvbwdOp::get_fw_type_bm1684() {
 //                                                   MLIRContext *context) {
 //   results.insert<Castfp32output>(context);
 // }
+
+bool tpu::ConvbwdOp::support_multi_core() { return false; }
+

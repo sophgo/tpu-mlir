@@ -166,3 +166,5 @@ ArrayAttr tpu::GroupNormOp::getIndexingMaps() {
   indexingMaps.push_back(outputMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
+
+bool tpu::GroupNormOp::support_multi_core() { return false; }

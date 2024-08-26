@@ -42,3 +42,5 @@ LogicalResult tpu::ShapeReduceOp::inference(InferenceParameter &p) {
 mlir::Type tpu::ShapeReduceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+bool tpu::ShapeReduceOp::support_multi_core() { return false; }
