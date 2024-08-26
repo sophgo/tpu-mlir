@@ -2418,21 +2418,26 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([shape0, shape1, shape2], Model(), [self.Desc(
                 'float32', min, max), self.Desc('float32', min, max), self.Desc('float32', min, max)])
 
+        # for test accuracy
         # _test_flash_attention(1, 128, 28, 4, 1, 8193,   True)
         # _test_flash_attention(1, 128, 28, 4, 256, 513,  True)
         # _test_flash_attention(1, 128, 32, 32, 1, 8193,  True)
         # _test_flash_attention(1, 128, 32, 32, 256, 513, True)
         # _test_flash_attention(1, 128, 64, 8, 1, 8193,   True)
         # _test_flash_attention(1, 128, 64, 8, 256, 513,  True)
-        # _test_flash_attention(1, 128, 10, 1024, 1024, False)
-        # _test_flash_attention(1, 128, 10, 2048, 2048, True)
-        # _test_flash_attention(1, 128, 10, 2048, 2048, False)
-        # _test_flash_attention(2, 128, 10, 1024, 1024, True)
         # _test_flash_attention(1, 128, 4, 4, 128, 128, True)
         # _test_flash_attention(1, 128, 4, 1, 128, True)
-        # _test_flash_attention(1, 128, 10, 1, 2048, True)
-        # _test_flash_attention(1, 128, 10, 1, 4096, True)
-        # _test_flash_attention(1, 128, 10, 1, 8192, True)
+
+        # for test performance
+        # _test_flash_attention(1, 128, 32, 32, 512, 512, True)
+        # _test_flash_attention(1, 128, 32, 32, 1024, 1024, True)
+        # _test_flash_attention(1, 128, 32, 32, 2048, 2048, True)
+        # _test_flash_attention(1, 128, 32, 32, 4096, 4096, True)
+
+        # _test_flash_attention(1, 128, 32, 32, 1, 512, True)
+        # _test_flash_attention(1, 128, 32, 32, 1, 1024, True)
+        # _test_flash_attention(1, 128, 32, 32, 1, 2048, True)
+        # _test_flash_attention(1, 128, 32, 32, 1, 4096, True)
 
     #######################################################################
     # MatmulSlice

@@ -54,11 +54,11 @@ void api_conv_global(void *param, size_t param_size, void *input_spec,
         chip, cmdid, out_spec->addr, in_spec->addr, weight_spec->addr,
         bias_spec->addr, in_spec->shape[0], in_spec->shape[1],
         in_spec->shape[2], in_spec->shape[3], _param->common.output_c,
-        _param->common.kh, _param->common.kw, _param->common.stride_h,
-        _param->common.stride_w, _param->common.dh, _param->common.dw,
-        _param->common.pad_h_t, _param->common.pad_h_b, _param->common.pad_w_l,
-        _param->common.pad_w_r, block_n, block_oc, block_oh, block_ic,
-        block_ow);
+        _param->common.has_bias, _param->common.if_relu, _param->common.kh,
+        _param->common.kw, _param->common.stride_h, _param->common.stride_w,
+        _param->common.dh, _param->common.dw, _param->common.pad_h_t,
+        _param->common.pad_h_b, _param->common.pad_w_l, _param->common.pad_w_r,
+        block_n, block_oc, block_oh, block_ic, block_ow);
   };
   auto split_func = [&](std::vector<std::tuple<int *, int, int>> &value) {
     for (auto &item : value) {

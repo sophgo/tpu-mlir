@@ -3,13 +3,14 @@
 using namespace ppl;
 
 __KERNEL__ void fconv2d(fp16 *ptr_res, fp16 *ptr_in, fp16 *ptr_w, fp32 *ptr_b,
-                        int N, int IC, int H, int W, int OC, const int kh,
-                        const int kw, const int sh, const int sw, const int dh,
-                        const int dw, const int pad_t, const int pad_b,
-                        const int pad_l, const int pad_r, const int block_n,
-                        const int block_oc, const int block_oh,
-                        const int block_ic, const int block_ow) {
-  // int kh = 3;
+                        int N, int IC, int H, int W, int OC, bool has_bias,
+                        bool has_relu, const int kh, const int kw, const int sh,
+                        const int sw, const int dh, const int dw,
+                        const int pad_t, const int pad_b, const int pad_l,
+                        const int pad_r, const int block_n, const int block_oc,
+                        const int block_oh, const int block_ic,
+                        const int block_ow) {
+                            // int kh = 3;
   // int kw = 3;
   // int stride_h = 1;
   // int stride_w = 1;
@@ -33,12 +34,6 @@ __KERNEL__ void fconv2d(fp16 *ptr_res, fp16 *ptr_in, fp16 *ptr_w, fp32 *ptr_b,
   dim2 stride = {sh, sw};
   dim2 dilation = {dh, dw};
   dim2 kernel = {kh, kw};
-
-  // int block_oc = LANE_NUM;
-  // int block_ic = nic; // block_ic must be nIC-dividable
-  // int block_oh = EU_BYTES / 2;
-  // int block_ow = EU_BYTES * 2;
-  // int block_n = 1;
 
   int block_ih = (block_oh - 1) * sh + kh_ext;
   int block_iw = (block_ow - 1) * sw + kw_ext;
@@ -124,18 +119,19 @@ __KERNEL__ void fconv2d(fp16 *ptr_res, fp16 *ptr_in, fp16 *ptr_w, fp32 *ptr_b,
     // print("n=%d, oc=%d, ic=%d, oh=%d, ih=%d, ow=%d, iw=%d, idx_n=%d, "
     //       "idx_oc=%d, "
     //       "idx_ic=%d, idx_oh=%d, idx_ih=%d, idx_ow=%d, idx_iw=%d\n",
-    //       curr_n, curr_oc, curr_ic, curr_oh, curr_ih, curr_ow, curr_iw,
-    //       idx_n, idx_oc, idx_ic, idx_oh, ih_start, idx_ow, iw_start);
+    //       curr_n, curr_oc, curr_ic, curr_oh, curr_ih, curr_ow, curr_iw, idx_n,
+    //       idx_oc, idx_ic, idx_oh, ih_start, idx_ow, iw_start);
 
-    bool out32 = is_ic_split && ic_count != ic_secs - 1;
+    data_type_t out32 =
+        (is_ic_split && ic_count != ic_secs - 1) ? DT_FP32 : DT_FP16;
     bool result_add = is_ic_split && ic_count != 0;
-    bool has_bias = ic_count == 0;
+    bool do_bias = ic_count == 0 && has_bias;
 
     // load bias
     dim4 bias_real_shape = {1, curr_oc, 1, 1};
     dim4 bias_offset = {0, idx_oc, 0, 0};
     auto bias = bias_tensor.view(bias_real_shape);
-    if (count % oc_num < 2) {
+    if (count % oc_num < 2 && has_bias) {
       dma::load_compact(bias, b_gt.sub_view(bias_real_shape, bias_offset));
     }
     // print("bias:%s\n", to_string(bias));
@@ -182,19 +178,25 @@ __KERNEL__ void fconv2d(fp16 *ptr_res, fp16 *ptr_in, fp16 *ptr_w, fp32 *ptr_b,
     auto out_f16 = make_tensor<fp16>(output_block_shape, output_real_shape);
     // print("output:%s\n", to_string(output));
 
+    // print("do_bias:%d\n", do_bias);
     if (is_ic_split) {
       tiu::fconv(output, input, weight, bias, curr_oc, &kernel, &stride,
-                 &dilation, &slice_pad, result_add, out32, has_bias);
+                 &dilation, &slice_pad, nullptr, false, result_add, out32,
+                 do_bias, false, false);
     } else {
       tiu::fconv(out_f16, input, weight, bias, curr_oc, &kernel, &stride,
-                 &dilation, &slice_pad, result_add, out32, has_bias);
+                 &dilation, &slice_pad, nullptr, false, result_add, out32,
+                 do_bias, false, false);
     }
-    if (is_ic_split && !out32) {
+    if (is_ic_split && out32 != DT_FP32) {
       tiu::move(out_f16, output.view<fp16>());
+    }
+    if (has_relu) {
+      tiu::fmax(out_f16, out_f16, 0);
     }
 
     // ifOp can't contain 2 stage,so make they condition difference
-    if (!out32) {
+    if (out32 != DT_FP32) {
       // dma::store(o_gt.sub_view(output_real_shape, o_offset), output);
       dim4 o_offset = {idx_n, idx_oc, idx_oh, idx_ow};
       dma::store(o_gt.sub_view(output_real_shape, o_offset), out_f16);

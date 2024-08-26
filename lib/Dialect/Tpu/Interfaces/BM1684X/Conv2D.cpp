@@ -126,7 +126,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
                           cinfo->getZeroGuard()};
   }
 #if 0
-  if (module::getStorageType(getOutput()).isF16()) {
+  if (module::getStorageType(getOutput()).isF16() && common.groups == 1) {
     BM168x::call_ppl_func("api_conv_global", &spec, sizeof(spec),
                              input_spec->data(), output_spec->data());
 
