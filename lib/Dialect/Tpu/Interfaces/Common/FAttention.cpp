@@ -67,4 +67,4 @@ mlir::Type tpu::FAttentionOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) 
 
 // }
 
-bool tpu::FAttentionOp::support_multi_core() { return false; }
+bool tpu::FAttentionOp::support_multi_core() { return true; }

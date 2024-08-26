@@ -3071,7 +3071,7 @@ public:
                                     PatternRewriter &rewriter) const override {
     // return failure();
     std::vector<Operation *> op_need_del;
-    if (!module::isBM1684X()) {
+    if (!module::isBM1684X() && !module::isBM1688()) {
       return failure();
     }
     auto out_type = module::getStorageType(op.getOutput());
@@ -3270,8 +3270,18 @@ public:
     assert(o_shape[2] == mq && sf_shape[1] == q_head);
 
     // ppl flash attention only support d <= 256, bf16 & fp16
-    if (d > 160 || mk < 4) {
+    if (d > 128 || mk < 4) {
       return failure();
+    }
+    if ((module::isBM1684X() && (q_head / kv_head > 16)) ||
+        (module::isBM1688() && (q_head / kv_head > 8))) {
+      return failure();
+    }
+    if (add) {
+      auto add_shape = module::getShape(add.getInputs()[1]);
+      if (add_shape[0] != batch || add_shape[2] != mq || add_shape[3] != mk) {
+        return failure();
+      }
     }
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
@@ -3463,7 +3473,7 @@ public:
       auto requant =
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
-      if (module::isBM1688()|| module::isSG2380()) {
+      if (module::isBM1688() || module::isSG2380()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
