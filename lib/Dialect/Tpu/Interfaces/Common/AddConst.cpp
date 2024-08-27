@@ -83,7 +83,7 @@ LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
                                             PatternRewriter &rewriter) {
   bool is_type_match = module::getStorageType(op.getInput()) ==
                        module::getStorageType(op.getResult());
-  bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-7 &&
+  bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-15 &&
                      op.getMultiplier() == 1 && op.getRshift() == 0;
 
   bool isTangents = module::isTrain() && module::endsWith(module::getName(op.getResult()).str(), "_add_zero");

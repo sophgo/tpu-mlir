@@ -142,11 +142,11 @@ public:
             if (type.getElementType().isIntOrIndex()) {
               continue;
             }
-            if (isa<CompareConstOp>(op)) {
-              if (dyn_cast<CompareConstOp>(op).getMode().str() != "And") {
-                continue;
-              }
-            }
+            // if (isa<CompareConstOp>(op)) {
+            //   if (dyn_cast<CompareConstOp>(op).getMode().str() != "And") {
+            //     continue;
+            //   }
+            // }
 
             auto name = module::getName(value).str();
             cali_info info = {0, 0, 0};
