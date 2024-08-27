@@ -52,6 +52,8 @@ void top::EinsumOp::shape_inference() {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[1]});
   } else if (mode == "abc,adc->adb") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[1], lhs_shape[1]});
+  } else if (mode == "abc,abd->acd") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[2], rhs_shape[2]});
   } else if (mode == "abcd,cde->abce") {
     module::setShapeOrVerify(getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[2]});
   } else if (mode == "abc,acde->abde") {

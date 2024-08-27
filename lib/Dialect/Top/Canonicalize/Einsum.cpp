@@ -283,6 +283,18 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
       op.replaceAllUsesWith(matmulOp.getOperation());
       rewriter.eraseOp(op);
+    } else if (mode == "abc,abd->acd") {
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_trans"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[2], lshape[1]}, module::getElementType(lhs));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto tranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{lhs}, attrs);
+      operands.push_back(tranOp);
+      operands.push_back(rhs);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
+      op.replaceAllUsesWith(matmulOp.getOperation());
+      rewriter.eraseOp(op);
     } else if (mode == "abcd,aecd->aeb") {
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto lreshape_loc = NameLoc::get(rewriter.getStringAttr(lname + "_reshape"));
