@@ -364,23 +364,19 @@ struct CommonMatch : public OpRewriterPatternEx3 {
   LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     auto num_core = module::getCoreNum();
+    if (num_core < 2) {
+      return failure();
+    }
 
     if (!isa<FuncOp>(op->getParentOp())) {
       return failure();
     }
     if (isa<ReturnOp, top::NoneOp, FuncOp, tpu::YieldOp, top::YieldOp,
-            top::WeightOp, tpu::Conv2DOp>(op)) {
+            top::WeightOp>(op)) {
       return failure();
     }
-    if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-      if (supportMultiCore(op)) {
-        return failure();
-      }
-    }
-    if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-      if (supportMultiCore(op)) {
-        return failure();
-      }
+    if (supportMultiCore(op)) {
+      return failure();
     }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
@@ -405,19 +401,11 @@ struct CommonMatch : public OpRewriterPatternEx3 {
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
         // inPlace op
-        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::Conv2DOp>(
-                left_op)) {
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
           continue;
         }
-        if (auto matmulOp = dyn_cast<tpu::MatMulOp>(left_op)) {
-          if (supportMultiCore(left_op)) {
+        if (supportMultiCore(left_op)) {
             continue;
-          }
-        }
-        if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(left_op)) {
-          if (supportMultiCore(left_op)) {
-            continue;
-          }
         }
         if (find_f(same_ops, left_op)) {
           continue;
@@ -471,7 +459,7 @@ class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
   LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
-    if (num_cores < 2 || module::isSG2380()) {
+    if (num_cores < 2 || supportMultiCore(op)) {
       return failure();
     }
     if (module::isOpInBlock(op)) {

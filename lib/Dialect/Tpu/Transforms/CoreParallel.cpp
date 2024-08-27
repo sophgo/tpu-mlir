@@ -377,25 +377,11 @@ public:
       doSpecificPattern(m);
       // normal situations to multi cores
       m->walk<WalkOrder::PreOrder>([&](Operation *op) {
-        if (isa<tpu::GroupOp>(op))
+        if (isa<tpu::GroupOp>(op)) {
           return WalkResult::skip();
-        if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op)) {
-          if (supportMultiCore(op)) {
-            matmulOp.setMultiCore(true);
-            return WalkResult::skip();
-          } else {
-            matmulOp.setMultiCore(false);
-          }
         }
-        if (auto a16matmulOp = dyn_cast<tpu::A16MatMulOp>(op)) {
-          if (supportMultiCore(op)) {
-            if (module::getCoreNum() > 1) {
-              a16matmulOp.setMultiCore(true);
-            } else {
-              a16matmulOp.setMultiCore(false);
-            }
-            return WalkResult::skip();
-          }
+        if (supportMultiCore(op)) {
+          return WalkResult::skip();
         }
         if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
           groupParallelDistribute(groupParallelOp, num_core);

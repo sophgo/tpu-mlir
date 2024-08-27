@@ -502,14 +502,14 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matmulOp,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1690Family())
-      return failure();
 
-    if (!module::isNone(matmulOp.getBuffer()))
+    if (!module::isNone(matmulOp.getBuffer())) {
       return failure();
+    }
 
-    if(module::getCoreNum() == 1 || !supportMultiCore(matmulOp) || !matmulOp.getMultiCore())
+    if(module::getCoreNum() < 2 || !supportMultiCore(matmulOp)) {
       return failure();
+    }
 
 
     auto p = matmulOp.parseParam();

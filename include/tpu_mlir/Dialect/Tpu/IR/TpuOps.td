@@ -1304,8 +1304,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
     DefaultValuedAttr<BoolAttr, "true">:$sign,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
     // do per-group quant if q_group_size > 0, otherwise per-channel
-    DefaultValuedAttr<I64Attr, "0">:$q_group_size,
-    OptionalAttr<BoolAttr>:$multi_core
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let hasCanonicalizeMethod = 1;

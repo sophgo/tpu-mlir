@@ -107,8 +107,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 
   // Need to check if multi_core attribute has been set cuz we will call
   // codegen interface at layergroup stage as well
-  if (module::getCoreNum() > 1 && supportMultiCore(*this) &&
-      (!getOperation()->hasAttr("multi_core") || getMultiCore() == true)) {
+  if (module::getCoreNum() > 1 && supportMultiCore(*this)) {
     if (!module::isNone(getBuffer())) {
       spec.need_buffer = true;
     }
