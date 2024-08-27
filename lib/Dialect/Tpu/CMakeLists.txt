@@ -40,7 +40,7 @@ add_llvm_library(TPUMLIRTpu
   MLIRDynGlobalGenInterfaceIncGen
   MLIRTypeInterfaceIncGen
   MLIRIndexingMapsInterfaceIncGen
-  MLIRTpuRewriteIncGen
+  # MLIRTpuRewriteIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
