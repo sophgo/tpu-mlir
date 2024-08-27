@@ -4909,7 +4909,7 @@ scatterND
 参数说明
 """""""""""
 * input：Tensor类型，表示输入操作Tensor，即需要更新的目标Tensor。
-* indices：Tensor类型，表示指定更新位置的索引Tensor。
+* indices：Tensor类型，表示指定更新位置的索引Tensor。 数据类型必须是uint32。
 * updates：Tensor类型，表示要写入目标Tensor的值。Rank(updates) = Rank(input) + Rank(indices) - shape(indices)[-1] -1 。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
