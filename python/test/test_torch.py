@@ -3578,6 +3578,7 @@ class TORCH_IR_TESTER(object):
         # Permute will be converted to Reshape when there is 1 in shape
         # MovePermuteAfterAdd will be affected by PermuteToReshape Pattern
         # self.trace_and_test([[5,1,8,16],[5,1,8,16],[5,16,8,64]], Model0())
+
     def user_define_net(self):
         """user_define_net"""
         # return
