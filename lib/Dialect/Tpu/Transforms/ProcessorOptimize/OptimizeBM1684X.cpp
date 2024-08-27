@@ -10,7 +10,6 @@
 #include "Common.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/RewritePattern.inc"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -4078,7 +4077,8 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1684X())
+    bool m_fuse_rq = op.getFuseRq();
+    if (m_fuse_rq)  // If matmul supports per-channel quantization in the lowering stage, don't fuse rq!
       failure();
 
     if (!module::isBM1684X() || !op->hasOneUse()) {
@@ -4139,11 +4139,110 @@ public:
   }
 };
 
+class SplitQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+  SplitQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitQuantizedMLPPattern",
+                                           benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
+                                    PatternRewriter &rewriter) const override {
+    bool f_fuse_rq = matMulOp.getFuseRq();
+    if(f_fuse_rq) return failure();
+    auto op1 = matMulOp.getOperand(0).getDefiningOp();
+    if (!op1 || !isa<tpu::LutOp>(op1)) {
+      return failure();
+    }
+    auto prevMatMulOp = op1->getOperand(0).getDefiningOp();
+    if (!prevMatMulOp || !isa<tpu::MatMulOp>(prevMatMulOp)) {
+      return failure();
+    }
+    auto prevMatMulOp_ = dyn_cast<tpu::MatMulOp>(prevMatMulOp);
+    bool l_fuse_rq = prevMatMulOp_.getFuseRq();
+    if (!prevMatMulOp->getOperand(0).hasOneUse() || l_fuse_rq) {
+      return failure();
+    }
+
+    if (!isa<quant::UniformQuantizedType>(prevMatMulOp->getOperand(0)
+                                              .getType()
+                                              .cast<mlir::ShapedType>()
+                                              .getElementType())) {
+      return failure();
+    }
+
+    if (!isa<top::WeightOp>(prevMatMulOp->getOperand(1).getDefiningOp())) {
+      return failure();
+    }
+
+    auto nativeVar_0 = tpu_mlir::tpu::createSplitQuantizedMLP(
+        rewriter, prevMatMulOp, prevMatMulOp->getOperand(0));
+    rewriter.replaceOp(matMulOp, nativeVar_0);
+    return success();
+  }
+};
+
+
+class SplitMixedQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+  SplitMixedQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitMixedQuantizedMLPPattern",
+                                           benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
+                                    PatternRewriter &rewriter) const override {
+    bool f_fuse_rq = matMulOp.getFuseRq();
+    if(f_fuse_rq) return failure();
+    auto castOp = matMulOp->getOperand(0).getDefiningOp();
+    if (!castOp || !isa<tpu::CastOp>(castOp)) {
+      return failure();
+    }
+
+    auto lutOp = castOp->getOperand(0).getDefiningOp();
+    if (!lutOp || !isa<tpu::LutOp>(lutOp)) {
+      return failure();
+    }
+
+    auto prevMatMulOp = castOp->getOperand(0).getDefiningOp();
+    if (!prevMatMulOp || !isa<tpu::MatMulOp>(prevMatMulOp)) {
+      return failure();
+    }
+    auto prevMatMulOp_ = dyn_cast<tpu::MatMulOp>(prevMatMulOp);
+    bool l_fuse_rq = prevMatMulOp_.getFuseRq();
+    if (!prevMatMulOp->getOperand(0).hasOneUse() || l_fuse_rq) {
+      return failure();
+    }
+
+    if (!isa<quant::UniformQuantizedType>(prevMatMulOp->getOperand(0)
+                                              .getType()
+                                              .cast<mlir::ShapedType>()
+                                              .getElementType())) {
+      return failure();
+    }
+
+    if (!isa<quant::CalibratedQuantizedType>(matMulOp->getResult(0)
+                                                 .getType()
+                                                 .cast<mlir::ShapedType>()
+                                                 .getElementType())) {
+      return failure();
+    }
+
+    if (!isa<top::WeightOp>(prevMatMulOp->getOperand(1).getDefiningOp())) {
+      return failure();
+    }
+
+    auto nativeVar_0 = tpu_mlir::tpu::createSplitQuantizedMLP(
+        rewriter, prevMatMulOp, prevMatMulOp->getOperand(0));
+
+    rewriter.replaceOp(matMulOp, nativeVar_0);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-  patterns->add<MatMul2FAttentionPattern>(ctx, 10);
+  patterns->add<MatMulRequantIntFusion,MatMul2FAttentionPattern>(ctx, 10);
   patterns->add<LargePadConvPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,
@@ -4183,13 +4282,13 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 Concat5dto4d,
                 EliminateCastBeforeGatherElements,
                 ConvMergeRequant,
-                MatMulRequantIntFusion,
                 RemoveReshape
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern, SplitMixedQuantizedMLPPattern>(ctx);
+  patterns->add<SplitQuantizedMLPPattern>(ctx, 3);
+  patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
 }
 } // namespace tpu
 
