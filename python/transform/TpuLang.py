@@ -3013,7 +3013,7 @@ def scatterND(input: Tensor,
     o_dtype = input.dtype
 
     assert len(input.shape) + len(indices.shape) - indices.shape[-1] -1 == len(updates.shape),  "The shapes of inputs are not correct."
-
+    assert indices.dtype == 'uint32', "Wrong indices type"
     output = Tensor(dtype=o_dtype, name=out_name)
 
     TpuLang.insert_op("top.ScatterND", inputs=[input, indices, updates], outputs=[output])

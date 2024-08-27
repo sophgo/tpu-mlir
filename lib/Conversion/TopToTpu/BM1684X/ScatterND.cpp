@@ -99,7 +99,29 @@ static void LoweringScatterND(PatternRewriter &rewriter,
 
   if (module::isWeight(op.getIndices())) {
     auto wOp = op.getIndices().getDefiningOp<top::WeightOp>();
-    operands.push_back(wOp.clone_int(op));
+    auto wop_type = wOp.getType().cast<RankedTensorType>();
+    auto wop_dtype = wop_type.getElementType();
+    if (wop_dtype.isF32()){
+      operands.push_back(wOp.clone_int(op));
+    } else if( wop_dtype.isInteger(32)){
+      operands.push_back(op.getIndices());
+    } else{
+      // convert indices into int32
+      auto indices_data = wOp.read<float>();
+      std::vector<int32_t> indices_int32_v(
+          module::getNumElements(op.getIndices()));
+      for (int i = 0; i < module::getNumElements(op.getIndices()); ++i) {
+        indices_int32_v[i] = static_cast<int32_t>(indices_data->at(i));
+      }
+      auto new_type = RankedTensorType::get(module::getShape(op.getIndices()),
+                                            rewriter.getI32Type());
+      i32_array_t indices_int32 =
+          std::make_shared<std::vector<int32_t>>(indices_int32_v);
+      auto new_indices_op =
+          top::WeightOp::create(op, "indices_int32", *indices_int32, new_type);
+      operands.push_back(new_indices_op);
+    }
+
   } else {
     operands.push_back(op.getIndices());
   }
