@@ -22,6 +22,9 @@ bool supportMultiCore(mlir::Operation *op) {
   if (module::isOpInCoreParallel(op)) {
     return false;
   }
+  if (module::getCoreNum() < 2) {
+    return false;
+  }
   return gl.support_multi_core();
 }
 

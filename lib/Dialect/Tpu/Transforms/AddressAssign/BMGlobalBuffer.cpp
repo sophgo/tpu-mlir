@@ -507,10 +507,9 @@ public:
       return failure();
     }
 
-    if(module::getCoreNum() < 2 || !supportMultiCore(matmulOp)) {
+    if(!supportMultiCore(matmulOp)) {
       return failure();
     }
-
 
     auto p = matmulOp.parseParam();
     fc_global_spec_t spec = {0};

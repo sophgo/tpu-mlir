@@ -1260,8 +1260,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
     if (!globalOp) {
       return WalkResult::advance();
     }
-    auto core_num = module::getCoreNum();
-    if (core_num > 1 && supportMultiCore(op)) {
+    if (supportMultiCore(op)) {
       setupMultiCoreCodegen();
       codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
       return WalkResult::skip();
