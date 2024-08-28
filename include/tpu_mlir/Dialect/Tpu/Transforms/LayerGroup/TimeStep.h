@@ -49,22 +49,6 @@ typedef struct {
   GdmaTsField gdma0_ts_field;
 } TimestepRow;
 
-class SoftwarePipeline {
-public:
-  SoftwarePipeline();
-  void clear_all();
-  void clear_swloop_buffer();
-  void write_swloop_buffer(int64_t nstep, int64_t hstep, int stage_num);
-  const tensor_step_t *read_swloop_buffer(int stage);
-
-  int software_pipeline_schedule(std::vector<TimestepRow> &timestep_table);
-  int get_tensor_swpipl_stage(Value v);
-
-private:
-  std::list<tensor_step_t> tensor_swloop_buffer_;
-  std::map<Value, int, value_compare> tensor_swpipl_stage;
-};
-
 class BasicTimeStep {
 public:
   BasicTimeStep();

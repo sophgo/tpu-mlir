@@ -1352,7 +1352,7 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
     F8E4M3((const float *)data, act->data() + offset, tensor_size, 1 / scale,
            true);
   } else if (is_integer == false && module::isCalibratedType(value) &&
-             module::getStorageType(value).isFloat8E4M3FN()) {
+             module::getStorageType(value).isFloat8E5M2()) {
     F8E5M2((const float *)data, act->data() + offset, tensor_size, 1., true);
 
   } else {

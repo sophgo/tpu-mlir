@@ -220,6 +220,46 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
 
     return outputs
 
+g_final_mlir_module = None
+
+def final_mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
+    import pyfinalmlir
+    global g_final_mlir_module
+    if g_final_mlir_module != None:
+        g_final_mlir_module = None
+    g_final_mlir_module = pyfinalmlir.module()
+    g_final_mlir_module.load(mlir_file)
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(g_final_mlir_module.input_names) == 1)
+    for name in g_final_mlir_module.input_names:
+        if not only_one:
+            assert (name in inputs)
+            input = inputs[name]
+        else:
+            input = list(inputs.values())[0]
+        if input.dtype == np.int8 or input.dtype == np.uint8:
+            g_final_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
+        else:
+            g_final_mlir_module.set_tensor(name, input.astype(np.float32))
+    tensors = dict()
+    g_final_mlir_module.invoke()
+    tensors = g_final_mlir_module.get_all_tensor()
+    if dump_all:
+        return tensors
+    from utils.mlir_parser import MlirParser
+    parser = MlirParser(mlir_file)
+    outputs = dict()
+    for name in g_final_mlir_module.output_names:
+        outputs[name] = tensors[name]
+        # assume output of op has the same name
+        op_type = parser.get_op_type_by_op_name(name)
+        if op_type == "tpu.Cast":
+            pre_op = parser.get_pre_op_by_op_name(name)[0]
+            if pre_op in tensors:
+                outputs[pre_op] = tensors[pre_op]
+    return outputs
+
 
 g_mlir_module = None
 g_mlir_cuda = None
@@ -265,11 +305,6 @@ def _mlir_inference_by_cpu(inputs: dict, mlir_file: str, dump_all: bool = True, 
         else:
             g_mlir_module.set_tensor(name, input.astype(np.float32))
     tensors = dict()
-    layer_names = g_mlir_module.all_tensor_names if dump_all else g_mlir_module.output_names
-    # def func2(layer_name):
-    #     if layer_name in layer_names:
-    #         tensors[layer_name] = g_mlir_module.get_tensor(layer_name).copy()
-    # g_mlir_module.after_invoke(func2)
     g_mlir_module.invoke(not out_fixed)
     tensors = g_mlir_module.get_all_tensor()
     if dump_all:
@@ -549,7 +584,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()
-    if args.model.endswith(".mlir"):
+    if args.model.endswith("final.mlir"):
+        output = final_mlir_inference(
+            data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".mlir"):
         output = mlir_inference(
             data, args.model, args.dump_all_tensors, args.debug, args.out_fixed, args.cuda)
     elif args.model.endswith('.onnx'):
