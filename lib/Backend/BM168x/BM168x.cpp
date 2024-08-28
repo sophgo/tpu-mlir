@@ -13,9 +13,48 @@
 
 using namespace tpu_mlir::backend;
 
+uint64_t BM168x::get_cmodel_gmem_start_addr() {
+  return dl_tpu_global_mem_get_start_addr();
+}
+
+uint64_t BM168x::get_cmodel_l2mem_start_addr() {
+  return dl_tpu_l2_sram_get_start_addr();
+}
+
 void *BM168x::get_gmem_addr(uint64_t addr) {
   auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
   return start + addr - GMEM_START_ADDR;
+}
+
+void *BM168x::get_l2mem_addr(uint64_t addr) {
+  auto start = static_cast<char *>(this->dl_get_l2_sram(0));
+  return start + addr - L2_SRAM_START_ADDR;
+}
+
+void *BM168x::get_system_mem_ptr(uint64_t addr) {
+  const uint64_t cmodel_gmem_start_addr = get_cmodel_gmem_start_addr();
+  const uint64_t cmodel_l2mem_start_addr = get_cmodel_l2mem_start_addr();
+  if (addr >= (GMEM_START_ADDR | cmodel_gmem_start_addr)) {
+    if (GMEM_START_ADDR != cmodel_gmem_start_addr) {
+      return get_gmem_addr(addr & (~cmodel_gmem_start_addr));
+    } else {
+      return get_gmem_addr(addr);
+    }
+  } else if (L2_SRAM_SIZE > 0 &&
+             (L2_SRAM_START_ADDR | cmodel_l2mem_start_addr) <= addr &&
+             addr < (L2_SRAM_START_ADDR | cmodel_l2mem_start_addr) + L2_SRAM_SIZE) {
+    if (L2_SRAM_START_ADDR != cmodel_l2mem_start_addr) {
+      return get_l2mem_addr(addr & (~cmodel_l2mem_start_addr));
+    } else {
+      return get_l2mem_addr(addr);
+    }
+  }
+  return NULL;
+}
+
+void *BM168x::get_local_mem_ptr(int npu_idx, uint64_t addr) {
+  auto start = static_cast<char *>(this->dl_get_local_memaddr_by_node(0, npu_idx));
+  return start + addr;
 }
 
 void *BM168x::get_gmem_addr(const bm_device_mem_t &mem) {
@@ -477,6 +516,7 @@ int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
 int64_t BM168x::ALIGNMENT = 0;
 uint64_t BM168x::L2_SRAM_START_ADDR = 0;
+uint64_t BM168x::L2_SRAM_SIZE = 0;
 
 int BM168x::GDMA_VALUE_FORMAT_UINT8 = 0;
 int BM168x::GDMA_VALUE_FORMAT_INT8 = 0;
@@ -492,6 +532,8 @@ int BM168x::GDMA_VALUE_FORMAT_NUM = 0;
 void BM168x::load_functions() {
   CAST_FUNCTION(cmodel_init);
   CAST_FUNCTION(cmodel_deinit);
+  CAST_FUNCTION(cmodel_nodechip_runtime_init);
+  CAST_FUNCTION(cmodel_nodechip_runtime_exit);
   CAST_FUNCTION(create_cmd_id_node);
   CAST_FUNCTION(destroy_cmd_id_node);
   CAST_FUNCTION(set_cmd_id_cycle);
@@ -502,6 +544,8 @@ void BM168x::load_functions() {
   CAST_FUNCTION(use_atomic_cmodel);
   CAST_FUNCTION(forbid_atomic_cmodel);
   CAST_FUNCTION(get_global_memaddr);
+  CAST_FUNCTION(get_l2_sram);
+  CAST_FUNCTION(get_local_memaddr_by_node);
   CAST_FUNCTION(set_cmd_buffer_ptr);
   CAST_FUNCTION(set_cmd_id_prefix);
   CAST_FUNCTION(enable_profile);
@@ -511,6 +555,8 @@ void BM168x::load_functions() {
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
+  CAST_FUNCTION(tpu_global_mem_get_start_addr);
+  CAST_FUNCTION(tpu_l2_sram_get_start_addr);
   CAST_CPU_FUNCTION(bmcpu_init);
   CAST_CPU_FUNCTION(bmcpu_uninit);
   CAST_CPU_FUNCTION(bmcpu_process);
@@ -689,8 +735,25 @@ int64_t BM168x::get_gdma_cycle() {
   return dl_get_cmd_id_cycle(code->gdma_node);
 }
 
-int64_t BM168x::get_bdc_cycle() { return dl_get_cmd_id_cycle(code->bdc_node); }
+int64_t BM168x::get_bdc_cycle() {
+  return dl_get_cmd_id_cycle(code->bdc_node);
+}
 
 int64_t BM168x::get_cmd_cycle() {
   return dl_get_cmd_id_cycle(code->cmdid_node);
+}
+
+
+void BM168x::enter_runtime() {
+  dl_use_atomic_cmodel();
+  // for (int core_idx = 0; core_idx < module::getCoreNum(); ++core_idx) {
+  //   dl_cmodel_nodechip_runtime_init(core_idx);
+  // }
+}
+
+void BM168x::exit_runtime() {
+  // for (int core_idx = 0; core_idx < module::getCoreNum(); ++core_idx) {
+  //   dl_cmodel_nodechip_runtime_exit(core_idx);
+  // }
+  dl_forbid_atomic_cmodel();
 }

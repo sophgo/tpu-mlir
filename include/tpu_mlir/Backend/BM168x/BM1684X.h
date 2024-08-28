@@ -95,7 +95,6 @@ public:
 protected:
   BM1684X() : BM168x(TypeID::get<BM1684X>()) {
     if (chip != module::Chip::BM1684X) {
-      // avoid bm1688 construct
       return;
     }
     code = std::make_unique<BM168x::Code>();
@@ -107,6 +106,7 @@ protected:
     ALIGNMENT = 0x1000;
     GMEM_START_ADDR = 0x100000000ull;
     L2_SRAM_START_ADDR = 0x10000000ull;
+    L2_SRAM_SIZE = 0x1FB000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR;
     COEFF_START_ADDR = GMEM_START_ADDR;

@@ -14,6 +14,8 @@
 
 typedef int (*cmodel_init)(int node_idx, uint64_t global_mem_size);
 typedef void (*cmodel_deinit)(int node_idx);
+typedef int (*cmodel_nodechip_runtime_init)(int node_idx);
+typedef void (*cmodel_nodechip_runtime_exit)(int node_idx);
 typedef void *(*create_cmd_id_node)();
 typedef void (*destroy_cmd_id_node)(void *pid_node);
 typedef void (*set_cmd_id_cycle)(void *pid_node, int val);
@@ -24,11 +26,15 @@ typedef void (*forbid_store_cmd)();
 typedef void (*use_atomic_cmodel)();
 typedef void (*forbid_atomic_cmodel)();
 typedef void *(*get_global_memaddr)(int node_idx);
+typedef void *(*get_l2_sram)(int node_idx);
+typedef void *(*get_local_memaddr_by_node)(int node_idx, int npu_idx);
 typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
 typedef void (*set_cmd_id_prefix)(void *pid_node, const char *name_prefix);
 typedef void (*allow_atomic_cmodel_assert)();
 typedef void (*forbid_atomic_cmodel_assert)();
 typedef void (*enable_profile)(bool enable, FILE *fp);
+typedef unsigned long long (*tpu_global_mem_get_start_addr)();
+typedef unsigned long long (*tpu_l2_sram_get_start_addr)();
 
 typedef void (*tensor_stride_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
@@ -221,6 +227,7 @@ public:
   static uint64_t COEFF_START_ADDR;
   static uint64_t CTX_START_ADDR;
   static uint64_t IO_ADDR[5];
+  static uint64_t L2_SRAM_SIZE;
   static const uint64_t CMODEL_GMEM_SIZE = 0x100000000ull;
   // GDMA Format
   static int GDMA_VALUE_FORMAT_UINT8;
@@ -239,6 +246,8 @@ public:
   // -------------------------------------------------------------------
   cmodel_init dl_cmodel_init;
   cmodel_deinit dl_cmodel_deinit;
+  cmodel_nodechip_runtime_init dl_cmodel_nodechip_runtime_init;
+  cmodel_nodechip_runtime_exit dl_cmodel_nodechip_runtime_exit;
   create_cmd_id_node dl_create_cmd_id_node;
   destroy_cmd_id_node dl_destroy_cmd_id_node;
   set_cmd_id_cycle dl_set_cmd_id_cycle;
@@ -250,8 +259,12 @@ public:
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
   enable_profile dl_enable_profile;
   get_global_memaddr dl_get_global_memaddr;
+  get_l2_sram dl_get_l2_sram;
+  get_local_memaddr_by_node dl_get_local_memaddr_by_node;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_cmd_id_prefix dl_set_cmd_id_prefix;
+  tpu_global_mem_get_start_addr dl_tpu_global_mem_get_start_addr;
+  tpu_l2_sram_get_start_addr dl_tpu_l2_sram_get_start_addr;
   allow_atomic_cmodel_assert dl_allow_atomic_cmodel_assert;
   forbid_atomic_cmodel_assert dl_forbid_atomic_cmodel_assert;
   tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
@@ -292,7 +305,12 @@ public:
   virtual void before_codegen();
   virtual void after_codegen(int64_t flops = 0);
 
+  uint64_t get_cmodel_gmem_start_addr();
+  uint64_t get_cmodel_l2mem_start_addr();
   void *get_gmem_addr(uint64_t addr);
+  void *get_l2mem_addr(uint64_t addr);
+  void *get_system_mem_ptr(uint64_t addr);
+  void *get_local_mem_ptr(int npu_idx, uint64_t addr);
   void *get_gmem_addr(const bm_device_mem_t &mem);
   void bm_memcpy_s2d(const bm_device_mem_t &dst, void *src);
   void bm_memcpy_d2s(void *dst, const bm_device_mem_t &src);
@@ -309,6 +327,8 @@ public:
   int64_t get_gdma_cycle();
   int64_t get_bdc_cycle();
   int64_t get_cmd_cycle();
+  void enter_runtime();
+  void exit_runtime();
 
   void reset_command_flag() {
     dl_use_atomic_cmodel();
@@ -326,15 +346,6 @@ public:
 
 public:
   struct Code {
-    // std::vector<uint32_t> bdc_buffer;
-    // std::vector<uint32_t> gdma_buffer;
-    // uint32_t gdma_total_id = 0;
-    // uint32_t bdc_total_id = 0;
-    // std::vector<uint32_t> gdma_group_id;
-    // std::vector<uint32_t> bdc_group_id;
-    // std::vector<uint32_t> gdma_bytes;
-    // std::vector<uint32_t> bdc_bytes;
-    // int cmdid_groupnum = 0;
     void *cmdid_node = nullptr;
     void *bdc_node = nullptr;
     void *gdma_node = nullptr;

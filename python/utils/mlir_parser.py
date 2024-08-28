@@ -47,7 +47,7 @@ class Operation:
     @staticmethod
     def name(op):
         loc = op.location
-        if loc == "loc(unknown)":
+        if str(loc) == "loc(unknown)":
             return None
         num_results = len(op.results.types)
         if num_results > 1:
