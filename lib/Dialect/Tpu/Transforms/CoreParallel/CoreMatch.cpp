@@ -375,9 +375,6 @@ struct CommonMatch : public OpRewriterPatternEx3 {
             top::WeightOp>(op)) {
       return failure();
     }
-    if (supportMultiCore(op)) {
-      return failure();
-    }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
     if (num_users < 2) {
@@ -459,7 +456,7 @@ class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
   LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
-    if (num_cores < 2 || supportMultiCore(op)) {
+    if (supportMultiCore(op)) {
       return failure();
     }
     if (module::isOpInBlock(op)) {
