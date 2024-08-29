@@ -24,8 +24,14 @@ void tpu::RMSNormOp::codegen_global_bm1684x() {
 
   param.common.eps = getEps().convertToDouble();
   param.common.affine = has_weight;
+
+#if 1
   BM168x::call_global_func("backend_api_rms_norm_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
+#else
+  BM168x::call_ppl_func("api_rms_norm_global", &param, sizeof(param),
+                        input_spec->data(), output_spec->data());
+#endif
 }
 
 // =========================================
