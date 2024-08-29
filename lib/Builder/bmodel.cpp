@@ -555,8 +555,8 @@ void ModelCtx::decrypt_bmodel(const std::string &filename) {
          decrypted_header_size);
 
   // check reserved to determine key in decryption
-  int reserved_length = 12;
-  for (int i = 0; i < reserved_length; ++i) {
+  size_t reserved_length = sizeof(header_.reserved) / sizeof(uint32_t);
+  for (size_t i = 0; i < reserved_length; ++i) {
     if (header_.reserved[i] != 0) {
       BMODEL_LOG(FATAL) << "your decrypt key is broken." << std::endl;
       exit(-1);
