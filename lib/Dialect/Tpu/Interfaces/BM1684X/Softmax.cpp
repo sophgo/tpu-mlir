@@ -47,9 +47,14 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     common.end_axis = getAxis();
     common.scale_val = in_scale;
     common.log = getLog();
+#if 1
     BM168x::call_global_func("backend_api_softmax_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());
+#else
+    BM168x::call_ppl_func("api_softmax_global", &param, sizeof(param),
+                          input_spec->data(), output_spec->data());
+#endif
   }
 }
 
