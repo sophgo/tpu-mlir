@@ -364,9 +364,6 @@ struct CommonMatch : public OpRewriterPatternEx3 {
   LogicalResult matchAndRewriteImpl(Operation *op,
                                 PatternRewriter &rewriter) const override {
     auto num_core = module::getCoreNum();
-    if (num_core < 2) {
-      return failure();
-    }
 
     if (!isa<FuncOp>(op->getParentOp())) {
       return failure();
@@ -377,7 +374,7 @@ struct CommonMatch : public OpRewriterPatternEx3 {
     }
 
     auto num_users = std::distance(op->user_begin(), op->user_end());
-    if (num_users < 2) {
+    if (num_users < num_core) {
       return failure();
     }
     auto find_f = [&](std::vector<std::vector<Operation *>> &ops,
@@ -400,9 +397,6 @@ struct CommonMatch : public OpRewriterPatternEx3 {
         // inPlace op
         if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
           continue;
-        }
-        if (supportMultiCore(left_op)) {
-            continue;
         }
         if (find_f(same_ops, left_op)) {
           continue;

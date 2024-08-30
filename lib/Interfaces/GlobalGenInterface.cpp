@@ -19,7 +19,7 @@ bool supportMultiCore(mlir::Operation *op) {
   if (!gl) {
     return false;
   }
-  if (module::isOpInCoreParallel(op)) {
+  if (module::isOpInBlock(op)) {
     return false;
   }
   if (module::getCoreNum() < 2) {
