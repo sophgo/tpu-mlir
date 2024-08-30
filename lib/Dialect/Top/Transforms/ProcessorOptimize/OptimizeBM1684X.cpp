@@ -846,7 +846,7 @@ public:
 protected:
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
                                     mlir::PatternRewriter &rewriter) const override {
-    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380())
+    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3())
       return failure();
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
@@ -938,7 +938,7 @@ protected:
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
     auto len_weight1 = module::getNumElements(matmul_keys.getRight());
     auto len_weight2 = module::getNumElements(matmul_values.getRight());
-    if (module::isBM1688()) {
+    if (module::isBM1688() || module::isMARS3()) {
       // TODO: do not suppose attention when size greater than [batch, 2048,
       // 320]
       if (len / n > 2048 * 320 ||
@@ -1342,7 +1342,7 @@ protected:
     // matrix, can lead to performance degradation.This adjustment is primarily
     // made concerning the CLIP model.Further improvements will be considered
     // later
-    if (module::isBM1688() && !(kh < 29 && kw < 29)) {
+    if ((module::isBM1688() || module::isMARS3()) && !(kh < 29 && kw < 29)) {
       return failure();
     }
     if (module::isSG2380() && module::getMode() == module::Mode::F32) {

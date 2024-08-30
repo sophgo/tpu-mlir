@@ -762,7 +762,7 @@ bool tpu_mlir::ConvertTopToTpu::swin_mix_precision() {
         LoweringConfig::quantize_map.insert(
             {module::getName(addop.getOperation()).str(), module::Mode::F16});
       }
-      if (!(module::isBM1688() || module::isSG2380())){
+      if (!(module::isBM1688() || module::isSG2380() || module::isMARS3())){
         for (auto in : addop.getOperands()) {
           if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
             if (mlp.size() < 24) {
@@ -992,7 +992,7 @@ bool ConvertTopToTpu::cswin_mix_precision() {
         }
       }
     }
-    if (!(module::isBM1688() || module::isSG2380())){
+    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3())){
       for (auto op : mlp) {
         auto addop = dyn_cast_or_null<top::AddOp>(op);
         if (addop == NULL)

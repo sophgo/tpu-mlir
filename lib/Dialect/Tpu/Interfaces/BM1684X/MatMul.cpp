@@ -24,9 +24,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   auto odtype = module::getStorageType(getOutput());
 
-  if (p.hdim_is_batch || p.batch != 1 || getFuseRq() ||
-      module::getMode() == module::Mode::F8E4M3 ||
-      module::getMode() == module::Mode::F8E5M2) {
+  if (p.hdim_is_batch || p.batch != 1 || getFuseRq() || module::isF8Modes() || module::isMARS3()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
