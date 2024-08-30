@@ -466,7 +466,7 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     auto attr = parseParam();
     if (attr.ic > MAX_TIU_CHL || attr.oc > MAX_TIU_CHL ||
-        attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
+        attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL || !attr.weight_is_coeff) {
       return failure();
     }
     if (attr.groups > 1 && false == attr.is_dw) {
