@@ -90,8 +90,14 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
       }
     }
   }
+
+#if 0
+  BM168x::call_ppl_func("api_avgpool_global", &spec, sizeof(spec),
+                        input_spec->data(), output_spec->data());
+#else
   BM168x::call_global_func("backend_api_pooling_global", &spec, sizeof(spec),
-                           input_spec->data(), output_spec->data());
+                          input_spec->data(), output_spec->data());
+#endif
 }
 
 // =========================================
