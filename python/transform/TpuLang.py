@@ -1421,6 +1421,9 @@ def maxpool2d(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    if isinstance(kernel, Tuple): kernel = list(kernel)
+    if isinstance(stride, Tuple): stride = list(stride)
+    if isinstance(pad, Tuple): pad = list(pad)
     assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
 
@@ -1466,6 +1469,9 @@ def maxpool3d(input: Tensor,
         stride = [stride] * 3
     if isinstance(pad, int):
         pad = [pad] * 6
+    if isinstance(kernel, Tuple): kernel = list(kernel)
+    if isinstance(stride, Tuple): stride = list(stride)
+    if isinstance(pad, Tuple): pad = list(pad)
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
     assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
@@ -1507,6 +1513,9 @@ def maxpool2d_with_mask(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    if isinstance(kernel, Tuple): kernel = list(kernel)
+    if isinstance(stride, Tuple): stride = list(stride)
+    if isinstance(pad, Tuple): pad = list(pad)
     assert input.dtype in ["float32"]
     o_dtype = input.dtype
 
@@ -1544,6 +1553,9 @@ def avgpool2d(input: Tensor,
     kernel = [] if kernel is None else kernel
     stride = [1, 1] if stride is None else stride
     pad = [0, 0, 0, 0] if pad is None else pad
+    if isinstance(kernel, Tuple): kernel = list(kernel)
+    if isinstance(stride, Tuple): stride = list(stride)
+    if isinstance(pad, Tuple): pad = list(pad)
     assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
 
@@ -1593,6 +1605,9 @@ def avgpool3d(input: Tensor,
     if isinstance(pad, int):
         pad = [pad] * 6
     pad = [0, 0, 0, 0, 0, 0] if pad is None else pad
+    if isinstance(kernel, Tuple): kernel = list(kernel)
+    if isinstance(stride, Tuple): stride = list(stride)
+    if isinstance(pad, Tuple): pad = list(pad)
     assert input.dtype in ["float32", "float16", "int8", "uint8"]
     o_dtype = input.dtype
     attr = {
@@ -2062,6 +2077,7 @@ def sort_by_key(input: Tensor,
 @annotation_check
 @assert_with_out_name
 def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = None):
+    if isinstance(order, Tuple): order = list(order)
     attr = {
         "order": ArrayAttr(order),
     }
@@ -2073,6 +2089,7 @@ def permute(input: Tensor, order: Union[Tuple[int], List[int]], out_name: str = 
 @annotation_check
 @assert_with_out_name
 def tile(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
+    if isinstance(reps, Tuple): reps = list(reps)
     attr = {
         "tile": ArrayAttr(reps),
     }
@@ -2089,6 +2106,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
            dtype: str="float32", round_mode: str="half_away_from_zero"):
     if scales is None:
         scales = [None] * (len(inputs) + 1)
+    if isinstance(scales, Tuple): scales = list(scales)
     if zero_points is None:
         zero_points = [None] * (len(inputs) + 1)
     assert len(inputs) > 1, "concat should have more than one input"
@@ -2111,6 +2129,7 @@ def concat(inputs: List[Tensor], scales: Optional[Union[List[float],List[int]]] 
 @assert_with_out_name
 def broadcast(input: Tensor, reps: Union[Tuple[int], List[int]], out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
+    if isinstance(reps, Tuple): reps = list(reps)
     assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     TpuLang.insert_op("top.Expand", inputs=[input], outputs=[output], params={"shape": ArrayAttr(reps)})
     return output
@@ -2226,7 +2245,7 @@ def split(input: Tensor,
     # else:
     #     assert(num == len(size) and "size should be the same as num")
     #     assert(sum(size) == input.shape[axis] and "invalid size")
-
+    if isinstance(size, Tuple): size = list(size)
     attr = {
         "axis": Attr(axis, "int32"),
         "num": Attr(num),
@@ -2283,6 +2302,7 @@ def pad(input: Tensor,
     assert(method in ["constant","reflect","symmetric","edge"] and "Not supported pad type")
     if padding is None:
         padding = [0] * (len(input.shape)*2)
+    if isinstance(padding, Tuple): padding = list(padding)
     assert(not padding or len(padding) == 2 * len(input.shape) and "Invalid padding length")
     assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     attr = {
@@ -2309,6 +2329,9 @@ def repeat(input: Tensor, reps: Tensor, out_name: str = None):
 @assert_with_out_name
 def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Union[List[int], Tuple[int]] = None, stride: Union[List[int], Tuple[int]] = None, out_name: str = None):
     dims = len(input.shape)
+    if isinstance(start, Tuple): start = list(start)
+    if isinstance(end, Tuple): end = list(end)
+    if isinstance(stride, Tuple): stride = list(stride)
     if start:
         assert (dims == len(start)), f"length of `start` should be {dims}"
     else:
@@ -2358,6 +2381,8 @@ def roll(input:Tensor,
     #
     #    concat(concat_0, ···， concat_dims)
     #
+    if isinstance(shifts, Tuple): shifts = list(shifts)
+    if isinstance(dims, Tuple): dims = list(dims)
     assert input.dtype in ["float32", "float16", "int8", "uint8", "int16", "uint16"]
     o_dtype = input.dtype
     in_shape = input.shape
@@ -2688,6 +2713,7 @@ def nes(tensor_i0: Tensor, scalar_i1: Union[Scalar, int, float], scale: List[flo
 @annotation_check
 @assert_with_out_name
 def squeeze(tensor_i: Tensor, axis: Union[Tuple[int], List[int]], out_name: str = None):
+    if isinstance(axis, Tuple): axis = list(axis)
     if out_name is None:
         out_name = generate_name("squeeze")
     attr = {
@@ -2704,6 +2730,7 @@ def reshape(tensor: Tensor, new_shape: Union[Tuple[int], List[int], Tensor], out
     output = Tensor(dtype=tensor.dtype, name=out_name)
     inputs = [tensor]
     attr = {}
+    if isinstance(new_shape, Tuple): new_shape = list(new_shape)
     if not isinstance(new_shape, Tensor):
         attr["shape"] = ArrayAttr(new_shape)
     else:
