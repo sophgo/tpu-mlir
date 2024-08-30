@@ -56,7 +56,7 @@ source  scripts/envsetup.sh sg2380
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256: 253d8e58e7b2764d625bfcdd9d049d0184a0f602
+#mars3 sha256: df30a2df39b7bf7bc034e60ae6c1052ac1af1689
 cd TPU1686
 source  scripts/envsetup.sh mars3
 **debug: rebuild_backend_lib_cmodel**
