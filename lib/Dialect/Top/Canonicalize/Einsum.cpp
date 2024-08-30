@@ -71,7 +71,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
       op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
-    } else if(mode == "ab,cdb->acd") {
+    } else if (mode == "ab,cdb->acd") {
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto newType = RankedTensorType::get({1, lshape[0], lshape[1]}, module::getElementType(lhs));
       auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
@@ -95,7 +95,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
       op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
-    } else if(mode == "abc,db->adc") {
+    } else if (mode == "abc,db->adc") {
       rewriter.setInsertionPointAfter(rhs.getDefiningOp());
       auto newType = RankedTensorType::get({1, rshape[0], rshape[1]}, module::getElementType(rhs));
       auto loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
@@ -106,6 +106,54 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       rewriter.setInsertionPoint(op);
       auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
       op.replaceAllUsesWith(matmulOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if (mode == "abcd,abce->acde") {
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_permute"));
+      auto newType = RankedTensorType::get({lshape[0], lshape[2], lshape[3], lshape[1]}, module::getElementType(lhs));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 3, 1})));
+      auto ltranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{lhs}, attrs);
+      operands.push_back(ltranOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      attrs.clear();
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_permute"));
+      newType = RankedTensorType::get({rshape[0], rshape[2], lshape[1], rshape[3]}, module::getElementType(rhs));
+      attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
+      auto rtranOp = rewriter.create<PermuteOp>(loc, newType, ValueRange{rhs}, attrs);
+      operands.push_back(rtranOp);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      attrs.clear();
+      auto matmulOp = rewriter.create<MatMulOp>(op.getLoc(), op.getType(), operands, attrs);
+      op.replaceAllUsesWith(matmulOp.getOperation());
+      rewriter.eraseOp(op);
+    } else if (mode ==  "abcd,acd->abc") {
+      // TODO : check whether tile can be optimized
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0] * lshape[1] * lshape[2], 1, lshape[3]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({rshape[0], 1, rshape[1], rshape[2], 1}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to5dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      newType = RankedTensorType::get({rshape[0], lshape[1], rshape[1], rshape[2], 1}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
+      attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({1, lshape[1], 1, 1, 1})));
+      auto tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      newType = RankedTensorType::get({rshape[0] * lshape[1] * rshape[1], rshape[2], 1}, module::getElementType(rhs));
+      auto reshapeOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{tileOp});
+      operands.push_back(reshapeOp);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+      attrs.clear();
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      newType = RankedTensorType::get({lshape[0] * lshape[1] * lshape[2], 1, 1}, module::getElementType(op));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
     } else if (mode == "abcd,cde->abe") {
       // lhs_reshape_rst = [lhs_shape[0] * lhs_shape[1], lhs_shape[2] * lhs_shape[3]]
@@ -579,6 +627,54 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 3, 2})));
       auto tranOp = rewriter.create<PermuteOp>(loc, newType, mul_op2.getOutput(), attrs);
       op.getOutput().replaceAllUsesWith(tranOp);
+      rewriter.eraseOp(op);
+    } else if (mode == "abcd,acde,abc->abce") {
+      // TODO : check whether tile can be optimized
+      auto dhs = op.getInputs()[2];
+      auto dshape = module::getShape(dhs);
+      std::string dname = module::getName(dhs).str();
+
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0] * lshape[1] * lshape[2], 1, lshape[3]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({rshape[0], 1, rshape[1], rshape[2], rshape[3]}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to5dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      newType = RankedTensorType::get({rshape[0], lshape[1], rshape[1], rshape[2], rshape[3]}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
+      attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({1, lshape[1], 1, 1, 1})));
+      auto tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      newType = RankedTensorType::get({rshape[0] * lshape[1] * rshape[1], rshape[2], rshape[3]}, module::getElementType(rhs));
+      auto reshapeOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{tileOp});
+      operands.push_back(reshapeOp);
+      operands.push_back(none);
+
+      rewriter.setInsertionPoint(op);
+      attrs.clear();
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      newType = RankedTensorType::get({lshape[0] * lshape[1] * lshape[2], 1, rshape[3]}, module::getElementType(op));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+
+      rewriter.setInsertionPointAfter(matmulOp);
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
+      newType = RankedTensorType::get({lshape[0], lshape[1], lshape[2], rshape[3]}, module::getElementType(op));
+      auto matmul_reshape_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{matmulOp});
+
+      // rewriter.setInsertionPointAfter(dhs);
+      newType = RankedTensorType::get({dshape[0], dshape[1], dshape[2], 1}, module::getElementType(dhs));
+      loc = NameLoc::get(rewriter.getStringAttr(dname + "_to4dim"));
+      auto dhs_reshape_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{dhs});
+
+      // rewriter.setInsertionPointAfter(matmul_reshape_op);
+      operands.clear();
+      operands.push_back(matmul_reshape_op.getOutput());
+      operands.push_back(dhs_reshape_op.getOutput());
+      auto mul_op = rewriter.create<MulOp>(op.getLoc(), op.getType(), operands, attrs);
+      op.replaceAllUsesWith(mul_op.getOperation());
       rewriter.eraseOp(op);
     } else if (mode == "abcd,aeb->aecd"){
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
