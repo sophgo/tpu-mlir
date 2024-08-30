@@ -19,7 +19,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   // for convert from hsigmoid/hswish
   if (!module::isCalibratedType(op.getOutput()) &&
-      !module::isUniformQuantized(op.getOutput())) {
+      !module::isUniformQuantized(op.getOutput()) || !module::isWeight(op.getFilter())) {
     LoweringBF16(rewriter, op);
     return;
   }
@@ -145,18 +145,29 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
   std::vector<Value> operands;
   auto p = op.parseParam();
-  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
-  operands.push_back(filterOp.clone_bf16(op));
+  if(module::isWeight(op.getFilter())){
+    auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+    operands.push_back(filterOp.clone_bf16(op));
+  } else {
+    auto filterOp = op.getFilter().getDefiningOp();
+    operands.push_back(filterOp->getResult(0));
+  }
   operands.push_back(op.getBias());
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
+    if(attr == rewriter.getNamedAttr("weight_is_coeff", rewriter.getBoolAttr(true)))
+      attrs.push_back(
+        rewriter.getNamedAttr("weight_is_coeff", rewriter.getI64IntegerAttr(module::isWeight(op.getFilter()) ? 1 : 0)));
+    else attrs.push_back(attr);
   }
   bool with_bias = !module::isNone(op.getBias());
+
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  // attrs.push_back(
+  //     rewriter.getNamedAttr("weight_is_coeff", rewriter.getI64IntegerAttr(module::isWeight(op.getFilter()) ? 1 : 0)));
   auto newType = getQuantBF16Type(op.getOutput());
   if (p.dims == 3) {
     rewriter.replaceOpWithNewOp<tpu::Conv3DOp>(op, newType, operands, attrs);
