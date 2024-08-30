@@ -62,8 +62,9 @@ def tpulang(chip):
     def wrapper(func):
         def decorate(*args, **kwargs):
             tpul.init(chip)
-            func(*args, **kwargs)
+            ret = func(*args, **kwargs)
             tpul.deinit()
+            return ret
         return decorate
     return wrapper
 
@@ -1078,10 +1079,15 @@ class TPULANG_IR_TESTER(object):
             musk_data = np.hstack((np.array([1] * musk_num), np.array([0] * (in_shape[1] - musk_num)))).astype(dtype)
             musk = tpul.Tensor(dtype=dtype, shape=[in_shape[0], in_shape[1]], data=musk_data)
             out0, out1 = bert(x, musk, in_shape, d, head, num, dtype=dtype)
-            self.compile_and_check(self.unique_name(case_name), [x, musk], [out0, out1], is_quantized=is_quantized)
+            case_unique_name = self.unique_name(case_name)
+            self.compile_and_check(case_unique_name, [x, musk], [out0, out1], is_quantized=is_quantized)
+            return case_unique_name
 
-        _test_model_def([1, 384, 1024], 64, 16, 1, 'float16', is_quantized=True)
-        _test_model_def([1, 224, 768], 64, 12, 1, 'float16', is_quantized=True)
+        names = []
+        names.append(_test_model_def([1, 384, 1024], 64, 16, 1, 'float16', is_quantized=True))
+        names.append(_test_model_def([1, 224, 768], 64, 12, 1, 'float16', is_quantized=True))
+        names = [n+"_int8" for n in names]
+        self.test_model_combine(names, case_name)
 
     #######################################################################
     # attention quant block
@@ -4150,6 +4156,28 @@ class TPULANG_IR_TESTER(object):
         _test_concat_conv()
         _test_conv_requant_axis()
         _test_conv_requant_axis2()
+
+    def test_model_combine(self, inputs, output="bm_combine"):
+        from tools.bmodel_combine import combine
+        # mode 0
+        input_bmodles = [inp + "/compilation.bmodel" for inp in inputs]
+        combine(input_bmodles, output=output+".bmodel", mode = 0)
+        # mode 1
+        combine(inputs, output=output, mode = 1)
+        # model 2
+        input_datas = []
+        sizes = []
+        for inp in inputs:
+            file = open(inp + "/compilation.bmodel", 'rb')
+            data = file.read()
+            input_datas.append(data)
+            sizes.append(len(data))
+            file.close()
+        output_data = combine(input_datas, sizes, mode=2)
+        file = open(output+"Data.bmodel", 'wb')
+        file.write(output_data)
+        file.close()
+
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
     t = Timer()

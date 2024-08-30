@@ -905,6 +905,7 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
           auto parameter = net->parameter()->Get(idx);
           assert(start == parameter->coeff_mem()->binary_coeff()->start());
           assert(size == parameter->coeff_mem()->binary_coeff()->size());
+          assert(parameter->is_dynamic() == 0);
         }
       }
     }
