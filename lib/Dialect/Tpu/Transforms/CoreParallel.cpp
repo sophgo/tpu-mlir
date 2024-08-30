@@ -122,10 +122,9 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 // [offset, offset+num_core)
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
                            int num_core = 1) {
-  if (getRunMode(op) == RunMode::TPU_DYNAMIC)
+  if (getRunMode(op) == RunMode::TPU_DYNAMIC) {
     return nullptr;
-  if (num_core < 2)
-    return nullptr;
+  }
   auto indexMap = op.getIndexingMaps();
   if (!indexMap || indexMap.empty())
     return nullptr;
@@ -380,11 +379,11 @@ public:
         if (isa<tpu::GroupOp>(op)) {
           return WalkResult::skip();
         }
-        if (supportMultiCore(op)) {
-          return WalkResult::skip();
-        }
         if (auto groupParallelOp = dyn_cast<tpu::GroupParallelOp>(op)) {
           groupParallelDistribute(groupParallelOp, num_core);
+          return WalkResult::skip();
+        }
+        if (supportMultiCore(op)) {
           return WalkResult::skip();
         }
         if (auto coreParallelOp = dyn_cast<IndexingMapsInterface>(op)) {
