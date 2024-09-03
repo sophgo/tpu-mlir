@@ -861,8 +861,9 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            bool allow_bank_conflict) {
   std::vector<std::pair<Operation*, int>> vec_op_hsecs;
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info, vec_op_hsecs);
-  update_data_split(time_step, lg_info, shape_secs);
-
+  if (!allow_bank_conflict) {
+    update_data_split(time_step, lg_info, shape_secs);
+  }
 
   /**
    * The `update_multi_core` function may result in an invalid `shape_secs`,
@@ -984,6 +985,8 @@ void aggressive_slice_for_multicore(LmemAllocator &lmem_allocator,
                    << ", wsecs: " << ir_shape_secs.wsecs
                    << "\n";
       ir_shape_secs.hsecs = lg_shape_secs.hsecs;
+    } else {
+      lmem_allocator.assignLmemAddrWithSecs(lg_info, time_step, ir_shape_secs);
     }
   }
 }
