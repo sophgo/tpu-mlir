@@ -4247,7 +4247,57 @@ public:
     return success();
   }
 };
+class CastGradWeight : public OpRewriterPatternEx<tpu::ConvbwdOp> {
+public:
+  CastGradWeight(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "CastGradWeight",
+                                           benefit) {}
 
+  LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto attr = op.parseParam();
+    auto grad_weight_enable = op.getGradWeightEnable();
+    if (!grad_weight_enable){
+      return failure();
+    }
+    auto target_type = op.getResult(1).getType().cast<RankedTensorType>();
+    auto target_shape = target_type.getShape();
+    if (target_shape[2]!=attr.kw && target_shape[3]!= attr.kw){
+      return failure();
+    }
+    auto input_type = op.getOperand(0).getType().cast<RankedTensorType>();
+    auto input_etype = input_type.getElementType();
+    rewriter.setInsertionPointAfter(op);
+    std::vector<Value> operands;
+    for (auto&& in: op.getOperands())
+      operands.emplace_back(in);
+    std::vector<Type> new_types;
+    std::vector<int64_t> gradweight_shape;
+    int n = op->getNumResults();
+    for (int i = 0; i < n; i++) {
+      if (i==1){
+        if (input_etype.isF32()){
+            gradweight_shape = {1,attr.oc,attr.ic*attr.kh*attr.kw,1};
+        }
+        else if (input_etype.isF16()){
+            const int IC_PARALLEL = BM168x::ic_num(2);
+            int64_t dw_h = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
+            gradweight_shape = {1,attr.oc,dw_h,IC_PARALLEL};
+        }
+        auto f32_type = RankedTensorType::get(gradweight_shape, rewriter.getF32Type());
+        new_types.push_back(f32_type);
+      }
+      else{
+        auto out = op.getResult(i);
+        new_types.push_back(out.getType());
+      }
+    }
+    rewriter.replaceOpWithNewOp<tpu::ConvbwdOp>(op, new_types, operands, op.getOperation()->getAttrs());
+    // update func result type
+    module::updateModuleTypes();
+    return success();
+  }
+};
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -4292,7 +4342,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 Concat5dto4d,
                 EliminateCastBeforeGatherElements,
                 ConvMergeRequant,
-                RemoveReshape
+                RemoveReshape,
+                CastGradWeight
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
