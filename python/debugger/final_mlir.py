@@ -174,7 +174,9 @@ class Value:
 
 
 class Pickled_Value:
-    def __init__(self, value: Value, Memref, Type, Zero_point, Scale):
+    def __init__(
+        self, value: Value, Memref, Type, Zero_point, Scale, file_line, cmd_point
+    ):
         self.address: int = value.address
         self.layout: str = value.layout
         self.memory_type: str = value.memory_type
@@ -183,6 +185,8 @@ class Pickled_Value:
         self.slice: str = value.slice
         self._type: Type = value._type
         self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
+        self.file_line = file_line
+        self.cmd_point = cmd_point
 
         self.memref = Memref
         self.mlir_type = str(Type)
@@ -190,7 +194,7 @@ class Pickled_Value:
         self.scale = Scale
 
     def __repr__(self) -> str:
-        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type}, memory_type={self.memory_type}}})"
+        return f"@{self.address}({{name={self.name}, cmd_point={self.cmd_point}, file_line={self.file_line}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type}, memory_type={self.memory_type}}})"
 
 
 class CMD:

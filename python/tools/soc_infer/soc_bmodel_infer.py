@@ -12,6 +12,7 @@
 import argparse
 import pickle
 import os
+import time
 import numpy as np
 import debugger
 from debugger.target_1684x.memmap import *
@@ -138,7 +139,15 @@ def collect_infer_data_from_ref(
     return
 
 
-def infer_combine(value, soc_runner, ref_data, infer_data, out_fixed):
+def infer_combine(
+    value,
+    soc_runner,
+    ref_data,
+    infer_data,
+    out_fixed,
+    is_operand=True,
+    enable_log=False,
+):
     memref = value.memref
     raw_data = soc_runner.memory.get_data(memref)
     if out_fixed == True:
@@ -147,6 +156,11 @@ def infer_combine(value, soc_runner, ref_data, infer_data, out_fixed):
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
     desired = get_ref_data(value, ref_data)
     collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data)
+    if enable_log:
+        if is_operand:
+            print("gather operand slice: ", value)
+        else:
+            print("gather result slice: ", value)
 
 
 def main():
@@ -176,13 +190,20 @@ def main():
         default="/tmp",
         help="The folder where place the soc_infer dir.",
     )
-
-    parser.add_argument("--out_fixed", action="store_true")
+    parser.add_argument(
+        "--out_fixed",
+        action="store_true",
+        help="Whether to output fixed number.",
+    )
+    parser.add_argument(
+        "--enable_log", action="store_true", help="Whether to enable log."
+    )
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     args = main()
     with open(os.path.join(args.path, "cmds.pkl"), "rb+") as pkl_cmds:
         cmds_pkl = CustomUnpickler(pkl_cmds).load()
@@ -229,25 +250,55 @@ if __name__ == "__main__":
     dump_path = args.tool_path
     file_name = os.path.basename(reference_data_fn).split(".")[0]
     save_path = os.path.join(dump_path, f"soc_infer_{file_name}.npz")
-    infer_data = IncNpzFile(save_path)
+    infer_data = {}
 
     # compute
     cmd_points = sorted(values_in_pkl.keys())
     tqdm_iter = tqdm(cmds_pkl)
     history = Counter({"tiu": 0, "dma": 0})
+    total_compute_time = 0
     for idx, struct in enumerate(tqdm_iter):
+        if args.enable_log:
+            print(f"############################### OP {idx} Begin ###############################")
         in_values = values_in_pkl[cmd_points[idx]]
         for value in in_values:
-            infer_combine(value, soc_runner, ref_data, infer_data, args.out_fixed)
+            infer_combine(
+                value,
+                soc_runner,
+                ref_data,
+                infer_data,
+                args.out_fixed,
+                is_operand=True,
+                enable_log=args.enable_log,
+            )
 
+        compute_start = time.time()
         soc_runner.checker_fast_compute(
             struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf
         )
+        compute_end = time.time()
+        total_compute_time += compute_end - compute_start
         history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-        tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+        tqdm_iter.set_description(
+            f"execute {history['tiu']} tiu {history['dma']} dma cmds."
+        )
 
         out_value = values_out_pkl[idx]
-        infer_combine(out_value, soc_runner, ref_data, infer_data, args.out_fixed)
+        infer_combine(
+            out_value,
+            soc_runner,
+            ref_data,
+            infer_data,
+            args.out_fixed,
+            is_operand=False,
+            enable_log=args.enable_log,
+        )
+        if args.enable_log:
+            print(f"################################ OP {idx} End ################################")
 
     os.makedirs(dump_path, exist_ok=True)
+    np.savez(save_path, **infer_data)
     print(f"Inference combine file: {save_path} generated!")
+    end_time = time.time()
+    print(f"Soc_infer Time Cost on Device: {end_time-start_time} seconds")
+    # print(f"Compute Time Cost: {total_compute_time} seconds")

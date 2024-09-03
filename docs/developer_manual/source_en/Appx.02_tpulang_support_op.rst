@@ -3929,13 +3929,16 @@ Definition
             dump_file: bool = True,
             save_path: str = "",
             out_fixed: bool = False,
+            dump_cmd_info: bool = True,
+            cmodel_skip_check: bool = True,  # disable CMODEL data_check to increase processing speed
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-            tmp_path: str = "/tmp",  # should config when is_soc=True
-            tools_path: str = "/soc_infer",  # should config when is_soc=True
-            hostname: str = None,  # should config when is_soc=True
-            port: int = None,  # should config when is_soc=True
-            username: str = None,  # should config when is_soc=True
-            password: str = None,  # should config when is_soc=True
+            enable_soc_log: bool = False,
+            tmp_path: str = "/tmp",  # required when is_soc=True
+            tools_path: str = "/soc_infer",  # required when is_soc=True
+            hostname: str = None,  # required when is_soc=True
+            port: int = None,  # required when is_soc=True
+            username: str = None,  # required when is_soc=True
+            password: str = None,  # required when is_soc=True
         ):
 
 Description
@@ -3952,7 +3955,10 @@ Parameters
 * dump_file: Bool type, representing whether save results as file.
 * save_path: String type, representing the abs path of saving results on host.
 * out_fixed: Bool type, representing whether to get results in fixed number.
+* dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`. 
+* cmodel_skip_check: Bool type, enable this to skip data check to speed up inference.
 * is_soc: Bool type, representing whether to use in soc mode.
+* enable_soc_log: Bool type, enable to print and save log at `save_path`.
 * tmp_path: String type, representing the abs path of tmp files on device in soc mode.
 * tools_path: String type, representing the dir of soc_infer tools on device in soc mode.
 * hostname: String type, representing the ip address of device in soc mode.

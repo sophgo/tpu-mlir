@@ -4792,23 +4792,26 @@ bmodel_inference_combine
 
     .. code-block:: python
 
-        def bmodel_inference_combine(
-            bmodel_file: str,
-            final_mlir_fn: str,
-            input_data_fn: Union[str, dict],
-            tensor_loc_file: str,
-            reference_data_fn: str,
-            dump_file: bool = True,
-            save_path: str = "",
-            out_fixed: bool = False,
-            is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-            tmp_path: str = "/tmp",  # should config when is_soc=True
-            tools_path: str = "/soc_infer",  # should config when is_soc=True
-            hostname: str = None,  # should config when is_soc=True
-            port: int = None,  # should config when is_soc=True
-            username: str = None,  # should config when is_soc=True
-            password: str = None,  # should config when is_soc=True
-        ):
+      def bmodel_inference_combine(
+          bmodel_file: str,
+          final_mlir_fn: str,
+          input_data_fn: Union[str, dict],
+          tensor_loc_file: str,
+          reference_data_fn: str,
+          dump_file: bool = True,
+          save_path: str = "",
+          out_fixed: bool = False,
+          dump_cmd_info: bool = True,
+          cmodel_skip_check: bool = True,  # disable CMODEL data_check to increase processing speed
+          is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+          enable_soc_log: bool = False,  
+          tmp_path: str = "/tmp",  # required when is_soc=True
+          tools_path: str = "/soc_infer",  # required when is_soc=True
+          hostname: str = None,  # required when is_soc=True
+          port: int = None,  # required when is_soc=True
+          username: str = None,  # required when is_soc=True
+          password: str = None,  # required when is_soc=True
+      ):
 
 功能描述
 """""""""""
@@ -4824,9 +4827,11 @@ bmodel_inference_combine
 * dump_file: Bool类型，表示逐层Tensor数据是否以.npz文件形似保存，或直接返回字典。
 * save_path: String类型，表示 `dump_file=True` 时的主机(host)端保存逐层推理的.npz文件的绝对路径。
 * out_fixed: Bool类型，表示逐层Tensor数据输出是否保持为定点格式。
+* dump_cmd_info: Bool类型，表示将当前bmodel中包含的所有原子指令对应的final.mlir的信息保存成txt文件，保存路径在save_path下。
+* cmodel_skip_check: Bool类型， 在cmodel模式下启用此项可禁用数据对比，提高推理速度。soc模式下默认不进行数据对比。
 * is_soc: Bool类型，表示是否启用soc模式进行推理。
+* enable_soc_log: Bool类型，启用此项打印并在save_path下保存log日志。
 * tmp_path: String类型，表示soc模式下，板卡(device)端存放临时文件的绝对路径。
-* trans_tools: Bool类型，表示soc模式下，是否将主机(host)端的 `soc_infer` 工具自动发送到device端。仅首次使用设置为True。
 * tools_path: String类型，表示soc模式下，device端存放工具的文件夹名称。
 * hostname: String类型，表示soc模式下，device端的ip地址。
 * port: Int类型，表示soc模式下，device端的端口号。
