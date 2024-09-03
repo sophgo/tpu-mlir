@@ -252,6 +252,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.dump_mode = DumpMode.FAILED
         self.out_fixed = False
         self.is_soc = False
+        self.skip_check = False
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
@@ -370,14 +371,14 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             self.tdb.error(f"not support summary mode {arg}")
 
-    def dump_dataframe(self):
+    def dump_dataframe(self, path="."):
         # debug options
         pd.set_option("display.max_rows", None)
         pd.set_option("display.max_columns", None)
         pd.set_option("display.expand_frame_repr", False)
 
         data_str = self.index.index_df.to_string()
-        with open("./dumped_dataframe.txt", "w+", encoding="utf-8") as f:
+        with open(os.path.join(path, "dumped_dataframe.txt"), "w+", encoding="utf-8") as f:
             f.write(data_str)
 
         # reset debug option
@@ -658,16 +659,21 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         cmd = self.tdb.cmditer[point_index]
 
+        # used for bmodel_inference_combine at CMODEL mode
+        if self.skip_check:
+            value_res = ComparedResult(value_view, None, msg="ignore")
+            return value_res
+
         # only used for soc mode
         if self.is_soc:
             if is_operand:
                 DataCheck.soc_values_in[point_index].append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
                 )
             else:
                 # memref_type = 0 if isinstance(memref, Scalar) else 1
                 DataCheck.soc_values_out.append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale)
+                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
                 )
             return ComparedResult(value_view, None, msg="ignore")
 
