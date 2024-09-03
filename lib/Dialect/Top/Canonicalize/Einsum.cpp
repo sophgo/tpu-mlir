@@ -71,6 +71,27 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
       op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
+    } else if (mode == "ab,acb->ac") {
+      // matmul([a,1,1,b],[a,c,b,1])->[a,c,1,1]
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0], 1, 1, lshape[1]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to4dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({rshape[0], rshape[1], rshape[2], 1}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to4dim"));
+      auto rrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsOp);
+      operands.push_back(none);
+      rewriter.setInsertionPoint(op);
+
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      newType = RankedTensorType::get({lshape[0], rshape[1], 1, 1}, module::getElementType(op));
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
     } else if (mode == "ab,cdb->acd") {
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto newType = RankedTensorType::get({1, lshape[0], lshape[1]}, module::getElementType(lhs));

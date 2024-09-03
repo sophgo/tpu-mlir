@@ -73,7 +73,7 @@ def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
-def EinsumModeAttr:AnyStrAttrOf<["a,b->ab", "ab,ab->a", "ab,cdb->acd", "abc,db->adc", "abcd,cde->abe", "abcd,acd->abc", "abcd,bed->abce", "abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abcd,abce->acde", "abc,adc->abd", "abc,adc->adb", "abc,abd->acd", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde", "abc,bd->abcd", "abc,abdc,abc->abcd", "abcd,acde,abc->abce", "abc,abc->ab", "abcd,aecd->aeb", "abc,cde->abde", "abcd,aeb->aecd", "abcde,afbc->abdef"]>;
+def EinsumModeAttr:AnyStrAttrOf<["a,b->ab", "ab,ab->a", "ab,acb->ac", "ab,cdb->acd", "abc,db->adc", "abcd,cde->abe", "abcd,acd->abc", "abcd,bed->abce", "abcd,ced->abce", "abcd,abed->abce", "abcd,abde->abce", "abcd,abce->acde", "abc,adc->abd", "abc,adc->adb", "abc,abd->acd", "abcd,cde->abce", "abc,acde->abde", "abc,abde->acde", "abc,bd->abcd", "abc,abdc,abc->abcd", "abcd,acde,abc->abce", "abc,abc->ab", "abcd,aecd->aeb", "abc,cde->abde", "abcd,aeb->aecd", "abcde,afbc->abdef"]>;
 def RoundModeAttr: AnyStrAttrOf<["HalfAwayFromZero", "HalfUp", "HalfDown", "HalfToEven", "HalfToOdd", "HalfTowardsZero", "TowardsZero", "Up", "Down"]>;
 def DequantModeAttr: AnyStrAttrOf<["Normal", "TFLite"]>;
 def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift", "OnlyShift", "QDM", "OnlyScale"]>;
