@@ -768,6 +768,37 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_RopeOp: Tpu_Op<"Rope", [
+    SupportElementwise,
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+
+  let summary = "Rope Operator";
+
+  let description = [{
+     rope operator.
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input1,
+    AnyRankedTensor:$input2,
+    AnyRankedTensor:$input3,
+    DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul1_round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul2_round_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$add_round_mode,
+    DefaultValuedAttr<SI32Attr, "0">:$mul1_shift,
+    DefaultValuedAttr<SI32Attr, "0">:$mul2_shift,
+    DefaultValuedAttr<SI32Attr, "0">:$add_shift,
+    DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
+    DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
+    DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  // let hasCanonicalizeMethod = 1;
+  let results = (outs AnyRankedTensor:$output);
+}
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
   let summary = "FusePreprocess, it's just a placeholder op.";
   let description = [{

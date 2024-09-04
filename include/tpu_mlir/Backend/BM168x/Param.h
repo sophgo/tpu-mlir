@@ -1640,6 +1640,20 @@ typedef struct clip_spec {
   int if_relu;
 } clip_spec_t;
 
+typedef struct rope_spec {
+    uint64_t buffer_addr;
+    int32_t mul1_saturation;
+    int32_t mul2_saturation;
+    int32_t add_saturation;
+    int32_t mul1_shift;
+    int32_t mul2_shift;
+    int32_t add_shift;
+    int32_t mul1_round_mode;
+    int32_t mul2_round_mode;
+    int32_t add_round_mode;
+    int32_t is_permute_optimize;
+} rope_param_t;
+
 typedef struct where_spec {
   int order;
   uint64_t buffer_addr;

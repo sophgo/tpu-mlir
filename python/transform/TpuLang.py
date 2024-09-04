@@ -2570,6 +2570,62 @@ def nms(boxes: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def rope(input: Tensor,
+        weight0: Tensor,
+        weight1: Tensor,
+        is_permute_optimize: bool = False,
+        mul1_round_mode: str = 'half_up',
+        mul2_round_mode: str= 'half_up',
+        add_round_mode: str = 'half_up',
+        mul1_shift: int = None,
+        mul2_shift: int = None,
+        add_shift: int = None,
+        mul1_saturation: bool = True,
+        mul2_saturation: bool = True,
+        add_saturation: bool = True,
+        out_name: str = None):
+        # assert o_dtype in ["int8", "uint8"]
+
+
+        attr={
+                "is_permute_optimize": Attr(is_permute_optimize, "bool"),
+                "mul1_round_mode": Attr(round_mode_convert(mul1_round_mode), data_type="string"),
+                "mul2_round_mode": Attr(round_mode_convert(mul2_round_mode), data_type="string"),
+                "add_round_mode": Attr(round_mode_convert(add_round_mode), data_type="string"),
+                "mul1_shift": Attr(mul1_shift,data_type="int32"),
+                "mul2_shift": Attr(mul2_shift,data_type="int32"),
+                "add_shift": Attr(add_shift,data_type="int32"),
+                "mul1_saturation": Attr(mul1_saturation, "bool"),
+                "mul2_saturation": Attr(mul2_saturation, "bool"),
+                "add_saturation": Attr(add_saturation, "bool")
+            }
+        output = Tensor(dtype=input.dtype, name=out_name)
+
+        if not is_permute_optimize:
+            assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+            assert input.shape[2]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
+            assert input.shape[2]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
+            weight0.shape =[1,1,weight0.shape[0],weight0.shape[1]]
+            weight0.buffer = weight0.buffer.reshape(weight0.shape)
+            weight1.shape = [1,1,weight1.shape[0],weight1.shape[1]]
+            weight1.buffer =weight1.buffer.reshape(weight1.shape)
+        else:
+            assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+            assert input.shape[1]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
+            assert input.shape[1]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
+            weight0.shape =[1, weight0.shape[0], 1, weight0.shape[1]]
+            weight0.buffer = weight0.buffer.reshape(weight0.shape)
+            weight1.shape = [1, weight1.shape[0], 1, weight1.shape[1]]
+            weight1.buffer =weight1.buffer.reshape(weight1.shape)
+
+
+        TpuLang.insert_op("top.Rope", inputs=[input, weight0, weight1], outputs=[output], params=attr)
+        return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def interpolate(input: Tensor,
                 scale_h: float,
                 scale_w: float,
