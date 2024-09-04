@@ -785,6 +785,9 @@ bool isOpInBlock(Operation *op) {
     return false;
   }
   auto parent = op->getParentOp();
+  if (parent == nullptr) {
+    return false;
+  }
   if (isa<func::FuncOp>(parent)) {
     return false;
   }
