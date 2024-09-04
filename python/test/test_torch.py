@@ -139,7 +139,7 @@ class TORCH_IR_TESTER(object):
             # "Normalize":        (self.test_Normalize,         N, Y, Y, N),
             "New_full":         (self.test_New_full,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
-            "Remainder":        (self.test_Remainder,         N, Y, N, N),
+            "Remainder":        (self.test_Remainder,         Y, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N),
