@@ -202,5 +202,6 @@ LOWERING_BM1684X(MaskRCNNRPNGetBboxes)
 LOWERING_BM1684X(MaskRCNNBboxPooler)
 LOWERING_BM1684X(MaskRCNNGetBboxB)
 LOWERING_BM1684X(MaskRCNNMaskPooler)
+LOWERING_BM1684X(Rope)
 } // namespace bm1684x
 } // namespace tpu_mlir

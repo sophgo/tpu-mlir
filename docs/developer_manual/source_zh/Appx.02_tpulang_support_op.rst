@@ -4976,3 +4976,60 @@ mean_std_scale
 处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32/UINT8/INT8,输出类型可以为INT8/FLOAT16。
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+rope
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def rope( input: Tensor,
+                weight0: Tensor,
+                weight1: Tensor,
+                is_permute_optimize: bool = False,    # unused
+                mul1_round_mode: str = 'half_up',
+                mul2_round_mode: str= 'half_up',
+                add_round_mode: str = 'half_up',
+                mul1_shift: int = None,
+                mul2_shift: int = None,
+                add_shift: int = None,
+                mul1_saturation: bool = True,
+                mul2_saturation: bool = True,
+                add_saturation: bool = True,
+                out_name: str = None):
+            #pass
+
+功能描述
+"""""""""""
+对输入Tensor 进行预处理操作。
+该操作属于 **全局操作**
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作Tensor。必须是4维。
+* weight0: Tensor, 表示输入操作Tensor。
+* weight1: Tensor, 表示输入操作Tensor。
+* is_permute_optimize：bool类型, 表示是否做permute下沉，进行permute下沉shape的检查。# unused
+* mul1_round_mode: String类型, 表示Rope中mul1的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* mul2_round_mode: String类型, 表示Rope中mul2的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* add_round_mode: String类型, 表示Rope中add的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* mul1_shift: int型，表示Rope中mul1的移位的位数。
+* mul2_shift: int型，表示Rope中mul2的移位的位数。
+* add_shift: int型，表示Rope中add的移位的位数。
+* mul1_saturation: bool 类型, 表示Rope中的mul1计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* mul2_saturation: bool 类型, 表示Rope中的mul2计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* add_saturation: bool 类型, 表示Rope中的add计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* out_name: output name, string类型，默认为None。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型为odtype。
+
+处理器支持
+"""""""""""
+* BM1684X：输入数据类型可以是FLOAT32,FLOAT16和INT类型。

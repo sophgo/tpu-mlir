@@ -231,7 +231,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaskRCNNRPNGetBboxesLowering,
       MaskRCNNBboxPoolerLowering,
       MaskRCNNGetBboxBLowering,
-      MaskRCNNMaskPoolerLowering
+      MaskRCNNMaskPoolerLowering,
+      RopeLowering
       // clang-format on
       >(patterns->getContext());
 }

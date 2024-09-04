@@ -779,6 +779,32 @@ def Tpu_BinaryShiftOp: Top_Op<"BinaryShift"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_RopeOp: Top_Op<"Rope"> {
+  let summary = "Rope operator";
+
+  let description = [{
+    "Rope operator"
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input1,
+    AnyTensor:$input2,
+    AnyTensor:$input3,
+    DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul1_round_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul2_round_mode,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$add_round_mode,
+    DefaultValuedAttr<SI32Attr, "0">:$mul1_shift,
+    DefaultValuedAttr<SI32Attr, "0">:$mul2_shift,
+    DefaultValuedAttr<SI32Attr, "0">:$add_shift,
+    DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
+    DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
+    DefaultValuedAttr<BoolAttr, "true">:$add_saturation
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_BinaryConstShiftOp: Top_Op<"BinaryConstShift"> {
   let summary = "Binary Const with shift operator";
 
