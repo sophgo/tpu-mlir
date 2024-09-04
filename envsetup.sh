@@ -36,7 +36,7 @@ export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
 export OMP_NUM_THREADS=4
-
+export FORBID_GEN_RISCV_CODE=1
 # CCache configuration
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379
 
