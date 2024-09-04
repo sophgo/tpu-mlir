@@ -402,15 +402,15 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       auto rreshape_op = rewriter.create<top::ReshapeOp>(rreshape_loc, rreshape_type, ValueRange{rhs});
 
       rewriter.setInsertionPointAfter(op);
-      auto loc = NameLoc::get(rewriter.getStringAttr(name));
-      auto newType = RankedTensorType::get({lshape[0]*lshape[1], rshape[1]*rshape[2]}, module::getElementType(op));
+      auto matmul_loc = NameLoc::get(rewriter.getStringAttr(name + "matmul"));
+      auto matmul_type = RankedTensorType::get({lshape[0]*lshape[1], rshape[1]*rshape[2]}, module::getElementType(op));
       operands.push_back(lreshape_op);
       operands.push_back(rreshape_op);
       operands.push_back(none);
-      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands);
-      auto reshape_loc = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
-      auto reshape_type = RankedTensorType::get({lshape[0], lshape[1], rshape[1], rshape[2]}, module::getElementType(matmulOp));
-      auto reshape_op = rewriter.create<top::ReshapeOp>(reshape_loc, reshape_type, ValueRange{matmulOp});
+      auto matmulOp = rewriter.create<MatMulOp>(matmul_loc, matmul_type, operands);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name));
+      auto newType = RankedTensorType::get({lshape[0], lshape[1], rshape[1], rshape[2]}, module::getElementType(matmulOp));
+      auto reshape_op = rewriter.create<top::ReshapeOp>(loc, newType, ValueRange{matmulOp});
       op.replaceAllUsesWith(reshape_op.getOperation());
       rewriter.eraseOp(op);
 

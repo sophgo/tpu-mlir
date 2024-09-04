@@ -1548,6 +1548,7 @@ class TorchConverter(BaseConverter):
                                np.array(self.const_val[torch_node.inputs[1]], dtype=np.int64))
                 out_size = self.getWeightOp(torch_node.name + "_target_shape")
 
+        align_corners = False
         if mode == "nearest":
             scale = self.const_val[torch_node.inputs[2]
                                    ] if not has_out_size else [-1, -1]
@@ -1560,11 +1561,12 @@ class TorchConverter(BaseConverter):
             align_corners = self.const_val[torch_node.inputs[2]]
             scale = [1] + self.const_val[torch_node.inputs[3]
                                          ] if not has_out_size else [-1, -1]
+        coord_mode = "align_corners" if align_corners else "pytorch_half_pixel"
         new_op = top.InterpOp(self.unranked_type,
                               op0,
                               out_size if has_out_size else self.mlir.none_op,
                               mode=StringAttr.get(mode),
-                              coord_mode=StringAttr.get("pytorch_half_pixel"),
+                              coord_mode=StringAttr.get(coord_mode),
                               scale_h=scale[0],
                               scale_w=scale[1],
                               loc=self.get_loc(torch_node.name),
