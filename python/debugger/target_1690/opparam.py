@@ -1310,7 +1310,7 @@ def dma_gather_base(context, reg: DMA_gather_reg):
         address=dma_addr(reg.index_start_addr_h13, reg.index_start_addr_l32),
         dtype=DType.ui32,
         shape=(1, reg.index_csize, d_h, 1),
-        stride=(0, reg.index_cstride, reg.index_hstride, 1),
+        stride=(0, reg.index_cstride, 1, 1),
         layout=Layout.stride,
     )
     const = get_value(
