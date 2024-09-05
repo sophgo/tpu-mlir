@@ -398,6 +398,9 @@ struct CommonMatch : public OpRewriterPatternEx3 {
         if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
           continue;
         }
+        if (supportMultiCore(left_op)) {
+            continue;
+        }
         if (find_f(same_ops, left_op)) {
           continue;
         }
