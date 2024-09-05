@@ -3379,7 +3379,7 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
 
 
 def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "RMSNorm operation";
   let description = [{
