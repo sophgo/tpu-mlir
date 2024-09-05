@@ -477,7 +477,7 @@ class Memory(CModelMemory):
         def get_dma_linear_data():
             return data_view(memref.shape, memref.stride)
 
-        get_data = {
+        get_lmem_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
@@ -496,7 +496,7 @@ class Memory(CModelMemory):
             Layout.DMAlinear: get_dma_linear_data,
         }
         self.core_id = core_id
-        data = get_data[memref.layout]()
+        data = get_lmem_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
         return data
@@ -549,7 +549,9 @@ class Memory(CModelMemory):
         for smem in self.SMEM:
             smem[: len(lut)] = lut[...]
 
-    def get_data(self, value: MemRef, core_id=0):
+    def get_data(self, value_ref: ValueRef):
+        value = value_ref.value
+        core_id = value_ref.get('core_id', 0)
         if isinstance(value, Scalar):
             return value.data
         assert isinstance(value, MemRef)

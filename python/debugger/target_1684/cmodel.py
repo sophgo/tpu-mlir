@@ -171,14 +171,14 @@ class Memory(CModelMemory):
 
             return func
 
-        get_data = {
+        get_lmem_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.stride: get_stride_data,
             Layout.alignEU_XN: get_4n_2n_data(True),
             Layout.compact_XN: get_4n_2n_data(False),
         }
-        return get_data[memref.layout]()
+        return get_lmem_data[memref.layout]()
 
     def _get_xn_shape_stride(self, memref: MemRef):
         assert memref.itemsize in (1, 2)
@@ -213,7 +213,8 @@ class Memory(CModelMemory):
             writeable=False,
         )
 
-    def get_data(self, value: Union[Scalar, MemRef]):
+    def get_data(self, value_ref: ValueRef):
+        value = value_ref.value
         if isinstance(value, Scalar):
             return value.data
         assert isinstance(value, MemRef)

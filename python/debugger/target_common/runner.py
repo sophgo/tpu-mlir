@@ -6,7 +6,7 @@
 # third-party components.
 #
 # ==============================================================================
-
+import platform
 import os
 import shutil
 import numpy as np
@@ -14,7 +14,7 @@ import ctypes
 from functools import lru_cache
 from ctypes import Structure, POINTER
 from numpy import ndarray
-from .op_support import MemRefBase, Value, CpuCmd, get_type_str
+from .op_support import MemRefBase, Value, CpuCmd, get_type_str, ValueRef, StaticCmdGroup, CMDType
 from typing import List
 import tempfile
 
@@ -68,6 +68,8 @@ class lib_wrapper:
     def _handle(self):
         return self._lib._handle
 
+    def __repr__(self) -> str:
+        return f"wrap({self._lib})"
 
 class _lib_fn_wrapper(object):
     __slots__ = ["_cfn"]
@@ -157,7 +159,7 @@ class MemoryBase:
     def get_data_from_address(self, address: int, size) -> np.ndarray:
         raise NotImplementedError()
 
-    def get_data(self, value: Value) -> np.ndarray:
+    def get_data(self, value_ref: ValueRef) -> np.ndarray:
         raise NotImplementedError()
 
     def set_data(self, value: MemRefBase, data: np.ndarray):
@@ -188,10 +190,20 @@ class Runner:
     SMEM: ndarray
     using_cmodel = True
 
-    def tiu_compute(self, command, core_id=0):
+    def cmds_compute(self, commands: StaticCmdGroup):
+        for command in commands.all:
+            assert command.cmd_type.is_static()
+            # if command.cmd_type
+            cmd_type = command.cmd_type
+            if cmd_type == CMDType.tiu:
+                self.tiu_compute(command)
+            elif cmd_type == CMDType.dma:
+                self.dma_compute(command)
+
+    def tiu_compute(self, _):
         raise NotImplementedError()
 
-    def dma_compute(self, command, core_id=0):
+    def dma_compute(self, _):
         raise NotImplementedError()
 
     @property
@@ -213,7 +225,7 @@ class Runner:
         output_shapes = []
         for ipt in command.input_memref:
             input_tensors.append(
-                self.memory.get_data(ipt).astype(np.float32).flatten().tolist()
+                self.memory.get_data(ipt.to_ref()).astype(np.float32).flatten().tolist()
             )
             input_shapes.append(ipt.shape)
         for opt in command.output_memref:
@@ -282,11 +294,25 @@ class CModelMemory(MemoryBase):
 
 
 class DeviceRunner(Runner):
+    lib_name = "libatomic_exec.so" if platform.machine(
+    ) == 'x86_64' else 'libatomic_exec_aarch64.so'
     """
     TODO
     """
 
+    kernel_fn: str
     using_cmodel = False
+    runner_p: ctypes.c_void_p
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        lib = lib_wrapper(open_lib(self.lib_name))
+        self.lib = lib
+        self.init_runner()
+
+    def init_runner(self):
+        pass
 
     @property
     def DDR(self):

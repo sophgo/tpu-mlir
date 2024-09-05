@@ -110,8 +110,16 @@ class BM1688Context(BModelContext):
     def is_sys(cls, cmd: BaseTpuCmd):
         return isinstance(cmd.reg, (dma_sys, tiu_sys))
 
-    def get_runner(self, memory_size: int) -> CModelRunner:
-        assert self.using_cmodel, "1688 currently only support cmodel mode"
-        if self._cmodel_runner is None:
-            self._cmodel_runner = BM1688Runner(memory_size, self.base_addr)
-        return self._cmodel_runner
+    def get_runner(self, memory_size: int) -> Runner:
+        from .cmodel import BM1688Runner as BM1688CModel
+        from .device_rt import BM1688Runner as BM1688SOC
+
+        if self.using_cmodel:
+            if self._runner is None:
+                self._runner = BM1688CModel(memory_size, self.base_addr)
+            runner = self._runner
+        else:
+            if self._runner is None:
+                self._runner = BM1688SOC(memory_size)
+            runner = self._runner
+        return runner

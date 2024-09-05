@@ -485,7 +485,7 @@ class Memory(CModelMemory):
         def get_dma_linear_data():
             return data_view(memref.shape, memref.stride)
 
-        get_data = {
+        get_lmem_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
@@ -504,7 +504,7 @@ class Memory(CModelMemory):
             Layout.DMAlinear: get_dma_linear_data,
         }
         self.core_id = core_id
-        data = get_data[memref.layout]()
+        data = get_lmem_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
         elif memref.dtype == DType.f8e5m2:
@@ -605,7 +605,9 @@ class Memory(CModelMemory):
         for smem in self.SMEM:
             smem[: len(lut)] = lut[...]
 
-    def get_data(self, value: MemRef, core_id=0):
+    def get_data(self, value_ref: ValueRef):
+        value = value_ref.value
+        core_id = value_ref.get('core_id', 0)
         # currently core_id won't be used in "get_data" func in ../debugger/plugins/common.py
         # because the cmds in different cores are executed core by core, take tiu_cmds for example:
         #         core0                          core1                            core2                     execute sequence

@@ -379,7 +379,7 @@ class Memory(CModelMemory):
         def get_dma_linear_data():
             return data_view(memref.shape, memref.stride)
 
-        get_data = {
+        get_lmem_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
@@ -397,7 +397,7 @@ class Memory(CModelMemory):
             Layout.DMAmatrix: get_dma_matrix_data,
             Layout.DMAlinear: get_dma_linear_data,
         }
-        data = get_data[memref.layout]()
+        data = get_lmem_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
         return data

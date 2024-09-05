@@ -122,6 +122,6 @@ class BM1690Context(BModelContext):
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         assert self.using_cmodel, "2260 currently only support cmodel mode"
-        if self._cmodel_runner is None:
-            self._cmodel_runner = BM1690Runner(memory_size, self.base_addr)
-        return self._cmodel_runner
+        if self._runner is None:
+            self._runner = BM1690Runner(memory_size, self.base_addr)
+        return self._runner

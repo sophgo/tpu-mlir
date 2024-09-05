@@ -14,7 +14,7 @@ from .disassembler import (
     BModel,
     Net,
     Parameter,
-    StaticCmdGroup,
+
     SubNet,
     Tensor,
     CmdGroup,
@@ -25,6 +25,7 @@ from .target_common import (
     BaseTpuCmd,
     BaseCmd,
     use_backend,
+    StaticCmdGroup,
 )
 from .target_1684.context import BM1684Context
 from .target_1688.context import BM1688Context

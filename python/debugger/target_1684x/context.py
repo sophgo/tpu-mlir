@@ -61,12 +61,12 @@ class BM1684XContext(BModelContext):
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         if self.using_cmodel:
-            if self._cmodel_runner is None:
-                self._cmodel_runner = BM1684XCModel(memory_size)
-            runner = self._cmodel_runner
+            if self._runner is None:
+                self._runner = BM1684XCModel(memory_size)
+            runner = self._runner
         else:
-            if self._chip_runner is None:
-                self._chip_runner = BM1684XPcie(memory_size)
-            runner = self._chip_runner
+            if self._runner is None:
+                self._runner = BM1684XPcie(memory_size)
+            runner = self._runner
 
         return runner

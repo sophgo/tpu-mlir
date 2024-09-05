@@ -15,7 +15,7 @@ import zipfile
 import pandas as pd
 
 from numpy_helper.npz_compare import TensorCompare as _TensorCompare
-from ..target_common import MType
+from ..target_common import MType, ValueRef
 from ..tdb_support import (
     TdbCmdBackend,
     TdbPlugin,
@@ -122,7 +122,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
 
             self.__dump(point_index - 1, is_operand, value_view)
 
-    def __dump(self, point_index, is_operand, value_view: ValueView):
+    def __dump(self, point_index: int, is_operand, value_view: ValueView):
         value = value_view.value
         if value.name in self.excepts:
             return
@@ -143,10 +143,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
                 return
 
         cmd = self.tdb.cmditer[point_index]
-        if isinstance(context, BM1690Context) or isinstance(context, BM1688Context) or isinstance(context, SG2380Context):
-            raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
-        else:
-            raw_data = context.memory.get_data(memref)
+        raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))
         new_data = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         value_dict = value.__dict__

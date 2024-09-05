@@ -210,17 +210,14 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
     def read_memref_data(self, cmd_or_watchpoint, value):
         if cmd_or_watchpoint.cmd_type == CMDType.cpu:
             if cmd_or_watchpoint.cmd_id == 0:
-                data = self.tdb.memory.get_data(value)
+                data = self.tdb.memory.get_data(value.to_ref())
             else:
                 data = self.tdb.memory.get_cpu_data(cmd_or_watchpoint.cmd_id)[value]
         elif cmd_or_watchpoint.cmd_type.is_static():
             if value.is_scalar:
                 data = value.data
             else:
-                if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context) or isinstance(self.tdb.context, SG2380Context):
-                    data = self.tdb.memory.get_data(value, core_id=cmd_or_watchpoint.core_id)
-                else:
-                    data = self.tdb.memory.get_data(value)
+                data = self.tdb.memory.get_data(value.to_ref(core_id=cmd_or_watchpoint.core_id))
         else:
             return None
         return data

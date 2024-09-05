@@ -332,6 +332,9 @@ class Layout(Enum):
 class Value:
     is_scalar = None
 
+    def to_ref(self, **kwargs):
+        return ValueRef(self, **kwargs)
+
 
 class MemRefBase(Value):
     """
@@ -437,6 +440,16 @@ class Scalar(Value):
 
 
 ValueType = Union[Scalar, MemRefBase]
+
+
+class ValueRef:
+
+    def __init__(self, value: ValueType, **kwargs) -> None:
+        self.value = value
+        self.kwargs = kwargs
+
+    def get(self, k, default=None):
+        return self.kwargs.get(k, default)
 
 
 class OpInfo(NamedTuple):
@@ -577,6 +590,12 @@ class BaseTpuCmd(BaseCmd):
         else:
             raise NotImplementedError()
         return key
+
+
+class StaticCmdGroup(NamedTuple):
+    tiu: List[BaseTpuCmd]
+    dma: List[BaseTpuCmd]
+    all: List[BaseTpuCmd]
 
 
 class Tiu:
