@@ -113,6 +113,6 @@ class SG2380Context(BModelContext):
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         assert self.using_cmodel, "sg2380 currently only support cmodel mode"
-        if self._cmodel_runner is None:
-            self._cmodel_runner = SG2380Runner(memory_size, self.base_addr)
-        return self._cmodel_runner
+        if self._runner is None:
+            self._runner = SG2380Runner(memory_size, self.base_addr)
+        return self._runner

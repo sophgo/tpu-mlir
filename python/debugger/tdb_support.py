@@ -18,7 +18,7 @@ import sys
 import cmd
 from enum import Enum
 from .atomic_dialect import BModel2MLIR
-from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd
+from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd, StaticCmdGroup, CModelRunner
 from .disassembler import BModel
 from .target_1688.context import BM1688Context
 from .target_1690.context import BM1690Context
@@ -400,7 +400,7 @@ class TdbCmdBackend(cmd.Cmd):
         if cmd_point is None:
             cmd_point = self.cmd_point
         pre = max(0, cmd_point - pre)
-        return self.cmditer[pre : cmd_point + next + 1]
+        return self.cmditer[pre:cmd_point + next + 1]
 
     def get_cmd(self):
         # This method return next cmd which is about to execute but not executed yet
@@ -417,6 +417,46 @@ class TdbCmdBackend(cmd.Cmd):
             raise StopIteration()
         return self.cmditer[self.cmd_point - 1]
 
+    def get_stack_cmds(self, cmd_point=None, cmditer=None):
+        if cmditer is None:
+            cmditer = self.cmditer
+        if cmd_point is None:
+            cmd_point = self.cmd_point
+
+        tiu = []
+        dma = []
+        all = []
+
+        if self.plugins.has_plugin('final-mlir'):
+            index_plugin: "FinalMlirIndexPlugin" = self.plugins['final-mlir']
+            df = index_plugin.data_frame
+        else:
+            df = None
+
+        offset = 0
+
+        while cmd_point + offset < len(cmditer):
+            cur = cmditer[cmd_point + offset]
+            if cmditer[cmd_point + offset].cmd_type == CMDType.tiu:
+                tiu.append(cmditer[cmd_point + offset])
+            else:
+                dma.append(cmditer[cmd_point + offset])
+            all.append(cur)
+
+            if isinstance(self.runner, CModelRunner):
+                break
+            if df is not None:
+                result_not_empty = (len(df.loc[df["executed_id"] == cmd_point + 1 + offset,
+                                               "results"].tolist()[0]) > 0)
+            else:
+                break
+
+            if result_not_empty:
+                break
+            offset += 1
+
+        return StaticCmdGroup(tiu, dma, all)
+
     @add_callback("step")
     def step(self):
         """
@@ -430,27 +470,9 @@ class TdbCmdBackend(cmd.Cmd):
                 cmd_type = cmd.cmd_type
                 if cmd_type.is_static():
                     if not self.context.is_sys(cmd):
-                        if getattr(self.runner, "is_pcie", False):
-                            if getattr(self.runner, "fast_checker", False):
-                                forward_cmds = self.runner.checker_fast_compute(
-                                    self.cmd_point, self.cmditer
-                                )
-                                assert forward_cmds != 0
-                            else:
-                                forward_cmds = self.runner.fast_compute(
-                                    self.cmd_point, self.cmditer
-                                )
-                                assert forward_cmds == 1
-                        elif getattr(self.runner, "is_soc", False):
-                            forward_cmds = self.runner.checker_fast_compute_soc(
-                                self.cmd_point, self.cmditer
-                            )
-                            assert forward_cmds != 0
-                        else:
-                            if cmd_type == CMDType.tiu:
-                                self.runner.tiu_compute(cmd)
-                            elif cmd_type == CMDType.dma:
-                                self.runner.dma_compute(cmd)
+                        cmds = self.get_stack_cmds()
+                        forward_cmds = len(cmds.all)
+                        self.runner.cmds_compute(cmds)
                 elif cmd_type == CMDType.cpu:
                     self.runner.cpu_compute(cmd)
                 elif cmd_type == CMDType.dyn_ir:
@@ -612,6 +634,7 @@ class Breakpoint:
 
 
 class Watchpoint:
+
     def __init__(self, index, cmd_type, cmd_id, core_id, value):
         self.enabled = True
         self.index = index
@@ -686,6 +709,7 @@ class TdbPlugin:
 
 
 class TdbPluginCmd(cmd.Cmd):
+
     def complete_plugin(self, text="", line="", begidx=0, endidx=0) -> List[str]:
         i, n = 0, len(line)
         while i < n and line[i] in self.identchars:
@@ -746,6 +770,9 @@ class PluginCompact:
 
     def after_end_execution(self):
         self._call_loop(name="after_end_execution")
+
+    def has_plugin(self, plugin_name: str):
+        return plugin_name in self.plugins
 
     def add_plugin(self, plugin: Union[str, TdbPlugin]):
         if isinstance(plugin, str):

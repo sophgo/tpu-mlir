@@ -27,8 +27,7 @@ class BModelContext:
 
     def __init__(self) -> None:
         self.using_cmodel = eval(os.environ.get("USING_CMODEL", "True"))
-        self._cmodel_runner: Runner = None
-        self._chip_runner: Runner = None
+        self._runner: Runner = None
 
     @staticmethod
     def get_continuous_stride(shape):
@@ -36,10 +35,7 @@ class BModelContext:
 
     @property
     def memory(self) -> MemoryBase:
-        if self.using_cmodel:
-            return self._cmodel_runner.memory
-        else:
-            return self._chip_runner.memory
+        return self._runner.memory
 
     @classmethod
     def get_instance(cls):

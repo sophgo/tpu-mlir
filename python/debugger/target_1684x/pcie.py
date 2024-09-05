@@ -18,7 +18,7 @@ from typing import Union
 import numpy as np
 from copy import copy
 from ..target_common import *
-from .opdef import TiuCmd, DmaCmd
+from .opdef import TiuCmd, DmaCmd, BaseTpuCmd
 from .memmap import *
 from ..plugins.common import FinalMlirIndexPlugin
 
@@ -151,18 +151,16 @@ class BM1684XRunner(DeviceRunner):
 
         return tiu, dma
 
-    def checker_fast_compute_soc(self, cur_cmd_point, cmditer):
-        tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
+    def checker_fast_compute_soc(self, cmd_group: StaticCmdGroup):
+        tiu, dma = cmd_group.tiu, cmd_group.dma
         tiu_buf = self.trans_cmds_to_buf_soc(tiu, 0)
         dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
 
-        BM1684XRunner.soc_structs.append(
-            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf)
-        )
+        BM1684XRunner.soc_structs.append(soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf))
         return len(tiu) + len(dma)
 
-    def checker_fast_compute(self, cur_cmd_point, cmditer):
-        tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
+    def checker_fast_compute(self, cmd_group: StaticCmdGroup):
+        tiu, dma = cmd_group.tiu, cmd_group.dma
         tiu_buf = self.trans_cmds_to_buf(tiu, 0)
         dma_buf = self.trans_cmds_to_buf(dma, 1)
 
@@ -178,15 +176,15 @@ class BM1684XRunner(DeviceRunner):
         assert ret == 0
         return len(tiu) + len(dma)
 
-    def fast_compute(self, cur_cmd_point, cmditer):
+    def fast_compute(self, command: BaseTpuCmd):
         tiu = []
         dma = []
-        if cmditer[cur_cmd_point].cmd_type == CMDType.tiu:
-            tiu.append(cmditer[cur_cmd_point])
+        if command.cmd_type == CMDType.tiu:
+            tiu.append(command)
             tiu_buf = self.trans_cmds_to_buf(tiu, 0)
             dma_buf = b""
         else:
-            dma.append(cmditer[cur_cmd_point])
+            dma.append(command)
             tiu_buf = b""
             dma_buf = self.trans_cmds_to_buf(dma, 1)
         assert len(tiu) + len(dma) == 1
@@ -202,8 +200,18 @@ class BM1684XRunner(DeviceRunner):
         assert ret == 0
         return 1
 
+    def cmds_compute(self, commands: StaticCmdGroup):
+        if self.is_pcie:
+            if len(commands.all) == 1:
+                self.fast_compute(commands.all[0])
+            else:
+                self.checker_fast_compute(commands)
+        elif self.is_soc:
+            self.checker_fast_compute_soc(commands)
+
 
 class PcieMemoryArray:
+
     def __getitem__(self, v):
         pass
 
@@ -360,7 +368,7 @@ class Memory(DeviceMemory):
         def get_dma_linear_data():
             return data_view(memref.shape, memref.stride)
 
-        get_data = {
+        get_lmem_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
@@ -378,7 +386,7 @@ class Memory(DeviceMemory):
             Layout.DMAmatrix: get_dma_matrix_data,
             Layout.DMAlinear: get_dma_linear_data,
         }
-        data = get_data[memref.layout]()
+        data = get_lmem_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
         return data
@@ -426,7 +434,8 @@ class Memory(DeviceMemory):
         )
         return d2s_ret
 
-    def get_data(self, value: Union[Scalar, MemRef]):
+    def get_data(self, value_ref: ValueRef):
+        value = value_ref.value
         if isinstance(value, Scalar):
             return value.data
 

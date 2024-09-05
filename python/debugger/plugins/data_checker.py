@@ -27,7 +27,7 @@ from rich.panel import Panel
 from debugger.target_common.op_support import Scalar
 from ..final_mlir import Pickled_Value, Value
 from numpy_helper.npz_compare import TensorCompare as _TensorCompare
-from ..target_common import MType
+from ..target_common import MType, ValueRef
 from ..tdb_support import (
     BreakpointStop,
     TdbCmdBackend,
@@ -677,10 +677,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 )
             return ComparedResult(value_view, None, msg="ignore")
 
-        if isinstance(context, BM1690Context) or isinstance(context, BM1688Context) or isinstance(context, SG2380Context):
-            raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
-        else:
-            raw_data = context.memory.get_data(memref)
+        raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))
 
         if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
             actual = raw_data.astype(np.float32)

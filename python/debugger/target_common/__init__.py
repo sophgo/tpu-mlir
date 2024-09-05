@@ -18,6 +18,7 @@ from .runner import (
     lib_wrapper,
     open_lib,
     local_mem,
+    Runner,
 )
 from .context import (
     BModelContext,
@@ -48,4 +49,6 @@ from .op_support import (
     DynIrCmd,
     RegIndex,
     BaseCmd,
+    ValueRef,
+    StaticCmdGroup,
 )

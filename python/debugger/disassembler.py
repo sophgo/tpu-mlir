@@ -23,11 +23,6 @@ from typing import List, NamedTuple
 from functools import lru_cache
 
 
-class StaticCmdGroup(NamedTuple):
-    tiu: List[BaseTpuCmd]
-    dma: List[BaseTpuCmd]
-    all: List[BaseTpuCmd]
-
 
 class _BModelContext:
     def __call__(self, bmodel_net: "BModel"):

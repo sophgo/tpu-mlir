@@ -28,7 +28,7 @@ import numpy as np
 from ..final_mlir import CMD, FinalMlirIndex, Value
 
 from ..target_common.op_support import BaseTpuCmd
-from ..target_common import CMDType
+from ..target_common import CMDType, ValueRef
 from ..tdb_support import (
     TdbCmdBackend,
     TdbPlugin,
@@ -380,17 +380,14 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
             index = int(arg)
             if cmd.cmd_type == CMDType.cpu:
                 if cmd.cmd_id == 0:
-                    data = self.tdb.memory.get_data(cmd.operands[index])
+                    data = self.tdb.memory.get_data(cmd.operands[index].to_ref())
                 else:
                     data = self.tdb.memory.get_cpu_data(cmd.cmd_id)[cmd.operands[index]]
             elif cmd.cmd_type.is_static():
                 if cmd.operands[index].is_scalar:
                     data = cmd.operands[index].data
                 else:
-                    if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context) or isinstance(self.tdb.context, SG2380Context):
-                        data = self.tdb.memory.get_data(cmd.operands[index], core_id=cmd.core_id)
-                    else:
-                        data = self.tdb.memory.get_data(cmd.operands[index])
+                    data = self.tdb.memory.get_data(cmd.operands[index].to_ref(core_id=cmd.core_id))
             else:
                 self.tdb.error("")
                 return
@@ -434,10 +431,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if cmd.results[index].is_scalar:
                     data = cmd.results[index].data
                 else:
-                    if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context) or isinstance(self.tdb.context, SG2380Context):
-                        data = self.tdb.memory.get_data(cmd.results[index], core_id=cmd.core_id)
-                    else:
-                        data = self.tdb.memory.get_data(cmd.results[index])
+                    data = self.tdb.memory.get_data(cmd.results[index].to_ref(core_id=cmd.core_id))
             else:
                 self.tdb.error("")
                 return
@@ -474,17 +468,14 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         try:
             if watchpoint.cmd_type == CMDType.cpu:
                 if watchpoint.cmd_id == 0:
-                    data = self.tdb.memory.get_data(watchpoint.value)
+                    data = self.tdb.memory.get_data(ValueRef(watchpoint.value))
                 else:
                     data = self.tdb.memory.get_cpu_data(watchpoint.cmd_id)[watchpoint.value]
             elif watchpoint.cmd_type.is_static():
                 if watchpoint.value.is_scalar:
                     data = watchpoint.value.data
                 else:
-                    if isinstance(self.tdb.context, BM1690Context) or isinstance(self.tdb.context, BM1688Context) or isinstance(self.tdb.context, SG2380Context):
-                        data = self.tdb.memory.get_data(watchpoint.value, core_id=watchpoint.core_id)
-                    else:
-                        data = self.tdb.memory.get_data(watchpoint.value)
+                    data = self.tdb.memory.get_data(ValueRef(watchpoint.value, core_id=watchpoint.core_id))
             else:
                 self.tdb.error("")
                 return
