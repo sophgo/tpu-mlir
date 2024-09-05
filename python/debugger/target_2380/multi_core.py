@@ -97,7 +97,7 @@ class MsgCore(Node):
             self.core_nums = core_nums
             self.sys_rets = sys_rets
             self.indent = indent
-            self.in_msg_id = sys_cmds[0].attribute["msg_id"]
+            self.in_msg_id = sys_cmds[0].attribute.get("msg_id", None)
             self.out_msg_id = sys_cmds[-1].attribute.get("msg_id", None)
             self.in_msg = sys_cmds[0]
             self.out_msg = sys_cmds[-1]
