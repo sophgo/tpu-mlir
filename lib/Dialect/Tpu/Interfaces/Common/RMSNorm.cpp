@@ -90,6 +90,18 @@ LogicalResult tpu::RMSNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
+LogicalResult tpu::RMSNormOp::LocalGenSupport() {
+  if (module::isCV18xx() == false) {
+    int64_t axis = module::getShape(getInput()).size() - 1;
+    // local layer only supports 5 dim at most
+    if (axis > 0 && axis <= 4)
+      return success();
+    else
+      return failure();
+  }
+  return failure();
+}
+
 LogicalResult tpu::RMSNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {
   int64_t ax = module::getShape(getInput()).size() - 1;

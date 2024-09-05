@@ -130,7 +130,9 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::LayerNormOp::LocalGenSupport() {
   if (module::isCV18xx() == false) {
-    if (getAxis() != 0)
+    auto axis = getAxis();
+    // local layer only supports 5 dim at most
+    if (axis > 0 && axis <= 4)
       return success();
     else
       return failure();
