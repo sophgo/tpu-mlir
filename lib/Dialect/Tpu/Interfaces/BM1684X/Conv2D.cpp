@@ -97,7 +97,11 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
-  spec.using_multicore = true;
+  if (supportMultiCore(*this)) {
+    spec.using_multicore = true;
+  } else {
+    spec.using_multicore = false;
+  }
   common.ipad_value = 0;
   if (module::getStorageType(getInput()).isIntOrIndex()) {
     if (module::isUniformQuantized(getInput())) {
