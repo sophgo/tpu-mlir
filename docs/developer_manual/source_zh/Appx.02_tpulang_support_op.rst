@@ -4446,8 +4446,8 @@ rms_norm
 
 芯片支持
 """""""""""
-* BM1688：输入数据类型可以是FLOAT32。
-* BM1684X：输入数据类型可以是FLOAT32。
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 
 normalize

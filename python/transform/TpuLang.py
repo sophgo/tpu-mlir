@@ -2830,7 +2830,7 @@ def group_norm(input: Tensor, gamma: Tensor = None, beta: Tensor = None,
 @assert_with_out_name
 def rms_norm(input: Tensor, gamma: Tensor = None, epsilon: float = 1e-5, axis: int = -1, out_name: str = None):
     output = Tensor(dtype=input.dtype, name=out_name)
-    assert input.dtype == "float32", "invalid input dtype"
+    assert input.dtype in ["float32", "float16"], "invalid input dtype"
     assert axis == -1 or axis == len(input.shape) - 1, "axis={} not supported yet".format(axis)
     if gamma:
         assert input.dtype == gamma.dtype, "invalid input and gamma dtype"

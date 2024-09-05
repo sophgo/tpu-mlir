@@ -3116,7 +3116,7 @@ class TPULANG_IR_TESTER(object):
             gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
             beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
             y = tpul.batch_norm(x, mean, var, epsilon=1e-5)
-            self.compile_and_check(self.unique_name(case_name), [x], [y],is_quantized=False)
+            self.compile_and_check(self.unique_name(case_name), [x], [y],is_quantized=is_quantized)
         _test_model_def([1, 3, 224, 224],dtype="float32")
         _test_model_def([1, 3, 224, 224],dtype="float16",is_quantized=True)
 
@@ -3127,16 +3127,18 @@ class TPULANG_IR_TESTER(object):
         """rms_norm"""
 
         @tpulang(self.chip)
-        def _test_model_def(in_shape, dtype='float32'):
+        def _test_model_def(in_shape, dtype='float32',is_quantized=False):
             x_data = rand_data(in_shape, dtype, -10, 10)
             norm_shape = [in_shape[-1]]
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             gamma = self.coeff_tensor(shape=norm_shape, dtype=dtype)
 
             out = tpul.rms_norm(x, gamma)
-            self.compile_and_check(self.unique_name(case_name), [x], [out])
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
         _test_model_def([1, 3, 224, 224])
+        _test_model_def([1, 3, 224, 224],dtype="float16")
+        _test_model_def([1, 3, 224, 224],dtype="float16",is_quantized=True)
 
     #######################################################################
     # normalize

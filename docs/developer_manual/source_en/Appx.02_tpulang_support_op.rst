@@ -3576,8 +3576,8 @@ Returns the Tensor type with the same data type as the input Tensor., representi
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 normalize
 :::::::::::::::::
