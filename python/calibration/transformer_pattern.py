@@ -72,6 +72,9 @@ sub_blocks = {
     "detr_block": ['top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 
                    'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 
                    'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'],
+    "detr_rc_50_block": ['top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MulConst',
+                        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
+                        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'],
     "swin_1_block": ['top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Permute', 
                      'top.Slice', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.MulConst', 'top.Reshape', 'top.Permute', 
                      'top.MatMul', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 
@@ -243,7 +246,7 @@ class MatchPattern:
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if next_op_type == 'top.MatMul':
                             fp_layer_list.append(next_op[0])
-                if model_block_name == 'detr_block':
+                if model_block_name == 'detr_block' or  model_block_name == 'detr_rc_50_block':
                     if op_type in ['top.Conv','top.Scale','top.Reshape']:
                         pass
                     elif op_type == 'top.MatMul':
