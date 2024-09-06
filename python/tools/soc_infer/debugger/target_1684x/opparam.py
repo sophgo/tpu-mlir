@@ -25,7 +25,7 @@ from target_common import (
 
 from debugger.target_1684x.regdef import *
 from debugger.target_1684x.cmodel import MemRef
-from debugger.target_1684x.memmap import LMEM_SIZE, LANE_SIZE, memmap
+from debugger.target_1684x.memmap import LMEM_SIZE, LANE_SIZE, NPU_NUM, memmap
 
 # Value: MemRef | Scalar
 # Scalar: Number
@@ -105,7 +105,7 @@ def sCONV_t_converter(reg: sCONV_reg):
         shape=[reg.res0_c, reg.opd0_c, reg.opd1_h, reg.opd1_w],
         dtype=(reg.opd0_prec, reg.opd1_sign),
         is_const=reg.opd1_const,
-        layout=Layout._1IC,
+        layout=alignIC,
     )
     opd2 = dict(
         address=reg.opd2_addr,
@@ -118,8 +118,8 @@ def sCONV_t_converter(reg: sCONV_reg):
         layout=Layout.compact,
     )
 
+    opd1["layout"] = Layout.alignIC
     if reg.opd0_prec == DType.i8:  # 8bits
-        opd1["layout"] = Layout._64IC
         if reg.tsk_eu_typ == 0:  # conv_normal
             # kzp
             opd2["shape"] = [1, reg.opd0_c, 1, 1]
@@ -137,8 +137,6 @@ def sCONV_t_converter(reg: sCONV_reg):
         opd2["dtype"] = (DType.f32, reg.opd0_sign)
         opd3["shape"] = [1, reg.opd0_c, 1, 2]
         opd3["dtype"] = opd0["dtype"]
-        if reg.opd0_prec in (DType.f16, DType.bf16):
-            opd1["layout"] = Layout._32IC
 
     if reg.tsk_eu_typ in [1, 2]:  # conv_wrq
         assert opd2["is_const"] > 0
@@ -605,7 +603,7 @@ def cw_trans_reg_format(reg: sTRANS_sBC_reg):
     )
 
     if reg.tsk_eu_typ == 0:  # cw_ts
-        opd0["layout"] = Layout.T3
+        opd0["layout"] = Layout.alignLine
 
     operands = [get_value(**opd0)]
     results = [get_value(**res0)]
@@ -737,7 +735,7 @@ def sSG_t_converter(reg: sSG_reg):
         kw = reg.opd3_addr % 2**16
         r_h = kh * kw
         res0["shape"] = (n, c, r_h, w)
-        res0["layout"] = Layout.T3
+        res0["layout"] = Layout.alignLine
     elif reg.tsk_eu_typ in [8, 15]:
         opd0["shape"] = (1, c, 1, reg.opd0_w)
         if reg.opd0_str != 0:
@@ -805,7 +803,7 @@ def SGL_t_converter(reg: SGL_reg):
     )
     opd0["shape"] = (1, c, reg.opd0_h, w)
     if reg.opd0_str == 3:
-        opd0["layout"] = Layout.T3
+        opd0["layout"] = Layout.alignLine
     else:
         opd0["layout"] = Layout.T4
 
@@ -813,11 +811,11 @@ def SGL_t_converter(reg: SGL_reg):
     if reg.tsk_eu_typ in [17, 18]:  # sliceToReverse
         opd1_h = reg.res0_h if reg.tsk_eu_typ == 17 else reg.opd0_h
         opd1["shape"] = (n, c, opd1_h, 1)
-        res0["layout"] = Layout.T3
+        res0["layout"] = Layout.alignLine
     elif reg.tsk_eu_typ == 19:
         opd0["shape"] = (1, c, reg.opd0_h, w)
         opd1["shape"] = (n, c, reg.opd0_h, 1)
-        res0["layout"] = Layout.T3
+        res0["layout"] = Layout.alignLine
         res1 = dict(
             address=reg.res1_addr,
             dtype=DType.si16,
