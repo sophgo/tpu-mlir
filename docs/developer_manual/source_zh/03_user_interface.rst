@@ -607,6 +607,9 @@ model_deploy.py
    * - do_winograd
      - 否
      - 是否使用WinoGrad卷积, 仅用于BM1684平台
+   * - matmul_perchannel
+     - 否
+     - MatMul是否使用per-channel量化模式，目前支持BM1684X和BM1688芯片，打开可能影响运行时间
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~

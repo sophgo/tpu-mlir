@@ -595,6 +595,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - do_winograd
      - N
      - if do WinoGrad convolution, only for BM1684
+   * - matmul_perchannel
+     - N
+     - if matmul is quantized in per-channel mode, for BM1684X and BM1688, the performance may be decreased if enable
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
