@@ -21,6 +21,11 @@ __all__ = [
     "Engine",
 ]
 
+def div_up(x: int, y: int) -> int:
+    return (x + y - 1) // y if y else 0
+
+def align_up(x: int, y: int) -> int:
+    return div_up(x, y) * y
 
 # ./tpu-cpuop/include/bmcpu_common.h
 class CpuLayerType(Enum):
@@ -305,14 +310,11 @@ class Layout(Enum):
     matrix = 10
     matrix2 = 11
     # Weight alignment
-    _64IC = 20
-    _32IC = 21
-    _1IC = 22
-    _16IC = 23
-    # special alignment. TODO: give it a better name
-    T3 = 30
-    T4 = 31
-    T5 = 32
+    alignIC = 20
+    # Gather/Scatter alignment
+    alignLine = 30
+    T4 = 31 # TODO: give it a better name
+    T5 = 32 # TODO: give it a better name
     # GDMA special layout
     DMAstride = 40  # contains lane mask
     DMA4Bank = 41

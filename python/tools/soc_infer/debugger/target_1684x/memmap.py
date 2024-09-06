@@ -7,33 +7,96 @@
 #
 # ==============================================================================
 
-from debugger.target_common import DType, MType, Layout, MemRefBase, Target
+from debugger.target_common import DType, MType, Layout, MemRefBase, Target, div_up, align_up, lib_wrapper, open_lib
 import functools
 from typing import Tuple
 
-NPU_NUM = 64
-BANK_SIZE = 2**14
-LANE_SIZE = BANK_SIZE * 16
-LMEM_SIZE = LANE_SIZE * NPU_NUM
-BASE_EU_NUM = 16
-TYPED_EU_NUM = {
-    DType.f32: BASE_EU_NUM,
-    DType.i32: BASE_EU_NUM,
-    DType.si32: BASE_EU_NUM,
-    DType.ui32: BASE_EU_NUM,
-    DType.f16: BASE_EU_NUM * 2,
-    DType.bf16: BASE_EU_NUM * 2,
-    DType.i16: BASE_EU_NUM * 2,
-    DType.ui16: BASE_EU_NUM * 2,
-    DType.si16: BASE_EU_NUM * 2,
-    DType.i8: BASE_EU_NUM * 4,
-    DType.ui8: BASE_EU_NUM * 4,
-    DType.si8: BASE_EU_NUM * 4,
-}
+class BM1684XInfo:
+    def __init__(self) -> None:
+        self.lib_name = "libcmodel_1684x.so"
+        self.lib = lib_wrapper(open_lib(self.lib_name))
 
+    @property
+    def NPU_NUM(self) -> int:
+        return self.lib.tpu_npu_num()
 
-def EU_NUM(dtype: DType) -> int:
-    return TYPED_EU_NUM[dtype]
+    @property
+    def BANK_NUM(self) -> int:
+        return self.lib.tpu_bank_num()
+
+    @property
+    def LANE_SIZE(self) -> int:
+        return self.lib.tpu_local_mem_size_per_npu()
+
+    @property
+    def BANK_SIZE(self) -> int:
+        return self.LANE_SIZE // self.BANK_NUM
+
+    @property
+    def LMEM_SIZE(self) -> int:
+        return self.LANE_SIZE * self.NPU_NUM
+
+    # eu_num when byte size is 1
+    @property
+    def ALIGN_EU_BASE(self) -> int:
+        return self.lib.tpu_eu_num(1)
+
+    def EU_NUM(self, dtype: DType) -> int:
+        BASE_EU_NUM = self.ALIGN_EU_BASE
+        TYPED_EU_NUM = {
+            DType.f32: BASE_EU_NUM // 4,
+            DType.i32: BASE_EU_NUM // 4,
+            DType.si32: BASE_EU_NUM // 4,
+            DType.ui32: BASE_EU_NUM // 4,
+            DType.f16: BASE_EU_NUM // 2,
+            DType.bf16: BASE_EU_NUM // 2,
+            DType.i16: BASE_EU_NUM // 2,
+            DType.ui16: BASE_EU_NUM // 2,
+            DType.si16: BASE_EU_NUM // 2,
+            DType.i8: BASE_EU_NUM,
+            DType.ui8: BASE_EU_NUM,
+            DType.si8: BASE_EU_NUM,
+            DType.i4: BASE_EU_NUM * 2,
+            DType.ui4: BASE_EU_NUM * 2,
+            DType.si4: BASE_EU_NUM * 2,
+        }
+        return TYPED_EU_NUM[dtype]
+
+    # eu_num when byte size is 1
+    @property
+    def CUBE_NUM_BASE(self) -> int:
+        return self.lib.tpu_get_ic_parallel(1)
+
+    def CUBE_NUM(self, dtype: DType) -> int:
+        BASE_CUBE_NUM = self.CUBE_NUM_BASE
+        TYPED_CUBE_NUM = {
+            DType.f32: 1,
+            DType.i32: 1,
+            DType.si32: 1,
+            DType.ui32: 1,
+            DType.f16: BASE_CUBE_NUM // 2,
+            DType.bf16: BASE_CUBE_NUM // 2,
+            DType.i16: BASE_CUBE_NUM // 2,
+            DType.ui16: BASE_CUBE_NUM // 2,
+            DType.si16: BASE_CUBE_NUM // 2,
+            DType.i8: BASE_CUBE_NUM,
+            DType.ui8: BASE_CUBE_NUM,
+            DType.si8: BASE_CUBE_NUM,
+            DType.i4: BASE_CUBE_NUM * 2,
+            DType.ui4: BASE_CUBE_NUM * 2,
+            DType.si4: BASE_CUBE_NUM * 2,
+        }
+        return TYPED_CUBE_NUM[dtype]
+
+info = BM1684XInfo()
+NPU_NUM = info.NPU_NUM
+BANK_NUM = info.BANK_NUM
+LANE_SIZE = info.LANE_SIZE
+BANK_SIZE = info.BANK_SIZE
+LMEM_SIZE = info.LMEM_SIZE
+ALIGN_EU_BASE = info.ALIGN_EU_BASE
+EU_NUM = info.EU_NUM
+CUBE_NUM = info.CUBE_NUM
 
 
 # TPU1688/bm1688/spec/include/memmap.h
@@ -52,44 +115,44 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
 
     def alignEU_stride():
         _, c, h, w = memref.shape
-        align_type = 64 // memref.itemsize
-        c_stride = (w * h + align_type - 1) // align_type * align_type
-        n_stride = (c + memref.npu_offset + 63) // 64 * c_stride
+        align_num = ALIGN_EU_BASE // memref.itemsize
+        c_stride = align_up(w * h, align_num)
+        n_stride = div_up(c + memref.npu_offset, NPU_NUM) * c_stride
         return (n_stride, c_stride, w, 1)
 
     def compact_stride():
         _, c, h, w = memref.shape
         c_stride = w * h
-        n_stride = (c + memref.npu_offset + 63) // 64 * c_stride
+        n_stride = div_up(c + memref.npu_offset, NPU_NUM) * c_stride
         return (n_stride, c_stride, w, 1)
 
     def offset_stride():
         return (0, 1, 0, 0)
 
-    def t3_stride():
+    def alignLine_stride():
         _, c, h, w = memref.shape
-        eu_num = 64 // memref.itemsize
-        h_stride = (w + eu_num - 1) / eu_num * eu_num
+        align_num = ALIGN_EU_BASE // memref.itemsize
+        h_stride = align_up(w, align_num)
         c_stride = h * h_stride
-        n_stride = c_stride * (c + memref.npu_offset + 63) // 64
+        n_stride = c_stride * div_up(c + memref.npu_offset, NPU_NUM)
         return (n_stride, c_stride, h_stride, 1)
 
     def t4_stride():
         _, _, _, w = memref.shape
-        eu_num = 64 // memref.itemsize
-        h_stride = (w + eu_num - 1) / eu_num * eu_num
+        align_num = ALIGN_EU_BASE // memref.itemsize
+        h_stride = align_up(w, align_num)
         return (0, 0, h_stride, 1)
 
     def t5_stride():
         _, _, _, w = memref.shape
-        eu_num = 64 // memref.itemsize
-        c_stride = (w + eu_num - 1) / eu_num * eu_num
+        align_num = ALIGN_EU_BASE // memref.itemsize
+        c_stride = align_up(w, align_num)
         n_stride = LANE_SIZE // 8 // memref.itemsize
         return (n_stride, c_stride, w, 1)
 
     def dma_nolane_mask_to_stride():
         lane_mask = memref.layout.args[0]
-        if lane_mask == (2**64 - 1):
+        if lane_mask == (2**NPU_NUM - 1):
             memref.layout = Layout.stride
         return memref.stride
 
@@ -99,8 +162,8 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
         return compact_stride()
     if memref.layout == Layout.offset:
         return offset_stride()
-    if memref.layout == Layout.T3:
-        return t3_stride()
+    if memref.layout == Layout.alignLine:
+        return alignLine_stride()
     if memref.layout == Layout.T4:
         return t4_stride()
     if memref.layout == Layout.T5:
@@ -165,73 +228,87 @@ class MemRef(MemRefBase):
     @property
     @functools.lru_cache()
     def local_shape(self):
-        NPU_OFFSET = self.npu_offset
         n, c, h, w, *_ = *self.shape, 1, 1
 
-        def get_cnum(c):
-            return (c + NPU_OFFSET + NPU_NUM - 1) // NPU_NUM
-
-        if self.layout == Layout._64IC:
-            return (c + 63) // 64, get_cnum(n), h, w * 64
-
-        if self.layout == Layout._32IC:
-            return (c + 32) // 32, get_cnum(n), h, w * 32
-
-        if self.layout == Layout._1IC:
-            return c, get_cnum(n), h, w
+        if self.layout == Layout.alignIC:
+            cube_num = CUBE_NUM(self.dtype)
+            return 1, min(n, NPU_NUM), 1, div_up(n, NPU_NUM) * h * w * align_up(c, cube_num)
 
         if self.layout == Layout.matrix:
             w = self.layout.args[0]
-            return n, get_cnum((c + w - 1) // w), 1, w
+            return n, div_up(c, w), 1, w
 
         if self.layout == Layout.matrix2:
-            return 1, get_cnum(n), 1, c
+            return 1, n, 1, c
 
         if self.layout == Layout.DMA4Bank:
             # FIX ME
-            return n, get_cnum(c), h, w
+            return n, c, h, w
 
         if self.layout == Layout.DMAstride:
-            return n, get_cnum(c), h, w
+            return n, c, h, w
 
         if self.layout == Layout.DMAmatrix:
             w = self.layout.args[1]
-            return n, get_cnum((c + w - 1) // w), 1, w
+            return n, div_up(c, w), 1, w
 
         if self.layout == Layout.DMAlinear:
             return self.shape
 
-        return n, get_cnum(c), h, w
+        return n, c, h, w
 
     @property
     @functools.lru_cache()
     def local_stride(self):
-        n, c, h, w, *_ = *self.shape, 1, 1
         NPU_OFFSET = self.npu_offset
 
-        def get_eu_align_stride(shape):
-            _, _c, _h, _w = shape
-            align_type = 64 // self.itemsize
-            c_stride = (_w * _h + align_type - 1) // align_type * align_type
-            n_stride = (_c + NPU_OFFSET + NPU_NUM - 1) // NPU_NUM * c_stride
+        def compact_stride():
+            _, _c, _h, _w = self.local_shape
+            c_stride = _w * _h
+            n_stride = div_up(_c + NPU_OFFSET, NPU_NUM) * c_stride
             return n_stride, c_stride, _w, 1
 
-        if self.layout == Layout._64IC:
-            return 64 * h * w, (c + 63) // 64 * 64 * h * w, 64 * w, 1
+        def line_align_stride():
+            _, _c, _h, _w = self.local_shape
+            align_num = int(ALIGN_EU_BASE / self.itemsize)
+            h_stride = align_up(_w, align_num)
+            c_stride = _h * h_stride
+            n_stride = div_up(_c + NPU_OFFSET, NPU_NUM) * c_stride
+            return n_stride, c_stride, _w, 1
 
-        if self.layout == Layout._32IC:
-            return 32 * h * w, (c + 32) // 32 * 32 * h * w, 32 * w, 1
+        def eu_align_stride():
+            _, _c, _h, _w = self.local_shape
+            align_num = int(ALIGN_EU_BASE / self.itemsize)
+            c_stride = align_up(_w * _h, align_num)
+            n_stride = div_up(_c + NPU_OFFSET, NPU_NUM) * c_stride
+            return n_stride, c_stride, _w, 1
 
-        if self.layout == Layout._1IC:
-            return h * w, c * h * w, w, 1
+        def t4_stride():
+            _, _, _, w = self.local_shape
+            align_num = int(ALIGN_EU_BASE / self.itemsize)
+            h_stride = align_up(w, align_num)
+            return (0, 0, h_stride, 1)
 
-        if self.layout == Layout.matrix:
-            w = self.layout.args[0]
-            shape = (n, (c + w - 1) // w, 1, w)
-            return get_eu_align_stride(shape)
+        def t5_stride():
+            _, _, _, w = self.local_shape
+            align_num = int(ALIGN_EU_BASE / self.itemsize)
+            c_stride = align_up(w, align_num)
+            n_stride = LANE_SIZE // 8 // self.itemsize
+            return (n_stride, c_stride, w, 1)
 
-        if self.layout == Layout.matrix2:
-            shape = (1, n, 1, c)
-            return get_eu_align_stride(shape)
+        if self.layout in (Layout.alignEU, Layout.alignIC):
+            return eu_align_stride()
+
+        if self.layout == Layout.compact:
+            return compact_stride()
+
+        if self.layout == Layout.alignLine:
+            return line_align_stride()
+
+        if self.layout == Layout.T4:
+            return t4_stride()
+
+        if self.layout == Layout.T5:
+            return t5_stride()
 
         return self.stride
