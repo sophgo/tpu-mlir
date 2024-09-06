@@ -164,9 +164,10 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
         op.getInput().getType().cast<RankedTensorType>().getShape();
     auto weightOp = op.getWeight().getDefiningOp<top::WeightOp>();
     auto weight_shape = weightOp.getType().getShape();
-
-    int final_row_num = input_shape[1];
-    int inner_num = input_shape[2];
+    int input_shape_dim = input_shape.size();
+    assert(std::accumulate(input_shape.begin(), input_shape.begin() + (input_shape_dim - 2), 1, std::multiplies<int64_t>()) == 1);
+    int final_row_num = input_shape[input_shape_dim - 2];
+    int inner_num = input_shape[input_shape_dim - 1];
     int final_col_num = weight_shape[0] / 4;
     bool has_bias = !module::isNone(op.getBias());
     bool has_zp = !module::isNone(op.getZp());

@@ -265,7 +265,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   if (!out_stype.isa<FloatType>()) {
     return failure();
   }
-  if ((module::isBM1688() || module::isMARS3()) && !out_stype.isF32()) {
+  if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) && !out_stype.isF32()) {
     // only f32 support
     return failure();
   }
