@@ -101,13 +101,22 @@ def add_callback(name=None, *filter):
             call_name = call_name.replace("do_", "")
 
             use_cb = len(filter) == 0 or self.status in filter
+            skip = False
             try:
                 if use_cb:
                     self.plugins._call_loop(f"before_{call_name}")
             except (KeyboardInterrupt, StopIteration) as e:
                 self.status = TdbStatus.IDLE
                 raise e
-            res = func(self, *args, **kwargs)
+            except BufferError as e:
+                skip = True
+
+            if not skip:
+                res = func(self, *args, **kwargs)
+            else:
+                res = None
+                if call_name == 'step':
+                    self.cmd_point += 1
 
             try:
                 if use_cb:
@@ -167,6 +176,7 @@ class TdbCmdBackend(cmd.Cmd):
         ddr_size=2**32,
         checker=False,
         is_soc=False,  # this option is valid only when USING_CMODEL = False
+        cache_mode="online",
     ):
         super().__init__(completekey, stdin, stdout)
         self.bmodel_file = bmodel_file
@@ -183,6 +193,7 @@ class TdbCmdBackend(cmd.Cmd):
         builtins.tdb = self
         self.bmodel_checker_enable = checker
         self.is_soc = is_soc
+        self.cache_mode = cache_mode
 
         # should be import locally to avoid circular import
         from .static_check import Checker
@@ -289,8 +300,6 @@ class TdbCmdBackend(cmd.Cmd):
                 self.memory.set_data_to_address(
                     coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
                 )
-
-        # self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
 
     def _load_data(self):
         if self.is_soc:

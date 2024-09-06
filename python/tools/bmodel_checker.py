@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 import os
+import pickle
 from debugger.plugins.data_checker import DataCheck, DumpMode
 from tdb import TdbInterface
 import argparse
@@ -15,8 +16,7 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Verify the correctness of BModel using reference data."
-    )
+        description="Verify the correctness of BModel using reference data.")
     parser.add_argument(
         "context_dir",
         default="./",
@@ -26,9 +26,7 @@ def main():
         "reference_data",
         help="The reference data used for checking this BModel.",
     )
-    parser.add_argument(
-        "--tolerance", default="0.99,0.99", help="tolerance for compare."
-    )
+    parser.add_argument("--tolerance", default="0.99,0.99", help="tolerance for compare.")
     parser.add_argument(
         "--dump_mode",
         type=str,
@@ -43,11 +41,14 @@ def main():
         help="bmodel inference result",
     )
     parser.add_argument(
-        "--fail_fast", action="store_true", help="Stop if there is a check failure."
+        "--cache_mode",
+        choices=['online', 'generate', 'offline'],
+        default='online',
     )
-    parser.add_argument(
-        "--excepts", type=str, help="List of tensors except from comparing"
-    )
+    parser.add_argument("--fail_fast",
+                        action="store_true",
+                        help="Stop if there is a check failure.")
+    parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
     parser.add_argument(
         "--ddr_size",
         type=int,
@@ -55,9 +56,7 @@ def main():
         default=2**32,
         help="The inputs data of the BModel.",
     )
-    parser.add_argument(
-        "--quiet", action="store_true", default=False, help="disable progress bar"
-    )
+    parser.add_argument("--quiet", action="store_true", default=False, help="disable progress bar")
 
     parser.add_argument("--no_interactive", action="store_true")
     parser.add_argument("--dump_dataframe", action="store_true")
@@ -73,9 +72,7 @@ if __name__ == "__main__":
     final_mlir_fn = os.path.join(context_dir, "final.mlir")
     tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
 
-    assert all(
-        [os.path.exists(i) for i in [bmodel_file, final_mlir_fn, tensor_loc_file]]
-    )
+    assert all([os.path.exists(i) for i in [bmodel_file, final_mlir_fn, tensor_loc_file]])
 
     input_data_fn = os.path.join(context_dir, "input_ref_data.dat")
 
@@ -106,6 +103,10 @@ if __name__ == "__main__":
     if args.fail_fast:
         plugin.break_when_fail = True
     plugin.set_tol(cosine_similarity_tol=cos_t, euclidean_similarity_tol=euc_t)
+    tdb.cache_mode = args.cache_mode
+    if args.cache_mode == 'generate':
+        args.no_interactive = True
+        tdb.message(" ** close interactive for open cache mode **")
 
     plugin.dump_mode = getattr(DumpMode, args.dump_mode.upper(), DumpMode.FAILED)
     plugin.excepts.update(excepts)
@@ -131,3 +132,11 @@ if __name__ == "__main__":
             args.report = os.path.join(context_dir, "failed_bmodel_outputs.npz")
     else:
         tdb.cmdloop()
+
+    if tdb.cache_mode == 'generate':
+        with open(os.path.join(context_dir, "cache_in.pickle"), 'wb') as w:
+            pickle.dump(list(plugin.soc_values_in), w)
+
+        with open(os.path.join(context_dir, "cache_out.pickle"), 'wb') as w:
+            pickle.dump(list(plugin.soc_values_out), w)
+        tdb.message("cache dumped succeed! now run same command with `--cache_mode offline`")

@@ -10,7 +10,7 @@ from collections import OrderedDict
 import collections
 from dataclasses import dataclass
 from typing import List, Dict, Optional
-
+import pickle
 
 from rich.progress import (
     Progress as Progressbar,
@@ -25,7 +25,7 @@ from rich.progress import (
 import pandas as pd
 import numpy as np
 
-from ..final_mlir import CMD, FinalMlirIndex, Value
+from ..final_mlir import CMD, FinalMlirIndex, TLValue
 
 from ..target_common.op_support import BaseTpuCmd
 from ..target_common import CMDType, ValueRef
@@ -55,7 +55,7 @@ def max_with_none(*args):
 
 @dataclass
 class ValueView:
-    value: Value
+    value: TLValue
     index: int
     loc_index: int
     loc_name: str
@@ -153,8 +153,31 @@ class FinalMlirIndexPlugin(TdbPlugin):
             self._build_index(tdb)
 
     def _build_index(self, tdb: TdbCmdBackend):
-        # create subnet tiu, dma id offset
-        self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
+        if tdb.cache_mode in {'online', 'generate'}:
+            ret = self._build_mlir_loc(tdb)
+            if tdb.cache_mode == 'generate':
+                with open(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle", 'wb') as w:
+                    pickle.dump(ret, w)
+        elif tdb.cache_mode == 'offline':
+            with open(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle", 'rb') as r:
+                ret = pickle.load(r)
+        else:
+            raise NotImplementedError(tdb.cache_mode)
+
+        tdb.global_layer_line = ret["global_layer_line"]
+        loc_df = ret['df']
+        self.final_mlir: FinalMlirIndex = ret['final_mlir']
+
+        tdb.index_df = pd.merge(tdb.op_df, loc_df, how="outer")
+        tdb.index_df = tdb.index_df.set_index("cmd_index", drop=True)
+        # replace all NaN values with zeros
+        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
+        # convert 'loc_index' column from float to integer
+        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].astype(int)
+        FinalMlirIndexPlugin.data_frame = tdb.index_df
+
+    def _build_mlir_loc(self, tdb: TdbCmdBackend):
+        final_mlir = FinalMlirIndex.from_context(self.final_mlir_fn, self.tensor_loc_file)
         last_af_point = 0
         index_dic = tdb.op_df.to_dict("index")
 
@@ -176,10 +199,10 @@ class FinalMlirIndexPlugin(TdbPlugin):
         # and after execute af_point
 
         loc_records = []
-        tdb.global_layer_line = collections.defaultdict(lambda: 0)
-        for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
+        global_layer_line = collections.Counter()
+        for loc_index, loc in enumerate(final_mlir.loc.tensor_loc):
             if loc.slice_all:
-                tdb.global_layer_line[loc.file_line] += 1
+                global_layer_line[loc.file_line] += 1
 
             if loc.tiu_dma_id_before == loc.tiu_dma_id_after:
                 # no cmd operation, like reshape
@@ -212,9 +235,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
             operands_tmp = collections.defaultdict(list)
             operands_tmp[tdb.cmditer[bf_point - 1].tuple_key].extend(
                 Operand(opd, opd_index, loc_index, opd.name, bf_point, loc.file_line)
-                for opd_index, opd in enumerate(loc.operands)
-                if opd
-            )
+                for opd_index, opd in enumerate(loc.operands) if opd)
 
             tiu_point = dma_point = None
             if tiu_after > 0:
@@ -225,9 +246,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
             results_tmp = collections.defaultdict(list)
             results_tmp[tdb.cmditer[af_point - 1].tuple_key].extend(
                 Result(opd, opd_index, loc_index, opd.name, af_point, loc.file_line)
-                for opd_index, opd in enumerate(loc.results)
-                if opd
-            )
+                for opd_index, opd in enumerate(loc.results) if opd)
 
             for i in range(tiu_before + 1, tiu_after + 1):
                 record = {
@@ -237,12 +256,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
                     "core_id": core_id,
                     "cmd_id": i,
                     "cmd_type": CMDType.tiu,
-                    "operands": operands_tmp[
-                        assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)
-                    ],
-                    "results": results_tmp[
-                        assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)
-                    ],
+                    "operands": operands_tmp[assemble_tuple_key(subnet_id, core_id, i,
+                                                                CMDType.tiu)],
+                    "results": results_tmp[assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)],
                 }
                 loc_records.append(record)
 
@@ -254,23 +270,15 @@ class FinalMlirIndexPlugin(TdbPlugin):
                     "core_id": core_id,
                     "cmd_id": j,
                     "cmd_type": CMDType.dma,
-                    "operands": operands_tmp[
-                        assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)
-                    ],
-                    "results": results_tmp[
-                        assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)
-                    ],
+                    "operands": operands_tmp[assemble_tuple_key(subnet_id, core_id, j,
+                                                                CMDType.dma)],
+                    "results": results_tmp[assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)],
                 }
                 loc_records.append(record)
 
         loc_df = pd.DataFrame.from_records(loc_records)
-        tdb.index_df = pd.merge(tdb.op_df, loc_df, how="outer")
-        tdb.index_df = tdb.index_df.set_index("cmd_index", drop=True)
-        # replace all NaN values with zeros
-        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
-        # convert 'loc_index' column from float to integer
-        tdb.index_df["loc_index"] = tdb.index_df["loc_index"].astype(int)
-        FinalMlirIndexPlugin.data_frame = tdb.index_df
+
+        return {"df": loc_df, "global_layer_line": global_layer_line, "final_mlir": final_mlir}
 
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
