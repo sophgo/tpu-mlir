@@ -9,6 +9,12 @@
 # ==============================================================================
 
 from numpy_helper import *
+from numpy_helper.npz_compare import npz_compare
+from numpy_helper.npz_visualize_diff import npz_visualize_diff
+from numpy_helper.npz_dump import npz_dump
+from numpy_helper.npz_statistic import npz_statistic
+from numpy_helper.npz_cali_test import npz_cali_test
+
 npz_tool_func = {
     "compare": npz_compare,
     "visualize_diff": npz_visualize_diff,

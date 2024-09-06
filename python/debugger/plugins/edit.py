@@ -23,7 +23,7 @@ from rich.progress import (
 
 import pandas as pd
 
-from ..final_mlir import CMD, FinalMlirIndex, Value
+from ..final_mlir import CMD, FinalMlirIndex, TLValue
 from .common import FinalMlirIndexPlugin
 from ..target_common.op_support import BaseTpuCmd
 from ..target_common import Target, CMDType

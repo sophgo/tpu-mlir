@@ -14,14 +14,8 @@ from functools import lru_cache
 from pprint import pformat
 from typing import List, Tuple, Dict
 import json
-import warnings
-import mlir
-import mlir.ir
-from mlir.dialects.func import FuncOp
-from mlir.dialects import quant
-from mlir.ir import *
+import numpy as np
 from .target_common import DType, CMDType, Layout, BModelContext, MType
-import pandas as pd
 
 to_dtype: Dict[str, DType] = {
     "f32": DType.f32,
@@ -48,41 +42,55 @@ to_dtype: Dict[str, DType] = {
 }
 
 
-def parse_attribute(attr: Attribute) -> dict:
-    if isinstance(attr, NamedAttribute):
-        return {attr.name: parse_attribute(attr.attr)}
-    if isinstance(attr, (StringAttr, IntegerAttr, BoolAttr)):
-        return attr.value
+def parse_zp_scale(type_str: str):
+    from .lazy_mlir_ir import parse_mlir_type
+    from .lazy_mlir_ir import quant
 
-    if isinstance(attr, (ArrayAttr)):
-        return [parse_attribute(i) for i in attr]
+    mlir_type = parse_mlir_type(type_str)
 
+    zero_point = 0
+    if isinstance(mlir_type, quant.UniformQuantizedType):
+        zero_point = mlir_type.zero_point
 
-ir_context = mlir.ir.Context()
+    scale = 1
+    if (
+        isinstance(mlir_type, quant.CalibratedQuantizedType)
+        and "f8E4M3" in type_str
+    ):
+        scale = mlir_type.max / 448
 
-
-def parse_mlir_type(asm: str):
-    element_type = Type.parse(asm, ir_context).element_type
-    if quant.UniformQuantizedType.isinstance(element_type):
-        quant_type = quant.UniformQuantizedType(element_type)
-        return quant_type
-    if quant.CalibratedQuantizedType.isinstance(element_type):
-        quant_type = quant.CalibratedQuantizedType(element_type)
-        return quant_type
-    return RankedTensorType.parse(asm, ir_context)
+    if isinstance(mlir_type, quant.UniformQuantizedType):
+        scale = mlir_type.scale
+    return (zero_point, scale)
 
 
-class Value:
-    def __init__(self, dic) -> None:
-        self.address: int = dic["address"]
-        self.layout: str = dic["layout"]
-        self.memory_type: str = dic["memory_type"]
-        self.name: str = dic["name"]
-        self.reshape: str = dic["reshape"]
-        self.slice: str = dic["slice"]
-        self._type: Type = dic["type"]
+class TLValue:
+    address: int
+    layout: str
+    name: str
+    reshape: str
+    slice: str
+    dtype: np.dtype
+    zero_point: float
+    scale: float
+    memory_type: str
+    mlir_type_str: str
+    raw_dict: dict
+
+    @classmethod
+    def from_tldic(cls, dic):
+        self = cls()
+        self.address = dic["address"]
+        self.layout = dic["layout"]
+        self.memory_type = dic["memory_type"]
+        self.name = dic["name"]
+        self.reshape = dic["reshape"]
+        self.slice = dic["slice"]
+        self.mlir_type_str = dic["type"]
         self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
-        self._dic = dic
+        self.zero_point, self.scale = parse_zp_scale(self.mlir_type_str)
+        self.raw_dict = dic
+        return self
 
     @staticmethod
     def get_shape_and_dtype(input_string: str):
@@ -120,7 +128,6 @@ class Value:
         lmem_start_addr = context.memmap[MType.R][0]
         if address < lmem_start_addr:
             address += lmem_start_addr
-        self.name = self.name
         stride = None
 
         # global memory
@@ -146,36 +153,13 @@ class Value:
                 layout = Layout.continuous_XN
         return context.MemRef(address, shape, dtype, layout=layout, stride=stride)
 
-    @property
-    @lru_cache()
-    def type(self):
-        return parse_mlir_type(self._type)
-
-    @property
-    def zero_point(self):
-        if "uniform" not in self._type:
-            return 0
-        if isinstance(self.type, quant.UniformQuantizedType):
-            return self.type.zero_point
-        return 0
-
-    @property
-    def scale(self):
-        if isinstance(self.type, quant.CalibratedQuantizedType) and "f8E4M3" in self._type:
-            return self.type.max / 448
-        if "uniform" not in self._type:
-            return 1
-        if isinstance(self.type, quant.UniformQuantizedType):
-            return self.type.scale
-        return 1
-
     def __repr__(self) -> str:
-        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.type}, memory_type={self.memory_type}}})"
+        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type_str}, memory_type={self.memory_type}}})"
 
 
 class Pickled_Value:
     def __init__(
-        self, value: Value, Memref, Type, Zero_point, Scale, file_line, cmd_point
+        self, value: TLValue, Memref, Type, Zero_point, Scale, file_line, cmd_point
     ):
         self.address: int = value.address
         self.layout: str = value.layout
@@ -198,21 +182,35 @@ class Pickled_Value:
 
 
 class CMD:
-    def __init__(self, dic: dict, index: int) -> None:
+    loc_index: int
+    file_line: int
+    subnet_id: int
+    opcode: str
+    core_id: int
+    tiu_dma_id_before: Tuple[int, int]
+    tiu_dma_id_after: Tuple[int, int]
+    operands: List[TLValue]
+    results: List[TLValue]
+    slice_all: bool
+
+    @classmethod
+    def from_tldic(cls, dic: dict, index: int):
+        self = cls()
+
         self.loc_index = index
-        self.file_line: int = dic["file-line"]
-        self.subnet_id: int = dic["subnet_id"]
-        self.opcode: str = dic["opcode"]
-        self.core_id: int = dic.get("core_id", 0)
+        self.file_line = dic["file-line"]
+        self.subnet_id = dic["subnet_id"]
+        self.opcode = dic["opcode"]
+        self.core_id = dic.get("core_id", 0)
         # dma_id before is not aligned with asm cmd
         # For example, yolov5 cmd[2] use B0 as cmd_id_dep
         # but tensor_loc.json has tiu_dma_id(before) = (1, 1)
-        self.tiu_dma_id_before: Tuple[int, int] = dic["tiu_dma_id(before)"]
-        self.tiu_dma_id_after: Tuple[int, int] = dic["tiu_dma_id(after)"]
+        self.tiu_dma_id_before = dic["tiu_dma_id(before)"]
+        self.tiu_dma_id_after = dic["tiu_dma_id(after)"]
         # None for top.None
-        self.operands = [Value(i) if len(i) > 0 else None for i in dic["operands"]]
+        self.operands = [TLValue.from_tldic(i) if len(i) > 0 else None for i in dic["operands"]]
         # None for no usage results
-        self.results = [Value(i) if len(i) > 0 else None for i in dic["results"]]
+        self.results = [TLValue.from_tldic(i) if len(i) > 0 else None for i in dic["results"]]
 
         operands_slice_all = results_slice_all = False
         operands_slice_all = all(
@@ -222,6 +220,7 @@ class CMD:
             result.slice == "[...]" for result in self.results if self.results if result
         )
         self.slice_all = operands_slice_all and results_slice_all
+        return self
 
     @property
     def cmd_type(self) -> CMDType:
@@ -248,13 +247,16 @@ class CMD:
 
 
 class TensorLoc:
-    def __init__(self, tensor_loc_file) -> None:
-        with open(tensor_loc_file) as r:
-            self.tensor_loc: List[CMD] = [
-                CMD(dic, index) for index, dic in enumerate(json.load(r))
-            ]
+    tensor_loc: List[CMD]
 
-        print("load loc len", len(self.tensor_loc))
+    @classmethod
+    def from_tl_file(cls, tensor_loc_file: str):
+        self = cls()
+        with open(tensor_loc_file) as r:
+            self.tensor_loc = [
+                CMD.from_tldic(dic, index) for index, dic in enumerate(json.load(r))
+            ]
+        return self
 
     def __repr__(self) -> str:
         return pformat(self.__dict__)
@@ -269,6 +271,8 @@ class TensorLoc:
 
 
 def iter_operations(op):
+    from lazy_mlir_ir import Module, OpView, FuncOp, Region, Block
+
     if isinstance(op, Module):
         for oop in op.body.operations:
             yield from iter_operations(oop)
@@ -337,16 +341,26 @@ class Location:
 
 class FinalMlirIndex:
     loc_ref_match = re.compile(r"loc\((#loc[0-9]+)\)")
+    lines: List[str]
+    attributes: Dict
+    loc: TensorLoc
+    locname2locref: dict
+    locref2locname: dict
+    locref2fileline: dict
+    fileline2locref: dict
 
-    # cmd_id -> loc_name -> loc_index -> file-line
-    def __init__(self, mlir_file, tensor_loc_file=None) -> None:
+    @classmethod
+    def from_context(cls, mlir_file, tensor_loc_file=None):
+        self = cls()
+        from .lazy_mlir_ir import ir_context, mlir_ir, parse_attribute
+
         with open(mlir_file, "r") as f:
             context = f.read()
         self.lines = lines = [i for i in context.split("\n")]
-        self.ctx = mlir.ir.Context()
-        self.ctx.allow_unregistered_dialects = True
 
-        module = mlir.ir.Module.parse(context, self.ctx)
+        ctx = ir_context
+        ctx.allow_unregistered_dialects = True
+        module = mlir_ir.Module.parse(context, ctx)
 
         attributes = module.operation.attributes
         arr_map = {}
@@ -354,15 +368,14 @@ class FinalMlirIndex:
             arr_map.update(parse_attribute(attributes[i]))
 
         self.attributes = arr_map
-        self.module = module
-        self.loc = TensorLoc(tensor_loc_file)
+        self.loc = TensorLoc.from_tl_file(tensor_loc_file)
 
         self.locname2locref = locname2locref = {}
         self.locref2locname = locref2locname = {}
         self.locref2fileline = locref2fileline = {}
         self.fileline2locref = fileline2locref = {}
 
-        self.operations = iter_operations(self.module)
+        # operations = iter_operations(module)
 
         loc_ref_match = self.loc_ref_match
         for lino, line in enumerate(lines, start=1):
@@ -378,10 +391,8 @@ class FinalMlirIndex:
                     loc_ref = match.group(1)
                     locref2fileline[loc_ref] = lino
                     fileline2locref[lino] = loc_ref
+        return self
 
     def get_locname_by_fileline(self, lino: int):
         loc_name = self.fileline2locref[lino]
         return self.locref2locname[loc_name]
-
-    def get_operations(self):
-        return iter_operations(self.module)

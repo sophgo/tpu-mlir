@@ -6,7 +6,7 @@
 # third-party components.
 #
 # ==============================================================================
-
+import pickle
 import collections
 import math
 import numpy as np
@@ -24,8 +24,9 @@ from rich.json import JSON
 from rich.table import Table
 from rich.panel import Panel
 
+from typing import Union, Tuple
 from debugger.target_common.op_support import Scalar
-from ..final_mlir import Pickled_Value, Value
+from ..final_mlir import Pickled_Value, TLValue
 from numpy_helper.npz_compare import TensorCompare as _TensorCompare
 from ..target_common import MType, ValueRef
 from ..tdb_support import (
@@ -35,7 +36,6 @@ from ..tdb_support import (
     TdbPluginCmd,
     codelike_format,
 )
-from utils.mlir_parser import MlirParser
 
 # from ..final_mlir import Value as MlirValue
 from dataclasses import dataclass
@@ -164,7 +164,7 @@ class TensorCompare(_TensorCompare):
             int8_tensor_close=True,
         )[0]
 
-    def assert_allclose(self, actual, desired):
+    def assert_allclose(self, actual: np.ndarray, desired: np.ndarray):
         from functools import partial
         from numpy.core import array_repr
 
@@ -226,14 +226,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         self.ref_data = []
         self.ref_data_from_inference = []
+        self.mlir_ref = False
         for ref_fn in tdb.reference_data_fns:
             self.ref_data_from_inference.append({})
             if ref_fn.endswith(".mlir"):
-                self.ops = MlirParser(ref_fn).collect_op_name_dict()
+                self.ops = self.collect_op_name_dict(ref_fn, tdb)
                 self.mlir_ref = True
             else:
                 self.ref_data.append(np.load(ref_fn))
-                self.mlir_ref = False
+                self.mlir_ref = False or self.mlir_ref
 
         self.tc = TensorCompare(
             cosine_similarity_tol=0.99,
@@ -253,6 +254,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.out_fixed = False
         self.is_soc = False
         self.skip_check = False
+
+    def collect_op_name_dict(self, ref_fn, tdb: TdbCmdBackend):
+        if tdb.cache_mode in {'generate', 'online'}:
+            from utils.mlir_parser import MlirParser
+            ops = MlirParser(ref_fn).collect_op_name_dict()
+            if tdb.cache_mode == 'generate':
+                with open(f"{ref_fn}.tdb_cache.ops.pickle", 'wb') as w:
+                    pickle.dump(ops, w)
+        elif tdb.cache_mode == 'offline':
+            with open(f"{ref_fn}.tdb_cache.ops.pickle", 'rb') as r:
+                ops = pickle.load(r)
+
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
@@ -433,7 +446,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 )
                 table.add_row("opcode", loc.opcode)
                 table.add_row("core_id", str(loc.core_id))
-                table.add_row("value", JSON(json.dumps(vv.value_view.value._dic)))
+                table.add_row("value", JSON(json.dumps(vv.value_view.value.raw_dict)))
                 table.add_row("tiu_dma_id (before codegen)", str(loc.tiu_dma_id_before))
                 table.add_row("tiu_dma_id (after codegen)", str(loc.tiu_dma_id_after))
                 table.add_row("compare", vv.state.flag)
@@ -479,7 +492,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def complete_ignore_failed(self, text: str, state: int) -> Union[List[str], None]:
         return ["True", "False"]
 
-    def get_ref_data(self, operand: Value):
+    def get_ref_data(self, operand: TLValue):
         for ref in self.ref_data:
             if operand.name not in ref:
                 continue
@@ -507,13 +520,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
-    def collect_infer_data(self, operand: Value, actual, desired):
+    def collect_infer_data(self, operand: TLValue, actual, desired):
         if not self.mlir_ref:
             self.collect_infer_data_from_ref(operand, actual, desired)
         else:
             self.collect_infer_data_from_mlir(operand, actual)
 
-    def collect_infer_data_from_ref(self, operand: Value, actual, desired):
+    def collect_infer_data_from_ref(self, operand: TLValue, actual, desired):
         for idx, ref in enumerate(self.ref_data):
             if operand.name not in ref:
                 continue
@@ -564,7 +577,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 self.ref_data_from_inference[idx][operand.name] = tmp.reshape(origin_shape)
             return
 
-    def cal_desired_shape(self, sliced_shape, layout):
+    def cal_desired_shape(self, sliced_shape: Tuple[int], layout: str):
         if layout in (
             "continuous_group3d",
             "eu_align_group3d",
@@ -583,7 +596,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             )
         return sliced_shape
 
-    def collect_infer_data_from_mlir(self, operand: Value, actual):
+    def collect_infer_data_from_mlir(self, operand: TLValue, actual: np.ndarray):
         if operand.name not in self.ops:
             return
 
@@ -643,9 +656,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         # this hack should only enable in multicore
         if not is_operand:
-            if value_view.file_line in self.index.tdb.global_layer_line:
-                self.index.tdb.global_layer_line[value_view.file_line] -= 1
-                if self.index.tdb.global_layer_line[value_view.file_line] != 0:
+            if value_view.file_line in self.tdb.global_layer_line:
+                self.tdb.global_layer_line[value_view.file_line] -= 1
+                if self.tdb.global_layer_line[value_view.file_line] != 0:
                     value_res = ComparedResult(value_view, None, msg="ignore")
                     return value_res
 
@@ -677,6 +690,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 )
             return ComparedResult(value_view, None, msg="ignore")
 
+        if self.tdb.cache_mode == 'generate':
+            if is_operand:
+                DataCheck.soc_values_in[point_index].append(value)
+            else:
+                DataCheck.soc_values_out.append(value)
+            return ComparedResult(value_view, None, msg="ignore")
+        # breakpoint()
         raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))
 
         if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
@@ -765,6 +785,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             return
 
         ret = self.compare(tdb, True)
+        if self.is_soc or tdb.cache_mode == 'generate':
+            raise BufferError()
+
         if not ret and self.break_when_fail:
             raise StopIteration()
 
