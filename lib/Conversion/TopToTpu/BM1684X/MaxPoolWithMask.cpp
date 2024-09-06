@@ -35,9 +35,23 @@ void MaxPoolWithMaskLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
                                           top::MaxPoolWithMaskOp op) const {
-  rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(
-      op, op->getResultTypes(), op->getOperands(), op->getAttrs());
-  // llvm_unreachable("Not Implemented");
+  std::vector<Value> operands;
+  std::vector<Type>  new_types;
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr: op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  operands.push_back(op->getOperand(0));
+
+  auto ctx = op->getContext();
+  auto builder = OpBuilder(ctx);
+  builder.setInsertionPoint(op);
+
+  for (int i = 0; i < 2; i++) {
+    auto out = op.getResult(i);
+    new_types.push_back(getQuantF16Type(out));
+  }
+  rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(op, new_types, operands, attrs);
 }
 
 void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,

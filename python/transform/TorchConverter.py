@@ -164,6 +164,7 @@ class TorchConverter(BaseConverter):
             "aten::max": lambda node: self.convert_max_op(node),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
+            "aten::max_pool2d_with_indices": lambda node: self.convert_maxpool_indices_op(node),
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mean": lambda node: self.convert_reduce_op(node, method="ReduceMean"),
             "aten::meshgrid": lambda node: self.convert_mesh_grid_op(node),
@@ -172,6 +173,8 @@ class TorchConverter(BaseConverter):
             "aten::mm": lambda node: self.convert_matmul_op(node),
             "aten::mv": lambda node: self.convert_matmul_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
+            "aten::native_group_norm": lambda node: self.convert_native_group_norm_op(node),
+            "aten::native_layer_norm": lambda node: self.convert_native_layer_norm_op(node),
             "aten::ne": lambda node: self.convert_compare_op(node, "NotEqual"),
             "aten::neg": lambda node: self.convert_neg_op(node),
             "aten::new_ones": lambda node: self.convert_new_constant_fill_op(node, 1),
@@ -239,6 +242,10 @@ class TorchConverter(BaseConverter):
             "aten::unbind": lambda node: self.convert_unbind_unpack(node),
             "aten::argmax": lambda node: self.convert_arg_op(node),
             "aten::argmin": lambda node: self.convert_arg_op(node),
+            "aten::_native_batch_norm_legit_functional": lambda node: self.convert_native_batch_norm_legit_functional(node),
+            "aten::_unsafe_view": lambda node: self.convert_reshape_op(node),
+            "aten::_softmax": lambda node: self.convert_softmax_op(node),
+            "aten::_to_copy": lambda node: self.convert_skip_op(node),
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
             "prim::DictConstruct": lambda node: self.convert_dict_construct(node),
@@ -344,11 +351,26 @@ class TorchConverter(BaseConverter):
                 raise RuntimeError(f"Unknown type {t}")
             self.input_types.append(self.TypeMap[t.lower()])
         self.output_shapes = [[]] * self.num_output
+        self.output_types = [None]* self.num_output
+
+        ### create dict for input output
+        self.input_dict = {}
+        self.output_dict = {}
+        for idx,name in enumerate(self.input_names):
+            self.input_dict[name] = [self.input_shapes[idx]]
+        for idx,name in enumerate(self.output_names):
+            self.output_dict[name] = idx
+        for name in self.output_names:
+            if name in self.input_dict:
+                input_info = self.input_dict[name]
+                idx = self.output_dict[name]
+                self.output_shapes[idx] = input_info[0]
+                # self.output_types[idx] = input_info[1]
 
     def init_MLIRImporter(self):
         # init importer
         self.mlir = MLIRImporter(self.input_shapes, self.output_shapes, self.model_name,
-                                 Platform.TORCH, self.input_types, run_mode=self.run_mode)
+                                 Platform.TORCH, self.input_types,  self.output_types,run_mode=self.run_mode)
         self.weight_file = self.mlir.weight_file
 
     def generate_list_map(self):
@@ -356,6 +378,73 @@ class TorchConverter(BaseConverter):
         for node in self.converted_nodes:
             if node.op_type == "prim::ListUnpack":
                 self.list_map[node.inputs[0]] = node.outputs
+
+    def convert_maxpool_indices_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        kernel_shape = self.const_val[torch_node.inputs[1]]
+        strides = self.const_val[torch_node.inputs[2]]
+        pads = self.const_val[torch_node.inputs[3]]
+        dilation = [1,1]
+        ceil_mode = False
+        pads = pads + pads  # the pad of torch is symmetric
+        new_op = top.MaxPoolWithMaskOp(
+            self.unranked_type,
+            self.unranked_type,
+            op,
+            kernel_shape=kernel_shape,
+            strides=strides,
+            pads=pads,
+            ceil_mode=ceil_mode,
+            loc = self.get_loc(
+                [torch_node.name + ".output", torch_node.name + ".mask"]),
+            ip=self.mlir.insert_point
+        )
+        self.addOperand(torch_node.outputs[0], new_op.output)
+        self.addOperand(torch_node.outputs[1], new_op.mask)
+
+    def convert_native_batch_norm_legit_functional(self, torch_node: TorchNode):
+        op0   = self.getOp(torch_node.inputs[0])
+        weight = self.getOp(torch_node.inputs[1])
+        bias = self.getOp(torch_node.inputs[2])
+        running_mean = self.getOp(torch_node.inputs[3])
+        running_var = self.getOp(torch_node.inputs[4])
+        training = self.const_val[torch_node.inputs[5]]
+        momentum = self.const_val[torch_node.inputs[6]]
+        eps = self.const_val[torch_node.inputs[7]]
+        new_op = top.MeanRstdOp(self.unranked_type,
+                                self.unranked_type,
+                                self.unranked_type,
+                                self.unranked_type,
+                                self.unranked_type,
+                                self.unranked_type,
+                                op0,
+                                running_mean,
+                                running_var,
+                                weight,
+                                bias,
+                                eps = eps,
+                                momentum = momentum,
+                                loc=self.get_loc(
+                                    [torch_node.name + "_mean",
+                                    torch_node.name + "_rstd",
+                                    torch_node.name + "_running_mean_update",
+                                    torch_node.name + "_running_var_update",
+                                    torch_node.name + "_scale",
+                                    torch_node.name + "_bias_new"]),
+                                ip=self.mlir.insert_point)
+        bn_out = top.ScaleOp(self.unranked_type,
+                                op0,
+                                new_op.scale,
+                                new_op.bias_new,
+                                loc=self.get_loc(torch_node.name + "_output"),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.outputs[0], bn_out)
+        self.addOperand(torch_node.outputs[1], new_op.mean)
+        self.addOperand(torch_node.outputs[2], new_op.rstd)
+        self.addOperand(torch_node.outputs[3], new_op.running_mean_update)
+        self.addOperand(torch_node.outputs[4], new_op.running_var_update)
+
+
 
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
@@ -726,15 +815,18 @@ class TorchConverter(BaseConverter):
         assert method in ("ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1",
                           "ReduceSum", "ReduceProd")
         op0 = self.getOp(torch_node.inputs[0])
-        axes = self.const_val[torch_node.inputs[1]]
-        keepdims = self.const_val[torch_node.inputs[2]]
+        axes = self.const_val[torch_node.inputs[1]] if torch_node.inputs[1] in self.const_val else [-1]
+        if len(torch_node.inputs) < 3:
+            keepdims = False
+        else:
+            keepdims = self.const_val[torch_node.inputs[2]] if torch_node.inputs[2] in self.const_val else False
         # TODO: axes are not consecutive numbers
         # TODO: axes is none
         new_op = top.ReduceOp(self.unranked_type,
                               op0,
-                              axes,
-                              keepdims,
-                              StringAttr.get(method),
+                              axes = axes,
+                              keepdims = keepdims,
+                              mode = StringAttr.get(method),
                               loc=self.get_loc(torch_node.name),
                               ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
@@ -2137,6 +2229,54 @@ class TorchConverter(BaseConverter):
                                  loc=self.get_loc(torch_node.name),
                                  ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_native_group_norm_op(self, torch_node: TorchNode):
+        innput_op = self.getOp(torch_node.inputs[0])
+        weight_op = self.getOp(torch_node.inputs[1])
+        bias_op = self.getOp(torch_node.inputs[2])
+        num_groups = self.const_val[torch_node.inputs[-2]]
+        eps = self.const_val[torch_node.inputs[-1]]
+        new_op = top.GroupNormTrainOp(self.unranked_type,
+                                      self.unranked_type,
+                                      self.unranked_type,
+                                    innput_op,
+                                    weight_op,
+                                    bias_op,
+                                    num_groups=num_groups,
+                                    eps=eps,
+                                    loc=self.get_loc([torch_node.name,
+                                                     torch_node.name + "_mean",
+                                                     torch_node.name + "_rstd"]),
+                                    ip=self.mlir.insert_point)
+        self.addOperand(torch_node.outputs[0], new_op.output)
+        self.addOperand(torch_node.outputs[1], new_op.mean)
+        self.addOperand(torch_node.outputs[2], new_op.rstd)
+
+    def convert_native_layer_norm_op(self, torch_node: TorchNode):
+        input_op = self.getOp(torch_node.inputs[0])
+        scale_op = self.getOp(torch_node.inputs[2])
+        bias_op = self.getOp(torch_node.inputs[3])
+        normalized_shape = self.const_val[torch_node.inputs[1]]
+        eps = self.const_val[torch_node.inputs[4]]
+        axis = -len(normalized_shape)
+        new_op = top.LayerNormTrainOp(self.unranked_type,
+                                    self.unranked_type,
+                                    self.unranked_type,
+                                    input_op,
+                                    scale_op,
+                                    bias_op,
+                                    normalized_shape=normalized_shape,
+                                    axis=axis,
+                                    eps=eps,
+                                    loc=self.get_loc([
+                                        torch_node.name,
+                                        torch_node.name + "_Mean",
+                                        torch_node.name + "_Rstd"
+                                    ]),
+                                    ip=self.mlir.insert_point)
+        self.addOperand(torch_node.outputs[0], new_op.output)
+        self.addOperand(torch_node.outputs[1], new_op.mean)
+        self.addOperand(torch_node.outputs[2], new_op.variance)
 
     def rzh2zrh(self, data):
         shape = data.shape

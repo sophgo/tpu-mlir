@@ -555,7 +555,8 @@ bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
         }
         int w_size =
             Arch::get_weight_lmem_bytes(ins[i], lg_info.type, eu_align);
-        // total_size += w_size;
+        if(module::getTrain())
+          total_size += w_size;
         non_weight_lmem_bytes -= w_size;
         value_size.push_back(std::make_pair(ins[i], (w_size + 63) / 64 * 64));
       } else {
@@ -2034,10 +2035,15 @@ void backward_gen_ilp_var2(
     ilp_timeStep.addOpInfo(var_pos_info.ts_id, op, buffer_size,
                            mem_size_for_load, bdc_cycle);
 
+    std::set<mlir::Operation *> used_op;
     for (OpOperand &opd : op->getOpOperands()) {
       int opd_idx = opd.getOperandNumber();
       auto in = op->getOperand(opd_idx);
       auto inOp = in.getDefiningOp();
+      if (used_op.find(inOp)!=used_op.end()) {
+        continue;
+      }
+      used_op.insert(inOp);
       if (inOp && isa<top::NoneOp>(inOp)) {
         continue;
       }

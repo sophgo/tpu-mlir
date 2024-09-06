@@ -155,6 +155,7 @@ void top::ReduceOp::shape_inference() {
     std::iota(axes->begin(), axes->end(), 0);
     fixed = true;
   }
+  std::sort(axes->begin(), axes->end());
   if (fixed) {
     Builder builder(getContext());
     setAxesAttr(builder.getI64ArrayAttr(*axes));

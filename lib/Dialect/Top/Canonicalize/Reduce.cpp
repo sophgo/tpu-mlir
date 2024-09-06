@@ -143,6 +143,7 @@ struct ReduceFusePattern : public OpRewriterPatternEx<ReduceOp> {
       new_axis[i] = offset_insert;
       offset_start = offset_insert + 1;
     }
+    std::sort(new_axis.begin(), new_axis.end());
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(new_axis)));
@@ -237,6 +238,7 @@ struct ReduceDiscontinuousPattern : public OpRewriterPatternEx<ReduceOp> {
     if (axes_val->size() == axes.size()) {
       return failure();
     }
+    std::sort(axes.begin(), axes.end());
     if (op.getKeepdims()) {
       op->setAttr("axes", rewriter.getI64ArrayAttr(axes));
     } else {

@@ -3938,7 +3938,8 @@ def Tpu_LogicalAndOp :Tpu_Op<"LogicalAnd">{
     AnyTensor:$output
   );
 }
-def Tpu_ConvbwdOp :Tpu_Op<"Convbwd">{
+def Tpu_ConvbwdOp :Tpu_Op<"Convbwd", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "convolution backward";
   let description = [{calculate grad_input,grad_weight,grad_bias of convolution operation}];
   let arguments = (ins

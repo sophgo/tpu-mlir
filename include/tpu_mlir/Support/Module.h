@@ -84,6 +84,7 @@ Chip getChip();
 void setChip(Chip chip);
 bool isChip(Chip chip);
 Mode getMode();
+bool getTrain();
 void setMode(Mode mode);
 State getState();
 void setState(State state);

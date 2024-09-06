@@ -17,6 +17,7 @@ from PIL import Image
 TypeMap = {
     'f32': np.float32,
     'si32': np.int32,
+    'f16': np.float16,
 }
 
 

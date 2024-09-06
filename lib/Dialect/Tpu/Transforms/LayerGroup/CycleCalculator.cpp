@@ -69,11 +69,20 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
     if (iter != tensor_infos.end()) {
       // module::getNCDHW(in2, N, C, D, H, W, group_type);
       auto &si = iter->second.slice_info;
-      sec_info.n_slice = std::max(si.n[0].second, (int64_t)sec_info.n_slice);
-      sec_info.h_slice = std::max(si.h[0].second, (int64_t)sec_info.h_slice);
-      sec_info.d_slice = std::max(si.d[0].second, (int64_t)sec_info.d_slice);
-      sec_info.w_slice = std::max(si.w[0].second, (int64_t)sec_info.w_slice);
-      sec_info.c_slice = std::max(si.c[0].second, (int64_t)sec_info.c_slice);
+      if(module::getTrain()){
+        // for opt3 : qichang.chen
+        sec_info.n_slice = std::max(si.n[0].second, (int64_t)sec_info.n_slice);
+        sec_info.h_slice = si.h.size() == 0 ? (int64_t)sec_info.h_slice : std::max(si.h[0].second, (int64_t)sec_info.h_slice);
+        sec_info.d_slice = si.d.size() == 0 ? (int64_t)sec_info.d_slice : std::max(si.d[0].second, (int64_t)sec_info.d_slice);
+        sec_info.w_slice = si.w.size() == 0 ? (int64_t)sec_info.w_slice : std::max(si.w[0].second, (int64_t)sec_info.w_slice);
+        sec_info.c_slice = std::max(si.c[0].second, (int64_t)sec_info.c_slice);
+      }else{
+        sec_info.n_slice = std::max(si.n[0].second, (int64_t)sec_info.n_slice);
+        sec_info.h_slice = std::max(si.h[0].second, (int64_t)sec_info.h_slice);
+        sec_info.d_slice = std::max(si.d[0].second, (int64_t)sec_info.d_slice);
+        sec_info.w_slice = std::max(si.w[0].second, (int64_t)sec_info.w_slice);
+        sec_info.c_slice = std::max(si.c[0].second, (int64_t)sec_info.c_slice);
+      }
     }
   }
 

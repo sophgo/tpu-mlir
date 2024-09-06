@@ -4341,7 +4341,6 @@ public:
   }
 };
 
-
 class SplitMixedQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   SplitMixedQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
@@ -4405,6 +4404,8 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp op,
                                     PatternRewriter &rewriter) const override {
+    if(! module::isBM1690Family())
+      return failure();
     auto attr = op.parseParam();
     auto grad_weight_enable = op.getGradWeightEnable();
     if (!grad_weight_enable){
@@ -4442,7 +4443,20 @@ public:
         new_types.push_back(out.getType());
       }
     }
-    rewriter.replaceOpWithNewOp<tpu::ConvbwdOp>(op, new_types, operands, op.getOperation()->getAttrs());
+    auto module_fp16 = module::getMode() == module::Mode::F16;
+    auto new_convbwd_op = rewriter.create<tpu::ConvbwdOp>(op.getLoc(), new_types, operands, op->getAttrs());
+    if(module_fp16){
+      auto op_name  = module::getName(op.getResult(1));
+      auto cast_loc = NameLoc::get(rewriter.getStringAttr( op_name.str() + "cast_grad_weight"));
+      auto cast_type = RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
+      auto cast_op = rewriter.create<tpu::CastOp>(cast_loc, cast_type, ValueRange{new_convbwd_op.getResult(1)});
+      rewriter.replaceAllUsesWith(op.getResult(0), new_convbwd_op.getResult(0));
+      rewriter.replaceAllUsesWith(op.getResult(1), cast_op.getResult());
+      rewriter.replaceAllUsesWith(op.getResult(2), new_convbwd_op.getResult(2));
+      rewriter.eraseOp(op);
+    }else{
+      rewriter.replaceOp(op, new_convbwd_op.getResults());
+    }
     // update func result type
     module::updateModuleTypes();
     return success();
@@ -4633,6 +4647,7 @@ private:
   }
 };
 
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -4680,7 +4695,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ConvMergeRequant,
                 CastGradWeight,
                 RemoveReshape,
-                MoveReshapeInSubGraphPattern
+                MoveReshapeInSubGraphPattern,
+                MatMulRequantIntFusion,
+                RemoveReshape
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on

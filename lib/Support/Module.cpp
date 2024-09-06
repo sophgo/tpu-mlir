@@ -1054,6 +1054,13 @@ Mode getMode() {
   return symbolizeMode(s).value_or(Mode::F32);
 }
 
+bool getTrain() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::TRAIN)) {
+    return m->getAttrOfType<BoolAttr>(Attr::TRAIN).getValue();
+  }
+  return false;
+}
+
 bool isBF16Modes() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   auto mode = symbolizeMode(s).value_or(Mode::F32);

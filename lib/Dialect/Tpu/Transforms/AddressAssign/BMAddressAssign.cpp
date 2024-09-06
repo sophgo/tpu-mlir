@@ -924,6 +924,12 @@ void BMAddressAssign::updateLiveRangeofBMOps(
   if (isa<top::InputOp>(op)) {
     // liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
     // updateOperandsLiveRange(op, endPosition);
+    if(module::getTrain()){
+      liveRange[v].start = 0;
+      liveRange[v].end = 0x0FFFFFFF;
+      liveRange[v].tensor_size =
+          getTensorGmemSize(op, v.index, alignment);
+    }
     common_ops.emplace_back(v);
   } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
                  tpu::YieldOp>(op) ||

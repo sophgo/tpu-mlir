@@ -417,7 +417,7 @@ if __name__ == '__main__':
                         help="whether layer groups force group by cores")
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
-    parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
+    parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'],
                         help="set address assign mode, if not set, auto as default")

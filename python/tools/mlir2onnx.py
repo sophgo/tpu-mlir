@@ -114,6 +114,8 @@ def create_middle_tvis(parser):
     midldle_ops = parser.get_middle_op_names_n_shape_type()
     tvis = []
     for op_name in midldle_ops:
+        if str(midldle_ops[op_name]) == "none":
+            continue
         mlir_type = midldle_ops[op_name].element_type
         shape = [midldle_ops[op_name].get_dim_size(i) for i in range(midldle_ops[op_name].rank)]
         tvi = helper.make_tensor_value_info(op_name, type_map(mlir_type), shape)
