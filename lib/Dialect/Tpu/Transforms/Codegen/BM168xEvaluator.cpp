@@ -406,27 +406,27 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   int nstride = cslice * cstride;
   int hstride = wslice;
   const int npu_num = BM168x::NPU_NUM;
-  // save local data of shape (n, d, c, h, w) as shape (n, c, d, h, w)
+  // save local data of shape (d, n, c, h, w) as shape (n, c, d, h, w)
   for (int n = 0; n < nslice; ++n) {
     for (int d = 0; d < dslice; ++d) {
       for (int c = 0; c < cslice; ++c) {
+        int offset = ((((n + nidx) * C + (c + cidx)) * D + (d + didx)) * H + hidx) * W;
+        int loc_offset = (d * nslice + n) * nstride + (c / npu_num) * cstride;
         if (wslice == W && !type.isInteger(4)) {
-          const int offset = ((((n + nidx) * C + (c + cidx)) * D + (d + didx)) * H + hidx) * W;
-          const int loc_offset = (n * dslice + d) * nstride + (c / npu_num) * cstride;
           void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset * type_size);
           assert((offset + hslice * wslice) * type_size <= mem->size());
           std::memcpy(mem->data() + offset * type_size, ptr, hslice * wslice * type_size);
         } else {
           for (int h = 0; h < hslice; ++h) {
-            const int offset = ((((n + nidx) * C + (c + cidx)) * D + (d + didx)) * H + (h + hidx)) * W + widx;
-            const int loc_offset = (n * dslice + d) * nstride + (c / npu_num) * cstride + h * hstride;
+            int offset_h = offset + h * W + widx;
+            int loc_offset_h = loc_offset + h * hstride;
             if (!type.isInteger(4)) {
-              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset * type_size);
-              assert((offset + wslice) * type_size <= mem->size());
-              std::memcpy(mem->data() + offset * type_size, ptr, wslice * type_size);
+              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset_h * type_size);
+              assert((offset_h + wslice) * type_size <= mem->size());
+              std::memcpy(mem->data() + offset_h * type_size, ptr, wslice * type_size);
             } else {
-              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset / 2);
-              int8_t* data_ptr = mem->data() + offset;
+              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset_h / 2);
+              int8_t* data_ptr = mem->data() + offset_h;
               auto count = module::getNumElements(v);
               for (auto i = 0; i < count; ++i) {
                 data_ptr[i] = get_4bit(ptr, i);
