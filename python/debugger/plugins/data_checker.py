@@ -652,7 +652,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         context = self.tdb.context
         memref = value.get_memref(context)
         # only used for pcie mode
-        if not self.is_soc and not context.memory.using_cmodel:
+        if not self.is_soc and not context.using_cmodel:
             if memref.mtype != MType.G and memref.mtype != MType.R:
                 value_res = ComparedResult(value_view, None, msg="ignore")
                 return value_res
@@ -660,7 +660,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         cmd = self.tdb.cmditer[point_index]
 
         # used for bmodel_inference_combine at CMODEL mode
-        if self.skip_check:
+        if context.using_cmodel and self.skip_check:
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
 
