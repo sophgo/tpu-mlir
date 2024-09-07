@@ -28,7 +28,7 @@ bool isF16toF32(tpu::CastOp op) {
   return isF32(op.getOutput()) && isF16(op.getInput());
 }
 
-std::vector<int64_t> string2vec(std::string slist) {
+static inline std::vector<int64_t> string2vec(std::string slist) {
   std::vector<int64_t> outvec;
   std::string idx_str = "";
   for (auto s : slist) {

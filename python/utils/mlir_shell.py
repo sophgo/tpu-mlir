@@ -174,6 +174,8 @@ def mlir_to_model(tpu_mlir: str,
                   model_version: str = "",
                   count_patterns: bool = False,
                   compress_mode: str = "none",
+                  future_update_rank: int = 0,
+                  future_update_list: str = "",
                   debug_cmd: str = "",log_level:str = "normal"):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
@@ -188,6 +190,7 @@ def mlir_to_model(tpu_mlir: str,
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     distribute_param = f"--dev-parallel"
     parallel_param = f"--core-parallel"
+    future_update_param = '--future-update="rank={} weight_list={}"'.format(future_update_rank, future_update_list)
 
     op_divide_param = ""
     if op_divide:
@@ -222,6 +225,7 @@ def mlir_to_model(tpu_mlir: str,
         op_divide_param,
         subnet_param,
         "--op-reorder",
+        future_update_param,
         lg_param,
         parallel_param,
         address_assign_param,

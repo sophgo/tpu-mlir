@@ -154,6 +154,7 @@ RankedTensorType getTypeLike(Value v, llvm::ArrayRef<int64_t> shape);
 
 void setShape(Value v, llvm::ArrayRef<int64_t> shape);
 llvm::ArrayRef<int64_t> getShape(Value v);
+std::vector<int64_t> getShapeVec(Value v);
 void getGlobalShape(Value v, int *shape, int dim = 4);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape);
 void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int *shape);
