@@ -124,6 +124,8 @@ class DeployTool:
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
         self.enable_maskrcnn   = args.enable_maskrcnn
+        self.future_update_rank = args.future_update_rank
+        self.future_update_list = args.future_update_list
 
     def cleanup(self):
         file_clean()
@@ -312,7 +314,8 @@ class DeployTool:
                                      self.quant_output_list, self.disable_layer_group, self.opt,
                                      self.merge_weight, self.op_divide, self.embed_debug_info,
                                      self.group_by_cores, self.model_version,
-                                     True if self.patterns_count else False, self.compress_mode)
+                                     True if self.patterns_count else False, self.compress_mode,
+                                     self.future_update_rank, self.future_update_list)
             if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
                     self.model, self.model_npz):
                 tool.validate_model()
@@ -451,6 +454,11 @@ if __name__ == '__main__':
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
                         help="enable maskrcnn")
+    # ========== Future Update Options ==============
+    parser.add_argument("--future_update_rank", default=0, type=int,
+                        help="the rank of matmul, when use the pass of future-update")
+    parser.add_argument("--future_update_list", default="", type=str,
+                        help="the idx list of weight, when use the pass of future-update, suck as 1,2,3")
 
     # yapf: enable
     args = parser.parse_args()

@@ -12,6 +12,17 @@
 
 include "mlir/Pass/PassBase.td"
 
+def FutureUpdate : Pass<"future-update", "ModuleOp"> {
+  let summary = "add some op for updating in future";
+  let constructor = "createFutureUpdatePass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"rank", "rank", "int64_t", /*default=*/"0",
+           "lora rank">,
+    Option<"weight_list", "weight_list", "std::string", /*default=*/"\"none\"", "which weight to update">,
+  ];
+}
+
 def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let summary = "op reorder in tpu by tpuc-opt";
   let constructor = "createOpReorderPass()";

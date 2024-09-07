@@ -416,6 +416,12 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   }
 }
 
+std::vector<int64_t> getShapeVec(Value v) {
+  llvm::ArrayRef<int64_t> shape = getShape(v);
+  std::vector<int64_t> shapeV(shape.begin(), shape.end());
+  return shapeV;
+}
+
 void setShape(Value v, llvm::ArrayRef<int64_t> shape) {
   auto newType = RankedTensorType::get(shape, getElementType(v));
   v.setType(newType);
