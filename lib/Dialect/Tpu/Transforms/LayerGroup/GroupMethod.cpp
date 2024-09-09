@@ -55,7 +55,8 @@ static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
       return true;
     }
     if (auto layernorm_op = dyn_cast<LayerNormOp>(op)) {
-      if (module::getShape(layernorm_op.getInput()).size() == 5) {
+      auto in_shape = module::getShape(layernorm_op.getInput());
+      if (in_shape.size() == 5 && in_shape[1] > in_shape[3]) {
         return true;
       }
     }
