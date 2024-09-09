@@ -153,6 +153,18 @@ class MemoryBase:
     def __init__(self):
         self.CPU_MEM = {}
 
+    def _load_local_mem(self, index):
+        pass
+
+    def _set_local_mem(self, mem, index):
+        pass
+
+    def set_neuron_size(self, size):
+        pass
+
+    def set_coeff_size(self, size):
+        pass
+
     def clear_memory(self):
         raise NotImplementedError()
 

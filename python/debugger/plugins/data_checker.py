@@ -164,7 +164,7 @@ class TensorCompare(_TensorCompare):
             int8_tensor_close=True,
         )[0]
 
-    def assert_allclose(self, actual: np.ndarray, desired: np.ndarray):
+    def assert_allclose(self, actual: np.ndarray, desired: np.ndarray, dump_mode: DumpMode):
         from functools import partial
         from numpy.core import array_repr
 
@@ -190,24 +190,34 @@ class TensorCompare(_TensorCompare):
                 max_line_width=get_console().size.width,
             )
             msg.append("top10_diff:")
-            msg.extend(
-                f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items()
-            )
-            msg.extend(
-                (
-                    "0:10_data:",
-                    f" x: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
-                    f" y: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
-                )
-            )
+            msg.extend(f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items())
+            msg.extend((
+                "0:10_data:",
+                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+            ))
             try:
-                np.testing.assert_allclose(
-                    actual, desired, rtol=1e-3, atol=1e-1, verbose=False
-                )
+                np.testing.assert_allclose(actual, desired, rtol=1e-3, atol=1e-1, verbose=False)
             except AssertionError as e:
                 msg.append(str(e))
 
-            return cmp_res, "\n".join(msg)
+            msg = "\n".join(msg)
+        elif dump_mode == DumpMode.ALL:
+            header = ("Succeed comparasion: " + f"cos={self.cosine_similarity_tol}" +
+                      f", euc={self.euclidean_similarity_tol}")
+            msg = ["\n" + header, ""]
+            r_func = partial(
+                array_repr,
+                precision=6,
+                max_line_width=get_console().size.width,
+            )
+            msg.extend((
+                "0:10_data:",
+                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+            ))
+            msg = "\n".join(msg)
+
         return cmp_res, msg
 
 
@@ -245,7 +255,6 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         # loc_index ->
         self.reports: Dict[int, List[ComparedResult]] = {}
         self.index_record: Dict[int, List[ComparedResult]] = {}
-        self.compare_all = False
         self.break_when_fail = False
 
         self.failed_results_fn = "failed_bmodel_outputs.npz"
@@ -280,6 +289,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     def after_load(self, tdb: TdbCmdBackend):
         self.index: FinalMlirIndexPlugin = tdb.get_plugin(FinalMlirIndexPlugin)
+        self.reports.clear()
+        self.index_record.clear()
 
         self._failed_tensor = None
         self.tdb.message(f"dump mode = {self.dump_mode}")
@@ -309,8 +320,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 w.write("\n".join(failed_names))
                 self.tdb.message(f"failed value name list are saved in {arg}.txt")
 
-    def do_all(self, arg):
-        self.compare_all = True
+    def do_dump_mode(self, arg: str):
+        mode = DumpMode.__members__.get(arg, None)
+        if mode is not None:
+            self.dump_mode = mode
+            self.tdb.message(f"enable {mode}")
+        else:
+            self.tdb.message(f"Unknown dump mode {arg}, support {DumpMode._member_names_}")
 
     def reduce_summary(self):
         summary: Dict[int, List[List[str]]] = {}
@@ -454,7 +470,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                     "value type",
                     f"{'operand' if vv.value_view.is_operand else 'result'}",
                 )
-                if vv.state == CmpState.Fail:
+                if vv.state == CmpState.Fail or self.dump_mode == DumpMode.ALL:
                     err_msg = Panel(vv.msg, title="data-error", style="red")
                     asm_codes = Panel(
                         codelike_format(
@@ -494,10 +510,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     def get_ref_data(self, operand: TLValue):
         for ref in self.ref_data:
-            if operand.name not in ref:
+            name = operand.name
+            if name not in ref and name.startswith("load_"):
+                name = name.replace("load_", "")
+            if name not in ref:
                 continue
             reshape = operand.reshape
-            ref_data = ref[operand.name]
+            ref_data = ref[name]
 
             if reshape:
                 reshape = eval(reshape[1:-1].replace("x", ","))  # '1,3,1,192,1024'
@@ -714,7 +733,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 self.failed_tensor[f"{name}_actual"] = actual
         else:
             actual = actual.reshape(desired.shape)
-            cmp_res, msg = list(self.tc.assert_allclose(actual, desired))
+            cmp_res, msg = list(self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode))
 
             value_res = ComparedResult(
                 value_view,
@@ -806,3 +825,33 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             self.failed_tensor.close()
         return super().after_stop(tdb)
+
+
+class CheckLMem(TdbPlugin):
+    name = 'check-lmem'
+
+    def __init__(self, tdb: TdbCmdBackend) -> None:
+        super().__init__(tdb)
+        self.RET = []
+
+    def before_step(self, tdb: TdbCmdBackend):
+        self.store(tdb)
+
+    def after_step(self, tdb: TdbCmdBackend):
+        self.store(tdb)
+
+    def store(self, tdb: TdbCmdBackend):
+        import ctypes
+        import platform
+        from debugger.target_1688.device_rt import DeviceRunner
+        runner: DeviceRunner = tdb.runner
+        runner.lib.memcpy_l2s(
+            runner.runner_p,
+            runner.memory.LMEM[0].ctypes.data_as(ctypes.c_void_p),
+        )
+        self.RET.append([str(tdb.get_cmd()), tdb.cmd_point, runner.memory.LMEM[0].copy()])
+
+        if tdb.cmd_point == 11:
+            with open(f"{platform.machine()}.npz",'wb') as w:
+                pickle.dump(self.RET, w)
+            raise StopIteration()

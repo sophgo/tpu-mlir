@@ -11,17 +11,14 @@ import os
 import pickle
 from debugger.plugins.data_checker import DataCheck, DumpMode
 from tdb import TdbInterface
+from debugger.tdb_support import commom_args
 import argparse
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Verify the correctness of BModel using reference data.")
-    parser.add_argument(
-        "context_dir",
-        default="./",
-        help="The folder should contain the BModel, its input_data, and tensor_location files.",
-    )
+    commom_args(parser)
     parser.add_argument(
         "reference_data",
         help="The reference data used for checking this BModel.",
@@ -40,31 +37,12 @@ def main():
         default="failed_bmodel_outputs.npz",
         help="bmodel inference result",
     )
-    parser.add_argument(
-        "--cache_mode",
-        choices=['online', 'generate', 'offline'],
-        default='online',
-    )
+
     parser.add_argument("--fail_fast",
                         action="store_true",
                         help="Stop if there is a check failure.")
     parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
-    parser.add_argument(
-        "--ddr_size",
-        type=int,
-        nargs="?",
-        default=2**32,
-        help="The inputs data of the BModel.",
-    )
     parser.add_argument("--quiet", action="store_true", default=False, help="disable progress bar")
-    parser.add_argument(
-        "--run_by_atomic",
-        action="store_true",
-        default=False,
-        help="whether run by atomic cmds, set False as default which means run_by_op. \
-              This option only effect PCIE and SOC mode, disable this may decrease time cost,\
-              but may have timeout error when an op contain too many atomic cmds. ",
-    )
 
     parser.add_argument("--no_interactive", action="store_true")
     parser.add_argument("--dump_dataframe", action="store_true")
@@ -105,15 +83,14 @@ if __name__ == "__main__":
         reference_data_fn=reference_data_fn,
         extra_plugins=extra_plugins,
         extra_check=[],
-        ddr_size=args.ddr_size,
-        fast_checker=not args.run_by_atomic,
+        args=args,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     if args.fail_fast:
         plugin.break_when_fail = True
     plugin.set_tol(cosine_similarity_tol=cos_t, euclidean_similarity_tol=euc_t)
-    tdb.cache_mode = args.cache_mode
-    if args.cache_mode == 'generate':
+
+    if tdb.cache_mode == 'generate':
         args.no_interactive = True
         tdb.message(" ** close interactive for open cache mode **")
 

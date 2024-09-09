@@ -13,6 +13,7 @@ import numpy as np
 from typing import Dict, Tuple, List, Type
 from .decoder import DecoderBase
 from .op_support import atomic_reg, MType, Target, BaseTpuCmd
+import platform
 
 
 class BModelContext:
@@ -26,7 +27,12 @@ class BModelContext:
     tiu_sys: atomic_reg = None
 
     def __init__(self) -> None:
-        self.using_cmodel = eval(os.environ.get("USING_CMODEL", "True"))
+        self.using_cmodel = eval(
+            os.environ.get("USING_CMODEL", "True"))
+
+        if platform.machine() == 'aarch64':
+            self.using_cmodel = False
+
         self._runner: Runner = None
 
     @staticmethod

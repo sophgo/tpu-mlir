@@ -509,7 +509,9 @@ The main parameters of ``bmodel_checker`` are described as follows:
    * - no_interactive
      - N
      - After running bmodel_checker, it exits TDB mode directly
-
+   * - cache_mode
+     - No
+     - Cache mode, with three options: online, offline, generate. Default is online.
 
 To use ``bmodel_checker`` you need to enter the Context directory, as shown in the following example:
 
@@ -561,4 +563,14 @@ Where ``index`` is the index of the data output by the ``check data [file-line]`
 An example of comparison error data is shown below:
 
 .. figure:: ../assets/tdb_check_data_3.png
+
+
+**SOC Devices**
+
+When executing on SOC devices, in order to perform comparisons without introducing an mlir dependency, it is necessary to first generate a cache within a Docker environment. Subsequently, the cached model can be used for comparison in the SOC device environment.
+
+.. code-block:: shell
+
+   $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --cache_mode generate # on docker
+   $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --cache_mode offline # on soc
 

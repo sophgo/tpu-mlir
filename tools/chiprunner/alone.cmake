@@ -15,8 +15,15 @@ link_directories($ENV{LIBSOPHON_ROOT}/tpu-runtime/build_thirdparty/lib)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 set(CMAKE_BUILD_TYPE Debug)
 
-# Add the atomic_exec library
-add_library(atomic_exec SHARED ./atomic_exec.cpp)
+add_library(atomic_exec_aarch64 SHARED ./atomic_exec.cpp)
+target_link_libraries(atomic_exec_aarch64 PRIVATE bmlib)
 
-# Link the bmlib library
-target_link_libraries(atomic_exec PRIVATE bmlib)
+add_library(atomic_exec_bm1688_aarch64 SHARED ./atomic_exec_bm1688.cpp)
+target_link_libraries(atomic_exec_bm1688_aarch64 PRIVATE bmlib)
+
+
+add_executable(
+  atomic_exec_test_bm1688
+  atomic_exec_bm1688.cpp
+)
+target_link_libraries(atomic_exec_test_bm1688 bmlib pthread dl)

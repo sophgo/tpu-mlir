@@ -48,6 +48,9 @@ function use_chip(){
     export USING_CMODEL=False
     export LD_LIBRARY_PATH=$CHIP_LD_LIBRARY_PATH
 }
+function use_chip_cmodel(){
+    export USING_CMODEL=False
+}
 function use_8ch(){
     export CMODEL_GLOBAL_MEM_SIZE=137438953472
     export USING_8CH=1
@@ -64,11 +67,19 @@ export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
 export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
 function rebuild_atomic_exec_alone(){
     export ATOMIC_EXEC_ALONE=1
-    pushd ./bindings/chiprunner/
+    pushd $PROJECT_ROOT/tools/chiprunner/
     rm -rf build
     mkdir build && cd build
     cmake ..
     make -j
     popd
+    file $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_aarch64.so
+    cp $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_aarch64.so $PROJECT_ROOT/third_party/atomic_exec/libatomic_exec_aarch64.so
+    cp $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_aarch64.so $PROJECT_ROOT/install/lib/libatomic_exec_aarch64.so
+
+    file $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_bm1688_aarch64.so
+    cp $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_bm1688_aarch64.so $PROJECT_ROOT/third_party/atomic_exec/libatomic_exec_bm1688_aarch64.so
+    cp $PROJECT_ROOT/tools/chiprunner/build/libatomic_exec_bm1688_aarch64.so $PROJECT_ROOT/install/lib/libatomic_exec_bm1688_aarch64.so
     unset ATOMIC_EXEC_ALONE
 }
+

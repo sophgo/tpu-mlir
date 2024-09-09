@@ -11,6 +11,7 @@ from debugger.tdb_support import (
     TdbCmdBackend,
     TdbStatus,
     BreakpointStop,
+    commom_args,
     add_callback,
 )
 import os
@@ -196,13 +197,7 @@ def parse_args(args=None):
     import argparse
 
     parser = argparse.ArgumentParser(description="TPU Debugger.")
-    parser.add_argument(
-        "context_dir",
-        type=str,
-        default="./",
-        nargs="?",
-        help="The path of BModel.",
-    )
+    commom_args(parser)
     parser.add_argument(
         "--inputs",
         type=str,
@@ -229,13 +224,7 @@ def parse_args(args=None):
         action="store_true",
         help="to keep all intermediate files for debug",
     )
-    parser.add_argument(
-        "--ddr_size",
-        type=int,
-        nargs="?",
-        default=2**32,
-        help="The ddr_size of cmodel.",
-    )
+
     parser.add_argument(
         "--quiet", action="store_true", default=False, help="disable progress bar"
     )
@@ -285,7 +274,7 @@ def get_tdb(args=None):
         input_data_fn=input_data_fn,
         reference_data_fn=reference_data_fn,
         extra_plugins=extra_plugins,
-        ddr_size=args.ddr_size,
+        args=args,
     )
     return tdb
 
