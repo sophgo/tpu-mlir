@@ -525,6 +525,9 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
    * - no_interactive
      - 否
      - 运行完 bmodel_checker 会直接退出 TDB 模式
+   * - cache_mode
+     - 否
+     - 缓存模式，有 online, offline, generate 三种选项，默认为 online
 
 
 使用 ``bmodel_checker`` 需要进入 Context 目录，使用示例如下：
@@ -534,7 +537,6 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
    $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz
    $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --fail_fast
    $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --tolerance 0.99,0.90
-
 
 执行 ``bmodel_checker`` 命令后，会输出检查报告，并将错误的输出结果保存到 ``failed_bmodel_outputs.npz`` 文件中，下面对检查报告进行说明：
 
@@ -578,3 +580,12 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 .. figure:: ../assets/tdb_check_data_3.png
 
+
+**SOC 设备**
+
+当在 SOC 设备上执行时，为了在不引入 mlir 依赖的情况下执行比对，需要先在 Docker 环境内生成缓存，随后在 SOC 设备环境下使用缓存模型比对模型。
+
+.. code-block:: shell
+
+   $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --cache_mode generate # on docker
+   $ bmodel_checker ./ ../yolov5s_bm1684x_f32_tpu_outputs.npz --cache_mode offline # on soc

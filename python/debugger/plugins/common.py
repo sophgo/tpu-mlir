@@ -6,12 +6,13 @@
 # third-party components.
 #
 # ==============================================================================
+import re
 from collections import OrderedDict
 import collections
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 import pickle
-
+import os
 from rich.progress import (
     Progress as Progressbar,
     TimeRemainingColumn,
@@ -41,6 +42,13 @@ from ..tdb_support import (
 from ..target_1688.context import BM1688Context
 from ..target_1690.context import BM1690Context
 from ..target_2380.context import SG2380Context
+
+_invalid_fc = r"[+?@#$&%*()=;|,<>: +" r"\^\/\t\b\[\]\"]+"
+
+
+def to_filename(basename):
+    """Replace invalid characters in a basename with an underscore."""
+    return re.sub(_invalid_fc, "_", basename)
 
 
 def max_with_none(*args):
@@ -374,6 +382,10 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
     name = "print"
     func_names = ["p", "print"]
 
+    def __init__(self, tdb: TdbCmdBackend) -> None:
+        super().__init__(tdb)
+        self.dump_all = False
+
     def do_in(self, arg):
         try:
             cmd = self.tdb.get_cmd()
@@ -491,6 +503,65 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         except (IndexError, SyntaxError, ValueError) as e:
             self.tdb.error(e)
 
+    def after_step(self, tdb: TdbCmdBackend):
+        if self.dump_all:
+            self.dump_current()
+
+        # from debugger.target_1688.regdef import DMA_tensor_0x000__reg
+        # if tdb.cmd_point > 1 and isinstance(tdb.get_precmd().reg, DMA_tensor_0x000__reg):
+        #     cmd = tdb.get_precmd()
+        #     ipt = tdb.memory.get_data(cmd.operands[0].to_ref(core_id=cmd.core_id))
+        #     opt = tdb.memory.get_data(cmd.results[0].to_ref(core_id=cmd.core_id))
+        #     if not (ipt == opt).all():
+        #         breakpoint()
+        #     else:
+        #         tdb.message("succeed dma ops")
+
+    def dump_current(self):
+        if self.tdb.context.using_cmodel:
+            filename = f"info_dump_{self.tdb.cmd_point}_cmodel.npz"
+        else:
+            filename = f"info_dump_{self.tdb.cmd_point}_device.npz"
+
+        datas = {}
+        try:
+            cmd = self.tdb.get_cmd()
+            if cmd.cmd_type == CMDType.cpu:
+                data = self.tdb.memory.get_cpu_data(cmd.cmd_id)
+                for i, d in enumerate(data):
+                    datas[i] = d
+            elif cmd.cmd_type.is_static():
+                for i, result in enumerate(cmd.operands):
+                    data = self.tdb.memory.get_data(result.to_ref(core_id=cmd.core_id))
+                    datas[f"i_{i}"] = data
+            else:
+                self.tdb.error("")
+                return
+        except StopIteration:
+            self.tdb.message("no cmd pre.")
+
+        try:
+            cmd = self.tdb.get_precmd()
+            if cmd.cmd_type == CMDType.cpu:
+                data = self.tdb.memory.get_cpu_data(cmd.cmd_id)
+                for i, d in enumerate(data):
+                    datas[i] = d
+            elif cmd.cmd_type.is_static():
+                for i, result in enumerate(cmd.results):
+                    data = self.tdb.memory.get_data(result.to_ref(core_id=cmd.core_id))
+                    datas[f"o_{i}"] = data
+            else:
+                self.tdb.error("")
+                return
+        except StopIteration:
+            self.tdb.message("no cmd pre.")
+
+        np.savez(filename, datas)
+        self.tdb.message(f"dump in {filename}")
+
+    def do_dump_current(self, args):
+        self.dump_current()
+
     def after_start(self, tdb: TdbCmdBackend):
         try:
             tdb.message(tdb.get_cmd())
@@ -502,6 +573,36 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
             tdb.message(tdb.get_cmd())
         except StopIteration:
             pass
+
+    def do_dump_all(self, args):
+        args_ = args.upper().strip()
+        if args_ in {"TRUE", "FALSE"}:
+            self.dump_all = args_ == 'TRUE'
+            self.tdb.message(f"dump_all = {self.dump_all}")
+        else:
+            self.tdb.error(f"should use TRUE(true, True) or FALSE(False, false), got {args}")
+
+    def do_replace_lmem(self, args):
+        if not os.path.exists(args):
+            self.tdb.message(f"not found {args} in working directory :{os.getcwd()}")
+            return
+
+        cmodel_lmem = np.load(args, allow_pickle=True)["mem"].view(np.float32)
+
+        self.tdb.memory._set_local_mem(cmodel_lmem, 0)
+        self.tdb.message("replace succeed")
+
+    def do_dump_lmem(self, args="0"):
+        self.tdb.runner.memory._load_local_mem(0)
+        mem = self.tdb.runner.memory.LMEM[0]
+        print(mem)
+        if self.tdb.context.using_cmodel:
+            filename = f"dump_lmem_{self.tdb.cmd_point}_cmodel.npz"
+        else:
+            filename = f"dump_lmem_{self.tdb.cmd_point}_device.npz"
+
+        np.savez(filename, **{'mem': mem})
+        self.tdb.message(f"dump {filename}.")
 
 
 class ProgressPlugin(TdbPlugin):

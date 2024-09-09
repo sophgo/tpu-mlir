@@ -6,8 +6,9 @@
 # third-party components.
 #
 # ==============================================================================
+from argparse import ArgumentParser, Namespace
 import collections
-from typing import List, Union, Dict, NamedTuple, Type
+from typing import List, Union, Dict, NamedTuple, Type, Optional
 from functools import partial
 import re
 import os
@@ -160,6 +161,37 @@ def complete_file(self, text: str, line, begidx, endidx):
     return [f"{f}" for f in os.listdir(head) if f.startswith(tail)]
 
 
+def commom_args(parser: ArgumentParser):
+    parser.add_argument(
+        "context_dir",
+        type=str,
+        default="./",
+        nargs="?",
+        help="The path of BModel.",
+    )
+    parser.add_argument(
+        "--cache_mode",
+        choices=['online', 'generate', 'offline'],
+        default='online',
+    )
+    parser.add_argument(
+        "--run_by_atomic",
+        action="store_true",
+        default=False,
+        help="whether run by atomic cmds, set False as default which means run_by_op. \
+              This option only effect PCIE and SOC mode, disable this may decrease time cost,\
+              but may have timeout error when an op contain too many atomic cmds. "                                                                                   ,
+    )
+
+    parser.add_argument(
+        "--ddr_size",
+        type=int,
+        nargs="?",
+        default=2**32,
+        help="The ddr_size of cmodel.",
+    )
+
+
 class TdbCmdBackend(cmd.Cmd):
     def __init__(
         self,
@@ -167,18 +199,20 @@ class TdbCmdBackend(cmd.Cmd):
         final_mlir_fn: str = None,
         tensor_loc_file: str = None,
         input_data_fn: str = None,
-        reference_data_fn: List[str] = None,
+        reference_data_fn: Optional[List[str]] = None,
         extra_plugins: List[str] = [],
         extra_check: List[str] = [],
         completekey="tab",
         stdin=None,
         stdout=None,
-        ddr_size=2**32,
-        fast_checker=False,
         is_soc=False,  # this option is valid only when USING_CMODEL = False
-        cache_mode="online",
+        args=None,
     ):
         super().__init__(completekey, stdin, stdout)
+        if isinstance(args, Namespace):
+            args = args.__dict__
+        args = dict(args)
+        assert args is not None
         self.bmodel_file = bmodel_file
         self.final_mlir_fn = final_mlir_fn
         self.tensor_loc_file = tensor_loc_file
@@ -188,16 +222,18 @@ class TdbCmdBackend(cmd.Cmd):
         elif isinstance(reference_data_fn, str):
             reference_data_fn = [reference_data_fn]
         self.reference_data_fns = reference_data_fn
-        self.ddr_size = ddr_size
+        self.ddr_size: int = args.get("ddr_size", 2**32)
         self.status = TdbStatus.UNINIT
         builtins.tdb = self
-        self.fast_checker = fast_checker
+        self.run_by_atomic: bool = args.get("run_by_atomic", False)
+        self.fast_checker = not self.run_by_atomic
         self.fast_checker_enabled = False
         self.is_soc = is_soc
-        self.cache_mode = cache_mode
-
+        self.cache_mode: str = args.get("cache_mode", "online")
+        self.args = args
         # should be import locally to avoid circular import
         from .static_check import Checker
+
 
         # initialize registered plugins
         from . import plugins as _
@@ -235,7 +271,8 @@ class TdbCmdBackend(cmd.Cmd):
 
     @add_callback("load")
     def _reset(self):
-        self._load_bmodel()
+        self._load_cmds()
+        self._load_runner()
         self._load_data()
 
         self.status = TdbStatus.IDLE
@@ -248,26 +285,29 @@ class TdbCmdBackend(cmd.Cmd):
                 "or use `info progress` to show progress information."
             )
 
-    def _load_bmodel(self):
+    def _load_cmds(self):
         bmodel_file = self.bmodel_file
         if bmodel_file is None:
             raise Exception("Nothing to debug.")
         bmodel = BModel(bmodel_file)
         self.message(f"Load {bmodel_file}")
-        context = bmodel.context
+        self.context = bmodel.context
         self.bmodel = bmodel
-        self.message(f"Load {context.device.name} backend")
+        self.message(f"Load {self.context.device.name} backend")
         self.atomic_mlir = BModel2MLIR(bmodel)
         self.cmditer = self.atomic_mlir.create_cmdlist()
-        # cmd_point point at the cmd that to be executed (but not)
-        # executed_id
         self.cmd_point = 0
 
+    def _load_runner(self):
+        # cmd_point point at the cmd that to be executed (but not)
+        # executed_id
+        context = self.context
         self.message(f"Build {self.final_mlir_fn} index")
         self.message(f"Decode bmodel back into atomic dialect")
         self.message(f"static_mode = {self.static_mode}")
 
         self.runner = context.get_runner(self.ddr_size)
+        self.message(f"use {self.runner}")
         self.context = context
 
         if self.fast_checker and hasattr(self.runner, "fast_checker"):
@@ -286,6 +326,10 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(f"initialize memory")
         self.memory.clear_memory()
         coeff = self.atomic_mlir.functions[0].regions[0].data
+        self.memory.set_neuron_size(self.bmodel.neuron_size)
+        coeff_data = np.frombuffer(coeff.data, dtype=np.uint8)
+        self.memory.set_coeff_size(coeff_data.size)
+
         if coeff:
             address = coeff.address
             if isinstance(self.context, BM1688Context) or isinstance(
@@ -303,7 +347,7 @@ class TdbCmdBackend(cmd.Cmd):
                 )
             else:
                 self.memory.set_data_to_address(
-                    coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
+                    coeff.address, coeff_data
                 )
 
     def _load_data(self):
@@ -462,6 +506,10 @@ class TdbCmdBackend(cmd.Cmd):
 
             if isinstance(self.runner, CModelRunner):
                 break
+
+            if self.run_by_atomic:
+                break
+
             if df is not None:
                 result_not_empty = (len(df.loc[df["executed_id"] == cmd_point + 1 + offset,
                                                "results"].tolist()[0]) > 0)

@@ -13,7 +13,6 @@ import sys
 import struct
 # from math import fabs
 from enum import IntEnum
-from scipy import spatial
 from math import *
 from collections import OrderedDict
 
@@ -162,12 +161,19 @@ class TensorCompare():
             d2_loop[np.isposinf(d2_loop)] = 10000.0
             d2_loop[np.isneginf(d2_loop)] = -10000.0
             # check similarity
+
+            def cosine_distance(a, b):
+                # 计算余弦相似度
+                cos_similarity = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+                # 余弦距离 = 1 - 余弦相似度
+                return 1 - cos_similarity
+
             # cosine similarity
             # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
             if np.sum(np.abs(d1_loop)) != 0 and np.sum(np.abs(d2_loop) != 0):
                 a = d1_loop if d1_loop.dtype == np.float32 else d1_loop.astype(np.float32)
                 b = d2_loop if d2_loop.dtype == np.float32 else d2_loop.astype(np.float32)
-                cosine_similarity = 1 - spatial.distance.cosine(a, b)
+                cosine_similarity = 1 - cosine_distance(a, b)
             else:
                 cosine_similarity = 0.0
             # measure euclidean similarity
