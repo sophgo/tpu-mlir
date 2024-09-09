@@ -3025,7 +3025,7 @@ public:
           inner_size *= in_shape[i];
         }
       }
-      if (ax < 0 || steps->at(ax) != 1 || inner_size != shape[ax]) {
+      if (ax < 0 || ax >= steps->size() || steps->at(ax) != 1 || ax >= shape.size() || inner_size != shape[ax]) {
         break;
       }
       auto noneOp = module::getNoneOp(op);
