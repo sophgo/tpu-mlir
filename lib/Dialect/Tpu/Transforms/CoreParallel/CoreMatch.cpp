@@ -395,14 +395,13 @@ struct CommonMatch : public OpRewriterPatternEx3 {
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
         // inPlace op
-        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp>(left_op)) {
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(left_op)) {
+          continue;
+        }
+        if (module::isOpInBlock(left_op)) {
           continue;
         }
         if (find_f(same_ops, left_op)) {
-          continue;
-        }
-        if (!isa<FuncOp>(left_op->getParentOp()) ||
-            isa<tpu::GroupOp>(left_op)) {
           continue;
         }
         std::vector<Operation *> ops = {left_op};
@@ -412,15 +411,17 @@ struct CommonMatch : public OpRewriterPatternEx3 {
           if (find_f(same_ops, right_op)) {
             continue;
           }
-          if (!isa<FuncOp>(right_op->getParentOp()) ||
-              isa<tpu::GroupOp>(left_op)) {
+          if (module::isOpInBlock(right_op)) {
             continue;
           }
           if (isOpSameCalc(left_op, right_op)) {
             ops.push_back(right_op);
           }
+          if (ops.size() == num_core) {
+            break;
+          }
         }
-        if (ops.size() > 1 && ops.size() <= num_core) {
+        if (ops.size() == num_core) {
           same_ops.emplace_back(ops);
         }
       }
