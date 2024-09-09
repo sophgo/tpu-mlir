@@ -213,16 +213,16 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
     int load_weight_w = slice_val.inner_num.s * (weight_bits == 8 ? 1 : 0.5);
     int load_weight_c = load_align_size / load_weight_w;
     int load_weight_n = slice_val.Y_row.s / load_weight_c;
-    int load_weight_n_last =
-        ((final_col_num / load_weight_c) % load_weight_n)
-            ? ((final_col_num / load_weight_c) % load_weight_n)
-            : load_weight_n;
 
     if (num_core == 4 && weight_shape[0] % num_core == 0 &&
         final_row_num == 1 && final_col_num % load_weight_c == 0 &&
         inner_num % slice_val.inner_num.s == 0 &&
         load_align_size % load_weight_w == 0 && load_weight_c % npu_num == 0 &&
         slice_val.Y_row.s % load_weight_c == 0) {
+        int load_weight_n_last =
+        ((final_col_num / load_weight_c) % load_weight_n)
+            ? ((final_col_num / load_weight_c) % load_weight_n)
+            : load_weight_n;
         auto ori_weight_data = weightOp.read<uint8_t>();
         auto weight_data = std::make_shared<std::vector<uint8_t>>(
             weight_shape[0] * weight_shape[1], 0);
