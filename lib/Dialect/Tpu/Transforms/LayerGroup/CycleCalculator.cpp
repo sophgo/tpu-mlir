@@ -267,7 +267,7 @@ void removeTempCoreParallelOp(SmallVector<Operation *> ops) {
   std::set<Operation *> splits;
   for (auto op : ops) {
     for (auto v : op->getOperands()) {
-      if (auto splitOp = dyn_cast<tpu::SplitOp>(v.getDefiningOp())) {
+      if (auto splitOp = dyn_cast_or_null<tpu::SplitOp>(v.getDefiningOp())) {
         splits.insert(splitOp.getOperation());
       }
     }
