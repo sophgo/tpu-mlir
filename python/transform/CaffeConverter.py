@@ -113,6 +113,7 @@ class CaffeConverter(BaseConverter):
             'PReLU': lambda layer: self.convert_prelu_op(layer),
             'PriorBox': lambda layer: self.convert_priorbox_op(layer),
             'Proposal': lambda layer: self.convert_proposal_op(layer),
+            'Reduction': lambda layer: self.convert_reduce_op(layer),
             'ReLU': lambda layer: self.convert_relu_op(layer),
             'ReLU6': lambda layer: self.convert_relu6_op(layer),
             'Reorg': lambda layer: self.convert_reorg_op(layer),
@@ -1352,6 +1353,38 @@ class CaffeConverter(BaseConverter):
                                 operands,
                                 **param,
                                 ip=self.mlir.insert_point).output
+        self.addOperand(layer.top[0], new_op)
+
+    def convert_reduce_op(self,layer):
+        assert (self.layerType(layer) == 'Reduction')
+        p = layer.reduction_param
+        reduce_dict = {"4":"ReduceMean"}
+        reduce_method = str(p.operation)
+        assert reduce_method in reduce_dict
+        method = reduce_dict[reduce_method]
+        keepdims = False
+        axis = p.axis
+        input_shape = self.getShape(layer.bottom[0])
+        if axis<0:
+            axis+=len(input_shape)
+        ## cal output shape ##
+        if isinstance(axis, int):
+            axis = [axis]
+        output_shape = list(input_shape)
+        for a in sorted(axis, reverse=True):
+            output_shape.pop(a)  
+        op = self.getOperand(layer.bottom[0])
+        params = {}
+        param = {
+                'axes':axis,
+                'keepdims':keepdims,
+                'mode':StringAttr.get(method),
+                'loc':self.get_loc(layer.top[0])
+        }
+        new_op = top.ReduceOp(self.mlir.get_tensor_type(output_shape),
+                              op,
+                              **param,
+                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_relu6_op(self, layer):
