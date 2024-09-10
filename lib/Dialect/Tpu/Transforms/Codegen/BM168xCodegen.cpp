@@ -122,6 +122,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   auto neuron_size = module::getNeuronSize(s);
   auto io_addr = module::getIOAddr(s);
   auto io_size = module::getIOSize(s);
+  auto dynamic_coeff_offset = module::getDynamicOffset(s);
 
   auto &builder = model_gen->Builder();
   // if tensor not in device 0, will be hidden
@@ -225,6 +226,10 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   // io alone
   npb.add_io_addr(io_addr);
   npb.add_io_size(io_size);
+  // dynamic
+  npb.add_dynamic_ctx_addr(neuron_addr);
+  npb.add_dynamic_coeff_offset(dynamic_coeff_offset);
+  npb.add_dynamic_combined_coeff_offset(dynamic_coeff_offset);
 
   if (embed_debug_info && !first_dynamic) {
     auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {

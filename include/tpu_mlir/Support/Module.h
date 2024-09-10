@@ -235,6 +235,8 @@ int64_t getCoeffSize(ModuleOp submodule);
 void setCoeffSize(ModuleOp submodule, int64_t size);
 int64_t getCoeffAddr(ModuleOp submodule);
 void setCoeffAddr(ModuleOp submodule, int64_t addr);
+int64_t getDynamicOffset(ModuleOp submodule);
+void setDynamicOffset(ModuleOp submodule, int64_t size);
 
 int64_t getGmemPrivateSize(ModuleOp submodule);
 void setGmemPrivateSize(ModuleOp submodule, int64_t size);
