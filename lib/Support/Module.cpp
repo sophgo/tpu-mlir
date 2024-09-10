@@ -51,6 +51,7 @@ struct Attr {
   static constexpr llvm::StringRef ADDR_MODE = "module.addr_mode";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
   static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
+  static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET = "module.dynamic_coeff_offset";
 };
 
 static ModuleOp m = nullptr;
@@ -932,6 +933,14 @@ int64_t getCoeffSize(ModuleOp s) {
 
 void setCoeffSize(ModuleOp s, int64_t size) {
   s->setAttr(Attr::COEFF_SIZE, Builder(ctx).getI64IntegerAttr(size));
+}
+
+int64_t getDynamicOffset(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::DYNAMIC_COEFF_OFFSET).getInt();
+}
+
+void setDynamicOffset(ModuleOp s, int64_t size) {
+  s->setAttr(Attr::DYNAMIC_COEFF_OFFSET, Builder(ctx).getI64IntegerAttr(size));
 }
 
 int64_t getGmemPrivateSize(ModuleOp s) {

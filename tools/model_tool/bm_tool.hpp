@@ -584,21 +584,21 @@ void update_static_cmd(ModelGen &model_gen, ModelCtx* model_ctx, const NetParame
                        int64_t ctx_offset) {
   const auto core_num = param->core_num != 0 ? param->core_num : 1;
   auto &cmd_group = param->cmd_group;
-  for (uint32_t core_idx = 0; core_idx < core_num; core_idx++) {
-    if (param->sub_net.size() > 0) {
-      for (auto &subnet : param->sub_net) {
-        auto &core_commands = subnet->core_commands;
-        if (core_commands.size() > 0) {
+  if (param->sub_net.size() > 0) {
+    for (auto &subnet : param->sub_net) {
+      auto &core_commands = subnet->core_commands;
+      if (core_commands.size() > 0) {
+        for (uint32_t core_idx = 0; core_idx < core_num; core_idx++) {
           auto &cmd_group = core_commands[core_idx]->gdma_tiu_commands;
           update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
-        } else {
-          update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
         }
+      } else {
+        auto &cmd_group = subnet->cmd_group;
+        update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
       }
-    } else {
-      update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
     }
   }
+  update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
 }
 
 void update_tensor(const NetParameterT* param, const int64_t ctx_offset)
@@ -641,6 +641,9 @@ uint64_t coeff_combine(
     for (int i = 0; i < coeff_locations->size(); ++i) {
       auto location = coeff_locations->Get(i);
       location_t loc;
+      if (location->offset() >= coeff_size) {
+        continue;
+      }
       loc.name.assign(location->name()->str());
       loc.offset = location->offset();
       loc.size = location->size();
@@ -653,6 +656,9 @@ uint64_t coeff_combine(
   auto location_num = location_vector->size();
   for (int i = 0; i < coeff_locations->size(); ++i) {
     auto location = coeff_locations->Get(i);
+    if (location->offset() >= coeff_size) {
+      continue;
+    }
     bool is_same = false;
     for (int j = 0; j < location_num; ++j) {
       auto location_base = location_vector->at(j);
@@ -883,7 +889,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
   uint32_t device_num = 0;
 
   std::vector<uint8_t> base_buffer;
-  uint64_t base_size = 0;
+  std::vector<uint8_t> dynamic_buffer;
+  uint64_t base_size = 0, dynamic_base_size = 0;
   std::vector<location_t> loc_v;
   std::vector<std::vector<addr_update_t>> addr_update_v(model_vec.size());
   uint64_t coeff_addr;
@@ -895,33 +902,60 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     // check model is signal net, signal stage. or combined model
     assert(model->net()->size() == 1 && model->net()->Get(0)->parameter()->size() == 1 ||
            model->bmodel_type() == 1);
-    if (model->bmodel_type() == 1) {
-      // use first net/stage to combine
-      uint64_t start = param->coeff_mem()->binary_coeff()->start();
-      uint64_t size = param->coeff_mem()->binary_coeff()->size();
-      for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
-        auto net = model->net()->Get(net_idx);
-        for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
-          auto parameter = net->parameter()->Get(idx);
+
+    uint64_t start = param->coeff_mem()->binary_coeff()->start();
+    uint64_t size = param->coeff_mem()->binary_coeff()->size();
+    for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
+      auto net = model->net()->Get(net_idx);
+      for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
+        auto parameter = net->parameter()->Get(idx);
+        if (model->bmodel_type() == 1) {
+        // use first net/stage to combine
           assert(start == parameter->coeff_mem()->binary_coeff()->start());
           assert(size == parameter->coeff_mem()->binary_coeff()->size());
-          assert(parameter->is_dynamic() == 0);
         }
+        assert(parameter->is_dynamic() == 0);
       }
     }
     // combine coeff
     auto coeff = param->coeff_mem()->binary_coeff();
-    base_buffer.resize(base_size + coeff->size());
+    base_buffer.resize(base_size + param->dynamic_combined_coeff_offset());
     std::unique_ptr<uint8_t[]> new_buffer(new uint8_t[coeff->size()]);
     model_info->model_ctx->read_binary(coeff, new_buffer.get());
     if (param->coeff_mem()->location() == NULL) {
       assert(0);
     }
     base_size = coeff_combine(base_buffer.data(), base_size, &loc_v,
-                               new_buffer.get(), coeff->size(),
+                               new_buffer.get(), param->dynamic_combined_coeff_offset(),
                                param->coeff_mem()->location(),
                                model_idx == 0, &(addr_update_v[model_idx]));
+    // combine dynamic coeff
+    auto dynamic_coeff_size = coeff->size() - param->dynamic_combined_coeff_offset();
+    dynamic_buffer.resize(dynamic_base_size + dynamic_coeff_size);
+    memcpy(dynamic_buffer.data() + dynamic_base_size, new_buffer.get() + param->dynamic_combined_coeff_offset(), dynamic_coeff_size);
+    dynamic_base_size += dynamic_coeff_size;
   }
+  base_buffer.resize(base_size + dynamic_base_size);
+  memcpy(base_buffer.data() + base_size, dynamic_buffer.data(), dynamic_base_size);
+  // dynamic coeff location
+  for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
+    auto &model_info = model_vec[model_idx];
+    auto model = model_info->model_ctx->model();
+    auto param = model->net()->Get(0)->parameter()->Get(0);
+    for (int i = 0; i < param->coeff_mem()->location()->size(); ++i) {
+      auto location = param->coeff_mem()->location()->Get(i);
+      location_t loc;
+      if (location->offset() < param->dynamic_combined_coeff_offset()) {
+        continue;
+      }
+      loc.name.assign(location->name()->str());
+      loc.offset = location->offset() - param->dynamic_combined_coeff_offset() + base_size;
+      loc.size = location->size();
+      loc_v.push_back(loc);
+    }
+  }
+  uint64_t dynamic_offset = base_size;
+  base_size += dynamic_base_size;
 
   Binary new_binary;
   new_binary = model_gen.WriteBinary(base_size, base_buffer.data());
@@ -930,6 +964,9 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
   for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
+    auto p = model->net()->Get(0)->parameter()->Get(0);
+    auto dynamic_size = p->coeff_mem()->binary_coeff()->size() - p->dynamic_combined_coeff_offset();
+    auto dynamic_changed = dynamic_offset - p->dynamic_combined_coeff_offset();
     for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
       auto net = model->net()->Get(net_idx);
       if (net->parameter() == NULL || net->parameter()->size() == 0) {
@@ -980,12 +1017,19 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
         param->ctx_addr += ctx_offset;
         // update tensor
         update_tensor(param, ctx_offset);
+        // update dynamic coeff offset
+        if (model->bmodel_type() == 1) {
+          param->dynamic_combined_coeff_offset += dynamic_changed;
+        } else {
+          param->dynamic_combined_coeff_offset = dynamic_offset;
+        }
         auto net_offset = NetParameter::Pack(builder, param);
         model_gen.AddNet(net_name, net_offset, &netidx->net_idx,
                          &netidx->stage_idx, cascade, addr_mode);
         delete param;
         model_info->net_index_v.push_back(netidx);
       }
+      dynamic_offset += dynamic_size;
     }
   }
   addr_update_v.clear();
