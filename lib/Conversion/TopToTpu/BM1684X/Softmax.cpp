@@ -52,7 +52,10 @@ getQuantInt8TypeNewShape(Value v, std::vector<int64_t> new_shape,
 
 void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
-  lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 6);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::SoftmaxOp>(rewriter, op, 6);
+  else
+    lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 void SoftmaxLowering::LoweringINT4(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
@@ -65,8 +68,12 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
   bool need_reshape = false;
   auto dims = in_shape.size();
 
-  if (op.getLog() || dims > 4 || op.getAxis() != 1)
-    return LoweringF16(rewriter, op);
+  if (op.getLog() || dims > 4 || op.getAxis() != 1) {
+    if (!module::isMARS3())
+      return LoweringF16(rewriter, op);
+    else
+      return LoweringBF16(rewriter, op);
+  }
 
   if (dims < 4) {
     for (int i = dims; i < 4; i++) {

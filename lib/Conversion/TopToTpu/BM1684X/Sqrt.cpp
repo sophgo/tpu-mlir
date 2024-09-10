@@ -12,12 +12,20 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
-                               top::SqrtOp op) const {
+static inline Operation* set_mode(top::SqrtOp op) {
   auto op_ = op.getOperation();
   op_->setAttr(
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SQRT));
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
+  return op_;
+}
+
+void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
+                               top::SqrtOp op) const {
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void SqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::SqrtOp op,
                                    bool asymmetric) const {
@@ -34,12 +42,20 @@ void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
 
 void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SqrtOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SqrtLowering::LoweringF16(PatternRewriter &rewriter,
                                top::SqrtOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SqrtLowering::LoweringF8(PatternRewriter &rewriter,
@@ -49,7 +65,6 @@ void SqrtLowering::LoweringF8(PatternRewriter &rewriter,
 
 void SqrtLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SqrtOp op) const {
-  // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, op, false);
 }
 

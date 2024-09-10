@@ -411,8 +411,35 @@ Type getQuantInt8Type(Value v, bool asymmetric) {
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
+Type getQuantInt16Type(Value v, bool asymmetric) {
+  if (module::isNone(v)) {
+    return v.getType();
+  }
+  if (module::isUniformQuantized(v)) {
+    return v.getType();
+  }
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto cali_type = module::getCalibratedType(v);
+  auto min = cali_type.getMin();
+  double scale;
+  int64_t zeropoint = 0;
+  module::getScaleAndZeroPoint(v, scale, zeropoint, asymmetric);
+  int64_t qmin = -32768, qmax = 32767;
+  uint32_t flag = quant::QuantizationFlags::Signed;
+  if (min >= 0) {
+    qmin = 0;
+    qmax = 65535;
+    flag = 0;
+  }
+  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 16),
+                                                cali_type.getExpressedType(),
+                                                scale, zeropoint, qmin, qmax);
+  return RankedTensorType::get(type.getShape(), qtype);
+}
+
 Type getQuantIntType(Value v, double scale, double offset, int bits) {
-  assert(bits == 8 || bits == 4);
+  assert(bits == 4 || bits == 8 || bits == 16);
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);
@@ -421,6 +448,9 @@ Type getQuantIntType(Value v, double scale, double offset, int bits) {
   if (bits == 4) {
     qmin = -8;
     qmax = 7;
+  } else if (bits == 16) {
+    qmin = -32768;
+    qmax = 32767;
   }
   uint32_t flag = quant::QuantizationFlags::Signed;
   if (min >= 0) {
@@ -428,6 +458,8 @@ Type getQuantIntType(Value v, double scale, double offset, int bits) {
     qmax = 255;
     if (bits == 4)
       qmax = 15;
+    else if (bits == 16)
+      qmax = 65535;
     flag = 0;
   }
   auto qtype = quant::UniformQuantizedType::get(
