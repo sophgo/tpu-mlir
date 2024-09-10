@@ -40,7 +40,11 @@ void ReduceLowering::LoweringINT4(PatternRewriter &rewriter, top::ReduceOp op,
 }
 void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
                                   bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if (!module::isMARS3()) {
+    LoweringF16(rewriter, op);
+  } else {
+    LoweringBF16(rewriter, op);
+  }
 }
 
 void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,

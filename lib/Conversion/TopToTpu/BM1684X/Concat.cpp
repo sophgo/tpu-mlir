@@ -45,7 +45,10 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   // checkout whether weight exist
   for (auto in : concatOp.getInputs()) {
     if (module::isWeight(in)) {
-      LoweringF16(rewriter, concatOp);
+      if (!module::isMARS3())
+        LoweringF16(rewriter, concatOp);
+      else
+        LoweringBF16(rewriter, concatOp);
       return;
     }
   }

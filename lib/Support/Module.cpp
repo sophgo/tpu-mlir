@@ -1500,6 +1500,9 @@ void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
   if (bitwidth == 4) {
     qmin = rmin < 0 ? -8 : 0;
     qmax = rmin < 0 ? 7 : 15;
+  } else if (bitwidth == 16) {
+    qmin = rmin < 0 ? -32768 : 0;
+    qmax = rmin < 0 ? 32767 : 65535;
   }
   // Determine the scale.
   double qminDouble = qmin;
@@ -1525,12 +1528,21 @@ double getScale(double threshold, bool sign, int bitwidth) {
     } else {
       return threshold / 255.0;
     }
-  } else {
+  } else if (bitwidth == 4) {
     if (sign) {
       return threshold / 7.0;
     } else {
       return threshold / 15.0;
     }
+  } else if (bitwidth == 16) {
+    if (sign) {
+      return threshold / 32767.0;
+    } else {
+      return threshold / 65535.0;
+    }
+  } else {
+    llvm_unreachable("not support");
+    return 0;
   }
 }
 

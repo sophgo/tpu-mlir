@@ -64,7 +64,11 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
 void LayerNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LayerNormOp op,
                                      bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if (!module::isMARS3()) {
+    LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
+  } else {
+    LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());
+  }
 }
 
 void LayerNormLowering::LoweringINT4(PatternRewriter &rewriter,

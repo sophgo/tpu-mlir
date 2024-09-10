@@ -12,19 +12,21 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::SigmoidOp op) const {
+static inline Operation* set_mode(top::SigmoidOp op) {
   auto op_ = op.getOperation();
   bool log = op.getLog();
-  if (log) {
-    op_->setAttr("mode", tpu::ActiveModeAttr::get(
-                             op.getContext(), tpu::ActiveMode::LOG_SIGMOID));
-  } else {
-    op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
-                                                  tpu::ActiveMode::SIGMOID));
-  }
+  auto active_mode = log ? tpu::ActiveMode::LOG_SIGMOID : tpu::ActiveMode::SIGMOID;
+  op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(), active_mode));
+  return op_;
+}
 
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
+void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
+                                  top::SigmoidOp op) const {
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
@@ -45,12 +47,20 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SigmoidOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SigmoidLowering::LoweringF8(PatternRewriter &rewriter,

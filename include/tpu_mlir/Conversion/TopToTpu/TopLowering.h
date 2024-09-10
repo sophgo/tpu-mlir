@@ -29,6 +29,7 @@ namespace tpu_mlir {
 // Lowering Helper Apis
 // ================================
 
+mlir::Type getQuantInt16Type(Value v, bool asymmetric = false);
 mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
 mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
 mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
@@ -245,7 +246,7 @@ static module::Mode getOpQuantMode(Operation *op) {
   if (iter != LoweringConfig::quantize_map.end()) {
     real_mode = iter->second;
   }
-  if (module::isCV18xx() && real_mode == module::Mode::F16) {
+  if ((module::isCV18xx() || module::isMARS3()) && real_mode == module::Mode::F16) {
     return module::Mode::BF16;
   }
   if (!isa<top::ConvOp, top::MatMulOp>(op) && real_mode == module::Mode::INT4) {

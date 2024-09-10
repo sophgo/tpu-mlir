@@ -30,7 +30,10 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
 }
 
 void ArgLowering::LoweringF32(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op, getQuantFloatType(op.getValues()));
+  if (module::isMARS3())
+    LoweringArg(rewriter, op, getQuantInt16Type(op.getValues()));
+  else
+    LoweringArg(rewriter, op, getQuantFloatType(op.getValues()));
 }
 
 void ArgLowering::LoweringF16(PatternRewriter &rewriter, top::ArgOp op) const {
@@ -43,7 +46,10 @@ void ArgLowering::LoweringBF16(PatternRewriter &rewriter, top::ArgOp op) const {
 
 void ArgLowering::LoweringINT8(PatternRewriter &rewriter, top::ArgOp op,
                                bool asymmetric) const {
-  LoweringF32(rewriter, op);
+  if (module::isMARS3())
+    LoweringArg(rewriter, op, getQuantInt8Type(op.getValues(), asymmetric));
+  else
+    LoweringF32(rewriter, op);
 }
 
 void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
