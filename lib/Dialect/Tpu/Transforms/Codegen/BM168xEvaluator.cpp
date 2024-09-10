@@ -357,6 +357,8 @@ static inline uint8_t get_4bit(void* ptr, int i) {
 
 void BM168xEvaluator::staging_results(GlobalGenInterface& op) {
   for (auto v : op.getOperation()->getResults()) {
+    if (v.getType().isa<NoneType>())
+      continue;
     auto addr = module::getAddress(v);
     auto name = module::getName(v).str();
     auto mem = mem_map[name];
