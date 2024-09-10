@@ -12,12 +12,20 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void SiLULowering::LoweringF32(PatternRewriter &rewriter,
-                               top::SiLUOp op) const {
+static inline Operation* set_mode(top::SiLUOp op) {
   auto op_ = op.getOperation();
   op_->setAttr(
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
+  return op_;
+}
+
+void SiLULowering::LoweringF32(PatternRewriter &rewriter,
+                               top::SiLUOp op) const {
+  auto op_ = set_mode(op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void SiLULowering::LoweringINT4(PatternRewriter &rewriter, top::SiLUOp op,
                                    bool asymmetric) const {
@@ -37,9 +45,7 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
   if (module::isBM1690Family()) {
-    auto op_ = op.getOperation();
-    op_->setAttr(
-        "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
+    auto op_ = set_mode(op);
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   } else
     LoweringF32(rewriter, op);
@@ -48,9 +54,7 @@ void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
 void SiLULowering::LoweringF16(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
   if (module::isBM1690Family()) {
-    auto op_ = op.getOperation();
-    op_->setAttr(
-        "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
+    auto op_ = set_mode(op);
     lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
   } else
     LoweringF32(rewriter, op);
