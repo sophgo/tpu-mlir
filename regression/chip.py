@@ -24,7 +24,7 @@ chip_support = {
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     "bm1690":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     "sg2380":    (Y,   Y,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
-    "mars3":     (N,   N,   N,    Y,        N,         N,        N,      N,      N,       "bmodel"),
+    "mars3":     (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
 }
 
 multi_core_info = {
