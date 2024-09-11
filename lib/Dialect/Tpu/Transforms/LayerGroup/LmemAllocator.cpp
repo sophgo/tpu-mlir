@@ -485,6 +485,16 @@ MemBlock LmemAllocator::find_avail_lmem_location(
     const mem_buffer_value_t &buffer_value,
     bool allow_bank_conflict) {
 
+  MemBlock alloc_lmem(-1, -1);
+  if (avail_space.avail_lmems.empty()) {
+    return alloc_lmem;
+  }
+
+  if (allow_bank_conflict) {
+    alloc_lmem = avail_space.avail_lmems.front();
+    return alloc_lmem;
+  }
+
   // refine avail_lmems according to exclude_banks
   MemBlock bank_lmem;
   std::list<MemBlock> avail_lmems_tmp = avail_space.avail_lmems;
@@ -494,7 +504,6 @@ MemBlock LmemAllocator::find_avail_lmem_location(
     update_avail_lmems(avail_lmems_tmp, bank_lmem);
   }
 
-  MemBlock alloc_lmem(-1, -1);
   for (auto avail_iter = avail_lmems_tmp.begin();
        avail_iter != avail_lmems_tmp.end(); ++avail_iter) {
     if (avail_iter->second >= buffer_value.size) {
@@ -504,9 +513,7 @@ MemBlock LmemAllocator::find_avail_lmem_location(
   }
 
   // allow bank confict if could not find space not conflict
-  if (alloc_lmem.first == -1 && !avail_space.avail_lmems.empty()) {
-    alloc_lmem = avail_space.avail_lmems.front();
-  } else if (allow_bank_conflict) {
+  if (alloc_lmem.first == -1) {
     alloc_lmem = avail_space.avail_lmems.front();
   }
 
