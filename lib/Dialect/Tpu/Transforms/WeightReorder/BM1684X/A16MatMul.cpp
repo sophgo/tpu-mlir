@@ -160,23 +160,29 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
     assert(dl_a16mm_data_split_trans != nullptr);
 
     auto num_core = module::getCoreNum();
+    bool has_bias = !module::isNone(op.getBias());
+    bool has_zp = !module::isNone(op.getZp());
+    int q_group_size = op.getQGroupSize();
+    int weight_bits = op.getWeightBits();
+    bool weight_trans = op.getWTranspose();
+    data_type_t io_dtype =
+        tpu_type_convert(backend::BM168x::getDataType(op.getInput()));
+    data_type_t weight_dtype =
+        tpu_type_convert(backend::BM168x::getDataType(op.getWeight()));
     auto input_shape =
         op.getInput().getType().cast<RankedTensorType>().getShape();
     auto weightOp = op.getWeight().getDefiningOp<top::WeightOp>();
     auto weight_shape = weightOp.getType().getShape();
     int input_shape_dim = input_shape.size();
-    assert(std::accumulate(input_shape.begin(), input_shape.begin() + (input_shape_dim - 2), 1, std::multiplies<int64_t>()) == 1);
-    int final_row_num = input_shape[input_shape_dim - 2];
-    int inner_num = input_shape[input_shape_dim - 1];
+
     int final_col_num = weight_shape[0] / 4;
-    bool has_bias = !module::isNone(op.getBias());
-    bool has_zp = !module::isNone(op.getZp());
-    int q_group_size = op.getQGroupSize();
-    int weight_bits = op.getWeightBits();
-    data_type_t io_dtype =
-        tpu_type_convert(backend::BM168x::getDataType(op.getInput()));
-    data_type_t weight_dtype =
-        tpu_type_convert(backend::BM168x::getDataType(op.getWeight()));
+    int inner_num = weight_trans ? (weight_bits == 4 ? weight_shape[1] * 2
+                                                     : weight_shape[1])
+                                 : weight_shape[0];
+    int final_row_num = std::accumulate(input_shape.begin(),
+                                        input_shape.begin() + input_shape_dim,
+                                        1, std::multiplies<int64_t>()) /
+                        inner_num;
 
     a16mm_slice_info_t slice_val = {0};
     a16mm_size_info_t size_info = {0};
