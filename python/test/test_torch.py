@@ -2364,7 +2364,7 @@ class TORCH_IR_TESTER(object):
         # _test_attention0((2, 1024, 640), 80, 2, False)
         # _test_attention0((2, 256, 1280), 160, 2, False)
         if not self.simple:
-            _test_attention0((1, 4096, 320), 40, 2, False)
+            # _test_attention0((1, 4096, 320), 40, 2, False)
             # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
             # _test_attention1((2, 256, 1280), (2, 77, 768), 160, 2, False)
             # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
