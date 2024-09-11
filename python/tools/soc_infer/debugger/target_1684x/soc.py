@@ -72,6 +72,22 @@ class BM1684XRunner(DeviceRunner):
         )
         assert ret == 0
 
+    def fast_compute(self, tiu_num, dma_num, tiu_buf, dma_buf):
+        assert tiu_num + dma_num == 1
+        rt_tiu_buf = self.trans_cmds_to_buf(tiu_buf, 0)
+        rt_dma_buf = self.trans_cmds_to_buf(dma_buf, 1)
+        ret = self.lib.launch_cmd_in_pio(
+            self.runner,
+            ctypes.byref(ctypes.create_string_buffer(rt_tiu_buf)),
+            ctypes.byref(ctypes.create_string_buffer(rt_dma_buf)),
+            ctypes.c_size_t(len(rt_tiu_buf)),
+            ctypes.c_size_t(len(rt_dma_buf)),
+            ctypes.c_int(tiu_num),
+            ctypes.c_int(dma_num),
+        )
+        assert ret == 0
+        return 1
+
 
 class Memory(DeviceMemory):
     """

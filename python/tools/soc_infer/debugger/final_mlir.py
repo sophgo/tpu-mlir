@@ -45,7 +45,7 @@ class Pickled_Value:
         self.name: str = value.name
         self.reshape: str = value.reshape
         self.slice: str = value.slice
-        self._type: str = value._type
+        self._type: str = value.dtype
         self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
         self.file_line = file_line
         self.cmd_point = cmd_point

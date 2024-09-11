@@ -57,6 +57,14 @@ def main():
         help="The inputs data of the BModel.",
     )
     parser.add_argument("--quiet", action="store_true", default=False, help="disable progress bar")
+    parser.add_argument(
+        "--run_by_atomic",
+        action="store_true",
+        default=False,
+        help="whether run by atomic cmds, set False as default which means run_by_op. \
+              This option only effect PCIE and SOC mode, disable this may decrease time cost,\
+              but may have timeout error when an op contain too many atomic cmds. ",
+    )
 
     parser.add_argument("--no_interactive", action="store_true")
     parser.add_argument("--dump_dataframe", action="store_true")
@@ -98,6 +106,7 @@ if __name__ == "__main__":
         extra_plugins=extra_plugins,
         extra_check=[],
         ddr_size=args.ddr_size,
+        fast_checker=not args.run_by_atomic,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     if args.fail_fast:

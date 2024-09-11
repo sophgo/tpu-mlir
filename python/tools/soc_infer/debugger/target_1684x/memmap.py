@@ -13,7 +13,7 @@ from typing import Tuple
 
 class BM1684XInfo:
     def __init__(self) -> None:
-        self.lib_name = "libcmodel_1684x.so"
+        self.lib_name = "libbm1684x_atomic_kernel.so"
         self.lib = lib_wrapper(open_lib(self.lib_name))
 
     @property
