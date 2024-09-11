@@ -78,4 +78,8 @@ void BM1684X::after_codegen(int64_t flops) {
   dl_store_cmd_end();
 }
 
-void BM1684X::load_custom_functions() { CAST_FUNCTION(set_id_node); }
+void BM1684X::load_custom_functions() {
+  CAST_FUNCTION(set_id_node);
+  CAST_FUNCTION(enable_active_mode);
+  CAST_FUNCTION(set_ts_fe_cmd_id_ptr);
+}
