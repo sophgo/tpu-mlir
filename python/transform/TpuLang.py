@@ -296,8 +296,10 @@ def bmodel_inference_combine(
     save_path: str = "",
     out_fixed: bool = False,
     dump_cmd_info: bool = True,
-    cmodel_skip_check: bool = True,  # disable CMODEL data_check to increase processing speed
+    skip_check: bool = True,  # disable data_check to increase processing speed
+    run_by_op: bool = False,
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+    using_memory_opt: bool = False,
     enable_soc_log: bool = False,
     tmp_path: str = "/tmp",  # required when is_soc=True
     tools_path: str = "/soc_infer",  # required when is_soc=True
@@ -315,7 +317,7 @@ def bmodel_inference_combine(
         extra_plugins=["progress"],
         extra_check=[],
         ddr_size=2**32,
-        checker=True,
+        fast_checker=run_by_op,
         is_soc=is_soc,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
@@ -324,11 +326,11 @@ def bmodel_inference_combine(
     plugin.dump_mode = getattr(DumpMode, "TPULANG", DumpMode.TPULANG)
     plugin.out_fixed = out_fixed
     plugin.is_soc = is_soc
-    plugin.skip_check = cmodel_skip_check
+    plugin.skip_check = skip_check
 
     tdb.message(f"dump mode = {plugin.dump_mode}")
     tdb.do_run("")
-    if not is_soc and not reference_data_fn.endswith(".mlir") and not cmodel_skip_check:
+    if not is_soc and not reference_data_fn.endswith(".mlir") and not skip_check:
         plugin.do_summary("table")
     if dump_file or is_soc:
         os.makedirs(save_path, exist_ok=True)
@@ -387,7 +389,7 @@ def bmodel_inference_combine(
         progress_put("bmodel file", bmodel_file, os.path.basename(bmodel_file), progress)
         progress_put("input data", input_data_fn, os.path.basename(input_data_fn), progress)
         progress_put("ref data", reference_data_fn, os.path.basename(reference_data_fn), progress)
-        progress_put("tensor loc file", tensor_loc_file, os.path.basename(tensor_loc_file), progress)
+
         # transfer soc_infer tools
         print("Transfering Soc_infer Tools...")
         local_tools_path = os.getenv("PROJECT_ROOT", None)
@@ -408,15 +410,29 @@ def bmodel_inference_combine(
             exec_command += " --out_fixed"
         if enable_soc_log:
             exec_command += " --enable_log"
+        if using_memory_opt:
+            exec_command += " --using_memory_opt"
+        if not run_by_op:
+            exec_command += " --run_by_atomic"
+        print(f"soc execute command: {exec_command}")
+
+        client.get_transport().set_keepalive(30)
         stdin, stdout, stderr = client.exec_command(exec_command)
+        while True:
+            if stdout.channel.exit_status_ready():
+                break
+
+        print(stdout.read().decode("utf-8"))
+        print(stderr.read().decode("utf-8"))
+
         if enable_soc_log:
-            with open(os.path.join(save_path,"stdout.log"),"w+",encoding="utf-8") as outlog:
-                outlog.write(stdout.read().decode("utf-8"))
-            with open(os.path.join(save_path,"stderr.log"),"w+",encoding="utf-8") as errlog:
-                errlog.write(stderr.read().decode("utf-8"))
-        else:
-            print(stdout.read().decode("utf-8"))
-            print(stderr.read().decode("utf-8"))
+            progress_get(
+                "log file",
+                os.path.join(save_path, "log.txt"),
+                os.path.join(tools_path, "log.txt"),
+                progress,
+            )
+            print(f"log file recieved at {os.path.join(save_path, 'log.txt')}")
 
         # retrieve results
         remote_infer_combine_path = os.path.join(tools_path, f"soc_infer_{remote_ref}")

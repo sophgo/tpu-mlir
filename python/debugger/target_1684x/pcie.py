@@ -24,13 +24,14 @@ from ..plugins.common import FinalMlirIndexPlugin
 
 
 class soc_launch_struct:
-    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf):
+    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, cur_op_cmds):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
         self.tiu_buf = tiu_buf
         self.dma_buf = dma_buf
         self.tiu_buf_len = len(tiu_buf)
         self.dma_buf_len = len(dma_buf)
+        self.cur_op_cmds = cur_op_cmds
 
 
 class BM1684XRunner(DeviceRunner):
@@ -50,6 +51,11 @@ class BM1684XRunner(DeviceRunner):
             self.use_pcie()
         else:
             self.use_soc()
+
+        # used for get_cur_op_cmds()
+        self.op_start_execute_id = 1
+        self.in_op = False
+        self.cur_op_cmds = 0
 
     def use_pcie(self):
         self.is_pcie = True
@@ -151,13 +157,46 @@ class BM1684XRunner(DeviceRunner):
 
         return tiu, dma
 
+    def get_cur_op_cmds(self, cur_cmd_point, cmditer):
+        if not self.in_op:
+            self.op_start_execute_id = cur_cmd_point + 1
+            self.in_op = True
+            tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
+            self.cur_op_cmds = len(tiu) + len(dma)
+            if self.cur_op_cmds == 1:
+                self.in_op = False
+        else:
+            if cur_cmd_point + 1 == self.op_start_execute_id + self.cur_op_cmds - 1:
+                self.in_op = False
+        return self.cur_op_cmds
+
     def checker_fast_compute_soc(self, cmd_group: StaticCmdGroup):
         tiu, dma = cmd_group.tiu, cmd_group.dma
         tiu_buf = self.trans_cmds_to_buf_soc(tiu, 0)
         dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
 
-        BM1684XRunner.soc_structs.append(soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf))
+        BM1684XRunner.soc_structs.append(
+            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf, -1)
+        )
         return len(tiu) + len(dma)
+
+    def fast_compute_soc(self, command: BaseTpuCmd, cur_op_cmds):
+        tiu = []
+        dma = []
+        if command.cmd_type == CMDType.tiu:
+            tiu.append(command)
+            tiu_buf = self.trans_cmds_to_buf_soc(tiu, 0)
+            dma_buf = b""
+        else:
+            dma.append(command)
+            tiu_buf = b""
+            dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
+        assert len(tiu) + len(dma) == 1
+
+        BM1684XRunner.soc_structs.append(
+            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf, cur_op_cmds)
+        )
+        return 1
 
     def checker_fast_compute(self, cmd_group: StaticCmdGroup):
         tiu, dma = cmd_group.tiu, cmd_group.dma
@@ -207,7 +246,17 @@ class BM1684XRunner(DeviceRunner):
             else:
                 self.checker_fast_compute(commands)
         elif self.is_soc:
-            self.checker_fast_compute_soc(commands)
+            if len(commands.all) == 1:
+                self.fast_compute_soc(commands.all[0], 1)
+            else:
+                self.checker_fast_compute_soc(commands)
+
+    def cmd_compute(self, cur_cmd_point, cmditer):
+        if self.is_pcie:
+            self.fast_compute(cmditer[cur_cmd_point])
+        elif self.is_soc:
+            cur_op_cmds = self.get_cur_op_cmds(cur_cmd_point, cmditer)
+            self.fast_compute_soc(cmditer[cur_cmd_point], cur_op_cmds)
 
 
 class PcieMemoryArray:

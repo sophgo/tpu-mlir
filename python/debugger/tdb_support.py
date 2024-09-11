@@ -174,7 +174,7 @@ class TdbCmdBackend(cmd.Cmd):
         stdin=None,
         stdout=None,
         ddr_size=2**32,
-        checker=False,
+        fast_checker=False,
         is_soc=False,  # this option is valid only when USING_CMODEL = False
         cache_mode="online",
     ):
@@ -191,7 +191,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.ddr_size = ddr_size
         self.status = TdbStatus.UNINIT
         builtins.tdb = self
-        self.bmodel_checker_enable = checker
+        self.fast_checker = fast_checker
+        self.fast_checker_enabled = False
         self.is_soc = is_soc
         self.cache_mode = cache_mode
 
@@ -268,13 +269,17 @@ class TdbCmdBackend(cmd.Cmd):
 
         self.runner = context.get_runner(self.ddr_size)
         self.context = context
+
+        if self.fast_checker and hasattr(self.runner, "fast_checker"):
+            self.runner.fast_checker = True
+            self.fast_checker_enabled = True
+
         if self.is_soc:
             return
 
         if hasattr(self.runner, "use_pcie"):
             self.runner.use_pcie()
-        if self.bmodel_checker_enable and hasattr(self.runner, "fast_checker"):
-            self.runner.fast_checker = True
+
         self.memory = context.memory
         self.decoder = context.decoder
 
@@ -479,9 +484,14 @@ class TdbCmdBackend(cmd.Cmd):
                 cmd_type = cmd.cmd_type
                 if cmd_type.is_static():
                     if not self.context.is_sys(cmd):
-                        cmds = self.get_stack_cmds()
-                        forward_cmds = len(cmds.all)
-                        self.runner.cmds_compute(cmds)
+                        if self.fast_checker_enabled:
+                            # run_by_op, may cause timeout error when op contain too many atomic cmds
+                            cmds = self.get_stack_cmds()
+                            forward_cmds = len(cmds.all)
+                            self.runner.cmds_compute(cmds)
+                        else:
+                            # run_by_atomic, hardly cause timeout error
+                            self.runner.cmd_compute(self.cmd_point, self.cmditer)
                 elif cmd_type == CMDType.cpu:
                     self.runner.cpu_compute(cmd)
                 elif cmd_type == CMDType.dyn_ir:

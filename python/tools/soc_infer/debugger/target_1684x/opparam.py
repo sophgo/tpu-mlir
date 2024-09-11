@@ -105,7 +105,7 @@ def sCONV_t_converter(reg: sCONV_reg):
         shape=[reg.res0_c, reg.opd0_c, reg.opd1_h, reg.opd1_w],
         dtype=(reg.opd0_prec, reg.opd1_sign),
         is_const=reg.opd1_const,
-        layout=alignIC,
+        layout=Layout.alignIC,
     )
     opd2 = dict(
         address=reg.opd2_addr,

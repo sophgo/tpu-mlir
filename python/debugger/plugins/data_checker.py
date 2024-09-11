@@ -266,7 +266,6 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             with open(f"{ref_fn}.tdb_cache.ops.pickle", 'rb') as r:
                 ops = pickle.load(r)
 
-
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
             cosine_similarity_tol=cosine_similarity_tol,
@@ -672,21 +671,16 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         cmd = self.tdb.cmditer[point_index]
 
-        # used for bmodel_inference_combine at CMODEL mode
-        if context.using_cmodel and self.skip_check:
-            value_res = ComparedResult(value_view, None, msg="ignore")
-            return value_res
-
         # only used for soc mode
         if self.is_soc:
             if is_operand:
                 DataCheck.soc_values_in[point_index].append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
+                    Pickled_Value(value, memref, value.dtype, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
                 )
             else:
                 # memref_type = 0 if isinstance(memref, Scalar) else 1
                 DataCheck.soc_values_out.append(
-                    Pickled_Value(value, memref, value.type, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
+                    Pickled_Value(value, memref, value.dtype, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
                 )
             return ComparedResult(value_view, None, msg="ignore")
 
@@ -707,6 +701,10 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.COMB or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
+
+        if self.skip_check:  # CModel mode or Pcie mode
+            value_res = ComparedResult(value_view, None, msg="ignore")
+            return value_res
 
         if desired is None:
             value_res = ComparedResult(value_view, None)
@@ -785,7 +783,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             return
 
         ret = self.compare(tdb, True)
-        if self.is_soc or tdb.cache_mode == 'generate':
+        if tdb.cache_mode == "generate":
             raise BufferError()
 
         if not ret and self.break_when_fail:
