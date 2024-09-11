@@ -159,7 +159,9 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
       }
     } else if (module::isCalibratedType(value)) {
       auto type = module::getStorageType(value);
-      if (type.isF16()) {
+      if (type.isF32()) {
+        memcpy(mem_ptr, p, count * sizeof(float));
+      } else if (type.isF16()) {
         for (auto i = 0; i < count; ++i) {
           ((uint16_t*)mem_ptr)[i] = f32_to_f16(p[i]);
         }
@@ -239,7 +241,9 @@ BM168xEvaluator::getTensor(const std::string &name) {
   } else if (module::isCalibratedType(value)) {
     auto type = module::getStorageType(value);
     void* mem_ptr = mem->data();
-    if (type.isF16()) {
+    if (type.isF32()) {
+        memcpy(data_fp32->data(), mem_ptr, count * sizeof(float));
+    } else if (type.isF16()) {
       for (auto i = 0; i < count; ++i) {
         data_fp32->at(i) = f16_to_f32(((uint16_t*)mem_ptr)[i]);
       }
@@ -385,10 +389,38 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   auto ginfo = op.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
                                (int64_t)0, (int64_t)0);
   auto addr = ginfo.out_addr;
-  int64_t N, C, D, H, W;
-  module::getNCDHW(v, N, C, D, H, W, GROUP_NORMAL);
   auto name = module::getName(v).str();
   auto mem = mem_map[name];
+  const int npu_num = BM168x::NPU_NUM;
+
+  int64_t N, C, D, H, W;
+  switch (sec_info.group_type) {
+  case GROUP_NORMAL:
+  case GROUP_MM: {
+    module::getNCHW(v, N, C, H, W, GROUP_NORMAL);
+    D = 1;
+  }
+  break;
+  case GROUP_3D: {
+    module::getNCDHW(v, N, C, D, H, W, GROUP_3D);
+  }
+  break;
+  case GROUP_SMALL_C: {
+    /**
+      * GROUP_SMALL_C: move h to c-dim, and merge cd-dim to n-dim
+      */
+    module::getNCHW(v, N, C, H, W, GROUP_SMALL_C);
+    D = 1;
+    N *= C;
+    C = H;
+    H = W;
+  }
+  break;
+  default:
+    llvm_unreachable("Unknown group type");
+    break;
+  }
+
   const int nidx = ginfo.n_idx;
   const int didx = ginfo.d_idx;
   const int cidx = sec_info.is_c_split ? sec_info.c_idx : 0;
@@ -407,7 +439,6 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   }
   int nstride = cslice * cstride;
   int hstride = wslice;
-  const int npu_num = BM168x::NPU_NUM;
   // save local data of shape (d, n, c, h, w) as shape (n, c, d, h, w)
   for (int n = 0; n < nslice; ++n) {
     for (int d = 0; d < dslice; ++d) {
