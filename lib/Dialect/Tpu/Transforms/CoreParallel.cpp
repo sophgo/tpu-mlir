@@ -134,16 +134,6 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
   if (splitDim == 0 && iterationShape[0] == 1)
     return nullptr;
 
-  if (auto matmulOp = dyn_cast<tpu::MatMulOp>(op.getOperation())) {
-    auto l_shape = module::getShape(matmulOp.getInput());
-    auto r_shape = module::getShape(matmulOp.getRight());
-
-    if (l_shape.size() == 4 && r_shape.size() == 4 &&
-        l_shape[0] == r_shape[0] && l_shape[1] != r_shape[1] &&
-        l_shape[2] == r_shape[2] && l_shape[3] == r_shape[3])
-      return nullptr;
-  }
-
   { // This is a temporary fix for GroupNorm support; Try to refactor this out.
     if (auto groupNormOp = dyn_cast<tpu::GroupNormOp>(op.getOperation())) {
       auto channel = module::getShape(groupNormOp.getInput())[1];
