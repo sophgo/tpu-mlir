@@ -19,6 +19,40 @@ static void _try_insert_device2host(top::TopKOp op) {
 }
 
 static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
+  if (module::isSG2380()) {
+    std::vector<NamedAttribute> attrs;
+    std::vector<NamedAttribute> cpu_param;
+    attrs.emplace_back(
+        rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("topk")));
+
+    for (auto &attr : op->getAttrs()) {
+      cpu_param.push_back(attr);
+    }
+    // If only values or indices are used, record it to support only one output in cpu layer
+    if(!op.getValues().getUsers().empty() && op.getIndices().getUsers().empty()) {
+      cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(true)));
+    }
+    else {
+      cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(false)));
+    }
+    attrs.emplace_back(
+        rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
+    std::vector<Type> new_types;
+    new_types.push_back(op.getValues().getType());
+    if (!module::isNone(op.getIndices())) {
+      auto shape = module::getShape(op.getIndices());
+      auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
+      new_types.push_back(new_type);
+    } else {
+      new_types.push_back(op.getIndices().getType());
+    }
+    std::vector<Value> operands;
+    operands.push_back(op.getInput());
+    rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_types, operands,
+                                                  attrs);
+    return;
+  }
+
   _try_insert_device2host(op);
 
   rewriter.setInsertionPointAfter(op);
