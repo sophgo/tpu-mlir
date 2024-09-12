@@ -53,7 +53,7 @@ void top::SqueezeOp::shape_inference() {
     setIsScalarAttr(builder.getBoolAttr(true));
   }
   module::setShapeOrVerify(getOutput(), out_shape);
-  if (module::isShape(getInput())) {
+  if (module::isShape(getInput()) && out_shape.size() <= 1) {
     auto input_v = module::getShapeTensorValue(getInput());
     auto output_shape_v =
         module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
