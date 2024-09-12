@@ -16,7 +16,7 @@ from debugger.target_common import DType
 
 GDMA_FREQ = 750
 BD_FREQ = 900
-
+arch_name = "BM1688"
 
 class EngineType(Enum):
     BD = 0

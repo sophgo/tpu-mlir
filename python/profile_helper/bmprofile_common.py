@@ -20,6 +20,7 @@ class Arch(Enum):
     bm1684 = 1
     bm1684x = 3
     bm1688 = 4
+    bm1690 = 5
 class BlockType(Enum):
     UNKNOWN = -1
     SUMMARY = 1
@@ -32,6 +33,8 @@ class BlockType(Enum):
     COMMAND = 8
     BMLIB = 9
     BMLIB_EXTRA = 10
+    MONITOR_SDMA = 11
+    MONITOR_CDMA = 12
 
 class DynExtraType(Enum):
     STRING=0

@@ -22,7 +22,7 @@ def profileArgParser():
                         "sim: parse net_stat.sim in profile to visualize. "
                         "command: parse static commands in profile to analyse the command params. ",
                         default="time")
-    parser.add_argument("--arch", type=str, choices=["BM1684", "BM1684X", "A2"], help="chip arch", default="BM1684")
+    parser.add_argument("--arch", type=str, choices=["BM1684", "BM1684X", "A2", "BM1690"], help="chip arch", default="BM1684")
     parser.add_argument("--format", type=str, choices=["html", "csv", "console", "layer"], help="output format", default="html")
     parser.add_argument("--test", type=str, help="only for mode=command, check some condition for command", default="")
     parser.add_argument("--option", type=str, help="profile extra options, format is 'key1=value1,key2=value2,...'",
