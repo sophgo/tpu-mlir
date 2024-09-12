@@ -25,6 +25,7 @@ import onnxsim.onnx_simplifier as onnxsim
 import onnxruntime as rt
 import logging
 import copy
+import time
 
 logger = logging.getLogger("root")
 sys.setrecursionlimit(1000000)
@@ -426,7 +427,7 @@ class OnnxConverter(BaseConverter):
         try:
             self.model = ConstantFolding(self.model, self.test_input, self.dynamic_shape_input_names).run()
         except:
-            logger.info("WARNING: ConstantFolding failed.")
+            logger.warning("ConstantFolding failed.")
         logger.info("ConstantFolding finished")
         try:
             onnx_sim = self.onnx_sim.split(',')
@@ -437,7 +438,7 @@ class OnnxConverter(BaseConverter):
                                              skip_constant_folding=True,
                                              skip_shape_inference=True)
         except:
-            logger.info("WARNING: onnxsim opt failed.")
+            logger.warning("onnxsim opt failed.")
         logger.info("Onnxsim opt finished")
         if self.dynamic_shape_input_names:
             self.input_shape_assign(input_shapes)
@@ -446,7 +447,7 @@ class OnnxConverter(BaseConverter):
         try:
             self.model = ConstantFolding(self.model, self.test_input, self.dynamic_shape_input_names).run()
         except:
-            logger.info("WARNING: ConstantFolding failed.")
+            logger.warning("ConstantFolding failed.")
         logger.info("ConstantFolding finished")
 
     def find_named_tensor(self, name):
@@ -537,7 +538,7 @@ class OnnxConverter(BaseConverter):
 
     def getDynamicShape(self, name):
         if name not in self.dynamic_shapes:
-            print("DYNAMIC WARNING: shape {} not found in dynamic_shapes".format(name))
+            logger.warning("shape {} not found in dynamic_shapes".format(name))
             return None
         return self.dynamic_shapes[name]
 
@@ -585,7 +586,7 @@ class OnnxConverter(BaseConverter):
                     else:
                         raise E
             except ValueError:
-                print("WARNING: onnxruntime.InferenceSession error when getting dynamic output shape.")
+                logger.warning("onnxruntime.InferenceSession error when getting dynamic output shape.")
 
             # ort_session = rt.InferenceSession(model.SerializeToString())
             outputs = [x.name for x in ort_session.get_outputs()]
@@ -1306,6 +1307,10 @@ class OnnxConverter(BaseConverter):
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         if coord_mode == b'tf_half_pixel_for_nn':       # different mode name in tf and pyt
             coord_mode = 'half_pixel'
+        if mode == b'cubic':
+            logging.warning("Not Support Resize Cubic !!!! Using Linear Instead !!!!!")
+            time.sleep(3)
+            mode = b'linear'
         self.resize_to_interp(onnx_node,
                               op,
                               scale_h,

@@ -28,8 +28,8 @@ public:
         //  #todo : print opname,no save mode has bug need to solve,this is a
         //  temporary solution
         PASS_LOG_DEBUG_BLOCK({
-          llvm::outs() << patternName << "_" << op.getOperationName()
-                       << " succeed!" << "\n";
+          llvm::outs() << patternName << " : " << op.getOperationName()
+                       << " succeed!";
         });
       }
     }
