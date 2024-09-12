@@ -252,6 +252,7 @@ class IterRecord():
         self.dyn_data = []
         self.dyn_extra = dict()
         self.monitor_gdma = []
+        self.monitor_sdma = []
         self.monitor_bd = []
         self.summary = None
         self.command_info = None
@@ -266,9 +267,11 @@ class IterRecord():
                 self.dyn_data[key] = value
         self.monitor_bd += other.monitor_bd
         self.monitor_gdma += other.monitor_gdma
+        self.monitor_sdma += other.monitor_sdma
         self.dyn_data = sorted(self.dyn_data, key=lambda i: i.begin_cycle)
         self.monitor_bd= sorted(self.monitor_bd, key=lambda i: i.inst_start_time)
         self.monitor_gdma= sorted(self.monitor_gdma, key=lambda i: i.inst_start_time)
+        self.monitor_sdma= sorted(self.monitor_sdma, key=lambda i: i.inst_start_time)
 
 class NetStatParser:
     layer_prefix = "LAYER_"
@@ -614,8 +617,12 @@ class BMProfileParser:
         return ginfo
 
     def __parse_command_info(self, raw_data):
-        header_len = 8*4+4
-        gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack("QQQQI", raw_data[0:header_len])
+        if self.archlib.arch_name == "BM1690":
+            header_len = 8*6+4
+            gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset, group_num = st.unpack("QQQQQQI", raw_data[0:header_len])
+        else:
+            header_len = 8*4+4
+            gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack("QQQQI", raw_data[0:header_len])
         group = []
         for i in range(group_num):
             group.append(st.unpack("II", raw_data[header_len+i*8: header_len+(i+1)*8]))
@@ -702,8 +709,8 @@ class BMProfileParser:
         for i in range(dyn_idx, len(dyn_node)):
             if cmd_idx >= len(commands):
                 break
-            d = dyn_node[i]
-            c = commands[cmd_idx]
+            d = dyn_node[i]        # firmware profile data
+            c = commands[cmd_idx]  # perf_monitor data
             if node_id_func(d) == next_id(c.inst_id):
                 c.dynamic = d
                 c.command = d.command
@@ -759,7 +766,7 @@ class BMProfileParser:
             extra_data = item.dyn_extra
             gdma_parser = self.archlib.GDMACommandParser()
             bd_parser = self.archlib.BDCommandParser()
-            for d in dyn_data[1:]:
+            for d in dyn_data[1:]:  # skip init record
                 d.pmu_info = None
                 d.sim_info = None
                 d.begin_usec = (d.begin_cycle - dyn_base_cycle)*dyn_cycle_ns/1000
@@ -770,7 +777,7 @@ class BMProfileParser:
                 d.extra = extra_data.get(d.profile_id, [])
                 d.info = []
                 d.command = None
-                dyn_type = self.archlib.DynRecordType(d.type)
+                dyn_type = self.archlib.DynRecordType(d.type & 0xFF)
                 if dyn_type == self.archlib.DynRecordType.NODE_WAIT:
                     wait_nodes.append(d)
                     d.gdma_nodes = wait_dyn_gdma
