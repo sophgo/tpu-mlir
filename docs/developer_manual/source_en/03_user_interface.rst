@@ -179,6 +179,9 @@ Used to convert various neural network models into MLIR files, the supported par
    * - model_def
      - Y
      - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
+   * - model_extern
+     - N
+     - Extra multi model definition files (currently mainly used for MaskRCNN). None by default. separate by ','
    * - model_data
      - N
      - Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file)
@@ -254,10 +257,14 @@ Used to convert various neural network models into MLIR files, the supported par
    * - preprocess_list
      - N
      - choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs
-
+   * - path_yaml
+     - N
+     - the path for one single yaml file (currently mainly used for MaskRCNN)
+   * - enable_maskrcnn
+     - N
+     - if enable MaskRCNN transformation
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
-
 
 run_calibration.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -598,6 +605,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - matmul_perchannel
      - N
      - if matmul is quantized in per-channel mode, for BM1684X and BM1688, the performance may be decreased if enable
+   * - enable_maskrcnn
+     - N
+     - if enable comparison for MaskRCNN.
 
 model_runner.py
 ~~~~~~~~~~~~~~~~

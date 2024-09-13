@@ -39,11 +39,11 @@ def get_attr(model: torch.jit.RecursiveScriptModule, node: torch.Node):
         return (getattr(obj, name), parent + '.' + name if len(parent) > 0 else name)
 
 
-def get_constant(node: torch.Node):
+def get_constant(TorchNode: TorchNode, node: torch.Node):
     """Retrieve a constant associated with this prim::Constant node"""
     attribute_names = node.attributeNames()
     num_attributes = len(attribute_names)
-    name = node.output().debugName()
+    name = TorchNode.outputs[0]
     is_tensor = False
     type = node.output().type().kind()
     value = None
@@ -73,3 +73,8 @@ def get_constant(node: torch.Node):
         assert num_attributes == 0
         return None
     return name, value, is_tensor
+
+def get_attr_name(TorchNode: TorchNode):
+    name_native      = TorchNode.node_proto.output().debugName()
+    name_with_MaskRCNN_prefix = TorchNode.outputs[0]
+    return name_with_MaskRCNN_prefix

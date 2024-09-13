@@ -472,6 +472,9 @@ public:
     if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
             NmsOp, SortOp>(op)) {
       return true;
+    } else if (isa<MaskRCNNRPNGetBboxesOp, MaskRCNNBboxPoolerOp, MaskRCNNGetBboxBOp,
+                   MaskRCNNMaskPoolerOp>(op)) {
+      return true;
     } else if (op->hasTrait<trait::ShapeProducer>()) {
       return true;
     } else if (op->hasTrait<trait::ShapeConsumer>()) {

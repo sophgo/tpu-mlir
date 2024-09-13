@@ -179,6 +179,9 @@ model_transform.py
    * - model_def
      - 是
      - 指定模型定义文件, 比如 ``.onnx`` 或 ``.tflite`` 或 ``.prototxt`` 文件
+   * - model_extern
+     - 否
+     - 其他模型定义文件, 用于与model_def模型合并（目前主要用于MaskRCNN功能），默认处理为None; 多个输入模型文件时，用 ``,`` 隔开
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
@@ -254,7 +257,12 @@ model_transform.py
    * - preprocess_list
      - 否
      - 输入是否需要做预处理的选项,例如:'1,3' 表示输入1&3需要进行预处理, 缺省代表所有输入要做预处理
-
+   * - path_yaml
+     - 否
+     - 单个 yaml文件 的路径（当前主要用于MaskRCNN参数配置）
+   * - enable_maskrcnn
+     - 否
+     - 是否启用 MaskRCNN大算子.
 
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
@@ -610,6 +618,9 @@ model_deploy.py
    * - matmul_perchannel
      - 否
      - MatMul是否使用per-channel量化模式，目前支持BM1684X和BM1688芯片，打开可能影响运行时间
+   * - enable_maskrcnn
+     - 否
+     - 是否启用 MaskRCNN大算子.
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~

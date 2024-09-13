@@ -2070,4 +2070,103 @@ typedef struct
   int32_t use_multi_core;
 } Convbwd_param_t;
 
+typedef struct MaskRCNN_RPN_get_bboxes_common_spec {
+         float delta2bbox_mean_0;
+         float delta2bbox_mean_1;
+         float delta2bbox_mean_2;
+         float delta2bbox_mean_3;
+         float delta2bbox_std_0;
+         float delta2bbox_std_1;
+         float delta2bbox_std_2;
+         float delta2bbox_std_3;
+         float delta2bbox_max_scalar_c;
+         float iou_threshold;
+         float conf_threshold;
+} MaskRCNN_RPN_get_bboxes_common_spec_t;
+
+typedef struct MaskRCNN_RPN_get_bboxes_global_param {
+         MaskRCNN_RPN_get_bboxes_common_spec_t spec;
+         unsigned long long global_buffer_0_batch_mlvl_scores;
+         unsigned long long global_buffer_1_batch_mlvl_anchors;
+         unsigned long long global_buffer_2_batch_mlvl_rpn_bbox_pred;
+         unsigned long long global_buffer_3_batch_mlvl_proposals;
+         unsigned long long global_buffer_4_batch_mlvl_ids;
+         unsigned long long global_buffer_5_glb_buffer_tmp_scores_stretched;
+         unsigned long long global_buffer_6_glb_buffer_ranked_scores;
+         unsigned long long global_buffer_7_glb_buffer_rank_inds_int32;
+         unsigned long long global_buffer_8_glb_buffer_rank_inds_u32;
+         unsigned long long global_buffer_9_glb_topk_inds;
+         unsigned long long global_buffer_10_glb_buffer_gather_1;
+         unsigned long long global_buffer_11_glb_buffer_gather_2;
+         unsigned long long global_buffer_12_glb_buffer_rpn_bbox_permuted;
+         unsigned long long global_buffer_13_glb_buffer_nonzero;
+         unsigned long long global_buffer_14_result_valid_ind;
+         unsigned long long global_buffer_15_glb_buffer_gather_boxes;
+         unsigned long long global_buffer_16_glb_buffer_gather_scores;
+         unsigned long long global_buffer_17_keep_3nch;
+         unsigned long long global_buffer_18_keep_u32_1h;
+         unsigned long long global_buffer_19_glb_buffer_boxes;
+         unsigned long long global_buffer_20_glb_buffer_scores;
+         unsigned long long global_buffer_21_glb_buffer_nms;
+         unsigned long long global_buffer_22_gather_mlvl_proposals;
+         unsigned long long global_buffer_23_gather_mlvl_scores;
+         unsigned long long global_buffer_24_gather_mlvl_ids;
+         unsigned long long global_buffer_25_glb_buffer_result_list;
+} MaskRCNN_RPN_get_bboxes_global_param_t;
+
+typedef struct MaskRCNN_bbox_pooler_common_spec {
+         int mode;
+} MaskRCNN_bbox_pooler_common_spec_t;
+
+typedef struct MaskRCNN_bbox_pooler_global_param {
+         MaskRCNN_bbox_pooler_common_spec_t spec;
+         unsigned long long global_buffer_0_ptr_tmp_res;
+         unsigned long long global_buffer_1_ptr_rois_tmp;
+} MaskRCNN_bbox_pooler_global_param_t;
+
+typedef struct MaskRCNN_get_bbox_B_common_spec {
+         float threshold_score_eq;
+         float wh_ratio_log;
+         float nms_iou_thr;
+         float delta2bbox_means;
+         float delta2bbox_stds_0;
+         float delta2bbox_stds_1;
+} MaskRCNN_get_bbox_B_common_spec_t;
+
+typedef struct MaskRCNN_get_bbox_B_global_param {
+         MaskRCNN_get_bbox_B_common_spec_t spec;
+         unsigned long long global_buffer_0_means;
+         unsigned long long global_buffer_1_stds;
+         unsigned long long global_buffer_2_res_bbox;
+         unsigned long long global_buffer_3_res_bbox1;
+         unsigned long long global_buffer_4_res_bbox0;
+         unsigned long long global_buffer_5_res_score0;
+         unsigned long long global_buffer_6_res_score1;
+         unsigned long long global_buffer_7_res_score2;
+         unsigned long long global_buffer_8_res_score3;
+         unsigned long long global_buffer_9_res_label2;
+         unsigned long long global_buffer_10_result_list;
+         unsigned long long global_buffer_11_keep_3nch;
+         unsigned long long global_buffer_12_keep_u32_1h;
+         unsigned long long global_buffer_13_glb_buffer_boxes;
+         unsigned long long global_buffer_14_glb_buffer_scores;
+         unsigned long long global_buffer_15_glb_buffer_nms;
+         unsigned long long global_buffer_16_glb_buffer_nonzero;
+         unsigned long long global_buffer_17_result_valid_ind;
+         unsigned long long global_buffer_18_glb_lables;
+         unsigned long long global_buffer_19_glb_lables_expand;
+} MaskRCNN_get_bbox_B_global_param_t;
+
+typedef struct MaskRCNN_mask_pooler_common_spec {
+         int mode;
+} MaskRCNN_mask_pooler_common_spec_t;
+
+typedef struct MaskRCNN_mask_pooler_global_param {
+         MaskRCNN_mask_pooler_common_spec_t spec;
+         unsigned long long global_buffer_0_ptr_rois_buff;
+         unsigned long long global_buffer_1_result_filled_det_bboxes;
+         unsigned long long global_buffer_2_result_filled_det_labels;
+         unsigned long long global_buffer_3_ptr_tmp_res;
+         unsigned long long global_buffer_4_ptr_rois_tmp;
+} MaskRCNN_mask_pooler_global_param_t;
 #endif

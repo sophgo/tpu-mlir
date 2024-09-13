@@ -17,7 +17,6 @@ import copy
 
 logger = logging.getLogger("root")
 
-
 class TorchConverter(BaseConverter):
     TypeMap = {
         "float64": "F64",
@@ -868,7 +867,7 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op.output)
 
     def convert_constant(self, torch_node: TorchNode):
-        name, data, is_tensor = get_constant(torch_node.node_proto)
+        name, data, is_tensor = get_constant(torch_node,torch_node.node_proto)
         if data is None:
             self.addOperand(name, self.mlir.none_op)
         elif not is_tensor:
@@ -929,7 +928,7 @@ class TorchConverter(BaseConverter):
         if node.output().type().kind() != 'TensorType':
             return
         data = get_attr(self.model, node)[0].detach()
-        weight_name = node.output().debugName()
+        weight_name = get_attr_name(torch_node)
         self.addWeight(weight_name, data.numpy())
 
     def convert_mul_op(self, torch_node: TorchNode):

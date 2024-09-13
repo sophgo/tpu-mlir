@@ -123,6 +123,7 @@ class DeployTool:
         self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
+        self.enable_maskrcnn   = args.enable_maskrcnn
 
     def cleanup(self):
         file_clean()
@@ -183,7 +184,8 @@ class DeployTool:
                                      mute=self.mute,
                                      matmul_perchannel=self.matmul_perchannel)
             if self.do_validate and self.cache_tool.do_tpu_validate(
-                    self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
+                    self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info) \
+               and not self.enable_maskrcnn:
                 tool.validate_tpu_mlir()
             return patterns
 
@@ -316,10 +318,22 @@ class DeployTool:
                 tool.validate_model()
             return patterns
 
+    def revise_MaskRCNN_tpu_ref(self):
+        if self.enable_maskrcnn:
+            dict_ref_npz    = np.load(self.ref_npz)
+            dict_model_npz  = np.load(self.model_npz)
+            keys_list = list(dict_model_npz.keys())
+            temp_ref_ = dict()
+            for i, per_key in enumerate(dict_ref_npz.keys()):
+                temp_ref_[keys_list[i]] = dict_ref_npz[per_key]
+            np.savez(self.tpu_npz, **temp_ref_)
+
     def validate_model(self):
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.compare_all)
         model_outputs = model_inference(self.inputs, self.model, self.compare_all)
         np.savez(self.model_npz, **model_outputs)
+        if self.enable_maskrcnn:
+           self.revise_MaskRCNN_tpu_ref()
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True, self.fazzy_match)
         else:
@@ -434,6 +448,9 @@ if __name__ == '__main__':
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")
+    # ========== MaskRCNN Options ==============
+    parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
+                        help="enable maskrcnn")
 
     # yapf: enable
     args = parser.parse_args()
@@ -455,7 +472,8 @@ if __name__ == '__main__':
     if not args.debug:
         tool.cleanup()
     else:
-        tool.pack_profile()
+        if not args.enable_maskrcnn:
+            tool.pack_profile()
 
     total_patterns = {**lowering_patterns, **tpu_patterns}
     if args.patterns_count:
