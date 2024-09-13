@@ -54,12 +54,6 @@ static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
     if (isa<Conv3DOp, Pool3DOp>(op)) {
       return true;
     }
-    if (auto layernorm_op = dyn_cast<LayerNormOp>(op)) {
-      auto in_shape = module::getShape(layernorm_op.getInput());
-      if (in_shape.size() == 5 && in_shape[1] > in_shape[3]) {
-        return true;
-      }
-    }
   }
   return false;
 }
