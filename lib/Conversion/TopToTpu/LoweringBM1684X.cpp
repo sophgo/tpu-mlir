@@ -223,11 +223,15 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       BinaryShiftLowering,
       BinaryConstShiftLowering,
       MeanRstdLowering,
-	  GroupNormTrainLowering,
+	    GroupNormTrainLowering,
       Yuv2rgbFormulaLowering,
-	  LogicalAndLowering,
+	    LogicalAndLowering,
       MeanStdScaleLowering,
-      ConvbwdLowering
+      ConvbwdLowering,
+      MaskRCNNRPNGetBboxesLowering,
+      MaskRCNNBboxPoolerLowering,
+      MaskRCNNGetBboxBLowering,
+      MaskRCNNMaskPoolerLowering
       // clang-format on
       >(patterns->getContext());
 }

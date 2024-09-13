@@ -249,13 +249,58 @@ class MlirTransformer(ModelTransformer):
         assert os.path.exists(weight_file), f"{weight_file} not exist, please check!"
         self.converter = None # origin.mlir model no need converter
 
+class MaskRCNNTransformer(ModelTransformer):
+
+    def __init__(self,
+                 model_name:   str  = None,
+                 model_def:    list = [],
+                 model_extern: list = [],
+                 input_shapes: list = [],
+                 input_types:  list = [],
+                 output_names: list = [],
+                 preprocessor: dict = {},
+                 path_yaml:    list = []):
+        super().__init__(model_name, model_def)
+        from transform.MaskRCNNConverter import MaskRCNNConverter
+        if not self.model_def.endswith('.pt'):
+            raise RuntimeError("maskrcnn model only support torch.pt! unsupport model:{}".format(self.model_def))
+        if model_extern is not None:
+            for model in model_extern:
+                if(not model.endswith('.pt')):
+                    raise RuntimeError("maskrcnn model only support torch.pt! unsupport model:{}".format(model))
+
+        self.converter = MaskRCNNConverter(self.model_name,
+                                           self.model_def,
+                                           model_extern,
+                                           input_shapes,
+                                           input_types,
+                                           output_names,
+                                           preprocessor,
+                                           path_yaml)
+        self.is_able_infer = model_extern is not None
+
+    def origin_inference(self, inputs: dict):
+        if (self.is_able_infer):
+            from tools.model_runner import torch_inference
+            return torch_inference(inputs, self.model_def)
+        assert 0,"[MaskRCNN] only support single torch inference!"
+
 def get_model_transform(args):
     preprocessor = preprocess()
     preprocessor.config(**vars(args))
     if not args.mlir.endswith('.mlir'):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
-    if args.model_def.endswith('.onnx'):
+    if args.enable_maskrcnn:
+        tool = MaskRCNNTransformer(args.model_name,
+                                   args.model_def,
+                                   args.model_extern,
+                                   args.input_shapes,
+                                   args.input_types,
+                                   args.output_names,
+                                   preprocessor.to_dict(),
+                                   path_yaml  =  args.path_yaml)
+    elif args.model_def.endswith('.onnx'):
         tool = OnnxTransformer(args.model_name,
                                args.model_def,
                                args.input_shapes,
@@ -304,6 +349,7 @@ if __name__ == '__main__':
     # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")
     parser.add_argument("--model_def", required=True, help="model definition file.")
+    parser.add_argument("--model_extern", default=None, type=str2list, help="multiple model definition files, all after the first model_def.")
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
     parser.add_argument("--input_shapes", type=str2shape, default=list(),
                         help="list of input shapes, like:[[1,3,224,224],[10],[16]]")
@@ -338,10 +384,17 @@ if __name__ == '__main__':
     parser.add_argument("--dynamic", action='store_true',
                         help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis \
                             as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names')
+    parser.add_argument("--path_yaml", type=str, default=None, help="path of the yaml file")
+    # ========== MaskRCNN Options ==============
+    parser.add_argument("--enable_maskrcnn", action='store_true', help="if enable maskrcnn")
+
 
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()
+    if (args.enable_maskrcnn):
+        assert ((not args.test_input) and (not args.test_result)), "[Error] Please don't give input/output when enable_MaskRCNN!"
+
     if unknown_args:
         args.unknown_params += unknown_args
     if args.test_input:

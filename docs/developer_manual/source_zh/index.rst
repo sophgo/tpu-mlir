@@ -28,5 +28,6 @@ TPU-MLIR开发参考手册
    16_tpulang
    17_custom
    18_final_mlir
+   19_maskrcnn
    Appx.01_nntc2mlir.rst
    Appx.02_tpulang_support_op

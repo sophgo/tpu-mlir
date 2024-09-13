@@ -83,6 +83,7 @@ class MAIN_ENTRY(object):
             "model": self.run_model_test,
             "multi_core_model": self.run_multi_core_test,
             "cuda": self.run_cuda_test,
+            "maskrcnn": self.run_maskrcnn_test,
         }
 
         self.results = []
@@ -159,6 +160,7 @@ class MAIN_ENTRY(object):
         t = Timer()
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
+
         success = True
         try:
             _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/{}.sh".format(source)))
@@ -279,6 +281,15 @@ class MAIN_ENTRY(object):
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
 
+    def run_maskrcnn_test(self):
+        # return exit status
+        t = Timer()
+        # run scripts under $REGRESSION_OUT/script_test
+        print("======= MaskRCNN test ======")
+        ret = self._run_script_test("test_MaskRCNN")
+        self.time_cost.append(f"run_MaskRCNN: {int(t.elapsed_time())} seconds")
+        return SUCCESS if ret else FAILURE
+
     def run_all(self, test_set):
         t = Timer()
 
@@ -296,7 +307,7 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda"]
+    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda", "maskrcnn"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')

@@ -13,7 +13,8 @@ import random
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
+import ast
+import argparse
 
 def save_tensor_diff_subplot(tensor_ref, tensor_target, index_list, ref_name, target_name,
                              file_prefix):
@@ -202,3 +203,12 @@ def collect_process(processes: list, error_cases, timeout: int = 300):
             error_cases.append(p.name)
         elif p.exitcode != 0:
             error_cases.append(p.name)
+
+def dict_type(s):
+    try:
+        d = ast.literal_eval(s)
+        if not isinstance(d, dict):
+            raise ValueError
+        return d
+    except:
+        raise argparse.ArgumentTypeError("Input must be a dictionary")

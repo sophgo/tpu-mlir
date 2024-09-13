@@ -40,7 +40,7 @@ class TorchInterpreter():
         self.coeff[weight_name] = data
 
     def convert_constant(self, torch_node: TorchNode):
-        name, data, is_tensor = get_constant(torch_node.node_proto)
+        name, data, is_tensor = get_constant(torch_node, torch_node.node_proto)
         if not is_tensor:
             if isinstance(data, int):
                 if data > np.iinfo(np.int32).max:

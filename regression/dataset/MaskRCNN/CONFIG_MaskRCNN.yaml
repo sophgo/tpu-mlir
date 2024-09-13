@@ -1,0 +1,145 @@
+CHANNEL_ROI: 256
+CHANNEL_RPN_BBOXES: 12
+CHANNEL_RPN_SCORES: 3
+CONF_THRESHOLD_1st: 0.1
+CONF_THRESHOLD_2nd: 0.0
+DELTA2BBOX_1st_MAX_SHAPE_H: 800.0
+DELTA2BBOX_1st_MAX_SHAPE_W: 1216.0
+DELTA2BBOX_1st_MEAN: 0
+DELTA2BBOX_1st_STD_0: 1
+DELTA2BBOX_1st_STD_1: 1
+DELTA2BBOX_2nd_MAX_SHAPE_H: 800.0
+DELTA2BBOX_2nd_MAX_SHAPE_W: 1216.0
+DELTA2BBOX_2nd_MEAN: 0
+DELTA2BBOX_2nd_STD_0: 0.1
+DELTA2BBOX_2nd_STD_1: 0.2
+DICT_TESTER:
+- batch_input_shape: !!python/tuple
+  - 800
+  - 1216
+  filename: data/coco/val2017/000000397133.jpg
+  flip: false
+  flip_direction: null
+  img_norm_cfg:
+    mean: !!python/object/apply:numpy.core.multiarray._reconstruct
+      args:
+      - &id001 !!python/name:numpy.ndarray ''
+      - !!python/tuple
+        - 0
+      - !!binary |
+        Yg==
+      state: !!python/tuple
+      - 1
+      - !!python/tuple
+        - 3
+      - &id002 !!python/object/apply:numpy.dtype
+        args:
+        - f4
+        - false
+        - true
+        state: !!python/tuple
+        - 3
+        - <
+        - null
+        - null
+        - null
+        - -1
+        - -1
+        - 0
+      - false
+      - !!binary |
+        mln3QlyP6EJcD89C
+    std: !!python/object/apply:numpy.core.multiarray._reconstruct
+      args:
+      - *id001
+      - !!python/tuple
+        - 0
+      - !!binary |
+        Yg==
+      state: !!python/tuple
+      - 1
+      - !!python/tuple
+        - 3
+      - *id002
+      - false
+      - !!binary |
+        e5RpQuF6ZEIAgGVC
+    to_rgb: true
+  img_shape: !!python/tuple
+  - 800.0
+  - 1216.0
+  - 3
+  ori_filename: 000000397133.jpg
+  ori_shape: !!python/tuple
+  - 427
+  - 640
+  - 3
+  pad_shape: !!python/tuple
+  - 800
+  - 1216
+  - 3
+  scale_factor: !!python/object/apply:numpy.core.multiarray._reconstruct
+    args:
+    - *id001
+    - !!python/tuple
+      - 0
+    - !!binary |
+      Yg==
+    state: !!python/tuple
+    - 1
+    - !!python/tuple
+      - 4
+    - *id002
+    - false
+    - !!binary |
+      zczvPwrQ7z/NzO8/CtDvPw==
+FAKE_DQ_DYNAMIC_LENGTH: 4741
+GLOBAL_BATCH_SIZE: 1
+GetBboxB_SCORE_EQ: 0.05
+Global_strides_DQ:
+- !!python/tuple
+  - 4
+  - 4
+- !!python/tuple
+  - 8
+  - 8
+- !!python/tuple
+  - 16
+  - 16
+- !!python/tuple
+  - 32
+  - 32
+- !!python/tuple
+  - 64
+  - 64
+HARDWARE_FACTOR_TOPK: 10
+H_RPN_DYN_MAX: 200
+MASK_POOLER_FAKE_DYNAMIC_LENGTH: 100
+MAX_LENGTH_STATIC_STRECHED: 4741
+MAX_PER_IMG: 250
+MAX_PER_IMG_GetBboxB: 100
+MAX_SCALAR_C: 4.1351665567
+NMS_MAX_LENGTH_1st: 4741
+NMS_MAX_LENGTH_2nd: 20000
+NMS_PRE: 1000
+NMS_SLICE: 1000
+NMS_THRE_1st: 0.7
+NMS_THRE_2nd: 0.5
+NUM_CLASSES: 1
+NUM_CLASSES_GetBboxB: 80
+NUM_INDEXES: 4
+NUM_LEVELS: 5
+NUM_LEVELS_ROI: 4
+ROI_H: 200
+ROI_LEN: 5
+ROI_PH_BBOX_POOLER: 7
+ROI_PH_MASK_POOLER: 14
+ROI_PW_BBOX_POOLER: 7
+ROI_PW_MASK_POOLER: 14
+ROI_SLICE_BBOX_POOLER: 250
+ROI_SLICE_MASK_POOLER: 100
+ROI_W: 304
+TOPK_ONNX_NMS_1st: 250
+TOPK_ONNX_NMS_2nd: 250
+TPU1686_TOPK_FACTOR: 3
+W_RPN_DYN_MAX: 304

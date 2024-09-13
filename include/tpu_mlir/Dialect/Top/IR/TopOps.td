@@ -3502,4 +3502,141 @@ def Top_ConvbwdOp :Top_Op<"Convbwd">{
     convbwd_attr_t parseParam();
   }];
 }
+
+def Top_MaskRCNNRPNGetBboxesOp: Top_Op<"MaskRCNN_RPNGetBboxes"> {
+  let summary = "RPN_get_bboxes gen by PPL";
+
+  let description = [{
+    MaskRCNN_RPN_get_bboxes, the sub-block with 1st NMS between RPN_head and 1st ROIAlign
+  }];
+
+  let arguments = (ins
+    AnyTensor:$cls_scores_0,
+    AnyTensor:$cls_scores_1,
+    AnyTensor:$cls_scores_2,
+    AnyTensor:$cls_scores_3,
+    AnyTensor:$cls_scores_4,
+    AnyTensor:$bbox_preds_0,
+    AnyTensor:$bbox_preds_1,
+    AnyTensor:$bbox_preds_2,
+    AnyTensor:$bbox_preds_3,
+    AnyTensor:$bbox_preds_4,
+    AnyTensor:$max_shape,
+    AnyTensor:$mlvl_anchors_0,
+    AnyTensor:$mlvl_anchors_1,
+    AnyTensor:$mlvl_anchors_2,
+    AnyTensor:$mlvl_anchors_3,
+    AnyTensor:$mlvl_anchors_4,
+    F64Attr:$delta2bbox_mean_0,
+    F64Attr:$delta2bbox_mean_1,
+    F64Attr:$delta2bbox_mean_2,
+    F64Attr:$delta2bbox_mean_3,
+    F64Attr:$delta2bbox_std_0,
+    F64Attr:$delta2bbox_std_1,
+    F64Attr:$delta2bbox_std_2,
+    F64Attr:$delta2bbox_std_3,
+    F64Attr:$delta2bbox_max_scalar_c,
+    F64Attr:$iou_threshold,
+    F64Attr:$conf_threshold,
+    I64Attr:$MAX_LENGTH_STATIC_STRECHED,
+    I64Attr:$NUM_INDEXES,
+    I64Attr:$NUM_CLASSES,
+    I64Attr:$CHANNEL_RPN_BBOXES,
+    I64Attr:$CHANNEL_RPN_SCORES,
+    I64Attr:$NMS_PRE,
+    I64Attr:$HARDWARE_FACTOR_TOPK,
+    I64Attr:$NMS_MAX_LENGTH,
+    I64Attr:$TOPK_ONNX_NMS,
+    I64Attr:$H_RPN_DYN_MAX,
+    I64Attr:$W_RPN_DYN_MAX,
+    I64Attr:$MAX_PER_IMG
+  );
+  let results = (outs AnyTensor:$result_list);
+}
+
+def Top_MaskRCNNBboxPoolerOp: Top_Op<"MaskRCNN_BboxPooler"> {
+  let summary = "BBox_Pooler gen by PPL";
+
+  let description = [{
+    MaskRCNN_BBox_Pooler, the 1st ROIAlign in MaskRCNN
+  }];
+
+  let arguments = (ins
+    AnyTensor:$ptr_feat0,
+    AnyTensor:$ptr_feat1,
+    AnyTensor:$ptr_feat2,
+    AnyTensor:$ptr_feat3,
+    AnyTensor:$rois_multi_batch,
+    I64Attr:$ROI_NUM_LEVELS,
+    I64Attr:$ROI_H,
+    I64Attr:$ROI_W,
+    I64Attr:$CHANNEL_ROI,
+    I64Attr:$ROI_SLICE,
+    I64Attr:$ROI_PH,
+    I64Attr:$ROI_PW,
+    I64Attr:$ROI_LEN
+  );
+  let results = (outs
+    AnyTensor:$result_res,
+    AnyTensor:$result_rois
+  );
+}
+
+def Top_MaskRCNNGetBboxBOp: Top_Op<"MaskRCNN_GetBboxB">{
+  let summary = "MaskRCNN GetBboxB gen by PPL";
+  let description = [{
+    Mask rcnn consist of three part: backbone to get proposals, bbox head to get bbox pred, mask_head to get mask pred, GetBboxB is final part in bbox head
+  }];
+  let arguments = (ins
+    AnyTensor:$ptr_rois,
+    AnyTensor:$ptr_bbox,
+    AnyTensor:$ptr_score,
+    AnyTensor:$max_val,
+    AnyTensor:$scale_factor,
+    F64Attr:$threshold_score_eq,
+    F64Attr:$wh_ratio_log,
+    F64Attr:$nms_iou_thr,
+    F64Attr:$delta2bbox_means,
+    F64Attr:$delta2bbox_stds_0,
+    F64Attr:$delta2bbox_stds_1,
+    I64Attr:$NUM_INDEXES,
+    I64Attr:$NUM_CLASSES,
+    I64Attr:$TOPK_ONNX_NMS,
+    I64Attr:$NUM_CLASSES_getBboxB,
+    I64Attr:$MAX_NMS_LENGTH_GetBboxB,
+    I64Attr:$MAX_PER_IMG,
+    I64Attr:$MAX_PER_IMG_GetBboxB
+  );
+  let results = (outs
+    AnyTensor:$result_det_bboxes,
+    AnyTensor:$result_det_labels
+  );
+}
+
+def Top_MaskRCNNMaskPoolerOp: Top_Op<"MaskRCNN_MaskPooler"> {
+  let summary = "Mask_Pooler gen by PPL";
+
+  let description = [{
+    MaskRCNN_Mask_Pooler, the 2st ROIAlign in MaskRCNN
+  }];
+
+  let arguments = (ins
+    AnyTensor:$x_0,
+    AnyTensor:$x_1,
+    AnyTensor:$x_2,
+    AnyTensor:$x_3,
+    AnyTensor:$det_bboxes_multi_batch,
+    AnyTensor:$det_labels_multi_batch,
+    AnyTensor:$scale_factor,
+    I64Attr:$ROI_NUM_LEVELS,
+    I64Attr:$ROI_H,
+    I64Attr:$ROI_W,
+    I64Attr:$CHANNEL_ROI,
+    I64Attr:$ROI_SLICE,
+    I64Attr:$ROI_PH,
+    I64Attr:$ROI_PW,
+    I64Attr:$ROI_LEN
+  );
+  let results = (outs AnyTensor:$result_res);
+}
 #endif // Top_OPS
