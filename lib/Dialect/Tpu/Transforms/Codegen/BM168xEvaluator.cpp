@@ -138,6 +138,16 @@ void BM168xEvaluator::allocate_resources() {
   module::detachWeightFile(); // free weight mem
 }
 
+static inline void set_4bit(void* ptr, int i, uint8_t byte) {
+  uint8_t bit4 = (byte & 0xf);
+  if (i % 2) {
+    ((uint8_t*)ptr)[i / 2] &= 0xf;
+    ((uint8_t*)ptr)[i / 2] |= (bit4 << 4);
+  } else {
+    ((uint8_t*)ptr)[i / 2] = bit4;
+  }
+}
+
 void BM168xEvaluator::setTensor(const std::string &name, const void *data,
                                 size_t size, bool is_integer) {
   auto it = value_map.find(name);
@@ -183,9 +193,25 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
       }
     } else {
       auto type = module::getStorageType(value);
-      if (type.isF32() || type.isInteger(8) || type.isInteger(16) || type.isInteger(32)) {
+      if (type.isF32()) {
         const auto type_size = module::getDtypeSize(value);
         memcpy(mem_ptr, data, count * type_size);
+      } else if (type.isInteger(32)) {
+        for (auto i = 0; i < count; ++i) {
+          ((uint32_t*)mem_ptr)[i] = p[i];
+        }
+      } else if (type.isInteger(16)) {
+        for (auto i = 0; i < count; ++i) {
+          ((uint16_t*)mem_ptr)[i] = p[i];
+        }
+      } else if (type.isInteger(8)) {
+        for (auto i = 0; i < count; ++i) {
+          ((uint8_t*)mem_ptr)[i] = p[i];
+        }
+      } else if (type.isInteger(4)) {
+        for (auto i = 0; i < count; ++i) {
+          set_4bit(mem_ptr, i, p[i]);
+        }
       } else if (type.isF16()) {
         for (auto i = 0; i < count; ++i) {
           ((uint16_t*)mem_ptr)[i] = f32_to_f16(p[i]);
