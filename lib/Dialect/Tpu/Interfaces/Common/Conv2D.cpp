@@ -391,6 +391,8 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;
   sec_info.w_slice = in_gi.w_slice;
+  sec_info.n_idx = in_gi.n_idx;
+  sec_info.c_idx = in_gi.c_idx;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.w_idx = in_gi.w_idx;
   sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
