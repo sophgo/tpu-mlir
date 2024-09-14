@@ -36,22 +36,19 @@ log_txt = ""
 
 
 class soc_launch_struct:
-    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, cur_op_cmds):
+    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
         self.tiu_buf = tiu_buf
         self.dma_buf = dma_buf
         self.tiu_buf_len = len(tiu_buf)
         self.dma_buf_len = len(dma_buf)
-        self.cur_op_cmds = cur_op_cmds
 
 
 class CustomUnpickler(pickle.Unpickler):
     def find_class(self, module, name):
         if module == "debugger.target_1684x.pcie" and name == "soc_launch_struct":
             return soc_launch_struct
-        # else:
-        #     print(module, ":", name)
         return super().find_class(module, name)
 
 
@@ -106,50 +103,7 @@ def finished_cur_layer(_slice, target_shape):
     return True
 
 
-def collect_infer_data_from_ref_with_memory_opt(
-    operand: Pickled_Value, actual, desired, ref, npz_in_disk
-):
-    if operand.name not in ref:
-        return
-    if operand.name in npz_in_disk:
-        return
-
-    _slice = operand.slice
-    if _slice == "[...]":
-        slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
-        sliced_shape = tuple(int(i) for i in slice_list)
-        slices = [slice(None, None) for _ in slice_list]
-    else:
-        slice_list = _slice[1:-1].split(",")
-        sliced_shape = tuple(
-            [
-                int(slice.split(":")[1]) - int(slice.split(":")[0])
-                for slice in slice_list
-            ]
-        )
-        slices = [
-            slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
-            for s in slice_list
-        ]
-    actual = actual.reshape(desired.shape)
-
-    if operand.layout in (
-        "continuous_group3d",
-        "eu_align_group3d",
-        "compact_group3d",
-        "eu_align_xn_group3d",
-        "compact_xn_group3d",
-    ):
-        d, n, c, h, w = 0, 1, 2, 3, 4
-        actual = actual.transpose((n, c, d, h, w))
-
-    reshape = operand.reshape
-    origin_shape = ref[operand.name].shape
-    if reshape:
-        reshape = eval(reshape[1:-1].replace("x", ","))
-    else:
-        reshape = sliced_shape
-
+def collect_with_mem_opt(operand, origin_shape, reshape, _slice, slices, actual, npz_in_disk):
     if operand.name not in npz_in_memory:
         tmp = np.zeros(reshape, dtype=actual.dtype)
     else:
@@ -164,14 +118,24 @@ def collect_infer_data_from_ref_with_memory_opt(
             npz_in_memory.pop(operand.name)
     else:
         npz_in_memory[operand.name] = tmp
-    return
 
 
-def collect_infer_data_from_ref(
-    operand: Pickled_Value, actual, desired, ref, ref_data_from_inference
-):
+def collect_without_mem_opt(operand, origin_shape, reshape, slices, actual, npz_in_disk):
+    if operand.name not in npz_in_disk:
+        tmp = np.zeros(reshape, dtype=actual.dtype)
+    else:
+        tmp = npz_in_disk[operand.name]
+        tmp = tmp.reshape(reshape)
+    tmp[tuple(slices)] = actual
+    npz_in_disk[operand.name] = tmp.reshape(origin_shape)
+
+
+def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, npz_in_disk, use_memory_opt):
     if operand.name not in ref:
-        return None
+        return
+    if use_memory_opt and operand.name in npz_in_disk:
+        return
+
     _slice = operand.slice
     if _slice == "[...]":
         slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
@@ -208,16 +172,10 @@ def collect_infer_data_from_ref(
     else:
         reshape = sliced_shape
 
-    if operand.name not in ref_data_from_inference:
-        tmp = np.zeros(reshape)
-        tmp[tuple(slices)] = actual
-        ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
+    if use_memory_opt:
+        collect_with_mem_opt(operand, origin_shape, reshape, _slice, slices, actual, npz_in_disk)
     else:
-        tmp = ref_data_from_inference[operand.name]
-        tmp = tmp.reshape(reshape)
-        tmp[tuple(slices)] = actual
-        ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
-    return
+        collect_without_mem_opt(operand, origin_shape, reshape, slices, actual, npz_in_disk)
 
 
 def infer_combine(
@@ -238,12 +196,7 @@ def infer_combine(
     else:
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
     desired = get_ref_data(value, ref_data)
-    if using_memory_opt:
-        collect_infer_data_from_ref_with_memory_opt(
-            value, actual, desired, ref_data, infer_data
-        )
-    else:
-        collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data)
+    collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data, using_memory_opt)
     if enable_log:
         if is_operand:
             log_txt += f"gather operand slice: {value}\n"
@@ -381,11 +334,9 @@ if __name__ == "__main__":
         soc_runner.memory.set_data_to_address(
             coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
         )
-    # only used when run_by_atomic
     op_start_idx = 0
     in_op = False
     op_idx = 0
-    ##############################
 
     # init input and reference
     if isinstance(input_data_fn, dict):
@@ -414,7 +365,7 @@ if __name__ == "__main__":
     else:
         infer_data = {}
 
-    # compute
+    # compute and collect
     cmd_points = sorted(values_in_pkl.keys())
     tqdm_iter = tqdm(cmds_pkl)
     history = Counter({"tiu": 0, "dma": 0})
@@ -423,46 +374,21 @@ if __name__ == "__main__":
         log_start(idx, args.run_by_atomic, args.enable_log)
 
         if not args.run_by_atomic:
-            collect_before_compute(
-                values_in_pkl, cmd_points[idx], soc_runner, ref_data, infer_data, args
-            )
-
-            soc_runner.checker_fast_compute(
-                struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf
-            )
+            collect_before_compute(values_in_pkl, cmd_points[idx], soc_runner, ref_data, infer_data, args)
+            soc_runner.checker_fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
             history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-            tqdm_iter.set_description(
-                f"execute {history['tiu']} tiu {history['dma']} dma cmds."
-            )
-
-            collect_after_compute(
-                values_out_pkl, idx, soc_runner, ref_data, infer_data, args
-            )
+            tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+            collect_after_compute(values_out_pkl, idx, soc_runner, ref_data, infer_data, args)
         else:
             if not in_op:
                 op_start_idx = idx
-                collect_before_compute(
-                    values_in_pkl,
-                    cmd_points[op_idx],
-                    soc_runner,
-                    ref_data,
-                    infer_data,
-                    args,
-                )
+                collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data, infer_data, args)
                 in_op = True
-
-            soc_runner.fast_compute(
-                struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf
-            )
+            soc_runner.fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
             history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-            tqdm_iter.set_description(
-                f"execute {history['tiu']} tiu {history['dma']} dma cmds."
-            )
-
-            if op_start_idx + struct.cur_op_cmds - 1 == idx:
-                collect_after_compute(
-                    values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args
-                )
+            tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+            if op_start_idx + values_out_pkl[op_idx].cmd_point-values_in_pkl[cmd_points[op_idx]][0].cmd_point == idx:
+                collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args)
                 in_op = False
                 op_idx += 1
 

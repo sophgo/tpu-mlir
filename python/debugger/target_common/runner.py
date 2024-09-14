@@ -200,15 +200,6 @@ class Runner:
             elif cmd_type == CMDType.dma:
                 self.dma_compute(command)
 
-    def cmd_compute(self, cur_cmd_point, cmditer):
-        command = cmditer[cur_cmd_point]
-        assert command.cmd_type.is_static()
-        cmd_type = command.cmd_type
-        if cmd_type == CMDType.tiu:
-            self.tiu_compute(command)
-        elif cmd_type == CMDType.dma:
-            self.dma_compute(command)
-
     def tiu_compute(self, _):
         raise NotImplementedError()
 
