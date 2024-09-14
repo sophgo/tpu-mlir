@@ -148,6 +148,12 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
             ishape[1] == oshape[1])) {
         return false;
       }
+      if ((shape.size() == 4 &&
+           shape[0] * shape[1] * shape[2] % Arch::NPU_NUM == 0) ||
+          (shape.size() == 5 &&
+           shape[0] * shape[1] * shape[2] * shape[3] % Arch::NPU_NUM == 0)) {
+        return false;
+      }
     }
 
     if ((shape.size() == 4 &&
