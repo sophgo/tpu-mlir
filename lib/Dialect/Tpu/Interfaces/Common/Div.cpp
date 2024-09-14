@@ -89,6 +89,8 @@ void tpu::DivOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);
   sec_info.h_slice = std::max(in0_gi.h_slice, in1_gi.h_slice);
   sec_info.w_slice = std::max(in0_gi.w_slice, in1_gi.w_slice);
+  sec_info.n_idx = std::max(in0_gi.n_idx, in1_gi.n_idx);
+  sec_info.d_idx = std::max(in0_gi.d_idx, in1_gi.d_idx);
   sec_info.c_idx = std::max(in0_gi.c_idx, in1_gi.c_idx);
   sec_info.is_c_split =
       !(std::max(in0_gi.c_idx, in1_gi.c_idx) == 0 &&

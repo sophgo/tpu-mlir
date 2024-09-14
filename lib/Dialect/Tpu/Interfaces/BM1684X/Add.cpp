@@ -92,33 +92,6 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                        local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto in0_gi = //¡ä¨®add¦Ì?in_hslice_offset??¨¨??y¨¨¡¤¦Ì?hslice??¨°?
-      LocalGenInterface::getGroupInfo(getOperand(0), n_step, h_step, d_step, w_step, c_step, op);
-  auto in1_gi =
-      LocalGenInterface::getGroupInfo(getOperand(1), n_step, h_step, d_step, w_step, c_step, op);
-  auto in0_type = module::getStorageType(getInputs()[0]);
-  auto in1_type = module::getStorageType(getInputs()[1]);
-  if (in0_gi.h_idx_offset > 0) {
-    int bytes = 4;
-    if (in0_type.isInteger(8)) {
-      bytes = 1;
-    } else if (in0_type.isF16()) {
-      bytes = 2;
-    }
-    llvm::errs() <<"add in0_gi.h_idx_offset:"<<in0_gi.h_idx_offset<<", old addr:"<<(*input_spec)[0].addr<<"\n";
-    (*input_spec)[0].addr += in0_gi.h_idx_offset*in0_gi.w_slice*bytes;
-  }
-  if (in1_gi.h_idx_offset > 0) {
-    int bytes = 4;
-    if (in1_type.isInteger(8)) {
-      bytes = 1;
-    } else if (in1_type.isF16()) {
-      bytes = 2;
-    }
-    llvm::errs() <<"add in1_gi.h_idx_offset:"<<in1_gi.h_idx_offset<<", old addr:"<<(*input_spec)[1].addr<<"\n";
-    (*input_spec)[1].addr += in1_gi.h_idx_offset*in1_gi.w_slice*bytes;
-  }
-
   auto output_spec = BM168x::get_output_spec(op, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   bcbinary_local_param_t param = {0};

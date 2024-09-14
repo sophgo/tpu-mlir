@@ -65,12 +65,16 @@ typedef struct local_sec_info {
   int32_t c_idx;
   int32_t c_slice;
 
+  int32_t n_idx;
+  int32_t d_idx;
+
   void print() {
-    printf("group_type:%d, n_slice:%d, out_n_slice:%d, d_slice:%d, \
+    printf("group_type:%d, n_idx: %d, n_slice:%d, out_n_slice:%d, d_idx:%d, d_slice:%d, \
             >>>>>>>>is_h_split:%d, h_idx:%d, h_slice:%d, out_h_idx:%d, out_h_slice:%d, \
             >>>>>>>>is_w_split:%d, w_idx:%d, w_slice:%d, out_w_idx:%d, out_w_slice:%d, \
-            >>>>>>>>is_c_split:%d, c_idx:%d, c_slice:%d\n", group_type, n_slice, out_n_slice, \
-            d_slice, is_h_split, h_idx, h_slice, out_h_idx, out_h_slice, is_w_split, \
+            >>>>>>>>is_c_split:%d, c_idx:%d, c_slice:%d\n",
+            group_type, n_idx, n_slice, out_n_slice, d_idx, d_slice, \
+            is_h_split, h_idx, h_slice, out_h_idx, out_h_slice, is_w_split, \
             w_idx, w_slice, out_w_idx, out_w_slice, is_c_split, c_idx, c_slice);
   }
 } local_sec_info_t;

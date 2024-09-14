@@ -58,6 +58,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
             sec_info.h_slice = in_gi.h_slice;
             sec_info.w_slice = in_gi.w_slice;
             sec_info.c_slice = gi.c_slice;
+            sec_info.n_idx = in_gi.n_idx;
+            sec_info.d_idx = in_gi.d_idx;
             sec_info.h_idx = in_gi.h_idx;
             sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
             sec_info.w_idx = in_gi.w_idx;

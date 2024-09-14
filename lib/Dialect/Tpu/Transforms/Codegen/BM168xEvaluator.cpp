@@ -447,8 +447,8 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
     break;
   }
 
-  const int nidx = ginfo.n_idx;
-  const int didx = ginfo.d_idx;
+  const int nidx = sec_info.n_idx;
+  const int didx = sec_info.d_idx;
   const int cidx = sec_info.is_c_split ? sec_info.c_idx : 0;
   const int hidx = sec_info.is_h_split ? sec_info.out_h_idx : 0;
   const int widx = sec_info.is_w_split ? sec_info.out_w_idx : 0;
