@@ -457,6 +457,9 @@ class TdbCmdBackend(cmd.Cmd):
                 dma.append(cmditer[cmd_point + offset])
             all.append(cur)
 
+            if not self.fast_checker_enabled:
+                break
+
             if isinstance(self.runner, CModelRunner):
                 break
             if df is not None:
@@ -484,14 +487,9 @@ class TdbCmdBackend(cmd.Cmd):
                 cmd_type = cmd.cmd_type
                 if cmd_type.is_static():
                     if not self.context.is_sys(cmd):
-                        if self.fast_checker_enabled:
-                            # run_by_op, may cause timeout error when op contain too many atomic cmds
-                            cmds = self.get_stack_cmds()
-                            forward_cmds = len(cmds.all)
-                            self.runner.cmds_compute(cmds)
-                        else:
-                            # run_by_atomic, hardly cause timeout error
-                            self.runner.cmd_compute(self.cmd_point, self.cmditer)
+                        cmds = self.get_stack_cmds()
+                        forward_cmds = len(cmds.all)
+                        self.runner.cmds_compute(cmds)
                 elif cmd_type == CMDType.cpu:
                     self.runner.cpu_compute(cmd)
                 elif cmd_type == CMDType.dyn_ir:
