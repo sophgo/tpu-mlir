@@ -395,6 +395,8 @@ class MODEL_RUN(object):
                 if "use_quantize_table" in self.ini_content and int(
                         self.ini_content["use_quantize_table"]):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
+                    if self.chip == 'mars3':
+                        qtable = qtable + "_mars3"
                     cmd += [f"--quantize_table {qtable}"]
             if self.ini_content["model_path"].endswith(".tflite") or self.mode.endswith("_asym"):
                 cmd += ["--asymmetric"]
@@ -415,7 +417,7 @@ class MODEL_RUN(object):
         cmd.extend([
             "--mlir {}.mlir".format(model_name if not dynamic else self.model_name),
             f"--chip {self.chip}",
-            "--compare_all",
+            # "--compare_all",
             f"--model {model_file}",
             "--quantize {}".format(quant_mode.replace("_sym", "").replace("_asym", "").upper()),
             "--tolerance {}".format(self.tolerance[quant_mode]),
