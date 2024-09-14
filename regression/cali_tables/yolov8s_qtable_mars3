@@ -1,0 +1,32 @@
+# genetated time: 2024-09-12 11:13:20.517744
+# sample number: 10
+# chip: mars3  mix_mode: BF16
+# number of BF16 layer: 25
+###
+# op_name   quantize_mode
+/model.2/cv1/act/Mul_output_0_Mul BF16
+/model.2/Split_output_0_Split BF16
+/model.2/Split_output_1_Split BF16
+/model.2/cv2/conv/Conv_output_0_Conv BF16
+/model.2/cv2/act/Mul_output_0_Mul BF16
+/model.3/act/Mul_output_0_Mul BF16
+/model.4/cv1/conv/Conv_output_0_Conv BF16
+/model.4/Split_output_0_Split BF16
+/model.4/m.0/cv2/conv/Conv_output_0_Conv BF16
+/model.4/m.0/cv2/act/Mul_output_0_Mul BF16
+/model.4/Concat_output_0_Concat BF16
+/model.4/m.1/cv1/act/Mul_output_0_Mul BF16
+/model.4/m.1/cv2/conv/Conv_output_0_Conv BF16
+/model.4/m.1/Add_output_0_Add BF16
+/model.4/Concat_output_0_Concat BF16
+/model.12/m.0/cv1/conv/Conv_output_0_Conv BF16
+/model.12/m.0/cv1/act/Mul_output_0_Mul BF16
+/model.12/m.0/cv2/conv/Conv_output_0_Conv BF16
+/model.12/m.0/cv2/act/Mul_output_0_Mul BF16
+/model.15/m.0/cv1/conv/Conv_output_0_Conv BF16
+/model.15/m.0/cv1/act/Mul_output_0_Mul BF16
+/model.15/m.0/cv2/conv/Conv_output_0_Conv BF16
+/model.15/m.0/cv2/act/Mul_output_0_Mul BF16
+/model.22/Sigmoid_output_0_Sigmoid BF16
+output0_Concat BF16
+

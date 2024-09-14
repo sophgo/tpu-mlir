@@ -47,11 +47,17 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SigmoidOp op) const {
-  auto op_ = set_mode(op);
-  if (module::isMARS3())
+  // LoweringF32(rewriter, op);
+    auto op_ = op.getOperation();
+    bool log = op.getLog();
+    if (log){
+       op_->setAttr("mode", tpu::ActiveModeAttr::get(
+                             op.getContext(), tpu::ActiveMode::LOG_SIGMOID));
+    } else {
+      op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+                                                  tpu::ActiveMode::SIGMOID));
+    }
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
-  else
-    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
