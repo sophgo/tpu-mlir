@@ -2057,7 +2057,7 @@ def Top_GridSamplerOp : Top_Op<"GridSampler"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ReduceOp : Top_Op<"Reduce"> {
+def Top_ReduceOp : Top_Op<"Reduce", [ScalarProducer]>{
   let summary = "Reduce operation";
   let description = [{
     Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
@@ -2066,7 +2066,8 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
     AnyTensor:$input,
     I64ArrayAttr:$axes,
     BoolAttr:$keepdims,
-    ReduceModeAttr:$mode
+    ReduceModeAttr:$mode,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

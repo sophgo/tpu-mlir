@@ -25,4 +25,13 @@ LogicalResult top::PowOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::PowOp::shape_inference() { common_shape_inference(getOperation()); }
+void top::PowOp::shape_inference() { 
+  common_shape_inference(getOperation());
+
+  auto out_shape = module::getShape(getOutput());
+  if (module::isShape(getInput())){
+    auto input_v = module::getShapeTensorValue(getInput());
+    auto output_v = module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_v);
+  }
+}

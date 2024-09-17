@@ -15,10 +15,19 @@ namespace bm1684x {
 
 void AddConstTryLowering::Lowering(PatternRewriter &rewriter,
                                    top::AddConstOp op) const {
-  auto prev_op = op.getInput().getDefiningOp();
-  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  // auto prev_op = op.getInput().getDefiningOp();
+  // if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  //   if (isa<top::InputOp>(prev_op)){
+  //     auto input_op = dyn_cast<top::InputOp>(prev_op);
+  //     if (!input_op.getShapeTensor().has_value()) {
+  //       return;
+  //     }
+  //   } else {
+  //     return;
+  //   }
+  // }
+  if (!isa_shape_subnet_op(op))
     return;
-  }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Add")));
   auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));

@@ -15,5 +15,5 @@ void top::InputOp::shape_inference() {
   if (shape_tensor.size() > 0) {
     module::bindShapeTensorValue(getOutput(), shape_tensor);
   }
-  removeShapeTensorAttr();
+  // removeShapeTensorAttr();
 }

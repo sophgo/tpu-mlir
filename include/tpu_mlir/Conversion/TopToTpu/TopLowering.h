@@ -578,4 +578,5 @@ void try_insert_device2host(Operation *op, uint32_t idx);
 
 Value insert_device2host(Value v, Type to, Operation *user = nullptr);
 
+bool isa_shape_subnet_op(Operation *op);
 } // namespace tpu_mlir

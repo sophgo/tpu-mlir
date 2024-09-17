@@ -1121,6 +1121,20 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_ShapeClipOp: Tpu_Op<"ShapeClip", [
+    ShapeProducer, ShapeConsumer]> {
+  let summary = "ShapeClip operation running on CPU";
+  let description = [{
+     The operator limits the given input to a certain range.
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    F32Attr:$min,
+    F32Attr:$max
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_Yuv2rgbFormulaOp: Tpu_Op<"Yuv2rgbFormula">{
   let summary = "Yuv2rgbFormulaOp operator";
   let description = [{
@@ -1960,6 +1974,19 @@ def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
     SI32Attr:$axis
   );
   let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_ShapePowOp : Tpu_Op<"ShapePow" , [
+    ShapeProducer, ShapeConsumer]> {
+  let summary = "ShapePow operation running on CPU";
+  let description = [{
+    output = input ^ n
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F32Attr: $exponent
+  );
+  let results = (outs AnyTensor:$output);
 }
 
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [

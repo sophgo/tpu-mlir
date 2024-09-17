@@ -587,6 +587,30 @@ void try_insert_device2host(Operation *op, uint32_t idx) {
   }
 }
 
+bool isa_shape_subnet_op(Operation *op) {
+  // Caution: for now, Ops with attribute-Tensors CANNOT be passed into this function !!!
+  const auto opds = op->getOperands();
+  assert(opds.size() > 0);
+
+  bool with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd){
+    auto prev_op = opd.getDefiningOp();
+    return prev_op->hasTrait<trait::ShapeProducer>() ||
+          (isa<top::InputOp>(prev_op) && dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
+  });
+  if (!with_shape)  return false;
+  if (opds.size() < 2 || isa<top::ConcatOp>(op))
+    return with_shape;
+
+  // for Arith Op with NUM(Operands)>1.  Such Ops may bave a non-scalar weight.
+  bool all_special_opds = std::all_of(opds.begin(), opds.end(), [](Value opd){
+    auto prev_op = opd.getDefiningOp();
+    return prev_op->hasTrait<trait::ShapeProducer>() ||
+           isa<top::WeightOp>(prev_op) ||
+           (isa<top::InputOp>(prev_op) && dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
+  });
+  return all_special_opds;
+}
+
 tpu::RequantMode get_requant_mode(std::string mode) {
   if (mode == "TFLite_LShift")
     return tpu::RequantMode::TFLite_LShift;

@@ -14,6 +14,9 @@ namespace bm1684x {
 
 void CompareLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::CompareOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f32<tpu::CompareOp>(rewriter, op);
 }
 
@@ -69,6 +72,9 @@ void CompareLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void CompareLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::CompareOp compareOp) const {
+  for (uint32_t idx = 0; idx < compareOp->getNumOperands(); idx++) {
+    try_insert_host2device(compareOp, idx);
+  }
   lowering_common_f16<tpu::CompareOp>(rewriter, compareOp.getOperation());
 }
 
