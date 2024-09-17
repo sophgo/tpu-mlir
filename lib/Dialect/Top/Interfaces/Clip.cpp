@@ -26,4 +26,13 @@ LogicalResult top::ClipOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ClipOp::shape_inference() { common_shape_inference(getOperation()); }
+void top::ClipOp::shape_inference() {
+  common_shape_inference(getOperation());
+
+  auto out_shape = module::getShape(getOutput());
+  if (module::isShape(getInputs())){
+    auto input_v = module::getShapeTensorValue(getInputs());
+    auto output_v = module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_v);
+  }
+}

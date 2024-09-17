@@ -1640,6 +1640,15 @@ typedef struct clip_spec {
   int if_relu;
 } clip_spec_t;
 
+typedef struct shape_clip_param {
+  float min;
+  float max;
+}  shape_clip_param_t;
+
+typedef struct shape_pow_param {
+  float exponent;
+} shape_pow_param_t;
+
 typedef struct rope_spec {
     uint64_t buffer_addr;
     int32_t mul1_saturation;

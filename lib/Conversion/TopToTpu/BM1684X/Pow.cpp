@@ -12,6 +12,23 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void PowTryLowering::Lowering(PatternRewriter &rewriter, top::PowOp op) const {
+
+  // auto prev_op = op.getInput().getDefiningOp();
+  // if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  //   return;
+  // }
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("exponent", rewriter.getF32FloatAttr(op.getExponent().convertToDouble())));
+
+  auto v = op.getOutput();
+  Type new_type = RankedTensorType::get(module::getShape(v), rewriter.getF32Type());
+  rewriter.replaceOpWithNewOp<tpu::ShapePowOp>(op, new_type, op->getOperands(), attrs);
+}
+
 /**
  * @note for the sake of avoiding x < 0 SINCE y = x ^ n is translated as e ^ (n
  * * log(x))

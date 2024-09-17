@@ -170,8 +170,11 @@ void top::ReduceOp::shape_inference() {
   }
   /* keepdims = false, reduce at all axis,
     it need to set the shape to [1] */
-  if (!out_shape.size())
+  if (!out_shape.size()){
     out_shape.push_back(1);
+    auto builder = OpBuilder(getContext());
+    setIsScalarAttr(builder.getBoolAttr(true));
+  }
   module::setShapeOrVerify(getOutput(), out_shape);
   if (module::isShape(getInput())) {
     std::vector<std::vector<int64_t>> input_shapes_v;
