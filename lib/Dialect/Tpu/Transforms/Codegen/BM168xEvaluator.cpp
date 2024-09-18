@@ -420,31 +420,12 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   const int npu_num = BM168x::NPU_NUM;
 
   int64_t N, C, D, H, W;
-  switch (sec_info.group_type) {
-  case GROUP_NORMAL:
-  case GROUP_MM: {
-    module::getNCHW(v, N, C, H, W, GROUP_NORMAL);
+  const auto group_type = sec_info.group_type;
+  if (group_type == GROUP_3D) {
+    module::getNCDHW(v, N, C, D, H, W, (group_type_t)GROUP_3D);
+  } else {
     D = 1;
-  }
-  break;
-  case GROUP_3D: {
-    module::getNCDHW(v, N, C, D, H, W, GROUP_3D);
-  }
-  break;
-  case GROUP_SMALL_C: {
-    /**
-      * GROUP_SMALL_C: move h to c-dim, and merge cd-dim to n-dim
-      */
-    module::getNCHW(v, N, C, H, W, GROUP_SMALL_C);
-    D = 1;
-    N *= C;
-    C = H;
-    H = W;
-  }
-  break;
-  default:
-    llvm_unreachable("Unknown group type");
-    break;
+    module::getNCHW(v, N, C, H, W, (group_type_t)group_type);
   }
 
   const int nidx = sec_info.n_idx;
@@ -463,7 +444,7 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   } else {
     cstride = align_up(cstride, BM168x::EU_BYTES * 2);
   }
-  int nstride = cslice * cstride;
+  int nstride = ceiling_func(cslice, BM168x::NPU_NUM) * cstride;
   int hstride = wslice;
   // save local data of shape (d, n, c, h, w) as shape (n, c, d, h, w)
   for (int n = 0; n < nslice; ++n) {
