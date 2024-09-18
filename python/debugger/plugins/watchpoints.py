@@ -22,9 +22,6 @@ from debugger.tdb_support import (
     TdbPluginCmd,
     Watchpoint,
 )
-from ..target_1688.context import BM1688Context
-from ..target_1690.context import BM1690Context
-from ..target_2380.context import SG2380Context
 
 
 class WatchPlugin(TdbPlugin, TdbPluginCmd):

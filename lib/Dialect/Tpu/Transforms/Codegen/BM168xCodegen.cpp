@@ -12,6 +12,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
+#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -82,12 +83,14 @@ void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only) 
   // add chip name
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
-  if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family()) {
+  if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() || module::isMARS3()) {
     std::string kernel_name;
     if (module::isBM1684X())
       kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
     else if (module::isBM1688())
       kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
+    else if (module::isMARS3())
+      kernel_name = backend::MARS3::LIB_KERNEL_NAME.str();
     else
       kernel_name = backend::BM1690::LIB_KERNEL_NAME.str();
     std::string root_path = getenv("TPUC_ROOT");
