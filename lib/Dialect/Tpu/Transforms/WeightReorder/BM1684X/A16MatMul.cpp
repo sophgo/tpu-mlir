@@ -10,75 +10,9 @@
 #include "../WeightReorder.h"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
-#ifdef __linux__
-#include <dlfcn.h>
-#else
-#include <windows.h>
-#endif
+#include "tpu_mlir/Backend/BM168x/SG2380.h"
 
 using namespace bm1684x;
-
-typedef struct
-{
-    struct
-    {
-        int s, i;
-    } Y_row;
-    struct
-    {
-        int s, i;
-    } Y_col;
-    struct
-    {
-        int s, i;
-    } inner_num;
-    struct
-    {
-        bool activ, weight;
-    } hold_in_lmem;
-} a16mm_slice_info_t;
-
-typedef struct
-{
-    int activ_size;
-    int weight_size;
-    int bias_size;
-    int scale_size;
-    int zp_size;
-    int output_size;
-    // the buffer for untransposed output
-    int buffer_size1;
-    // the buffer for f16 weight data
-    int buffer_size2;
-    // the buffer for transposed input data
-    int buffer_size3;
-    // the buffer for unsqueeze int4 data
-    // if inner_dim is not sliced, buffer4 shares the same addr with buffer1
-    int buffer_size4;
-    int half_offset;
-    bool load_full_scale;
-    int align_size;
-} a16mm_size_info_t;
-
-typedef enum
-{
-    DT_INT8 = (0 << 1) | 1,
-    DT_UINT8 = (0 << 1) | 0,
-    DT_INT16 = (3 << 1) | 1,
-    DT_UINT16 = (3 << 1) | 0,
-    DT_FP16 = (1 << 1) | 1,
-    DT_BFP16 = (5 << 1) | 1,
-    DT_INT32 = (4 << 1) | 1,
-    DT_UINT32 = (4 << 1) | 0,
-    DT_FP32 = (2 << 1) | 1,
-    DT_INT4 = (6 << 1) | 1,
-    DT_UINT4 = (6 << 1) | 0,
-    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
-    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
-    DT_FP20 = (8 << 1) | 1,
-    DT_TF32 = (9 << 1) | 1,
-} data_type_t;
 
 static inline data_type_t tpu_type_convert(DATA_TYPE_T data_type) {
     data_type_t dtype = DT_FP32;
@@ -149,16 +83,6 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
     /* reorder the weight of a16 matmul */
     // Determine whether to reorder weights based on the split shape, with the
     // splitting method consistent with a16matmul in TPU1686.
-    typedef bool (*t_a16mm_data_split_trans)(
-        int, int, int, int, bool, bool, bool, int, int, data_type_t,
-        data_type_t, a16mm_slice_info_t *, a16mm_size_info_t *);
-    t_a16mm_data_split_trans dl_a16mm_data_split_trans;
-    auto sg2380_cmodel_handle = dlopen("libcmodel_sg2380.so", RTLD_LAZY);
-    assert(sg2380_cmodel_handle != nullptr);
-    dl_a16mm_data_split_trans = (t_a16mm_data_split_trans)dlsym(
-        sg2380_cmodel_handle, "a16mm_data_split_trans");
-    assert(dl_a16mm_data_split_trans != nullptr);
-
     auto num_core = module::getCoreNum();
     bool has_bias = !module::isNone(op.getBias());
     bool has_zp = !module::isNone(op.getZp());
@@ -193,18 +117,18 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
         size_info.align_size = backend::BM168x::EU_BYTES;
     }
 
-    bool ret = dl_a16mm_data_split_trans(
+    auto sg2380 = (backend::SG2380*)backend::BM168x::instance();
+    bool ret = sg2380->dl_a16mm_data_split_trans(
         final_row_num, inner_num, final_col_num, backend::Arch::LMEM_BYTES,
         has_bias, has_zp, activ_trans, q_group_size, weight_bits, io_dtype,
         weight_dtype, &slice_val, &size_info);
     if (!ret) {
         size_info.load_full_scale = false;
-        ret = dl_a16mm_data_split_trans(
+        ret = sg2380->dl_a16mm_data_split_trans(
             final_row_num, inner_num, final_col_num, backend::Arch::LMEM_BYTES,
             has_bias, has_zp, activ_trans, q_group_size, weight_bits, io_dtype,
             weight_dtype, &slice_val, &size_info);
     }
-    dlclose(sg2380_cmodel_handle);
 
     // Weights are considered reordered if the following conditions are
     // satisfied:

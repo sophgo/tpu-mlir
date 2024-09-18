@@ -18,6 +18,7 @@ void SG2380::load_functions() {
   CAST_FUNCTION(tensor_normal_decompress_gen_cmd);
   CAST_FUNCTION(tensor_racu_decompress_gen_cmd);
   CAST_FUNCTION(tensor_racu_compress_gen_cmd);
+  CAST_FUNCTION(a16mm_data_split_trans);
 }
 
 void SG2380::before_codegen() {

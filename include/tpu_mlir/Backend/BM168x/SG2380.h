@@ -12,8 +12,72 @@
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Support/Module.h"
 
+typedef struct
+{
+    struct
+    {
+        int s, i;
+    } Y_row;
+    struct
+    {
+        int s, i;
+    } Y_col;
+    struct
+    {
+        int s, i;
+    } inner_num;
+    struct
+    {
+        bool activ, weight;
+    } hold_in_lmem;
+} a16mm_slice_info_t;
+
+typedef struct
+{
+    int activ_size;
+    int weight_size;
+    int bias_size;
+    int scale_size;
+    int zp_size;
+    int output_size;
+    // the buffer for untransposed output
+    int buffer_size1;
+    // the buffer for f16 weight data
+    int buffer_size2;
+    // the buffer for transposed input data
+    int buffer_size3;
+    // the buffer for unsqueeze int4 data
+    // if inner_dim is not sliced, buffer4 shares the same addr with buffer1
+    int buffer_size4;
+    int half_offset;
+    bool load_full_scale;
+    int align_size;
+} a16mm_size_info_t;
+
+typedef enum
+{
+    DT_INT8 = (0 << 1) | 1,
+    DT_UINT8 = (0 << 1) | 0,
+    DT_INT16 = (3 << 1) | 1,
+    DT_UINT16 = (3 << 1) | 0,
+    DT_FP16 = (1 << 1) | 1,
+    DT_BFP16 = (5 << 1) | 1,
+    DT_INT32 = (4 << 1) | 1,
+    DT_UINT32 = (4 << 1) | 0,
+    DT_FP32 = (2 << 1) | 1,
+    DT_INT4 = (6 << 1) | 1,
+    DT_UINT4 = (6 << 1) | 0,
+    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
+    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
+    DT_FP20 = (8 << 1) | 1,
+    DT_TF32 = (9 << 1) | 1,
+} data_type_t;
+
 typedef void (*tpu_sync_all)();
 typedef void (*tpu_core_context_setup)(int, int, int);
+typedef bool (*a16mm_data_split_trans)(
+    int, int, int, int, bool, bool, bool, int, int, data_type_t,
+    data_type_t, a16mm_slice_info_t *, a16mm_size_info_t *);
 
 namespace tpu_mlir {
 namespace backend {
@@ -33,6 +97,7 @@ public:
 
   tpu_sync_all dl_tpu_sync_all;
   tpu_core_context_setup dl_tpu_core_context_setup;
+  a16mm_data_split_trans dl_a16mm_data_split_trans;
 
   void setCoreNum(int core = 1) final;
   int getCoreNum() final { return multiCode.size(); };
