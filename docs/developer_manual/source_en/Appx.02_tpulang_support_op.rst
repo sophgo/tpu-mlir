@@ -3930,9 +3930,11 @@ Definition
             save_path: str = "",
             out_fixed: bool = False,
             dump_cmd_info: bool = True,
-            cmodel_skip_check: bool = True,  # disable CMODEL data_check to increase processing speed
+            skip_check: bool = True,  # disable data_check to increase processing speed
+            run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-            enable_soc_log: bool = False,
+            using_memory_opt: bool = False, # required when is_soc=True
+            enable_soc_log: bool = False, # required when is_soc=True
             tmp_path: str = "/tmp",  # required when is_soc=True
             tools_path: str = "/soc_infer",  # required when is_soc=True
             hostname: str = None,  # required when is_soc=True
@@ -3955,9 +3957,12 @@ Parameters
 * dump_file: Bool type, representing whether save results as file.
 * save_path: String type, representing the abs path of saving results on host.
 * out_fixed: Bool type, representing whether to get results in fixed number.
-* dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`. 
+* dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`.
+* skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIE mode.
+* run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
 * cmodel_skip_check: Bool type, enable this to skip data check to speed up inference.
 * is_soc: Bool type, representing whether to use in soc mode.
+* using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
 * enable_soc_log: Bool type, enable to print and save log at `save_path`.
 * tmp_path: String type, representing the abs path of tmp files on device in soc mode.
 * tools_path: String type, representing the dir of soc_infer tools on device in soc mode.

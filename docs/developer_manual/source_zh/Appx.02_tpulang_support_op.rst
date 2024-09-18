@@ -4802,9 +4802,11 @@ bmodel_inference_combine
           save_path: str = "",
           out_fixed: bool = False,
           dump_cmd_info: bool = True,
-          cmodel_skip_check: bool = True,  # disable CMODEL data_check to increase processing speed
+          skip_check: bool = True,  # disable data_check to increase processing speed
+          run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
           is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-          enable_soc_log: bool = False,  
+          using_memory_opt: bool = False, # required when is_soc=True
+          enable_soc_log: bool = False, # required when is_soc=True
           tmp_path: str = "/tmp",  # required when is_soc=True
           tools_path: str = "/soc_infer",  # required when is_soc=True
           hostname: str = None,  # required when is_soc=True
@@ -4828,8 +4830,10 @@ bmodel_inference_combine
 * save_path: String类型，表示 `dump_file=True` 时的主机(host)端保存逐层推理的.npz文件的绝对路径。
 * out_fixed: Bool类型，表示逐层Tensor数据输出是否保持为定点格式。
 * dump_cmd_info: Bool类型，表示将当前bmodel中包含的所有原子指令对应的final.mlir的信息保存成txt文件，保存路径在save_path下。
-* cmodel_skip_check: Bool类型， 在cmodel模式下启用此项可禁用数据对比，提高推理速度。soc模式下默认不进行数据对比。
+* skip_check: Bool类型，启用此项可禁用数据对比，提高推理速度。soc模式下默认不进行数据对比。
+* run_by_op: Bool类型，启用后按OP粒度运行，禁用时为按原子指令粒度运行。按OP粒度运行速度较快，但当一个OP中包含过多原子指令时可能会引发timeout错误。
 * is_soc: Bool类型，表示是否启用soc模式进行推理。
+* using_memory_opt: Bool类型，启用后会减小在device端的内存消耗，但会增加耗时。推荐在大模型时启用。
 * enable_soc_log: Bool类型，启用此项打印并在save_path下保存log日志。
 * tmp_path: String类型，表示soc模式下，板卡(device)端存放临时文件的绝对路径。
 * tools_path: String类型，表示soc模式下，device端存放工具的文件夹名称。
