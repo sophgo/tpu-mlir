@@ -103,6 +103,7 @@ class Target(Enum):
     BM1688 = "BM1688"
     BM1690 = "BM1690"
     SG2380 = "SG2380"
+    MARS3 = "MARS3"
 
 
 class Engine(Enum):
@@ -300,7 +301,6 @@ class Layout(Enum):
     """
     Data layout type in Local memory.
     """
-
     # BM168X
     # Tensor alignment
     alignEU = 0

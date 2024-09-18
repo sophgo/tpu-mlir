@@ -31,6 +31,7 @@ from .target_1684.context import BM1684Context
 from .target_1688.context import BM1688Context
 from .target_1690.context import BM1690Context
 from .target_2380.context import SG2380Context
+from .target_mars3.context import MARS3Context
 import functools
 import textwrap
 
@@ -39,7 +40,7 @@ INDENT_SPACE = "  "
 
 def BModel2MLIR(bmodel_net: BModel):
     with use_backend(bmodel_net.chip) as context:
-        if isinstance(context, BM1688Context) or isinstance(context, SG2380Context):
+        if isinstance(context, BM1688Context) or isinstance(context, SG2380Context) or isinstance(context, MARS3Context):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
