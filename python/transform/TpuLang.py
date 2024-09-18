@@ -297,10 +297,10 @@ def bmodel_inference_combine(
     out_fixed: bool = False,
     dump_cmd_info: bool = True,
     skip_check: bool = True,  # disable data_check to increase processing speed
-    run_by_op: bool = False,
+    run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
-    using_memory_opt: bool = False,
-    enable_soc_log: bool = False,
+    using_memory_opt: bool = False, # required when is_soc=True
+    enable_soc_log: bool = False, # required when is_soc=True
     tmp_path: str = "/tmp",  # required when is_soc=True
     tools_path: str = "/soc_infer",  # required when is_soc=True
     hostname: str = None,  # required when is_soc=True
@@ -405,7 +405,7 @@ def bmodel_inference_combine(
         remote_bmodel = os.path.basename(bmodel_file)
         remote_input = os.path.basename(input_data_fn)
         remote_ref = os.path.basename(reference_data_fn)
-        exec_command = f"cd {tools_path} && source envsetup.sh && python3 soc_bmodel_infer.py --path {tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
+        exec_command = f"cd {tools_path} && source envsetup.sh && nohup python3 soc_bmodel_infer.py --path {tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
         if out_fixed:
             exec_command += " --out_fixed"
         if enable_soc_log:
@@ -414,6 +414,7 @@ def bmodel_inference_combine(
             exec_command += " --using_memory_opt"
         if not run_by_op:
             exec_command += " --run_by_atomic"
+        exec_command += " &"
         print(f"soc execute command: {exec_command}")
 
         client.get_transport().set_keepalive(30)
