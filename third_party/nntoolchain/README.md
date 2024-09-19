@@ -39,6 +39,14 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
 #bm1690 sha256: 253d8e58e7b2764d625bfcdd9d049d0184a0f602
+# reverts for segnet perf
+# -ca9ae233dbde82307c816b88c8563f6fa1e5197a
+# -44a3e41e8109aebb43aeed6c86ec4fcc49c3b4a5
+# -33f2a9a014f098804acf72578327077b49936539
+# -01bf54a7745897a76abcfb906d478d8707b6abcc
+# -dd1bb51da1d74ce1316b26d4c67a2bc000fc9aa7git
+# -7bf05363836f6fadc057f661b38d8355cf1352ee
+# -7c1b7e990cfc56ea80187b3b430408945996de66
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 **debug: rebuild_backend_lib_cmodel**

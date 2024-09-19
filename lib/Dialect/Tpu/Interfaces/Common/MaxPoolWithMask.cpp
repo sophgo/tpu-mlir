@@ -165,4 +165,4 @@ void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.out_w_slice = gi.w_slice;
 }
 
-bool tpu::MaxPoolWithMaskOp::support_multi_core() { return true; }
+bool tpu::MaxPoolWithMaskOp::support_multi_core() { return false; }
