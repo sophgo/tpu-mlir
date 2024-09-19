@@ -316,8 +316,12 @@ struct LgInfo {
     }
   }
   void const dump_lginfo() const {
-    // should only use in LLVM_DEBUG, don't use DebugCmd
+    if (!module::isDebugCmdEnable("detail_info_show")) {
+      return;
+    }
+
     llvm::dbgs() << "LgInfo Begin {" << "\n";
+
     llvm::dbgs() << "ins" << "\n";
     for( auto op: group_ins){
       op.dump();

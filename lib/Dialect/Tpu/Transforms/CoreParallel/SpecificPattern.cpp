@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
+#include "CoreParallel.hpp"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
