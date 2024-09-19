@@ -2582,7 +2582,7 @@ class OnnxConverter(BaseConverter):
         eps = onnx_node.attrs.get("epsilon", 1e-05)
         if type(eps) == list and len(eps) == 1:
             eps = eps[0]
-        input_opd = self.getOperand(onnx_node.inputs[0])
+        input_opd = self.getOp(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         if len(onnx_node.inputs) > 1:
