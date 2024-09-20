@@ -196,7 +196,7 @@ def layer_info(layer):
     outs[0:len(layer.outputs)] = layer.outputs
 
     tmp_attrs = {x: layer.attrs[x] for x in layer.attrs if x !=
-                 "multipliers" and x != "rshifts" and x != "quant_mode"}
+                 "multipliers" and x != "rshifts" and x != "multiplier" and x != "rshift" and x != "quant_mode"}
     max_att = (len(tmp_attrs) + 1)//2 * 2
     k = [x for x in tmp_attrs]
     v = [tmp_attrs[x] for x in tmp_attrs]
