@@ -190,15 +190,28 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
 
   // dynamic
   if (p.inputs[1]) {
+    auto target_shape = module::getShape(getTargetShape());
     float *target_shape_ = p.inputs[1];
     std::vector<int64_t> out_shape;
-    out_shape = {(int)target_shape_[0], (int)target_shape_[1],
-                 (int)target_shape_[2], (int)target_shape_[3]};
-    setScaleH(APFloat((double)out_shape[2] / ih));
-    setScaleW(APFloat((double)out_shape[3] / iw));
-    module::setShape(getOutput(), out_shape);
-    oh = out_shape[2];
-    ow = out_shape[3];
+    if(target_shape[0] == 3) {
+      out_shape = {(int)target_shape_[0], (int)target_shape_[1],
+            (int)target_shape_[2]};
+      setScaleH(APFloat((double)out_shape[1] / ih));
+      setScaleW(APFloat((double)out_shape[2] / iw));
+      module::setShape(getOutput(), out_shape);
+      oh = out_shape[1];
+      ow = out_shape[2];
+
+    } else {
+      out_shape = {(int)target_shape_[0], (int)target_shape_[1],
+              (int)target_shape_[2], (int)target_shape_[3]};
+      setScaleH(APFloat((double)out_shape[2] / ih));
+      setScaleW(APFloat((double)out_shape[3] / iw));
+      module::setShape(getOutput(), out_shape);
+      oh = out_shape[2];
+      ow = out_shape[3];
+    }
+
   }
   PLATFORM_SUPPORT platform_sp;
   int coord = 0;
@@ -277,10 +290,14 @@ void top::InterpOp::shape_inference() {
   int32_t widx = nof_dims - 1;
   std::vector<int64_t> out_shape(in_shape);
   if (getMode() == "nearest" || getMode() == "linear") {
+    bool is_shape_flag = false;
     if (!module::isNone(target_shape_)) {
       if (auto c_op =
               dyn_cast_or_null<top::ConcatOp>(target_shape_.getDefiningOp())) {
         if (c_op.getNumOperands() == 2) {
+          if (module::isShape(c_op.getInputs()[0])) {
+            is_shape_flag = true;
+          }
           if (isa<top::WeightOp>(c_op.getInputs()[1].getDefiningOp())) {
             target_shape_ = c_op.getInputs()[1];
           }
@@ -303,7 +320,9 @@ void top::InterpOp::shape_inference() {
           setScaleH(APFloat(1.0));
         }
         setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
-        setOperand(1, module::getNoneOp(getOperation()));
+        if (!is_shape_flag) {
+          setOperand(1, module::getNoneOp(getOperation()));
+        }
       } else if (in_shape.size() == 4) {
         // TODO
         // Temporarily modify to use fixed shape for SAM

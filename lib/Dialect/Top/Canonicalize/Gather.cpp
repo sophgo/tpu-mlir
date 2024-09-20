@@ -38,7 +38,9 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       //            -> Slice(start=1, end=2, step=1, axes=ax)
       int64_t index = (int64_t)inds_f32->at(0);
       if (index < 0) {
-        index = input_shape[ax] + index;
+        if (index != -1) {
+          index = input_shape[ax] + index;
+        }
       }
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> ends(input_shape.size(), std::numeric_limits<int64_t>::max());

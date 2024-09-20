@@ -860,7 +860,10 @@ class OnnxConverter(BaseConverter):
                 continue
             else:
                 if weight_data is not None:
-                    w_name = last_name + "_weight"
+                    if last_name in self.tensors:
+                        w_name = last_name + "_" + onnx_node.name + "_weight"
+                    else:
+                        w_name = last_name + "_weight"
                     self.addWeight(w_name, weight_data)
                     operands.append(self.getWeightOp(w_name))
                     weight_data = None

@@ -84,6 +84,34 @@ class ConcatMergePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
   bool shouldPrint(tpu::ConcatOp op) const override { return false;}
 };
 
+class Concat_SlicePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
+  public:
+  Concat_SlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConcatOp>(context,"Concat_SlicePattern") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.getOnlyMerge()) {
+      return failure();
+    }
+    for (auto in : op.getInputs()) {
+      auto in_op = in.getDefiningOp();
+      auto reshape = dyn_cast_or_null<tpu::ReshapeOp>(in_op);
+      if (reshape){
+        auto reshapeOp = dyn_cast<tpu::ReshapeOp>(in_op);
+        if (auto sliceOp = dyn_cast<tpu::SliceOp>(reshapeOp.getInput().getDefiningOp())) {
+          auto p = sliceOp.parseParam();
+          if (p.fusible) {
+            op.setOnlyMerge(false);
+          }
+        }
+      }
+    }
+    return success();
+  }
+  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
+};
+
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
@@ -104,6 +132,7 @@ public:
         applyPatternsAndFoldGreedily(s, std::move(patterns));
         module::applyPatternOnce<ConcatMergePattern>(s);
         module::applyPatternOnce<ConcatFusePattern>(s);
+        module::applyPatternOnce<Concat_SlicePattern>(s);
         BMAddressAssign addr_assign;
         addr_assign.assign(s, reuse_addr);
       }

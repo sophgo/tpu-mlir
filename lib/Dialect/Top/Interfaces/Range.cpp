@@ -19,8 +19,13 @@ LogicalResult top::RangeOp::inference(InferenceParameter &p) {
   float delta = module::isNone(getDelta()) ? 1 : p.inputs[2][0];
   auto limit = p.inputs[1][0];
   auto output = p.outputs[0];
-  for (int i = 0, n = start; n < limit; n += delta, ++i)
-    output[i] = n;
+  if(limit > start) {
+    for (int i = 0, n = start; n < limit; n += delta, ++i)
+      output[i] = n;
+  } else {
+    for (int i = 0, n = start; n > limit; n += delta, ++i)
+      output[i] = n;
+    }
   return success();
 }
 

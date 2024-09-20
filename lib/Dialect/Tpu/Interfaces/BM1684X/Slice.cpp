@@ -164,7 +164,11 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
     // TODO: fix canonicalizers and reactivate this
     // param.common.end_index[i] = ends->at(i);
     auto offset_tmp = offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
-    param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
+    if (param.begin_as_tensor) {
+      param.common.end_index[i] = ends->at(i);
+    } else {
+      param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
+    }
   }
 
   /* for dynamic input shape, it need the begin_mask/end_mask
