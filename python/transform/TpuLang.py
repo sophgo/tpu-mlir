@@ -6,6 +6,7 @@
 # ==============================================================================
 
 import getpass
+import time
 from typing import List, Union, Tuple, Optional
 
 from debugger.tdb_support import TdbCmdBackend
@@ -416,15 +417,28 @@ def bmodel_inference_combine(
             exec_command += " --run_by_atomic"
         exec_command += " &"
         print(f"soc execute command: {exec_command}")
+        print("####### REMOTE OUTPUTS START #######\n")
 
-        client.get_transport().set_keepalive(30)
-        stdin, stdout, stderr = client.exec_command(exec_command)
+        shell = client.invoke_shell()
+        shell.send(exec_command + "\n")
         while True:
-            if stdout.channel.exit_status_ready():
+            try:
+                sftp.stat(os.path.join(tools_path, "log.txt"))
+                print("REMOTE PROGRESS FINISHED!")
                 break
-
-        print(stdout.read().decode("utf-8"))
-        print(stderr.read().decode("utf-8"))
+            except FileNotFoundError:
+                time.sleep(0.5)  # refresh output every 0.5s
+                if shell.recv_ready():
+                    output = shell.recv(1024).decode("utf-8", errors="ignore")
+                    print(output, end="")
+                if shell.recv_stderr_ready():
+                    error = shell.recv_stderr(1024).decode("utf-8", errors="ignore")
+                    print(error, end="")
+                    print("Error encountered, exiting.")
+                    shell.close()
+                    return
+        shell.close()
+        print("######## REMOTE OUTPUTS END ########\n")
 
         if enable_soc_log:
             progress_get(
