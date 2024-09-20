@@ -309,96 +309,98 @@ def collect_after_compute(
 
 
 if __name__ == "__main__":
-    start_time = time.time()
-    args = main()
-    with open(os.path.join(args.path, "cmds.pkl"), "rb+") as pkl_cmds:
-        cmds_pkl = CustomUnpickler(pkl_cmds).load()
-    with open(os.path.join(args.path, "values_in.pkl"), "rb+") as pkl_values_in:
-        values_in_pkl = CustomUnpickler(pkl_values_in).load()
-    with open(os.path.join(args.path, "values_out.pkl"), "rb+") as pkl_values_out:
-        values_out_pkl = CustomUnpickler(pkl_values_out).load()
-    bmodel_file = os.path.join(args.path, args.bmodel)
-    input_data_fn = os.path.join(args.path, args.input)
-    reference_data_fn = os.path.join(args.path, args.ref)
+    try:
+        start_time = time.time()
+        args = main()
+        with open(os.path.join(args.path, "cmds.pkl"), "rb+") as pkl_cmds:
+            cmds_pkl = CustomUnpickler(pkl_cmds).load()
+        with open(os.path.join(args.path, "values_in.pkl"), "rb+") as pkl_values_in:
+            values_in_pkl = CustomUnpickler(pkl_values_in).load()
+        with open(os.path.join(args.path, "values_out.pkl"), "rb+") as pkl_values_out:
+            values_out_pkl = CustomUnpickler(pkl_values_out).load()
+        bmodel_file = os.path.join(args.path, args.bmodel)
+        input_data_fn = os.path.join(args.path, args.input)
+        reference_data_fn = os.path.join(args.path, args.ref)
 
-    # init device
-    bmodel = BModel(bmodel_file)
-    atomic_mlir = BModel2MLIR(bmodel)
-    soc_runner = BM1684XRunner(1)
-    soc_runner.fast_checker = False
-    coeff = atomic_mlir.functions[0].regions[0].data
-    if coeff:
-        address = coeff.address
-        addr_offset_ddr = address - memmap[MType.G.value][0]
-        # load constant data
-        soc_runner.memory.set_data_to_address(
-            coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
-        )
-    op_start_idx = 0
-    in_op = False
-    op_idx = 0
+        # init device
+        bmodel = BModel(bmodel_file)
+        atomic_mlir = BModel2MLIR(bmodel)
+        soc_runner = BM1684XRunner(1)
+        soc_runner.fast_checker = False
+        coeff = atomic_mlir.functions[0].regions[0].data
+        if coeff:
+            address = coeff.address
+            addr_offset_ddr = address - memmap[MType.G.value][0]
+            # load constant data
+            soc_runner.memory.set_data_to_address(
+                coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
+            )
+        op_start_idx = 0
+        in_op = False
+        op_idx = 0
 
-    # init input and reference
-    if isinstance(input_data_fn, dict):
-        set_inputs_dict(atomic_mlir, input_data_fn, soc_runner.memory)
-    elif input_data_fn.endswith(".dat"):
-        inputs = np.fromfile(input_data_fn, dtype=np.uint8)
-        _offset = 0
-        for arg in atomic_mlir.functions[0].signature[0]:
-            mem = arg.memref
-            size = int(np.prod(mem.shape) * mem.itemsize)
-            soc_runner.memory.set_data(
-                mem, inputs[_offset : _offset + size].view(mem.np_dtype)
-            )  #  load input tensor
-            _offset += size
-    elif input_data_fn.endswith(".npz"):
-        inputs = np.load(input_data_fn)
-        set_inputs_dict(atomic_mlir, inputs, soc_runner.memory)
+        # init input and reference
+        if isinstance(input_data_fn, dict):
+            set_inputs_dict(atomic_mlir, input_data_fn, soc_runner.memory)
+        elif input_data_fn.endswith(".dat"):
+            inputs = np.fromfile(input_data_fn, dtype=np.uint8)
+            _offset = 0
+            for arg in atomic_mlir.functions[0].signature[0]:
+                mem = arg.memref
+                size = int(np.prod(mem.shape) * mem.itemsize)
+                soc_runner.memory.set_data(
+                    mem, inputs[_offset : _offset + size].view(mem.np_dtype)
+                )  #  load input tensor
+                _offset += size
+        elif input_data_fn.endswith(".npz"):
+            inputs = np.load(input_data_fn)
+            set_inputs_dict(atomic_mlir, inputs, soc_runner.memory)
 
-    ref_data = np.load(reference_data_fn)
-    dump_path = args.tool_path
-    file_name = os.path.basename(reference_data_fn).split(".")[0]
-    save_path = os.path.join(dump_path, f"soc_infer_{file_name}.npz")
-    log_txt_path = os.path.join(dump_path, f"log.txt")
-    if args.using_memory_opt:
-        infer_data = IncNpzFile(save_path)
-    else:
-        infer_data = {}
-
-    # compute and collect
-    cmd_points = sorted(values_in_pkl.keys())
-    tqdm_iter = tqdm(cmds_pkl)
-    history = Counter({"tiu": 0, "dma": 0})
-    total_compute_time = 0
-    for idx, struct in enumerate(tqdm_iter):
-        log_start(idx, args.run_by_atomic, args.enable_log)
-
-        if not args.run_by_atomic:
-            collect_before_compute(values_in_pkl, cmd_points[idx], soc_runner, ref_data, infer_data, args)
-            soc_runner.checker_fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
-            history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-            tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
-            collect_after_compute(values_out_pkl, idx, soc_runner, ref_data, infer_data, args)
+        ref_data = np.load(reference_data_fn)
+        dump_path = args.tool_path
+        file_name = os.path.basename(reference_data_fn).split(".")[0]
+        save_path = os.path.join(dump_path, f"soc_infer_{file_name}.npz")
+        log_txt_path = os.path.join(dump_path, f"log.txt")
+        if args.using_memory_opt:
+            infer_data = IncNpzFile(save_path)
         else:
-            if not in_op:
-                op_start_idx = idx
-                collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data, infer_data, args)
-                in_op = True
-            soc_runner.fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
-            history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-            tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
-            if op_start_idx + values_out_pkl[op_idx].cmd_point-values_in_pkl[cmd_points[op_idx]][0].cmd_point == idx:
-                collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args)
-                in_op = False
-                op_idx += 1
+            infer_data = {}
 
-        log_end(idx, args.run_by_atomic, args.enable_log)
+        # compute and collect
+        cmd_points = sorted(values_in_pkl.keys())
+        tqdm_iter = tqdm(cmds_pkl)
+        history = Counter({"tiu": 0, "dma": 0})
+        total_compute_time = 0
+        for idx, struct in enumerate(tqdm_iter):
+            log_start(idx, args.run_by_atomic, args.enable_log)
 
-    os.makedirs(dump_path, exist_ok=True)
-    if not args.using_memory_opt:
-        np.savez(save_path, **infer_data)
-    print(f"Inference combine file: {save_path} generated!")
-    end_time = time.time()
-    print(f"Soc_infer Time Cost on Device: {end_time-start_time} seconds")
-    with open(log_txt_path, "w+", encoding="utf-8") as log_file:
-        log_file.write(log_txt)
+            if not args.run_by_atomic:
+                collect_before_compute(values_in_pkl, cmd_points[idx], soc_runner, ref_data, infer_data, args)
+                soc_runner.checker_fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
+                history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
+                tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+                collect_after_compute(values_out_pkl, idx, soc_runner, ref_data, infer_data, args)
+            else:
+                if not in_op:
+                    op_start_idx = idx
+                    collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data, infer_data, args)
+                    in_op = True
+                soc_runner.fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
+                history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
+                tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+                if op_start_idx + values_out_pkl[op_idx].cmd_point-values_in_pkl[cmd_points[op_idx]][0].cmd_point == idx:
+                    collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args)
+                    in_op = False
+                    op_idx += 1
+
+            log_end(idx, args.run_by_atomic, args.enable_log)
+
+        os.makedirs(dump_path, exist_ok=True)
+        if not args.using_memory_opt:
+            np.savez(save_path, **infer_data)
+        print(f"Inference combine file: {save_path} generated!")
+        end_time = time.time()
+        print(f"Soc_infer Time Cost on Device: {end_time-start_time} seconds")
+    finally:
+        with open(log_txt_path, "w+", encoding="utf-8") as log_file:
+            log_file.write(log_txt)
