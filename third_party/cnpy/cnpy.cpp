@@ -654,7 +654,7 @@ static NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes,
     d_stream.avail_in = 0;
     d_stream.next_in = Z_NULL;
     err = inflateInit2(&d_stream, -MAX_WBITS);
-    assert(err = 0);
+    assert(err == 0);
 
     d_stream.avail_in = compr_bytes;
     d_stream.next_in = &buffer_compr[0];
@@ -662,9 +662,9 @@ static NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes,
     d_stream.next_out = &buffer_uncompr[0];
 
     err = inflate(&d_stream, Z_FINISH);
-    assert(err = 0);
+    assert(err == 0);
     err = inflateEnd(&d_stream);
-    assert(err = 0);
+    assert(err == 0);
 
     std::vector<size_t> shape;
     size_t word_size;
