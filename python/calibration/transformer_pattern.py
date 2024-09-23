@@ -42,6 +42,9 @@ sub_blocks = {
     "bert_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 
                   'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 
                   'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'],
+    "bert_block_1":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute',
+                    'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul',
+                    'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'],
     "deit_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Squeeze', 'top.Slice', 'top.Squeeze', 
                   'top.Slice', 'top.Squeeze', 'top.Permute', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Softmax', 
                   'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 
@@ -240,7 +243,7 @@ class MatchPattern:
                 if model_block_name == '_swin_1_block':
                     if op_type == 'top.Add' or op_type == 'top.Depth2Space':
                         fp_layer_list.append(all_tensors[i])
-                if model_block_name == 'bert_block':
+                if model_block_name == 'bert_block' or model_block_name == 'bert_block_1':
                     if op_type == 'top.GELU':
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
