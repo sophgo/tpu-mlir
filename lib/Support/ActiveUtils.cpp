@@ -52,6 +52,10 @@ static inline double silu(double x) {
   return x / (1 + std::exp(-x));
 }
 
+static inline double swish(double x, double beta) {
+  return x / (1 + std::exp(-x * beta));
+}
+
 static inline double logsigmoid(double x) {
   return std::log(1 / (1 + std::exp(-x)));
 }
@@ -125,6 +129,11 @@ switch (op.getMode()) {
     return [](double val) { return std::round(val); };
   case tpu::ActiveMode::SIGN:
     return [](double val) { return sign(val); };
+  case tpu::ActiveMode::SWISH: {
+      const auto coeffs_ = module::getF64Array(op.getCoeffs(), 1, 0);
+      const double beta = coeffs_->at(0);
+      return [beta](double val) { return swish(val, beta); };
+  }
   default:
     llvm_unreachable("Not Implemented");
   }

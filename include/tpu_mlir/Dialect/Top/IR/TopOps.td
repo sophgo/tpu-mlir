@@ -2227,6 +2227,19 @@ def Top_HardSwishOp : Top_Op<"HardSwish"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SwishOp : Top_Op<"Swish"> {
+  let summary = "Swish operation";
+  let description = [{
+    hardswish(x) := x * sigmoid(x * beta)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$beta,
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_PriorBoxOp : Top_Op<"PriorBox"> {
   let summary = "PriorBox operation";
   let description = [{

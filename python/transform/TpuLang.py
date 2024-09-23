@@ -1880,6 +1880,20 @@ def silu(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def swish(input: Tensor, beta: float, scale: List[float]=None, zero_point: List[int]=None, round_mode: str = "half_away_from_zero", out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int8", "uint8"]
+    output = Tensor(input.shape, dtype=input.dtype, name=out_name)
+    attrs = {
+        "beta": Attr(beta, "float64"),
+        "round_mode": Attr(round_mode_convert(round_mode), "string"),
+    }
+    _active_scale(input, output, scale, zero_point)
+    TpuLang.insert_op("top.Swish", inputs=[input], outputs=[output], params=attrs)
+    return output
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def erf(input: Tensor, scale: List[float]=None, zero_point: List[int]=None, out_name: str = None):
     assert input.dtype in ["float32", "float16", "int8", "uint8"]
     output = Tensor(input.shape, dtype=input.dtype, name=out_name)

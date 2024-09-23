@@ -179,6 +179,7 @@ class TPULANG_IR_TESTER(object):
             "Squeeze": (self.test_Squeeze,              Y, Y),
             "Sub": (self.test_Sub,                      Y, Y),
             "SubShift": (self.test_SubShift,            Y, Y),
+            "Swish": (self.test_Swish,                  Y, Y),
             "Tan": (self.test_Tan,                      Y, Y),
             "Tanh": (self.test_Tanh,                    Y, Y),
             "Tile": (self.test_Tile,                    Y, Y),
@@ -2297,6 +2298,22 @@ class TPULANG_IR_TESTER(object):
 
         _test_silu([1, 32, 28, 28])
         self._test_quantized_active_op([1, 32, 28, 28], tpul.silu, case_name, scale=3.0, dtype="int8")
+
+    # #######################################################################
+    # swish
+    # ------------
+    def test_Swish(self, case_name):
+        """swish"""
+
+        @tpulang(self.chip)
+        def _test_swish(shape_x: List[int], beta: float, dtype="float32", scale=None, zp=None):
+            input = np.abs(rand_data(shape_x, dtype))
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
+            silu = tpul.swish(x, beta=0.5, scale=scale, zero_point=zp)
+            self.compile_and_check(self.unique_name(case_name), [x], [silu], is_quantized=dtype!="float32")
+
+        _test_swish([1, 32, 28, 28], 0.3, "float16")
+        _test_swish([1, 32, 28, 28], 0.5, "int8", scale=[3.0, 6.0], zp=[0, 0])
 
     #######################################################################
     # Erf
