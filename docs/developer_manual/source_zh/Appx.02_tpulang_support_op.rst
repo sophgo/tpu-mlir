@@ -2518,9 +2518,48 @@ silu激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x}))`。
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入Tensor。
+* input：Tensor类型，表示输入Tensor。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
 * zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
+
+swish
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+      def swish(input: Tensor,
+              beta: float,
+              scale: List[float]=None,
+              zero_point: List[int]=None,
+              round_mode: str = "half_away_from_zero",
+              out_name: str = None):
+          #pass
+
+功能描述
+"""""""""""
+swish激活函数，逐元素实现功能 :math:`y = x * (1 / (1 + e^{-x * beta}))`。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入Tensor。
+* beta: Scalar或float类型，表示beta值。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* round_mode：string型，表示舍入模式。默认为“half_away_from_zero”。round_mode取值范围为“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
