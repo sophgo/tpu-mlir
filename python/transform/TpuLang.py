@@ -2614,23 +2614,39 @@ def rope(input: Tensor,
                 "add_saturation": Attr(add_saturation, "bool")
             }
         output = Tensor(dtype=input.dtype, name=out_name)
-
-        if not is_permute_optimize:
-            assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
-            assert input.shape[2]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
-            assert input.shape[2]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
-            weight0.shape =[1,1,weight0.shape[0],weight0.shape[1]]
+        if  len(input.shape) == 4:
+            if not is_permute_optimize:
+                assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+                assert input.shape[2]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
+                assert input.shape[2]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
+                weight0.shape =[1,1,weight0.shape[0],weight0.shape[1]]
+                weight0.buffer = weight0.buffer.reshape(weight0.shape)
+                weight1.shape = [1,1,weight1.shape[0],weight1.shape[1]]
+                weight1.buffer =weight1.buffer.reshape(weight1.shape)
+            else:
+                assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+                assert input.shape[1]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
+                assert input.shape[1]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
+                weight0.shape =[1, weight0.shape[0], 1, weight0.shape[1]]
+                weight0.buffer = weight0.buffer.reshape(weight0.shape)
+                weight1.shape = [1, weight1.shape[0], 1, weight1.shape[1]]
+                weight1.buffer =weight1.buffer.reshape(weight1.shape)
+        if  len(input.shape) == 3:
+            assert len(input.shape) == 3 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+            assert input.shape[1]== weight0.shape[0] and input.shape[2] == weight0.shape[1]
+            assert input.shape[1]== weight1.shape[0] and input.shape[2] == weight1.shape[1]
+            weight0.shape = [1,weight0.shape[0],weight0.shape[1]]
             weight0.buffer = weight0.buffer.reshape(weight0.shape)
-            weight1.shape = [1,1,weight1.shape[0],weight1.shape[1]]
-            weight1.buffer =weight1.buffer.reshape(weight1.shape)
-        else:
-            assert len(input.shape) == 4 and len(weight0.shape) == 2 and len(weight1.shape) == 2
-            assert input.shape[1]== weight0.shape[0] and input.shape[3] == weight0.shape[1]
-            assert input.shape[1]== weight1.shape[0] and input.shape[3] == weight1.shape[1]
-            weight0.shape =[1, weight0.shape[0], 1, weight0.shape[1]]
+            weight1.shape = [1,weight1.shape[0],weight1.shape[1]]
+            weight1.buffer = weight1.buffer.reshape(weight1.shape)
+        if len(input.shape) == 5:
+            assert len(input.shape) == 5 and len(weight0.shape) == 2 and len(weight1.shape) == 2
+            assert input.shape[3]== weight0.shape[0] and input.shape[4] == weight0.shape[1]
+            assert input.shape[3]== weight1.shape[0] and input.shape[4] == weight1.shape[1]
+            weight0.shape = [1, 1, 1, weight0.shape[0],weight0.shape[1]]
             weight0.buffer = weight0.buffer.reshape(weight0.shape)
-            weight1.shape = [1, weight1.shape[0], 1, weight1.shape[1]]
-            weight1.buffer =weight1.buffer.reshape(weight1.shape)
+            weight1.shape = [1, 1, 1, weight1.shape[0],weight1.shape[1]]
+            weight1.buffer = weight1.buffer.reshape(weight1.shape)
 
 
         TpuLang.insert_op("top.Rope", inputs=[input, weight0, weight1], outputs=[output], params=attr)
