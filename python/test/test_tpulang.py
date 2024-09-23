@@ -4164,6 +4164,7 @@ class TPULANG_IR_TESTER(object):
                         )
             self.compile_and_check(self.unique_name(case_name), [x], [outputs], is_quantized=is_quantized)
 
+        ###############  test for 4 dims  ##################
 
         ###############  no permute_optimize ###############
         _test_rope((390, 4, 256, 64),(256, 64),
@@ -4197,36 +4198,39 @@ class TPULANG_IR_TESTER(object):
                         add_saturation = True
                         )
 
-        ################  test for 3 dims ###############
-        # _test_rope((256,256,4),(1,256,4),
-        #                 dtype="float32",
-        #                 is_quantized=False,
-        #                 is_permute_optimize= False,
-        #                 mul1_round_mode ='half_up',
-        #                 mul2_round_mode ='half_up',
-        #                 add_round_mode ='half_up',
-        #                 mul1_shift= 0,
-        #                 mul2_shift = 0,
-        #                 add_shift= 0,
-        #                 mul1_saturation = True,
-        #                 mul2_saturation = True,
-        #                 add_saturation = True
-        #                 )
-        ################  test for 5 dims ###############
-        # _test_rope((256,8,4,256,4),(1,1,1,256,4),
-        #                 dtype="float32",
-        #                 is_quantized=False,
-        #                 is_permute_optimize= False,
-        #                 mul1_round_mode ='half_up',
-        #                 mul2_round_mode ='half_up',
-        #                 add_round_mode ='half_up',
-        #                 mul1_shift= 0,
-        #                 mul2_shift = 0,
-        #                 add_shift= 0,
-        #                 mul1_saturation = True,
-        #                 mul2_saturation = True,
-        #                 add_saturation = True
-        #                 )
+        ###############  test for 3 dims  ##################
+
+        _test_rope((390,256,64),(256,64),
+                        dtype="int8",
+                        is_quantized=True,
+                        is_permute_optimize= False,
+                        mul1_round_mode ='half_up',
+                        mul2_round_mode ='half_up',
+                        add_round_mode ='half_up',
+                        mul1_shift= 0,
+                        mul2_shift = 0,
+                        add_shift= 0,
+                        mul1_saturation = True,
+                        mul2_saturation = True,
+                        add_saturation = True
+                        )
+
+        ###############  test for 5 dims  ##################
+
+        _test_rope((256,8,4,256,64),(256,64),
+                        dtype="int8",
+                        is_quantized=True,
+                        is_permute_optimize= False,
+                        mul1_round_mode ='half_up',
+                        mul2_round_mode ='half_up',
+                        add_round_mode ='half_up',
+                        mul1_shift= 0,
+                        mul2_shift = 0,
+                        add_shift= 0,
+                        mul1_saturation = True,
+                        mul2_saturation = True,
+                        add_saturation = True
+                        )
 
 
 
