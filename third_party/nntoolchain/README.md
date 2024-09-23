@@ -38,6 +38,8 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 # -7bf05363836f6fadc057f661b38d8355cf1352ee
 # -7c1b7e990cfc56ea80187b3b430408945996de66
 # +5fd5cfea836a56e91faf59ae669b1865959019a4
+# revert for overall perf, compare failed and build failed
+# -b590d6c51e47e7af87dd05d17e77a47ccad742e2
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 **debug: rebuild_backend_lib_cmodel**
