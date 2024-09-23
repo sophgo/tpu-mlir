@@ -25,8 +25,6 @@ namespace tpu_mlir {
 namespace tpu {
 
 typedef struct {
-  int left_cost;
-  int right_cost;
   int min_cost;
   shape_secs_t left_shape_secs;
   shape_secs_t right_shape_secs;

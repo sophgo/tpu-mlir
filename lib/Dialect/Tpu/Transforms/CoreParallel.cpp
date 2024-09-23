@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
+#include "CoreParallel/CoreParallel.hpp"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -16,6 +16,54 @@ using namespace llvm;
 
 namespace tpu_mlir {
 namespace tpu {
+
+// Generate index vector for a given shape, it treats this shape as a nested
+// loop.
+// eg: given a shape (2, 3), it will call the function with (0, 0) (0, 1) ...
+// (1, 2)
+template <typename T, class Func>
+void invokeInIterationSpace(ArrayRef<T> shape, Func &&func,
+                            SmallVector<T, 8> dims = {}) {
+  auto dim = dims.size();
+  SmallVector dimN(dims);
+  dimN.push_back(0);
+  for (T i = 0, n = shape[dim]; i < n; i++) {
+    dimN.back() = i;
+    if (dimN.size() < shape.size()) {
+      invokeInIterationSpace(shape, func, dimN);
+    } else {
+      func(dimN);
+    }
+  }
+}
+
+// convert <(d0, d1) -> (d0)> to [1, 0] when the shape is 2 dimension.
+// convert <(d0, d1) -> (d0)> to [1] when the shape is 1 dimension.
+template <typename T>
+auto getValidStride(Attribute indexMapAttr, ArrayRef<T> iterShape) {
+  // filter valid shape
+  auto indexMap = cast<AffineMapAttr>(indexMapAttr).getValue();
+  SmallVector<T> strides(iterShape.size(), 0);
+  if (indexMap.getNumResults() == 0)
+    return strides;
+  auto context = indexMap.getContext();
+  for (int i = iterShape.size() - 1, stride = 1; i >= 0; i--) {
+    if (auto outIndex =
+            indexMap.getResultPosition(getAffineDimExpr(i, context))) {
+      strides[i] = stride;
+      stride *= iterShape[i];
+    }
+  }
+  return strides;
+}
+
+template <typename T>
+inline T getValidIndex(ArrayRef<T> dims, ArrayRef<T> strides) {
+  T index = 0;
+  for (auto [a, b] : llvm::zip(dims, strides))
+    index += a * b;
+  return index;
+}
 
 // get the types of split value.
 // For each operands and results of the compute operation, we need to split them
@@ -69,7 +117,6 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
   }
   return outputType;
 };
-
 
 // forAll will split the computation to multiple cores which in the range of
 // [offset, offset+num_core)
