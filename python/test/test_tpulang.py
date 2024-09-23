@@ -3102,7 +3102,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def test_LayerNorm(self, case_name):
         @tpulang(self.chip)
-        def _test_model_def(in_shape, dtype='float32', axis=-1,is_quantized=False):
+        def _test_model_def(in_shape, dtype='float32', axis=-1,is_quantized=False, reshape_after_layernorm=False, test_reshape_down=False):
             x_data = rand_data(in_shape, dtype, -10, 10)
             norm_shape = [1]
             for tmp_shape in in_shape[axis:]:
@@ -3110,12 +3110,30 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
             gamma = self.coeff_tensor(shape=norm_shape, dtype=dtype)
             beta = self.coeff_tensor(shape=norm_shape, dtype=dtype)
-
-            out = tpul.layer_norm(x, gamma, beta, axis=axis)
+            if test_reshape_down:
+                in_tensor = tpul.Tensor(dtype="int16", shape=in_shape, data=x_data)
+                if reshape_after_layernorm:
+                    #refs
+                    cast_f16 = tpul.cast(in_tensor, "float16")
+                    out = tpul.layer_norm(cast_f16, gamma, beta, axis=axis)
+                    out_F32 = tpul.cast(out, "float32")
+                    out = tpul.reshape(out_F32, [1, 8, 7, 7, 768])
+                else:
+                    #can check if reshape_down pattern work
+                    #reshape -> cast -> layernorm -> cast ==> cast -> layernorm -> cast -> reshape
+                    reshape_out = tpul.reshape(x, [1, 8, 7, 7, 768])
+                    cast_f16 = tpul.cast(reshape_out, "float16")
+                    out = tpul.layer_norm(cast_f16, gamma, beta, axis=4)
+                    out = tpul.cast(out, "float32")
+                    cast_f16 = tpul.cast(x, "float16")
+            else:
+                out = tpul.layer_norm(x, gamma, beta, axis=axis)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([20, 5, 10, 10,10],dtype='float16',axis=2,is_quantized=True)
-        _test_model_def([20, 5, 10, 10,10],dtype='float32', axis=2)
+        _test_model_def([20, 5, 10, 10, 10], dtype='float16', axis=2, is_quantized=True)
+        _test_model_def([20, 5, 10, 10, 10], dtype='float32', axis=2)
+        _test_model_def([1, 392, 768], dtype='float16', axis=2, is_quantized=True, reshape_after_layernorm=False)
+        _test_model_def([1, 392, 768], dtype='float16', axis=2, is_quantized=True, reshape_after_layernorm=True)
 
     #######################################################################
     # BatchNorm

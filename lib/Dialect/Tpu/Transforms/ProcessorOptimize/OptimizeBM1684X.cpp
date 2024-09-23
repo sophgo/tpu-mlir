@@ -4358,6 +4358,188 @@ public:
     return success();
   }
 };
+
+// reshape -> cast -> layernorm -> cast ==> cast -> layernorm -> cast -> reshape
+class MoveReshapeInSubGraphPattern
+    : public OpRewriterPatternEx<tpu::ReshapeOp> {
+public:
+  MoveReshapeInSubGraphPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::ReshapeOp>(
+            context, "MoveReshapeInSubGraphPattern", benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ReshapeOp reshapeOp,
+                                    PatternRewriter &rewriter) const override {
+    if (!reshapeOp->hasOneUse()) {
+      return failure();
+    }
+
+    auto output = reshapeOp.getOutput();
+    if (!output) {
+      return failure();
+    }
+
+    auto userIt = output.user_begin();
+    if (userIt == output.user_end()) {
+      return failure();
+    }
+
+    Operation *castOp = *userIt;
+    if (!isa<tpu::CastOp>(castOp)) {
+      return failure();
+    }
+
+    auto castOpInst = dyn_cast<tpu::CastOp>(castOp);
+    if (!castOpInst || !castOpInst->hasOneUse()) {
+      return failure();
+    }
+
+    auto nextUserIt = castOpInst.getOutput().user_begin();
+    if (nextUserIt == castOpInst.getOutput().user_end()) {
+      return failure();
+    }
+
+    Operation *nextOp = *nextUserIt;
+    if (!nextOp) {
+      return failure();
+    }
+
+    auto ori_loc = reshapeOp.getLoc();
+    auto ishape = module::getShape(reshapeOp.getInput());
+    if (isa<tpu::LayerNormOp>(nextOp)) {
+      auto layerNormOpInst = dyn_cast<tpu::LayerNormOp>(nextOp);
+      if (!layerNormOpInst || !layerNormOpInst->hasOneUse()) {
+        return failure();
+      }
+
+      auto afterLayerNormUserIt = layerNormOpInst.getOutput().user_begin();
+      if (afterLayerNormUserIt == layerNormOpInst.getOutput().user_end()) {
+        return failure();
+      }
+      Operation *afterLayerNormOp = *afterLayerNormUserIt;
+      auto layerNorm_out = layerNormOpInst.getResult();
+      auto axis = layerNormOpInst.getAxis();
+      ReshapeResult CanReshapeDown_Param =
+          canReshapeSinkAfter(layerNormOpInst, reshapeOp);
+      if (CanReshapeDown_Param.CanReshapeDown) {
+        axis = CanReshapeDown_Param.out_axis;
+        layerNormOpInst->setAttr("axis", rewriter.getSI32IntegerAttr(axis));
+        auto gamma_weight_value = layerNormOpInst->getOperand(1);
+        auto beta_weight_value = layerNormOpInst->getOperand(2);
+        auto w_shape = module::getShape(gamma_weight_value);
+        std::vector<int64_t> w_shape_vector(w_shape.begin(), w_shape.end());
+        std::vector<int64_t> i_shape_vector(ishape.begin(), ishape.end());
+        if (w_shape_vector.size() != i_shape_vector.size()) {
+          int diff_len = i_shape_vector.size() - w_shape_vector.size();
+          if (diff_len > 0) {
+            w_shape_vector.insert(w_shape_vector.begin(), diff_len, 1);
+          } else {
+            w_shape_vector.erase(w_shape_vector.begin(),
+                                 w_shape_vector.begin() - diff_len);
+          }
+        }
+        module::setShape(gamma_weight_value, w_shape_vector);
+        module::setShape(beta_weight_value, w_shape_vector);
+        layerNormOpInst->setOperand(1, gamma_weight_value);
+        layerNormOpInst->setOperand(2, beta_weight_value);
+      }
+      if (afterLayerNormOp && isa<tpu::CastOp>(afterLayerNormOp)) {
+        auto castOpInst_2 = dyn_cast<tpu::CastOp>(afterLayerNormOp);
+        if (CanReshapeDown_Param.CanReshapeDown) {
+          reshapeOp.replaceAllUsesWith(reshapeOp.getInput());
+          auto next_out = castOpInst_2.getResult();
+          ori_loc = castOpInst_2.getLoc();
+          module::setLocSuffix(castOpInst_2, "reshape_down");
+          auto castOpInst_out = castOpInst.getResult();
+          module::setShape(castOpInst_out, ishape);
+          module::setShape(layerNorm_out, ishape);
+          module::setShape(next_out, ishape);
+          rewriter.setInsertionPointAfterValue(next_out);
+          auto out_shape = module::getShape(reshapeOp.getOutput()).vec();
+          auto reshape_type = module::getTypeLike(next_out, out_shape);
+          auto shapeAttr = reshapeOp.getShape();
+          auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+              ori_loc, reshape_type, ValueRange{next_out}, rewriter.getNamedAttr("shape", shapeAttr));
+          next_out.replaceAllUsesExcept(new_reshape_op.getOutput(),
+                                        new_reshape_op);
+          rewriter.eraseOp(reshapeOp);
+          return success();
+        } else {
+          return failure();
+        }
+      } else {
+        if (CanReshapeDown_Param.CanReshapeDown) {
+          rewriter.setInsertionPointAfter(layerNormOpInst);
+          ori_loc = layerNormOpInst.getLoc();
+          module::setLocSuffix(layerNormOpInst, "reshape_down");
+          auto newReshapeOp = rewriter.create<tpu::ReshapeOp>(
+              ori_loc, layerNormOpInst.getResult().getType(),
+              layerNormOpInst.getResult());
+          module::setShape(layerNorm_out, ishape);
+          layerNorm_out.replaceAllUsesExcept(newReshapeOp.getOutput(),
+                                             newReshapeOp);
+          rewriter.eraseOp(reshapeOp);
+          return success();
+        } else {
+          return failure();
+        }
+      }
+    }
+    return failure();
+  }
+
+private:
+  struct ReshapeResult {
+    bool CanReshapeDown;
+    int out_axis;
+  };
+
+  ReshapeResult canReshapeSinkAfter(tpu::LayerNormOp layerNormOp,
+                                    tpu::ReshapeOp reshapeOp) const {
+    ReshapeResult result = {false, -1};
+    auto axis = layerNormOp.getAxis();
+    auto inputShape = module::getShape(reshapeOp.getInput());
+    auto outputShape = module::getShape(reshapeOp.getOutput());
+    std::vector<int> unchangedDims;
+    size_t inputIndex = 0, outputIndex = 0;
+    int64_t inputProduct = 1, outputProduct = 1;
+    bool inputContinue = true, outputContinue = true;
+    while (inputIndex < inputShape.size() && outputIndex < outputShape.size()) {
+      if (inputContinue) {
+        inputProduct *= inputShape[inputIndex];
+      }
+      if (outputContinue) {
+        outputProduct *= outputShape[outputIndex];
+      }
+
+      if (inputProduct == outputProduct) {
+        if (inputShape[inputIndex] == outputShape[outputIndex]) {
+          if(inputIndex != 0 && outputIndex != 0 && inputShape[inputIndex] != 1 && outputIndex == axis) {
+            result.CanReshapeDown = true;
+            result.out_axis = inputIndex;
+            break;
+          }
+        }
+        inputProduct = 1;
+        outputProduct = 1;
+        inputIndex++;
+        outputIndex++;
+        inputContinue = true;
+        outputContinue = true;
+      } else if (inputProduct < outputProduct) {
+        inputIndex++;
+        inputContinue = true;
+        outputContinue = false;
+      } else {
+        outputIndex++;
+        inputContinue = false;
+        outputContinue = true;
+      }
+    }
+
+    return result;
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -4402,8 +4584,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 Concat5dto4d,
                 EliminateCastBeforeGatherElements,
                 ConvMergeRequant,
+                CastGradWeight,
                 RemoveReshape,
-                CastGradWeight
+                MoveReshapeInSubGraphPattern
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
