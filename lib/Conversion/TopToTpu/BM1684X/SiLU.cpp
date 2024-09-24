@@ -44,10 +44,11 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
-    auto op_ = op.getOperation();
-    op_->setAttr(
-        "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
+    if (module::isBM1690Family() || module::isMARS3()) {
+    auto op_ = set_mode(op);
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  } else
+    LoweringF32(rewriter, op);
 }
 
 void SiLULowering::LoweringF16(PatternRewriter &rewriter,
