@@ -43,6 +43,7 @@ slice_attr_t tpu::SliceOp::parseParam() {
       os.insert(os.begin(), 1);
     }
   }
+
   auto input_dtype = BM1684::getDataType(getInput());
   bool is_int8 = (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8);
   if (num_dims > 4) {
@@ -79,21 +80,32 @@ slice_attr_t tpu::SliceOp::parseParam() {
         break;
       }
     }
-    if (num_dims > 4) {
-      llvm_unreachable("permute shape not support");
+    if (num_dims > 4 && !module::isBM1684XFamily()) {
+      llvm_unreachable("Slice shape not support");
     }
   }
-  attr.is_4 = {1, 1, 1, 1};
-  attr.os_4 = {1, 1, 1, 1};
-  attr.step_4 = {1, 1, 1, 1};
-  attr.offset_4 = {0, 0, 0, 0};
+
+  if (num_dims > 4 && module::isBM1684XFamily()) {
+    attr.is_4.assign(is.begin(), is.end());
+    attr.os_4.assign(os.begin(), os.end());
+    attr.step_4.assign(crop_steps->begin(), crop_steps->end());
+    attr.offset_4.assign(crop_offset->begin(), crop_offset->end());
+  } else {
+    attr.is_4 = {1, 1, 1, 1};
+    attr.os_4 = {1, 1, 1, 1};
+    attr.step_4 = {1, 1, 1, 1};
+    attr.offset_4 = {0, 0, 0, 0};
+  }
   std::vector<int> real_axes;
   attr.no_step = true;
   for (int idx = 0; idx < num_dims; idx++) {
-    attr.is_4[idx] = is[idx];
-    attr.os_4[idx] = os[idx];
-    attr.step_4[idx] = crop_steps->at(idx);
-    attr.offset_4[idx] = crop_offset->at(idx);
+    if (num_dims <= 4) {
+      attr.is_4[idx] = is[idx];
+      attr.os_4[idx] = os[idx];
+      attr.step_4[idx] = crop_steps->at(idx);
+      attr.offset_4[idx] = crop_offset->at(idx);
+    }
+
     if (attr.no_step && crop_steps->at(idx) != 1) {
       attr.no_step = false;
     }
@@ -101,12 +113,14 @@ slice_attr_t tpu::SliceOp::parseParam() {
       real_axes.push_back(idx);
     }
   }
+
   attr.fusible = false;
-  if (module::isBM1684Family() == false) {
+  if (!module::isBM1684Family()) {
     if (attr.no_step && real_axes.size() == 1) {
       int axis = real_axes[0];
-      int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
-                                      1, std::multiplies<int64_t>());
+      int outer_dim =
+          std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis, 1,
+                          std::multiplies<int64_t>());
       if (outer_dim == 1) {
         attr.fusible = true;
       }
