@@ -265,6 +265,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         elif tdb.cache_mode == 'offline':
             with open(f"{ref_fn}.tdb_cache.ops.pickle", 'rb') as r:
                 ops = pickle.load(r)
+        return ops
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
