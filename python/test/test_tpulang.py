@@ -4253,6 +4253,21 @@ class TPULANG_IR_TESTER(object):
 
         ###############  no permute_optimize ###############
         _test_rope((390, 4, 256, 64),(256, 64),
+                        dtype="float32",
+                        is_quantized=False,
+                        is_permute_optimize= False,
+                        mul1_round_mode = 'half_up',
+                        mul2_round_mode = 'half_up',
+                        add_round_mode = 'half_up',
+                        mul1_shift = 0,
+                        mul2_shift = 0,
+                        add_shift= 0,
+                        mul1_saturation = True,
+                        mul2_saturation = True,
+                        add_saturation = True
+                        )
+
+        _test_rope((390, 4, 256, 64),(256, 64),
                         dtype="int8",
                         is_quantized=True,
                         is_permute_optimize= False,
