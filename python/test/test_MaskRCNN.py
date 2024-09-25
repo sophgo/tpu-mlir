@@ -82,6 +82,8 @@ class MaskRCNN_IR_TESTER(MaskRCNN_Tester_Basic):
 
         self.mode = mode.lower()
         self.path_yaml = path_yaml
+        if not os.path.exists(self.path_default_MaskRCNN_dataset):
+            assert 0, "[MaskRCNN-Error]  for test_MaskRCNN.py npz/pt is loaded in only one way, 1st is NNMODELS_PATH for regression,please ensure {} exists, model-zoo never use this file!".format(self.path_default_MaskRCNN_dataset)
         if self.path_yaml is None:
             self.path_yaml = self.path_default_MaskRCNN_dataset + "CONFIG_MaskRCNN.yaml"
         assert os.path.exists(self.path_yaml), "[MaskRCNN-Test-Error] {} yaml path is not exist! There's example at tpu-mlir/regression/dataset/MaskRCNN/CONFIG_MaskRCNN.yaml".format(self.path_yaml,)
