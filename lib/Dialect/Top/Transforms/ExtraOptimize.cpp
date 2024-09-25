@@ -49,6 +49,10 @@ public:
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](FlopsInterface op) { flops += op.getFLOPs(); });
     }
+    // weight fold after top optimized
+    for (auto func : mOp.getOps<FuncOp>()) {
+      func.walk([&](InferenceInterface op) { WeightFolder(op); });
+    }
     module::setFLOPs(flops);
   }
 };
