@@ -105,7 +105,7 @@ class CopyMultiUseWeight  : public OpRewriterPatternEx<WeightOp> {
 };
 
 // if all inputs is weight, convert to weight op
-static void WeightFolder(Operation *op) {
+void WeightFolder(Operation *op) {
   // if the op is in the region of other op, don't do WeightFolder
   if (isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
           op->getBlock()->getParentOp()))
@@ -127,6 +127,10 @@ static void WeightFolder(Operation *op) {
   }
   auto ins = op->getOperands();
   auto outs = op->getResults();
+  auto storage_type = module::getStorageType(ins[0]);
+  if (!storage_type.isF32()) {
+    return;
+  }
   auto num_in = ins.size();
   auto num_out = outs.size();
   std::vector<float> datas[num_out];

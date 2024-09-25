@@ -28,6 +28,8 @@ std::unique_ptr<OperationPass<ModuleOp>> createExtraOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddPostprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeInferPass();
+
+void WeightFolder(Operation *op);
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h.inc"
