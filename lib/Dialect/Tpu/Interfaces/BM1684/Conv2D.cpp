@@ -28,7 +28,7 @@ static int inline get_tensor_local_size(const int *shape, int type_len,
   int c = shape[1];
   int h = shape[2];
   int w = shape[3];
-  int cnum = (c + eu_num - 1) / npu_num;
+  int cnum = (c + npu_num - 1) / npu_num;
   int cstride = h * w;
   if (is_aligned) {
     cstride = align_up(cstride, (eu_num * 4 / type_len));
