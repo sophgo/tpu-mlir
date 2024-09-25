@@ -34,12 +34,14 @@ class MaskRCNN_Tester_Basic(object):
             self.print_debug("[Warning] path_default_MaskRCNN_dataset is changed from default path: {} to new path: {}".format(self.path_default_MaskRCNN_dataset, path_custom_dataset))
             self.path_default_MaskRCNN_dataset =  path_custom_dataset
         if not os.path.exists(self.path_default_MaskRCNN_dataset):
+          if os.getenv('NNMODELS_PATH') is not None:
             self.path_default_MaskRCNN_dataset = os.getenv('NNMODELS_PATH') + "/maskrcnn_models/"
             if not os.path.exists(self.path_default_MaskRCNN_dataset):
                git_command = 'git --git-dir={}/.git log'.format(os.getenv('NNMODELS_PATH'))
                os.system(git_command)
                assert 0, "[MaskRCNN-Error] dataset path not found, expect {}".format(self.path_default_MaskRCNN_dataset)
-
+        else:
+          print("[MaskRCNN-Warning] NNMODELS_PATH is not exist, might used for model-zoo")
     def print_debug(self, *info):
         if self.DEBUG_MASKRCNN:
             print(*info)
