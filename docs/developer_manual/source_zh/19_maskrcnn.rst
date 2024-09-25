@@ -125,7 +125,7 @@ MaskRCNN 大算子框架需要 5 个输入:
 
     $ tool_maskrcnn.py \
       --path_yaml              ./regression/dataset/MaskRCNN/CONFIG_MaskRCNN.yaml \
-      --path_input_image       ./regression/dataset/MaskRCNN/Superior_IMG_BackBone.npz \
+      --path_input_image       Superior_IMG_BackBone.npz \
       --basic_max_shape_inverse 1216,800 \
       --basic_scalar_factor     1.8734375,1.8735363 \
       --debug
@@ -170,12 +170,12 @@ IO_MAP 指南
  * **数据类型**:仅支持 fp32 或 int32.
  * **连接**: 每个输入找出其来源的上层模块(可能不是上一个相邻模块), 和上层模块相应输出的操作序数.
 
-请注意, -1 表示完整 MaskRCNN 的输入, 而 -2 表示完整模型的输出, Top
+请注意, -1 表示完整 MaskRCNN 的输入, 而 -2 表示完整模型的输出
 
 **[-1] Top_In**
 
 .. list-table::
-   :widths: 5 15 50 5
+   :widths: 15 25 30 10
    :header-rows: 1
 
    * - 输入编号
