@@ -72,6 +72,35 @@ class DATATYPE(Enum):
         if self.value == 6:
             return 0.5
 
+
+# CORE_OFFSET_BIT = 28
+# CORE_OFFSET = 1 << CORE_OFFSET_BIT
+# LOCAL_MEM_ADDRWIDTH = 18
+# LOCAL_MEM_SIZE = 1 << LOCAL_MEM_ADDRWIDTH
+# NPU_SHIFT = 6
+# NPU_NUM = 1 << NPU_SHIFT
+# STATIC_MEM_SIZE = 0x10000
+
+# def is_lmem(addr, coreid):
+#     lmem_start_addr = 0x6900000000 + coreid * CORE_OFFSET
+#     return addr >= lmem_start_addr and addr < lmem_start_addr + NPU_NUM * LOCAL_MEM_SIZE
+
+# def is_smem(addr, coreid):
+#     smem_start_addr = 0x6904000000 + coreid * CORE_OFFSET
+#     return addr >= smem_start_addr and addr < smem_start_addr + STATIC_MEM_SIZE
+
+
+# static inline int is_gmem(u64 addr) {
+#   addr &= (MAX_GMEM_SIZE - 1);
+#   return addr >= GLOBAL_MEM_START_ADDR &&
+#          addr < (GLOBAL_MEM_START_ADDR + CONFIG_GLOBAL_MEM_SIZE);
+# }
+# static inline int is_l2mem(u64 addr) {
+#   addr &= (MAX_GMEM_SIZE - 1);
+#   return (addr >= L2_SRAM_START_ADDR &&
+#           addr < (L2_SRAM_START_ADDR  + L2_SRAM_SIZE));
+# }
+
 def get_node_set_info(dyn_data, extra_info=False):
     '''
     # type

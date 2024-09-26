@@ -287,7 +287,7 @@ class Dma(object):
             ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']),\
             float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst']), int(chip_arch['L2 Max Burst'])
             # bandwidth
-            if int(ws.cell(h + 2, tsk_typ_pos).value) == 6 or ws.cell(h + 2, direction_pos).value == None:
+            if int(ws.cell(h + 2, tsk_typ_pos).value) == 6 or ws.cell(h + 2, direction_pos).value in [None, "-"]:
                 # sys do not have bandwidth
                 continue
             else:
