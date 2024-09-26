@@ -26,4 +26,9 @@ void registerAllPasses() {
   top::registerTopPasses();
   tpu::registerTpuPasses();
 }
+
+void registerToolPasses() {
+  tpu::registerTruncIO();
+}
+
 } // namespace tpu_mlir
