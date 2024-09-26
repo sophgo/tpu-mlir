@@ -358,19 +358,29 @@ class BMProfileParserPerfAI(BMProfileParser):
                      self.archlib.bd_sys_code: [8, 9]}
         sys_num = 0
         time_point = 0
-        for _ in range(cmd_offset):
-            # current for bmodel case cmdbuf don't contain forfile's sync_all cmd
-            m = monitor.pop(0)
-            time_point = m.inst_end_time
-            sys_num += 1
-
-        extra_zero_id = []
-        for i in range(len(monitor)):
-            # bmodel core0 pmu recored extra ins_id 0 that not in cmd
-            if i > 0 and monitor[i].inst_id == 0 and monitor[i - 1].inst_id == 0:
-                extra_zero_id.append(i - 1)
-        for i in extra_zero_id[::-1]:
-            monitor.pop(i)
+        # for bmodel
+        if cmd_offset:
+            for _ in range(cmd_offset):
+                # current for bmodel case cmdbuf don't contain forfile's sync_all cmd
+                m = monitor.pop(0)
+                time_point = m.inst_end_time
+                sys_num += 1
+            # find bmoodel input dma
+            if sys_code == self.archlib.dma_sys_code:
+                recorded_input = False
+                input_ids = []
+                find_input = False
+                for i in range(len(monitor)):
+                    if monitor[i].inst_id == 0:
+                        if recorded_input:
+                            find_input = True
+                            break
+                        else:
+                            recorded_input = True
+                    input_ids.append(i)
+                if find_input:
+                    for i in input_ids[::-1]:
+                        monitor.pop(i)
         for i, (c, m) in enumerate(zip(cmd, monitor)):
             des_tsk_typ, des_tsk_eu_typ = -1, -1
             if hasattr(c, 'reg'):
