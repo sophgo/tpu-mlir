@@ -61,6 +61,9 @@ class DATATYPE(Enum):
     INT32 = 4
     BFP16 = 5
     INT4 = 6
+    FP8 = 7
+    FP20 = 8
+    TF32 = 9
 
     def prec(self):
         if self.value == 0:
@@ -334,7 +337,7 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     dma_info["dst_shape"] = "(1, 128, 128 ,9)(FP32)(147456, 1152, 9, 1)"
     dma_info["dst_start_addr"] = 0
     dma_info["src_start_addr"] = 0
-    return dma_info
+    return dma_info, None
 
 def get_dma_info(monitor_info, reg_info, engine_id=1):
     is_sys = reg_info.name == 'sDMA_sys'
@@ -424,7 +427,7 @@ def get_dma_info(monitor_info, reg_info, engine_id=1):
     dma_info["index_shape"] = "(1, 128, 128 ,9)(FP32)(147456, 1152, 9, 1)"
     dma_info["src_shape"] = "(1, 128, 128 ,9)(FP32)(147456, 1152, 9, 1)"
     dma_info["dst_shape"] = "(1, 128, 128 ,9)(FP32)(147456, 1152, 9, 1)"
-    return dma_info
+    return dma_info, None
 
 def get_tiu_info_dyn(monitor_info, reg_info):
     tiu_info0, tiu_info1 = dict(), dict()
