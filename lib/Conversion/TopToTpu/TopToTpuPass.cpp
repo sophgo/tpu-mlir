@@ -1077,7 +1077,8 @@ struct W4A16MatMulPreparePattern  : public OpRewriterPatternEx<top::MatMulOp> {
     if (!module::isWeight(op.getBias()) && !module::isNone(op.getBias())) {
       UNREACHABLE_OP("op filter is weight, but bias is not weight", op);
     }
-    auto N1 = N % backend::Arch::NPU_NUM;
+    auto num_core = module::getCoreNum();
+    auto N1 = N % (backend::Arch::NPU_NUM * num_core);
     auto N0 = N - N1;
     rewriter.setInsertionPoint(op);
     // op 0
