@@ -157,4 +157,17 @@ def ShowAddress : Pass<"show-address", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def TruncIO : Pass<"trunc-io", "ModuleOp"> {
+  let summary = "truncate final mlir according to outputs, "
+    "keeping the structure as far as possible.";
+  let constructor = "createTruncIOPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    // Option<"inputs", "inputs", "std::string", /*default=*/"",
+    //        "new inputs">,
+    Option<"outputs", "outputs", "std::string", /*default=*/"",
+           "new outputs">,
+  ];
+}
+
 #endif
