@@ -170,6 +170,20 @@ void ModelGen::AddNet(const string &net_name,
                           << std::endl;
         exit(-1);
       }
+      for (int i = 0; i < net_old->input_tensor()->size(); ++i) {
+        if (net_old->input_tensor()->Get(i)->name()->str() != net_new->input_tensor()->Get(i)->name()->str()) {
+          BMODEL_LOG(FATAL) << "net[" << net_name << "] input names is conflict."
+                            << std::endl;
+          exit(-1);
+        }
+      }
+      for (int i = 0; i < net_old->output_tensor()->size(); ++i) {
+        if (net_old->output_tensor()->Get(i)->name()->str() != net_new->output_tensor()->Get(i)->name()->str()) {
+          BMODEL_LOG(FATAL) << "net[" << net_name << "] output names is conflict."
+                            << std::endl;
+          exit(-1);
+        }
+      }
       bool old_have_subnet = (net_old->sub_net() != NULL)
                                  ? (net_old->sub_net()->size() > 1)
                                  : false;
