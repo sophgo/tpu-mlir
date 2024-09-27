@@ -1276,29 +1276,21 @@ public:
       return failure();
     }
     #define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
-    auto gradout_shape = module::getI64Array(ConvbwdOp.getGradOutShape());
     auto kernel_shape = module::getI64Array(ConvbwdOp.getKernelShape());
-    int _32oc_gradout_shape[4] = {0,0,0,0};
     int _32oc_kernel_shape[4] = {0,0,0,0};
+
     // 32oc shape
-    _32oc_gradout_shape[0] = gradout_shape->at(1);
-    _32oc_gradout_shape[1] = gradout_shape->at(2)*gradout_shape->at(3);
-    _32oc_gradout_shape[2] = DIV_UP( gradout_shape->at(0), 32 ); // =0 ?
-    _32oc_gradout_shape[3] = 32;
     _32oc_kernel_shape[0] = kernel_shape->at(1);
     _32oc_kernel_shape[1] = kernel_shape->at(2)*kernel_shape->at(3);
     _32oc_kernel_shape[2] = DIV_UP( kernel_shape->at(0), 32 ); // =0 ?
     _32oc_kernel_shape[3] = 32;
-    // get32OCShape(gradout_shape,_32oc_gradout_shape);
-    // get32OCShape(kernel_shape,_32oc_kernel_shape);
-    int gradout_size = 1;
+
     int kernel_size = 1;
     int dim = 4;
     for(int i = 0;i < dim;i++){
-      gradout_size *= _32oc_gradout_shape[i];
       kernel_size *= _32oc_kernel_shape[i];
     }
-    int64_t buffer_size = gradout_size>kernel_size ? gradout_size : kernel_size;
+    int64_t buffer_size = kernel_size;
     if (buffer_size > 0) {
       auto type = module::getStorageType(ConvbwdOp.getInput());
       std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
