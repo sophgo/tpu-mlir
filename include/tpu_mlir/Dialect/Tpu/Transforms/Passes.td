@@ -159,13 +159,13 @@ def ShowAddress : Pass<"show-address", "ModuleOp"> {
 }
 
 def TruncIO : Pass<"trunc-io", "ModuleOp"> {
-  let summary = "truncate final mlir according to outputs, "
+  let summary = "truncate final mlir according to inputs/outputs, "
     "keeping the structure as far as possible.";
   let constructor = "createTruncIOPass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
-    // Option<"inputs", "inputs", "std::string", /*default=*/"",
-    //        "new inputs">,
+    Option<"inputs", "inputs", "std::string", /*default=*/"",
+           "new inputs">,
     Option<"outputs", "outputs", "std::string", /*default=*/"",
            "new outputs">,
   ];

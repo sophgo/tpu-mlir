@@ -1804,7 +1804,7 @@ void saveWeight() {
   if (wFile == nullptr) {
     if (!same_name) {
       weightFile().save(filename_);
-      m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+      setWeightFileAttr(filename_);
     }
     return;
   }
@@ -1834,15 +1834,21 @@ void saveWeight() {
     return;
   }
   wFile->save(filename_);
-  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+  setWeightFileAttr(filename_);
 }
 
 void setWeightFileName(const std::string &name) { weightFileName = name; }
 void detachWeightFile() { wFile = nullptr; }
+void setWeightFileAttr(const std::string &name) {
+  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, name));
+}
+llvm::StringRef getWeightFileAttr() {
+  return m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+}
 
 mlir::TensorFile &weightFile() {
   if (wFile == nullptr) {
-    auto name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+    auto name = getWeightFileAttr();
     wFile = std::make_unique<mlir::TensorFile>(name, false);
   }
   return *wFile;

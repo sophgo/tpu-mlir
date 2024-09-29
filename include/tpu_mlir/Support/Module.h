@@ -255,6 +255,8 @@ mlir::TensorFile &weightFile();
 void setWeightFileName(const std::string &name);
 void saveWeight();
 void detachWeightFile();
+void setWeightFileAttr(const std::string &name);
+llvm::StringRef getWeightFileAttr();
 
 //-----------------------------------------------------------------
 // Helper Functions for apply pattern only once
