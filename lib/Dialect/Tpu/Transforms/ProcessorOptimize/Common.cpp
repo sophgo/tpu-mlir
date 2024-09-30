@@ -348,6 +348,91 @@ Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *
   return add.getOutput();
 }
 
+Value weight_split(Value weight, int split_num, int idx, int axis, Type to_type,
+                   std::string base_name) {
+  auto op = weight.getDefiningOp();
+  if (module::isWeight(weight)) {
+    auto shape = module::getShape(weight);
+    auto dim = shape.size();
+    axis = axis < 0 ? dim + axis : axis;
+    int begin = shape[axis] / split_num * idx;
+    int end = shape[axis] / split_num * (idx + 1);
+    end = end > shape[axis] ? shape[axis] : end;
+    std::string suffix = base_name + "_split_" + std::to_string(idx);
+    return dyn_cast<top::WeightOp>(op).split(begin, end, axis, to_type, suffix);
+  } else {
+    return top::NoneOp(op);
+  }
+}
+
+Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0, int num_devices) {
+  std::vector<Value> operands;
+  auto none_op = module::getNoneOp(op);
+  std::vector<int64_t> m0_shape = module::getShape(op->getResult(0));
+  m0_shape[m0_shape.size()-1] /= num_devices;
+  Value rq_out;
+  for (int i = 0; i < num_devices; ++i) {
+    auto cur_out = arg0;
+    Operation *next_op = op;
+    auto suffix = "split_" + std::to_string(i);
+    // matmul split weight col
+    auto m0 = dyn_cast<tpu::MatMulOp>(op);
+    auto w0 = weight_split(m0.getRight(), num_devices, i, -1, module::getStorageType(m0.getRight()), "");
+    auto b0 = weight_split(m0.getBias(), num_devices, i, -1, module::getStorageType(m0.getBias()), "");
+    auto multi0 = weight_split(m0.getMulti(), num_devices, i, -1, module::getStorageType(m0.getMulti()), "");
+    auto new_loc = module::getLocLike(m0.getOutput(), suffix);
+    auto m0_type = module::getTypeLike(m0.getOutput(), m0_shape);
+    auto new_m0 = rewriter.create<tpu::MatMulOp>(
+        new_loc, m0_type, ValueRange{arg0, w0, b0, multi0, none_op}, op->getAttrs());
+
+    next_op = *next_op->user_begin();
+    auto new_common_op = rewriter.clone(*next_op);
+    module::setLocSuffix(new_common_op, suffix);
+    new_common_op->setOperand(0, new_m0.getOutput());
+    module::setShape(new_common_op->getResult(0), m0_shape);
+    cur_out = new_common_op->getResult(0);
+    next_op = *next_op->user_begin();
+    // matmul split weight row
+    auto m1 = dyn_cast<tpu::MatMulOp>(next_op);
+    auto w1 = weight_split(m1.getRight(), num_devices, i, -2, module::getStorageType(m1.getRight()), "");
+    auto new1_loc = module::getLocLike(m1.getOutput(), suffix);
+    auto out_shape = module::getShape(m1.getOutput());
+    auto newType = RankedTensorType::get(out_shape, rewriter.getI32Type());
+    std::vector<Value> operands_m1 = {cur_out, w1};
+    if (i == num_devices - 1) {
+      operands_m1.push_back(m1.getBias());
+    } else {
+      operands_m1.push_back(none_op);
+    }
+    operands_m1.push_back(none_op);
+    operands_m1.push_back(none_op);
+    auto new_m1 = rewriter.create<tpu::MatMulOp>(new1_loc, newType,
+        operands_m1, op->getAttrs());
+    new_m1.setFuseRqAttr(rewriter.getBoolAttr(false));
+
+    operands.push_back(new_m1.getOutput());
+    if (i > 0) {
+      std::string suffix = std::string("add_") + std::to_string(i);
+      auto loc = module::getLocLike(new_m1.getOutput(), suffix);
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
+      attrs.push_back(rewriter.getNamedAttr("mode",rewriter.getStringAttr("Add")));
+      auto add = rewriter.create<tpu::BinaryShiftOp>(loc, newType, operands, attrs);
+      operands.clear();
+      operands.push_back(add);
+    }
+    if (i == num_devices - 1) {
+      operands.push_back(m1.getMulti());
+      std::vector<NamedAttribute> attrs;
+      int32_t shift = module::getI64Array(m1.getRshifts())->at(0);
+      attrs.push_back(rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(-shift)));
+      attrs.push_back(rewriter.getNamedAttr("mode",rewriter.getStringAttr("Mul")));
+      rq_out = rewriter.create<tpu::BinaryShiftOp>(m1.getLoc(), m1.getOutput().getType(), operands, attrs);
+    }
+  }
+  return rq_out;
+}
+
 // reshape (in == out)
 LogicalResult RemoveReshape::matchAndRewrite(tpu::ReshapeOp op,
                                               PatternRewriter &rewriter) const {

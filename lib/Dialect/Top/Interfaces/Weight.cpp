@@ -487,30 +487,78 @@ Value WeightOp::clone(llvm::StringRef suffix) {
   return newOp.getOutput();
 }
 
-Value WeightOp::split(int begin, int end, int axis, mlir::Type to_type, std::string suffix) {
-  auto op = getOperation();
-  auto shape = module::getShape(getOutput());
-  auto dim = shape.size();
-  axis = axis < 0 ? dim + axis : axis;
+template <typename T>
+void split_weight(std::shared_ptr<std::vector<T>>& old_data, std::shared_ptr<std::vector<T>>& new_data,
+      int begin, int end, int axis, llvm::ArrayRef<int64_t>& shape) {
   int64_t outer = 1;
   for (int i = 0; i < axis; ++i) {
     outer *= shape[i];
   }
-  int64_t inner = module::getNumElements(getOutput()) / outer;
-  int64_t head_inner = inner / shape[axis] * (end - begin);
-  auto out_weight = std::make_shared<std::vector<float_t>>(outer * head_inner);
-  auto weight_op = read_as_float();
+  int64_t inner = 1;
+  for (int i = axis + 1; i < shape.size(); ++i) {
+    inner *= shape[i];
+  }
+  int64_t head_inner = inner * (end - begin);
+  inner *= shape[axis];
   for (int64_t i = 0; i < outer; ++i) {
     int64_t src_offset = i * inner + begin * (inner / shape[axis]);
     int64_t dst_offset = i * head_inner;
     for (int64_t j = 0; j < head_inner; ++j) {
-      out_weight->data()[dst_offset + j] = weight_op->at(src_offset + j);
+      new_data->data()[dst_offset + j] = old_data->at(src_offset + j);
     }
   }
+}
+
+Value WeightOp::split(int begin, int end, int axis, mlir::Type to_type, std::string suffix) {
+  auto op = getOperation();
+  auto shape = module::getShape(getOutput());
+  auto dtype = module::getStorageType(getOutput());
+  auto dim = shape.size();
+  axis = axis < 0 ? dim + axis : axis;
+
   std::vector<int64_t> out_shape(shape);
   out_shape[axis] = end - begin;
+  int64_t out_size = module::getNumElements(getOutput()) / shape[axis] * (end - begin);
   auto new_type = RankedTensorType::get(out_shape, to_type);
-  return create(op, suffix, *out_weight, new_type);
+  if (dtype.isUnsignedInteger(8) || dtype.isFloat8E4M3FN() || dtype.isFloat8E5M2()) {
+    auto data = read<uint8_t>();
+    auto out_weight = std::make_shared<std::vector<uint8_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isInteger(8)) {
+    auto data = read<int8_t>();
+    auto out_weight = std::make_shared<std::vector<int8_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isF32()) {
+    auto data = read<float>();
+    auto out_weight = std::make_shared<std::vector<float>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isF16() || dtype.isBF16() || dtype.isUnsignedInteger(16)) {
+    auto data = read<uint16_t>();
+    auto out_weight = std::make_shared<std::vector<uint16_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isInteger(16)) {
+    auto data = read<int16_t>();
+    auto out_weight = std::make_shared<std::vector<int16_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isUnsignedInteger(32)) {
+    auto data = read<uint32_t>();
+    auto out_weight = std::make_shared<std::vector<uint32_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  } else if (dtype.isInteger(32)) {
+    auto data = read<int32_t>();
+    auto out_weight = std::make_shared<std::vector<int32_t>>(out_size);
+    split_weight(data, out_weight, begin, end, axis, shape);
+    return create(op, suffix, *out_weight, new_type);
+  }
+  dump();
+  llvm_unreachable("weight data not support split now");
+  return nullptr;
 }
 
 template <typename T>

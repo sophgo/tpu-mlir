@@ -38,19 +38,19 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   std::string out_name = module::getName(op.getOutput()).data();
   // attention for each head
   auto weight_q = get_weight(op.getQueriesWeight(), head, index, -1,
-                             rewriter.getF32Type(), "weight");
+                             module::getStorageType(op.getQueriesWeight()), "weight");
   auto weight_k = get_weight(op.getKeysWeight(), head, index, -1,
-                             rewriter.getF32Type(), "weight");
+                             module::getStorageType(op.getKeysWeight()), "weight");
   auto weight_v = get_weight(op.getValuesWeight(), head, index, -1,
-                             rewriter.getF32Type(), "weight");
+                             module::getStorageType(op.getValuesWeight()), "weight");
   auto weight_o = get_weight(op.getOutWeight(), head, index, -2,
-                             rewriter.getF32Type(), "weight");
+                             module::getStorageType(op.getOutWeight()), "weight");
   auto bias_q = get_weight(op.getQueriesBias(), head, index, -1,
-                           rewriter.getF32Type(), "bias");
+                           module::getStorageType(op.getQueriesBias()), "bias");
   auto bias_k = get_weight(op.getKeysBias(), head, index, -1,
-                           rewriter.getF32Type(), "bias");
+                           module::getStorageType(op.getKeysBias()), "bias");
   auto bias_v = get_weight(op.getValuesBias(), head, index, -1,
-                           rewriter.getF32Type(), "bias");
+                           module::getStorageType(op.getValuesBias()), "bias");
   std::vector<Value> operands_a = {input,  keys,     values, weight_q,
                                    bias_q, weight_k, bias_k, weight_v,
                                    bias_v, weight_o};
@@ -80,9 +80,7 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   return attention;
 }
 
-template <typename T1, typename T2>
-void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op,
-                       Type w_type, Type b_type) {
+void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op) {
   auto none_op = module::getNoneOp(op);
   if (op.getValues() == op.getKeys()) {
     op->setOperand(2, none_op);
@@ -95,8 +93,7 @@ void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op,
     auto shape = module::getShape(op.getOutWeight());
     std::vector<int64_t> weight_shape(shape);
     weight_shape.insert(weight_shape.begin(), 1);
-    auto new_type = RankedTensorType::get(weight_shape, w_type);
-    op.getOutWeight().setType(new_type);
+    module::setShape(op.getOutWeight(), weight_shape);
   }
 }
 
@@ -141,8 +138,7 @@ void lowering_multi_attention_float(PatternRewriter &rewriter,
   // attention for each head
   for (int i = 0; i < head; ++i) {
     auto attention = attention_head(rewriter, op, i);
-    attention_reorder<float, float>(rewriter, attention, rewriter.getF32Type(),
-                                    rewriter.getF32Type());
+    attention_reorder(rewriter, attention);
     // multi head fuse
     operands.push_back(lowering_attention_float<ElemTy>(rewriter, attention));
     if (i > 0) {
@@ -260,8 +256,7 @@ Value lowering_attention_int(PatternRewriter &rewriter, top::AttentionOp op,
   Value o_b = weight_quant<int32_t>(op.getOutBias(), ow_scale * m1_scale,
                                     "int32", rewriter.getI32Type());
   op->setOperand(10, o_b);
-  attention_reorder<int8_t, int32_t>(rewriter, op, rewriter.getI8Type(),
-                                     rewriter.getI32Type());
+  attention_reorder(rewriter, op);
   auto softmax_table = generate_table(op, si_scale);
   // generate requant param
   std::vector<int64_t> quant_param;

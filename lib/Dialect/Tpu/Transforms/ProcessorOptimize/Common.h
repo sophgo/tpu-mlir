@@ -44,6 +44,7 @@ protected:
 };
 
 Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0);
+Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0, int num_device);
 
 struct RemoveReshape : public OpRewritePattern<tpu::ReshapeOp> {
   using OpRewritePattern::OpRewritePattern;
