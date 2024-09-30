@@ -101,14 +101,6 @@ class BM1688Info:
         return TYPED_CUBE_NUM[dtype]
 
 info = BM1688Info()
-# NPU_NUM = info.NPU_NUM
-# BANK_NUM = info.BANK_NUM
-# LANE_SIZE = info.LANE_SIZE
-# BANK_SIZE = info.BANK_SIZE
-# LMEM_SIZE = info.LMEM_SIZE
-# ALIGN_EU_BASE = info.ALIGN_EU_BASE
-# EU_NUM = info.EU_NUM
-# CUBE_NUM = info.CUBE_NUM
 
 # TPU1688/bm1688/spec/include/memmap.h
 memmap = {
