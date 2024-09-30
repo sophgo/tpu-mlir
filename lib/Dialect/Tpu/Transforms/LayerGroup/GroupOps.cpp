@@ -66,7 +66,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   func_ = func;
   ctx_ = func.getContext();
   lg_pass_ir_ = new LgPassIR();
-  version = 0; //0:old version, 1:new backend api
+  lg_pass_ir_->func = func;
 
   func.walk([&](Operation *op) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {

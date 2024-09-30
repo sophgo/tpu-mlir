@@ -594,6 +594,9 @@ model_deploy.py
    * - compress_mode
      - 否
      - 指定模型的压缩模式："none","weight","activation","all"。支持bm1688, 默认为"none",不进行压缩
+   * - lgcache
+     - 否
+     - 指定是否暂存 LayerGroup 的切分结果： "true", "false"。默认为"true", 将每个子网的切分结果保存到工作目录 "cut_result_{subnet_name}.mlircache"
    * - cache_skip
      - 否
      - 是否在生成相同mlir/bmodel时跳过正确性的检查

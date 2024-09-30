@@ -242,14 +242,14 @@ static void set_group_type(LgInfo &lg_info) {
   }
 }
 
-static void get_layer_group(LgInfo &lg_info,
+void GroupMethod::get_layer_group(LgInfo &lg_info,
                             const std::vector<Operation *> &base_group,
                             int64_t left, int64_t right) {
   lg_info.clear();
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
   }
-  lg_info.update_group_io(LgPass::OPTIONS.opt);
+  lg_info.update_group_io(opt4_ori_opt_ < 0 ? opt_ : opt4_ori_opt_);
   set_group_type(lg_info);
 }
 
@@ -2529,16 +2529,32 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
   auto start = std::chrono::high_resolution_clock::now();
   runmode_ = getRunMode(subnet_ops[0]);
+  auto func_name = pass_ir->func.getName();
+
   switch (LgPass::OPTIONS.opt) {
   case 1:
     simple_layer_group(lg_infos, subnet_ops);
+    dump_cut_results(func_name);
     break;
   case 2:
     dynamic_programming_layer_group_with_cluster(lg_infos, subnet_ops);
+    dump_cut_results(func_name);
     break;
   case 3:
     ilp_layer_group(pass_ir);
+    dump_cut_results(func_name);
     break;
+  case 4: {
+    if(is_cut_results_exists(func_name)){
+      load_cut_results(func_name);
+      show_cut_results();
+      std::vector<std::vector<Operation *>> base_groups;
+      get_base_groups(base_groups, subnet_ops);
+      get_final_groups(lg_infos, base_groups);
+    }else{
+      llvm_unreachable("cut_results.txt not exist s, ues opt=1/2/3 to generate");
+    }
+  } break;
   default:
     simple_layer_group(lg_infos, subnet_ops);
     break;
@@ -2590,6 +2606,60 @@ void GroupMethod::show_cut_results() {
     }
     llvm::dbgs() << "\n";
   });
+}
+
+
+bool GroupMethod::is_cut_results_exists(StringRef func_name){
+    return std::filesystem::exists("cut_results_" + func_name.str() + ".mlircache");
+
+}
+void GroupMethod::dump_cut_results(StringRef func_name) {
+  if(!LgPass::OPTIONS.lgcache){
+     return;
+  }
+  std::ofstream out("cut_results_" + func_name.str() + ".mlircache");
+  if (!out.is_open()) {
+    std::cerr << "Failed to open file for writing.\n";
+    return;
+  }
+  out << opt_ << "\n";
+  for (const auto &row : cut_results_) {
+    for (const auto &item : row) {
+      out << item << " ";
+    }
+    out << "\n"; // 每个内部vector结束后换行
+  }
+
+  out.close();
+}
+
+void GroupMethod::load_cut_results(StringRef func_name) {
+  std::ifstream in("cut_results_" + func_name.str() + ".mlircache");
+  if (!in.is_open()) {
+    std::cerr << "Failed to open file for reading.\n";
+    return;
+  }
+
+  cut_results_.clear(); // 清空现有数据
+  std::string line;
+
+  in >> opt4_ori_opt_;
+  in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // 忽略到行尾，准备读取下一行
+
+  while (std::getline(in, line)) {
+
+    std::istringstream iss(line);
+    std::vector<int64_t> row;
+    int64_t value;
+
+    while (iss >> value) {
+      row.push_back(value);
+    }
+
+    cut_results_.push_back(row);
+  }
+
+  in.close();
 }
 
 /// The pass of layer group searching
