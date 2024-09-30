@@ -105,15 +105,6 @@ class BM1690Info:
         return TYPED_CUBE_NUM[dtype]
 
 info = BM1690Info()
-# NPU_NUM = info.NPU_NUM
-# BANK_NUM = info.BANK_NUM
-# LANE_SIZE = info.LANE_SIZE
-# BANK_SIZE = info.BANK_SIZE
-# LMEM_SIZE = info.LMEM_SIZE
-# L2MEM_SIZE = info.L2MEM_SIZE
-# ALIGN_EU_BASE = info.ALIGN_EU_BASE
-# EU_NUM = info.EU_NUM
-# CUBE_NUM = info.CUBE_NUM
 
 
 # /TPU1686/sg2260/spec/include/memmap.h
@@ -155,13 +146,13 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
 
     def t4_stride():
         _, _, _, w = memref.shape
-        align_num = int(info.ALIGN_EU_BASE / self.itemsize)
+        align_num = int(info.ALIGN_EU_BASE / memref.itemsize)
         h_stride = align_up(w, align_num)
         return (0, 0, h_stride, 1)
 
     def t5_stride():
         _, _, _, w = memref.shape
-        align_num = int(info.ALIGN_EU_BASE / self.itemsize)
+        align_num = int(info.ALIGN_EU_BASE / memref.itemsize)
         c_stride = align_up(w, align_num)
         n_stride = info.LANE_SIZE // 8 // memref.itemsize
         return (n_stride, c_stride, w, 1)

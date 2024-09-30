@@ -106,11 +106,8 @@ class BM1688Runner(CModelRunner):
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
-            g_npu_num = self.lib.tpu_npu_num()
-            g_lmem_size_per_npu = self.lib.tpu_local_mem_size_per_npu()
-            g_bank_num = self.lib.tpu_bank_num()
 
-            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (g_npu_num, g_bank_num, g_lmem_size_per_npu // g_bank_num)))
+            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (info.NPU_NUM, info.BANK_NUM, info.BANK_SIZE)))
             SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         self.memory = Memory(LMEM, DDR, SMEM)
@@ -328,15 +325,15 @@ class Memory(CModelMemory):
             result = np.zeros(shape, dtype=np.uint8).reshape([shape[0], shape[1], -1])
             laddr = memref.r_addr
             start_npu_idx = NPU_OFFSET
-            start_offset = laddr % LANE_SIZE
+            start_offset = laddr % info.LANE_SIZE
             for nidx in range(0, shape[0]):
                 n_offset = nidx * stride[0]
                 for cidx in range(0, shape[1]):
-                    npu_idx = (start_npu_idx + cidx) % NPU_NUM
+                    npu_idx = (start_npu_idx + cidx) % info.BANK_NUM
                     LMEM = self.LMEM[self.core_id][
-                        npu_idx * LANE_SIZE : (npu_idx + 1) * LANE_SIZE
+                        npu_idx * info.LANE_SIZE : (npu_idx + 1) * info.LANE_SIZE
                     ]
-                    c_offset = ((start_npu_idx + cidx) / NPU_NUM) * stride[1]
+                    c_offset = ((start_npu_idx + cidx) / info.BANK_NUM) * stride[1]
                     h_offset = np.arange(0, shape[2]) * stride[2]
                     w_offset = np.arange(0, shape[3]) * stride[3]
                     dst_offset = np.add.outer(
@@ -354,7 +351,7 @@ class Memory(CModelMemory):
             return result
 
         def data_view(shape, stride):
-            offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
+            offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
                 self.LMEM[self.core_id][offset : offset + 4].view(memref.np_dtype),
                 shape,
@@ -365,8 +362,8 @@ class Memory(CModelMemory):
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, div_up(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w]
-            _stride = (n_s, c_s, int(LANE_SIZE / itemsize), h_s, w_s)
+            _shape = [n, div_up(NPU_OFFSET + c, info.BANK_NUM), info.BANK_NUM, h, w]
+            _stride = (n_s, c_s, int(info.LANE_SIZE / itemsize), h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[
                 :n, NPU_OFFSET : NPU_OFFSET + c, :, :
             ]
@@ -378,11 +375,11 @@ class Memory(CModelMemory):
 
         def get_alignic_data():
             n, c, h, w = memref.shape
-            cube_num = CUBE_NUM(memref.dtype)
-            shape = (div_up(n, NPU_NUM), NPU_NUM, div_up(c, cube_num), cube_num, h, w)
+            cube_num = info.CUBE_NUM(memref.dtype)
+            shape = (div_up(n, info.BANK_NUM), info.BANK_NUM, div_up(c, cube_num), cube_num, h, w)
             stride = (
                 align_up(c, cube_num) * h * w,
-                int(LANE_SIZE / itemsize),
+                int(info.LANE_SIZE / itemsize),
                 cube_num * h * w,
                 1,
                 cube_num * w,
@@ -415,26 +412,26 @@ class Memory(CModelMemory):
             lane_mask = np.unpackbits(
                 np.uint64([lane_mask]).view(np.uint8), bitorder="little"
             )
-            _c = div_up(NPU_OFFSET + c, NPU_NUM)
-            index = np.zeros(_c * NPU_NUM, bool)
+            _c = div_up(NPU_OFFSET + c, info.BANK_NUM)
+            index = np.zeros(_c * info.BANK_NUM, bool)
             index[NPU_OFFSET : NPU_OFFSET + c] = True
-            index = index.reshape(_c, NPU_NUM)
+            index = index.reshape(_c, info.BANK_NUM)
             index[:, lane_mask == 0] = False
             return index.flatten()
 
         def get_dma4bank_data():
             n, c, h, w = memref.shape
-            shape = (4, n, div_up(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w)
+            shape = (4, n, div_up(NPU_OFFSET + c, info.BANK_NUM), info.BANK_NUM, h, w)
             n_s, c_s, h_s, w_s = memref.stride
-            stride = (BANK_SIZE, n_s, c_s, int(LANE_SIZE / itemsize), h_s, w_s)
+            stride = (info.BANK_SIZE, n_s, c_s, int(info.LANE_SIZE / itemsize), h_s, w_s)
             index = _lane_mask_filter(c, memref.layout.args[0])
             return data_view(shape, stride).reshape(4, n, -1, h, w)[:, :, index, :, :]
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, div_up(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w)
+            shape = (n, div_up(NPU_OFFSET + c, info.BANK_NUM), info.BANK_NUM, h, w)
             n_s, c_s, h_s, w_s = _memref.stride
-            stride = (n_s, c_s, int(LANE_SIZE / itemsize), h_s, w_s)
+            stride = (n_s, c_s, int(info.LANE_SIZE / itemsize), h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
             return data_view(shape, stride).reshape(n, -1, h, w)[:, index, :, :]
 

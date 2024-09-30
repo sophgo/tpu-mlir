@@ -264,12 +264,12 @@ class Memory(DeviceMemory):
         self.l2s_offset = self.lib.init_memory(
             self.runner_p,
             L2S_TAG,
-            LMEM_SIZE,
+            info.LMEM_SIZE,
         )
         self.s2l_offset = self.lib.init_memory(
             self.runner_p,
             S2L_TAG,
-            LMEM_SIZE,
+            info.LMEM_SIZE,
         )
         self.neuron_offset = self.lib.init_memory(
             self.runner_p,
@@ -285,7 +285,7 @@ class Memory(DeviceMemory):
         self.LMEM = []
         self.SMEM = []
         for lmem in range(2):
-            self.LMEM.append(np.zeros(LMEM_SIZE, dtype=np.uint8))
+            self.LMEM.append(np.zeros(info.LMEM_SIZE, dtype=np.uint8))
         for smem in range(2):
             self.SMEM.append(np.zeros(64 * 1024, dtype=np.uint8))
 
@@ -331,13 +331,13 @@ class Memory(DeviceMemory):
             result = np.zeros(shape, dtype=np.uint8).reshape([shape[0], shape[1], -1])
             laddr = memref.r_addr
             start_npu_idx = NPU_OFFSET
-            start_offset = laddr % LANE_SIZE
+            start_offset = laddr % info.LANE_SIZE
             for nidx in range(0, shape[0]):
                 n_offset = nidx * stride[0]
                 for cidx in range(0, shape[1]):
-                    npu_idx = (start_npu_idx + cidx) % NPU_NUM
-                    LMEM = self.LMEM[self.core_id][npu_idx * LANE_SIZE:(npu_idx + 1) * LANE_SIZE]
-                    c_offset = ((start_npu_idx + cidx) >> NPU_SHIFT) * stride[1]
+                    npu_idx = (start_npu_idx + cidx) % info.BANK_NUM
+                    LMEM = self.LMEM[self.core_id][npu_idx * info.LANE_SIZE:(npu_idx + 1) * info.LANE_SIZE]
+                    c_offset = ((start_npu_idx + cidx) // info.NPU_NUM) * stride[1]
                     h_offset = np.arange(0, shape[2]) * stride[2]
                     w_offset = np.arange(0, shape[3]) * stride[3]
                     dst_offset = np.add.outer(
@@ -353,7 +353,7 @@ class Memory(DeviceMemory):
             return result
 
         def data_view(shape, stride):
-            offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
+            offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
                 self.LMEM[self.core_id][offset:offset + 4].view(memref.np_dtype),
                 shape,
@@ -364,8 +364,8 @@ class Memory(DeviceMemory):
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w]
-            _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            _shape = [n, (NPU_OFFSET + c + info.BANK_NUM - 1) // info.BANK_NUM, info.BANK_NUM, h, w]
+            _stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
                                                                    NPU_OFFSET:NPU_OFFSET + c, :, :]
 
@@ -379,7 +379,7 @@ class Memory(DeviceMemory):
             shape = ((n + 63) // 64, 64, (c + 63) // 64, 64, h, w)
             stride = (
                 (c + 63) // 64 * 64 * h * w,
-                LANE_SIZE // itemsize,
+                info.LANE_SIZE // itemsize,
                 64 * h * w,
                 1,
                 64 * w,
@@ -393,7 +393,7 @@ class Memory(DeviceMemory):
             shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
             stride = (
                 (c + 32) // 32 * 32 * h * w,
-                LANE_SIZE // itemsize,
+                info.LANE_SIZE // itemsize,
                 32 * h * w,
                 1,
                 32 * w,
@@ -407,7 +407,7 @@ class Memory(DeviceMemory):
             shape = ((n + 63) // 64, 64, c, h, w)
             stride = (
                 c * h * w,
-                LANE_SIZE // itemsize,
+                info.LANE_SIZE // itemsize,
                 h * w,
                 w,
                 1,
@@ -447,15 +447,15 @@ class Memory(DeviceMemory):
             n, c, h, w = memref.shape
             shape = (4, n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
             n_s, c_s, h_s, w_s = memref.stride
-            stride = (BANK_SIZE, n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            stride = (info.BANK_SIZE, n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, memref.layout.args[0])
             return data_view(shape, stride).reshape(4, n, -1, h, w)[:, :, index, :, :]
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w)
+            shape = (n, (NPU_OFFSET + c + info.BANK_NUM - 1) // info.BANK_NUM, info.BANK_NUM, h, w)
             n_s, c_s, h_s, w_s = _memref.stride
-            stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
             return data_view(shape, stride).reshape(n, -1, h, w)[:, index, :, :]
 

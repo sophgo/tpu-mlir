@@ -22,7 +22,7 @@ from ..target_common import (
 )
 
 from .regdef import *
-from .memmap import memmap
+from .memmap import *
 
 if TYPE_CHECKING:
     from .context import BM1690Context

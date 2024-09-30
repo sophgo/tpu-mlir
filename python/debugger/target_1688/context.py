@@ -20,7 +20,7 @@ from .opparam import get_opparam_converter_with_context, opparam_converter
 
 
 def GET_LMEM_START_ADDR(core_id):
-    return 0x25000000 + core_id * LMEM_SIZE
+    return 0x25000000 + core_id * info.LMEM_SIZE
 
 
 class BM1688Context(BModelContext):
