@@ -16,6 +16,9 @@
 #include <list>
 #include <map>
 #include <set>
+#include <fstream>
+#include <filesystem>
+
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
@@ -82,6 +85,11 @@ public:
       const std::vector<std::vector<Operation *>> &base_groups);
 
   void show_cut_results();
+
+  void dump_cut_results(StringRef func_name);
+  void load_cut_results(StringRef func_name);
+  bool is_cut_results_exists(StringRef func_name);
+
   void ilp_layer_group(LgPassIR *pass_ir);
   void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
                        const llvm::SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
@@ -90,7 +98,9 @@ public:
                                 std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups);
   void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR* pass_ir);
-
+  void get_layer_group(LgInfo &lg_info,
+                            const std::vector<Operation *> &base_group,
+                            int64_t left, int64_t right);
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;
@@ -99,6 +109,7 @@ protected:
   int64_t group_cost_;
   int64_t MAX_COST;
   int64_t opt_;
+  int64_t opt4_ori_opt_ = -1;
   RunMode runmode_;
 };
 

@@ -30,6 +30,17 @@ bool force_group_by_cores(const std::string &option) {
   return true;
 }
 
+bool force_lgcache(const std::string &option) {
+  if (option == "true") {
+    return true;
+  } else if (option == "false") {
+    // auto as false
+    return false;
+  }
+  llvm_unreachable("Unknown layer group options");
+  return true;
+}
+
 NnvlcMode force_nnvlc_mode(const std::string &nnvlc_mode) {
   if (nnvlc_mode == "none") {
     return NnvlcMode::NONE;
@@ -52,6 +63,7 @@ public:
     LgPass::OPTIONS.opt = opt;
     LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
     LgPass::OPTIONS.nnvlc_mode = force_nnvlc_mode(compress_mode);
+    LgPass::OPTIONS.lgcache = force_lgcache(lgcache);
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {

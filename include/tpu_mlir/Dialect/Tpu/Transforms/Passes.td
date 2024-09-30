@@ -60,6 +60,7 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
            "opt=1: group layers as many as possible. opt=2: dynamic programming layer group">,
     Option<"group_by_cores", "group_by_cores", "std::string", /*default=*/"\"auto\"", "whether force group by cores">,
     Option<"compress_mode", "compress_mode", "std::string", /*default=*/"\"none\"", "compress mode">,
+    Option<"lgcache", "lgcache", "std::string", /*default=*/"\"true\"", "whether to dump cut_results">,
   ];
 }
 

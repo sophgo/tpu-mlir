@@ -27,6 +27,7 @@ typedef struct {
   int64_t opt;
   bool group_by_cores;
   NnvlcMode nnvlc_mode;
+  bool lgcache;
 } LgOptions;
 
 // struct node_info;
@@ -81,6 +82,7 @@ struct LgPassIR {
   std::map<Operation*, std::vector<Operation*>> map_parallel_op_subnet;
   Operation* returnOp;
   std::shared_ptr<dot_graph> dot_graph_log_subnet;
+  FuncOp func;
 };
 
 class LgPass {

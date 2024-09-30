@@ -356,7 +356,7 @@ def origin_mlir_txt_to_bmodel(
         quant_input, quant_output, quant_input_list, quant_output_list)
     lg_param = ""
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={}"'.format(
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} lgcache=false"'.format(
             opt, group_by_cores, compress_mode)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
