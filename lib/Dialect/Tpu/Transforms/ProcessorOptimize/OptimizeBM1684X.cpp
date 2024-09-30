@@ -4112,12 +4112,13 @@ public:
 
     int channels = shape[shape.size() - 1];
     std::vector<int64_t> new_multi0(channels);
-    std::vector<int64_t> new_rshift0(channels);
+    std::vector<int64_t> new_rshift0(1);
 
     for (int i = 0; i < channels; ++i) {
       new_multi0[i] = quantData[i * 3];      // multi
-      new_rshift0[i] = quantData[i * 3 + 1]; // rshift
+      // new_rshift0[i] = quantData[i * 3 + 1]; // rshift
     }
+    new_rshift0[0] = quantData[1];
 
     rewriter.setInsertionPoint(op);
     std::vector<int32_t> reshaped_multi0(channels);
@@ -4138,7 +4139,7 @@ public:
         requantIntAxisOp->getLoc(), requantIntAxisOp.getOutput().getType(),
         operands, op->getAttrs());
 
-    newMatmulOp.setMultipliersAttr(rewriter.getI64ArrayAttr(new_multi0));
+    // newMatmulOp.setMultipliersAttr(rewriter.getI64ArrayAttr(new_multi0));
     newMatmulOp.setRshiftsAttr(rewriter.getI64ArrayAttr(new_rshift0));
     newMatmulOp.setFuseRqAttr(rewriter.getBoolAttr(true));
     auto round_mode = requantIntAxisOp.getRoundModeAttr().getValue();
@@ -4186,6 +4187,65 @@ public:
 
     auto nativeVar_0 = tpu_mlir::tpu::createSplitQuantizedMLP(
         rewriter, prevMatMulOp, prevMatMulOp->getOperand(0));
+    rewriter.replaceOp(matMulOp, nativeVar_0);
+    return success();
+  }
+};
+
+class SplitQuantizedMLP2Pattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+  SplitQuantizedMLP2Pattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitQuantizedMLP2Pattern",
+                                           benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
+                                    PatternRewriter &rewriter) const override {
+    if (!module::isBM1684X()) {
+      return failure();
+    }
+    auto in_size = module::getNumElements(matMulOp.getInput());
+    if (in_size > BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 8) * BM168x::NPU_NUM) {
+      return failure();
+    }
+    bool f_fuse_rq = matMulOp.getFuseRq();
+    if(!f_fuse_rq) return failure();
+    if (!isa<top::WeightOp>(matMulOp.getRight().getDefiningOp())) {
+      return failure();
+    }
+    auto lut_op = dyn_cast<tpu::LutOp>(matMulOp.getOperand(0).getDefiningOp());
+    if (!lut_op) {
+      return failure();
+    }
+    auto prevMatMulOp = dyn_cast<tpu::MatMulOp>(lut_op->getOperand(0).getDefiningOp());
+    if (!prevMatMulOp) {
+      return failure();
+    }
+    if (!isa<top::WeightOp>(prevMatMulOp.getRight().getDefiningOp())) {
+      return failure();
+    }
+    bool l_fuse_rq = prevMatMulOp.getFuseRq();
+    if(!l_fuse_rq) return failure();
+    auto w_shape = module::getShape(matMulOp.getRight());
+    auto dim = w_shape.size();
+    auto w_size = module::getNumElements(matMulOp.getRight());
+    // get split number
+    auto max_weight_size = BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 4) * BM168x::NPU_NUM;
+    int split_num = 1;
+    while (w_size > max_weight_size) {
+      split_num *= 2;
+      w_size /= 2;
+      if (w_shape[dim - 1] / split_num < BM168x::NPU_NUM ||
+          w_shape[dim - 1] % split_num != 0) {
+        return failure();
+      }
+    }
+    if (split_num == 1) {
+      return failure();
+    }
+
+    rewriter.setInsertionPointAfter(matMulOp);
+    auto nativeVar_0 = tpu_mlir::tpu::createSplitQuantizedMLP2(
+        rewriter, prevMatMulOp, prevMatMulOp->getOperand(0), split_num);
     rewriter.replaceOp(matMulOp, nativeVar_0);
     return success();
   }
@@ -4348,7 +4408,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern>(ctx, 3);
+  patterns->add<SplitQuantizedMLPPattern, SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
 }
 } // namespace tpu
