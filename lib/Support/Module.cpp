@@ -1401,7 +1401,8 @@ StringRef getName(Operation *op, int index) {
     }
   }
   op->print(llvm::errs(), OpPrintingFlags().useLocalScope().enableDebugInfo());
-  llvm::errs() << "\n";
+  llvm::errs() << "op has no name location!!!\n";
+  op->dump();
   llvm_unreachable("op has no name location!!!");
   return "";
 }
