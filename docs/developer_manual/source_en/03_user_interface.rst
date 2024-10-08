@@ -366,7 +366,7 @@ A sample calibration table is as follows:
 
 .. code-block:: shell
 
-    # genetated time: 2022-08-11 10:00:59.743675
+    # generated time: 2022-08-11 10:00:59.743675
     # histogram number: 2048
     # sample number: 100
     # tune number: 5

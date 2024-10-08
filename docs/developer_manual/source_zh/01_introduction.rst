@@ -1,7 +1,7 @@
 TPU-MLIR简介
 ============
 
-TPU-MLIR是算能深度学习处理器的编译器工程。该工程提供了一套完整的工具链, 其可以将
+TPU-MLIR是算能深度学习处理器的编译器工程。该工程提供了一套完整的工具链, 可以将
 不同框架下预训练的神经网络, 转化为可以在算能智能视觉深度学习处理器上高效运算的文件 ``bmodel``。
 代码已经开源到github: https://github.com/sophgo/tpu-mlir 。
 
@@ -20,7 +20,7 @@ TPU-MLIR的整体架构如下:
 度学习架构的网络模型转换成onnx, 可以参考onnx官网: https://github.com/onnx/tutorials。
 
 
-转模型需要在指定的docker执行, 主要分两步, 一是通过 ``model_transform.py`` 将原始模型
+模型转换需要在指定的Docker中执行, 主要分两步, 一是通过 ``model_transform.py`` 将原始模型
 转换成mlir文件, 二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel。
 
 如果要转INT8模型, 则需要调用 ``run_calibration.py`` 生成校准表, 然后传给 ``model_deploy.py``。

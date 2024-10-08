@@ -30,7 +30,7 @@
 支持图片输入
 ~~~~~~~~~~~~~~~
 
-当用图片做为输入的时候, 需要指定预处理信息, 如下:
+当用图片作为输入的时候, 需要指定预处理信息, 如下:
 
 .. code-block:: shell
 
@@ -143,7 +143,7 @@
 
 .. code-block:: shell
 
-    # Caffe转模型举例
+    # Caffe转模型示例
     $ model_transform.py \
         --model_name resnet18_cf \
         --model_def  ../resnet18.prototxt \

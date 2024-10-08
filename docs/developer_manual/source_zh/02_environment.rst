@@ -1,7 +1,7 @@
 开发环境配置
 ============
 
-本章介绍开发环境配置, 代码在docker中编译和运行。
+本章介绍开发环境配置, 代码在Docker中编译和运行。
 
 .. _code_load:
 
@@ -60,7 +60,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
 
-注意TPU-MLIR工程在docker中的路径应该是/workspace/tpu-mlir
+注意TPU-MLIR工程在Docker中的路径应该是/workspace/tpu-mlir
 
 .. _model_zoo:
 
@@ -71,14 +71,14 @@ TPU-MLIR中自带yolov5s模型, 如果要跑其他模型, 需要下载ModelZoo, 
 
 https://github.com/sophgo/model-zoo
 
-下载后放在与tpu-mlir同级目录, 在docker中的路径应该是/workspace/model-zoo
+下载后放在与tpu-mlir同级目录, 在Docker中的路径应该是/workspace/model-zoo
 
 .. _compiler :
 
 代码编译
 ----------------
 
-在docker的容器中, 代码编译方式如下:
+在Docker的容器中, 代码编译方式如下:
 
 .. code-block:: shell
 
