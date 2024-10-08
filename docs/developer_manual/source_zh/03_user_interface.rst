@@ -337,7 +337,7 @@ run_calibration.py
      - search_qtable 浮点层数量
    * - processor
      - 否
-     - 芯片类型
+     - 处理器类型
    * - cali_method
      - 否
      - 选择量化门限计算方法
@@ -602,7 +602,7 @@ model_deploy.py
      - 是否在生成相同mlir/bmodel时跳过正确性的检查
    * - aligned_input
      - 否
-     - 是否输入图像的宽/通道是对齐的，仅用于CV系列芯片的VPSS输入对齐
+     - 是否输入图像的宽/通道是对齐的，仅用于CV系列处理器的VPSS输入对齐
    * - group_by_cores
      - 否
      - layer groups是否根据core数目进行强制分组, 可选auto/true/false, 默认为auto
@@ -620,7 +620,7 @@ model_deploy.py
      - 是否使用WinoGrad卷积, 仅用于BM1684平台
    * - matmul_perchannel
      - 否
-     - MatMul是否使用per-channel量化模式，目前支持BM1684X和BM1688芯片，打开可能影响运行时间
+     - MatMul是否使用per-channel量化模式，目前支持BM1684X和BM1688处理器，打开可能影响运行时间
    * - enable_maskrcnn
      - 否
      - 是否启用 MaskRCNN大算子.

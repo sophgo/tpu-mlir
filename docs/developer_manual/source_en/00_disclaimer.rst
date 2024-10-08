@@ -22,8 +22,7 @@
 :Postcode: 100094
 :URL: https://www.sophgo.com/
 :Email: sales@sophgo.com
-:Tel: +86-10-57590723
-       +86-10-57590724
+:Tel: 010-57590723
 
   **Release Record**
 

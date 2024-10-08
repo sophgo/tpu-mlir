@@ -91,7 +91,7 @@ Generate mlir fp32 file in the same workspace:
 Step 2: merge the bmodel of batch 1 and batch 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use model_tool to mrege two bmodel files:
+Use model_tool to merge two bmodel files:
 
 .. code-block:: shell
 

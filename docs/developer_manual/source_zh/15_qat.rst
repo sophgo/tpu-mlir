@@ -17,7 +17,7 @@ tpu-mlir QAT实现方案及特点
 
 特点2：客户基本无感；区别于早期需人工深度介入模型转换的方案，本方案基于pytorch fx，能较方便实现模型trace、伪量化节点插入、自定义模块替换等操作，大多数情况下，客户使用较少的用户配置即可完成量化感知训练.
 
-特点3：基于SOPHGO-mq训练框架，该框架基于商汤开源的mqbench修改，增加了对SOPHGO芯片量化特性的支持.
+特点3：基于SOPHGO-mq训练框架，该框架基于商汤开源的mqbench修改，增加了对SOPHGO处理器量化特性的支持.
 
 
 安装方法
@@ -28,7 +28,7 @@ tpu-mlir QAT实现方案及特点
 
     docker pull sophgo/tpuc_dev:v3.3-cuda
 
-此镜像预装了torc2.3.0版本和cuda12.1,为SOPHGO-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到芯片.
+此镜像预装了torc2.3.0版本和cuda12.1,为SOPHGO-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到处理器.
 
 
 使用安装包安装
@@ -69,13 +69,13 @@ tpu-mlir QAT实现方案及特点
     from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
     from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
     from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
-	import tpu_mlir			#tpu_mlir模块，引入之后可以实现一键式转换bmodel在芯片上部署
-	from tools.model_runner import mlir_inference  #tpu_mlir的推理模块，可以在量化感知训练阶段使用tpu_mlir的推理直接看到训练模型在芯片上的精度表现
+	import tpu_mlir			#tpu_mlir模块，引入之后可以实现一键式转换bmodel在处理器上部署
+	from tools.model_runner import mlir_inference  #tpu_mlir的推理模块，可以在量化感知训练阶段使用tpu_mlir的推理直接看到训练模型在处理器上的精度表现
 
     #使用torchvision model zoo里的预训练resnet18模型
     model = models.__dict__['resnet18'](pretrained=True)
 
-    #1.trace模型，使用字典来指定芯片类型为BM1690，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
+    #1.trace模型，使用字典来指定处理器类型为BM1690，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
     extra_prepare_dict = {
     'quant_dict': {
                     'chip': 'BM1690',
@@ -86,7 +86,7 @@ tpu-mlir QAT实现方案及特点
     model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
 
-当上面接口选择芯片为BM1690时，此时默认的量化配置如下图所示：
+当上面接口选择处理器为BM1690时，此时默认的量化配置如下图所示：
 
 .. figure:: ../assets/bm1690_default_para.png
    :align: center
@@ -147,7 +147,7 @@ tpu-mlir QAT实现方案及特点
 步骤3：转换部署
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 使用tpu-mlir的model_transform.py及model_deploy.py脚本完成到sophg-tpu硬件的转换部署。
-在训练阶段引入tpu_mlir，可以直接使用tpu_mlir的推理接口直接模拟模型在芯片上的运行，从而了解训练进展，如果使用此接口，则在训练过程中就已经转化部署了模型文件，生成了bmodel。一般可以在传统的验证流程中将模型推理替换为mlir_inference，输入输出为numpy数组，调用tpu_mlir推理的示例接口如下：
+在训练阶段引入tpu_mlir，可以直接使用tpu_mlir的推理接口直接模拟模型在处理器上的运行，从而了解训练进展，如果使用此接口，则在训练过程中就已经转化部署了模型文件，生成了bmodel。一般可以在传统的验证流程中将模型推理替换为mlir_inference，输入输出为numpy数组，调用tpu_mlir推理的示例接口如下：
 
 .. code-block:: python
 
@@ -231,7 +231,7 @@ c、上面的min、max是非对称量化时根据激活的qat调优过的scale�
 
 QAT测试环境
 ---------------------------
-量化感知训练输出的网络最终要在SOPHGO芯片上运行，其精度可以使用端到端的推理验证程序来验证，一般在模型部署的环境中测试即可。
+量化感知训练输出的网络最终要在SOPHGO处理器上运行，其精度可以使用端到端的推理验证程序来验证，一般在模型部署的环境中测试即可。
 在单机上也可以在tpu_mlir阶段使用tpu_mlir提供的模型验证程序在CPU上模拟验证，特别是简单的分类网络可以比较方便的验证其精度。一般步骤如下：
 
 添加cfg文件
