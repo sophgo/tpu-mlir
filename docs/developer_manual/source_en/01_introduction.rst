@@ -1,7 +1,7 @@
 TPU-MLIR Introduction
 =====================
 
-TPU-MLIR is a compiler project for Depp Learning processors. This project
+TPU-MLIR is a compiler project for Deep Learning processors. This project
 provides a complete toolchain, which can convert pre-trained neural networks
 under different frameworks into binary files ``bmodel`` that can be efficiently
 run on the processors.

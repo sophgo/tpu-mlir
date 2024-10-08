@@ -8,7 +8,7 @@ This chapter describes the development environment configuration. The code is co
 Code Download
 ----------------
 
-Github link: https://github.com/sophgo/tpu-mlir
+GitHub link: https://github.com/sophgo/tpu-mlir
 
 After cloning this code, it needs to be compiled in docker. For specific steps, please refer to the following.
 

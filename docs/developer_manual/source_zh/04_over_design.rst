@@ -13,7 +13,7 @@ Top Dialect
 Tpu Dialect
    与硬件相关层, 包括权重重排、算子切分、地址分配、推理等等
 
-整体的流程如(:ref:`main_flow`)图中所示, 通过Pass将模型逐渐转换成最终的指令, 这里具体说明Top层和Tpu层每个Pass做的什么功能。
+整体的流程如(:ref:`main_flow`)图中所示, 通过Pass将模型逐渐转换成最终的指令, 这里具体说明Top层和Tpu层每个Pass的功能。
 后面章节会对每个Pass的关键点做详细说明。
 
 .. _main_flow:
@@ -40,7 +40,7 @@ processor-assign
 import-calibration-table
    按照calibration table, 给每个op插入min和max, 用于后续量化; 对应对称量化则插入threshold
 processor-top-optimize
-   与处理器相关的top层算子优化, 这是一个妥协, 有些top算子与处理器具有相关性
+   与处理器相关的top层算子优化, 这是一个权衡, 有些top算子与处理器具有相关性
 convert-top-to-tpu
    将top层下沉到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
 
