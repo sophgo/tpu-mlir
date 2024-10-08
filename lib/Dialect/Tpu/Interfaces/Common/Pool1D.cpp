@@ -29,8 +29,22 @@ pool_attr_t tpu::Pool1DOp::parseParam() {
   auto stride = module::getI64Array(getStrides());
   p.sh = stride->at(0);
   auto pad = module::getI64Array(getPads());
-  p.pad_h = pad->at(0);
-  p.pad_h_after = pad->at(1);
+  // for dynamic case.
+  std::vector<int64_t> new_pads(pad->begin(), pad->end());
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    auto kernel_shape = module::getI64Array(getKernelShape());
+    auto kernel_len = kernel_shape->size();
+    for (uint32_t i = 0; i < kernel_len; i++) {
+      auto remain_pixel =
+          (ishape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
+          stride->at(i);
+      if (remain_pixel > 0) {
+        new_pads[i + kernel_len] += (stride->at(i) - remain_pixel);
+      }
+    }
+  }
+  p.pad_h = new_pads.at(0);
+  p.pad_h_after = new_pads.at(1);
   p.pad_value = getPadValue();
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();

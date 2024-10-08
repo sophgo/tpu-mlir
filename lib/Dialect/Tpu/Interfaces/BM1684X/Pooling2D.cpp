@@ -266,7 +266,9 @@ int64_t tpu::Pool2DOp::dyn_codegen_global_bm1684x(void *buffer) {
       }
     }
   }
-
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    spec.ceil_mode = getCeilMode().value();
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

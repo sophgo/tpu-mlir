@@ -561,6 +561,7 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<BoolAttr>:$ceil_mode,
     /// symmetric quantize param
     OptionalAttr<SI32Attr>:$multiplier,
     OptionalAttr<SI32Attr>:$rshift,

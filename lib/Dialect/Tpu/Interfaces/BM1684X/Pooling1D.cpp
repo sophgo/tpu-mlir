@@ -197,7 +197,7 @@ int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   // now nodechip just support ndims = 4, Todo
-  assert((*input_spec)[0].dims == 4);
+  // assert((*input_spec)[0].dims == 4);
   if (!buffer)
     return sizeof(pooling_common_spec_t);
   auto attr = parseParam();
@@ -220,6 +220,9 @@ int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) {
             getOffset().value_or(llvm::APFloat(0.)).convertToDouble();
       }
     }
+  }
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    spec.ceil_mode = getCeilMode().value();
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

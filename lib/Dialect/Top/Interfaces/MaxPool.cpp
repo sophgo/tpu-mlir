@@ -16,6 +16,20 @@ pool_attr_t top::MaxPoolOp::parseParam() {
   auto kernel = module::getI64Array(getKernelShape());
   auto stride = module::getI64Array(getStrides());
   auto pad = module::getI64Array(getPads());
+  // for dynamic case.
+  auto kernel_shape = module::getI64Array(getKernelShape());
+  std::vector<int64_t> new_pads(pad->begin(), pad->end());
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    auto kernel_len = kernel_shape->size();
+    for (uint32_t i = 0; i < kernel_len; i++) {
+      auto remain_pixel =
+          (ishape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
+          stride->at(i);
+      if (remain_pixel > 0) {
+        new_pads[i + kernel_len] += (stride->at(i) - remain_pixel);
+      }
+    }
+  }
   if (getKernelShape().size() == 3) {
     p.n = ishape[0];
     p.c = ishape[1];
@@ -34,9 +48,9 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.pad_d = pad->at(0);
     p.pad_h = pad->at(1);
     p.pad_w = pad->at(2);
-    p.pad_d_after = pad->at(3);
-    p.pad_h_after = pad->at(4);
-    p.pad_w_after = pad->at(5);
+    p.pad_d_after = new_pads[3];
+    p.pad_h_after = new_pads[4];
+    p.pad_w_after = new_pads[5];
   } else if (getKernelShape().size() == 2) {
     p.id = 1;
     p.od = 1;
@@ -50,8 +64,8 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.sw = stride->at(1);
     p.pad_h = pad->at(0);
     p.pad_w = pad->at(1);
-    p.pad_h_after = pad->at(2);
-    p.pad_w_after = pad->at(3);
+    p.pad_h_after = new_pads[2];
+    p.pad_w_after = new_pads[3];
   } else if (getKernelShape().size() == 1) {
     p.id = 1;
     p.od = 1;
@@ -64,7 +78,7 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.kh = kernel->at(0);
     p.sh = stride->at(0);
     p.pad_h = pad->at(0);
-    p.pad_h_after = pad->at(1);
+    p.pad_h_after = new_pads[1];
   }
   p.pad_value = getPadValue();
   p.do_relu = getDoRelu();
@@ -145,6 +159,11 @@ void top::MaxPoolOp::shape_inference() {
   // for AutoPad
   std::vector<int64_t> new_pads(pads->begin(), pads->end());
   if (getAutoPad().has_value()) {
+    if (module::isDynamic()){
+      auto auto_pad_mode = getAutoPad().value();
+      if (auto_pad_mode == "SAME_UPPER" || auto_pad_mode == "SAME_LOWER")
+        llvm_unreachable("Auto_pad is a DEPRECATED attribute. It's not support in BM1688 backend.");
+    }
     set_auto_pad(getAutoPad().value(), input_shape, *kernel_shape, *strides,
                  new_pads);
     removeAutoPadAttr();
@@ -161,15 +180,16 @@ void top::MaxPoolOp::shape_inference() {
         new_pads[i + kernel_len] += (strides->at(i) - remain_pixel);
       }
     }
-    removeCeilModeAttr();
   }
-  auto builder = OpBuilder(getContext());
-  setPadsAttr(builder.getI64ArrayAttr(new_pads));
-  pads = module::getI64Array(getPads());
+  if (!module::isDynamic()){
+    removeCeilModeAttr();
+    auto builder = OpBuilder(getContext());
+    setPadsAttr(builder.getI64ArrayAttr(new_pads));
+  }
 
   for (int i = 0; i < spacial_rank; i++) {
-    auto out_dim = (input_spacial_shape[i] + pads->at(i) +
-                    pads->at(i + spacial_rank) - kernel_shape->at(i)) /
+    auto out_dim = (input_spacial_shape[i] + new_pads[i] +
+                    new_pads[i + spacial_rank] - kernel_shape->at(i)) /
                        strides->at(i) +
                    1;
     out_shape.push_back(out_dim);
