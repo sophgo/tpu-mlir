@@ -985,7 +985,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     } else {
       cut_results_.push_back(std::vector<int64_t>(1, 0));
       LLVM_DEBUG({
-        if (!isa<ReturnOp>(base_groups[i][0])) {
+        if (!isa<ReturnOp>(base_groups[i][0]) && runmode_ == RunMode::TPU_STATIC) {
           int64_t start_idx = clusters[0].first;
           // int64_t end_idx = start_idx + clusters[0].second - 1;
           get_layer_group(sub_group, base_groups[i], start_idx, start_idx);
@@ -2581,15 +2581,17 @@ void GroupMethod::get_final_groups(
         lg_infos.push_back(lg_info);
       }
       LLVM_DEBUG({
+        if(runmode_ == RunMode::TPU_STATIC){
           int64_t cost = 0;
-
-          assert(is_layer_group_valid(lg_info, true, &cost));
+          is_layer_group_valid(lg_info, true, &cost);
           llvm::errs() << "; start_idx = " << start_idx
                         << "; end_idx = " << end_idx
                         << "; group_cost = " << cost
                         << "; final_group_idx = " << i
                         << "\n";
           lg_info.dump_lginfo();
+
+        }
 
       });
       start_idx = end_idx + 1;

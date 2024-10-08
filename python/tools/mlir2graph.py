@@ -11,7 +11,7 @@
 from collections import defaultdict
 import os
 import numpy as np
-
+from pathlib import Path
 import argparse
 import pydot
 import json
@@ -22,6 +22,9 @@ from mlir.dialects.func import FuncOp
 from typing import List
 import re
 from utils.log_setting import setup_logger
+import random
+
+random.seed(10)
 
 logger = setup_logger("mlir2graph")
 
@@ -32,6 +35,121 @@ INPUT_COLOR = "cadetblue1"
 SUBNET_COLOR = "antiquewhite"
 GROUP_COLOR = "gray95"
 FAILED_COLOR = "red"
+
+MAP_COLOR = [
+    "aliceblue",
+    "antiquewhite",
+    "antiquewhite1",
+    "antiquewhite2",
+    "antiquewhite3",
+    "antiquewhite4",
+    "aqua",
+    "aquamarine",
+    "aquamarine1",
+    "aquamarine2",
+    "aquamarine3",
+    "aquamarine4",
+    "azure",
+    "azure1",
+    "azure2",
+    "azure3",
+    "azure4",
+    "beige",
+    "bisque",
+    "bisque1",
+    "bisque2",
+    "bisque3",
+    "bisque4",
+    "black",
+    "blanchedalmond",
+    "blue",
+    "blue1",
+    "blue2",
+    "blue3",
+    "blue4",
+    "blueviolet",
+    "brown",
+    "brown1",
+    "brown2",
+    "brown3",
+    "brown4",
+    "burlywood",
+    "burlywood1",
+    "burlywood2",
+    "burlywood3",
+    "burlywood4",
+    "chartreuse",
+    "chartreuse1",
+    "chartreuse2",
+    "chartreuse3",
+    "chartreuse4",
+    "chocolate",
+    "chocolate1",
+    "chocolate2",
+    "chocolate3",
+    "chocolate4",
+    "coral",
+    "coral1",
+    "coral2",
+    "coral3",
+    "coral4",
+    "cornflowerblue",
+    "cornsilk",
+    "cornsilk1",
+    "cornsilk2",
+    "cornsilk3",
+    "cornsilk4",
+    "crimson",
+    "cyan",
+    "cyan1",
+    "cyan2",
+    "cyan3",
+    "cyan4",
+    "darkblue",
+    "darkcyan",
+    "darkgoldenrod",
+    "darkgoldenrod1",
+    "darkgoldenrod2",
+    "darkgoldenrod3",
+    "darkgoldenrod4",
+    "darkgray",
+    "darkgreen",
+    "darkgrey",
+    "darkkhaki",
+    "darkmagenta",
+    "darkolivegreen",
+    "darkolivegreen1",
+    "darkolivegreen2",
+    "darkolivegreen3",
+    "darkolivegreen4",
+    "darkorange",
+    "darkorange1",
+    "darkorange2",
+    "darkorange3",
+    "darkorange4",
+    "darkorchid",
+    "darkorchid1",
+    "darkorchid2",
+    "darkorchid3",
+    "darkorchid4",
+    "darkred",
+    "darksalmon",
+    "darkseagreen",
+    "darkseagreen1",
+    "darkseagreen2",
+    "darkseagreen3",
+    "darkseagreen4",
+    "darkslateblue",
+    "darkslategray",
+    "darkslategray1",
+    "darkslategray2",
+    "darkslategray3",
+    "darkslategray4",
+    "darkslategrey",
+    "darkturquoise",
+]
+
+random.shuffle(MAP_COLOR)
 
 
 def name_escape(arg):
@@ -96,6 +214,8 @@ def make_label(op: OpView, **kwargs):
     name = get_op_loc(op)
     if kwargs.setdefault("failed", False):
         name = f"{name} (failed)"
+    if kwargs.get("suffix"):
+        name = f"{name} ({kwargs['suffix']})"
 
     html = label_template.format(
         res_ids=res_ids,
@@ -172,24 +292,24 @@ def is_opname(op, *names: str):
 
 
 class EscapeNode(pydot.Node):
+
     def __init__(self, name="", obj_dict=None, **attrs):
         super().__init__(name_escape(name), obj_dict, **attrs)
 
 
 class EscapeEdge(pydot.Edge):
+
     def __init__(self, src="", dst="", obj_dict=None, **attrs):
         super().__init__(name_escape(src), name_escape(dst), obj_dict, **attrs)
 
 
 def create_node(op, op_loc, node_attrs: dict):
-    failed = node_attrs.get("failed", False)
-
     logger.debug("node: ", op_loc)
     node = EscapeNode(
         op_loc,
         id=op_loc,
         **node_attrs,
-        label=make_label(op, failed=failed),
+        label=make_label(op, **node_attrs),
         shape="plain",
     )
     node.set_tooltip(make_tooltips(op))
@@ -208,12 +328,26 @@ def create_edge(pre_op_loc, op_loc, label, ltail=None, href=None):
     return edge
 
 
+weight_op = set()
+
+skip_op = set()
+
+group_names = defaultdict(list)
+
+color_map = {}
+graph = []
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mlir", required=True, help="model name")
+    parser.add_argument("--output",
+                        help="output dot file, if not assigned, use {mlir file}.{suffix}")
     parser.add_argument(
-        "--output", help="output dot file, if not assigned, use {mlir file}.{suffix}"
+        "--skip",
+        default="",
+        help="output dot file, if not assigned, use {mlir file}.{suffix}",
     )
+
     parser.add_argument(
         "--bmodel_checker_data",
         type=str,
@@ -230,10 +364,31 @@ if __name__ == "__main__":
         "--isbig",
         type=bool,
         default=False,
-        help="for mlir file with large number of operations, use this option to spped up graph generation.",
+        help=
+        "for mlir file with large number of operations, use this option to spped up graph generation.",
+    )
+    parser.add_argument(
+        "--export_group",
+        action="store_true",
+        help="export group keys in final.mlir for tpu.mlir colorful render",
+    )
+    parser.add_argument(
+        "--colorful",
+        default=None,
+        help="render op color by groups",
     )
 
     args = parser.parse_args()
+    skiped_op = set(args.skip.split(","))
+    if args.colorful:
+        group_keys = json.loads(Path(args.colorful).read_text())
+        index = 0
+
+        for k, v in group_keys.items():
+            ret = [k, *v]
+            for kk in ret:
+                color_map[kk] = index
+            index += 1
 
     # dot = graphviz.Digraph(comment="The Round Table", node_attr={"shape": "box"})
     dot = pydot.Dot("my_graph", graph_type="digraph", compound=True, splines="polyline")
@@ -241,9 +396,7 @@ if __name__ == "__main__":
     failed_keys = set()
     if args.bmodel_checker_data is not None:
         report = np.load(args.bmodel_checker_data, allow_pickle=True)
-        failed_keys.update(
-            {k.split("_asm_")[0] for k in list(report.files) if "actual" in k}
-        )
+        failed_keys.update({k.split("_asm_")[0] for k in list(report.files) if "actual" in k})
 
     if args.failed_keys is not None:
         failed_keys.update({i.strip() for i in args.failed_keys.split(",")})
@@ -286,11 +439,24 @@ if __name__ == "__main__":
                 continue
 
             oop_loc = get_op_loc(op)
+
+            group_names[op_loc].append(oop_loc)
+
             node_attrs = {}
+            # node_attrs["shape"] = "box"
+            if op_loc in color_map:
+                node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]]
+                node_attrs["style"] = "filled"
+                node_attrs["suffix"] = f"group({color_map[op_loc]})"
+
             if oop_loc in failed_keys:
                 node_attrs["failed"] = True
                 node_attrs["color"] = FAILED_COLOR
-            # node_attrs["shape"] = "box"
+
+            if is_opname(op, *skiped_op):
+                skip_op.add(op_loc)
+                continue
+
             node = create_node(op, oop_loc, node_attrs)
             node.set_tooltip(make_tooltips(op))
             group_graph.add_node(node)
@@ -305,6 +471,9 @@ if __name__ == "__main__":
 
                 pre_op_loc = get_op_loc(pre_op)
                 if pre_op_loc == oop_loc:
+                    continue
+
+                if pre_op_loc in skip_op:
                     continue
 
                 if is_opname(pre_op, "tpu.Group"):
@@ -372,11 +541,21 @@ if __name__ == "__main__":
 
                 # node_attrs["shape"] = "box"
                 node_attrs["failed"] = op_loc in failed_keys
+
+                if op_loc in color_map:
+                    node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]]
+                    node_attrs["style"] = "filled"
+                    node_attrs["suffix"] = f"group({color_map[op_loc]})"
+
                 if op_loc in failed_keys:
                     node_attrs["color"] = FAILED_COLOR
                 if is_opname(op, "top.Input", "top.Weight"):
                     node_attrs["fillcolor"] = INPUT_COLOR
                     node_attrs["style"] = "filled"
+
+                if is_opname(op, *skiped_op):
+                    skip_op.add(op_loc)
+                    continue
 
                 if not is_opname(op, "func.return"):
                     node = create_node(op, op_loc, node_attrs)
@@ -391,8 +570,7 @@ if __name__ == "__main__":
                                 if isinstance(pre_op_loc, list):
                                     pre_subnet_name, pre_subnet_opd_index = pre_op_loc
                                     pre_op_loc = func_output_names[pre_subnet_name][
-                                        pre_subnet_opd_index
-                                    ]
+                                        pre_subnet_opd_index]
                         elif is_opname(iopd, "top.None", "tpu.Yield"):
                             continue
                         else:
@@ -400,6 +578,9 @@ if __name__ == "__main__":
                             if pre_op_loc == op_loc:
                                 continue
 
+                        if pre_op_loc in skip_op:
+                            continue
+                        graph.append([pre_op_loc, op_loc])
                         edge = create_edge(
                             pre_op_loc,
                             op_loc,
@@ -437,5 +618,14 @@ if __name__ == "__main__":
         cmd = f"""dot -Tsvg {args.mlir}.dot -o {args.mlir}.svg"""
     os.system(cmd)
     print(cmd)
+
+    with open(f"{args.mlir}.graph", "w") as w:
+        w.write(json.dumps(graph, indent=2))
+
     print(os.path.abspath(f"{args.mlir}.dot"))
     print(os.path.abspath(f"{args.mlir}.svg"))
+    print(os.path.abspath(f"{args.mlir}.graph"))
+
+    if len(group_names) > 0:
+        with open("final_group_keys.json", "w") as w:
+            w.write(json.dumps(group_names))
