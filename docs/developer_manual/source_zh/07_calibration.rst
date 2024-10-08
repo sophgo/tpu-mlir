@@ -488,7 +488,7 @@ search_qtable:
    * - --max_float_layers
      - search_qtable 浮点层数量
    * - --processor
-     - 芯片类型
+     - 处理器类型
    * - --cali_method
      - 量化门限计算方法选择
    * - --fp_type

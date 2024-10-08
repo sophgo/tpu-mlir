@@ -709,20 +709,20 @@ FAQ
 模型转换常见问题
 ~~~~~~~~~~~~~~~~~~~~
 
-1 模型转换问题
+模型转换问题
 ````````````````
 
-1.1 pytorch,tensorflow等是否能直接转换为cvimodel?
+1. pytorch,tensorflow等是否能直接转换为cvimodel?
 
   pytorch: 支持通过 ``jit.trace(torch_model.eval(), inputs).save(`model_name.pt`)`` 静态化后的pt模型。
 
   tensorflow / 其它: 暂不支持,可以通过onnx间接支持tf模型。
 
-1.2 执行model_transform报错
+2. 执行model_transform报错
 
   ``model_transform`` 命令作用是将onnx,caffe框架模型转化为fp32 mlir形式,报错很大概率就是存在不支持的算子或者算子属性不兼容,可以反馈给tpu团队解决。
 
-1.3 执行model_deploy报错
+3. 执行model_deploy报错
 
   ``model_deploy`` 作用是先将fp32 mlir通过量化转为int8/bf16mlir形式,然后再将int8/bf16mlir转化为cvimodel。在转化的过程中,会涉及到两次相似度的对比: 一次是fp32 mlir与int8/bf16mlir之间的量化对比,一次是int8/bf16mlir与最终转化出来的cvimodel的相似度对比,若相似度对比失败则会出现下列问题:
 
@@ -732,30 +732,30 @@ FAQ
 
   解决方法: ``tolerance`` 参数不对。模型转换过程会对int8/bf16 mlir与fp32 mlir的输出计算相似度,而tolerance作用就是限制相似度的最低值,若计算出的相似度的最小值低于对应的预设的tolerance值则程序会停止执行, 可以考虑对tolerance进行调整。(如果相似度的最小值过低请反馈到tpu团队解决)。
 
-1.4 ``model_transform`` 的 ``pixel_format`` 参数和 ``model_deploy`` 的 ``customization_format`` 参数的差异?
+4. ``model_transform`` 的 ``pixel_format`` 参数和 ``model_deploy`` 的 ``customization_format`` 参数的差异?
 
   channel_order是原始模型的输入图片类型(只支持gray/rgb planar/bgr planar),customization_format是转换成cvimodel后的输入图片类型,由客户自行决定,需与 :ref:`fuse_preprocess <fuse preprocess>` 共同使用(如果输入图片是通过VPSS或者VI获取的YUV图片,可以设置customization_format为YUV格式)。如果pixel_format与customization_format不一致,cvimodel推理时会自动将输入转成pixel_format指定的类型。
 
-1.5 是否支持多输入模型,怎么进行预处理?
+5. 是否支持多输入模型,怎么进行预处理?
 
   仅支持多输入图片使用同一种预处理方式的模型,不支持多输入图片使用不同预处理方式的模型。
 
-2 量化问题
+量化问题
 ````````````
 
-2.1 跑run_calibration提示KeyError: 'images'
+1. 跑run_calibration提示KeyError: 'images'
 
   传入的images的路径不对,请检查数据集的路径是否正确。
 
-2.2 跑量化如何处理多输入问题?
+2. 跑量化如何处理多输入问题?
 
   多输入模型跑run_calibration时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
 
-2.3 跑量化输入会进行预处理吗?
+3. 跑量化输入会进行预处理吗?
 
   会的,根据model_transform的预处理参数保存到mlir文件中,量化过程会进行加载预处理参数进行预处理。
 
-2.4 跑量化输入程序被系统kill或者显示分配内存失败
+4. 跑量化输入程序被系统kill或者显示分配内存失败
 
   需要先检查主机的内存是否足够,常见的模型需要8G内存左右即可。如果内存不够,可尝试在运行run_calibration时,添加以下参数来减少内存需求。
 
@@ -763,34 +763,34 @@ FAQ
 
      --tune_num 2   			#默认为5
 
-2.5 是否支持手动修改calibration table?
+5. 是否支持手动修改calibration table?
 
   支持,但是不建议修改。
 
-3 其它常见问题
+其它常见问题
 ````````````````````
 
-3.1 转换后的模型是否支持加密?
+1. 转换后的模型是否支持加密?
 
   暂时不支持。
 
-3.2 bf16的模型与int8模型的速度差异是多少?
+2. bf16的模型与int8模型的速度差异是多少?
 
   大约是3-4倍时间差异,具体的数据需要通过实验验证。
 
-3.3 是否支持动态shape?
+3. 是否支持动态shape?
 
   cvimodel不支持动态shape。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight>`
 
 模型评估常见问题
 ~~~~~~~~~~~~~~~~~~~~
 
-1 模型的评估流程?
+模型的评估流程?
 `````````````````
 
 先转化为bf16模型,通过 ``model_tool --info xxxx.cvimodel`` 命令来评估模型所需要的ION内存以及所占的存储空间,接着在板子上执行 ``model_runner`` 来评估模型运行的时间,之后根据提供的sample来评估业务场景下模型精度效果。模型输出的效果准确性符合预期之后,再转化为int8模型再完成与bf16模型相同的流程
 
-2 量化后精度与原来模型对不上,如何调试?
+量化后精度与原来模型对不上,如何调试?
 ``````````````````````````````````````
 
 1. 确保 ``model_deploy`` 的 ``--test_input``, ``--test_reference``, ``--compare_all``, ``--tolerance`` 参数进行了正确设置。
@@ -809,7 +809,7 @@ FAQ
     c. input类型也可以通过model_tool --info xxx.cvimodel查看
 
 
-3 bf16模型的速度比较慢,int8模型精度不符合预期怎么办?
+bf16模型的速度比较慢,int8模型精度不符合预期怎么办?
 ````````````````````````````````````````````````````
 
 使用混精度量化方法,可参考 :ref:`mix precision` 。
@@ -817,29 +817,29 @@ FAQ
 模型部署常见问题
 ~~~~~~~~~~~~~~~~~~~~
 
-1 CVI_NN_Forward接口调用多次后出错或者卡住时间过长?
+CVI_NN_Forward接口调用多次后出错或者卡住时间过长?
 ```````````````````````````````````````````````````
 
 可能驱动或者硬件问题,需要反馈给tpu团队解决。
 
-2 模型预处理速度比较慢?
+模型预处理速度比较慢?
 ```````````````````````
 
 1. 转模型的时候可以在运行 ``model_deploy`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到深度学习处理器内部来处理。
 
 2. 如果图片是从vpss或者vi获取, 那么可以在转模型时使用 ``fuse_preprocess、aligned_input`` , 然后使用 ``CVI_NN_SetTensorPhysicalAddr`` 等接口直接将input tensor地址设置为图片的物理地址, 减少数据拷贝耗时。
 
-3 docker的推理和evb推理的浮点和定点结果是否一样?
+docker的推理和evb推理的浮点和定点结果是否一样?
 ``````````````````````````````````````````````````
 
 定点无差异, 浮点有差异, 但是相似度比较高, 误差可以忽略。
 
-4 如果要跑多个模型支持多线程并行吗?
+如果要跑多个模型支持多线程并行吗?
 ````````````````````````````````````
 
 支持多线程, 但是多个模型在深度学习处理器上推理时是串行进行的。
 
-5 填充input tensor相关接口区别
+填充input tensor相关接口区别
 ``````````````````````````````
 
 ``CVI_NN_SetTensorPtr`` : 设置input tensor的虚拟地址，原本的tensor 内存不会释放。推理时从用户设置的虚拟地址 **拷贝数据** 到原本的tensor内存上。
@@ -853,7 +853,7 @@ FAQ
 
 ``CVI_NN_FeedTensorWithFrames`` : 与 ``CVI_NN_SetTensorWithVideoFrame`` 类似。
 
-6 模型载入后ion内存分配问题
+模型载入后ion内存分配问题
 `````````````````````````````
 
 1. 调用 ``CVI_NN_RegisterModel`` 后会为weight和cmdbuf分配ion内存(从model_tool可以看到weight和cmdbuf大小)
@@ -866,7 +866,7 @@ FAQ
 
 5. 不同模型的shared_gmem是可以共享(包括多线程情况), 因此优先初始化shared_gmem最大的模型可以节省ion内存。
 
-7 加载业务程序后模型推理时间变长
+加载业务程序后模型推理时间变长
 `````````````````````````````````
 
 设置环境变量 ``export TPU_ENABLE_PMU=1`` 后, 模型推理时会打印tpu日志, 记录tdma_exe_ms、tiu_exe_ms、inference_ms这3个耗时。一般加载业务后tdma_exe_ms会变长, tiu_exe_ms不变, 这是因为tdma_exe_ms是内存搬运数据耗时, 如果内存带宽不够用了, tdma耗时就会增加。
@@ -882,12 +882,12 @@ FAQ
 其他常见问题
 ~~~~~~~~~~~~~~~~~~~~
 
-1 在cv182x/cv181x/cv180x板端环境中出现: taz:invalid option --z解压失败的情况
+在cv182x/cv181x/cv180x板端环境中出现: taz:invalid option --z解压失败的情况
 `````````````````````````````````````````````````````````````````````````````
 
 先在其他linux环境下解压, 再放到板子中使用, 因为window不支持软链接, 所以在windows环境下解压可能导致软链接失效导致报错
 
-2 若tensorflow模型为saved_model的pb形式, 如何进行转化为frozen_model的pb形式
+若tensorflow模型为saved_model的pb形式, 如何进行转化为frozen_model的pb形式
 ``````````````````````````````````````````````````````````````````````````````
 
 .. code-block:: shell

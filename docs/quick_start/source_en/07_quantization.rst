@@ -858,10 +858,10 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 This table is arranged smoothly according to the cos from small to large, indicating the cos calculated
 by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode.
 If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor
-layer will be set to floating-point calculation。
+layer will be set to floating-point calculation.
 ``run_qtable`` calculates the output cos of the whole network every time the neighboring two layers are set
 to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore,
-if you set a larger expected_cos value, you will try to set more layers to floating point。
+if you set a larger expected_cos value, you will try to set more layers to floating point.
 
 
 Step 2: Gen mix precision model
@@ -1302,6 +1302,7 @@ Modify the relevant fields as follows:
           bmodel: $(workdir)/$(name)_bm1684_mix.bmodel
 
 Switch to the top-level directory of model-zoo and use tpu_perf.precision_benchmark for accuracy testing, as shown in the following command:
+
 .. code-block:: shell
 
   $ python3 -m tpu_perf.precision_benchmark yolov5s_path --mlir --target BM1684X --devices 0
