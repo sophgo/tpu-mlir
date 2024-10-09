@@ -317,9 +317,13 @@ def bmodel_inference_combine(
         reference_data_fn=reference_data_fn,
         extra_plugins=["progress"],
         extra_check=[],
-        ddr_size=2**32,
-        fast_checker=run_by_op,
+        # ddr_size=2**32,
+        # fast_checker=run_by_op,
         is_soc=is_soc,
+        args={
+            "run_by_atomic": not run_by_op,
+            "ddr_size": 2**32,
+        },
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
     plugin.__init__(tdb)
