@@ -30,7 +30,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               or-tools/lib/libortools.so
               or-tools/lib/libortools.so.9
               or-tools/lib/libortools.so.9.8.3296
-            #   tpu-train/lib/libsgdnn.so
+              # tpu-train/lib/libsgdnn.so
 
               # cvitek
               CV18xx/lib/libcvikernel.so
@@ -39,3 +39,5 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               CV18xx/lib/libunwind.so.8
               atomic_exec/libbm1684x_atomic_kernel.so
         DESTINATION lib)
+
+install(DIRECTORY ppl DESTINATION ${CMAKE_INSTALL_PREFIX})
