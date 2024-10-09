@@ -66,8 +66,10 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   func_ = func;
   ctx_ = func.getContext();
   lg_pass_ir_ = new LgPassIR();
+  version = 0; //0:old version, 1:new backend api
   lg_pass_ir_->func = func;
 
+  auto runmode = getRunMode(func);
   std::vector<std::pair<std::string, std::string>> edges;
 
   func.walk([&](Operation *op) {
@@ -76,7 +78,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     } else {
       lg_pass_ir_->subnet_ops.insert(op);
 
-      if (!isa<ReturnOp>(op)) {
+      if (runmode == RunMode::TPU_STATIC && !isa<ReturnOp>(op)) {
         auto end = module::getName(op);
         for (auto v : op->getOperands()) {
           if (v.getType().isa<NoneType>()) {
@@ -119,68 +121,70 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
 
   // ==== do topo sort to build better ordered op list ====
-  TopoSorter sorter;
-  // 1. sort
-  auto top_order = sorter.topologicalSortWithPriority(edges);
+  if (runmode == RunMode::TPU_STATIC){
+    TopoSorter sorter;
+    // 1. sort
+    auto top_order = sorter.topologicalSortWithPriority(edges);
 
-  // 2. validation and detection
-  bool doReorder = true;
-  if (lg_pass_ir_->subnet_ops.size() == (top_order.size() + 1)) {
-    doReorder = false;
-  } else {
+    // 2. validation and detection
+    bool doReorder = true;
+    if (lg_pass_ir_->subnet_ops.size() == (top_order.size() + 1)) {
+      doReorder = false;
+    } else {
 
-    int oriCost = 0;
-    int time = 0;
-    std::unordered_map<std::string, int> oriOrder;
-    for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
-      if(!isa<ReturnOp>(it.value())){
-        oriOrder[module::getName(it.value()).str()] = it.index();
-      }
-    }
-    for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
-      if(!isa<ReturnOp>(it.value())){
-        oriCost += it.index() -
-                  oriOrder[sorter.getParent(module::getName(it.value()).str())];
-        time++;
-      }
-    }
-
-    if (oriCost <= sorter.getCost() || time != sorter.getTime()){
-       doReorder = false;
-    }
-  }
-
-  // 3. do it
-  if (doReorder) {
-    // adjust lg_pass_ir_->subnet_ops
-    std::vector<Operation *> vector(lg_pass_ir_->subnet_ops.size());
-    for (auto op : lg_pass_ir_->subnet_ops) {
-      if (!isa<ReturnOp>(op)) {
-        vector[top_order[module::getName(op).str()]] = op;
-      } else {
-        vector[lg_pass_ir_->subnet_ops.size() - 1] = op;
-      }
-    }
-
-    // adjust mlir context to avoid "does not dominate this use" problem
-    lg_pass_ir_->subnet_ops.clear();
-    for (auto it : llvm::enumerate(vector)) {
-      auto op = it.value();
-      lg_pass_ir_->subnet_ops.insert(op);
-      if(it.index() > 1){
-        op->moveAfter(vector[it.index() - 1]);
-      }
-      for(auto opd: op->getOperands()){
-        auto opdOp = opd.getDefiningOp();
-        if(opdOp && isa<top::WeightOp>(opdOp)){
-          opdOp->moveBefore(op);
+      int oriCost = 0;
+      int time = 0;
+      std::unordered_map<std::string, int> oriOrder;
+      for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+        if(!isa<ReturnOp>(it.value())){
+          oriOrder[module::getName(it.value()).str()] = it.index();
         }
       }
+      for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+        if(!isa<ReturnOp>(it.value())){
+          oriCost += it.index() -
+                    oriOrder[sorter.getParent(module::getName(it.value()).str())];
+          time++;
+        }
+      }
+
+      if (oriCost <= sorter.getCost() || time != sorter.getTime()){
+        doReorder = false;
+      }
     }
 
-    auto &lastOp = func_.getBody().back().back();
-    if(!isa<ReturnOp>(lastOp)){
-      vector.back()->moveAfter(&lastOp);
+    // 3. do it
+    if (doReorder) {
+      // adjust lg_pass_ir_->subnet_ops
+      std::vector<Operation *> vector(lg_pass_ir_->subnet_ops.size());
+      for (auto op : lg_pass_ir_->subnet_ops) {
+        if (!isa<ReturnOp>(op)) {
+          vector[top_order[module::getName(op).str()]] = op;
+        } else {
+          vector[lg_pass_ir_->subnet_ops.size() - 1] = op;
+        }
+      }
+
+      // adjust mlir context to avoid "does not dominate this use" problem
+      lg_pass_ir_->subnet_ops.clear();
+      for (auto it : llvm::enumerate(vector)) {
+        auto op = it.value();
+        lg_pass_ir_->subnet_ops.insert(op);
+        if(it.index() > 1){
+          op->moveAfter(vector[it.index() - 1]);
+        }
+        for(auto opd: op->getOperands()){
+          auto opdOp = opd.getDefiningOp();
+          if(opdOp && isa<top::WeightOp>(opdOp)){
+            opdOp->moveBefore(op);
+          }
+        }
+      }
+
+      auto &lastOp = func_.getBody().back().back();
+      if(!isa<ReturnOp>(lastOp)){
+        vector.back()->moveAfter(&lastOp);
+      }
     }
   }
 
