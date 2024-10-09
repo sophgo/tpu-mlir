@@ -1011,6 +1011,19 @@ class ActivationCalibrator(BaseKldCalibrator):
 
         return kurtosis.item()
 
+    def choose_asym_op(self, tensor_list):
+        """Set the op to use asymmetric quantization.
+        """
+        for op in tensor_list:
+            op_type = self.parser.get_op_type_by_op_name(op)
+            if op_type in ['top.SiLU','top.GELU']:
+                next_op = self.parser.get_next_op_by_op_name(op)
+                if all(self.parser.get_op_type_by_op_name(nxt_op) in ['top.Conv', 'top.MatMul'] for nxt_op in next_op):
+                    self.asym_op.append(op)
+                    self.asym_op1.append(op)
+                    for nxt_op in next_op:
+                        self.asym_op1.append(nxt_op)
+
     def process_statistic_muti(self, muti_output_tensor, idx):
         if muti_output_tensor == []:
             return
@@ -1033,89 +1046,94 @@ class ActivationCalibrator(BaseKldCalibrator):
             self.size[out] = activation.size
             res_length = int(self.args.input_num * self.size[out] * (1 - per / 100)) + 1
             self.res_length_dict[out] = res_length
-            if 'use_torch_observer_for_cali' in self.debug_cmd:
-                from torch import Tensor
-                self.torchObserver_dict[out](Tensor(activation.astype(np.float32)))
+            if out in self.asym_op:
+                tmp = activation.flatten()
+                tmp = sort_distr_per(tmp, res_length)
+                self.all_data_test[out] = np.concatenate((self.all_data_test[out],tmp))
             else:
-                self.min_value[out] = min(np.min(activation), self.min_value[out])
-                self.max_value[out] = max(np.max(activation), self.max_value[out])
-                abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
-                if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
-                    tmp = activation.flatten()
-                    tmp = sort_distr_per(tmp, res_length)
-                    self.all_data_test[out] = np.concatenate((self.all_data_test[out],tmp))
-                elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
-                    bit = 8
-                    if 'int4' in self.debug_cmd :
-                        bit = 4
-                    if out in self.last_five_tensors:
-                        tmp = np.abs(activation.flatten())
-                        tmp = sort_distr(tmp, res_length)
-                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
-                    if np.abs(np.min(activation) - 0) < 1e-6 :
-                        unsigned = 4
-                    else:
-                        unsigned = 1
-                    abs_x = np.abs(activation.flatten())
-                    s_n = abs_x.sum() / abs_x[abs_x > 0].size
-                    for _ in range(20):
-                        s_n_plus_1 = abs_x[abs_x > s_n].sum() / (1 / (4 ** bit) / 3 / unsigned * abs_x[abs_x <= s_n].size + abs_x[abs_x > s_n].size)
-                        if np.abs(s_n_plus_1 - s_n) < 1e-6:
-                            break
-                        s_n = s_n_plus_1
-                    if out not in self.mse:
-                        self.mse[out] = []
-                        self.mse[out].append(s_n)
-                    else:
-                        self.mse[out].append(s_n)
-                elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
-                    alpha = 3.92403337
-                    if 'int4' in self.debug_cmd:
-                        alpha = 2.55913642
-                    if out in self.last_five_tensors:
-                        tmp = np.abs(activation.flatten())
-                        tmp = sort_distr(tmp, res_length)
-                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
-                    gaussian_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
-                    N = activation.size
-                    std = ((np.max(activation) - np.min(activation)) * gaussian_const) / ((2 * math.log(N)) ** 0.5)
-                    if out not in self.aciq:
-                        self.aciq[out] = []
-                        self.aciq[out].append(alpha * std)
-                    else:
-                        self.aciq[out].append(alpha * std)
-                elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
-                    beta = 9.89675982
-                    if 'int4' in self.debug_cmd :
-                        beta = 5.02864014
-                    if out in self.last_five_tensors:
-                        tmp = np.abs(activation.flatten())
-                        tmp = sort_distr(tmp, res_length)
-                        self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
-                    b = np.mean(abs(activation-np.mean(activation)))
-                    if out not in self.aciq:
-                        self.aciq[out] = []
-                        self.aciq[out].append(beta * b)
-                    else:
-                        self.aciq[out].append(beta * b)
-                elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
-                    self.max_abs_value[out] = max(np.max(np.abs(activation)), self.max_abs_value[out])
-                if self.args.kurtosis_analysis:
-                    kurtosis = self.calculate_kurtosis(activation)
-                    if out not in self.kurtosis:
-                        self.kurtosis[out] = []
-                        self.kurtosis[out].append(kurtosis)
-                    else:
-                        self.kurtosis[out].append(kurtosis)
-                if out not in self.histogram_data_map:
-                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
-                    self.histogram_data_map[out] = hist
-                    self.histogram_width_map[out] = width
-                    self.hist_dict[out] = (hist,width, self.min_value[out],self.max_value[out], abs_value)
+                if 'use_torch_observer_for_cali' in self.debug_cmd:
+                    from torch import Tensor
+                    self.torchObserver_dict[out](Tensor(activation.astype(np.float32)))
                 else:
-                    self.hist_dict[out]=self.combine_histogram(self.hist_dict[out],activation,self.min_value[out],self.max_value[out],abs_value)
-                    self.histogram_data_map[out] = self.hist_dict[out][0]
-                    self.histogram_width_map[out] = self.hist_dict[out][1]
+                    self.min_value[out] = min(np.min(activation), self.min_value[out])
+                    self.max_value[out] = max(np.max(activation), self.max_value[out])
+                    abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
+                    if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
+                        tmp = activation.flatten()
+                        tmp = sort_distr_per(tmp, res_length)
+                        self.all_data_test[out] = np.concatenate((self.all_data_test[out],tmp))
+                    elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
+                        bit = 8
+                        if 'int4' in self.debug_cmd :
+                            bit = 4
+                        if out in self.last_five_tensors:
+                            tmp = np.abs(activation.flatten())
+                            tmp = sort_distr(tmp, res_length)
+                            self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                        if np.abs(np.min(activation) - 0) < 1e-6 :
+                            unsigned = 4
+                        else:
+                            unsigned = 1
+                        abs_x = np.abs(activation.flatten())
+                        s_n = abs_x.sum() / abs_x[abs_x > 0].size
+                        for _ in range(20):
+                            s_n_plus_1 = abs_x[abs_x > s_n].sum() / (1 / (4 ** bit) / 3 / unsigned * abs_x[abs_x <= s_n].size + abs_x[abs_x > s_n].size)
+                            if np.abs(s_n_plus_1 - s_n) < 1e-6:
+                                break
+                            s_n = s_n_plus_1
+                        if out not in self.mse:
+                            self.mse[out] = []
+                            self.mse[out].append(s_n)
+                        else:
+                            self.mse[out].append(s_n)
+                    elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
+                        alpha = 3.92403337
+                        if 'int4' in self.debug_cmd:
+                            alpha = 2.55913642
+                        if out in self.last_five_tensors:
+                            tmp = np.abs(activation.flatten())
+                            tmp = sort_distr(tmp, res_length)
+                            self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                        gaussian_const = (0.5 * 0.35) * (1 + (math.pi * math.log(4)) ** 0.5)
+                        N = activation.size
+                        std = ((np.max(activation) - np.min(activation)) * gaussian_const) / ((2 * math.log(N)) ** 0.5)
+                        if out not in self.aciq:
+                            self.aciq[out] = []
+                            self.aciq[out].append(alpha * std)
+                        else:
+                            self.aciq[out].append(alpha * std)
+                    elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
+                        beta = 9.89675982
+                        if 'int4' in self.debug_cmd :
+                            beta = 5.02864014
+                        if out in self.last_five_tensors:
+                            tmp = np.abs(activation.flatten())
+                            tmp = sort_distr(tmp, res_length)
+                            self.all_data_test[out][idx * res_length : (idx + 1) * res_length] = tmp
+                        b = np.mean(abs(activation-np.mean(activation)))
+                        if out not in self.aciq:
+                            self.aciq[out] = []
+                            self.aciq[out].append(beta * b)
+                        else:
+                            self.aciq[out].append(beta * b)
+                    elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
+                        self.max_abs_value[out] = max(np.max(np.abs(activation)), self.max_abs_value[out])
+                    if self.args.kurtosis_analysis:
+                        kurtosis = self.calculate_kurtosis(activation)
+                        if out not in self.kurtosis:
+                            self.kurtosis[out] = []
+                            self.kurtosis[out].append(kurtosis)
+                        else:
+                            self.kurtosis[out].append(kurtosis)
+                    if out not in self.histogram_data_map:
+                        hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                        self.histogram_data_map[out] = hist
+                        self.histogram_width_map[out] = width
+                        self.hist_dict[out] = (hist,width, self.min_value[out],self.max_value[out], abs_value)
+                    else:
+                        self.hist_dict[out]=self.combine_histogram(self.hist_dict[out],activation,self.min_value[out],self.max_value[out],abs_value)
+                        self.histogram_data_map[out] = self.hist_dict[out][0]
+                        self.histogram_width_map[out] = self.hist_dict[out][1]
         return
 
     def process_compute_threshold_muti(self, muti_output_tensor):
@@ -1132,7 +1150,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             if out not in all_tensors and out not in self.tensor_list:
                 continue
             abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
-            if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
+            if out in self.asym_op:
                 res = np.sort(self.all_data_test[out])
                 res_max = res[-self.res_length_dict[out]:]
                 res_min = res[:self.res_length_dict[out]][::-1]
@@ -1144,56 +1162,69 @@ class ActivationCalibrator(BaseKldCalibrator):
                 self.min_value[out] = v_min
                 self.max_value[out] = v_max
                 abs_value = max(abs(v_max),abs(v_min))
-            elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
-                if out in self.last_five_tensors:
-                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+            else:
+                if 'use_percentile9999' in self.debug_cmd or 'use_percentile9999' in self.args.cali_method:
+                    res = np.sort(self.all_data_test[out])
+                    res_max = res[-self.res_length_dict[out]:]
+                    res_min = res[:self.res_length_dict[out]][::-1]
                     inter = self.args.input_num * self.size[out] - 1
                     idx = int((self.perd[evaled_op]/ 100) * inter)
                     ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
-                mean_s_n = sum(self.mse[out])/len(self.mse[out])
-                mean_s_n = min(mean_s_n,abs_value)
-                abs_value = mean_s_n
-            elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
-                if out in self.last_five_tensors:
-                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
-                    inter = self.args.input_num * self.size[out] - 1
-                    idx = int((self.perd[evaled_op]/ 100) * inter)
-                    ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
-                mean_gauss = sum(self.aciq[out])/len(self.aciq[out])
-                if mean_gauss > abs_value :
-                    mean_gauss = abs_value
-                abs_value = mean_gauss
-            elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
-                if out in self.last_five_tensors:
-                    res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
-                    inter = self.args.input_num * self.size[out] - 1
-                    idx = int((self.perd[evaled_op]/ 100) * inter)
-                    ratio = (self.perd[evaled_op]/ 100) * inter - idx
-                    self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
-                mean_laplace = sum(self.aciq[out])/len(self.aciq[out])
-                if mean_laplace > abs_value :
-                    mean_laplace = abs_value
-                abs_value = mean_laplace
-            elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
-                #t0 = time.time()
-                abs_value = self.max_abs_value[out]
-            if abs_value != None and abs_value <= 1e-5:
-                # if op's outputs are all close to zero, change it to 1e-5 for them.
-                self.min_value[out] = -1e-5 if self.min_value[out] < 0 else 0
-                self.max_value[out] = 1e-5
-                abs_value = 1e-5
-                print("WARNING: layer {} is all zeros. Please check the "
-                        "input data correctness.".format(out))
-            if self.args.kurtosis_analysis:
-                mean_kurtosis = sum(self.kurtosis[out])/len(self.kurtosis[out])
-                #print("op:{} and kurtosis:{}".format(out,mean_kurtosis))
-                if out not in self.kurtosis_result:
-                    self.kurtosis_result[out] = []
-                    self.kurtosis_result[out].append(mean_kurtosis)
-                else:
-                    self.kurtosis_result[out].append(mean_kurtosis)
+                    v_max = res_max[0] + ratio * (res_max[1] - res_max[0]) if self.res_length_dict[out] != 1 else res_max[0]
+                    v_min = res_min[0] + ratio * (res_min[1] - res_min[0]) if self.res_length_dict[out] != 1 else res_min[0]
+                    self.min_value[out] = v_min
+                    self.max_value[out] = v_max
+                    abs_value = max(abs(v_max),abs(v_min))
+                elif 'use_mse' in self.debug_cmd or 'use_mse' in self.args.cali_method:
+                    if out in self.last_five_tensors:
+                        res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                        inter = self.args.input_num * self.size[out] - 1
+                        idx = int((self.perd[evaled_op]/ 100) * inter)
+                        ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                        self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
+                    mean_s_n = sum(self.mse[out])/len(self.mse[out])
+                    mean_s_n = min(mean_s_n,abs_value)
+                    abs_value = mean_s_n
+                elif 'use_aciq_gauss' in self.debug_cmd or 'use_aciq_gauss' in self.args.cali_method:
+                    if out in self.last_five_tensors:
+                        res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                        inter = self.args.input_num * self.size[out] - 1
+                        idx = int((self.perd[evaled_op]/ 100) * inter)
+                        ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                        self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
+                    mean_gauss = sum(self.aciq[out])/len(self.aciq[out])
+                    if mean_gauss > abs_value :
+                        mean_gauss = abs_value
+                    abs_value = mean_gauss
+                elif 'use_aciq_laplace' in self.debug_cmd or 'use_aciq_laplace' in self.args.cali_method:
+                    if out in self.last_five_tensors:
+                        res = np.sort(self.all_data_test[out])[-self.res_length_dict[out]:]
+                        inter = self.args.input_num * self.size[out] - 1
+                        idx = int((self.perd[evaled_op]/ 100) * inter)
+                        ratio = (self.perd[evaled_op]/ 100) * inter - idx
+                        self.last_five_tensors_threshold[out]= res[0] + ratio * (res[1] - res[0]) if self.res_length_dict[out] != 1 else res[0]
+                    mean_laplace = sum(self.aciq[out])/len(self.aciq[out])
+                    if mean_laplace > abs_value :
+                        mean_laplace = abs_value
+                    abs_value = mean_laplace
+                elif 'use_max' in self.debug_cmd or 'use_max' in self.args.cali_method:
+                    #t0 = time.time()
+                    abs_value = self.max_abs_value[out]
+                if abs_value != None and abs_value <= 1e-5:
+                    # if op's outputs are all close to zero, change it to 1e-5 for them.
+                    self.min_value[out] = -1e-5 if self.min_value[out] < 0 else 0
+                    self.max_value[out] = 1e-5
+                    abs_value = 1e-5
+                    print("WARNING: layer {} is all zeros. Please check the "
+                            "input data correctness.".format(out))
+                if self.args.kurtosis_analysis:
+                    mean_kurtosis = sum(self.kurtosis[out])/len(self.kurtosis[out])
+                    #print("op:{} and kurtosis:{}".format(out,mean_kurtosis))
+                    if out not in self.kurtosis_result:
+                        self.kurtosis_result[out] = []
+                        self.kurtosis_result[out].append(mean_kurtosis)
+                    else:
+                        self.kurtosis_result[out].append(mean_kurtosis)
             self.activations_statistics[out] = (self.min_value[out], self.max_value[out], abs_value)
         return
 
@@ -1232,6 +1263,8 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.kurtosis = {}
         self.kurtosis_result = {}
         self.input_op = []
+        self.asym_op = []
+        self.asym_op1 = []
         self.last_five_tensors_threshold = {}
         self.histogram_data_map = {}
         self.histogram_width_map = {}
@@ -1254,6 +1287,8 @@ class ActivationCalibrator(BaseKldCalibrator):
                 muti_output_tensor.append(op)
             if self.parser.get_pre_op_by_op_name(op) == []:
                 self.input_op.append(op)
+        if self.args.part_asymmtric:
+            self.choose_asym_op(self.tensor_list)
         self.step = (99.999999 - 99.99) / len(all_tensors)
         input_number = [i for i in range(self.args.input_num)]
         pbar = tqdm(input_number, total = self.args.input_num, position = 0, leave = True)
@@ -1301,6 +1336,9 @@ class ActivationCalibrator(BaseKldCalibrator):
             for k, v in self.activations_statistics.items():
                 mi, ma, abs_val = v
                 thresholds_map_absmax[k] = abs_val
+                if k in self.asym_op:
+                    thresholds_map[k] = abs_val
+                    continue
                 if thresholds_map[k] > abs_val:
                     thresholds_map[k] = abs_val
                     thresholds_map4[k] = abs_val
@@ -1682,7 +1720,6 @@ class ActivationCalibrator(BaseKldCalibrator):
                 for idx in range(self.args.input_num):
                     self.clear_ref_tensor(idx, out)
         pbar.close()
-
         if 'use_torch_observer_for_cali' not in self.debug_cmd:
             thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map, 128)
             thresholds_map4 = self.find_threshold(histogram_data_map, histogram_width_map, 8)
@@ -1820,6 +1857,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                         min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                            max_value))
+            f.write("\n")
+            f.write("#asym_op\n")
+            for i, op_name in enumerate(self.asym_op1):
+                f.write("{}\n".format(op_name))
         os.remove(cali_table)
         if 'print_debug_info' in self.debug_cmd:
             th_before_tuned = np.array(thresholds_map_list)

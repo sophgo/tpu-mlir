@@ -43,7 +43,7 @@ using activate_f = std::function<double(double)>;
 
 Value create_lookup_table(Value in, Value out, bool asymmetric,
                           activate_f &&func, int bit_width = 8,
-                          RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
+                          RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO, bool output_asym = false);
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 Value create_lookup_table(Operation *owner, const std::vector<int> &table);
