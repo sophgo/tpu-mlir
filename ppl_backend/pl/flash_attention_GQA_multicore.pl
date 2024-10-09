@@ -154,7 +154,7 @@ void flash_attention_gqa(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_musk,
                 ki_tensor.sub_view(ki_batch_shape, batch_k_offset);
 
             tiu::fmm2(qk_tensor_batch, qi_tensor_batch, ki_tensor_batch, false,
-                      true, false, false, false);
+                      true, false);
           }
           if (has_musk) {
             // broadcast add (bc dim n)
@@ -203,8 +203,7 @@ void flash_attention_gqa(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_musk,
             auto vi_tensor_batch =
                 vi_tensor.sub_view(vi_batch_shape, batch_v_offset);
 
-            tiu::fmm2(pv_tensor_batch, p_tensor_batch, vi_tensor_batch, false,
-                      false, false, false, false);
+            tiu::fmm2(pv_tensor_batch, p_tensor_batch, vi_tensor_batch);
           }
           tiu::fadd(acc_sub_tensor, acc_sub_tensor, pv_tensor);
         }

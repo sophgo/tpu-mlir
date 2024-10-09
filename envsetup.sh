@@ -26,6 +26,18 @@ export PATH=$PROJECT_ROOT/python/test:$PATH
 export PATH=$PROJECT_ROOT/python/samples:$PATH
 export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
 
+# ppl compiler path
+export PPL_PROJECT_ROOT=$INSTALL_PATH/ppl
+export PPL_BUILD_PATH=$PPL_PROJECT_ROOT/build
+export PPL_INSTALL_PATH=$PPL_PROJECT_ROOT/install
+export PPL_RUNTIME_PATH=$PPL_PROJECT_ROOT/runtime
+export PPL_THIRD_PARTY_PATH=$PPL_PROJECT_ROOT/third_party
+export PATH=$PPL_PROJECT_ROOT/bin:$PATH
+echo "PPL_PROJECT_ROOT : ${PPL_PROJECT_ROOT}"
+echo "PPL_BUILD_PATH   : ${PPL_BUILD_PATH}"
+echo "PPL_INSTALL_PATH : ${PPL_INSTALL_PATH}"
+
+# other
 export CMODEL_LD_LIBRARY_PATH=$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
 export CHIP_LD_LIBRARY_PATH=/opt/sophon/libsophon-current/lib/:$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
