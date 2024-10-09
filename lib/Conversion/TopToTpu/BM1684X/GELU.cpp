@@ -25,11 +25,12 @@ void GELULowering::LoweringINT4(PatternRewriter &rewriter, top::GELUOp op,
 }
 void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
                                 bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric, [](double val) {
               return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
-          });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+          }, 8, tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

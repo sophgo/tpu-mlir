@@ -14,12 +14,12 @@ namespace tpu_mlir {
 
 Value create_lookup_table(Value in, Value out, bool asymmetric,
                           activate_f &&func, int bit_width,
-                          RoundingMode round_mode) {
+                          RoundingMode round_mode, bool output_asym) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool in_sign, out_sign;
   module::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
-  module::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
+  module::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, output_asym);
   int64_t min_th = in_sign ? -128 : 0;
   int64_t max_th = in_sign ? 127 : 255;
   auto op = out.getDefiningOp();

@@ -67,7 +67,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   auto p = op.parseParam();
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
+  bool input_asymmetric = op->hasAttr("input_asym");
+  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, input_asymmetric);
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());

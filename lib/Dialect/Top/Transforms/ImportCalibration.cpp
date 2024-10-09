@@ -50,12 +50,14 @@ public:
     bool weight_scale_meeted = false;
     bool int4_th_meeted = false;
     bool fp8_th_meeted = false;
+    bool asym_op_meeted = false;
 
     auto check_flag_line = [](std::string line, std::regex pattern) {
       // 1 for weight scale block, both fp8 and int4 int8 from mqbench
       // 2 for int4 th block
       // 3 for fp8 th block from tpu-mlir
       // 4 for fp8 th block from mqbench
+      // 5 for asym_op block
       if (std::regex_match(line, pattern)) {
         if (std::string::npos != line.find("#weight_scale") ||
             std::string::npos != line.find("#weight_scale_fp8"))
@@ -66,6 +68,8 @@ public:
           return 3;
         if (std::string::npos != line.find("mqbench-fp8"))
           return 4;
+        if (std::string::npos != line.find("asym_op"))
+          return 5;
         return 0;
       } else
         return 0;
@@ -78,6 +82,7 @@ public:
 
       std::istringstream iss(line);
       std::string name;
+      std::string asym_op_name;
       auto block_type = check_flag_line(line, info_pattern);
       if (0 == block_type) {
         if (int8_th_meeted) {
@@ -120,6 +125,12 @@ public:
             }
             calibration_map_fp8[name] = info;
           }
+        } else if (asym_op_meeted){
+            if (!(iss >> asym_op_name)) {
+              llvm::errs() << line;
+              llvm_unreachable("\n  => not match required format\n");
+            }
+            asym_op_names.push_back(asym_op_name);
         } else {
           llvm_unreachable("error th block type logic!\n");
         }
@@ -128,6 +139,7 @@ public:
         weight_scale_meeted = block_type == 1;
         int4_th_meeted = block_type == 2;
         fp8_th_meeted = ((block_type == 3) || (block_type == 4));
+        asym_op_meeted = block_type == 5;
       }
     }
     double min, max;
@@ -190,6 +202,17 @@ public:
           }
         }
 
+        if (isa<top::GELUOp>(op) || isa<top::SiLUOp>(op)){
+          if (std::find(asym_op_names.begin(), asym_op_names.end(), module::getName(op).str()) != asym_op_names.end()) {
+            op->setAttr("output_asym", builder.getBoolAttr(true));
+          }
+        }
+
+        if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)){
+          if (std::find(asym_op_names.begin(), asym_op_names.end(), module::getName(op).str()) != asym_op_names.end()) {
+            op->setAttr("input_asym", builder.getBoolAttr(true));
+          }
+        }
         if (calibration_map_int4.size() > 0 && module::isInt4Op(op)) {
           OpBuilder builder(op);
           double scale;
@@ -280,6 +303,8 @@ public:
       min = 0;
     }
   }
+private:
+  std::vector<std::string> asym_op_names;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {

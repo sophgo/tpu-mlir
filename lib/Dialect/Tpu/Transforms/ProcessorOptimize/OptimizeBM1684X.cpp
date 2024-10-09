@@ -4150,48 +4150,6 @@ public:
   }
 };
 
-class SplitQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
-public:
-  SplitQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitQuantizedMLPPattern",
-                                           benefit) {}
-
-  LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
-                                    PatternRewriter &rewriter) const override {
-    bool f_fuse_rq = matMulOp.getFuseRq();
-    if(f_fuse_rq) return failure();
-    auto op1 = matMulOp.getOperand(0).getDefiningOp();
-    if (!op1 || !isa<tpu::LutOp>(op1)) {
-      return failure();
-    }
-    auto prevMatMulOp = op1->getOperand(0).getDefiningOp();
-    if (!prevMatMulOp || !isa<tpu::MatMulOp>(prevMatMulOp)) {
-      return failure();
-    }
-    auto prevMatMulOp_ = dyn_cast<tpu::MatMulOp>(prevMatMulOp);
-    bool l_fuse_rq = prevMatMulOp_.getFuseRq();
-    if (!prevMatMulOp->getOperand(0).hasOneUse() || l_fuse_rq) {
-      return failure();
-    }
-
-    if (!isa<quant::UniformQuantizedType>(prevMatMulOp->getOperand(0)
-                                              .getType()
-                                              .cast<mlir::ShapedType>()
-                                              .getElementType())) {
-      return failure();
-    }
-
-    if (!isa<top::WeightOp>(prevMatMulOp->getOperand(1).getDefiningOp())) {
-      return failure();
-    }
-
-    auto nativeVar_0 = tpu_mlir::tpu::createSplitQuantizedMLP(
-        rewriter, prevMatMulOp, prevMatMulOp->getOperand(0));
-    rewriter.replaceOp(matMulOp, nativeVar_0);
-    return success();
-  }
-};
-
 class SplitQuantizedMLP2Pattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   SplitQuantizedMLP2Pattern(mlir::MLIRContext *context, int benefit)
@@ -4468,6 +4426,7 @@ public:
         }
       } else {
         if (CanReshapeDown_Param.CanReshapeDown) {
+          reshapeOp.replaceAllUsesWith(reshapeOp.getInput());
           rewriter.setInsertionPointAfter(layerNormOpInst);
           ori_loc = layerNormOpInst.getLoc();
           module::setLocSuffix(layerNormOpInst, "reshape_down");
@@ -4475,6 +4434,8 @@ public:
               ori_loc, layerNormOpInst.getResult().getType(),
               layerNormOpInst.getResult());
           module::setShape(layerNorm_out, ishape);
+          auto castOpInst_out = castOpInst.getResult();
+          module::setShape(castOpInst_out, ishape);
           layerNorm_out.replaceAllUsesExcept(newReshapeOp.getOutput(),
                                              newReshapeOp);
           rewriter.eraseOp(reshapeOp);
@@ -4591,7 +4552,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLPPattern, SplitQuantizedMLP2Pattern>(ctx, 3);
+  patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
 }
 } // namespace tpu
