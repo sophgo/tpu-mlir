@@ -154,9 +154,9 @@ def npz_bf16_to_fp32(args):
     np.savez(args[1], **npz_out)
 
 def npz_reshape(args):
-    if len(args) < 2:
+    if len(args) < 3:
         print("Usage: {} reshape in.npz arr shape".format(sys.argv[0]))
-        print("       Reshape array `arr` in a.npz as `shape`, where shape should be of form e.g.'4,5,1'")
+        print("       Reshape array `arr` in in.npz as `shape`, where shape should be of form e.g.'4,5,1'")
         exit(-1)
     npz_in = np.load(args[0])
     name = args[1]
@@ -167,29 +167,24 @@ def npz_reshape(args):
     npz_out[name] = d
     np.savez(args[0], **npz_out)
 
-def npz_transpose(args):
-    if len(args) < 3:
-        print("Usage: {} transpose in.npz nhwc nchw ".format(sys.argv[0]))
+def npz_permute(args):
+    if len(args) < 2:
+        print("Usage: {} permute in.npz order".format(sys.argv[0]))
+        print("       Permute all arrays in in.npz by `order`, where order should be of form e.g.'0,2,1,3'")
+        print("Usage: {} permute in.npz arr order".format(sys.argv[0]))
+        print("       Permute array `arr` in in.npz by `order`, where order should be of form e.g.'0,2,1,3'")
         exit(-1)
     npz_in = np.load(args[0])
-    ref_data_format = args[1]
-    target_data_format = args[2]
     npz_out = {}
-    mapping = {ref_data_format[0] : 0,
-               ref_data_format[1] : 1,
-               ref_data_format[2] : 2,
-               ref_data_format[3] : 3}
-    tranpose = (
-        mapping[target_data_format[0]],
-        mapping[target_data_format[1]],
-        mapping[target_data_format[2]],
-        mapping[target_data_format[3]],
-    )
-    for k, v in npz_in.items():
-        if len(v.shape) != 4:
-            npz_out[k] = v
-        else:
-            npz_out[k] = np.ascontiguousarray(np.transpose(v, tranpose))
+    if len(args) == 2:
+        order = [int(x) for x in args[1].split(',')]
+        for k, v in npz_in.items():
+            npz_out[k] = np.ascontiguousarray(np.transpose(v, order))
+    else:
+        name = args[1]
+        order = [int(x) for x in args[2].split(',')]
+        d = np.ascontiguousarray(np.transpose(npz_in[name], order))
+        npz_out.update(npz_in)
+        npz_out[name] = d
 
     np.savez(args[0], **npz_out)
-    return True
