@@ -287,6 +287,11 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                                        shape_secs_t &shape_secs,
                                        group_type_t group_type) {
   // (void*)invokeInIterationSpace;
+  DEBUG_WITH_TYPE("cycle_calc", {
+    llvm::dbgs() << "; action = cycle_calc"
+                  << "; step = start"
+                  << "\n";
+  });
   int64_t loop_num =
       shape_secs.nsecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs;
   std::vector<layer_cycle_info_t> layer_cycle;
@@ -314,8 +319,9 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t stage = time_step->get_layer_swpipl_stage(op);
       int64_t cycle =
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
-      LLVM_DEBUG({
-        llvm::errs() << "; event = getLocalLayerCycle"
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = cycle_calc"
+                     << "; engine = layer_cycle"
                      << "; op_name = " << module::getName(op)
                      << "; value = " << cycle << "\n";
         op->dump();
@@ -330,8 +336,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         float BW = 24;
         if (enable_multi_core) {
           BW = 15.f;
-          LLVM_DEBUG({
-            llvm::errs() << "; event = multi_core_align"
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = multi_core_align"
                          << "; BW = " << BW
                          << "\n";
           });
@@ -348,8 +354,9 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       }
       int64_t hold_in_lmem =
           time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
-      LLVM_DEBUG({
-        llvm::errs() << "; event = getGdmaCycle"
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = cycle_calc"
+                     << "; engine = gdma_cycle"
                      << "; op_name = " << module::getName(tensor.first)
                      << "; value = " << cycle << "\n";
         tensor.first.dump();
@@ -364,9 +371,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       for (auto &layer : layer_cycle) {
         if (layer.stage <= j && layer.stage >= start) {
           total_layer_cycle += layer.cycle;
-          LLVM_DEBUG({
-            llvm::errs() << "; event = group_filling_time_tiu"
-                         << "; value" << layer.cycle
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = accumulate_tiu_cycle"
+                         << "; stage = filling"
+                         << "; value = " << layer.cycle
                          << "\n";
           });
         }
@@ -377,9 +385,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (tensor.stage <= j && tensor.stage >= start &&
             tensor.hold_in_lmem < 2) {
           total_gdma_cycle += tensor.cycle;
-          LLVM_DEBUG({
-            llvm::errs() << "; event = group_filling_time_gdma"
-                         << "; value" << tensor.cycle
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = accumulate_gdma_cycle"
+                         << "; stage = filling"
+                         << "; value = " << tensor.cycle
                          << "\n";
           });
           if (tensor.hold_in_lmem == 1) {
@@ -387,14 +396,16 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           }
         }
       }
-      LLVM_DEBUG({
+      DEBUG_WITH_TYPE("cycle_calc", {
         if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "[filling]take total_layer_cycle = "
-                       << total_layer_cycle
+          llvm::dbgs() << "; action = consider_tiu_cycle"
+                       << "; stage = filling"
+                       << "; value = " << total_layer_cycle
                        << "\n";
         } else {
-          llvm::dbgs() << "[filling]take total_gdma_cycle = "
-                       << total_gdma_cycle
+          llvm::dbgs() << "; action = consider_gdma_cycle"
+                       << "; stage = filling"
+                       << "; value = " << total_gdma_cycle
                        << "\n";
         }
       });
@@ -407,8 +418,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       total_layer_cycle = 0;
       for (auto &layer : layer_cycle) {
         total_layer_cycle += layer.cycle;
-        LLVM_DEBUG({
-          llvm::errs() << "[kernel] consider tiu cycle = " << layer.cycle
+        DEBUG_WITH_TYPE("cycle_calc", {
+          llvm::dbgs() << "; action = accumulate_tiu_cycle"
+                       << "; stage = kernel"
+                       << "; value = " << layer.cycle
                        << "\n";
         });
       }
@@ -417,19 +430,23 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       for (auto &tensor : gdma_cycle) {
         if (tensor.hold_in_lmem == 0) {
           total_gdma_cycle += tensor.cycle;
-          LLVM_DEBUG({
-            llvm::errs() << "[kernel] consider gdma cycle = " << tensor.cycle
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = accumulate_gdma_cycle"
+                         << "; stage = kernel"
+                         << "; value = " << tensor.cycle
                          << "\n";
           });
         }
       }
-      LLVM_DEBUG({
+      DEBUG_WITH_TYPE("cycle_calc", {
         if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "[kernel]take total_layer_cycle = "
-                       << total_layer_cycle << "\n";
+          llvm::dbgs() << "; action = consider_tiu_cycle"
+                       << "; stage = kernel"
+                       << "; value = " << total_layer_cycle << "\n";
         } else {
-          llvm::dbgs() << "[kernel]take total_gdma_cycle = " << total_gdma_cycle
-                       << "\n";
+          llvm::dbgs() << "; action = consider_gdma_cycle"
+                       << "; stage = kernel"
+                       << "; value = " << total_gdma_cycle << "\n";
         }
       });
       kernel_cycle += std::max(total_layer_cycle, total_gdma_cycle);
@@ -441,8 +458,10 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       for (auto &layer : layer_cycle) {
         if (layer.stage >= j && layer.stage < swpipl_stage_num) {
           total_layer_cycle += layer.cycle;
-          LLVM_DEBUG({
-            llvm::errs() << "[draining] consider tiu cycle = " << layer.cycle
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = accumulate_tiu_cycle"
+                         << "; stage = draining"
+                         << "; value = " << layer.cycle
                          << "\n";
           });
         }
@@ -453,19 +472,23 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (tensor.hold_in_lmem == 0 && tensor.stage >= j &&
             tensor.stage < swpipl_stage_num) {
           total_gdma_cycle += tensor.cycle;
-          LLVM_DEBUG({
-            llvm::errs() << "[draining] consider gdma cycle = " << tensor.cycle
+          DEBUG_WITH_TYPE("cycle_calc", {
+            llvm::dbgs() << "; action = accumulate_gdma_cycle"
+                         << "; stage = draining"
+                         << "; value = " << tensor.cycle
                          << "\n";
           });
         }
       }
-      LLVM_DEBUG({
+      DEBUG_WITH_TYPE("cycle_calc", {
         if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "[draining]take total_layer_cycle = "
-                       << total_layer_cycle << "\n";
+          llvm::dbgs() << "; action = consider_tiu_cycle"
+                       << "; stage = draining"
+                       << "; value = " << total_layer_cycle << "\n";
         } else {
-          llvm::dbgs() << "[draining]take total_gdma_cycle = "
-                       << total_gdma_cycle << "\n";
+          llvm::dbgs() << "; action = consider_gdma_cycle"
+                       << "; stage = draining"
+                       << "; value = " << total_gdma_cycle << "\n";
         }
       });
       draining_cycle += std::max(total_layer_cycle, total_gdma_cycle);
@@ -474,9 +497,11 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   int64_t total_cycle =
       filling_cycle + draining_cycle +
       std::max(loop_num - swpipl_stage_num, (int64_t)0) * kernel_cycle;
-  LLVM_DEBUG({
-    llvm::errs() << "; filling_cycle = " << filling_cycle
+  DEBUG_WITH_TYPE("cycle_calc", {
+    llvm::dbgs() << "; action = total_cycle_of_group"
+                 << "; step = end"
                  << "; event = " << "total_cycle_of_group"
+                 << "; filling_cycle = " << filling_cycle
                  << "; draining_cycle = " << draining_cycle
                  << "; loop_num = " << loop_num
                  << "; swpipl_stage_num = " << swpipl_stage_num
@@ -501,8 +526,8 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
     float BW = 24;
     if (imp_multi_core_global) {
       BW = 15.f;
-      LLVM_DEBUG({
-        llvm::errs() << "; event = multi_core_global_align"
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = align_multi_core_bw"
                      << "; BW = " << BW << "; op_name = " << module::getName(op)
                      << "\n";
       });
@@ -550,10 +575,22 @@ int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
   {
     bm168x->set_command_issue_flag(false);
     bm168x->reset_cmd_id_node();
-
+    DEBUG_WITH_TYPE("cycle_calc_cmd", {
+      llvm::dbgs() << "; action = codegen_local_layer"
+                   << "; op_name = " << module::getName(op)
+                   << "; tiu_dma_id(before) = " << ((int*)((*BM168x::instance())->bdc_node))[1]
+                   << "\n";
+    });
     // set_local_layer_io_addr(op);
     lgOp.codegen_local_bm168x(0, 0, 0, 0, 0, group_type, sec_info);
 
+    DEBUG_WITH_TYPE("cycle_calc_cmd", {
+      llvm::dbgs() << "; action = codegen_local_layer"
+                   << "; op_name = " << module::getName(op)
+                   << "; tiu_dma_id(after) = " << bm168x->get_total_id("tiu:0:0")
+                   << "; tiu_dma_id(before) = " << ((int*)((*BM168x::instance())->bdc_node))[1]
+                   << "\n";
+    });
     int64_t bdc_cycle = bm168x->get_bdc_cycle();
     int64_t gdma_cycle = bm168x->get_gdma_cycle();
     if (calc_bdc_slack) {

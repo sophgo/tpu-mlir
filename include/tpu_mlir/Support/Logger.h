@@ -46,4 +46,19 @@ inline std::string formatString(const char *format, ...) {
 
 inline void SetLogFlag(int32_t log_level) { cur_log_level = log_level; }
 
+#define PROFILE_LOG(step, begin)                                               \
+  do {                                                                         \
+    DEBUG_WITH_TYPE("profile", {                                               \
+      auto current_time = std::chrono::high_resolution_clock::now();           \
+      auto time_string = std::chrono::system_clock::to_time_t(current_time);   \
+      if (begin) {                                                             \
+        llvm::dbgs() << "; action = profile" << "; step = " << step            \
+                     << "; begin = " << std::ctime(&time_string) << "\n";      \
+      } else {                                                                 \
+        llvm::dbgs() << "; action = profile" << "; step = " << step            \
+                     << "; end = " << std::ctime(&time_string) << "\n";        \
+      }                                                                        \
+    });                                                                        \
+  } while (0)
+
 } // namespace tpu_mlir
