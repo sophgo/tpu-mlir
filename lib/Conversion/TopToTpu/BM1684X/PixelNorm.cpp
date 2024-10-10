@@ -141,7 +141,11 @@ void PixelNormLowering::LoweringF8(PatternRewriter &rewriter,
 void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::PixelNormOp op,
                                      bool asymmetric) const {
-  LoweringPixelNorm_INT8(rewriter, op, rewriter.getF16Type());
+  if(module::isMARS3()){
+    LoweringPixelNorm_INT8(rewriter, op, rewriter.getBF16Type());
+  }else{
+    LoweringPixelNorm_INT8(rewriter, op, rewriter.getF16Type());
+  }
 }
 
 void PixelNormLowering::LoweringINT4(PatternRewriter &rewriter,
