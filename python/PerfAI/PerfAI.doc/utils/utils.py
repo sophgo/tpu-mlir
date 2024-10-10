@@ -352,8 +352,9 @@ def get_ratio_float_6f(x, y):
     return round(x / y, 6) * 1000 if y != 0 else 0
 
 
-def cycle_to_us(cycles, frequency):
-    return str((Decimal(cycles / frequency)).quantize(Decimal("0.00")))
+def cycle_to_us(cycles, frequency, with_unit=False):
+    return str((Decimal(cycles / frequency)).quantize(Decimal("0.000"))) \
+            + ('(us)' if with_unit else '')
 
 
 def ops_to_gops(ops):

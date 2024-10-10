@@ -68,13 +68,13 @@ class AsicSummary(object):
             core_ids.append(core_id)
             tiu_work_ratios.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time, total_time))
             if self.act_core_num > 1:
-                prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].dma_time\
-                                                    + self.sdmas[core_id].dma_time, total_time))
+                prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle\
+                                                    + self.sdmas[core_id].working_cycle, total_time))
             else:
-                prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].dma_time, total_time))
-            if self.tius[core_id].tiu_time > 0 and self.gdmas[core_id].dma_time > 0:
-                concurrencys.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].dma_time - total_time,
-                                                          min(self.tius[core_id].tiu_time, self.gdmas[core_id].dma_time)))
+                prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle, total_time))
+            if self.tius[core_id].tiu_time > 0 and self.gdmas[core_id].working_cycle > 0:
+                concurrencys.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle - total_time,
+                                                          min(self.tius[core_id].tiu_time, self.gdmas[core_id].working_cycle)))
             else:
                 concurrencys.append('0.00%')
             total_times.append(total_time)
@@ -154,13 +154,14 @@ class AsicSummary(object):
         cdma_ddr_avg_bds.append(get_ratio_float_2f(cdma_ddr_datasizes[-1], get_time_by_cycle(cdma_ddr_cycles, dma_frequency)))
         cdma_l2_avg_bds.append(get_ratio_float_2f(cdma_l2_datasizes[-1], get_time_by_cycle(cdma_l2_cycles, dma_frequency)))
         cdma_ddr_avg_bls.append(get_ratio_float_2f(cdma_bl_sum, cdma_xact_sum))
-        for idx in [len(total_times) - 1]:
+        for idx in range(len(total_times)):
             total_times[idx] = cycle_to_us(total_times[idx], 1000)
-            tiu_cycles[idx]  = cycle_to_us(tiu_cycles[idx], tiu_frequency)
-            alg_cycles[idx]  = cycle_to_us(alg_cycles[idx], tiu_frequency)
-            gdma_cycles[idx] = cycle_to_us(gdma_cycles[idx], dma_frequency)
-            sdma_cycles[idx] = cycle_to_us(sdma_cycles[idx], dma_frequency)
-            cdma_cycles[idx] = cycle_to_us(cdma_cycles[idx], dma_frequency)
+        for idx in [len(total_times) - 1]:
+            tiu_cycles[idx]  = cycle_to_us(tiu_cycles[idx], tiu_frequency, with_unit=True)
+            alg_cycles[idx]  = cycle_to_us(alg_cycles[idx], tiu_frequency, with_unit=True)
+            gdma_cycles[idx] = cycle_to_us(gdma_cycles[idx], dma_frequency, with_unit=True)
+            sdma_cycles[idx] = cycle_to_us(sdma_cycles[idx], dma_frequency, with_unit=True)
+            cdma_cycles[idx] = cycle_to_us(cdma_cycles[idx], dma_frequency, with_unit=True)
             gdma_ddr_datasizes[idx] = datasize_to_MB(gdma_ddr_datasizes[idx])
             gdma_l2_datasizes[idx] = datasize_to_MB(gdma_l2_datasizes[idx])
             sdma_ddr_datasizes[idx] = datasize_to_MB(sdma_ddr_datasizes[idx])

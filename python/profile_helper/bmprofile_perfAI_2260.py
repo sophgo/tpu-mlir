@@ -130,7 +130,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                 f.write("".join(f"\t{key}: {value}\n" for key,
                         value in arch.items()))
             for p in pairs:
-                info, extra = fn(p["monitor"], p["cmd"], engine.value)
+                info, extra = fn(p["monitor"], p["cmd"], idx, engine.value)
                 info["Core Id"] = idx
                 f.write(tag)
                 f.write(
@@ -255,6 +255,11 @@ class BMProfileParserPerfAI(BMProfileParser):
                                                     cmd_info.gdma_offset,
                                                     self.archlib.EngineType.GDMA,
                                                     core_num, gdma_parser)
+            sdma_cmd = self.__base_read_command_data(cmd_info.sdma_base,
+                                                    cmd_info.sdma_offset,
+            # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
+                                                    self.archlib.EngineType.VSDMA,
+                                                    core_num, gdma_parser)
             if core_num <= len(self.bd_pairs):
                 bd_pair, _ = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[core_num],
                                                 self.archlib.bd_sys_code, self.archlib.profile_sys_num)
@@ -270,6 +275,13 @@ class BMProfileParserPerfAI(BMProfileParser):
                     self.gdma_pairs.append(gdma_pair)
             else:
                 self.gdma_pairs[core_num].extend(gdma_pair)
+            if core_num <= len(self.sdma_pairs):
+                sdma_pair, _ = self.__find_profile_sync_points(sdma_cmd, item.monitor_sdma[core_num],
+                                                self.archlib.dma_sys_code, self.archlib.profile_sys_num)
+                if item.monitor_sdma[core_num]:
+                    self.sdma_pairs.append(sdma_pair)
+            else:
+                self.sdma_pairs[core_num].extend(sdma_pair)
 
     @staticmethod
     def __get_cmd_type(cmd):
@@ -419,13 +431,13 @@ class BMProfileParserPerfAI(BMProfileParser):
             command_list = command_parser.parse(raw_data)
         return command_list
 
-    def __get_gdma_info(self, monitor_info, reg_info, engine_id=1):
+    def __get_gdma_info(self, monitor_info, reg_info, core_id, engine_id=1):
         if self.is_dyn:
             return get_dma_info_dyn(monitor_info, reg_info, engine_id)
         else:
-            return get_dma_info(monitor_info, reg_info)
+            return get_dma_info(monitor_info, reg_info, core_id, engine_id)
 
-    def __get_tiu_info(self, monitor_info, reg_info, engine_id=0):
+    def __get_tiu_info(self, monitor_info, reg_info, core_id=None, engine_id=0):
         if self.is_dyn:
             return get_tiu_info_dyn(monitor_info, reg_info)
         else:

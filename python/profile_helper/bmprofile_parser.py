@@ -620,14 +620,18 @@ class BMProfileParser:
         if self.archlib.arch_name == "BM1690":
             header_len = 8*6+4
             gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset, group_num = st.unpack("QQQQQQI", raw_data[0:header_len])
+            # basename = "gdma %x bd %x sdma %x sdma_offset %d group_num %d"
+            # print(basename % (gdma_base, bd_base, sdma_base, sdma_offset, group_num))
+            CommandInfo = namedtuple("CommandInfo", "gdma_base gdma_offset bd_base bd_offset sdma_base sdma_offset")
+            return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset)
         else:
             header_len = 8*4+4
             gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack("QQQQI", raw_data[0:header_len])
-        group = []
-        for i in range(group_num):
-            group.append(st.unpack("II", raw_data[header_len+i*8: header_len+(i+1)*8]))
-        CommandInfo = namedtuple("CommandInfo", "gdma_base gdma_offset bd_base bd_offset group_num group")
-        return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, group_num, group)
+            group = []
+            for i in range(group_num):
+                group.append(st.unpack("II", raw_data[header_len+i*8: header_len+(i+1)*8]))
+            CommandInfo = namedtuple("CommandInfo", "gdma_base gdma_offset bd_base bd_offset group_num group")
+            return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, group_num, group)
 
     def __base_read_command_data(self, base, offset, engine_type, command_num, command_parser):
         basename = "cmd_%x_%d.dat"
