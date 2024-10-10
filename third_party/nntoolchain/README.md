@@ -6,8 +6,8 @@ sha256: 4d655f3187e5e918e7ecfe7411bad0cc04d0166a
 ``` bash
 cd  nntoolchain/net_compiler/
 source  scripts/envsetup.sh
-**debug: rebuild_bm1684_backend_cmodel**
-**release: rebuild_bm1684_backend_release_cmodel**
+debug: rebuild_bm1684_backend_cmodel
+release: rebuild_bm1684_backend_release_cmodel
 cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
@@ -18,8 +18,8 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 #bm1684x sha256: a8f8f9271c4512f7d25fe05703520aa65e635fdb
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
-**debug: rebuild_backend_lib_cmodel**
-**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_bm1684x.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1684x.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1684x.so
 rebuild_firmware
@@ -29,8 +29,8 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #bm1688 sha256: 96a214d30804f99c1f61b4cf27c7b6cd856a6f69
 cd TPU1686
 source  scripts/envsetup.sh bm1686
-**debug: rebuild_backend_lib_cmodel**
-**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_bm1686.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1688.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1688.so
 rebuild_firmware
@@ -40,8 +40,8 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #bm1690 sha256: 253d8e58e7b2764d625bfcdd9d049d0184a0f602
 cd TPU1686
 source  scripts/envsetup.sh sg2260
-**debug: rebuild_backend_lib_cmodel**
-**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.so
 rebuild_firmware
@@ -51,16 +51,16 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #sg2380 sha256: 18586a9b5167f6f3959978032d6acc4371e3c116
 cd TPU1686
 source  scripts/envsetup.sh sg2380
-**debug: rebuild_backend_lib_cmodel**
-**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+debug: rebuild_backend_lib_cmodel
+elease: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256: c1463d0061075e5d236f7e09b3620e23bee74ddd
+#mars3 sha256: 2db1595d8ead8fc934ff49d752bc68e50f5ec5ff
 cd TPU1686
 source  scripts/envsetup.sh mars3
-**debug: rebuild_backend_lib_cmodel**
-**release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel**
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_mars3.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_mars3.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_mars3.so
 ```
