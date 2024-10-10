@@ -52,6 +52,18 @@ class MEMTYPE(Enum):
     LMEM = 0
     DDR = 1
 
+class TagType(Enum):
+    TAG_USERS = 0
+    TAG_WEIGHT = 1
+    TAG_ACTIVATION = 2
+    TAG_GLOBAL = 3
+    TAG_L2M = 30
+    TAG_LMEM = 31
+
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self.value == other
+        return super().__eq__(other)
 
 class DATATYPE(Enum):
     INT8 = 0
@@ -78,11 +90,21 @@ class DATATYPE(Enum):
 
 # CORE_OFFSET_BIT = 28
 # CORE_OFFSET = 1 << CORE_OFFSET_BIT
+# # local 256k * 64 = 16M
 # LOCAL_MEM_ADDRWIDTH = 18
 # LOCAL_MEM_SIZE = 1 << LOCAL_MEM_ADDRWIDTH
 # NPU_SHIFT = 6
 # NPU_NUM = 1 << NPU_SHIFT
+# # static mem 64k
 # STATIC_MEM_SIZE = 0x10000
+
+# MAX_GMEM_SIZE = 1 << 40
+# # global 4096M
+# GLOBAL_MEM_START_ADDR = 0
+# GLOBAL_MEM_SIZE = 0x100000000
+# # l2 128MB
+# L2_SRAM_START_ADDR = 0x6980000000
+# L2_SRAM_SIZE = 0x8000000
 
 # def is_lmem(addr, coreid):
 #     lmem_start_addr = 0x6900000000 + coreid * CORE_OFFSET
@@ -92,7 +114,27 @@ class DATATYPE(Enum):
 #     smem_start_addr = 0x6904000000 + coreid * CORE_OFFSET
 #     return addr >= smem_start_addr and addr < smem_start_addr + STATIC_MEM_SIZE
 
+# def is_gmem(addr):
+#     addr &= (MAX_GMEM_SIZE - 1)
+#     return addr >= GLOBAL_MEM_START_ADDR and \
+#         addr < (GLOBAL_MEM_START_ADDR + GLOBAL_MEM_SIZE)
 
+# def is_l2mem(addr):
+#     addr &= (MAX_GMEM_SIZE - 1)
+#     return addr >= L2_SRAM_START_ADDR and \
+#         addr < (L2_SRAM_START_ADDR  + L2_SRAM_SIZE)
+
+# def mem_type(addr, core_id):
+#     if is_lmem(addr, core_id):
+#         assert()
+#         return 'LMEM'
+#     if is_smem(addr, core_id):
+#         return 'SMEM'
+#     if is_gmem(addr):
+#         return 'DDR'
+#     if is_l2mem(addr):
+#         return 'L2M'
+#     return 'None'
 # static inline int is_gmem(u64 addr) {
 #   addr &= (MAX_GMEM_SIZE - 1);
 #   return addr >= GLOBAL_MEM_START_ADDR &&
@@ -271,9 +313,16 @@ def get_src_dst_type(v):
         return "LMEM", "LMEM"
 
 def mem_type(v):
-    if v == 31:
+    if v == TagType.TAG_LMEM:
         return "LMEM"
-    return "DDR"
+    if v == TagType.TAG_USERS \
+            or v == TagType.TAG_WEIGHT \
+            or v == TagType.TAG_ACTIVATION \
+            or v == TagType.TAG_GLOBAL:
+        return "DDR"
+    if v == TagType.TAG_L2M:
+        return "L2M"
+    raise ValueError(f"Unknow dma mem_type: {v}")
 
 def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     extra_info = reg_info.extra_info
@@ -339,7 +388,7 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     dma_info["src_start_addr"] = 0
     return dma_info, None
 
-def get_dma_info(monitor_info, reg_info, engine_id=1):
+def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
     is_sys = reg_info.name == 'sDMA_sys'
     _reg_info = reg_info
     reg_info = reg_info.reg
@@ -355,7 +404,6 @@ def get_dma_info(monitor_info, reg_info, engine_id=1):
     for key, value in dict(reg_info).items():
         trans_key = field_trans.get(key, key)
         dma_info[trans_key] = value
-    # print(dma_info, is_sys)
     dma_info["mask_start_addr_h8"] = dma_info.get("mask_start_addr_h8", 0)
     dma_info["mask_start_addr_l32"] = dma_info.get("mask_start_addr_l32", 0)
     if is_sys:
@@ -372,6 +420,8 @@ def get_dma_info(monitor_info, reg_info, engine_id=1):
     # step2: get custom information
     src_type = mem_type(dma_info['src_start_addr_h13'] >> 8)
     dst_type = mem_type(dma_info['dst_start_addr_h13'] >> 8)
+    # src_type = mem_type(dma_info['src_start_addr'], core_id)
+    # dst_type = mem_type(dma_info['dst_start_addr'], core_id)
     data_type = DATATYPE(reg_info.src_data_format)
 
     dma_info["Engine Id"] = engine_id
@@ -380,9 +430,6 @@ def get_dma_info(monitor_info, reg_info, engine_id=1):
     dma_info["to_addr"] = dst_type
     dma_info["Function Type"], dma_info["Function Name"] = getDmaFunctionName(
         reg_info.cmd_type, reg_info.cmd_special_function, dma_info["Direction"])
-    # print("@@@@###", src_type, dst_type, data_type, reg_info.cmd_type,
-    #       reg_info.cmd_special_function, dma_info["Direction"],
-    #       dma_info["Function Type"], dma_info["Function Name"])
     dma_info["Start Cycle"] = monitor_info.inst_start_time
     dma_info["End Cycle"] = monitor_info.inst_end_time
     dma_info["Cmd Id"] = monitor_info.inst_id + 1
@@ -399,16 +446,21 @@ def get_dma_info(monitor_info, reg_info, engine_id=1):
     dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"], 4)
 
     dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
-
     dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
-    dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+    if "DDR" in dma_info["Direction"]:
+        dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+        dma_info['L2M Bandwidth(GB/s)'] = 0
+    elif "L2M" in dma_info["Direction"]:
+       dma_info["DDR Bandwidth(GB/s)"] = 0
+       dma_info['L2M Bandwidth(GB/s)'] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+    else:
+        raise ValueError(f"Unknow direction type: {dma_info['Direction']}")
 
     # not implemented
     dma_info["gmem_bl_sum"] = 0
     dma_info["gmem_avg_burst_length"] = 0
     dma_info["lmem_bl_sum"] = 0
     dma_info["lmem_avg_burst_length"] = 0
-    dma_info['L2M Bandwidth(GB/s)'] = 0
     # no need
     # dma_info["lmem_xact_cnt"] = monitor_info.axi_d0_ar_cntr + monitor_info.axi_d0_aw_cntr
     # dma_info["gmem_xact_cnt"] = dma_info["gmem_xfer_bytes(B)"] // BYTE_PER_BEAT

@@ -143,6 +143,7 @@ class DMA(): #GDMA/SDMA/CDMA
         DmaCycle = 0
         dmaDdrTotalDataSize = 0
         dmaL2TotalDataSize = 0
+        dmaWaitMsgTotalTime = 0
         dmaDdrCycle = 0
         dmaL2Cycle = 0
         dmaDdrBurstLength = 0
@@ -164,6 +165,8 @@ class DMA(): #GDMA/SDMA/CDMA
             elif 'L2' in regDict['Direction'] and regDict['DMA data size(B)'].isnumeric():
                 dmaL2TotalDataSize += int(regDict['DMA data size(B)'])
                 dmaL2Cycle += float(regDict['Asic Cycle'])
+            if regDict['cmd_type'] == '6' and regDict['cmd_special_function'] == '4':
+                dmaWaitMsgTotalTime += eval(regDict['Asic Cycle'])
             if int(regDict['gmem_xact_cnt']) > 0:
                 regDict['AvgBurstLength'] = Decimal(
                     int(regDict['gmem_bl_sum']) / int(regDict['gmem_xact_cnt'])).quantize(Decimal("0.00"))
@@ -189,7 +192,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.regList.append(totalInstRegList)
         self.total_time_dict["start"].append(startTime)
         self.total_time_dict["end"].append(endTime)
-        self.dma_cycle_list.append(DmaCycle)
+        self.dma_cycle_list.append(DmaCycle - dmaWaitMsgTotalTime)
         self.dma_ddr_total_datasize_list.append(dmaDdrTotalDataSize)
         self.dma_l2_total_datasize_list.append(dmaL2TotalDataSize)
         if dmaDdrCycle > 0:
