@@ -9,9 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Support/Logger.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
-
+#include <unordered_map>
 #define DEBUG_TYPE "layer-group"
 
 using namespace tpu_mlir::backend;
@@ -135,7 +136,15 @@ static inline int64_t increase_nsecs(int64_t nsecs, int64_t batch_size) {
     next_nsecs++;
     new_nslice = batch_size / next_nsecs + (batch_size % next_nsecs > 0);
   } while (new_nslice >= nslice && next_nsecs < batch_size);
-
+  DEBUG_WITH_TYPE("better_slice", {
+    // log to monitor when to find next_nslices with better slice
+    if (new_nslice < nslice) {
+      llvm::dbgs() << "; action = better_slice"
+                   << "; step = increase_nsecs"
+                   << "; new_nslice = " << new_nslice << "; nslice = " << nslice
+                   << "\n";
+    }
+  });
   return next_nsecs;
 }
 
@@ -151,6 +160,15 @@ static inline int64_t increase_csecs(int64_t csecs, int64_t max_csecs) {
     new_cslice = max_csecs / next_csecs + (max_csecs % next_csecs > 0);
   } while (new_cslice >= cslice && next_csecs < max_csecs);
 
+  DEBUG_WITH_TYPE("better_slice", {
+    // log to monitor when to find next_csecs with better slice
+    if (new_cslice < cslice) {
+      llvm::dbgs() << "; action = better_slice"
+                   << "; step = increase_csecs"
+                   << "; new_cslice = " << new_cslice << "; cslice = " << cslice
+                   << "\n";
+    }
+  });
   return next_csecs;
 }
 
@@ -433,6 +451,7 @@ void LmemAllocator::update_avail_lmems(
     const mem_buffer_key_t &recent_buffer_allocated,
     const mem_buffer_value_t &recent_buffer_value, BasicTimeStepPtr &time_step,
     bool hold_on_coeff, bool consider_inplace) {
+  PROFILE_LOG("update_avail_lmems", true);
   // find the allocated buffer overlap in time dimension
   bool ts_overlap = is_timestep_overlapped(
       buffer_value.start_ts, buffer_value.end_ts, recent_buffer_value.start_ts,
@@ -478,6 +497,7 @@ void LmemAllocator::update_avail_lmems(
       avail_iter++;
     }
   }
+  PROFILE_LOG("update_avail_lmems", false);
 }
 
 MemBlock LmemAllocator::find_avail_lmem_location(
@@ -487,11 +507,21 @@ MemBlock LmemAllocator::find_avail_lmem_location(
 
   MemBlock alloc_lmem(-1, -1);
   if (avail_space.avail_lmems.empty()) {
+    DEBUG_WITH_TYPE("assign_lmem", {
+      llvm::dbgs() << "; action = find_avail_lmem"
+                   << "; step = avail_lmems_empty" << "\n";
+    });
     return alloc_lmem;
   }
 
   if (allow_bank_conflict) {
     alloc_lmem = avail_space.avail_lmems.front();
+    DEBUG_WITH_TYPE("assign_lmem", {
+      llvm::dbgs() << "; action = find_avail_lmem"
+                   << "; step = use_bank_conflict_buffer"
+                   << "; lmem = " << alloc_lmem.first
+                   << "; size = " << alloc_lmem.second << "\n";
+    });
     return alloc_lmem;
   }
 
@@ -506,8 +536,19 @@ MemBlock LmemAllocator::find_avail_lmem_location(
 
   for (auto avail_iter = avail_lmems_tmp.begin();
        avail_iter != avail_lmems_tmp.end(); ++avail_iter) {
+    DEBUG_WITH_TYPE("assign_lmem", {
+      llvm::dbgs() << "; action = find_avail_lmem" << "; step = iter_avail_lmem"
+                   << "; lmem = " << avail_iter->first
+                   << "; size = " << avail_iter->second << "\n";
+    });
     if (avail_iter->second >= buffer_value.size) {
       alloc_lmem = *avail_iter;
+      DEBUG_WITH_TYPE("assign_lmem", {
+        llvm::dbgs() << "; action = find_avail_lmem"
+                     << "; step = find_availble_buffer"
+                     << "; lmem = " << alloc_lmem.first
+                     << "; size = " << alloc_lmem.second << "\n";
+      });
       break;
     }
   }
@@ -515,6 +556,12 @@ MemBlock LmemAllocator::find_avail_lmem_location(
   // allow bank confict if could not find space not conflict
   if (alloc_lmem.first == -1) {
     alloc_lmem = avail_space.avail_lmems.front();
+    DEBUG_WITH_TYPE("assign_lmem", {
+      llvm::dbgs() << "; action = find_avail_lmem"
+                   << "; step = use_bank_conflict_buffer"
+                   << "; lmem = " << alloc_lmem.first
+                   << "; size = " << alloc_lmem.second << "\n";
+    });
   }
 
   return alloc_lmem;
@@ -526,6 +573,7 @@ void LmemAllocator::update_exclude_banks(
     const mem_buffer_key_t &recent_buffer_allocated,
     const mem_buffer_value_t &recent_buffer_value,
     BasicTimeStepPtr &time_step) {
+  PROFILE_LOG("update_exclude_banks", true);
   int64_t timestep_num = time_step->get_timestep_num();
 
   bool first_step = true;
@@ -574,6 +622,7 @@ void LmemAllocator::update_exclude_banks(
   }
 
   exclude_banks.insert(recent_used_banks.begin(), recent_used_banks.end());
+  PROFILE_LOG("update_exclude_banks", false);
 }
 
 MemBlock LmemAllocator::global_find_avail_lmem_localtion(
@@ -581,9 +630,11 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     const mem_buffer_key_t &recent_buffer_allocated,
     BasicTimeStepPtr &time_step, bool one_loop,
     bool allow_bank_conflict) {
+  PROFILE_LOG("global_find_avail_lmem_localtion", true);
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   auto &recent_buffer_value =
       time_step->get_lmem_buffer_value(recent_buffer_allocated);
+
   update_exclude_banks(avail_space.exclude_banks, buffer_key, buffer_value,
                        recent_buffer_allocated, recent_buffer_value, time_step);
 
@@ -595,7 +646,7 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
   auto alloc_mem =
       find_avail_lmem_location(avail_space, buffer_key, buffer_value,
                                allow_bank_conflict);
-
+  PROFILE_LOG("global_find_avail_lmem_localtion", false);
   return alloc_mem;
 }
 
@@ -784,6 +835,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs,
                                    bool allow_bank_conflict) {
+  PROFILE_LOG("assignLmemAddr", true);
   time_step->update_all_mem_buffer_size(lg_info);
   bool one_loop =
       (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
@@ -810,6 +862,11 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   std::list<MemBufSortStd>::iterator tgt_buflist_it;
   while (!membuf_list.empty()) {
     tgt_position = Arch::LMEM_BYTES;
+    DEBUG_WITH_TYPE("assign_lmem", {
+      llvm::dbgs() << "; action = assign_lmem" << "; step = initial"
+                   << "; tgt_position = " << tgt_position
+                   << "; lmem_occupy = " << lmem_occupy << "\n";
+    });
     update_membuf_conflict_param(npu_membuf_heap, gdma_membuf_heap,
                                  membuf_list);
     membuf_list.sort(membuf_sort_std_cmp);
@@ -818,10 +875,29 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
          ++buflist_it) {
       if (first_alloc) {
         first_alloc = false;
+        DEBUG_WITH_TYPE("assign_lmem", {
+          llvm::dbgs() << "; action = assign_lmem" << "; step = first_alloc"
+                       << "; op = " << module::getName(buflist_it->first.value)
+                       << "\n";
+        });
         if (time_step->get_lmem_size(buflist_it->first) <= Arch::LMEM_BYTES) {
           tgt_position = 0;
           tgt_buflist_it = buflist_it;
+          DEBUG_WITH_TYPE("assign_lmem", {
+            llvm::dbgs() << "; action = assign_lmem"
+                         << "; step = first_alloc_success"
+                         << "; tgt_position = " << tgt_position
+                         << "; lmem_occupy = " << lmem_occupy << "\n";
+          });
         } else {
+          DEBUG_WITH_TYPE("assign_lmem", {
+            llvm::dbgs() << "; action = assign_lmem"
+                         << "; step = find_op_assign_failed"
+                         << "; tgt_position = " << tgt_position
+                         << "; lmem_occupy = " << lmem_occupy << "; op = "
+                         << module::getName(buflist_it->first.value) << "\n";
+          });
+          PROFILE_LOG("assignLmemAddr", false);
           return false;
         }
         break;
@@ -829,12 +905,31 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
         alloc_lmem = global_find_avail_lmem_localtion(
             buffer_avail_space[buflist_it->first], buflist_it->first,
             recent_buffer_allocated, time_step, one_loop, allow_bank_conflict);
+
+        DEBUG_WITH_TYPE("assign_lmem", {
+          llvm::dbgs() << "; action = assign_lmem"
+                       << "; step = find_avail_lmem_location"
+                       << "; op = " << module::getName(buflist_it->first.value)
+                       << "\n";
+        });
         if (alloc_lmem.first != -1) {
           if (alloc_lmem.first < tgt_position) {
             tgt_position = alloc_lmem.first;
             tgt_buflist_it = buflist_it;
+            DEBUG_WITH_TYPE("assign_lmem", {
+              llvm::dbgs() << "; action = assign_lmem"
+                           << "; step = update_min_tgt_position"
+                           << "; tgt_position = " << tgt_position
+                           << "; lmem_occupy = " << lmem_occupy << "\n";
+            });
           }
         } else {
+          DEBUG_WITH_TYPE("assign_lmem", {
+            llvm::dbgs() << "; action = assign_lmem"
+                         << "; step = find_op_assign_failed" << "; op = "
+                         << module::getName(buflist_it->first.value) << "\n";
+          });
+          PROFILE_LOG("assignLmemAddr", false);
           return false;
         }
       }
@@ -850,8 +945,23 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                            &(tgt_buflist_it->first));
       membuf_list.erase(tgt_buflist_it);
       buffer_avail_space.erase(tgt_buflist_it->first);
+      DEBUG_WITH_TYPE("assign_lmem", {
+        llvm::dbgs() << "; action = assign_lmem"
+                     << "; step = set_lmem_addr"
+                     << "; tgt_position = " << tgt_position
+                     << "; lmem_occupy = " << lmem_occupy
+                     << "; buffer_end = " << buffer_end << "; op = "
+                     << module::getName(tgt_buflist_it->first.value) << "\n";
+      });
     } else {
       llvm::errs() << "Cannot find local memory location for memory buffers\n";
+      DEBUG_WITH_TYPE("assign_lmem", {
+        llvm::dbgs() << "; action = assign_lmem"
+                     << "; step = op_assign_failed_in_loop_end"
+                     << "; op = " << module::getName(buflist_it->first.value)
+                     << "\n";
+      });
+      PROFILE_LOG("assignLmemAddr", false);
       return false;
     }
   }
@@ -859,6 +969,11 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   time_step->set_lmem_occupy(lmem_occupy);
 
   assignL2memAddr(lg_info, time_step);
+  DEBUG_WITH_TYPE("assign_lmem", {
+    llvm::dbgs() << "; action = assign_lmem"
+                 << "; step = final_assign_lmem_success" << "\n";
+  });
+  PROFILE_LOG("assignLmemAddr", false);
   return true;
 }
 

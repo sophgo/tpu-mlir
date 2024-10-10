@@ -608,7 +608,7 @@ bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
   return true;
 }
 
-static int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
+int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
   int64_t timestep_num = time_step->get_timestep_num();
   if (timestep_num == 0) {
     return 0;

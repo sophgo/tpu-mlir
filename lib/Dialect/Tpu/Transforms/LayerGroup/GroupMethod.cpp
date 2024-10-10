@@ -675,7 +675,15 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   if (!init_group_data_secs(lg_info, shape_secs, value_size)) {
     return false;
   }
-
+  DEBUG_WITH_TYPE("shape_secs", {
+    llvm::dbgs() << "; action = init_group_data_secs" <<
+    "; nsecs = " << shape_secs.nsecs <<
+    "; csecs = " << shape_secs.csecs <<
+    "; dsecs = " << shape_secs.dsecs <<
+    "; hsecs = " << shape_secs.hsecs <<
+    "; wsecs = " << shape_secs.wsecs <<
+     "\n";
+  });
   if (!dynamic_group_valid_check(lg_info)) {
     return false;
   }
@@ -737,6 +745,7 @@ void GroupMethod::get_group_clusters(
       int64_t temp_cost = 0;
       get_layer_group(sub_group, base_group, start_idx, end_idx);
       bool is_valid = is_layer_group_valid(sub_group, true, &temp_cost);
+
       if (is_valid) {
         if (pre_cost <= temp_cost) {
           is_valid = false;
@@ -879,11 +888,16 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
 
-        LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
+        DEBUG_WITH_TYPE("lg_cost",{
+            llvm::errs()
+                        << "; action = lg_cost"
+                        << "; step = global_layer"
+                        << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
                          << "; group_idx = " << i
                          << "; group_cost = " << cost_table[j][j] << "\n";
+        });
+        DEBUG_WITH_TYPE("lg_info_search",{
             sub_group.dump_lginfo();
         });
 
@@ -901,20 +915,22 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           int64_t start_idx = clusters[start].first;
           int64_t end_idx = clusters[end].first + clusters[end].second - 1;
           get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
-          LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
-                         << "; end_idx = " << end_idx
-                         << "; group_idx_start = " << i << "\n";
+          DEBUG_WITH_TYPE("lg_index", {
+            llvm::dbgs() << "; action = lg_index"
+                          << "; start_idx = " << start_idx
+                          << "; end_idx = " << end_idx
+                          << "; group_idx = " << i << "\n";
           });
-
           int64_t group_cost = MAX_COST;
           is_layer_group_valid(sub_group, true, &group_cost);
 
           int64_t optimal_point = end;
           // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
           //                    cost_table);
-          LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
+          DEBUG_WITH_TYPE("lg_cost", {
+            llvm::dbgs() << "; action = lg_cost"
+                         << "; step = group_layer"
+                         << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
                          << "; group_idx = " << i
                          << "; group_cost = " << group_cost << "\n";
@@ -926,20 +942,25 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
             if (temp_cost < group_cost) {
               group_cost = temp_cost;
               optimal_point = sweep;
-              LLVM_DEBUG({
-                llvm::errs() << "; update better"
-                            << "; start = " << start
+
+              DEBUG_WITH_TYPE("lg_cost", {
+                llvm::dbgs() << "; action = lg_cost"
+                            << "; step = sweep"
+                            << "; start_idx = " << start
+                            << "; end_idx = " << end
                             << "; sweep = " << sweep
-                            << "; end = " << end
-                            << "; temp_cost = " << temp_cost << "\n";
+                            << "; group_idx = " << i
+                            << "; group_cost = " << group_cost << "\n";
               });
             }
           }
-          LLVM_DEBUG({
-            llvm::errs() << "; start_idx = " << start_idx
+
+          DEBUG_WITH_TYPE("lg_cost", {
+            llvm::dbgs() << "; action = lg_cost"
+                         << "; step = update_better"
+                         << "; start_idx = " << start_idx
                          << "; end_idx = " << end_idx
                          << "; group_idx = " << i
-                         << "; type = " << "sweeped"
                          << "; group_cost = " << group_cost << "\n";
           });
 
@@ -984,7 +1005,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
       });
     } else {
       cut_results_.push_back(std::vector<int64_t>(1, 0));
-      LLVM_DEBUG({
+      DEBUG_WITH_TYPE("lg_cost", {
         if (!isa<ReturnOp>(base_groups[i][0]) && runmode_ == RunMode::TPU_STATIC) {
           int64_t start_idx = clusters[0].first;
           // int64_t end_idx = start_idx + clusters[0].second - 1;
@@ -992,11 +1013,15 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           int64_t cost;
 
           assert(is_layer_group_valid(sub_group, true, &cost));
-          llvm::errs() << "; start_idx = " << 0 << "; end_idx = " << 0
-                       << "; group_idx = " << i << "; group_cost = " << cost
+          llvm::dbgs()  << "; action = lg_cost"
+                        << "; step = global_layer"
+                        << "; start_idx = " << 0 << "; end_idx = " << 0
+                        << "; group_idx = " << i << "; group_cost = " << cost
                        << "\n";
         }else{
-          llvm::errs() << "; start_idx = " << 0 << "; end_idx = " << 0
+          llvm::dbgs() << "; action = lg_cost"
+                       << "; step = global_layer"
+                       << "; start_idx = " << 0 << "; end_idx = " << 0
                        << "; group_idx = " << i << "; group_cost = " << 0
                        << "\n";
         }
@@ -2580,19 +2605,18 @@ void GroupMethod::get_final_groups(
           false == LgPass::OPTIONS.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
-      LLVM_DEBUG({
+      DEBUG_WITH_TYPE("lg_results", {
         if(runmode_ == RunMode::TPU_STATIC){
           int64_t cost = 0;
           is_layer_group_valid(lg_info, true, &cost);
-          llvm::errs() << "; start_idx = " << start_idx
+          llvm::dbgs() << "; action = lg_results"
+          << "; start_idx = " << start_idx
                         << "; end_idx = " << end_idx
                         << "; group_cost = " << cost
                         << "; final_group_idx = " << i
                         << "\n";
           lg_info.dump_lginfo();
-
         }
-
       });
       start_idx = end_idx + 1;
     }
@@ -2600,14 +2624,16 @@ void GroupMethod::get_final_groups(
 }
 
 void GroupMethod::show_cut_results() {
-  LLVM_DEBUG(for (size_t i = 0; i < cut_results_.size(); ++i) {
-    auto &cut_result = cut_results_[i];
-    llvm::dbgs() << "base group[" << i << "] cut results: ";
-    for (size_t j = 0; j < cut_result.size(); ++j) {
+  DEBUG_WITH_TYPE("lg_results", {
+    for (size_t i = 0; i < cut_results_.size(); ++i) {
+      auto &cut_result = cut_results_[i];
+      llvm::dbgs() << "base group[" << i << "] cut results: ";
+      for (size_t j = 0; j < cut_result.size(); ++j) {
       llvm::dbgs() << cut_result[j] << ", ";
     }
     llvm::dbgs() << "\n";
-  });
+  }});
+
 }
 
 
