@@ -926,6 +926,12 @@ protected:
         matmul_queries.getInput() != matmul_values.getInput()) {
       return failure();
     }
+    auto queries_shape = module::getShape(matmul_queries.getInput());
+    auto keys_shape = module::getShape(matmul_keys.getInput());
+    auto values_shape = module::getShape(matmul_values.getInput());
+    if (queries_shape[0] != keys_shape[0] || queries_shape[0] != values_shape[0]) {
+      return failure();
+    }
     auto len = module::getNumElements(matmul_queries.getInput());
     auto n = module::getShape(matmul_queries.getInput())[0];
     auto shape = module::getShape(matmul1.getOutput());
