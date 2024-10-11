@@ -59,12 +59,14 @@ public:
   }
 
   template <typename FPtrTy> FPtrTy PplCastToFPtr(const char *symbolName) {
-    if (!JIT_DL.isValid()) {
-      llvm::errs() << "please build ppl backend!\n";
+    if (!PPL_DL.isValid()) {
+      load_ppl();
+    }
+    if(!PPL_DL.isValid()) {
+      llvm::errs() << "ppl can't be loaded!!\n";
       llvm_unreachable(symbolName);
     }
-    assert(JIT_DL.isValid());
-    auto fPtr = JIT_DL.getAddressOfSymbol(symbolName);
+    auto fPtr = PPL_DL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
       llvm::errs() << "can't find symbol: " << symbolName << "\n";
       llvm_unreachable(symbolName);
@@ -117,10 +119,11 @@ public:
 
 protected:
   static Arch *inst;
-  llvm::sys::DynamicLibrary DL, JIT_DL;
+  llvm::sys::DynamicLibrary DL, PPL_DL;
   Arch(){};
   virtual ~Arch() = 0;
   void load_library();
+  void load_ppl();
 };
 } // namespace backend
 } // namespace tpu_mlir

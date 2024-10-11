@@ -157,26 +157,16 @@ void Arch::load_library() {
       llvm_unreachable(Err.c_str());
     }
   }
+}
 
-  if (!JIT_DL.isValid()) {
-    bool exist = false;
-    std::string jit_so_name = "libppl_host.so";
-    std::string ppl_root;
-    if (auto env = getenv("PROJECT_ROOT")) {
-      ppl_root = env;
-    }
-    fs::path directory(ppl_root);
-    fs::path path = directory / "install/lib" / jit_so_name;
-    if (fs::is_regular_file(path)) {
-      exist = true;
-    }
-
-    if (exist) {
-      JIT_DL = llvm::sys::DynamicLibrary::getPermanentLibrary(
-          path.string().c_str(), &Err);
-      if (JIT_DL.isValid() == false) {
-        llvm_unreachable(Err.c_str());
-      }
+void Arch::load_ppl() {
+  if (!PPL_DL.isValid()) {
+    std::string Err;
+    std::string ppl_so_name = "libppl_host.so";
+    PPL_DL = llvm::sys::DynamicLibrary::getPermanentLibrary(ppl_so_name.c_str(),
+                                                            &Err);
+    if (PPL_DL.isValid() == false) {
+      llvm_unreachable(Err.c_str());
     }
   }
 }

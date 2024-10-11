@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--no-undefined")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-undefined")
 
@@ -28,7 +27,6 @@ else()
 endif()
 
 
-set(TPUKERNEL_TOP ${PPL_TOP}/runtime/${CHIP}/TPU1686)
 set(KERNEL_TOP ${PPL_TOP}/runtime/kernel)
 set(CUS_TOP ${PPL_TOP}/runtime/customize)
 
@@ -36,16 +34,13 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/build/include)
 include_directories(${TPUKERNEL_TOP}/kernel/include)
 include_directories(${KERNEL_TOP})
 include_directories(${CUS_TOP}/include)
-include_directories($ENV{PROJECT_ROOT}/include)
-include_directories($ENV{PROJECT_ROOT}/build/include)
-include_directories($ENV{PROJECT_ROOT}/third_party/cnpy/)
+include_directories($ENV{TPUC_ROOT}/include)
 include_directories(include)
 
-# Add chip arch defination
-add_definitions(-D__${CHIP}__)
 
-aux_source_directory(cpp TILING_SRC)
+# compile cpp
+aux_source_directory(src TILING_SRC)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/host PL_SRC)
 add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC})
 
-install(TARGETS ppl_host DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+install(TARGETS ppl_host DESTINATION lib)

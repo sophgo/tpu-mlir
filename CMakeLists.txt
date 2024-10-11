@@ -193,6 +193,8 @@ add_subdirectory(python)
 #-------------------------------------------------------------------------------
 add_subdirectory(experimental)
 
+install(DIRECTORY include DESTINATION ${CMAKE_INSTALL_PREFIX})
+
 #-------------------------------------------------------------------------------
 option(TPUMLIR_INCLUDE_TESTS "Generate build targets for the TPU-MLIR unit tests.")
 

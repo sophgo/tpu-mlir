@@ -9,7 +9,7 @@ import os
 import subprocess
 import logging
 import utils.pattern_counter
-
+import multiprocessing
 
 def _os_system_log(cmd_str):
     # use subprocess to redirect the output stream
@@ -157,6 +157,51 @@ def mlir_lowering(top_mlir: str,
     return get_matched_patterns(log_file)
 
 
+## ========================================
+## build ppl src code
+ppl_lock = multiprocessing.Lock()
+
+def get_latest_file_mtime(directory):
+    latest_mtime = 0
+
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path):
+            mtime = os.path.getmtime(file_path)
+            if mtime > latest_mtime:
+                latest_mtime = mtime
+
+    return latest_mtime
+
+def build_ppl(
+    mute: bool = False,
+    log_level: str = "normal",
+):
+    with ppl_lock:
+        ori_dir = os.getcwd()
+        tpu_path = os.environ.get("TPUC_ROOT")
+        if tpu_path is None:
+            raise RuntimeError("[!Error]: can't find TPUC_ROOT")
+        ppl_path = os.path.join(tpu_path, 'PplBackend')
+        ppl_so_path = os.path.join(tpu_path, 'lib/libppl_host.so')
+        if os.path.isfile(ppl_so_path):
+            # if no modify, return directly
+            ppl_so_mtime = os.path.getmtime(ppl_so_path)
+            ppl_src_dir = os.path.join(ppl_path, 'src')
+            ppl_src_mtime = get_latest_file_mtime(ppl_src_dir)
+            if ppl_src_mtime < ppl_so_mtime:
+                return
+        try:
+            cmd = ["bash", os.path.join(ppl_path, "build.sh")]
+            _os_system(cmd, mute=mute, log_level=log_level)
+        except RuntimeError:
+            raise RuntimeError("[!Error]: build ppl src code failed")
+        finally:
+            os.chdir(ori_dir)
+
+
+## ========================================
+
 def mlir_to_model(tpu_mlir: str,
                   model: str,
                   final_mlir: str,
@@ -245,6 +290,9 @@ def mlir_to_model(tpu_mlir: str,
     elif log_level == "simple":
         cmd.insert(2, '--init="level=1"')
     _os_system(cmd,log_level=log_level)
+
+    # compile ppl code
+    build_ppl()
 
     # codegen based on final mlir
     codegen_param = (
@@ -398,13 +446,13 @@ def origin_mlir_txt_to_bmodel(
     mlir_txt = converter.get_mlir_txt()
     if log_level == "quiet":
         with open(os.devnull, "w") as devnull:
-                os.dup2(devnull.fileno(), sys.stdout.fileno())
-                os.dup2(devnull.fileno(), sys.stderr.fileno())
+            os.dup2(devnull.fileno(), sys.stdout.fileno())
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
         try:
             pymlir.run_pass_pipeline(mlir_txt, options)
         finally:
-                os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
-                os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
+            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
     else:
         if log_level == "simple":
             options = [opt for opt in options if not opt.startswith('--init')]
