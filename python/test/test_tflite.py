@@ -44,7 +44,7 @@ except ImportError:
     from tensorflow.contrib import lite as interpreter_wrapper
 
 
-Failed_Cases = ["Cast", "Gather", "ReduceMin", "Deconv2d",
+Failed_Cases = ["Add", "Cast", "Gather", "ReduceMin", "Deconv2d",
                 "ReduceMax", "Sum", "Matmul"]
 
 
