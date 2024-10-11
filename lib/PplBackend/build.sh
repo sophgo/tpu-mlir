@@ -1,5 +1,9 @@
+#!/bin/bash
+
 set -ex
-chmod +x ${PPL_PROJECT_ROOT}/bin/ppl_jit.sh
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+pushd "$DIR"
 
 # clear cache
 CACHE_PATH=${PPL_CACHE_PATH}
@@ -12,12 +16,12 @@ rm -rf $CACHE_PATH
 mkdir -p build
 cd build
 
-for file in `ls ../pl/*.pl`
+for file in `ls ../src/*.pl`
 do
   ppl-compile $file --I $PPL_PROJECT_ROOT/inc  --desc --O2 --o .
 done
 
-cmake ../ -DDEBUG=ON
+cmake ../ -DDEBUG=ON -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}"
 make install -j8
-mkdir -p ${PROJECT_ROOT}/install/lib
-cp libppl_host.so ${PROJECT_ROOT}/install/lib/
+
+popd

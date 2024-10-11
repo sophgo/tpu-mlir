@@ -40,4 +40,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               atomic_exec/libbm1684x_atomic_kernel.so
         DESTINATION lib)
 
-install(DIRECTORY ppl DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ppl
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        PATTERN "*.sh" PERMISSIONS OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE
+        PATTERN "ppl-compile" PERMISSIONS OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE)

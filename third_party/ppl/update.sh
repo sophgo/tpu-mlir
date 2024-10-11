@@ -48,3 +48,4 @@ rm -rf ${ppl_package}
 rm -rf samples examples docker python runtime/bm1690/tpuv7-runtime* requirements.txt envsetup.sh
 find .  -name "*.so*" -exec rm -f {} +
 find .  -name "*.a" -exec rm -f {} +
+chmod +x bin/*
