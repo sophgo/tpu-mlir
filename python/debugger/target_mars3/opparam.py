@@ -162,15 +162,8 @@ def sCONV_converter(context: "MARS3Context", reg: sCONV_reg):
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
     if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8:
-        opd1["layout"] = Layout.alignEU
         opd3["shape"] = [1, reg.res0_c, 1, 1]
         opd3["dtype"] = (DType.i8, 1)
-    elif reg.opt_opd0_prec == BF16:
-        opd1["layout"] = Layout.alignIC
-    elif reg.opt_opd0_prec == FP32:
-        opd1["layout"] = Layout.alignIC
-    else:
-        opd1["layout"] = Layout.alignIC
     results = [get_value(context, **res0)]
 
     attr = dict(
@@ -292,21 +285,21 @@ def sMM2_converter(context: "MARS3Context", reg: sMM2_reg):
     opd2 = dict(
         address=reg.opd2_addr,
         is_const=reg.opt_opd2_const,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, info.NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd4 = dict(
         address=tgcr.getter(5),
         is_const=reg.opt_opd4_const,
         dtype=DType.si16,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, info.NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd5 = dict(
         address=tgcr.getter(6),
         is_const=reg.opt_opd5_const,
         dtype=DType.si32,
-        shape=(1, 32, reg.res0_w, 2),
+        shape=(1, info.NPU_NUM, reg.res0_w, 2),
     )
     attr = dict(
         l_trans=bool(l_trans),
@@ -853,7 +846,7 @@ def sSG_converter(context: "MARS3Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     elif reg.tsk_eu_typ in [9, 16]:
         opd0["shape"] = (n, c, 1, reg.opd0_w)
         opds = [opd0]
@@ -863,7 +856,7 @@ def sSG_converter(context: "MARS3Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     else:
         raise KeyError("Should not be here.")
 
@@ -978,9 +971,6 @@ def SYS_converter(context: "MARS3Context", reg):
 
 def dma_addr(H, L):
     addr = H * 2**32 + L
-    tag = (addr >> 40) & 0x1f
-    if tag == 0x0 :     # for workround
-        addr =  addr | (0x1 << 40)
     return addr
 
 
@@ -1330,7 +1320,7 @@ def sDMA_sys_converter(context: "MARS3Context", reg: sDMA_sys_reg):
     011: sys_send 3 +
     100: sys_wait 4 +
 
-    101：sys_fork
+    101:sys_fork
     110:sys_join
     111:sys_exit
     """

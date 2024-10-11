@@ -102,8 +102,8 @@ info = MARS3Info()
 
 # TPU1688/mars3/spec/include/memmap.h
 memmap = {
-    MType.R: (0xc080000, 0xc080000 + 65536),  # lmen_base
-    MType.S: (0, 2048),      # static memory 2KB
+    MType.R: (0xc080000, 0xc080000 + 65536),    # local memory
+    MType.S: (0xc041000, 0xc041000 + 0x400),    # TODO: static memory 1KB
     MType.G: (0x80000000, 0x80000000 + 2**28),  # global memory 256M
 }
 
@@ -149,6 +149,14 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
         n_stride = info.LANE_SIZE // 8 // memref.itemsize
         return (n_stride, c_stride, w, 1)
 
+    def matrix2_stride():
+        r, c = memref.shape
+        align_num = info.ALIGN_EU_BASE // memref.itemsize
+        h_stride = align_up(c, align_num)
+        c_stride = h_stride
+        n_stride = c_stride * div_up(r + memref.npu_offset, info.NPU_NUM)
+        return (n_stride, c_stride, h_stride, 1)
+
     def dma_nolane_mask_to_stride():
         lane_mask = memref.layout.args[0]
         if lane_mask == (2**info.NPU_NUM - 1):
@@ -170,6 +178,8 @@ def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
         return t4_stride()
     if memref.layout == Layout.T5:
         return t5_stride()
+    if memref.layout == Layout.matrix2:
+        return matrix2_stride()
     if memref.layout == Layout.DMAstride:
         return dma_nolane_mask_to_stride()
 

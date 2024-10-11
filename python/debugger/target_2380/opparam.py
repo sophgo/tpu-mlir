@@ -26,7 +26,7 @@ from ..target_common import (
 )
 
 from .regdef import *
-from .memmap import LANE_SIZE, memmap
+from .memmap import NPU_NUM, LANE_SIZE, memmap
 
 if TYPE_CHECKING:
     from .context import SG2380Context
@@ -91,7 +91,7 @@ def add_lmem_addr_tag(opd):
             assert isinstance(x, dict)
             add_lmem_addr_tag(x)
     else:
-        assert 0,"add_lmem_addr_tag only support dict and list" 
+        assert 0,"add_lmem_addr_tag only support dict and list"
 
 class TGCR:
     def __init__(self):
@@ -305,21 +305,21 @@ def sMM2_converter(context: "SG2380Context", reg: sMM2_reg):
     opd2 = dict(
         address=reg.opd2_addr,
         is_const=reg.opt_opd2_const,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd4 = dict(
         address=tgcr.getter(5),
         is_const=reg.opt_opd4_const,
         dtype=DType.si16,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd5 = dict(
         address=tgcr.getter(6),
         is_const=reg.opt_opd5_const,
         dtype=DType.si32,
-        shape=(1, 32, reg.res0_w, 2),
+        shape=(1, NPU_NUM, reg.res0_w, 2),
     )
     attr = dict(
         l_trans=bool(l_trans),
@@ -890,7 +890,7 @@ def sSG_converter(context: "SG2380Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     elif reg.tsk_eu_typ in [9, 16]:
         opd0["shape"] = (n, c, 1, reg.opd0_w)
         opds = [opd0]
@@ -900,7 +900,7 @@ def sSG_converter(context: "SG2380Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     else:
         raise KeyError("Should not be here.")
 
