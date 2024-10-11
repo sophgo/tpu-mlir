@@ -45,7 +45,10 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (module::isWeight(op.getInput())) {
-    LoweringF16(rewriter, op);
+    if(module::isMARS3())
+      LoweringBF16(rewriter, op);
+    else
+      LoweringF16(rewriter, op);
     return;
   }
 
