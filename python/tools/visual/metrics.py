@@ -71,3 +71,24 @@ def sqnr(ref_data, test_data, remove_zero = False):
     sqnr = 10 * np.log10(var_raw_zero_mean / var_noise_zero_mean)
 
     return sqnr
+
+def kurtosis(data):
+    import numpy as np
+
+    mean=np.mean(data)
+    n=data.size
+    if n <= 3:
+        return 3
+    kuru=np.sum(np.power((data-mean),4))/n
+    kurd=np.power(np.sum(np.power((data-mean),2))/n,2)
+    kur=kuru/kurd
+    return kur
+
+def skewness(data):
+    import numpy as np
+
+    mean=np.mean(data)
+    std=np.std(data)
+    n=data.size
+    ske=np.sum(np.power((data-mean)/std,3))/n/np.power(std,3)
+    return ske

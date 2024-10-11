@@ -23,6 +23,9 @@ class figure_cache():
 def linear_plot(data, name=None, max_sampling=1000, bias=None):
     import numpy as np
     from . import plot_utils as plt
+    from .metrics import kurtosis
+    from .metrics import skewness
+
     blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
     if data_size > max_sampling:
@@ -30,9 +33,11 @@ def linear_plot(data, name=None, max_sampling=1000, bias=None):
     else:
         step = 1
     index = np.arange(0, data_size, step)
+    kur=kurtosis(blob_fp)
+    ske=skewness(blob_fp)
     fig = plt.plot_float_vs_fixpoint(
         index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
-        subplot_titles=(name, "float - int8\t "))
+        subplot_titles=(name+'[{:.2f}/{:.2f}]'.format(kur,ske), "float - int8\t "))
     fig.update_layout(legend=dict(yanchor="top", y=0.99,
                     xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
     fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
