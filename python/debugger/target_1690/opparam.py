@@ -356,21 +356,21 @@ def sMM2_converter(context: "BM1690Context", reg: sMM2_reg):
     opd2 = dict(
         address=reg.opd2_addr,
         is_const=reg.opt_opd2_const,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, info.NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd4 = dict(
         address=tgcr.getter(5),
         is_const=reg.opt_opd4_const,
         dtype=DType.si16,
-        shape=(1, 32, 1, reg.res0_w),
+        shape=(1, info.NPU_NUM, 1, reg.res0_w),
         layout=Layout.alignEU,
     )
     opd5 = dict(
         address=tgcr.getter(6),
         is_const=reg.opt_opd5_const,
         dtype=DType.si32,
-        shape=(1, 32, reg.res0_w, 2),
+        shape=(1, info.NPU_NUM, reg.res0_w, 2),
     )
     attr = dict(
         l_trans=bool(l_trans),
@@ -915,7 +915,7 @@ def sSG_converter(context: "BM1690Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     elif reg.tsk_eu_typ in [9, 16]:
         opd0["shape"] = (n, c, 1, reg.opd0_w)
         opds = [opd0]
@@ -925,7 +925,7 @@ def sSG_converter(context: "BM1690Context", reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     else:
         raise KeyError("Should not be here.")
 

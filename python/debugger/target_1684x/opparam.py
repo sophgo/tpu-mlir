@@ -745,7 +745,7 @@ def sSG_t_converter(reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     elif reg.tsk_eu_typ in [9, 16]:
         opd0["shape"] = (n, c, 1, reg.opd0_w)
         opds = [opd0]
@@ -755,7 +755,7 @@ def sSG_t_converter(reg: sSG_reg):
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
-        rests = [res0, res1]
+        rets = [res0, res1]
     elif reg.tsk_eu_typ == 10:
         opd1["shape"] = (n, c, 1, reg.opd1_w)
         opds = [opd1]
