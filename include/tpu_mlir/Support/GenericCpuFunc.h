@@ -106,7 +106,7 @@ private:
 };
 
 struct YoloDetParam {
-  std::vector<int64_t> anchors;
+  std::vector<double> anchors;
   std::vector<tensor_list_t> inputs;
   tensor_list_t output;
   int64_t net_input_h;

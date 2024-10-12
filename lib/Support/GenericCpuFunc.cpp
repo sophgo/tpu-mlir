@@ -382,7 +382,7 @@ static inline float _softmax(float *probs, float *data, int input_stride,
    cell_idx)
 
 static void process_feature(detection *det, int *det_idx, float *feature,
-                            std::vector<int64_t> grid_size, int64_t *anchor,
+                            std::vector<int64_t> grid_size, double *anchor,
                             std::vector<int64_t> yolo_size,
                             int64_t num_of_class, float obj_threshold,
                             std::string version = "yolov3") {
@@ -779,7 +779,7 @@ void YoloDetectionFunc::invoke() {
   int batch = param_.output.shape[0];
   size_t bottom_count = param_.inputs.size();
   assert(param_.anchors.size() == bottom_count * 6);
-  int64_t(*anchors)[6] = (int64_t(*)[6])param_.anchors.data();
+  double(*anchors)[6] = (double(*)[6])param_.anchors.data();
 
   for (int b = 0; b < batch; ++b) {
     std::vector<std::vector<int64_t>> grid_size;
@@ -1729,7 +1729,7 @@ void YoloDetectionFunc_v2::invoke() {
               sigmoid_batch(swap_data, 6);
               swap_data[1] = swap_data[0] * swap_data[1];
               if (swap_data[1] > param_.obj_threshold) {
-                [&](std::vector<float> &b, float *x, int64_t *biases, int n,
+                [&](std::vector<float> &b, float *x, double *biases, int n,
                     int i, int j, int lw, int lh, int w, int h) {
                   b.clear();
                   b.push_back((i + x[0] * 2 - 0.5) * w / lw);
@@ -1755,7 +1755,7 @@ void YoloDetectionFunc_v2::invoke() {
               swap_data[1] = swap_data[0] * swap_data[1];
 
               if (swap_data[1] > param_.obj_threshold) {
-                [&](std::vector<float> &b, float *x, int64_t *biases, int n,
+                [&](std::vector<float> &b, float *x, double *biases, int n,
                     int i, int j, int lw, int lh, int w, int h) {
                   b.clear();
                   b.push_back((i + (x[0])) / lw);

@@ -94,7 +94,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.keep_top_k = getKeepTopk();
     spec.nms_threshold = getNmsThreshold().convertToDouble();
     spec.confidence_threshold = getObjThreshold().convertToDouble();
-    auto anchors = module::getI64Array(getAnchors());
+    auto anchors = module::getF64Array(getAnchors());
     for (uint32_t i = 0; i < anchors->size(); i++) {
       spec.anchors[i] = (float)(anchors->at(i));
     }
@@ -145,7 +145,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     param.spec.keep_top_k = getKeepTopk();
     param.spec.nms_threshold = getNmsThreshold().convertToDouble();
     param.spec.confidence_threshold = getObjThreshold().convertToDouble();
-    auto anchors = module::getI64Array(getAnchors());
+    auto anchors = module::getF64Array(getAnchors());
     double width = (double)getNetInputW();
     for (uint32_t i = 0; i < param.spec.input_num; i++) {
       auto s = module::getShape(getInputs()[i]);

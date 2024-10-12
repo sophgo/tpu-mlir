@@ -26,7 +26,7 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   param.keep_topk = getKeepTopk();
   param.nms_threshold = getNmsThreshold().convertToDouble();
   param.obj_threshold = getObjThreshold().convertToDouble();
-  param.anchors = *module::getI64Array(getAnchors());
+  param.anchors = *module::getF64Array(getAnchors());
   param.num_boxes = getNumBoxes();
   param.agnostic_nms = getAgnosticNms();
   auto inputs = getInputs();
