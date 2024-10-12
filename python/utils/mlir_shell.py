@@ -70,14 +70,21 @@ def get_matched_patterns(log_file: str = ""):
     return {}
 
 
+def top_opt_options(add_postprocess: str = ""):
+    options = ["--shape-infer"]
+    if len(add_postprocess) > 0:
+        options.extend([f"--add-postprocess=\"type={add_postprocess}\""])
+    options.extend(["--canonicalize", "--extra-optimize"])
+    return options
+
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
                      count_patterns: bool = False, log_level:str="normal"):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
-    if len(add_postprocess) > 0:
-        cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
-    cmd.extend(["--canonicalize", "--extra-optimize", "-o", opt_mlirfile])
+    cmd = ["tpuc-opt", mlirfile]
+    options = top_opt_options(add_postprocess)
+    cmd.extend(options)
+    cmd.extend(["-o", opt_mlirfile])
     log_file = ""
     if count_patterns:
         log_file = "top_patterns.log"
@@ -89,6 +96,48 @@ def mlir_opt_for_top(mlirfile: str,
     _os_system(cmd,log_level=log_level)
     return get_matched_patterns(log_file)
 
+def lowering_options(mode: str,
+                     chip: str,
+                     num_device: int = 1,
+                     num_core: int = 1,
+                     cali_table: str = None,
+                     asymmetric: bool = False,
+                     quantize_table: str = None,
+                     weight_name: str = None,
+                     customization_format: str = None,
+                     fuse_preprocess: bool = False,
+                     aligned_input: bool = False,
+                     ignore_f16_overflow: bool = False,
+                     do_winograd: bool = False,
+                     q_group_size: int = 0,
+                     addr_mode: str = "auto",
+                     matmul_perchannel: bool = False):
+    mode = mode.upper()
+    options = [
+        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
+            chip.lower(), mode, num_device, num_core, addr_mode)
+    ]
+
+    # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
+    if cali_table != None:
+        cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
+            cali_table, asymmetric)
+        options.extend([cali_param])
+    #do extra conversion for differnet chips
+    options.extend(["--processor-top-optimize"])
+    if fuse_preprocess:
+        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
+            mode, customization_format, aligned_input)
+        options.extend([fuse_pre_param])
+    qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
+    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={} matmul_perchannel={}\"".format(
+        qw, asymmetric, do_winograd, ignore_f16_overflow, q_group_size, matmul_perchannel)
+    options.extend([
+        lower_param,
+        "--canonicalize",
+        "--weight-fold",
+    ])
+    return options
 
 def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
@@ -111,37 +160,29 @@ def mlir_lowering(top_mlir: str,
                   log_level: str = "normal",
                   matmul_perchannel: bool = False):
     mode = mode.upper()
-    cmd = [
-        "tpuc-opt", top_mlir,
-        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
-            chip.lower(), mode, num_device, num_core, addr_mode)
-    ]
-
-    # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
-    if cali_table != None:
-        cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
-            cali_table, asymmetric)
-        cmd.extend([cali_param])
-    #do extra conversion for differnet chips
-    cmd.extend(["--processor-top-optimize"])
-    if fuse_preprocess:
-        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
-            mode, customization_format, aligned_input)
-        cmd.extend([fuse_pre_param])
-    qtable = ""
+    cmd = ["tpuc-opt", top_mlir]
+    weight_name = ""
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
-        qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={} matmul_perchannel={}\"".format(
-        qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size, matmul_perchannel)
-    cmd.extend([
-        lower_param,
-        "--canonicalize",
-        "--weight-fold",
-        "-o",
-        tpu_mlir,
-    ])
+    options =  lowering_options(mode,
+                                chip,
+                                num_device,
+                                num_core,
+                                cali_table,
+                                asymmetric,
+                                quantize_table,
+                                weight_name,
+                                customization_format,
+                                fuse_preprocess,
+                                aligned_input,
+                                ignore_f16_overflow,
+                                do_winograd,
+                                q_group_size,
+                                addr_mode,
+                                matmul_perchannel)
+    cmd.extend(options)
+    cmd.extend(["-o", tpu_mlir])
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
@@ -156,6 +197,66 @@ def mlir_lowering(top_mlir: str,
     _os_system(cmd, mute=mute,log_level=log_level)
     return get_matched_patterns(log_file)
 
+def tpu_opt_options(quant_input: bool = False,
+                    quant_output: bool = False,
+                    quant_input_list: str = "",
+                    quant_output_list: str = "") :
+    # generate final mlir
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list)
+    # yapf: disable
+    options = [
+        "--mlir-disable-threading",
+        strip_io_quant_param,
+        "--processor-tpu-optimize",
+    ]
+    return options
+
+def tpu_ada_options(dynamic: bool = False,
+                    disable_layer_group: bool = False,
+                    opt: int = 2,
+                    merge_weight: bool = False,
+                    op_divide: bool = False,
+                    group_by_cores: str = "auto",
+                    compress_mode: str = "none",
+                    future_update_rank: int = 0,
+                    future_update_list: str = ""):
+    lg_param = ''
+    if not disable_layer_group:
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={}"'.format(
+            opt, group_by_cores, compress_mode)
+    subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
+    address_assign_param = '--address-assign'
+    if merge_weight:
+        address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
+    distribute_param = f"--dev-parallel"
+    parallel_param = f"--core-parallel"
+    future_update_param = '--future-update="rank={} weight_list={}"'.format(future_update_rank, future_update_list)
+
+    op_divide_param = ""
+    if op_divide:
+        op_divide_param = "--op-divide"
+    options = [
+        distribute_param,
+        "--weight-reorder",
+        op_divide_param,
+        subnet_param,
+        "--op-reorder",
+        future_update_param,
+        lg_param,
+        parallel_param,
+        address_assign_param
+    ]
+    return options
+
+def codegen_options(model: str,
+                    embed_debug_info: bool = False,
+                    model_version: str = ""):
+    options = [
+        '--codegen="model_file={} embed_debug_info={} model_version={}"'.format(
+            model, str(embed_debug_info).capitalize(), str(model_version).lower())
+    ]
+    return options
 
 ## ========================================
 ## build ppl src code
@@ -221,38 +322,20 @@ def mlir_to_model(tpu_mlir: str,
                   compress_mode: str = "none",
                   future_update_rank: int = 0,
                   future_update_list: str = "",
-                  debug_cmd: str = "",log_level:str = "normal"):
-    # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
-        quant_input, quant_output, quant_input_list, quant_output_list)
-    lg_param = ''
-    if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={}"'.format(
-            opt, group_by_cores, compress_mode)
-    subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
-    address_assign_param = '--address-assign'
-    if merge_weight:
-        address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
-    distribute_param = f"--dev-parallel"
-    parallel_param = f"--core-parallel"
-    future_update_param = '--future-update="rank={} weight_list={}"'.format(future_update_rank, future_update_list)
+                  debug_cmd: str = "",
+                  log_level:str = "normal"):
+    cmd = ["tpuc-opt", tpu_mlir]
+    options = tpu_opt_options(quant_input,
+                              quant_output,
+                              quant_input_list,
+                              quant_output_list)
+    cmd.extend(options)
 
-    op_divide_param = ""
-    if op_divide:
-        op_divide_param = "--op-divide"
-    # yapf: disable
-    cmd = [
-        "tpuc-opt",
-        tpu_mlir,
-        "--mlir-disable-threading",
-        strip_io_quant_param,
-        "--processor-tpu-optimize",
-    ]
     # yapf: enable
 
     if embed_debug_info:
-        # save the optimized tpu.mlir
         tpu_opt_mlir = final_mlir[:-10] + "tpu_opt.mlir"
+        # save the optimized tpu.mlir
         cmd.extend([
             "-o",
             tpu_opt_mlir,
@@ -264,16 +347,17 @@ def mlir_to_model(tpu_mlir: str,
             tpu_opt_mlir
         ]
 
+    options = tpu_ada_options(dynamic,
+                              disable_layer_group,
+                              opt,
+                              merge_weight,
+                              op_divide,
+                              group_by_cores,
+                              compress_mode,
+                              future_update_rank,
+                              future_update_list)
+    cmd.extend(options)
     cmd.extend([
-        distribute_param,
-        "--weight-reorder",
-        op_divide_param,
-        subnet_param,
-        "--op-reorder",
-        future_update_param,
-        lg_param,
-        parallel_param,
-        address_assign_param,
         "-o",
         final_mlir,
         debug_cmd
@@ -295,15 +379,12 @@ def mlir_to_model(tpu_mlir: str,
     build_ppl()
 
     # codegen based on final mlir
-    codegen_param = (
-        f'--codegen="model_file={model} embed_debug_info={str(embed_debug_info).capitalize()} model_version={str(model_version).lower()}"'
-    )
-    cmd = [
-        "tpuc-opt",
-        final_mlir,
-        codegen_param,
-        "-o /dev/null",
-    ]
+    cmd = ["tpuc-opt", final_mlir]
+    options = codegen_options(model,
+                              embed_debug_info,
+                              model_version)
+    cmd.extend(options)
+    cmd.extend(["-o /dev/null"])
     _os_system(cmd,log_level=log_level)
 
     out_dir = model.rsplit(".", maxsplit=1)[0]
@@ -321,121 +402,82 @@ def mlir_to_model(tpu_mlir: str,
     return get_matched_patterns(log_file)
 
 
-def origin_mlir_txt_to_bmodel(
-    converter,
-    model_name: str,
-    mode: str,
-    chip: str,
-    add_postprocess: str = "",
-    num_device: int = 1,
-    num_core: int = 1,
-    cali_table: str = None,
-    asymmetric: bool = False,
-    quantize_table: str = None,
-    customization_format: str = None,
-    fuse_preprocess: bool = False,
-    aligned_input: bool = False,
-    ignore_f16_overflow: bool = False,
-    do_winograd: bool = False,
-    q_group_size: int = 0,
-    dynamic: bool = False,
-    quant_input: bool = False,
-    quant_output: bool = False,
-    quant_input_list: str = "",
-    quant_output_list: str = "",
-    disable_layer_group: bool = False,
-    opt: int = 2,
-    merge_weight: bool = False,
-    op_divide: bool = False,
-    embed_debug_info: bool = False,
-    addr_mode: str = "auto",
-    group_by_cores: str = "auto",
-    model_version: str = "",
-    count_patterns: bool = False,
-    compress_mode: str = "none",
-    log_level: str = 'normal'
-):
-    bmodel = f"{model_name}_{mode}.bmodel"
+def origin_mlir_txt_to_bmodel(converter,
+                              model_name: str,
+                              mode: str,
+                              chip: str,
+                              add_postprocess: str = "",
+                              num_device: int = 1,
+                              num_core: int = 1,
+                              cali_table: str = None,
+                              asymmetric: bool = False,
+                              quantize_table: str = None,
+                              customization_format: str = None,
+                              fuse_preprocess: bool = False,
+                              aligned_input: bool = False,
+                              ignore_f16_overflow: bool = False,
+                              do_winograd: bool = False,
+                              q_group_size: int = 0,
+                              dynamic: bool = False,
+                              quant_input: bool = False,
+                              quant_output: bool = False,
+                              quant_input_list: str = "",
+                              quant_output_list: str = "",
+                              disable_layer_group: bool = False,
+                              opt: int = 2,
+                              merge_weight: bool = False,
+                              op_divide: bool = False,
+                              embed_debug_info: bool = False,
+                              addr_mode: str = "auto",
+                              group_by_cores: str = "auto",
+                              model_version: str = "",
+                              count_patterns: bool = False,
+                              compress_mode: str = "none",
+                              log_level: str = 'normal',
+                              future_update_rank: int = 0,
+                              future_update_list: str = "",
+                              matmul_perchannel: bool = False):
 
-    options = [
-        "--init",
-        "--shape-infer",
-    ]
-    if len(add_postprocess) > 0:
-        options.extend([f'--add-postprocess="type={add_postprocess}"'])
-    options.extend(["--canonicalize", "--extra-optimize"])
-    mode = mode.upper()
-    options.extend(
-        [
-            f'--processor-assign="chip={chip.lower()} mode={mode} num_device={num_device} num_core={num_core} addr_mode={addr_mode}"'
-        ]
-    )
-    # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
-    if cali_table != None:
-        cali_param = '--import-calibration-table="file={} asymmetric={}"'.format(
-            cali_table, asymmetric
-        )
-        options.extend([cali_param])
-    # do extra conversion for differnet chips
-    options.extend(["--processor-top-optimize"])
-    if fuse_preprocess:
-        fuse_pre_param = ('--fuse-preprocess="mode={} customization_format={} align={}"'.format(
-            mode, customization_format, aligned_input))
-        options.extend([fuse_pre_param])
-        fuse_pre_param = (
-            '--fuse-preprocess="mode={} customization_format={} align={}"'.format(
-                mode, customization_format, aligned_input
-            )
-        )
-        options.extend([fuse_pre_param])
+    options = ["--init"]
+    opt = top_opt_options(add_postprocess)
+    options.extend(opt)
+    opt =  lowering_options(mode,
+                            chip,
+                            num_device,
+                            num_core,
+                            cali_table,
+                            asymmetric,
+                            quantize_table,
+                            customization_format,
+                            fuse_preprocess,
+                            aligned_input,
+                            ignore_f16_overflow,
+                            do_winograd,
+                            q_group_size,
+                            addr_mode,
+                            matmul_perchannel)
+    options.extend(opt)
+    opt =   tpu_opt_options(quant_input,
+                            quant_output,
+                            quant_input_list,
+                            quant_output_list)
+    options.extend(opt)
+    options = tpu_ada_options(dynamic,
+                              disable_layer_group,
+                              opt,
+                              merge_weight,
+                              op_divide,
+                              group_by_cores,
+                              compress_mode,
+                              future_update_rank,
+                              future_update_list)
+    options.extend(opt)
+    opt = codegen_options(f"{model_name}_{mode}.bmodel",
+                          embed_debug_info,
+                          model_version)
+    options.extend(opt)
+    options.extend(['--deinit="no_save_weight=True"'])
 
-    lower_param = '--convert-top-to-tpu="asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}"'.format(
-        asymmetric, do_winograd, ignore_f16_overflow, q_group_size
-    )
-    options.extend(
-        [
-            lower_param,
-            "--canonicalize",
-            "--weight-fold",
-        ]
-    )
-    # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
-        quant_input, quant_output, quant_input_list, quant_output_list)
-    lg_param = ""
-    if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} lgcache=false"'.format(
-            opt, group_by_cores, compress_mode)
-    subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
-    address_assign_param = '--address-assign'
-    if merge_weight:
-        address_assign_param = (
-            '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"')
-    distribute_param = f"--dev-parallel"
-    parallel_param = f"--core-parallel"
-
-    op_divide_param = ""
-    if op_divide:
-        op_divide_param = "--op-divide"
-    # codegen based on final mlir
-    codegen_param = f'--codegen="model_file={bmodel} embed_debug_info={str(embed_debug_info).capitalize()} model_version={str(model_version).lower()} bmodel_only=True"'
-
-    options.extend(
-        [
-            strip_io_quant_param,
-            "--processor-tpu-optimize",
-            distribute_param,
-            "--weight-reorder",
-            op_divide_param,
-            subnet_param,
-            "--op-reorder",
-            lg_param,
-            parallel_param,
-            address_assign_param,
-            codegen_param,
-            f'--deinit="no_save_weight=True"'
-        ]
-    )
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
