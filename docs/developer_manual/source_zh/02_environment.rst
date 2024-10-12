@@ -59,6 +59,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
+  # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
 
 注意TPU-MLIR工程在Docker中的路径应该是/workspace/tpu-mlir
 
