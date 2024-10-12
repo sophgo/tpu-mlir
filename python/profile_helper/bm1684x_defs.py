@@ -595,6 +595,7 @@ class BaseCommandParser:
         cmd = None
         l, h = cmd_bits
         cmd_key = opdef_1684x.packbits(cmd_buf[l:h])
+
         for op in cmd_set.get(cmd_key,[]):
             if op.is_comp(cmd_buf):
                 # check whether this command is recognized by the operation
@@ -621,10 +622,19 @@ class BaseCommandParser:
             return cmds
         cmd_buf = np.frombuffer(cmd_buf, np.uint8)
         cmd_buf = np.unpackbits(cmd_buf, bitorder="little" )
+        consume_len = 0
         while cmd_buf.size > 0 and len(cmds) < max_num:
             cmd = self.__decode_single(cmd_buf, cmd_bits, cmd_set)
             cmds.append(cmd)
-            cmd_buf = cmd_buf[cmd.len:]
+            offset = cmd.len
+            if cmd.type == 'dma.sys' or cmd.type == 'sys.end':
+                # every command group is stored align to 128 bytes
+                align_size = 128*8
+                offset = (cmd.len + consume_len + align_size - 1)//align_size * align_size - consume_len
+                #print(f"{cmd.type} offset = {offset}, consume_len={consume_len}, num_cmd={len(cmds)}")
+            cmd_buf = cmd_buf[offset:]
+            consume_len += offset
+
         assert len(cmds)<=max_num
         return cmds
 

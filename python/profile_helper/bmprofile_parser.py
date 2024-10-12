@@ -660,11 +660,13 @@ class BMProfileParser:
                                                      command_info.gdma_offset,
                                                      self.archlib.EngineType.GDMA,
                                                      gdma_num, gdma_parser)
+        print(f"parsed gdma command num={len(gdma_command)}")
 
         bd_command = self.__base_read_command_data(command_info.bd_base,
                                                      command_info.bd_offset,
                                                      self.archlib.EngineType.BD,
                                                      bd_num, bd_parser)
+        print(f"parsed tiu command num={len(bd_command)}")
         return [gdma_command, bd_command]
 
     def match_node(self, commands, dyn_node, static_node, node_id_func):
@@ -813,6 +815,8 @@ class BMProfileParser:
                     if e.type == DynExtraType.STRING:
                         d.info.append(str(e.content))
                     elif dyn_type == self.archlib.DynRecordType.NODE_SET:
+                        if len(e.content) == 0:
+                           continue
                         if d.engine == self.archlib.EngineType.GDMA:
                             try:
                                 d.command = gdma_parser.parse(e.content, 1)[0]
