@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "tpu_mlir/Support/Float16.h"
+#include <cmath>
 
 namespace tpu_mlir {
 namespace top {
@@ -218,6 +219,93 @@ LogicalResult ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
   return success();
 }
 
+// Mars3 not support Deconv
+// Deconv (n, c, h, w) -> Upsample(n, c, scale_h*h, scale_w*w) + Conv(N, C, H-1, W-1)
+// + Pad (if kernelShapeAttrs)[0] % 2 == 0) -> (N, C, H, W)
+LogicalResult DeconvToConv::matchAndRewriteImpl(top::DeconvOp op,
+                              PatternRewriter &rewriter) const {
+  if (!module::isMARS3()) {
+    return failure();
+  }
+  auto input_op = op.getOperand(0);
+  auto filter_op = op.getOperand(1);
+  auto bias_op = op.getOperand(2);
 
+  std::string input_name = module::getName(input_op).str();
+  std::string filter_name = module::getName(filter_op).str();
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  NameLoc loc;
+  rewriter.setInsertionPointAfter(op);
+
+  // 1. Upsample:(n, c, h, w) -> (n, c, scale_h*h, scale_w*w)
+  loc = NameLoc::get(rewriter.getStringAttr(input_name + "_upsample"));
+  std::vector<int64_t> strides = *module::getI64Array(op.getStrides());
+  if (strides.size() < 2) {
+    return failure();
+  }
+  auto scale_h = strides[0];
+  auto scale_w = strides[1];
+  attrs.push_back(rewriter.getNamedAttr(
+      "scale_h", rewriter.getI64IntegerAttr((int64_t)scale_h)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "scale_w", rewriter.getI64IntegerAttr((int64_t)scale_w)));
+  operands.push_back(input_op);
+  auto input_shape = module::getShape(op.getInput());
+  auto eleType = module::getElementType(op.getResult());
+  auto upsample_type = RankedTensorType::get(
+    {input_shape[0], input_shape[1], input_shape[2]*scale_h, input_shape[3]*scale_w}, eleType); // {n, c, scale_h*h, scale_w*w}
+  auto input_upsamle = rewriter.create<UpsampleOp>(loc, upsample_type, operands, attrs);
+  attrs.clear();
+  operands.clear();
+  //2. Conv2d: (n, c, scale_h*h, scale_w*w) -> (N ,C ,H ,W)or(N ,C ,scale_h*h-1 ,scale_w*w-1)
+  // strides = [1, 1], already upsample
+  // pad = (stride-1)/2
+  loc = NameLoc::get(rewriter.getStringAttr(filter_name + "_conv2d"));
+  operands.push_back(input_upsamle);
+  operands.push_back(filter_op);
+  operands.push_back(bias_op);
+  auto kernelShapeAttrs = module::getI64Array(op.getKernelShape());
+  if(!kernelShapeAttrs ){
+    return failure();
+  }
+  attrs.emplace_back(rewriter.getNamedAttr("kernel_shape", rewriter.getI64ArrayAttr(*kernelShapeAttrs)));
+  attrs.emplace_back(rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1}))); //upsample->1
+  auto pad = static_cast<long>(floor(((*kernelShapeAttrs)[0]-1.)/2.));
+  attrs.emplace_back(rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({pad, pad, pad, pad}))); //(stride-1)/2
+  attrs.emplace_back(rewriter.getNamedAttr("group", rewriter.getI64IntegerAttr(op.getGroup())));
+  attrs.emplace_back(rewriter.getNamedAttr("dilations", rewriter.getI64ArrayAttr({1, 1})));
+  attrs.emplace_back(rewriter.getNamedAttr("do_relu",rewriter.getBoolAttr(op.getDoRelu())));
+  auto relu_limit = op.getReluLimit().convertToDouble();
+  attrs.emplace_back(rewriter.getNamedAttr("relu_limit",rewriter.getF64FloatAttr(relu_limit)));
+
+  if((*kernelShapeAttrs)[0] % 2 != 1){
+    auto output_shape = module::getShape(op.getResult());
+    auto eleType = module::getElementType(op.getResult());
+    // auto delta = ((*kernelShapeAttrs)[0]-2*pad-1);
+    auto conv_type = RankedTensorType::get(
+      {output_shape[0], output_shape[1], input_shape[2]*scale_h-1, input_shape[3]*scale_w-1}, eleType);
+    auto upsampleconv = rewriter.create<ConvOp>(loc, conv_type, operands, attrs);
+
+  //3. Pad (if kernelShapeAttrs)[0] % 2 == 0) (N ,C ,scale_h*h-1 ,scale_w*w-1) -> (N, C, H, W)
+  //
+    attrs.clear();
+    operands.clear();
+    auto pad_ = output_shape[2] - (input_shape[2]*scale_h-1);
+    attrs.emplace_back(rewriter.getNamedAttr("paddings", rewriter.getI64ArrayAttr({0, 0, 0, 0, 0, 0, pad_, pad_})));
+    attrs.emplace_back(rewriter.getNamedAttr("mode", rewriter.getStringAttr("constant")));
+    attrs.emplace_back(rewriter.getNamedAttr("val",rewriter.getF64FloatAttr(0.0)));
+    operands.push_back(upsampleconv);
+    loc = NameLoc::get(rewriter.getStringAttr(filter_name + "_pad"));
+    auto pad = rewriter.create<PadOp>(loc, op.getResult().getType(), operands, attrs);
+    rewriter.replaceAllUsesWith(op, pad);
+  } else{
+    // no need pad
+    auto upsampleconv = rewriter.create<ConvOp>(loc, op.getResult().getType(), operands, attrs);
+    rewriter.replaceAllUsesWith(op, upsampleconv);
+  }
+  rewriter.eraseOp(op);
+  return success();
+}
 } // namespace top
 } // namespace tpu_mlir

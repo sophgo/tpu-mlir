@@ -44,5 +44,16 @@ protected:
   mlir::LogicalResult matchAndRewriteImpl(top::ConcatOp op,
                                           mlir::PatternRewriter &rewriter) const override;
 };
+
+class DeconvToConv : public OpRewriterPatternEx<top::DeconvOp> {
+public:
+  DeconvToConv(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::DeconvOp>(context, "DeconvToConv", benefit) {}
+
+protected:
+  mlir::LogicalResult matchAndRewriteImpl(top::DeconvOp op,
+                                          mlir::PatternRewriter &rewriter) const override;
+};
+
 } // namespace top
 } // namespace tpu_mlir
