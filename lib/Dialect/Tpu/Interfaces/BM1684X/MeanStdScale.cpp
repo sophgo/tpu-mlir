@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <stdio.h>
 
 using namespace tpu_mlir::backend;
 
@@ -65,4 +66,68 @@ int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684() {
 }
 
 void tpu::MeanStdScaleOp::codegen_global_cv18xx(int64_t layer_id) {
+}
+
+void tpu::MeanStdScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                                int64_t h_step, int64_t d_step,
+                                                int64_t w_step,
+                                                group_type_t group_type,
+                                                local_sec_info_t &sec_info) {
+  auto zero_points = module::getF64Array(getZeroPoints());
+  auto round_mode =
+      round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
+
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  auto f32_param_spec = LocalGenInterface::getGroupInfo(
+      getF32Param(), n_step, h_step, d_step, w_step, c_step);
+  auto grp_info = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+
+  mean_std_scale_local_param_t param{0};
+  param.buffer_addr = (uint32_t)grp_info.buffer_addr;
+  param.f32_param_addr = (uint32_t)f32_param_spec.out_addr;
+  param.in_zp = (int32_t)zero_points->at(0);
+  param.out_zp = (int32_t)zero_points->at(1);
+  param.round_mode = (int32_t)round_mode;
+
+  BM168x::call_local_func("backend_api_mean_std_scale_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
+}
+
+int64_t tpu::MeanStdScaleOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
+  int64_t n, c, h, w;
+  module::getNCHW(getInput(), n, c, h, w);
+  auto intype = module::getStorageType(getInput());
+  int64_t in_dtype_len = intype.getIntOrFloatBitWidth() / 8;
+  int64_t tensor_size = in_lmem_bytes / in_nslice;
+  int64_t buffer_size = (tensor_size / in_dtype_len) * 9;
+  buffer_size += align_up(5 * 4, Arch::EU_BYTES);
+  return buffer_size;
+}
+
+void tpu::MeanStdScaleOp::codegen_local_bm1684(long, long, local_sec_info_t &) {
+  llvm_unreachable("Not Implemented");
+}
+
+void tpu::MeanStdScaleOp::codegen_local_cv18xx(long, long, long, long,
+                                               tpu_mlir::group_type_t,
+                                               tpu_mlir::local_sec_info &,
+                                               long) {
+  llvm_unreachable("Not Implemented");
+}
+
+int64_t tpu::MeanStdScaleOp::getBufferSize_bm1684(long, long, long, long, long,
+                                                  long) {
+  return 0;
+}
+
+int64_t tpu::MeanStdScaleOp::getBufferSize_cv18xx(long, long, long, long, long,
+                                                  long) {
+  return 0;
 }

@@ -818,13 +818,15 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale", [DeclareOpInterfaceMethods<TypeInterface>]> {
+def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
+  [DeclareOpInterfaceMethods<TypeInterface>,DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "MeanStdScale, it's for preprocess.";
   let description = [{
     for preprocess, do multiplier&rshift quantize.
   }];
   let arguments = (
     ins AnyTensor:$input,
+    AnyRankedTensor:$f32_param,
     StrAttr:$quant_mode,
     StrAttr:$customization_format,
     StrAttr:$channel_order,

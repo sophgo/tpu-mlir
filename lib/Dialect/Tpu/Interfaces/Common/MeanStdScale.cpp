@@ -215,3 +215,10 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
 
 bool tpu::MeanStdScaleOp::support_multi_core() { return false; }
 
+LogicalResult tpu::MeanStdScaleOp::LocalGenSupport() {
+  if (module::isBM1684X()) {
+    return success();
+  } else {
+    return failure();
+  }
+}

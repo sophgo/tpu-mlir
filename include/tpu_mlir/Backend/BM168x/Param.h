@@ -2077,6 +2077,14 @@ typedef struct {
 } mean_std_scale_param_t;
 
 typedef struct {
+    uint32_t buffer_addr;
+    uint32_t f32_param_addr;
+    int32_t in_zp;
+    int32_t out_zp;
+    int32_t round_mode;
+} mean_std_scale_local_param_t;
+
+typedef struct {
   int32_t groups;
   int32_t ic;
   int32_t n;
