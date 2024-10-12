@@ -2310,7 +2310,7 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
     F64Attr:$nms_threshold,
     F64Attr:$obj_threshold,
     I64Attr:$keep_topk,
-    I64ArrayAttr:$anchors,
+    F64ArrayAttr:$anchors,
     YoloVersionAttr:$version,
     DefaultValuedAttr<I64Attr, "80">:$class_num,
     DefaultValuedAttr<I64Attr, "3">:$num_boxes,

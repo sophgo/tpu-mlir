@@ -48,7 +48,7 @@ void loweringYoloDetection(PatternRewriter &rewriter, top::YoloDetectionOp op) {
   param.emplace_back(rewriter.getNamedAttr("tiny", rewriter.getBoolAttr(tiny)));
   param.emplace_back(
       rewriter.getNamedAttr("yolo_v4", rewriter.getBoolAttr(yolov4)));
-  auto anchors = module::getI64Array(op.getAnchors());
+  auto anchors = module::getF64Array(op.getAnchors());
   auto num_anchor = anchors->size();
   std::stringstream ss;
   for (int i = 0; i < num_anchor; i++) {

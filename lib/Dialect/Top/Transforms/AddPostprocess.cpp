@@ -15,24 +15,24 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace top {
 
-static const std::vector<int64_t> YOLOV3_ANCHORS = {
+static const std::vector<double> YOLOV3_ANCHORS = {
     10,  13, 16,  30,  33,  23,  // 8
     30,  61, 62,  45,  59,  119, // 16
     116, 90, 156, 198, 373, 326  // 32
 };
 
-static const std::vector<int64_t> YOLOV3_TINY_ANCHORS = {
+static const std::vector<double> YOLOV3_TINY_ANCHORS = {
     10, 14, 23,  27,  37,  58, // 16
     81, 82, 135, 169, 344, 319 // 32
 };
 
-static const std::vector<int64_t> YOLOV4_ANCHORS = {
+static const std::vector<double> YOLOV4_ANCHORS = {
     12,  16,  19,  36,  40,  28,  // 8
     36,  75,  76,  55,  72,  146, // 16
     142, 110, 192, 243, 459, 401  // 32
 };
 
-static const std::vector<int64_t> YOLOV5_ANCHORS_DEFAULT = {
+static const std::vector<double> YOLOV5_ANCHORS_DEFAULT = {
     10,  13, 16,  30,  33,  23,  // 8
     30,  61, 62,  45,  59,  119, // 16
     116, 90, 156, 198, 373, 326  // 32
@@ -71,7 +71,7 @@ public:
 
 protected:
   void getYoloOperandsAndAnchors(std::vector<Value> &operands,
-                                 std::vector<int64_t> &anchors);
+                                 std::vector<double> &anchors);
   void insertYoloOp(OpBuilder &builder);
   void insertSsdOp(OpBuilder &builder);
   void insertDepackRawOp(OpBuilder &builder);
@@ -84,7 +84,7 @@ protected:
 };
 
 void AddPostprocessPass::getYoloOperandsAndAnchors(
-    std::vector<Value> &operands, std::vector<int64_t> &anchors) {
+    std::vector<Value> &operands, std::vector<double> &anchors) {
   std::vector<int64_t> widths;
   auto opds = terminator->getOperands();
   auto num_opds = opds.size();
@@ -162,7 +162,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
 void AddPostprocessPass::insertYoloOp(OpBuilder &builder) {
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  std::vector<int64_t> anchors;
+  std::vector<double> anchors;
   getYoloOperandsAndAnchors(operands, anchors);
   auto loc = NameLoc::get(builder.getStringAttr("yolo_post"));
   attrs.emplace_back(
@@ -176,36 +176,13 @@ void AddPostprocessPass::insertYoloOp(OpBuilder &builder) {
   attrs.emplace_back(
       builder.getNamedAttr("keep_topk", builder.getI64IntegerAttr(topk)));
   attrs.emplace_back(
-      builder.getNamedAttr("anchors", builder.getI64ArrayAttr(anchors)));
+      builder.getNamedAttr("anchors", builder.getF64ArrayAttr(anchors)));
   attrs.emplace_back(
       builder.getNamedAttr("agnostic_nms", builder.getBoolAttr(false)));
   attrs.emplace_back(
       builder.getNamedAttr("version", builder.getStringAttr(post_type)));
   auto new_type =
       RankedTensorType::get({1, 1, batch * topk, 7}, builder.getF32Type());
-
-  // The last operand is one of the output tensors from the YOLO layer
-  auto output_shape = module::getShape(operands.back());
-  int num_classes = 80; // default num_classes set to 80
-
-  if (post_type == "yolov3") {
-    if (output_shape[1] % 3 != 0) {
-      terminator->dump();
-      llvm_unreachable(("output_shape[1] (" + std::to_string(output_shape[1]) + ") is not divisible by 3").c_str());
-    }
-    num_classes = output_shape[1] / 3 - 5;
-  }else if (post_type == "yolov5") {
-    // In yolov5, the output shape is (BatchSize, 25200, 85), 85 = Numclasses + Box[x,y,w,h] + Confidence[c]
-    num_classes = output_shape[2] - 5; // Subtract 5 for bbox coordinates and objectness score
-  }else if (post_type == "yolov8") {
-    // In yolov8, the output shape is (batchSize, 84, 8400), 84 = Num classes + Box[x,y,w,h]
-    num_classes = output_shape[1] - 4; // Subtract 4 for bbox coordinates
-  }
-
-  // Add the num_classes attribute
-  attrs.emplace_back(
-      builder.getNamedAttr("num_classes", builder.getI64IntegerAttr(num_classes)));
-
   auto post_op =
       builder.create<top::YoloDetectionOp>(loc, new_type, operands, attrs);
   terminator->setOperands({post_op.getOutput()});

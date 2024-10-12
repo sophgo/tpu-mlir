@@ -28,7 +28,7 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.nms_threshold = getNmsThreshold().convertToDouble();
   param.obj_threshold = getObjThreshold().convertToDouble();
   param.agnostic_nms = getAgnosticNms();
-  param.anchors = *module::getI64Array(getAnchors());
+  param.anchors = *module::getF64Array(getAnchors());
   param.num_boxes = getNumBoxes();
   param.version = getVersion().str();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
