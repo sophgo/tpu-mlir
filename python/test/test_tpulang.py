@@ -49,7 +49,6 @@ def rand_data(shape, dtype, min=-10, max=10,seed=None):
     raise Exception("Not supported data type: {}!".format(dtype))
 
 
-
 def rand_indices(shape, dtype):
     num_elem = 1
     for i in range(len(shape)):
@@ -202,6 +201,7 @@ class TPULANG_IR_TESTER(object):
             "VitB": (self.test_Vit_B,                   Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
             "MeanStdScale": (self.test_MeanStdScale,    Y, N),
+            "MeanStdScaleConv": (self.test_MeanStdScale_Conv,    Y, N),
             "Rope": (self.test_Rope,                    Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase,          Y, Y),
@@ -382,7 +382,6 @@ class TPULANG_IR_TESTER(object):
         self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="uint16")
         self.test_base_binary_quant(case_name, tpul.max, [1, 3, 32, 32], [1, 32, 32], dtype="int32")
         self.test_base_binary_quant(case_name, tpul.min, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
-
 
     #######################################################################
     # AddShift
@@ -678,9 +677,6 @@ class TPULANG_IR_TESTER(object):
 
     #     # input int8, output int32
     #     _test_dequantint([1, 3, 32, 32])
-
-
-
 
     #######################################################################
     # HModel
@@ -1134,7 +1130,6 @@ class TPULANG_IR_TESTER(object):
             out = matmul_weight(m1, [d*head, H_q], 8158145, -30, dtype=dtype)
             return out
 
-
         def mlp_block(x, shape, dtype):
             H = shape[2]
             mat0 = matmul_weight(x, [H, 4*H], 8158145, -30, dtype=dtype)
@@ -1270,7 +1265,6 @@ class TPULANG_IR_TESTER(object):
             shape = [in_shape[0], 1, int(in_shape[2] * in_shape[3] / 14 / 14), head*d]
             out = vit2(x, shape, d, head, num, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
-
 
         _test_model_def([1, 3, 224, 224], 64, 12, 2, 'float32', "int8", is_quantized=True)
         # _test_insert_shape([1, 3, 224, 224], 64, 8, 1)
@@ -1628,7 +1622,6 @@ class TPULANG_IR_TESTER(object):
 
         _test_lenet([1, 1, 28, 28])
 
-
     #######################################################################
     # Copy
     # ------------
@@ -1674,7 +1667,6 @@ class TPULANG_IR_TESTER(object):
     #     _test_cast([1, 3, 28, 28], dtype="float16")
     #     # input int8, output
     #     _test_cast([1, 3, 28, 28], out_dtype="int8")
-
 
     #######################################################################
     # Clamp
@@ -1742,7 +1734,6 @@ class TPULANG_IR_TESTER(object):
         matmul_output_ = tpul.matmul_int(requantized_output,  weight, None, input_transpose=False, right_transpose=False, output_transpose=False, keep_dims=True, input_zp=0, right_zp=0, out_dtype="int32", out_name="matmul_int_")
         return matmul_output_
 
-
     def test_MatMulRQ_Int_Group(self, case_name):
 
         @tpulang(self.chip)
@@ -1772,7 +1763,6 @@ class TPULANG_IR_TESTER(object):
         _test_matmul([1, 1, 256, 1024], [1, 1, 1024, 1024], [1, 1, 1, 1024], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2)
         _test_matmul([197, 768], [768, 768], [1, 768], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2, right_transpose = True)
 
-
     def test_MatMulRQ_OP(self, case_name):
         @tpulang(self.chip)
         def _test_matmul(shape_x: List[int], shape_y: List[int], bias_shape: List[int] = None, idtype="float32", is_quantized=False, is_fuse_rq=False, has_bias=False,bias_dtype="int32", odtype = "int8", requant_mode=2, round_mode='half_away_from_zero'):
@@ -1793,7 +1783,6 @@ class TPULANG_IR_TESTER(object):
                 self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=is_quantized)
 
         _test_matmul([2 ,197, 768], [2, 768, 768], [2, 1, 768], idtype="int8", odtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2,round_mode='half_up')
-
 
     #######################################################################
     # Maxpool
@@ -1931,8 +1920,6 @@ class TPULANG_IR_TESTER(object):
         _test_avgpool3d([4, 8, 12, 20, 24], kshape = 2, stride = 2, pad = 0)
         _test_avgpool3d([4, 8, 12, 20, 24], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
         _test_avgpool3d([4, 8, 12, 20, 24], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
-
-
 
     #######################################################################
     # Relu
@@ -4056,6 +4043,87 @@ class TPULANG_IR_TESTER(object):
         _test_uint8_to_f16_()
         _test_f32_to_f16_()
 
+    def test_MeanStdScale_Conv(self, case_name):
+        @tpulang(self.chip)
+        def _test_mean_std_scale(idtype="uint8", odtype="int8", shape=[4, 3, 500, 400]):
+            mean = [128.0, 128.0, 128.0]
+            std = [1 / 0.017, 1 / 0.017, 1 / 0.017]
+            scale = [1.0, 1 / 2**6]
+            is_quantized = True
+
+            if idtype == "uint8":
+                # customer_layer_path = os.getenv("CUSTOM_LAYER_PATH")
+                # path = os.path.join(customer_layer_path, "test_if/unittest/data/picture/n02769748_5957.JPEG")
+                # path = os.path.abspath(path)
+                # img_rgb = cv2.imread(path)
+                # img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY).reshape((1,1,img_rgb.shape[0], img_rgb.shape[1]))
+                # data_in = np.array(img_bgr)
+                data_in = np.random.randint(0, 256, size=shape).astype(idtype)
+                input = tpul.Tensor(name="in", dtype=idtype, shape=shape, data=data_in)
+            else:
+                np.random.seed(123)
+                data_in = np.random.random(shape).astype(idtype)
+                # np.savez("random_input.npz", data_in)
+                input = tpul.Tensor(name="in", dtype=idtype, shape=shape, data=data_in)
+
+            # if odtype == "float16":
+            #     is_quantized = False
+            #     self.quant_modes = ["f16"]
+            #     odtype = "float32"
+
+            output = tpul.mean_std_scale(
+                input,
+                std,
+                mean,
+                scale,
+                zero_points=[0, 0],
+                out_name="meanstdscale",
+                odtype=odtype,
+                round_mode="half_up",
+            )
+
+            if odtype in ["int8", "uint8"]:
+                output = tpul.cast(output, "float16")
+
+            kernel_shape = [4, 3, 3, 3]
+            stride = [1, 1]
+            conv = self.conv_op(output, kernel_shape, stride)
+            self.compile_and_check(
+                self.unique_name(case_name),
+                [input],
+                [conv],
+                is_quantized=is_quantized,
+                top_mlir_inference=False,
+            )
+
+        # output i8
+        def _test_int8_to_int8_():
+            _test_mean_std_scale("int8", "int8")
+
+        def _test_uint8_to_int8_():
+            _test_mean_std_scale("uint8", "int8")
+
+        def _test_f32_to_int8_():
+            _test_mean_std_scale("float32", "int8")
+
+        # output f16
+        def _test_int8_to_f16_():
+            _test_mean_std_scale("int8", "float16")
+
+        def _test_uint8_to_f16_():
+            _test_mean_std_scale("uint8", "float16")
+
+        def _test_f32_to_f16_():
+            _test_mean_std_scale("float32", "float16")
+
+        _test_int8_to_int8_()
+        _test_uint8_to_int8_()
+        _test_f32_to_int8_()
+
+        _test_int8_to_f16_()
+        _test_uint8_to_f16_()
+        _test_f32_to_f16_()
+
     ########################################################################
     # ScatterElements case
     # ------------
@@ -4142,7 +4210,6 @@ class TPULANG_IR_TESTER(object):
             updates = [[[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]] ,
             dtype="float16")
-
 
     def test_Rope(self, case_name):
         """Rope"""
@@ -4249,8 +4316,6 @@ class TPULANG_IR_TESTER(object):
                         mul2_saturation = True,
                         add_saturation = True
                         )
-
-
 
     #######################################################################
     # Error Case: some error case
