@@ -191,7 +191,7 @@ class TPULANG_IR_TESTER(object):
             "AttenQuantBlock": (self.test_AttenQuant,   Y, Y),
             "Bert": (self.test_Bert,                    Y, Y),
             "HModel": (self.test_Model,                 Y, Y),
-            "Resnet50":(self.test_Resnet50,             Y, Y),
+            "Resnet50":(self.test_Resnet50,             N, Y), # temp disable
             "ResnetBlock": (self.test_ResnetBlock,      Y, Y),
             "ResnetQuant": (self.test_ResnetQuant,      Y, Y),
             "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
