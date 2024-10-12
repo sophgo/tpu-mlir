@@ -44,6 +44,7 @@
 
 .. code-block:: shell
 
+  # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
 其中， ``myname`` 为容器名称，可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。

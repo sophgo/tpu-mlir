@@ -126,6 +126,7 @@ After unzipping, move the data under ``Data/CLS_LOC/val`` to a directory like mo
 .. code-block:: shell
 
    $ cd path/to/sophon/model-zoo
+   $ mkdir -p dataset/ILSVRC2012/ILSVRC2012_img_val
    $ mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
    # It is also possible to map the dataset directory to dataset/ILSVRC2012/ILSVRC2012_img_val through the soft link ln -s
 

@@ -58,6 +58,7 @@ Make sure the installation package is in the current directory, and then create 
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
   # "myname" is just an example, you can use any name you want
+  # use --privileged to get root permission, if you don't need root permission, please remove this parameter
 
 Note that the path of the TPU-MLIR project in docker should be /workspace/tpu-mlir
 
