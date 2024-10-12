@@ -7,15 +7,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
+struct TopScaleDotProductAttentionSplitV2 : public OpRewriterPatternEx<ScaleDotProductAttentionOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
 
-struct TopScaleDotProductAttentionSplitV2 : public OpRewritePattern<ScaleDotProductAttentionOp> {
-  using OpRewritePattern::OpRewritePattern;
+  TopScaleDotProductAttentionSplitV2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ScaleDotProductAttentionOp>(context, "TopScaleDotProductAttentionSplitV2") {}
 
-  LogicalResult matchAndRewrite(ScaleDotProductAttentionOp op,
+  LogicalResult matchAndRewriteImpl(ScaleDotProductAttentionOp op,
                                 PatternRewriter &rewriter) const override {
     // matmul , div, softmax, matmul
     auto query_op = op.getQuery();
