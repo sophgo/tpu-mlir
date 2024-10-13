@@ -15,7 +15,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690/SG2380/MARS3 2024-8-30
 ``` bash
 
-#bm1684x sha256: a8f8f9271c4512f7d25fe05703520aa65e635fdb
+#bm1684x sha256: e95794a1ef3264c1acfa5c2ef51091fcb3b3f0a7
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 96a214d30804f99c1f61b4cf27c7b6cd856a6f69
+#bm1688 sha256: e95794a1ef3264c1acfa5c2ef51091fcb3b3f0a7
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
