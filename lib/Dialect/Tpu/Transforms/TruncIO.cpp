@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
 
 using namespace llvm;
 
@@ -504,8 +505,7 @@ public:
     auto groupOp = dyn_cast<GroupOp>(blk_op);
     const auto live_ops = find_group_live_ops(groupOp, blk_upd_info);
     Vector<Pair<PValue, int64_t>> loads;
-    int64_t store_base_id;
-    fix_group_flow(groupOp, blk_upd_info, live_ops, loads, store_base_id);
+    int64_t store_base_id = fix_group_flow(groupOp, blk_upd_info, live_ops, loads);
     Vector<Value> yields;
     auto yield_op = get_terminator(groupOp.getOperation());
     for (auto idx : blk_upd_info.rem_out_idxes) {
@@ -610,6 +610,8 @@ private:
       std::string name = module::getName(v).str();
       Vector<NamedAttribute> attrs;
       LayerGroupAttr ginfo = get_ginfo(v.getDefiningOp());
+      attrs.push_back(builder.getNamedAttr(
+        "lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
       attrs.push_back(
         builder.getNamedAttr(
           LocalGenInterface::kLayerGroupAttrName,
@@ -714,7 +716,7 @@ private:
 
   static int64_t fix_group_flow(tpu::GroupOp groupOp, const upd_info_t& blk_upd_info,
                                 const Vector<Operation*>& live_ops,
-                                Vector<Pair<PValue, int64_t>>& loads, int64_t& store_base_id) {
+                                Vector<Pair<PValue, int64_t>>& loads) {
     Vector<Vector<int64_t>> ts_rows;
     get_group_ts_rows(groupOp, ts_rows);
     // [old_id : new_id]
@@ -745,6 +747,7 @@ private:
       new_id++;
     }
     // step2 : fix flow
+    MapVector<int64_t, Vector<int64_t>> inserts;
     for (auto i = 0; i < ts_rows.size(); ++i) {
       for (auto j = 0; j < ts_rows[i].size(); ++j) {
         auto id = ts_rows[i][j];
@@ -759,8 +762,7 @@ private:
             for (auto i = new_id - inc; i < new_id; ++i) {
               ld_ts_row.push_back(i);
             }
-            ts_rows.insert(ts_rows.begin() + i, ld_ts_row);
-            i++;
+            inserts[i + 1] = ld_ts_row;
           }
           ts_rows[i][j] = new_id;
         }
@@ -770,13 +772,16 @@ private:
         i--;
       }
     }
+    for (auto it = inserts.rbegin(); it != inserts.rend(); ++it) {
+      ts_rows.insert(ts_rows.begin() + it->first, it->second);
+    }
     const int num_new_st = blk_upd_info.new_outs.size();
     if (num_new_st) {
       Vector<int64_t> st_ts_row;
       for (auto i = new_id; i < new_id + num_new_st; ++i) {
         st_ts_row.push_back(i);
       }
-      ts_rows.emplace_back(st_ts_row);
+      ts_rows.insert(ts_rows.begin(), st_ts_row);
     }
     set_group_ts_rows(groupOp, ts_rows);
     return new_id;
