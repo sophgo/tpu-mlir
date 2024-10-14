@@ -215,6 +215,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       EmbDenseBwdLowering,
       SoftmaxBwdLowering,
       WeightReorderLowering,
+      RandnLikeLowering,
       RangeLowering,
       ConvBwdWeightLowering,
       GatherNDLowering,

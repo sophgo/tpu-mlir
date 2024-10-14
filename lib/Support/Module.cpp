@@ -1885,8 +1885,12 @@ commonShapeValInfer(mlir::Operation *op,
                     const std::vector<std::vector<int64_t>> &in_shapes_v,
                     const std::vector<int64_t> &out_shape) {
   // support scalar
-  assert(out_shape.size() == 1 || out_shape.size() == 0);
-  auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
+  // assert(out_shape.size() == 1 || out_shape.size() == 0);
+  // auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
+  int64_t real_out_size = 1;
+  for (auto dim : out_shape) {
+    real_out_size *= dim;
+  }
   InferenceParameter p;
   std::vector<std::vector<float_t>> input_datas;
   for (auto &in_shape_v : in_shapes_v) {

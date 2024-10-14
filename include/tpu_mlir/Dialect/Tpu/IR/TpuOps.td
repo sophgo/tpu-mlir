@@ -1420,6 +1420,20 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_RandnLikeOp: Tpu_Op<"RandnLike"> {
+  let summary = "RandnLike operator";
+  let description = [{
+    create a tensor with the same shape as input, and fill with value from normal distribution
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$randn_data
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_RangeOp: Tpu_Op<"Range", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Range operator";
