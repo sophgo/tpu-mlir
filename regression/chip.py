@@ -129,7 +129,7 @@ full_model_list = {
     "yolov3_416_with_det":        (N,      N,       N,      N,      N,      Y,      Y,      N,     N,     N,       N),
     "enet_cf":                    (N,      N,       N,      N,      N,      N,      Y,      N,     N,     N,       N),
     "erfnet_cf":                  (N,      N,       N,      N,      N,      N,      Y,      N,     N,     N,       N),
-    "googlenet_cf":               (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N,     N,       N),
+    "googlenet_cf":               (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N,     N,       Y),
     "icnet_cf":                   (N,      N,       N,      N,      N,      N,      Y,      N,     N,     N,       N),
     "inception_v4_cf":            (N,      Y,       N,      N,      N,      N,      Y,      N,     N,     N,       Y),
     "ssd300_cf":                  (N,      N,       N,      N,      N,      N,      Y,      N,     N,     N,       N),
