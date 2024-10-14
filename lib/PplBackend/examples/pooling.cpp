@@ -23,7 +23,7 @@ void api_avgpool_global(void *param, size_t param_size, void *input_spec,
   int lane_num = 64;
   int eu_bytes = 64;
   std::string chip_str(chip);
-  if (chip_str == "bm1688") {
+  if (chip_str == PPL_BM1688) {
     lane_num = 32;
     eu_bytes = 32;
   }
@@ -65,7 +65,7 @@ void api_avgpool_global(void *param, size_t param_size, void *input_spec,
   std::vector<std::tuple<int *, int, int>> value;
   value.emplace_back(&block_c, merged_c, c_align);
   value.emplace_back(&block_oh, out_spec->shape[2], oh_align);
-  
+
   int ret = split_func(value);
   printf("block [c:%d, oh:%d] vs total[n:%d, c:%d, "
          "oh:%d]\n",

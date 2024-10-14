@@ -42,7 +42,8 @@ void *BM168x::get_system_mem_ptr(uint64_t addr) {
     }
   } else if (L2_SRAM_SIZE > 0 &&
              (L2_SRAM_START_ADDR | cmodel_l2mem_start_addr) <= addr &&
-             addr < (L2_SRAM_START_ADDR | cmodel_l2mem_start_addr) + L2_SRAM_SIZE) {
+             addr < (L2_SRAM_START_ADDR | cmodel_l2mem_start_addr) +
+                        L2_SRAM_SIZE) {
     if (L2_SRAM_START_ADDR != cmodel_l2mem_start_addr) {
       return get_l2mem_addr(addr & (~cmodel_l2mem_start_addr));
     } else {
@@ -53,7 +54,8 @@ void *BM168x::get_system_mem_ptr(uint64_t addr) {
 }
 
 void *BM168x::get_local_mem_ptr(int npu_idx, uint64_t addr) {
-  auto start = static_cast<char *>(this->dl_get_local_memaddr_by_node(0, npu_idx));
+  auto start =
+      static_cast<char *>(this->dl_get_local_memaddr_by_node(0, npu_idx));
   return start + addr;
 }
 
@@ -342,33 +344,31 @@ void BM168x::call_local_func(const char *symbolName, void *params,
 
 typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
                                     void *output, void *pid_node);
-typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
-                                        void *input, void *output,
-                                        const char *chip, void *pid_node);
+
 void BM168x::call_global_func(const char *symbolName, void *params,
                               int param_size, void *input, void *output) {
   auto func = instance()->CastToFPtr<global_backend_api_t>(symbolName);
   func(params, param_size, input, output, (*instance())->cmdid_node);
 }
 
-void BM168x::call_ppl_func(const char *symbolName, void *params, int param_size,
-                           void *input, void *output) {
+static std::string get_ppl_chip() {
   std::string chip_str;
   auto chip = module::getChip();
-  if (chip == module::Chip::BM1684X) {
-    chip_str = "bm1684x";
-  } else if (chip == module::Chip::BM1688) {
-    chip_str = "bm1688";
-  } else if (chip == module::Chip::BM1690) {
-    chip_str = "bm1690";
-  } else {
+  switch (chip) {
+  case module::Chip::BM1684X:
+    chip_str = PPL_BM1684X;
+    break;
+  case module::Chip::BM1688:
+  case module::Chip::CV186X:
+    chip_str = PPL_BM1688;
+    break;
+  case module::Chip::BM1690:
+    chip_str = PPL_BM1690;
+    break;
+  default:
     llvm_unreachable("chip not supported\n");
   }
-
-  auto kernel_func =
-      instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-  kernel_func(params, param_size, input, output, chip_str.c_str(),
-              (*instance())->cmdid_node);
+  return chip_str;
 }
 
 typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
@@ -378,6 +378,31 @@ void BM168x::call_local_func(const char *symbolName, void *params,
                              void *output) {
   auto func = instance()->CastToFPtr<local_backend_api_t>(symbolName);
   func(params, param_size, info, input, output, (*instance())->bdc_node);
+}
+
+typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
+                                        void *input, void *output,
+                                        const char *chip, void *pid_node);
+void BM168x::call_ppl_global_func(const char *symbolName, void *params,
+                                  int param_size, void *input, void *output) {
+  std::string chip_str = get_ppl_chip();
+
+  auto kernel_func =
+      instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
+  kernel_func(params, param_size, input, output, chip_str.c_str(),
+              (*instance())->cmdid_node);
+}
+
+typedef int (*ppl_local_backend_api_t)(void *params, int param_size,
+                                       void *input, void *info, void *output,
+                                       const char *chip, void *pid_node);
+void BM168x::call_ppl_local_func(const char *symbolName, void *params,
+                                 int param_size, void *info, void *input,
+                                 void *output) {
+  std::string chip_str = get_ppl_chip();
+  auto func = instance()->CastToFPtr<ppl_local_backend_api_t>(symbolName);
+  func(params, param_size, info, input, output, chip_str.c_str(),
+       (*instance())->bdc_node);
 }
 
 typedef bool (*force_dynamic_run_func_t)(void *params, int param_size);
@@ -735,14 +760,11 @@ int64_t BM168x::get_gdma_cycle() {
   return dl_get_cmd_id_cycle(code->gdma_node);
 }
 
-int64_t BM168x::get_bdc_cycle() {
-  return dl_get_cmd_id_cycle(code->bdc_node);
-}
+int64_t BM168x::get_bdc_cycle() { return dl_get_cmd_id_cycle(code->bdc_node); }
 
 int64_t BM168x::get_cmd_cycle() {
   return dl_get_cmd_id_cycle(code->cmdid_node);
 }
-
 
 void BM168x::enter_runtime() {
   dl_use_atomic_cmodel();

@@ -28,8 +28,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   int dmax = align_up(_param->common.dim, 32 /*eu num*/);
   int block_m, block_k, block_h;
   std::string chip_str(chip);
-  if (chip_str == "bm1688") {
-    printf("bm1688 chip\n");
+  if (chip_str == PPL_BM1688) {
     if (_param->common.mq == 1) {
       block_m = 32;
       block_k = 352;

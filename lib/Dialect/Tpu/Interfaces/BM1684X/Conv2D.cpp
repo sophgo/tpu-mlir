@@ -131,8 +131,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   }
 #if 0
   if (module::getStorageType(getOutput()).isF16() && common.groups == 1) {
-    BM168x::call_ppl_func("api_conv_global", &spec, sizeof(spec),
-                             input_spec->data(), output_spec->data());
+    BM168x::call_ppl_global_func("api_conv_global", &spec, sizeof(spec),
+                                 input_spec->data(), output_spec->data());
 
   } else {
     BM168x::call_global_func("backend_api_conv_global", &spec, sizeof(spec),

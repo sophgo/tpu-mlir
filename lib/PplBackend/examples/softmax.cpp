@@ -42,7 +42,7 @@ void api_softmax_global(void *param, size_t param_size, void *input_spec,
 
   int lane_num = 64;
   std::string chip_str(chip);
-  if (chip_str == "bm1688") {
+  if (chip_str == PPL_BM1688) {
     // TODO fix
     lane_num = 32;
   }

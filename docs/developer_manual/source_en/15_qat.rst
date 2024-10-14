@@ -1,5 +1,5 @@
-quantzation aware traing
-==========================
+Quantzation aware training
+============================
 
 Basic Principles
 --------------------
@@ -29,7 +29,7 @@ SOPHGO-mq is recommanded to be used in docker container, the docker image can be
 .. code-block:: shell
 
     docker pull sophgo/tpuc_dev:v3.3-cuda
-	
+
 The docker image includes pytorch 2.3.0 and cuda 12.1, and intergrated the environment for tpu-mlir.
 
 Install with setup package
@@ -74,10 +74,10 @@ Add the following python module import interface to the training file:
     from sophgo_mq.convert_deploy import convert_deploy                          #deploy interface
 	import tpu_mlir			# with tpu-mlir introduced, bmodel can be generated in SOPHGO-mq environment
 	from tools.model_runner import mlir_inference  #tpu-mlir inference module, accuracy can be checked by tpu-mlir inference module
-    
+
     #Use the pre-trained ResNet18 model from the torchvision model zoo.
     model = models.__dict__['resnet18'](pretrained=True)
-    
+
     #1.Trace the model, using a dictionary to specify the chip type as BM1690 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
     extra_prepare_dict = {
     'quant_dict': {
@@ -136,7 +136,7 @@ Set reasonable training hyperparameters. The suggestions are as follows:
       --lr=1e-4:The learning rate should be the learning rate when fp32 converges, or even lower；
 
       --optim=sgd:The default is sgd；
-	  
+
 
 .. code-block:: python
 

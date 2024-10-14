@@ -29,8 +29,8 @@ void tpu::RMSNormOp::codegen_global_bm1684x() {
   BM168x::call_global_func("backend_api_rms_norm_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
 #else
-  BM168x::call_ppl_func("api_rms_norm_global", &param, sizeof(param),
-                        input_spec->data(), output_spec->data());
+  BM168x::call_ppl_global_func("api_rms_norm_global", &param, sizeof(param),
+                               input_spec->data(), output_spec->data());
 #endif
 }
 
@@ -63,16 +63,16 @@ int64_t tpu::RMSNormOp::getBufferSize_bm1684x(
   sec_info.out_n_slice = out_nslice;
   sec_info.out_h_slice = out_hslice;
   sec_info.out_w_slice = out_wslice;
-  return BM168x::call_local_bfsz_func("backend_api_rms_norm_local_bfsz",
-                                      &param, sizeof(param), &sec_info,
+  return BM168x::call_local_bfsz_func("backend_api_rms_norm_local_bfsz", &param,
+                                      sizeof(param), &sec_info,
                                       input_spec->data(), output_spec->data());
 }
 
 void tpu::RMSNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                             int64_t h_step, int64_t d_step,
-                                             int64_t w_step,
-                                             group_type_t group_type,
-                                             local_sec_info_t &sec_info) {
+                                           int64_t h_step, int64_t d_step,
+                                           int64_t w_step,
+                                           group_type_t group_type,
+                                           local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
