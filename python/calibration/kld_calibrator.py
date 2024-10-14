@@ -1857,10 +1857,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                         min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                            max_value))
-            f.write("\n")
-            f.write("#asym_op\n")
-            for i, op_name in enumerate(self.asym_op1):
-                f.write("{}\n".format(op_name))
+            if self.args.part_asymmtric:
+                f.write("\n")
+                f.write("#asym_op\n")
+                for i, op_name in enumerate(self.asym_op1):
+                    f.write("{}\n".format(op_name))
         os.remove(cali_table)
         if 'print_debug_info' in self.debug_cmd:
             th_before_tuned = np.array(thresholds_map_list)
