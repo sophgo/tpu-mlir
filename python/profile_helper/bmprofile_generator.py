@@ -918,7 +918,7 @@ class BMProfileGenerator:
             return "UNKNOWN"
 
         def get_inst_io_dtype(cmd):
-            if cmd and cmd.mlir_cmd:
+            if cmd and cmd.mlir_cmd and len(cmd.mlir_cmd.results)>0 and len(cmd.mlir_cmd.operands)>0:
                 dst, src = cmd.mlir_cmd.results[0], cmd.mlir_cmd.operands[0]
                 return (src.dtype.name, dst.dtype.name)
             return ("", "")
