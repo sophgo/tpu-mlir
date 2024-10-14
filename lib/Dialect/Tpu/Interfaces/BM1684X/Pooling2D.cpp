@@ -32,7 +32,7 @@ static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
   spec.src_round_mode = attr.src_round_mode;
   /// TODO: may be need support pad value for pooling2D and pooling 3D
   /// spec.pad_value = attr.pad_value;
-  if(attr.kh ==attr.ih && attr.kw==1){
+  if (attr.kh == attr.ih && attr.kw == 1) {
     spec.stride_h = 1;
   }
   if (attr.kw == attr.iw && attr.kh == 1) {
@@ -92,11 +92,11 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   }
 
 #if 0
-  BM168x::call_ppl_func("api_avgpool_global", &spec, sizeof(spec),
+  BM168x::call_ppl_global_func("api_avgpool_global", &spec, sizeof(spec),
                         input_spec->data(), output_spec->data());
 #else
   BM168x::call_global_func("backend_api_pooling_global", &spec, sizeof(spec),
-                          input_spec->data(), output_spec->data());
+                           input_spec->data(), output_spec->data());
 #endif
 }
 

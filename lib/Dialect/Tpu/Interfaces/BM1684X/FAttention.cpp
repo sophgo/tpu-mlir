@@ -36,8 +36,8 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
                              sizeof(param), input_spec->data(),
                              output_spec->data());
   } else {
-    BM168x::call_ppl_func("api_fattention_global", &param, sizeof(param),
-                          input_spec->data(), output_spec->data());
+    BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
+                                 input_spec->data(), output_spec->data());
   }
 }
 

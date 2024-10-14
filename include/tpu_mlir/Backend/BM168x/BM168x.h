@@ -144,17 +144,24 @@ public:
   // -------------------------------------------------------------------
   // helper functions for global
   // -------------------------------------------------------------------
+  // old call backend function
   static void call_global_func(const char *symbolName, void *params,
                                int param_size);
   static void call_local_func(const char *symbolName, void *params,
                               int param_size);
+  // new call backend function
   static void call_global_func(const char *symbolName, void *params,
                                int param_size, void *input, void *output);
-  static void call_ppl_func(const char *symbolName, void *params,
-                            int param_size, void *input, void *output);
   static void call_local_func(const char *symbolName, void *params,
                               int param_size, void *info, void *input,
                               void *output);
+  // call ppl backend function
+  static void call_ppl_global_func(const char *symbolName, void *params,
+                                   int param_size, void *input, void *output);
+  static void call_ppl_local_func(const char *symbolName, void *params,
+                                  int param_size, void *info, void *input,
+                                  void *output);
+
   static int64_t call_global_bfsz_func(const char *symbolName, void *params,
                                        int param_size, void *input,
                                        void *output);
@@ -367,7 +374,7 @@ public:
   virtual unsigned int get_inst_size(const char *engine_name) = 0;
 
 protected:
-  BM168x(TypeID typeID) : typeID(typeID){};
+  BM168x(TypeID typeID) : typeID(typeID) {};
   virtual ~BM168x() = 0;
   virtual void load_functions();
   virtual void start_env();

@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -52,8 +52,8 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
                              sizeof(param), input_spec->data(),
                              output_spec->data());
 #else
-    BM168x::call_ppl_func("api_softmax_global", &param, sizeof(param),
-                          input_spec->data(), output_spec->data());
+    BM168x::call_ppl_global_func("api_softmax_global", &param, sizeof(param),
+                                 input_spec->data(), output_spec->data());
 #endif
   }
 }
@@ -77,16 +77,14 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   auto stype = module::getStorageType(getInput().getType());
   int32_t padding_flag = 0;
 
-  //aligned with backend
-  if ((stype.isF16() || stype.isBF16())
-      && !getLog()
-      && in_wslice > eu_num
-      && in_wslice % eu_num > 0) {
+  // aligned with backend
+  if ((stype.isF16() || stype.isBF16()) && !getLog() && in_wslice > eu_num &&
+      in_wslice % eu_num > 0) {
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
 
-  #define SIZE (padding_flag == 1 ? sizeof(int16_t): sizeof(float))
+#define SIZE (padding_flag == 1 ? sizeof(int16_t) : sizeof(float))
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
@@ -99,13 +97,11 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   buffer_size +=
       c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float) * 2;
   if (getLog()) {
-    buffer_size +=
-        c_per_npu * align_up(in_hslice * in_wslice, eu_num) * SIZE;
+    buffer_size += c_per_npu * align_up(in_hslice * in_wslice, eu_num) * SIZE;
   }
 
   if (padding_flag) {
-    buffer_size += c_per_npu *
-        align_up(in_hslice * in_wslice, eu_num) * SIZE;
+    buffer_size += c_per_npu * align_up(in_hslice * in_wslice, eu_num) * SIZE;
   }
 
   return buffer_size;
