@@ -110,9 +110,11 @@ void tpu::LRNOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
+  if (p.handle == nullptr) {
+    return failure();
+  }
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
-
   if (out_type.isa<FloatType>()) {
     if (module::isCV18xx()) {
       int64_t n, c, h, w;
@@ -129,6 +131,10 @@ LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
+
+  } else if (out_type.isInteger(8)) {
+    auto lrn = (LRN *)p.handle;
+    lrn->run();
   } else {
     dump();
     llvm_unreachable("not support type");
