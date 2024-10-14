@@ -292,10 +292,17 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
   bool enable_multi_core = false;
-  if (module::getCoreNum() == 2 && loop_num > 1) {
+  auto num_core = module::getCoreNum();
+  if (num_core == 2) {
     enable_multi_core = true;
-    loop_num = loop_num / 2 + loop_num % 2;
+    loop_num = loop_num / num_core + (loop_num % num_core > 0);
   }
+
+  DEBUG_WITH_TYPE("mc_lg_refactor", {
+    if(num_core == 8){
+      loop_num = loop_num / num_core + (loop_num % num_core > 0);
+    }
+  });
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
   int64_t total_layer_cycle = 0, total_gdma_cycle = 0;
@@ -522,6 +529,26 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
       bm168x->dl_sg_stas_reset();
     }
   }
+
+  DEBUG_WITH_TYPE("mc_lg_refactor", {
+    // for multicore implements
+    if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
+      bm168x->set_command_issue_flag(false);
+      bm168x->reset_cmd_id_node();
+      castOp.codegen_global_bm168x();
+      auto full_cycle = bm168x->get_cmd_cycle();
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = compare_global_and_core_parallel"
+                      << "; op_name = " << module::getName(op)
+                      << "; full = " << full_cycle
+                      << "; core_parallel = " << cycle
+                      << "\n";
+      });
+      cycle = std::min(cycle, full_cycle);
+      bm168x->dl_sg_stas_reset();
+    }
+  });
+
   if (splitedOps.size() > 1) {
     removeTempCoreParallelOp(splitedOps);
   }
