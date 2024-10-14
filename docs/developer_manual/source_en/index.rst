@@ -27,7 +27,8 @@ TPU-MLIR Technical Reference Manual
    15_qat
    16_tpulang
    17_custom
-   18_final_mlir
-   19_maskrcnn
+   18_ppl
+   19_final_mlir
+   20_maskrcnn
    Appx.01_nntc2mlir.rst
    Appx.02_tpulang_support_op

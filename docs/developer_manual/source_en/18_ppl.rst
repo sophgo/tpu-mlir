@@ -8,14 +8,14 @@ The implementation of PPL backend operators can be found in the ``tpu-mlir/lib/P
 How to Write and Call Backend Operators
 -----------------------------------------
 
-### Step 1: Implement Two Source Files
+Step 1: Implement Two Source Files
 
 You need to create two source files: one for the device-side ``pl`` code and one for the host-side ``cpp`` code. For the ``fattention`` example, these files are:
 
 - ``fattention.pl``: Implements the ``flash_attention_gqa_f16`` and ``flash_attention_gqa_bf16`` kernel interfaces.
 - ``fattention.cpp``: Implements the ``api_fattention_global`` function to call these kernel interfaces.
 
-### Step 2: Call the Kernel Interface
+Step 2: Call the Kernel Interface
 
 In the function ``void tpu::FAttentionOp::codegen_global_bm1684x()`` within ``FAttention.cpp``, call ``api_fattention_global`` as follows:
 
