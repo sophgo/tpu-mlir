@@ -30,11 +30,11 @@ public:
 private:
   void staging_results(GlobalGenInterface& op);
   void staging_results(LocalGenInterface& op, local_sec_info_t sec_info);
-  void CreateSubNet(func::CallOp call);
-  void codegen(FuncOp funcOp);
-  void codegen_for_group(GroupOp gOp, Operation *prev_op,
+  void visit_subnet(func::FuncOp funcOp, int subnet_id);
+  void visit_static_subnet(func::FuncOp funcOp, int subnet_id);
+  void visit_group_body(GroupOp gOp, Operation *prev_op,
                          Operation *next_op);
-  void codegen_for_overlap_ops(
+  void handle_group_overlap(
       std::map<int64_t, std::vector<Operation *>> cur_other_downs,
       std::map<int64_t, std::vector<Operation *>> cur_other_ups,
       Operation *prev_op, Operation *next_op, int64_t cur_ts,
@@ -50,6 +50,7 @@ private:
   typedef std::vector<int8_t> staging_mem_t;
   ModuleOp module;
   BM168x *bm168x;
+  std::vector<int> num_subnet_ops; // used for progress bar
   std::map<std::string, mlir::Value> value_map;
   std::map<std::string, std::shared_ptr<staging_mem_t>> mem_map;
 };
