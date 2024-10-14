@@ -4,6 +4,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/BM168xEvaluator.h"
+#include "progressbar.hpp"
 
 #define DEBUG_TYPE "tpu_evaluator"
 
@@ -68,12 +69,19 @@ void BM168xEvaluator::allocate_resources() {
   all_tensor_names.clear();
   value_map.clear();
   mem_map.clear();
+  num_subnet_ops.clear();
   module.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
     if (func.getName().str() == "main") {
     } else if (auto call = module::getCallOp(func)) {
+      auto &block = func.getFunctionBody().front();
+      for (auto v : block.getArguments()) {
+        fixValueAddr(v);
+        auto name = module::getName(v).str();
+        value_map[name] = v;
+      }
+      num_subnet_ops.push_back(0);
       func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-        if (op == func.getOperation() || isa<top::NoneOp>(op)) {
-        } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
+        if (auto wOp = dyn_cast<top::WeightOp>(op)) {
           auto v = wOp.getOutput();
           auto addr = fixValueAddr(v);
           auto name = module::getName(v).str();
@@ -81,14 +89,41 @@ void BM168xEvaluator::allocate_resources() {
           const auto data = wOp.read_as_byte();
           void* ptr = bm168x->get_system_mem_ptr(addr);
           memcpy(ptr, data->data(), data->size());
-        } else {
-          for (auto v : op->getOperands()) {
-            if (v.getDefiningOp() == nullptr) { // v is an argument of FuncOp
-              fixValueAddr(v);
-              auto name = module::getName(v).str();
-              value_map[name] = v;
-            }
+          return WalkResult::advance();
+        }
+        if (auto gOp = dyn_cast<GroupOp>(op)) {
+          num_subnet_ops.back()++;
+          for (auto v : op->getResults()) {
+            if (module::getNumElements(v) == 0)
+              continue;
+            fixValueAddr(v);
           }
+          auto &body = gOp.getBody().front();
+          body.walk([&](Operation *lop) {
+            if (isa<tpu::LoadOp, tpu::StoreOp>(lop)) {
+              ;
+            } else if (auto yOp = dyn_cast<tpu::YieldOp>(lop)) {
+              for (auto v : lop->getOperands()) {
+                if (module::getNumElements(v) == 0)
+                  continue;
+                fixValueAddr(v);
+              }
+            } else {
+              for (auto v : lop->getResults()) {
+                if (module::getNumElements(v) == 0)
+                  continue;
+                auto name = module::getName(v).str();
+                all_tensor_names.push_back(name);
+                value_map[name] = v;
+                auto bytes = get_staging_bytes(v);
+                mem_map[name] = std::make_shared<staging_mem_t>(bytes);
+              }
+            }
+          });
+          return WalkResult::skip();
+        }
+        if (auto globalOp = dyn_cast<GlobalGenInterface>(op)) {
+          num_subnet_ops.back()++;
           for (auto v : op->getResults()) {
             if (module::getNumElements(v) == 0)
               continue;
@@ -99,36 +134,7 @@ void BM168xEvaluator::allocate_resources() {
             auto bytes = get_staging_bytes(v);
             mem_map[name] = std::make_shared<staging_mem_t>(bytes);
           }
-          if (auto gOp = dyn_cast<GroupOp>(op)) {
-            auto &body = gOp.getBody().front();
-            body.walk([&](Operation *op) {
-              if (isa<tpu::LoadOp, tpu::StoreOp>(op)) {
-                ;
-              } else if (auto yOp = dyn_cast<tpu::YieldOp>(op)) {
-                for (auto v : op->getOperands()) {
-                  if (module::getNumElements(v) == 0)
-                    continue;
-                  fixValueAddr(v);
-                  auto name = module::getName(v).str();
-                  all_tensor_names.push_back(name);
-                  value_map[name] = v;
-                  auto bytes = get_staging_bytes(v);
-                  mem_map[name] = std::make_shared<staging_mem_t>(bytes);
-                }
-              } else {
-                for (auto v : op->getOperands()) {
-                  if (module::getNumElements(v) == 0)
-                    continue;
-                  auto name = module::getName(v).str();
-                  all_tensor_names.push_back(name);
-                  value_map[name] = v;
-                  auto bytes = get_staging_bytes(v);
-                  mem_map[name] = std::make_shared<staging_mem_t>(bytes);
-                }
-              }
-            });
-            return WalkResult::skip();
-          }
+          return WalkResult::advance();
         }
         return WalkResult::advance();
       });
@@ -343,36 +349,13 @@ BM168xEvaluator::getTensorShape(const std::string &name) {
 void BM168xEvaluator::invoke() {
   bm168x->enter_runtime();
 
+  int subnet_id = 0;
   module.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
     if (func.getName().str() == "main") {
       return WalkResult::advance();
     }
     if (auto call = module::getCallOp(func)) {
-      auto mode = getRunMode(func);
-
-      switch (mode) {
-      case RunMode::TPU_STATIC: {
-        CreateSubNet(call);
-      } break;
-      // case RunMode::TPU_DYNAMIC: {
-      //   auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
-      //   CreateSubNet(call, std::move(subnet_ir_), context);
-      // } break;
-      // case RunMode::CPU: {
-      //   CreateCPUSubNet(call);
-      // } break;
-      // // actually use switch subnet
-      // case RunMode::LOOP:
-      // case RunMode::SWITCH: {
-      //   CreateSwitchSubNet(call);
-      // } break;
-      // case RunMode::MERGE: {
-      //   CreateMergeSubNet(call);
-      // } break;
-      default:
-        llvm_unreachable("Not Implemented");
-        break;
-      }
+      visit_subnet(func, subnet_id);
     }
     return WalkResult::advance();
   });
@@ -479,10 +462,12 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   }
 }
 
-void BM168xEvaluator::codegen(FuncOp funcOp) {
+void BM168xEvaluator::visit_static_subnet(FuncOp funcOp, int subnet_id) {
 
+  progressbar bar(num_subnet_ops[subnet_id]);
   funcOp.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (auto groupOp = dyn_cast<GroupOp>(op)) {
+      bar.update();
       Operation *prev_op = op->getPrevNode();
       while (prev_op && !isa<GroupOp, GlobalGenInterface>(prev_op)) {
         prev_op = prev_op->getPrevNode();
@@ -491,11 +476,12 @@ void BM168xEvaluator::codegen(FuncOp funcOp) {
       while (next_op && !isa<GroupOp, GlobalGenInterface>(next_op)) {
         next_op = next_op->getNextNode();
       }
-      codegen_for_group(groupOp, prev_op, next_op);
+      visit_group_body(groupOp, prev_op, next_op);
       return WalkResult::skip();
     }
 
     if (auto globalOp = dyn_cast<GlobalGenInterface>(op)) {
+      bar.update();
       LLVM_DEBUG(llvm::dbgs()
                  << "codegen op: '" << module::getName(globalOp) << "'\n");
       globalOp.codegen_global_bm168x();
@@ -505,7 +491,7 @@ void BM168xEvaluator::codegen(FuncOp funcOp) {
   });
 }
 
-void BM168xEvaluator::codegen_for_group(GroupOp gOp, Operation *prev_op,
+void BM168xEvaluator::visit_group_body(GroupOp gOp, Operation *prev_op,
                                         Operation *next_op) {
 
   auto nsecs = gOp.getNsecs();
@@ -661,7 +647,7 @@ void BM168xEvaluator::codegen_for_group(GroupOp gOp, Operation *prev_op,
       // process overlap ops
       bool first_compute_loop = stage_idx == 1;
       bool last_compute_loop = (draining_period && draining_idx == 1);
-      codegen_for_overlap_ops(cur_other_downs, cur_other_ups, prev_op, next_op,
+      handle_group_overlap(cur_other_downs, cur_other_ups, prev_op, next_op,
                               ts, first_compute_loop, last_compute_loop);
 
       bm168x->merge_sync_id();
@@ -701,7 +687,7 @@ void BM168xEvaluator::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
-void BM168xEvaluator::codegen_for_overlap_ops(
+void BM168xEvaluator::handle_group_overlap(
     std::map<int64_t, std::vector<Operation *>> cur_other_downs,
     std::map<int64_t, std::vector<Operation *>> cur_other_ups,
     Operation *prev_op, Operation *next_op, int64_t cur_ts,
@@ -755,9 +741,16 @@ void BM168xEvaluator::codegen_for_overlap_ops(
   }
 }
 
-void BM168xEvaluator::CreateSubNet(func::CallOp call) {
-  auto func = module::getFuncOp(module, call.getCallee());
-  codegen(func);
+void BM168xEvaluator::visit_subnet(func::FuncOp func, int subnet_id) {
+  auto mode = getRunMode(func);
+  switch (mode) {
+  case RunMode::TPU_STATIC: {
+    visit_static_subnet(func, subnet_id);
+  } break;
+  default:
+    llvm_unreachable("Not Implemented");
+    break;
+  }
 }
 
 } // namespace tpu
