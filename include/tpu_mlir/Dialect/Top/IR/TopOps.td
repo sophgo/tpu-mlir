@@ -1183,6 +1183,21 @@ def Top_ArangeOp: Top_Op<"Arange"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_RandnLikeOp: Top_Op<"RandnLike"> {
+  let summary = "randn_like operator, y = randn_like(x)";
+  let description = [{
+    create a tensor with the same shape as input, and fill with value from normal distribution
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$randn_data
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 def Top_RangeOp: Top_Op<"Range"> {
   let summary = "Range operator";
   let description = [{

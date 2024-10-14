@@ -237,6 +237,7 @@ class OnnxConverter(BaseConverter):
             "PRelu": lambda node: self.convert_prelu_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
             "QuantizeLinear": lambda node: self.convert_qlinear_op(node),
+            "RandomNormalLike": lambda node: self.convert_random_normal_op(node),
             "Range": lambda node: self.convert_range_op(node),
             "Reciprocal": lambda node: self.convert_reciprocal_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
@@ -544,7 +545,7 @@ class OnnxConverter(BaseConverter):
         return self.dynamic_shapes[name]
 
     def get_dynamic_op_shape(self, model):
-        dynamic_op = ["Range"]
+        dynamic_op = ["RandomNormalLike", "Range"]
         ori_outputs = []
         ori_outputs.extend(model.graph.output)
         del self.model.graph.output[:]
@@ -1334,6 +1335,22 @@ class OnnxConverter(BaseConverter):
                              loc=self.get_loc(final_name),
                              ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_random_normal_op(self, onnx_node):
+        assert (onnx_node.op_type == "RandomNormalLike")
+        input =  self.getOp(onnx_node.inputs[0])
+        weight_shape = self.getDynamicShape(onnx_node.name)
+        weight = np.random.randn(*weight_shape).astype(np.float32)
+        weight_name = onnx_node.name + "_weight"
+        self.addWeight(weight_name, weight)
+        randn_data = self.getWeightOp(weight_name)
+
+        randn_like_op = top.RandnLikeOp(self.unranked_type,
+                                        input,
+                                        randn_data,
+                                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                        ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, randn_like_op)
 
     def convert_range_op(self, onnx_node):
         assert (onnx_node.op_type == "Range")

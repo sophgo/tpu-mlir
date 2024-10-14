@@ -2196,4 +2196,8 @@ typedef struct MaskRCNN_mask_pooler_global_param {
   unsigned long long global_buffer_3_ptr_tmp_res;
   unsigned long long global_buffer_4_ptr_rois_tmp;
 } MaskRCNN_mask_pooler_global_param_t;
+
+typedef struct randn_like_spec {
+  uint32_t max_shape[MAX_SHAPE_DIMS];
+} randn_like_spec_t;
 #endif
