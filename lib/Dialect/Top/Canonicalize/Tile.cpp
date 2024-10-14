@@ -24,7 +24,16 @@ struct TopFuseTile : public OpRewriterPatternEx<TileOp> {
       return failure();
     }
     auto next_op = *op->user_begin();
-    if (isa<AddOp, SubOp, MulOp, MinOp, MaxOp>(next_op)) {
+    if(isa<AddOp>(next_op)) { // return failure when meet AddConstOp
+      for (auto operand : next_op->getOperands()) {
+        if (auto wOp = operand.getDefiningOp()) {
+          if (isa<WeightOp>(wOp)) {
+            return failure();
+          }
+        }
+      }
+    }
+    if (isa<AddOp, SubOp, MulOp, MinOp, MaxOp>(next_op)) { // do broadcast
       auto shape0 = module::getShape(op.getInput());
       auto shape1 = module::getShape(op.getOutput());
       for (int i = 0; i < shape0.size(); ++i) {
