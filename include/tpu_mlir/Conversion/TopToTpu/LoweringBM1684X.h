@@ -25,9 +25,13 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
                   top::OP##Op op) const override;                              \
   };
 
+SHAPE_LOWERING_BM1684X(Add)
 SHAPE_LOWERING_BM1684X(Shape)
 SHAPE_LOWERING_BM1684X(Concat)
 SHAPE_LOWERING_BM1684X(Unsqueeze)
+SHAPE_LOWERING_BM1684X(Permute)
+SHAPE_LOWERING_BM1684X(Reshape)
+SHAPE_LOWERING_BM1684X(Reverse)
 SHAPE_LOWERING_BM1684X(Squeeze)
 SHAPE_LOWERING_BM1684X(Slice)
 SHAPE_LOWERING_BM1684X(Reduce)

@@ -213,6 +213,7 @@ typedef enum fw_layer_type {
   FW_BMNET_SHAPE_CLIP = 165,
   FW_BMNET_SHAPE_POW = 166,
   FW_BMNET_RANDNLIKE = 167,
+  FW_BMNET_SHAPE_TRANSPOSE = 168,
       // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;

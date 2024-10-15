@@ -12,6 +12,25 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void AddTryLowering::Lowering(PatternRewriter &rewriter, top::AddOp op) const {
+  auto opds = op->getOperands();
+  auto all_shape = std::all_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
+  });
+  if (all_shape) {
+    std::vector<Value> operands;
+    for (auto in : opds) {
+      operands.push_back(in);
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Add")));
+    Type new_type =
+    RankedTensorType::get(module::getShape(op.getOutput()),
+                          IntegerType::get(op.getOutput().getContext(), 32));
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
+  }
+}
+
 void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
                                bool asymmetric) const {
   auto op = addOp.getOperation();
@@ -91,6 +110,9 @@ void AddLowering::LoweringINT4(PatternRewriter &rewriter, top::AddOp op,
 }
 
 void AddLowering::LoweringF32(PatternRewriter &rewriter, top::AddOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f32<tpu::AddOp>(rewriter, op);
 }
 

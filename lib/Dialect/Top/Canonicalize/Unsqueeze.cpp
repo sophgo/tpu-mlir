@@ -62,6 +62,10 @@ struct TopFuseUnsqueeze : public OpRewriterPatternEx<UnsqueezeOp> {
         return failure();
       }
       op.getOutput().replaceAllUsesWith(former_op.getInput());
+      auto former_former_op = former_op.getInput().getDefiningOp();
+      if (!isa<top::InputOp>(former_former_op)) {
+        former_former_op->setLoc(op.getLoc());
+      }
       rewriter.eraseOp(op);
       rewriter.eraseOp(former_op);
       return success();

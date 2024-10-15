@@ -78,4 +78,11 @@ void top::PermuteOp::shape_inference() {
     out_shape.push_back(in_shape[(*in_order)[i]]);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())){
+    auto shape_v = module::getShapeTensorValue(getInput());
+    std::vector<std::vector<int64_t>> input_shape_v;
+    input_shape_v.push_back(shape_v);
+    auto out_shape_v = module::commonShapeValInfer(getOperation(), input_shape_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), out_shape_v);
+  }
 }

@@ -14,21 +14,27 @@ namespace bm1684x {
 
 void MulTryLowering::Lowering(PatternRewriter &rewriter, top::MulOp op) const {
   auto opds = op->getOperands();
-  auto with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd) {
+  auto all_shape = std::all_of(opds.begin(), opds.end(), [](Value opd) {
     return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
   });
-  auto all_shape_wight = std::all_of(opds.begin(), opds.end(), [](Value opd) {
-    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>() ||
-           module::isWeight(opd);
-  });
-  if (with_shape && !all_shape_wight) {
-    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-      try_insert_host2device(op, idx);
+  if (all_shape) {
+    std::vector<Value> operands;
+    for (auto in : opds) {
+      operands.push_back(in);
     }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Mul")));
+    Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+      rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);                           
   }
 }
 
 void MulLowering::LoweringF32(PatternRewriter &rewriter, top::MulOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f32<tpu::MulOp>(rewriter, op);
 }
 void MulLowering::LoweringINT4(PatternRewriter &rewriter, top::MulOp op,

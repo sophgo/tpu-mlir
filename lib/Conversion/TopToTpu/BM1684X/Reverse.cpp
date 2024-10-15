@@ -12,6 +12,23 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void ReverseTryLowering::Lowering(PatternRewriter &rewriter,
+                                  top::ReverseOp op) const {
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+
+  auto v = op.getResult();
+  auto shape = module::getShape(v);
+  auto ctx = v.getContext();
+  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeReverseOp>(op, new_type, op.getOperand(), attrs);
+}
+
 void ReverseLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::ReverseOp op) const {
   lowering_common_f32<tpu::ReverseOp>(rewriter, op);

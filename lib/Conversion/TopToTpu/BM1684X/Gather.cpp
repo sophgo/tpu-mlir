@@ -44,6 +44,7 @@ static void LoweringGather(PatternRewriter &rewriter, top::GatherOp op,
 
 void GatherLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
+  try_insert_host2device(op.getOperation(), 1);
   auto new_type = getQuantFloatType(op.getOutput());
   LoweringGather(rewriter, op, new_type);
 }
@@ -66,6 +67,7 @@ void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
+  try_insert_host2device(op.getOperation(), 1);
   auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
   LoweringGather(rewriter, op, new_type);
 }
