@@ -43,15 +43,6 @@ pip install tpu_mlir
 | 05 | TPU 内存 | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 06 | TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 
-此外，我们还为任何对我们的项目感兴趣并愿意与我们一同参与开发工作的朋友发布了一系列任务：
-
-| 序列 | 任务列表 |
-| :---: | --- |
-| 01 | [Rewrite Patterns for PermuteOp](https://github.com/sophgo/tpu-mlir/issues/93) |
-| 02 | [Shape Inference Implement](https://github.com/sophgo/tpu-mlir/issues/81) |
-| 03 | [mlir2onnx tool Optimize](https://github.com/sophgo/tpu-mlir/issues/80) |
-
-更多任务请查看[Issue](https://github.com/sophgo/tpu-mlir/issues)。
 
 如果你在完成上述任务时有任何疑问，可以在我们的[问答平台](https://ask.tpumlir.org/questions)中提问或查看现有答案。
 
@@ -141,7 +132,7 @@ model_transform.py \
     --mlir yolov5s.mlir
 ```
 
-`model_transform.py`支持的参数如下:
+`model_transform.py`支持的主要参数如下（完整参数信息请查看开发参考手册）:
 
 | **参数名**           | 必选？ | **说明**            |
 | ------------------- | ----- | ------------------- |
@@ -178,13 +169,13 @@ model_deploy.py \
   --model yolov5s_1684x_f16.bmodel
 ```
 
-model_deploy.py的相关参数说明如下：
+model_deploy.py的主要参数说明如下（完整参数信息请查看开发参考手册）：
 
 | **参数名**           | 必选？ | **说明**                       |
 | ------------------- | ----- | ----------------------------- |
 | mlir                | 是    | 指定mlir文件                                              |
-| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
-| processor           | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
+| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8         |
+| processor           | 是    | 指定模型将要用到的平台     |
 | calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
 | tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
 | correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |

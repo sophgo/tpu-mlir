@@ -46,16 +46,6 @@ Here are some resources to help you better understand the project:
 | 05 | TPU Memory | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 06 | TPU-MLIR Practice | [To Onnx Format](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Graph Optimization](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Operator Support](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Model Support](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Fuse Preprocess](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Accuracy Validation](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 
-In addition, we also published a series of tasks for any of you interested in our project and would like to develop it with us:
-
-| Index | Tasks |
-| :---: | --- |
-| 01 | [Rewrite Patterns for PermuteOp](https://github.com/sophgo/tpu-mlir/issues/93) |
-| 02 | [Shape Inference Implement](https://github.com/sophgo/tpu-mlir/issues/81) |
-| 03 | [mlir2onnx tool Optimize](https://github.com/sophgo/tpu-mlir/issues/80) |
-
-For More tasks please check [Issue](https://github.com/sophgo/tpu-mlir/issues).
-
 If you have any questions while doing the tasks above, you can ask or check the existing answers in our [Q&A Platform](https://ask.tpumlir.org/questions).
 
 # How to Build
@@ -144,7 +134,7 @@ model_transform.py \
     --mlir yolov5s.mlir
 ```
 
-The arguments of `model_transform.py`:
+Main arguments of `model_transform.py` (for complete information please check the technical reference manual):
 
 | **Argument**           | Required？ | **Description**            |
 | ------------------- |  :-:  | ------------------- |
@@ -182,13 +172,13 @@ model_deploy.py \
   --model yolov5s_1684x_f16.bmodel
 ```
 
-The arguments of `model_deploy.py`:
+Main arguments of `model_deploy.py` (for complete information please check the technical reference manual):
 
 | **Argument**           | Required？ | **Description**                       |
 | ------------------- | :-: | ----------------------------- |
 | mlir                | Yes    | Mlir file                                             |
-| quantize            | Yes    | Quantization type (F32/F16/BF16/INT8)                     |
-| processor           | Yes    | The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future     |
+| quantize            | Yes    | Quantization type (F32/BF16/F16/INT8)                     |
+| processor           | Yes    | The platform that the model will use.      |
 | calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
 | tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
 | correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
