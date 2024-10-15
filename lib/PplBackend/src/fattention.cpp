@@ -54,7 +54,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   }
 
   bool success = false;
-  while (1) {
+  while (block_m > 0 && block_k > 0) {
     if (in_spec[0].dtype == DTYPE_FP16) {
       ret = flash_attention_gqa_f16(
           chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
@@ -76,17 +76,14 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
       success = true;
       break;
     } else if (ret == -1) {
-      printf("local mem not enough, reduce block size");
-      // assert(0);
       block_m -= 2;
       block_k -= 2;
       continue;
-    } else {
-      assert(0);
     }
+    break;
   }
   if (!success) {
-    assert(0 && "tiling failed\n");
+    assert(0 && "fattention compile failed\n");
   }
 }
 
