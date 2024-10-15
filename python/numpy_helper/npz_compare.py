@@ -24,13 +24,10 @@ def parse_args(args_list):
     parser = argparse.ArgumentParser(description='Compare two npz tensor files.')
     parser.add_argument("target_file", help="Comparing target file")
     parser.add_argument("ref_file", help="Comparing reference file")
-    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument('--verbose', '-v', action='count', default=0,
+                        help="print full message")
     parser.add_argument("--tolerance", type=str, default='0.99,0.99',
                         help="tolerance for cos/euclid similarity")
-    parser.add_argument('--op_info', type=str,
-                        help="A csv file op_info, including order and dequant threshold")
-    parser.add_argument("--dequant", action='store_true',
-                        help="Do dequantization flag, use threshold table provided in --op_info")
     parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
     parser.add_argument("--full-array", action='store_true',
                         help="Dump full array data when comparing failed")
@@ -43,6 +40,8 @@ def parse_args(args_list):
                         help="Compare along axis, usually along axis 1 as per-channel")
     parser.add_argument("--fuzzy_match", action='store_true',
                         help="fuzzy_match")
+    parser.add_argument("--forall", '-a', action='store_true',
+                        help="whether print all the arrays or not.")
     args = parser.parse_args(args_list)
     # yapf: enable
     return args
@@ -115,7 +114,7 @@ def dequantize(d1, threshold):
     return d1
 
 
-def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close,
+def compare_one_array(tc : TensorCompare, npz1, npz2, name, verbose, lock, dic, int8_tensor_close,
                       per_axis_compare):
     lock.acquire()
     d1 = npz1.get(name)
@@ -133,7 +132,7 @@ def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_clos
     except:
         print("Error: {} in two npz file is not same shape. {} v.s. {}".format(
             name, d1.shape, d2.shape))
-        result = (False, tc.NOT_MATCH, {}, None)
+        result = (False, tc.NOT_MATCH, 0, {}, None)
         dic[name] = result
         return result
     result = tc.compare(d1, d2, verbose, int8_tensor_close, per_axis_compare)
@@ -222,7 +221,7 @@ def npz_compare(args_list, log_level="normal"):
     stats = TensorCompareStats()
 
     names_list = list(names)  # deep copy
-    if len(names_list) > 200:
+    if not args.forall and len(names_list) > 200:
         step = len(names_list) // 200
         if step > 1:
             names_list = names_list[::step]
@@ -255,6 +254,8 @@ def npz_compare(args_list, log_level="normal"):
         for j in processes:
             j.join()
         gc.collect()
+
+    print('\n', flush=True)
 
     for name in names:
         if dic.get(name) is None:
