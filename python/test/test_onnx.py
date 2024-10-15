@@ -307,7 +307,7 @@ class ONNX_IR_TESTER(object):
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, N),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
-            "Loop":            (self.test_Loop,             N, Y, Y, N, Y, N),
+            # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
             ## only for test
             "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }

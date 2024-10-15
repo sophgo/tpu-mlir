@@ -36,6 +36,23 @@ static bool check_unlowering(mlir::Operation *op) {
   return false;
 }
 
+void ReshapeTryLowering::Lowering(PatternRewriter &rewriter,
+                                  top::ReshapeOp op) const {
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+
+  auto v = op.getResult();
+  auto shape = module::getShape(v);
+  auto ctx = v.getContext();
+  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeReshapeOp>(op, new_type, op.getOperands(), attrs);
+}
+
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
   if (op.getShapeT()) {

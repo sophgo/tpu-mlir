@@ -1015,12 +1015,19 @@ typedef struct transpose_param {
   int num_core;
 } transpose_param_t;
 
+typedef struct shape_transpose_param {
+  uint32_t order[MAX_SHAPE_DIMS];
+} shape_transpose_param_t;
 typedef struct reshape_spec {
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
   int eu_align;
 } reshape_spec_t;
 
+typedef struct shape_reshape_param {
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+} shape_reshape_param_t;
 typedef struct {
   int pad[4][2];
   int type;
@@ -1326,6 +1333,10 @@ typedef struct {
   int axis;
 } reverse_global_param_t;
 
+typedef struct shape_reverse_param {
+  int dims;
+  int axis;
+} shape_reverse_param_t;
 typedef struct {
   depth2space_common_spec_t common;
 } depth2space_global_spec_t;

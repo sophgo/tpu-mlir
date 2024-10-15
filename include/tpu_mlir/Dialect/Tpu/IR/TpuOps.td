@@ -1487,6 +1487,21 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_ShapeReshapeOp:Tpu_Op<"ShapeReshape",[
+  ShapeProducer, ShapeConsumer]> {
+  let summary = "ShapeReshape operation";
+  let description = [{
+    Returns a tensor with the same type/values as the input, with a new shape
+    specified by the shape argument. Reshape may operate on tensors of any rank.
+    No data conversion happens during a reshape operation.
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$shape
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "ShapeAssign operator";
@@ -1504,6 +1519,19 @@ def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign", [
 
 def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
   let summary = "Reverse operation";
+  let description = [{
+    Reverse on input
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64Attr:$axis
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_ShapeReverseOp:Tpu_Op<"ShapeReverse", [
+  ShapeProducer,ShapeConsumer]> {
+  let summary = "ShapeReverse operation";
   let description = [{
     Reverse on input
   }];
@@ -2042,6 +2070,26 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [
     I64ArrayAttr:$order,
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    permute_attr_t parseParam();
+  }];
+}
+
+def Tpu_ShapeTransposeOp: Tpu_Op<"ShapeTransposeOp",[
+  ShapeProducer, ShapeConsumer]> {
+
+  let summary = "ShapeTransposeOp operator";
+
+  let description = [{
+      Perform permute on input.
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input,
+    I64ArrayAttr:$order
   );
 
   let results = (outs AnyRankedTensor:$output);
