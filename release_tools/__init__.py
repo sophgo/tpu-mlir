@@ -32,12 +32,10 @@ new_path = [
 ]
 os.environ["PATH"] = join_path(*new_path, os.getenv("PATH"))
 os.environ["PYTHONPATH"] = join_path(
-    [
-        f"{package_path}/",
-        f"{package_path}/python/",
-        f"{package_path}/regression/",
-        f"{package_path}/customlayer/python/",
-    ],
+    f"{package_path}/",
+    f"{package_path}/python/",
+    f"{package_path}/regression/",
+    f"{package_path}/customlayer/python/",
     os.getenv("PYTHONPATH"),
 )
 os.environ.setdefault("OMP_NUM_THREADS", "4")
