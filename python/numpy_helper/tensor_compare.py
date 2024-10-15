@@ -317,8 +317,8 @@ class TensorCompareStats():
                 is_close = bool(result[1] == TensorCompare.CLOSE)
                 is_similar = bool(result[1] == TensorCompare.SIMILAR)
                 is_pass = bool(is_similar or is_close or is_equal)
-                cos = float(result[2]["cosine"]) if has_similarity(result[1]) else 1.0
-                euc = float(result[2]["euclid"]) if has_similarity(result[1]) else 1.0
-                sqnr = float(result[2]["sqnr"]) if has_similarity(result[1]) else float('-inf')
+                cos = float(result[3]["cosine"]) if has_similarity(result[1]) else 1.0
+                euc = float(result[3]["euclid"]) if has_similarity(result[1]) else 1.0
+                sqnr = float(result[3]["sqnr"]) if has_similarity(result[1]) else float('inf')
                 f.write("{}, {}, {}, {}, {}, {}, {}\n".format(name, op, qtype, is_pass, cos, euc,
                                                               sqnr))
