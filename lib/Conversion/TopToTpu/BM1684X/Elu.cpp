@@ -48,7 +48,11 @@ void EluLowering::LoweringINT8(PatternRewriter &rewriter, top::EluOp op,
 void EluLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::EluOp op) const {
   set_elu_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if(module::isMARS3()){
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  }else{
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  }
 }
 void EluLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::EluOp op) const {

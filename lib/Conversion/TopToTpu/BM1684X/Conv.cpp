@@ -57,7 +57,10 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   if (module::isWeight(op.getFilter()) == false) {
-    LoweringF32(rewriter, op);
+    if(module::isMARS3())
+      LoweringBF16(rewriter, op);
+    else
+      LoweringF32(rewriter, op);
     return;
   }
 
