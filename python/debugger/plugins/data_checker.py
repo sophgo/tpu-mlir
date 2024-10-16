@@ -235,6 +235,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         super().__init__(tdb)
 
         self.ref_data = []
+        self.desire_op = []
         self.ref_data_from_inference = []
         self.mlir_ref = False
         for ref_fn in tdb.reference_data_fns:
@@ -540,6 +541,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         return None
 
     def collect_infer_data(self, operand: TLValue, actual, desired):
+        if self.desire_op and operand.name not in self.desire_op:
+            return
         if not self.mlir_ref:
             self.collect_infer_data_from_ref(operand, actual, desired)
         else:
