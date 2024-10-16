@@ -6,10 +6,6 @@ OUT=$4
 CHIP=$5
 ARG=$6
 
-if [ x${PPL_SRC_PATH} = x ]; then
-  PPL_SRC_PATH=$PROJECT_ROOT/ppl_backend/pl/
-fi
-
 OPTION_ARG=""
 if [ x$ARG != x ]; then
   OPTION_ARG="--const-arg $ARG"
