@@ -200,16 +200,19 @@ def mlir_lowering(top_mlir: str,
 def tpu_opt_options(quant_input: bool = False,
                     quant_output: bool = False,
                     quant_input_list: str = "",
-                    quant_output_list: str = "") :
+                    quant_output_list: str = "",
+                    mlir_disable_threading: bool = True) :
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list)
     # yapf: disable
-    options = [
-        "--mlir-disable-threading",
+    options = []
+    if mlir_disable_threading:
+        options.extend(["--mlir-disable-threading"])
+    options.extend([
         strip_io_quant_param,
         "--processor-tpu-optimize",
-    ]
+    ])
     return options
 
 def tpu_ada_options(dynamic: bool = False,
@@ -439,43 +442,44 @@ def origin_mlir_txt_to_bmodel(converter,
                               matmul_perchannel: bool = False):
 
     options = ["--init"]
-    opt = top_opt_options(add_postprocess)
-    options.extend(opt)
-    opt =  lowering_options(mode,
-                            chip,
-                            num_device,
-                            num_core,
-                            cali_table,
-                            asymmetric,
-                            quantize_table,
-                            customization_format,
-                            fuse_preprocess,
-                            aligned_input,
-                            ignore_f16_overflow,
-                            do_winograd,
-                            q_group_size,
-                            addr_mode,
-                            matmul_perchannel)
-    options.extend(opt)
-    opt =   tpu_opt_options(quant_input,
-                            quant_output,
-                            quant_input_list,
-                            quant_output_list)
-    options.extend(opt)
-    options = tpu_ada_options(dynamic,
-                              disable_layer_group,
-                              opt,
-                              merge_weight,
-                              op_divide,
-                              group_by_cores,
-                              compress_mode,
-                              future_update_rank,
-                              future_update_list)
-    options.extend(opt)
-    opt = codegen_options(f"{model_name}_{mode}.bmodel",
-                          embed_debug_info,
-                          model_version)
-    options.extend(opt)
+    new_options = top_opt_options(add_postprocess)
+    options.extend(new_options)
+    new_options =  lowering_options(mode,
+                                    chip,
+                                    num_device,
+                                    num_core,
+                                    cali_table,
+                                    asymmetric,
+                                    quantize_table,
+                                    customization_format,
+                                    fuse_preprocess,
+                                    aligned_input,
+                                    ignore_f16_overflow,
+                                    do_winograd,
+                                    q_group_size,
+                                    addr_mode,
+                                    matmul_perchannel)
+    options.extend(new_options)
+    new_options =   tpu_opt_options(quant_input,
+                                    quant_output,
+                                    quant_input_list,
+                                    quant_output_list,
+                                    False)
+    options.extend(new_options)
+    new_options =   tpu_ada_options(dynamic,
+                                    disable_layer_group,
+                                    opt,
+                                    merge_weight,
+                                    op_divide,
+                                    group_by_cores,
+                                    compress_mode,
+                                    future_update_rank,
+                                    future_update_list)
+    options.extend(new_options)
+    new_options = codegen_options(f"{model_name}_{mode}.bmodel",
+                                  embed_debug_info,
+                                  model_version)
+    options.extend(new_options)
     options.extend(['--deinit="no_save_weight=True"'])
 
     log_file = ""
