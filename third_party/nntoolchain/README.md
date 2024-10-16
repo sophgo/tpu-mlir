@@ -97,7 +97,7 @@ build from tpuv7-runtime 1d1c1fbc4c876be4bcce8d7a79afafae447270e9
 ```bash
 mkdir -p -p build/emulator
 cd -p build/emulator
-cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
+cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=ON -DUSING_TP_DEBUG=ON ../..
 make -j$(nproc)
 cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp cdmlib/host/cdm_runtime/libtpuv7_rt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
