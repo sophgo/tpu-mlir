@@ -17,8 +17,6 @@ public:
 
   mlir::LogicalResult
   matchAndRewrite(SourceOp op, mlir::PatternRewriter &rewriter) const override {
-    if (module::isMARS3() && patternName == "MatMulHdimBatchPattern")
-      return failure();
     mlir::LogicalResult result = matchAndRewriteImpl(op, rewriter);
     if (mlir::succeeded(result)) {
       if (!patternName.empty()) {
