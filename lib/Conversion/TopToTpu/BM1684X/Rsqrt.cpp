@@ -20,7 +20,10 @@ static void set_rsqrt_attr(PatternRewriter &rewriter, top::RsqrtOp op) {
 
 void RsqrtLowering::LoweringF32(PatternRewriter &rewriter, top::RsqrtOp op) const {
   set_rsqrt_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void RsqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::RsqrtOp op,
@@ -39,12 +42,18 @@ void RsqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::RsqrtOp op,
 
 void RsqrtLowering::LoweringBF16(PatternRewriter &rewriter, top::RsqrtOp op) const {
   set_rsqrt_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void RsqrtLowering::LoweringF16(PatternRewriter &rewriter, top::RsqrtOp op) const {
   set_rsqrt_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3())
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void RsqrtLowering::LoweringF8(PatternRewriter &rewriter, top::RsqrtOp op) const {
