@@ -84,6 +84,7 @@ class MAIN_ENTRY(object):
             "multi_core_model": self.run_multi_core_test,
             "cuda": self.run_cuda_test,
             "maskrcnn": self.run_maskrcnn_test,
+            "tdb": self.run_tdb_test,
         }
 
         self.results = []
@@ -289,6 +290,15 @@ class MAIN_ENTRY(object):
         ret = self._run_script_test("test_MaskRCNN")
         self.time_cost.append(f"run_MaskRCNN: {int(t.elapsed_time())} seconds")
         return SUCCESS if ret else FAILURE
+    
+    def run_tdb_test(self):
+        # return exit status
+        t = Timer()
+        # run scripts under $REGRESSION_OUT/script_test
+        print("======= TDB test ======")
+        ret = self._run_script_test("test_tdb")
+        self.time_cost.append(f"run_TDB: {int(t.elapsed_time())} seconds")
+        return SUCCESS if ret else FAILURE
 
     def run_all(self, test_set):
         t = Timer()
@@ -307,7 +317,7 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda", "maskrcnn"]
+    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda", "maskrcnn", "tdb"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')

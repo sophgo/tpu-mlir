@@ -299,6 +299,7 @@ def bmodel_inference_combine(
     dump_cmd_info: bool = True,
     skip_check: bool = True,  # disable data_check to increase processing speed
     run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
+    desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt 
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
     using_memory_opt: bool = False, # required when is_soc=True
     enable_soc_log: bool = False, # required when is_soc=True
@@ -317,8 +318,6 @@ def bmodel_inference_combine(
         reference_data_fn=reference_data_fn,
         extra_plugins=["progress"],
         extra_check=[],
-        # ddr_size=2**32,
-        # fast_checker=run_by_op,
         is_soc=is_soc,
         args={
             "run_by_atomic": not run_by_op,
@@ -332,6 +331,7 @@ def bmodel_inference_combine(
     plugin.out_fixed = out_fixed
     plugin.is_soc = is_soc
     plugin.skip_check = skip_check
+    plugin.desire_op = desire_op
 
     tdb.message(f"dump mode = {plugin.dump_mode}")
     tdb.do_run("")
@@ -411,6 +411,8 @@ def bmodel_inference_combine(
         remote_input = os.path.basename(input_data_fn)
         remote_ref = os.path.basename(reference_data_fn)
         exec_command = f"cd {tools_path} && source envsetup.sh && nohup python3 soc_bmodel_infer.py --path {tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
+        if desire_op:
+            exec_command +=f" --desire_op {','.join(desire_op)}"
         if out_fixed:
             exec_command += " --out_fixed"
         if enable_soc_log:
@@ -446,12 +448,18 @@ def bmodel_inference_combine(
 
         if enable_soc_log:
             progress_get(
-                "log file",
+                "stdout file",
                 os.path.join(save_path, "log.txt"),
                 os.path.join(tools_path, "log.txt"),
                 progress,
             )
-            print(f"log file recieved at {os.path.join(save_path, 'log.txt')}")
+            progress_get(
+                "stderr file",
+                os.path.join(save_path, "nohup.out"),
+                os.path.join(tools_path, "nohup.out"),
+                progress,
+            )
+            print(f"log file recieved at {os.path.join(save_path, 'log.txt')} and {os.path.join(save_path, 'nohup.out')}")
 
         # retrieve results
         remote_infer_combine_path = os.path.join(tools_path, f"soc_infer_{remote_ref}")

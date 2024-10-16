@@ -4843,6 +4843,7 @@ bmodel_inference_combine
           dump_cmd_info: bool = True,
           skip_check: bool = True,  # disable data_check to increase processing speed
           run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
+          desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
           is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
           using_memory_opt: bool = False, # required when is_soc=True
           enable_soc_log: bool = False, # required when is_soc=True
@@ -4871,6 +4872,7 @@ bmodel_inference_combine
 * dump_cmd_info: Bool类型，表示将当前bmodel中包含的所有原子指令对应的final.mlir的信息保存成txt文件，保存路径在save_path下。
 * skip_check: Bool类型，启用此项可禁用数据对比，提高推理速度。soc模式下默认不进行数据对比。
 * run_by_op: Bool类型，启用后按OP粒度运行，禁用时为按原子指令粒度运行。按OP粒度运行速度较快，但当一个OP中包含过多原子指令时可能会引发timeout错误。
+* desire_op: List类型，其中当传入多个String类型的名字时，只会dump出给定名字的tensor。默认dump所有层tensor。
 * is_soc: Bool类型，表示是否启用soc模式进行推理。
 * using_memory_opt: Bool类型，启用后会减小在device端的内存消耗，但会增加耗时。推荐在大模型时启用。
 * enable_soc_log: Bool类型，启用此项打印并在save_path下保存log日志。

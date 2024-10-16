@@ -130,7 +130,9 @@ def collect_without_mem_opt(operand, origin_shape, reshape, slices, actual, npz_
     npz_in_disk[operand.name] = tmp.reshape(origin_shape)
 
 
-def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, npz_in_disk, use_memory_opt):
+def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, npz_in_disk, use_memory_opt, desire_op):
+    if desire_op and operand.name not in desire_op:
+        return
     if operand.name not in ref:
         return
     if use_memory_opt and operand.name in npz_in_disk:
@@ -187,6 +189,7 @@ def infer_combine(
     using_memory_opt,
     is_operand=True,
     enable_log=False,
+    desire_op=[],
 ):
     global log_txt
     memref = value.memref
@@ -196,7 +199,7 @@ def infer_combine(
     else:
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
     desired = get_ref_data(value, ref_data)
-    collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data, using_memory_opt)
+    collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data, using_memory_opt, desire_op)
     if enable_log:
         if is_operand:
             log_txt += f"gather operand slice: {value}\n"
@@ -249,6 +252,12 @@ def main():
         action="store_true",
         help="Whether to run by atomic cmds, instead of running by ops as default.",
     )
+    parser.add_argument(
+        "--desire_op",
+        type=str,
+        default="",
+        help="Whether to only dump specific ops, dump all ops as default.",
+    )
     args = parser.parse_args()
     return args
 
@@ -289,6 +298,7 @@ def collect_before_compute(
             args.using_memory_opt,
             is_operand=True,
             enable_log=args.enable_log,
+            desire_op=[desire_op.strip() for desire_op in args.desire_op.split(",")] if args.desire_op!="" else [],
         )
 
 
@@ -305,6 +315,7 @@ def collect_after_compute(
         args.using_memory_opt,
         is_operand=False,
         enable_log=args.enable_log,
+        desire_op=[desire_op.strip() for desire_op in args.desire_op.split(",")] if args.desire_op!="" else [],
     )
 
 

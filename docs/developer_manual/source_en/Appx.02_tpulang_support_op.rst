@@ -3932,6 +3932,7 @@ Definition
             dump_cmd_info: bool = True,
             skip_check: bool = True,  # disable data_check to increase processing speed
             run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
+            desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             using_memory_opt: bool = False, # required when is_soc=True
             enable_soc_log: bool = False, # required when is_soc=True
@@ -3960,6 +3961,7 @@ Parameters
 * dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`.
 * skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIE mode.
 * run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
+* desire_op: List type, specify this option to dump specific tensors, dump all tensor as defalut.
 * cmodel_skip_check: Bool type, enable this to skip data check to speed up inference.
 * is_soc: Bool type, representing whether to use in soc mode.
 * using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
