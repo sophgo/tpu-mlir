@@ -51,7 +51,11 @@ void GatherLowering::LoweringF32(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if(module::isMARS3()){
+    LoweringBF16(rewriter, op);
+  }else{
+    LoweringF16(rewriter, op);
+  }
 }
 
 void GatherLowering::LoweringINT4(PatternRewriter &rewriter, top::GatherOp op,
