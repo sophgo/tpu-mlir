@@ -238,7 +238,7 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
 If you are using the default KLD calibration method, simply remove the ``cali_method`` parameter.
 
 Notes:1.Make sure to specify the chip parameter as bm1684. 2.The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
-3.The ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``bc`` parameter in the operation.
+3.The ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``bc`` parameter in the operation. 4. Shape calculation ops will be found and set as float in model_name_shape_ops qtable saved in the current directory, the content of this file can be merged by hand with following mix-precision setting files.
 
 Overview of TPU-MLIR Mixed Precision Quantization
 ==================================================
