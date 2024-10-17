@@ -18,6 +18,7 @@ from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
+from calibration.shape_ops import ShapeOps
 from utils.log_setting import logger
 
 def parse_method_list(input_str):
@@ -78,6 +79,9 @@ if __name__ == '__main__':
             tune_ds.dump("./selected_tune_image_list.txt")
 
     log_level = "DEBUG" if args.debug_log else "INFO"
+
+    shape_ops=ShapeOps(args)
+    shape_ops.run()
 
     # mix precision
     if args.search == 'search_qtable':
