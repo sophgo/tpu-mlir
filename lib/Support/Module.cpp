@@ -60,6 +60,7 @@ static Chip chip = Chip::ALL;
 static Platform platform = Platform::ONNX;
 static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
 static std::string weightFileName = "";
+static bool b_weight_in_mem = false;
 static std::string debug_cmd = "";
 std::unordered_map<std::string, int> patternMatchCounts;
 std::mutex patternMatchCountsMutex;
@@ -87,6 +88,14 @@ void init(ModuleOp module) {
 // int32_t cur_log_level = 0;
 void init_loglevel(int32_t log_level) {
     SetLogFlag(log_level);
+}
+
+void setWeightInMemFlag(bool enable) {
+  b_weight_in_mem = enable;
+}
+
+bool getWeightInMemFlag() {
+  return b_weight_in_mem;
 }
 
 top::NoneOp getNoneOp(Operation *op) {

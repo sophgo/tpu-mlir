@@ -63,12 +63,13 @@ void BM1684X::start_env() {
   BM168x::start_env();
   assert(core_num != 0);
   dl_backend_api_set_core_info(0, core_num);
-  dl_allow_store_cmd();
+  dl_allow_store_cmd(); // TODO: remove it!
   dl_forbid_atomic_cmodel();
   dl_load_lookup_tables();
 }
 
 void BM1684X::before_codegen() {
+  dl_allow_store_cmd();
   BM168x::before_codegen();
   dl_backend_api_clear_tpu_inst_data();
 }
@@ -76,6 +77,7 @@ void BM1684X::before_codegen() {
 void BM1684X::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
   dl_store_cmd_end();
+  dl_forbid_store_cmd();
 }
 
 void BM1684X::load_custom_functions() {

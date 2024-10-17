@@ -39,7 +39,7 @@ def is_fp(dtype, width = None):
         return True
     return False
 
-def rand_data(shape, dtype, min=-10, max=10,seed=None):
+def rand_data(shape, dtype, min=-10, max=10, seed=None):
     if seed is not None:
         np.random.seed(seed)
     if dtype in ['float32', 'float16']:
@@ -4421,10 +4421,8 @@ def test_all_base(tester: TPULANG_IR_TESTER):
     processes = []
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
-    if error_cases:
-        print("====== test_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
-    else:
-        print("====== test_tpulang.py --chip {} TEST Success ======".format(tester.chip))
+    print("====== test_tpulang.py --chip {} TEST {} ======".format(
+        tester.chip, 'Failed' if error_cases else 'Success'))
     return error_cases, success_cases
 
 def test_all(tester: TPULANG_IR_TESTER):
@@ -4452,7 +4450,10 @@ if __name__ == "__main__":
         for case in tester.test_function:
             print(case)
         exit(0)
-    dir = "tpulang_test_{}".format(args.chip) if not args.path else args.path
+    if args.path:
+        dir = args.path
+    else:
+        dir = "tpulang_test_{}{}".format(args.chip, "_no_save" if args.no_save else "")
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":

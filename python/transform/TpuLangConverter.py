@@ -136,6 +136,7 @@ def assert_with_out_name(func):
             return func(*args, **kwargs)
         except AssertionError as e:
             raise AssertionError(f"{e}. out_name: {out_name if out_name else ', '.join(out_names)}")
+    wrapper.__name__ = func.__name__
     return wrapper
 
 class Scalar:

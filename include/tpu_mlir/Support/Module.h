@@ -58,6 +58,8 @@ namespace module {
 // init module by ModuleOp in init pass
 void init(ModuleOp module);
 void init_loglevel(int32_t log_level);
+void setWeightInMemFlag(bool enable);
+bool getWeightInMemFlag();
 
 extern std::unordered_map<std::string, int> patternMatchCounts;
 extern std::mutex patternMatchCountsMutex;
