@@ -441,7 +441,7 @@ def origin_mlir_txt_to_bmodel(converter,
                               future_update_list: str = "",
                               matmul_perchannel: bool = False):
 
-    options = ["--init"]
+    options = []
     new_options = top_opt_options(add_postprocess)
     options.extend(new_options)
     new_options =  lowering_options(mode,
@@ -451,6 +451,7 @@ def origin_mlir_txt_to_bmodel(converter,
                                     cali_table,
                                     asymmetric,
                                     quantize_table,
+                                    None,
                                     customization_format,
                                     fuse_preprocess,
                                     aligned_input,
@@ -490,7 +491,9 @@ def origin_mlir_txt_to_bmodel(converter,
     import pymlir
     import sys
     mlir_txt = converter.get_mlir_txt()
+    weight_option = "weight_in_mem=True"
     if log_level == "quiet":
+        options.insert(0, f'--init="{weight_option}"')
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
@@ -502,11 +505,13 @@ def origin_mlir_txt_to_bmodel(converter,
     else:
         if log_level == "simple":
             options = [opt for opt in options if not opt.startswith('--init')]
-            options.insert(0, '--init="level=1"')
+            options.insert(0, f'--init="{weight_option} level=1"')
         elif log_level == "only-layer-group":
             options = [opt for opt in options if not opt.startswith('--init')]
-            options.insert(0, '--init="level=2"')
+            options.insert(0, f'--init="{weight_option} level=2"')
             # pymlir.debug(["layer-group","LayerGroupUtil"]) #todo
+        else:
+            options.insert(0, f'--init="{weight_option}"')
         print("options: ", options)
         pymlir.run_pass_pipeline(mlir_txt, options)
     return get_matched_patterns(log_file)
@@ -520,7 +525,7 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
         cmd.append('-vv')
     if fuzzy_match:
         cmd.append('--fuzzy_match')
-    _os_system(cmd,log_level=log_level)
+    _os_system(cmd, log_level=log_level)
 
 
 # TOPTOTOSA

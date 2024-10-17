@@ -24,6 +24,7 @@ public:
     module::init(mOp);
     backend::Arch::init(freq);
     module::init_loglevel(this->level);
+    module::setWeightInMemFlag(weight_in_mem);
   }
 };
 

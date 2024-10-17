@@ -101,18 +101,30 @@ def compile(name: str,
             ctm_format = getCustomFormat(input.pixel_format, input.channel_format)
             fuse = True
             break
+    # [NOTE] Please sync options for no_save !!!
     if not no_save:
         save_input_reference(model_name=name, refs=refs)
-        model_transform(name, converter,log_level=log_level)
+        model_transform(name, converter, log_level=log_level)
         compare = cmp and refs != None
-        model_lowering_and_inference(model_name=name, quant_mode="int8", chip=TpuLang.chip, \
-                                    inference=mlir_inference, cmp=compare, asymmetric=asymmetric,\
-                                    ctm_format=ctm_format, fuse=fuse, log_level=log_level)
-        bmodel_generate_and_inference(model_name=name, quant_mode="int8", inference=bmodel_inference,\
-                                        dynamic=dynamic, opt=opt, log_level=log_level, embed_debug_info=embed_debug_info)
+        model_lowering_and_inference(model_name=name, quant_mode="int8",
+                                     inference=mlir_inference, cmp=compare,
+                                     log_level=log_level,
+                                     chip=TpuLang.chip, asymmetric=asymmetric,
+                                     ctm_format=ctm_format, fuse=fuse)
+        bmodel_generate_and_inference(model_name=name, quant_mode="int8",
+                                      inference=bmodel_inference,
+                                      log_level=log_level,
+                                      dynamic=dynamic, opt=opt,
+                                      embed_debug_info=embed_debug_info)
     else:
-        origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode="int8",
-                                  chip=TpuLang.chip, asymmetric=asymmetric, dynamic=dynamic, log_level=log_level)
+        origin_mlir_txt_to_bmodel(converter=converter,
+                                  model_name=name, mode="int8",
+                                  log_level=log_level,
+                                  chip=TpuLang.chip, asymmetric=asymmetric,
+                                  customization_format=ctm_format,
+                                  fuse_preprocess=fuse,
+                                  dynamic=dynamic, opt=opt,
+                                  embed_debug_info=embed_debug_info)
 
 
 def compile_f32(name: str,
@@ -141,6 +153,7 @@ def compile_f32(name: str,
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
+    # [NOTE] Please sync options for no_save !!!
     if not no_save:
         save_input_reference(model_name=name, refs=refs)
         model_transform(name, converter, log_level=log_level)
@@ -151,14 +164,23 @@ def compile_f32(name: str,
             model_top_inference(model_name=name, cmp=compare, log_level=log_level)
         for m in mode_list:
             tpu_mlir_compare = cmp and top_mlir_inference
-            model_lowering_and_inference(model_name=name, quant_mode=m, chip=TpuLang.chip,\
-                                        inference=tpu_mlir_inference, cmp=tpu_mlir_compare, log_level=log_level)
-            bmodel_generate_and_inference(model_name=name, quant_mode=m, inference=bmodel_inference,\
-                                        dynamic=dynamic, opt=opt, log_level=log_level,embed_debug_info=embed_debug_info)
+            model_lowering_and_inference(model_name=name, quant_mode=m,
+                                         inference=tpu_mlir_inference,
+                                         cmp=tpu_mlir_compare,
+                                         log_level=log_level,
+                                         chip=TpuLang.chip)
+            bmodel_generate_and_inference(model_name=name, quant_mode=m,
+                                          inference=bmodel_inference,
+                                          log_level=log_level,
+                                          dynamic=dynamic, opt=opt,
+                                          embed_debug_info=embed_debug_info)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter, model_name=name, mode=m,
-                                      chip=TpuLang.chip, dynamic=dynamic, log_level=log_level)
+                                      log_level=log_level,
+                                      chip=TpuLang.chip,
+                                      dynamic=dynamic, opt=opt,
+                                      embed_debug_info=embed_debug_info)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level:str = 'normal'):
@@ -204,7 +226,7 @@ def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, as
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
-                  customization_format=ctm_format, fuse_preprocess=fuse,log_level=log_level)
+                  customization_format=ctm_format, fuse_preprocess=fuse, log_level=log_level)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
@@ -299,7 +321,7 @@ def bmodel_inference_combine(
     dump_cmd_info: bool = True,
     skip_check: bool = True,  # disable data_check to increase processing speed
     run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
-    desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt 
+    desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
     using_memory_opt: bool = False, # required when is_soc=True
     enable_soc_log: bool = False, # required when is_soc=True
