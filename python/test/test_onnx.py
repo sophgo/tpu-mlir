@@ -3831,13 +3831,12 @@ class ONNX_IR_TESTER(object):
         out_shapes = ([4, 9, 10, 11, 12, 7], )
         for i, s in enumerate(shapes):
             graph_txt = """
-                %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Add(a, b)
                     output = Add(x, c)
                 }
-                """ % (case_name, i, "".join(map(str,
-                                      dims)), bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
