@@ -7,7 +7,7 @@
 #
 # ==============================================================================
 import struct
-from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple
+from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple, Type
 from enum import Enum, IntEnum
 import functools
 import ctypes
@@ -562,6 +562,7 @@ class BaseTpuCmd(BaseCmd):
         subnet_id=0,
         core_id=0,
         param_fn=None,
+        cmd_id=None,
     ) -> None:
         self.reg = reg
         self.buf = buf
@@ -632,7 +633,7 @@ class RegIndex:
     def __repr__(self):
         return str(self.storage)
 
-    def get(self, key, default) -> BaseTpuCmd:
+    def get(self, key, default) -> Type[BaseTpuCmd]:
         if key in self.storage:
             return self.storage[key]
         return default

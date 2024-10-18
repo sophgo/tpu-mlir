@@ -27,70 +27,8 @@ class ConcatFusePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
                                 PatternRewriter &rewriter) const override {
-    if (op.getOnlyMerge()) {
+    if (!op.supportInplace()){
       return failure();
-    }
-    if (op.getDoRelu()) {
-      return failure();
-    }
-    if (module::isBM1684Family() &&
-        module::isUniformQuantized(op.getOutput())) {
-      // 1684 4N mode not support
-      return failure();
-    }
-    auto shape = module::getShape(op.getOutput());
-    int outer_dim = std::accumulate(shape.begin(), shape.begin() + op.getAxis(),
-                                    1, std::multiplies<int64_t>());
-    if (outer_dim != 1) {
-      return failure();
-    }
-    int multi_use_times = 0;
-    for (auto in : op.getInputs()) {
-      if (module::isWeight(in)) {
-        return failure();
-      }
-      int same_op_times = 0;
-      if (in.hasOneUse() == false) {
-        multi_use_times++;
-        for (auto v : op.getInputs()) {
-          if (in == v) {
-            same_op_times++;
-          }
-        }
-
-        // if value is used by multiple ConcatOp, only one ConcatOp should be
-        // setOnlyMerge
-        for (auto user : in.getUsers()) {
-          if (auto other_cat = dyn_cast<tpu::ConcatOp>(user)) {
-            if (other_cat.getOnlyMerge()) {
-              return failure();
-            }
-          }
-        }
-
-        if (same_op_times > 1) {
-          return failure();
-        }
-      }
-      if (multi_use_times > 2) {
-        return failure();
-      }
-      auto in_op = in.getDefiningOp();
-      if (in_op == nullptr) {
-        // return failure();
-      } else if (isa<tpu::ConcatOp>(in_op)) {
-        return failure();
-      } else if (auto rshape = dyn_cast<tpu::ReshapeOp>(in_op)) {
-        auto in2 = rshape.getInput();
-        if (in2.getDefiningOp() == nullptr || in2.hasOneUse() == false) {
-          return failure();
-        }
-      } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(in_op)) {
-        auto p = sliceOp.parseParam();
-        if (p.fusible) {
-          return failure();
-        }
-      }
     }
     op.setOnlyMerge(true);
     return success();

@@ -35,7 +35,7 @@ def BModel2MLIR(bmodel_file):
     return BModel2MLIR(bmodel)
 
 
-def BModelCMDIter(bmodel: dis.BModel) -> Iterator[Tuple[Tuple, dis.CmdGroup]]:
+def BModelCMDIter(bmodel: dis.BModel) -> Iterator[dis.SubNet]:
     for net in bmodel.net:
         for param in net.parameter:
             for subnet in param.sub_net:

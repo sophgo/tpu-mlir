@@ -81,6 +81,43 @@ public:
 
 protected:
   bool consider_inplace_;
+  shape_secs_t max_shape_secs_;
+  int64_t min_total_secs_;
+  void sc_method_brute_force(const LgInfo &lg_info,
+                             shape_secs_t &shape_secs,
+                             bool allow_bank_conflict,
+                             BasicTimeStepPtr &time_step,
+                             std::vector<int64_t> &group_costs,
+                             std::vector<shape_secs_t> &shape_secs_space,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_);
+  void sc_method_quick_search(const LgInfo &lg_info,
+                             shape_secs_t &shape_secs,
+                             bool allow_bank_conflict,
+                             BasicTimeStepPtr &time_step,
+                             std::vector<int64_t> &group_costs,
+                             std::vector<shape_secs_t> &shape_secs_space,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_);
+  void sc_method_multi_core(const LgInfo &lg_info,
+                             shape_secs_t &shape_secs,
+                             bool allow_bank_conflict,
+                             BasicTimeStepPtr &time_step,
+                             std::vector<int64_t> &group_costs,
+                             std::vector<shape_secs_t> &shape_secs_space,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_);
+  void sc_method_multi_core_v2(const LgInfo &lg_info,
+                             shape_secs_t &shape_secs,
+                             bool allow_bank_conflict,
+                             BasicTimeStepPtr &time_step,
+                             std::vector<int64_t> &group_costs,
+                             std::vector<shape_secs_t> &shape_secs_space,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_);
+  void sc_method_multi_core_v3(const LgInfo &lg_info,
+                             shape_secs_t &shape_secs,
+                             bool allow_bank_conflict,
+                             BasicTimeStepPtr &time_step,
+                             std::vector<int64_t> &group_costs,
+                             std::vector<shape_secs_t> &shape_secs_space,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_);
   // mem_buffer_key_t recent_buffer_allocated_;
   // std::list<std::pair<int64_t, int64_t>> avail_lmems_;
 };

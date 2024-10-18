@@ -141,4 +141,75 @@ LogicalResult tpu::ConcatOp::AllowDataSplit(int64_t axis,
 }
 
 bool tpu::ConcatOp::support_multi_core() { return false; }
+bool tpu::ConcatOp::supportInplace() {
+  if (tpu::getRunMode(getOperation()) == tpu::RunMode::TPU_DYNAMIC) {
+    return false;
+  }
+  if (getOnlyMerge()) {
+    return true;
+  }
+  if (getDoRelu()) {
+    return false;
+  }
+  if (module::isBM1684Family() && module::isUniformQuantized(getOutput())) {
+    // 1684 4N mode not support
+    return false;
+  }
 
+  auto shape = module::getShape(getOutput());
+  int outer_dim = std::accumulate(shape.begin(), shape.begin() + getAxis(),
+                                  1, std::multiplies<int64_t>());
+  if (outer_dim != 1) {
+    return false;
+  }
+  int multi_use_times = 0;
+  for (auto in : getInputs()) {
+    if (module::isWeight(in)) {
+      return false;
+    }
+    int same_op_times = 0;
+    if (in.hasOneUse() == false) {
+      multi_use_times++;
+      for (auto v : getInputs()) {
+        if (in == v) {
+          same_op_times++;
+        }
+      }
+
+      // if value is used by multiple ConcatOp, only one ConcatOp should be
+      // setOnlyMerge
+      for (auto user : in.getUsers()) {
+        if (auto other_cat = dyn_cast<tpu::ConcatOp>(user)) {
+          if (other_cat.getOnlyMerge()) {
+            return false;
+          }
+        }
+      }
+
+      if (same_op_times > 1) {
+        return false;
+      }
+    }
+    if (multi_use_times > 2) {
+      return false;
+    }
+    auto in_op = in.getDefiningOp();
+    if (in_op == nullptr) {
+      // return false;
+    } else if (isa<tpu::ConcatOp>(in_op)) {
+      return false;
+    } else if (auto rshape = dyn_cast<tpu::ReshapeOp>(in_op)) {
+      auto in2 = rshape.getInput();
+      if (in2.getDefiningOp() == nullptr || in2.hasOneUse() == false) {
+        return false;
+      }
+    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(in_op)) {
+      auto p = sliceOp.parseParam();
+      if (p.fusible) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}

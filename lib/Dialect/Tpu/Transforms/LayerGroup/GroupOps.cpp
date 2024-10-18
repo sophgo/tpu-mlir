@@ -128,7 +128,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
     // 2. validation and detection
     bool doReorder = true;
-    if (lg_pass_ir_->subnet_ops.size() == (top_order.size() + 1)) {
+    if (lg_pass_ir_->subnet_ops.size() != (top_order.size() + 1)) {
       doReorder = false;
     } else {
 
@@ -170,13 +170,35 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
       for (auto it : llvm::enumerate(vector)) {
         auto op = it.value();
         lg_pass_ir_->subnet_ops.insert(op);
-        if(it.index() > 1){
+        if(it.index() >= 1){
           op->moveAfter(vector[it.index() - 1]);
+          DEBUG_WITH_TYPE("topo_reorder_mlir", {
+              llvm::dbgs() << "; action = topo"
+              << "; before_op = " << module::getName(vector[it.index() - 1])
+              << "; op = " << module::getName(op)
+             << "\n";
+          });
+        } else {
+            op->moveBefore(vector[it.index() + 1]);
+            DEBUG_WITH_TYPE("topo_reorder_mlir", {
+              llvm::dbgs() << "; action = topo"
+                << "; before_op = " << module::getName(op)
+                << "; op = " << module::getName(vector[it.index() + 1])
+                << "\n";
+            });
         }
+        // op->dump();
         for(auto opd: op->getOperands()){
           auto opdOp = opd.getDefiningOp();
           if(opdOp && isa<top::WeightOp>(opdOp)){
             opdOp->moveBefore(op);
+            DEBUG_WITH_TYPE("topo_reorder_mlir", {
+              llvm::dbgs() << "; action = topo"
+                << "; step = moveWeight"
+                << "; weightOp = " << module::getName(opdOp)
+                << "; op = " << module::getName(op)
+                << "\n";
+            });
           }
         }
       }
@@ -329,6 +351,10 @@ void GroupOps::buildMlir() {
       if(!module::isBM1684Family()) use_3ic |= 0x10;
       op.setUse_3icOptimize(use_3ic);
     }
+  });
+
+  DEBUG_WITH_TYPE("dominate_bug", {
+    module::getModuleOp().dump();
   });
 }
 

@@ -9,6 +9,7 @@
 
 #include "float.h"
 #include "omp.h"
+#include <vector>
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
 
@@ -1681,6 +1682,38 @@ void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
       }
     }
   }
+}
+
+
+void distribute_elements(const std::vector<int64_t>& elements,
+                         const std::vector<int64_t>& limits,
+                         std::vector<std::vector<int64_t>>& result,
+                         std::vector<int64_t>& current,
+                         int index ) {
+    if (index == elements.size()) {
+        result.push_back(current);
+        return;
+    }
+
+    for (size_t i = 0; i < limits.size(); ++i) {
+        // if ((current[i] == 0 && elements[index] <= limits[i]) || (current[i] != 0 && current[i] * elements[index] <= limits[i])) {
+        if (current[i] * elements[index] <= limits[i]) {
+            int64_t old_value = current[i];
+            current[i] = old_value * elements[index];
+
+            distribute_elements(elements, limits, result, current, index + 1);
+
+            current[i] = old_value;
+        }
+    }
+}
+
+std::vector<std::vector<int64_t>> find_distributions(const std::vector<int64_t>& elements,
+                                                     const std::vector<int64_t>& limits) {
+    std::vector<std::vector<int64_t>> result;
+    std::vector<int64_t> current(limits.size(), 1);
+    distribute_elements(elements, limits, result, current);
+    return result;
 }
 
 } // namespace tpu_mlir
