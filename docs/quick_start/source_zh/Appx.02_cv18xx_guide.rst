@@ -703,6 +703,58 @@ TPU sdk准备:
 
 **其他samples运行命令参照EVB运行命令**
 
+在开发板上进行模型测试及验证工作
+----------------------------
+在板子上可以通过cvitek_tpu_sdk/bin/下的model_runner程序进行模型验证；运行model_runner前需要将cvitek_tpu_sdk放到板子上，然后：
+
+.. code-block:: shell
+
+    cd cvitek_tpu_sdk
+    source ./envs_tpu_sdk.sh
+
+model_runner支持以下选项：
+
+.. list-table:: model_runner 参数功能
+   :widths: 18 50
+   :header-rows: 1
+
+   * - 参数名
+     - 说明
+   * - --model
+     - 指定模型文件
+   * - --input
+     - 指定输入npz文件
+   * - --output
+     - 指定输出npz文件
+   * - --pmu
+     - 打印性能数据
+   * - --count
+     - 循环运行次数
+   * - --reference
+     - 指定结果对比npz文件
+   * - --tolerances
+     - 指定结果对比相似度限制
+   * - --enable-timer
+     - 打印推理耗时信息
+
+一般使用命令如下：
+
+
+.. code-block:: shell
+
+    # 测试模型是否能正常推理
+    model_runner --model yolov5s.cvimodel
+
+    # 测试模型性能
+    model_runner --model yolov5s.cvimodel --pmu
+
+    # dump 模型结果
+    model_runner --model yolov5s.cvimodel --input input.npz --output output.npz
+
+    # 对比模型结果
+    model_runner --model yolov5s.cvimodel --input input.npz --reference ref.npz
+
+
 FAQ
 ----
 
