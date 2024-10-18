@@ -88,7 +88,7 @@ def mlir_opt_for_top(mlirfile: str,
     log_file = ""
     if count_patterns:
         log_file = "top_patterns.log"
-        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
+        cmd.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])
     elif log_level == "simple":
@@ -186,7 +186,7 @@ def mlir_lowering(top_mlir: str,
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
-        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
+        cmd.extend(["--debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])
     elif log_level == "only-layer-group":
@@ -369,7 +369,7 @@ def mlir_to_model(tpu_mlir: str,
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
-        cmd.extend(["--debug", "> {} 2>&1".format(log_file)])
+        cmd.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])
     elif log_level == "only-layer-group":
@@ -488,7 +488,7 @@ def origin_mlir_txt_to_bmodel(converter,
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
-        options.extend(["--debug"])
+        options.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter"])
 
     import pymlir
     import sys

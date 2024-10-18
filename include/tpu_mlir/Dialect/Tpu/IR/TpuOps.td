@@ -31,6 +31,7 @@ include "tpu_mlir/Interfaces/TypeInterface.td"
 include "tpu_mlir/Interfaces/DynLocalGenInterface.td"
 include "tpu_mlir/Interfaces/DynGlobalGenInterface.td"
 include "tpu_mlir/Interfaces/IndexingMapsInterface.td"
+include "tpu_mlir/Interfaces/InplaceInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
 // =============================================================================
@@ -1982,6 +1983,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
 }
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
+    DeclareOpInterfaceMethods<InplaceInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";

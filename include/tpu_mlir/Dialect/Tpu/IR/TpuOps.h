@@ -19,6 +19,7 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Interfaces/InplaceInterface.h"
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
 #include "tpu_mlir/Interfaces/TypeInterface.h"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"

@@ -29,7 +29,6 @@ private:
     }
 
     memo[node] = total_descendants;
-    std::cout << node << "-" << total_descendants << "\n";
 
     return total_descendants;
   }

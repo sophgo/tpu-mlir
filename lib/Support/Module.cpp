@@ -1403,6 +1403,19 @@ StringRef getName(Operation *op, int index) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
     return module.getName().value_or("Unknown");
   }
+
+  if (auto func = dyn_cast<FuncOp>(op)) {
+    return func.getName();
+  }
+  if (isa<mlir::func::CallOp>(op)) {
+    return "func.call";
+  }
+  if (isa<ReturnOp>(op)) {
+    return "func.return";
+  }
+  if (isa<top::NoneOp>(op)) {
+    return "NoneOp";
+  }
   if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
     return loc.getName();
   }

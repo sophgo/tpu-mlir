@@ -15,6 +15,9 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
+#include "tpu_mlir/Interfaces/InplaceInterface.h"
+#include "tpu_mlir/Interfaces/InplaceInterface.cpp.inc"
+
 
 #define DEBUG_TYPE "layer-group"
 
@@ -287,23 +290,15 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                                        shape_secs_t &shape_secs,
                                        group_type_t group_type) {
   // (void*)invokeInIterationSpace;
-  DEBUG_WITH_TYPE("cycle_calc", {
-    llvm::dbgs() << "; action = cycle_calc"
-                  << "; step = start"
-                  << "\n";
-  });
+
   int64_t loop_num =
       shape_secs.nsecs * shape_secs.csecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs;
 
 
   DEBUG_WITH_TYPE("cycle_calc", {
     llvm::dbgs() << "; action = cycle_calc"
-    << "; shape_secs.nsecs = " << shape_secs.nsecs
-    << "; shape_secs.csecs = " << shape_secs.csecs
-    << "; shape_secs.hsecs = " << shape_secs.hsecs
-    << "; shape_secs.dsecs = " << shape_secs.dsecs
-    << "; shape_secs.wsecs = " << shape_secs.wsecs
-    << "; loop_num = " << loop_num;
+    << "; loop_num = " << loop_num
+    << "\n";
   });
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
@@ -319,7 +314,6 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   });
   }
 
-  DEBUG_WITH_TYPE("mc_lg_refactor", {
     if(num_core == 8){
       loop_num = loop_num / num_core + (loop_num % num_core > 0);
           DEBUG_WITH_TYPE("cycle_calc", {
@@ -328,7 +322,6 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           << "; loop_num = " << loop_num << "\n";
       });
     }
-  });
 
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
@@ -543,6 +536,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
 int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
   auto splitedOps = createTempCoreParallelOp(op);
   // SmallVector<Operation *> splitedOps;
+
+  if (auto inplaceOp = dyn_cast<InplaceInterface>(op)) {
+      if(inplaceOp.supportInplace()){
+        return 0;
+      }
+  }
+
   if (splitedOps.size() == 0) {
     splitedOps.push_back(op);
   }

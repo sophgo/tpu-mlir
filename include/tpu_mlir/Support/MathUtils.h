@@ -12,7 +12,8 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include <vector>
+#include <unordered_map>
 namespace tpu_mlir {
 
 // =======================
@@ -57,6 +58,44 @@ static inline auto ceiling_func(U numerator, V denominator)
 template <typename U, typename V>
 static inline auto align_up(U x, V a) -> decltype(x + a) {
   return ceiling_func(x, a) * a;
+}
+
+template <typename U, typename V>
+static inline auto align_down(U x, V a) -> decltype(x - a) {
+  return (x / a) * a;
+}
+
+template <typename U, typename V>
+static inline auto align_nearest(U value, V multiple) {
+  auto remainder = value % multiple;
+  if (remainder == 0) {
+    return value;
+  }
+
+  auto roundDown = value - remainder;
+  auto roundUp = roundDown + multiple;
+
+  return (value - roundDown < roundUp - value) ? roundDown : roundUp;
+}
+
+template <typename T>
+static inline void get_factory(T num, std::vector<T> &factors, bool calc_set=false) {
+  for (T d = 2; d*d <= num; d++) {
+      if (num%d == 0) {
+          factors.push_back(d);
+          num /= d;
+          while (num % d == 0)
+          {
+            if(!calc_set){
+              factors.push_back(d);
+            }
+            num /= d;
+          }
+      }
+  }
+  if (num > 1) {
+    factors.push_back(num);
+  }
 }
 
 // =======================
@@ -327,5 +366,14 @@ typedef struct {
 void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices);
 
 RoundingMode round_mode_convert(tpu::RoundMode mode);
+
+void distribute_elements(const std::vector<int64_t>& elements,
+                         const std::vector<int64_t>& limits,
+                         std::vector<std::vector<int64_t>>& result,
+                         std::vector<int64_t>& current,
+                         int index = 0);
+
+std::vector<std::vector<int64_t>> find_distributions(const std::vector<int64_t>& elements,
+                                                     const std::vector<int64_t>& limits);
 
 } // namespace tpu_mlir

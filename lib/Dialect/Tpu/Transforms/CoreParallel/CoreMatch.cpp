@@ -354,8 +354,160 @@ static void common_match(PatternRewriter &rewriter,
     }
     ops_end = next_ops;
   } while (next_is_same);
+
+  DEBUG_WITH_TYPE("group-parallel", {
+    llvm::dbgs() << "; action = group-parallel"
+                << "; stage = do_group_distribute"
+                << "\n";
+  });
   group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
 }
+
+struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
+  FuncInputMatch(MLIRContext *context)
+      : OpRewriterPatternEx<FuncOp>(context, "FuncInputMatch", 1) {}
+  LogicalResult matchAndRewriteImpl(FuncOp func,
+                                    PatternRewriter &rewriter) const override {
+    auto num_core = module::getCoreNum();
+    if (module::getName(func) == "main") {
+      return failure();
+    }
+    auto find_f = [&](std::vector<std::vector<Operation *>> &ops,
+                      Operation *op) -> bool {
+      for (auto v : ops) {
+        for (auto op_ : v) {
+          if (op_ == op) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    DEBUG_WITH_TYPE("group-parallel", {
+      llvm::dbgs() << "; action = group-parallel" <<
+                    "; func = " << module::getName(func) <<
+                    "; num_core = " << num_core <<
+      "\n";
+    });
+
+    std::vector<std::vector<Operation *>> same_ops;
+    auto prepareSameOps = [&](BlockArgument arg) {
+      auto users = arg.getUsers();
+      for (auto left = users.begin(); left != users.end(); left++) {
+        auto left_op = *left;
+        // inPlace op
+        DEBUG_WITH_TYPE("group-parallel", {
+          llvm::dbgs() << "; action = group-parallel"
+                      << "; stage = prepareSameOps"
+                      << "; step = check_op"
+                      << "; op = " << module::getName(left_op)
+                      << "\n";
+        });
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(
+                left_op)) {
+          DEBUG_WITH_TYPE("group-parallel", {
+            llvm::dbgs() << "; action = group-parallel"
+                          << "; stage = prepareSameOps"
+                        << "; step = continue"
+                        << "; op = " << module::getName(left_op)
+                        << "; reason = meetInvalidOp" << "\n";
+          });
+          continue;
+        }
+        if (module::isOpInBlock(left_op)) {
+          DEBUG_WITH_TYPE("group-parallel", {
+            llvm::dbgs() << "; action = group-parallel"
+                        << "; stage = prepareSameOps"
+                        << "; step = continue"
+                        << "; op = " << module::getName(left_op)
+                        << "; reason = OpInBlock" << "\n";
+          });
+          continue;
+        }
+        if (find_f(same_ops, left_op)) {
+          DEBUG_WITH_TYPE("group-parallel", {
+            llvm::dbgs() << "; action = group-parallel"
+                        << "; stage = prepareSameOps"
+                        << "; step = continue"
+                        << "; op = " << module::getName(left_op)
+                        << "; reason = sameOp" << "\n";
+          });
+          continue;
+        }
+        std::vector<Operation *> ops = {left_op};
+        auto right = left;
+        for (right++; right != users.end(); right++) {
+          auto right_op = *right;
+          if (find_f(same_ops, right_op)) {
+            continue;
+          }
+          if (module::isOpInBlock(right_op)) {
+            continue;
+          }
+          if (isOpSameCalc(left_op, right_op)) {
+            ops.push_back(right_op);
+          }
+          if (ops.size() == num_core) {
+            break;
+          }
+        }
+        if (ops.size() == num_core) {
+          same_ops.emplace_back(ops);
+        }
+      }
+
+      if (same_ops.empty()) {
+        DEBUG_WITH_TYPE("group-parallel", {
+          llvm::dbgs() << "; action = group-parallel"
+                      << "; stage = prepareSameOps"
+                      << "; step = failure"
+                      << "; reason = noSameOp" << "\n";
+          arg.dump();
+        });
+        return failure();
+      }
+      for (auto ops : same_ops) {
+        if (checkDataDependencies(ops) || checkForReturnOpUser(ops)) {
+          DEBUG_WITH_TYPE("group-parallel", {
+            llvm::dbgs() << "; action = group-parallel"
+                        << "; stage = prepareSameOps"
+                        << "; step = failure"
+                        << "; reason = hasDependency" << "\n";
+          });
+          return failure();
+        }
+      }
+      DEBUG_WITH_TYPE("group-parallel", {
+        llvm::dbgs() << "; action = group-parallel"
+                     << "; stage = " << "do_common_match"
+                     << "\n";
+        arg.dump();
+      });
+      for (auto ops : same_ops) {
+        common_match(rewriter, ops);
+      }
+      return success();
+    };
+
+    for (auto it : llvm::enumerate(func.getArguments())) {
+      auto arg = it.value();
+      auto num_users = std::distance(arg.user_begin(), arg.user_end());
+      DEBUG_WITH_TYPE("group-parallel", {
+        llvm::dbgs() << "; action = group-parallel"
+                     << "; arg_index = " << it.index()
+                     << "; num_users = " << num_users << "\n";
+        arg.dump();
+      });
+      if (num_users < num_core) {
+        continue;
+      }
+      prepareSameOps(arg);
+    }
+
+    return success();
+  }
+};
 
 // if operations are the same, then run in multi cores
 struct CommonMatch : public OpRewriterPatternEx3 {
@@ -633,6 +785,7 @@ class MlpA16Match  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
 void doCoreParallelPattern(ModuleOp m) {
   // first match pattern
   module::applyPatternOnce<CommonMatch>(m);
+  module::applyPatternOnce<FuncInputMatch>(m);
   // then split different pattern to multi cores
   module::applyPatternOnce<A16MatMulMatch>(m);
   //....

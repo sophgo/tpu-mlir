@@ -445,7 +445,7 @@ if __name__ == "__main__":
             node_attrs = {}
             # node_attrs["shape"] = "box"
             if op_loc in color_map:
-                node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]]
+                node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]  % len(MAP_COLOR)]
                 node_attrs["style"] = "filled"
                 node_attrs["suffix"] = f"group({color_map[op_loc]})"
 
@@ -543,7 +543,7 @@ if __name__ == "__main__":
                 node_attrs["failed"] = op_loc in failed_keys
 
                 if op_loc in color_map:
-                    node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]]
+                    node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc] % len(MAP_COLOR)]
                     node_attrs["style"] = "filled"
                     node_attrs["suffix"] = f"group({color_map[op_loc]})"
 

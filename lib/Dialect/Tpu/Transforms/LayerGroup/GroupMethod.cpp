@@ -660,19 +660,23 @@ bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
 
 bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                                        int64_t *group_cost) {
+  PROFILE_LOG("is_layer_group_valid", true);
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
   if (status && LgPass::OPTIONS.group_by_cores == false) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return true;
   }
 
   if (!group_valid_pre_check(lg_info)) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return false;
   }
 
   shape_secs_t shape_secs;
   std::vector<std::pair<Value, int64_t>> value_size;
   if (!init_group_data_secs(lg_info, shape_secs, value_size)) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return false;
   }
   DEBUG_WITH_TYPE("shape_secs", {
@@ -685,12 +689,14 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
      "\n";
   });
   if (!dynamic_group_valid_check(lg_info)) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return false;
   }
 
   auto time_step = std::make_shared<BasicTimeStep>();
   status = time_step->assignTimeStep(lg_info, shape_secs, true);
   if (status == false) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return false;
   }
 
@@ -698,6 +704,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   status =
       lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step, shape_secs);
   if (status == false) {
+    PROFILE_LOG("is_layer_group_valid", false);
     return false;
   }
 
@@ -709,6 +716,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   }
   // llvm::outs() << "nsecs = " << shape_secs.nsecs
   //              << ", hsecs = " << shape_secs.hsecs << "\n";
+  PROFILE_LOG("is_layer_group_valid", false);
   return status;
 }
 
@@ -897,14 +905,26 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                          << "; group_idx = " << i
                          << "; group_cost = " << cost_table[j][j] << "\n";
         });
-        DEBUG_WITH_TYPE("lg_info_search",{
-            sub_group.dump_lginfo();
-        });
+
 
         cut_points[j][j] = j;
       }
+
       LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "Searching best group slices...\n";});
       progressbar bar(cluster_num - 1);
+
+      /**
+       * you can debug any cluster like calc_cost(16, 17);
+       */
+      auto calc_cost = [&](int64_t start_idx, int64_t end_idx) {
+        get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
+        int64_t group_cost = MAX_COST;
+        is_layer_group_valid(sub_group, true, &group_cost);
+
+        return group_cost;
+      };
+
+
       for (size_t len = 2; len <= cluster_num; ++len) {
         bar.update();
         // llvm::outs() << llvm::format("process cluster len = %d\n", len);
@@ -914,16 +934,18 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           // llvm::outs() << "start = " << start << ", end = " << end << "\n";
           int64_t start_idx = clusters[start].first;
           int64_t end_idx = clusters[end].first + clusters[end].second - 1;
-          get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
+
           DEBUG_WITH_TYPE("lg_index", {
             llvm::dbgs() << "; action = lg_index"
                           << "; start_idx = " << start_idx
                           << "; end_idx = " << end_idx
                           << "; group_idx = " << i << "\n";
           });
-          int64_t group_cost = MAX_COST;
-          is_layer_group_valid(sub_group, true, &group_cost);
-
+          DEBUG_WITH_TYPE("lg_index_info", {
+              llvm::dbgs() << "; action = lg_index_info: " << i << "\n";
+              sub_group.dump_lginfo();
+          });
+          int64_t group_cost = calc_cost(start_idx, end_idx);
           int64_t optimal_point = end;
           // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
           //                    cost_table);
