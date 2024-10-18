@@ -19,11 +19,15 @@ void SG2380::load_functions() {
   CAST_FUNCTION(tensor_racu_decompress_gen_cmd);
   CAST_FUNCTION(tensor_racu_compress_gen_cmd);
   CAST_FUNCTION(a16mm_data_split_trans);
+  CAST_FUNCTION(gen_riscv_code_begin);
+  CAST_FUNCTION(gen_riscv_code_end);
 }
 
 void SG2380::before_codegen() {
   BM1684X::before_codegen();
   useCode0 = true;
+  setenv("GEN_RISCV_CODE", "1", 1);
+  dl_gen_riscv_code_begin();
 }
 
 void SG2380::after_codegen(int64_t flops) {
@@ -34,6 +38,12 @@ void SG2380::after_codegen(int64_t flops) {
   }
   useCore(0); // Reset buffer swapping.
   useCode0 = false;
+  dl_gen_riscv_code_end();
+  system("riscv_code_opt.py -f riscv_code_0.h");
+  system("riscv_code_opt.py -f riscv_code_1.h");
+  system("riscv_code_opt.py -f riscv_code_2.h");
+  system("riscv_code_opt.py -f riscv_code_3.h");
+  unsetenv("GEN_RISCV_CODE");
 }
 
 void SG2380::setCoreNum(int core) {
