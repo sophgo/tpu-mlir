@@ -282,6 +282,21 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
 }
 
 void BMCodegen::store() {
+  if (module::isSG2380()) {
+    const char *filename = "libbmodel_cmd.so";
+    char command[1024];
+    snprintf(command, sizeof(command),
+             "riscv64-unknown-linux-gnu-clang \
+              -march=rv64imafdcv_zicsr_zifencei_zfh_zba_zbb_zvfh_xsfvfnrclipxfqf_xsfvfwmaccqqq_xsfvqmaccqoq_xsfvcp_xsgmat \
+              -mabi=lp64d -g -shared -fPIC riscv_code.c -o %s", filename);
+    if (system(command) == 0) {
+      bmodel::Binary lib_backend = CreateBinaryFromFile(&(*model_gen), filename);
+      model_gen->AddLibBackend(lib_backend);
+    } else {
+      llvm::errs() << "compile auto-generated riscv code error!\n";
+    }
+
+  }
   model_gen->Finish();
   model_gen->Save(filename);
 }

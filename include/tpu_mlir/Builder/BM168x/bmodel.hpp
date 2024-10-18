@@ -89,6 +89,7 @@ public:
   void AddKernelModule(std::string &filename, Binary &tpu_module);
   void AddCpuModule(std::string &version, Binary &lib_cpu);
   void AddBmodelType(const uint32_t type);
+  void AddLibBackend(Binary &lib_backend) ;
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -143,6 +144,8 @@ private:
   encrypt_func encrypt_func_; // encrypt func from lib
   // coeff combine
   uint32_t bmodel_type_; // 0: bmodel coeff do not combine; 1: bmodel coeff has been combine
+  // lib backend for sg2380
+  Binary lib_backend_;
 };
 
 class ModelCtx {

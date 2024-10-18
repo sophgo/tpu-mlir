@@ -78,6 +78,8 @@ typedef void (*tpu_core_context_setup)(int, int, int);
 typedef bool (*a16mm_data_split_trans)(
     int, int, int, int, bool, bool, bool, int, int, data_type_t,
     data_type_t, a16mm_slice_info_t *, a16mm_size_info_t *);
+typedef void (*gen_riscv_code_begin)();
+typedef void (*gen_riscv_code_end)();
 
 namespace tpu_mlir {
 namespace backend {
@@ -98,6 +100,8 @@ public:
   tpu_sync_all dl_tpu_sync_all;
   tpu_core_context_setup dl_tpu_core_context_setup;
   a16mm_data_split_trans dl_a16mm_data_split_trans;
+  gen_riscv_code_begin dl_gen_riscv_code_begin;
+  gen_riscv_code_end dl_gen_riscv_code_end;
 
   void setCoreNum(int core = 1) final;
   int getCoreNum() final { return multiCode.size(); };

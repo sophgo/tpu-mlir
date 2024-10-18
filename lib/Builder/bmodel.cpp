@@ -312,6 +312,10 @@ void ModelGen::AddCpuModule(std::string &file_name, Binary &cpu_module) {
   cpuop_module_.binary = cpu_module;
 }
 
+void ModelGen::AddLibBackend(Binary &lib_backend) {
+  lib_backend_ = lib_backend;
+}
+
 void ModelGen::Finish(const string &filename) {
   this->Finish();
   this->Save(filename);
@@ -382,6 +386,7 @@ size_t ModelGen::Finish() {
   mb.add_device_num(num_device_);
   mb.add_cpuop_module(cpuop_module);
   mb.add_bmodel_type(bmodel_type_);
+  mb.add_lib_backend(&lib_backend_);
 
   auto model = mb.Finish();
   builder_.Finish(model);

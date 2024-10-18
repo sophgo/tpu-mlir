@@ -207,6 +207,7 @@ table Model {
     cpuop_module:CpuopModule (id: 8);
     bmodel_type:uint32 (id: 9);    // 0 : coeff not combine
                                    // 1 : coeff has been combine
+    lib_backend:Binary (id: 10);
 }
 
 root_type Model;
