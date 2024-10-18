@@ -152,7 +152,7 @@ full_model_list = {
     "pp_humanseg":                (N,      Y,       Y,      N,      N,      N,      N,      Y,     N,     N,       N),
     "pp_liteseg":                 (N,      Y,       Y,      N,      N,      N,      N,      Y,     N,     N,       N),
     "pp_picodet":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
-    "pp_yoloe":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
+    "pp_yoloe":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       Y),
     "pp_yoloe_m":                 (N,      N,       N,      N,      N,      Y,      Y,      N,     N,     N,       N),
     "pp_yolox":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
     "pp_yolov3":                  (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
