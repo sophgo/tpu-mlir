@@ -109,6 +109,114 @@ struct AddToScale : public OpRewriterPatternEx<AddOp> {
   }
 };
 
+struct AddToRope : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  AddToRope(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AddToRope") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op, PatternRewriter &rewriter) const override {
+    // Check the number of inputs
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+
+    // Define weights and flags
+    int indx = 0;
+    int indx_q = 0;
+    Value in_value;
+
+    for (int i = 0; i < 2; ++i) {
+      auto mul_op = dyn_cast<MulOp>(op.getInputs()[i].getDefiningOp());
+      if (mul_op) {
+        auto reshape_op = dyn_cast<ReshapeOp>(mul_op.getInputs()[0].getDefiningOp());
+        if (reshape_op) {
+          indx = i;
+        }
+        else{
+          indx = 1-i;
+        }
+      }
+      else{
+        return failure();
+      }
+    }
+
+    auto mul0_op = dyn_cast<MulOp>(op.getInputs()[indx].getDefiningOp());
+    auto mul1_op = dyn_cast<MulOp>(op.getInputs()[1-indx].getDefiningOp());
+     if (!mul0_op || !mul1_op) {
+      return failure();
+    }
+
+    auto reshape_op =
+        dyn_cast<ReshapeOp>(mul0_op.getInputs()[0].getDefiningOp());
+    if (!reshape_op)
+      return failure();
+    auto mul0_weight = mul0_op.getInputs()[1];
+    auto mul1_weight = mul1_op.getInputs()[1];
+    auto concat_op = dyn_cast<ConcatOp>(reshape_op.getInput().getDefiningOp());
+    if (!concat_op)
+      return failure();
+    for (int i = 0; i < 2; ++i) {
+      auto unsqueeze = dyn_cast<UnsqueezeOp>(concat_op.getInputs()[i].getDefiningOp());
+      if(unsqueeze){
+        auto slice_op1 = dyn_cast<SliceOp>(unsqueeze.getInput().getDefiningOp());
+        if (slice_op1){
+          indx_q = i;
+        }else{
+          indx_q = 1 - i;
+        }
+      }
+      else{
+        return failure();
+      }
+    }
+
+    auto unsqueeze0 =
+        dyn_cast<UnsqueezeOp>(concat_op.getInputs()[indx_q].getDefiningOp());
+    auto unsqueeze1 =
+        dyn_cast<UnsqueezeOp>(concat_op.getInputs()[1-indx_q].getDefiningOp());
+    if (!unsqueeze0)
+      return failure();
+    if (!unsqueeze1)
+      return failure();
+
+    auto slice_op1 = dyn_cast<SliceOp>(unsqueeze0.getInput().getDefiningOp());
+    if (!slice_op1)
+      return failure();
+    auto MulConst_op =
+        dyn_cast<MulConstOp>(unsqueeze1.getInput().getDefiningOp());
+    if (!MulConst_op)
+      return failure();
+    auto slice_op = dyn_cast<SliceOp>(MulConst_op.getInput().getDefiningOp());
+    if (!slice_op)
+      return failure();
+    if (mul1_op.getInputs()[0].getDefiningOp() ==
+            slice_op.getInput().getDefiningOp() &&
+        mul1_op.getInputs()[0].getDefiningOp() ==
+            slice_op1.getInput().getDefiningOp() &&
+        slice_op.getInput().getDefiningOp() ==
+            slice_op1.getInput().getDefiningOp()) {
+      in_value = slice_op.getInput();
+              }
+    else{
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
+
+    // Create RopeOp
+    std::vector<NamedAttribute> attrs;
+    rewriter.replaceOpWithNewOp<RopeOp>(op, op.getResult().getType(),
+                                         ValueRange{in_value, mul0_weight, mul1_weight}, attrs);
+    return success();
+  }
+};
+
+
+
 struct AddToAddConst : public OpRewriterPatternEx<AddOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
@@ -311,5 +419,5 @@ struct AlignInputsDim : public OpRewriterPatternEx<AddOp> {
 
 void AddOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<SwapInput, AddToAddConst, AddToScale, AddMerge, AlignInputsDim>(context);
+  results.insert<SwapInput, AddToAddConst, AddToScale, AddToRope, AddMerge, AlignInputsDim>(context);
 }
