@@ -132,9 +132,9 @@ def open_lib(lib_name):
         if not lib_full_name:
             raise OSError
 
-        lib_temp_name = temp_position(lib_full_name)
+        # lib_temp_name = temp_position(lib_full_name)
 
-        return ctypes.CDLL(lib_temp_name)
+        return ctypes.CDLL(lib_full_name)
     except OSError as e:
         msg = f"""Could not find/load shared object file: {lib_name}
      Error was: {e}"""
