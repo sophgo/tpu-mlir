@@ -209,4 +209,4 @@ LogicalResult tpu::SoftmaxOp::AllowDataSplit(int64_t axis,
   return axis < ax ? success() : failure();
 }
 
-bool tpu::SoftmaxOp::support_multi_core() { return false; }
+bool tpu::SoftmaxOp::support_multi_core() { return module::isSG2380(); }

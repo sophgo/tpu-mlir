@@ -48,6 +48,12 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     common.scale_val = in_scale;
     common.log = getLog();
 #if 1
+    if (support_multi_core()) {
+      BM168x::call_global_func("backend_api_softmax_multicore_global", &param,
+                              sizeof(param), input_spec->data(),
+                              output_spec->data());
+      return;
+    }
     BM168x::call_global_func("backend_api_softmax_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());
