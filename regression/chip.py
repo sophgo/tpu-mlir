@@ -156,7 +156,7 @@ full_model_list = {
     "pp_yoloe_m":                 (N,      N,       N,      N,      N,      Y,      Y,      N,     N,     N,       N),
     "pp_yolox":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
     "pp_yolov3":                  (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
-    "pp_ocr_det":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
+    "pp_ocr_det":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       Y),
     "pp_ocr_cls":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       Y),
     "pp_ocr_rec":                 (N,      Y,       N,      N,      N,      N,      N,      N,     N,     N,       Y), # bf16 bm1688, cv186x has problem
     "pp_hgnet":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N,     N,       N),
