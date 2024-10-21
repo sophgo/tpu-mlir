@@ -57,6 +57,10 @@ void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
 }
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
+  if(module::isMARS3()){
+    LoweringBF16(rewriter, op);
+    return;
+  }
   if (module::isWeight(op.getFilter()) == false) {
     LoweringF32(rewriter, op);
     return;

@@ -2203,7 +2203,7 @@ protected:
 namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
-  patterns->add<MergeScale2Conv, DeconvToConv>(patterns->getContext(), /*PatternBenefit*/ 9);
+  patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
       ->add<ChatGLM3ToGQAAttention,
             ConvertMatMulWithRightTranspose, ConvertMatMul2Attention,
