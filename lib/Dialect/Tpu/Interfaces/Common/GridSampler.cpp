@@ -46,4 +46,4 @@ LogicalResult tpu::GridSamplerOp::inference(InferenceParameter &p) {
   return success();
 }
 
-bool tpu::GridSamplerOp::support_multi_core() { return false; }
+bool tpu::GridSamplerOp::support_multi_core() { return module::isSG2380(); }
