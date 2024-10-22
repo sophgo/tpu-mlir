@@ -228,9 +228,9 @@ struct upd_info_t {
   Set<PValue> new_outs;
 };
 
-// return true if op has at least one block
-static bool is_blk_op(Operation* op) {
-  if (op->getNumRegions())
+// return true if op is not func::FuncOp and has at least one block
+static bool is_special_blk_op(Operation* op) {
+  if (isa<tpu::GroupOp>(op))
     return true;
   return false;
 }
@@ -243,6 +243,8 @@ static bool is_tmn_op(Operation* op) {
 
 // return true when op is an anxilliary operation
 static bool is_aux_op(Operation* op) {
+  if (isa<top::InputOp>(op))
+    return true;
   if (is_tmn_op(op))
     return true;
   if (isa<top::NoneOp, top::WeightOp, tpu::BufferOp>(op))
@@ -404,6 +406,63 @@ public:
   }
 };
 
+class FuncDataFlowAnalysis {
+public:
+  static Operation* analyze_from_tp(Operation* op) {
+    auto funcOp = dyn_cast<func::FuncOp>(op);
+    auto &ops = funcOp.getFunctionBody().front().getOperations();
+    for (auto& op : ops) {
+      if (is_aux_op(&op)) {
+        continue;
+      }
+      if (is_special_blk_op(&op)) {
+        return BlkDataFlowAnalysis::analyze_from_tp(&op);
+      } else {
+        for (auto v : op.getResults()) {
+          if (module::isNone(v))
+            continue;
+          if (g_roster.is_expected_output(v)) {
+            return &op;
+          }
+        }
+      }
+    }
+    return nullptr;
+  }
+
+  static void analyze_from_bt(SetVector<PValue>& live_values, upd_info_t& sn_upd_info, Map<Operation*, upd_info_t>& blk_upd_infos) {
+    for (auto i = 0; i < live_values.size(); ++i) {
+      Value v = Value(live_values[i]);
+      auto def_op = v.getDefiningOp();
+      if (def_op) {
+        if (is_aux_op(def_op))
+          continue;
+        if (g_roster.is_expected_input(v)) {
+          sn_upd_info.new_ins.insert(v.getImpl());
+          continue;
+        }
+        if (!is_special_blk_op(def_op)) {
+          for (auto def_opd : def_op->getOperands())
+            live_values.insert(def_opd.getImpl());
+        } else {
+          const int out_idx = get_result_number(def_op, v);
+          auto& blk_upd_info = blk_upd_infos[def_op];
+          BlkDataFlowAnalysis::analyze_from_bt(def_op, out_idx, blk_upd_info);
+          for (auto idx : blk_upd_info.rem_in_idxes) {
+            auto def_opd = def_op->getOperand(idx);
+            live_values.insert(def_opd.getImpl());
+          }
+        }
+      } else if (v.isa<BlockArgument>()) {
+        auto idx = v.cast<BlockArgument>().getArgNumber();
+        sn_upd_info.rem_in_idxes.insert(idx);
+      } else {
+        llvm_unreachable("unknown error");
+      }
+    }
+  }
+};
+
 static bool need_update(Operation* blk_op, const upd_info_t& blk_upd_info) {
   if (!blk_upd_info.new_ins.empty())
     return true;
@@ -474,8 +533,8 @@ static void update_funcOp_outs(func::FuncOp& funcOp, const IndexList& rem_out_id
 // TODO: needs refactor
 
 template <typename Op>
-static void remove_unused_ops(Op& groupOp) {
-  auto &ops = groupOp.getBody().front().getOperations();
+static void remove_unused_ops(Op& blkOp) {
+  auto &ops = blkOp.getBody().front().getOperations();
   Vector<Operation*> all_ops;
   for (auto& op : ops) {
     if (!is_tmn_op(&op))
@@ -855,7 +914,7 @@ public:
   }
 };
 
-class TruncIOWorker {
+class MultiSubnetTruncIOWorker {
   // [subnet_id, io_id]
   typedef Pair<int, int> id_pair_t;
   Operation* end_op_in_blk = nullptr;
@@ -873,7 +932,7 @@ class TruncIOWorker {
 public:
   void invoke() {
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
-    analyze_main_data_flow(mainFuncOp);
+    analyze_call_data_flow(mainFuncOp);
     bool found = false;
     auto max_subnet_id = 0;
     for (; max_subnet_id < subnets.size(); ++max_subnet_id) {
@@ -893,7 +952,7 @@ public:
   }
 
 private:
-  void analyze_main_data_flow(func::FuncOp mainOp) {
+  void analyze_call_data_flow(func::FuncOp mainOp) {
     calls.clear();
     subnets.clear();
     Map<PValue, id_pair_t> id_pairs;
@@ -919,68 +978,26 @@ private:
   }
 
   bool analyze_subnet_data_flow_from_tp(int subnet_id) {
-    bool found = false;
-    auto funcOp = dyn_cast<func::FuncOp>(subnets[subnet_id]);
-    auto &ops = funcOp.getFunctionBody().front().getOperations();
-    for (auto& op : ops) {
-      if (is_aux_op(&op)) {
-        continue;
-      }
-      if (is_blk_op(&op)) {
-        Operation* may_be_end_op = BlkDataFlowAnalysis::analyze_from_tp(&op);
-        if (may_be_end_op) {
-          end_op_in_blk = may_be_end_op;
-          return true;
-        }
-      } else {
-        for (auto v : op.getResults()) {
-          if (module::isNone(v))
-            continue;
-          if (g_roster.is_expected_output(v)) {
-            live_values[subnet_id].insert(v.Value::getImpl());
-            register_blk_out(funcOp.getOperation(), sn_upd_infos[subnet_id], v);
-            found = true;
-          }
-        }
-        if (found)
-          return true;
+    auto func_op = subnets[subnet_id];
+    Operation* may_be_end_op = FuncDataFlowAnalysis::analyze_from_tp(func_op);
+    if (may_be_end_op == nullptr)
+      return false;
+    if (is_special_blk_op(may_be_end_op->getParentOp())) {
+      end_op_in_blk = may_be_end_op;
+    } else {
+      for (auto v : may_be_end_op->getResults()) {
+        if (module::isNone(v))
+          continue;
+        live_values[subnet_id].insert(v.Value::getImpl());
+        register_blk_out(func_op, sn_upd_infos[subnet_id], v);
       }
     }
-    return false;
+    return true;
   }
 
   void analyze_subnet_data_flow_from_bt(int subnet_id, Map<Operation*, upd_info_t>& blk_upd_infos) {
-    upd_info_t& sn_upd_info = sn_upd_infos[subnet_id];
-    auto& subnet_live_values = live_values[subnet_id];
-    for (int i = 0; i < subnet_live_values.size(); ++i) {
-      Value v = Value(subnet_live_values[i]);
-      auto def_op = v.getDefiningOp();
-      if (def_op) {
-        if (is_aux_op(def_op))
-          continue;
-        if (g_roster.is_expected_input(v)) {
-          sn_upd_info.new_ins.insert(v.getImpl());
-          continue;
-        }
-        if (!is_blk_op(def_op)) {
-          for (auto def_opd : def_op->getOperands())
-            subnet_live_values.insert(def_opd.getImpl());
-        } else {
-          const int out_idx = get_result_number(def_op, v);
-          auto& blk_upd_info = blk_upd_infos[def_op];
-          BlkDataFlowAnalysis::analyze_from_bt(def_op, out_idx, blk_upd_info);
-          for (auto idx : blk_upd_info.rem_in_idxes) {
-            auto def_opd = def_op->getOperand(idx);
-            subnet_live_values.insert(def_opd.getImpl());
-          }
-        }
-      } else if (v.isa<BlockArgument>()) {
-        auto idx = v.cast<BlockArgument>().getArgNumber();
-        sn_upd_info.rem_in_idxes.insert(idx);
-      } else {
-        llvm_unreachable("unknown error");
-      }
-    }
+    auto& sn_upd_info = sn_upd_infos[subnet_id];
+    FuncDataFlowAnalysis::analyze_from_bt(live_values[subnet_id], sn_upd_info, blk_upd_infos);
     auto& subnet_io_map = subnet_io_maps[subnet_id];
     for (auto iid : sn_upd_info.rem_in_idxes) {
       if (!subnet_io_map.count(iid))
@@ -1019,7 +1036,7 @@ private:
     }
     sn_upd_info.new_ins = new_ins;
     for (auto& op : ops) {
-      if (is_blk_op(&op) && blk_upd_infos.count(&op))
+      if (is_special_blk_op(&op) && blk_upd_infos.count(&op))
         BlkIOWorker::work(&op, blk_upd_infos[&op], sn_upd_info);
     }
     update_funcOp_outs(funcOp, sn_upd_info.rem_out_idxes, sn_upd_info.new_outs);
@@ -1102,6 +1119,38 @@ private:
   }
 };
 
+class TruncIOWorker {
+public:
+  void invoke() {
+    upd_info_t sn_upd_info;
+    SetVector<PValue> live_values;
+    Map<Operation*, upd_info_t> blk_upd_infos;
+    auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
+    auto main_func_op = mainFuncOp.getOperation();
+    Operation* may_be_end_op = FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
+    if (may_be_end_op == nullptr)
+      return;
+    for (auto v : may_be_end_op->getResults()) {
+      if (module::isNone(v))
+        continue;
+      live_values.insert(v.Value::getImpl());
+      register_blk_out(main_func_op, sn_upd_info, v);
+    }
+    FuncDataFlowAnalysis::analyze_from_bt(live_values, sn_upd_info, blk_upd_infos);
+    Set<PValue> new_ins;
+    for (auto pv : sn_upd_info.new_ins) {
+      auto v = Value(pv);
+      auto arg = create_new_arg(mainFuncOp, v);
+      v.replaceAllUsesWith(arg);
+      new_ins.insert(arg.getImpl());
+    }
+    sn_upd_info.new_ins = new_ins;
+    update_funcOp_outs(mainFuncOp, sn_upd_info.rem_out_idxes, sn_upd_info.new_outs);
+    remove_unused_ops(mainFuncOp);
+    update_funcOp_ins(mainFuncOp);
+  }
+};
+
 /**
  * From top to bottom, find first op END_OP whose one output matches the expected output.
  *  Set the network outputs as the outputs of END_OP which matches.
@@ -1154,26 +1203,44 @@ public:
     module::setOutputs(output_names);
   }
 
+  std::vector<StringRef> getNetInputs(ModuleOp& mOp) {
+    if (!module::isSubnetDividedState()) {
+      auto mainFuncOp = module::getMainFuncOp(mOp);
+      auto& ops = mainFuncOp.getBody().front().getOperations();
+      std::vector<StringRef> inputs;
+      for (auto& op : ops) {
+        if (auto inputOp = dyn_cast<top::InputOp>(&op)) {
+          inputs.push_back(module::getName(inputOp.getOutput()));
+        }
+      }
+      return inputs;
+    } else {
+      return *module::getInputs();
+    }
+  }
+
   void runOnOperation() override {
     auto mOp = getOperation();
     module::init(mOp);
-    if (!module::isState(module::State::TPU_ADDRESSED)) {
-      llvm_unreachable("module state not support recently");
-    }
     g_roster.clear();
     Set<std::string> expected_input_names;
-    auto _input_names = *module::getInputs();
+    auto _input_names = getNetInputs(mOp);
     for (auto name: _input_names) {
       g_roster.add_input_name(name.str());
     }
     g_roster.parse_and_add_input_names(this->inputs);
     g_roster.parse_and_add_output_names(this->outputs);
-    if (!g_roster.outs_empty()) {
-      g_moduleOp = module::getAllModules()->at(0);
+    if (g_roster.outs_empty())
+      return;
+    if (!module::isSubnetDividedState()) {
+      g_moduleOp = mOp;
       TruncIOWorker().invoke();
+    } else {
+      g_moduleOp = module::getAllModules()->at(0);
+      MultiSubnetTruncIOWorker().invoke();
       update_module_io_names(g_moduleOp);
-      update_module_weights(g_moduleOp);
     }
+    update_module_weights(g_moduleOp);
   }
 };
 

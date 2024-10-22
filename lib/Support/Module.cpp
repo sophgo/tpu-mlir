@@ -1248,6 +1248,10 @@ void removeAttr(mlir::Operation *op, std::string attr_name) {
 
 bool isState(State state) { return state == getState(); }
 
+bool isSubnetDividedState() {
+  return isState(module::State::TPU_DIVIDED) || isState(module::State::TPU_ADDRESSED);
+}
+
 bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
