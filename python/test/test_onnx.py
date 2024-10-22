@@ -130,6 +130,7 @@ class ONNX_IR_TESTER(object):
             "GRU":          (self.test_GRU,           N, Y, Y, Y, Y, N), # test gru output Yh
             "GRU2":         (self.test_GRU2,          N, Y, Y, Y, Y, N), # test gru output Y and Yh
             "GRU3":         (self.test_GRU3,          N, Y, Y, Y, Y, N),
+            "GRU4":         (self.test_GRU4,          N, Y, Y, N, Y, N), # test gru output Y and Yh,also splitting batch dim
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, N),
@@ -1061,6 +1062,64 @@ class ONNX_IR_TESTER(object):
         num_dir = 2
         input_size = 64
         hidden_size = 32
+        direction = 'forward' if num_dir == 1 else 'bidirectional'
+        input_shape = [seq_length, batch_size, input_size]
+        Y_shape = [seq_length, num_dir, batch_size, hidden_size]
+        Y_h_shape = [num_dir, batch_size, hidden_size]
+
+        h_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        w_data = np.random.rand(num_dir, 3 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.rand(num_dir, 3 * hidden_size, hidden_size).astype(np.float32)
+        b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
+
+        graph_txt = """
+            %s (float%s input) => (float%s Y, float%s Y_h)
+            <float%s w, float%s r, float%s b, float%s h>
+            {
+                Y, Y_h = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
+            }
+            """ % (case_name, input_shape, Y_shape, Y_h_shape, list(w_data.shape), list(
+            r_data.shape), list(b_data.shape), list(h_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+        r_value = helper.make_tensor(
+            name='r',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=r_data.shape,
+            vals=r_data.flatten(),
+        )
+        b_value = helper.make_tensor(
+            name='b',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=b_data.shape,
+            vals=b_data.flatten(),
+        )
+        h_value = helper.make_tensor(
+            name='h',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=h_data.shape,
+            vals=h_data.flatten(),
+        )
+        graph_def.initializer.extend([w_value, r_value, b_value, h_value])
+        if self.is_cv18xx:
+            input_data = {}
+            input_data["input"] = np.random.rand(seq_length, batch_size,
+                                                 input_size).astype(np.float32)
+            self.onnx_and_test(graph_def, input_data=input_data)
+            return
+        self.onnx_and_test(graph_def)
+
+    def test_GRU4(self, case_name):
+        seq_length = 101
+        batch_size = 640
+        num_dir = 2
+        input_size = 64
+        hidden_size = 128
         direction = 'forward' if num_dir == 1 else 'bidirectional'
         input_shape = [seq_length, batch_size, input_size]
         Y_shape = [seq_length, num_dir, batch_size, hidden_size]
