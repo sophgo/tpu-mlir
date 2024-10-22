@@ -88,6 +88,7 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+bool isSubnetDividedState();
 void setAddrMode(AddrMode mode);
 AddrMode getAddrMode();
 bool isAddrMode(AddrMode mode);
