@@ -325,6 +325,9 @@ def mem_type(v):
     raise ValueError(f"Unknow dma mem_type: {v}")
 
 def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
+    if reg_info is None:
+        reg_info = ProfileFormat()
+        reg_info.des_tsk_typ = -1
     extra_info = reg_info.extra_info
     dma_info = dict()
     # step1 : get registor information from command
@@ -454,7 +457,10 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
        dma_info["DDR Bandwidth(GB/s)"] = 0
        dma_info['L2M Bandwidth(GB/s)'] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
     else:
-        raise ValueError(f"Unknow direction type: {dma_info['Direction']}")
+       dma_info["DDR Bandwidth(GB/s)"] = 0
+       dma_info['L2M Bandwidth(GB/s)'] = 0
+    # else:
+    #     raise ValueError(f"Unknow direction type: {dma_info['Direction']}")
 
     # not implemented
     dma_info["gmem_bl_sum"] = 0
@@ -483,7 +489,12 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
 
 def get_tiu_info_dyn(monitor_info, reg_info):
     tiu_info0, tiu_info1 = dict(), dict()
+    if reg_info is None:
+        reg_info = ProfileFormat()
+        reg_info.des_tsk_typ = -1
     for key in reg_info._fields_:
+        if  isinstance(key, tuple):
+            key = key[0]
         tiu_info1[key] = getattr(reg_info, key)
     tiu_info0["Function Type"], tiu_info0["Function Name"] = getTiuFunctionName(
         reg_info.des_tsk_typ, reg_info.des_tsk_eu_typ)
@@ -548,7 +559,7 @@ def get_tiu_info(monitor_info, reg_info):
     return tiu_info0, tiu_info1
 
 def getTiuFunctionName(cmd_type, cmd_special_function):
-    dmaFunctionNameDict = {
+    tiuFunctionNameDict = {
         # conv
         0: "conv",
         (0, 0): 'conv', (0, 1): 'conv_normal', (0, 2): 'conv_tf32',
@@ -619,9 +630,11 @@ def getTiuFunctionName(cmd_type, cmd_special_function):
         (15, 4): 'swr_collect_from_lmem', (15, 5): 'ata barrier[N]',
         (15, 8): 'send_msg', (15, 9): 'wait_msg', (15, 10): 'sys_fork', (15, 11): 'sys_join',
         (15, 12): 'sys_exit', (15, 13): 'rand_seed', (15, 30): 'nop', (15, 31): 'end',
+        31: 'unknown',
+        (31, 0): 'unknown'
     }
-    functionType = dmaFunctionNameDict.get((cmd_type), f'cmd_type_{cmd_type}')
-    functinName = dmaFunctionNameDict.get((cmd_type, cmd_special_function),  f"{functionType}_{cmd_special_function}")
+    functionType = tiuFunctionNameDict.get((cmd_type), f'cmd_type_{cmd_type}')
+    functinName = tiuFunctionNameDict.get((cmd_type, cmd_special_function),  f"{functionType}_{cmd_special_function}")
     return functionType, functinName
 
 def getDmaFunctionName(cmd_type, cmd_special_function, direction):
@@ -642,6 +655,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         (13, 0): 'DMA_lossy_decompress',
         (14, 0): 'DMA_randmask',
         (15, 0): 'DMA_transfer',
+        (31, 0): "unknown",
     }
     functionType = dmaFunctionNameDict[(cmd_type, 0)]
     direction_dict = {
@@ -651,7 +665,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         "LMEM->LMEM": "Mv"
     }
     functinName = dmaFunctionNameDict[(cmd_type, cmd_special_function)]
-    if cmd_special_function == 0 and cmd_type <= 1:
+    if functionType != "unknown" and cmd_special_function == 0 and cmd_type <= 1:
         functinName = "tensor{}".format(direction_dict.get(direction, ""))
 
     return functionType, functinName
