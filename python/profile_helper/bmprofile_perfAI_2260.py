@@ -19,6 +19,13 @@ from pathlib import Path
 import itertools
 import glob
 
+def get_cmd_id(c):
+    if hasattr(c, 'cmd_id'):
+        cmd_id = c.cmd_id
+    else:
+        cmd_id = c.inst_id
+    return cmd_id
+
 class DynCpuInfo(object):
     def __init__(self, begin_cycle, end_cycle, type, inst_id) -> None:
         self.begin_cycle = begin_cycle
@@ -207,14 +214,31 @@ class BMProfileParserPerfAI(BMProfileParser):
             last_id = c.inst_id
             c.inst_id += delta_id
 
+    def __veryfy_time(self, data):
+        last_time = 0
+        delta_time = 0
+        uint32_max = 4294967295
+        for c in data:
+            current_time = c.inst_start_time
+            if current_time < last_time:
+                delta_time += uint32_max # uint32 max
+            last_time = current_time
+            c.inst_start_time += delta_time
+            c.inst_end_time += delta_time
+            if c.inst_end_time < c.inst_start_time:
+               # start not overflow but end does
+               c.inst_end_time += uint32_max
+
     def __parse_monitor_tiu(self, monitor_tiu: List, raw_data):
         tmp = parse_monitor_bd(raw_data, self.archlib)
         self.__veryfy_cmd_id(tmp)
+        self.__veryfy_time(tmp)
         monitor_tiu.append(tmp)
 
     def __parse_monitor_dma_base(self, raw_data):
         tmp = parse_monitor_gdma(raw_data, self.archlib)
         self.__veryfy_cmd_id(tmp)
+        self.__veryfy_time(tmp)
         return tmp
 
     def __parse_monitor_gdma(self, monitor_gdma: List, raw_data):
@@ -298,27 +322,99 @@ class BMProfileParserPerfAI(BMProfileParser):
             des_tsk_eu_typ = cmd.des_tsk_eu_typ
         return des_tsk_typ, des_tsk_eu_typ
 
-
-    def __make_pairs(self, cmd, monitor, skip_ok=False):
-        # len(cmd) >= len(pmu) case pmu will drop some data
-        _cmd = cmd[:]
+    def __match_sections(self, long_list, short_list):
+        if len(short_list) > len(long_list):
+            raise ValueError(f"short_list lenth should <= long_list lenth")
+        # mak pairs [monitor, cmds]
         pairs = []
-        for m in monitor:
-            # cmd id - 1 == pmu_isnt_id
-            # eg. cmd id : 1,2,3,4 ----- pmu id 0,1,2,3
-            inst_id = m.inst_id + 1
-            for i, c in enumerate(_cmd):
-                if hasattr(c, 'cmd_id'):
-                    cmd_id = c.cmd_id
-                else:
-                    cmd_id = c.inst_id
-                if inst_id == cmd_id:
-                    pairs.append({"monitor": m, "cmd": c})
-                    _cmd = _cmd[i+1:]
+        # abs_l_idx = 0
+        for i, item_s in enumerate(short_list):
+            lens = item_s[0]
+            for j, item_l in enumerate(long_list):
+                if item_l[0] == lens:
+                    if j != 0:
+                        for _item in long_list[:j]:
+                            pairs.append((_item[1], None))
+                    pairs.append((item_l[1], item_s[1]))
+                    long_list = long_list[j+1:]
+                    # print(i, abs_l_idx)
+                    # abs_l_idx += 1 + j
                     break
             else:
-                if not skip_ok:
-                    raise ValueError(f"can't find inst_id: {inst_id} in cmd list")
+                # print(i, lens, long_list)
+                raise ValueError(f"match failed")
+        return pairs
+
+    def __make_mix_pairs(self, cmd, monitor):
+        _cmd = []
+        _monitor = []
+        cmd_slice = []
+        monitor_slice = []
+        first_idx = monitor[0].inst_id + 1 if monitor else 1
+        start_idx, last_idx = first_idx, first_idx
+        for m in monitor:
+            m_id = m.inst_id + 1
+            if m_id <= last_idx and monitor_slice:
+                _monitor.append((last_idx - start_idx + 1, monitor_slice))
+                monitor_slice = []
+                start_idx = m_id
+            monitor_slice.append(m)
+            last_idx = m_id
+        if monitor_slice:
+            _monitor.append((last_idx - start_idx + 1, monitor_slice))
+        first_idx = get_cmd_id(cmd[0]) if cmd else 1
+        start_idx, last_idx = first_idx, first_idx
+        for c in cmd:
+            cmd_id = get_cmd_id(c)
+            if cmd_id <= last_idx and cmd_slice:
+                _cmd.append((last_idx - start_idx + 1, cmd_slice))
+                cmd_slice = []
+                start_idx = cmd_id
+            cmd_slice.append(c)
+            last_idx = cmd_id
+        if cmd_slice:
+            _cmd.append((last_idx - start_idx + 1, cmd_slice))
+        # compatible code, force align
+        if len(_cmd) == 1 and len(_monitor) == 1:
+            if _cmd[-1][0] != _monitor[-1][0]:
+                max_len = max(_cmd[-1][0], _monitor[-1][0])
+                _cmd[-1] = (max_len,  _cmd[-1][1])
+                _monitor[-1] = (max_len,  _monitor[-1][1])
+        # pairs should be [[monitors, cmds]...]
+        # print(len(_monitor), _monitor[0][0], len(_cmd), _cmd[0][0])
+        if len(_monitor) > len(_cmd):
+            # mix mode (pio && des)
+            pairs = self.__match_sections(_monitor, _cmd)
+        else:
+            pairs = self.__match_sections(_cmd, _monitor)
+            pairs = [p[::-1] for p in pairs]
+        return pairs
+
+
+    def __make_pairs(self, cmd, monitor, skip_ok=False):
+        pairs = []
+        for p_monitor, p_cmd in self.__make_mix_pairs(cmd, monitor):
+            if p_monitor is None:
+                continue
+            if p_cmd is None:
+                # TODO get cmd from des comand and dyn command here
+                for m in p_monitor:
+                    pairs.append({"monitor": m, "cmd": None})
+                continue
+            # len(cmd) >= len(pmu) cause pmu will drop some data
+            m_start_idx = p_monitor[0].inst_id
+            c_start_idx = get_cmd_id(p_cmd[0])
+            for m in p_monitor:
+                m_idx = m.inst_id - m_start_idx
+                for i, c in enumerate(p_cmd):
+                    c_idx = get_cmd_id(c) - c_start_idx
+                    if m_idx == c_idx:
+                        pairs.append({"monitor": m, "cmd": c})
+                        p_monitor = p_monitor[i+1:]
+                        break
+                else:
+                    if not skip_ok:
+                        raise ValueError(f"can't find inst_id: {m_idx} in cmd list")
         return pairs
 
     def __find_profile_sync_points(self, cmd, monitor, sys_code, cmd_offset=0, omit_end_sys=True):
@@ -336,27 +432,22 @@ class BMProfileParserPerfAI(BMProfileParser):
                 m = monitor.pop(0)
                 time_point = m.inst_end_time
                 sys_num += 1
-            # find bmoodel input dma
-            if sys_code == self.archlib.dma_sys_code:
-                recorded_input = False
-                input_ids = []
-                find_input = False
-                for i in range(len(monitor)):
-                    if monitor[i].inst_id == 0:
-                        if recorded_input:
-                            find_input = True
-                            break
-                        else:
-                            recorded_input = True
-                    input_ids.append(i)
-                if find_input:
-                    for i in input_ids[::-1]:
-                        monitor.pop(i)
         # skip last dma cpy for bmodel outputs, TODO parse from dyn_cmd
         skip = False
         if cmd_offset and sys_code == self.archlib.dma_sys_code:
             skip = True
         pairs = self.__make_pairs(cmd, monitor, skip)
+        if cmd_offset:
+            # for bmodel remove monitor date without cmd
+            n = 0
+            for item in pairs:
+                if item["cmd"] is None:
+                    n += 1
+                else:
+                    break
+            for i in range(n):
+                pairs.pop(0)
+
         for i, j in enumerate(pairs):
             des_tsk_typ, des_tsk_eu_typ = self.__get_cmd_type(j["cmd"])
             if des_tsk_typ != sys_code or sys_num == self.archlib.profile_sys_num:
