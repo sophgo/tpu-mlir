@@ -1242,6 +1242,18 @@ void ConvertTopToTpu::runOnOperation() {
       });
     }
   }
+  if (module::isMARS3()) {
+    mainFunc_.walk([&](Operation *op) {
+      if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
+              ReturnOp>(op)) {
+        return;
+      }
+      if (auto geluOp = dyn_cast<top::GELUOp>(op)) {
+        if (geluOp.getApproxMode() == "normal")
+          geluOp.setApproxMode(geluMode);
+      }
+    });
+  }
   // process W4A16 MatMul
   if (!module::isState(module::State::TOP_QUANTIZED)) {
     module::applyPatternOnce<W4A16MatMulPreparePattern>(module_);

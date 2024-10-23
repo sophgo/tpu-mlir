@@ -111,7 +111,8 @@ def lowering_options(mode: str,
                      do_winograd: bool = False,
                      q_group_size: int = 0,
                      addr_mode: str = "auto",
-                     matmul_perchannel: bool = False):
+                     matmul_perchannel: bool = False,
+                     gelu_mode: str = "normal"):
     mode = mode.upper()
     options = [
         "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
@@ -130,8 +131,10 @@ def lowering_options(mode: str,
             mode, customization_format, aligned_input)
         options.extend([fuse_pre_param])
     qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
-    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={} matmul_perchannel={}\"".format(
-        qw, asymmetric, do_winograd, ignore_f16_overflow, q_group_size, matmul_perchannel)
+    lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
+                  " ignore_f16_overflow={} q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
+        qw, asymmetric, do_winograd,
+        ignore_f16_overflow, q_group_size, matmul_perchannel, gelu_mode)
     options.extend([
         lower_param,
         "--canonicalize",
@@ -158,7 +161,8 @@ def mlir_lowering(top_mlir: str,
                   addr_mode: str = "auto",
                   mute: bool = False,
                   log_level: str = "normal",
-                  matmul_perchannel: bool = False):
+                  matmul_perchannel: bool = False,
+                  gelu_mode: str = "normal"):
     mode = mode.upper()
     cmd = ["tpuc-opt", top_mlir]
     weight_name = ""
@@ -180,7 +184,8 @@ def mlir_lowering(top_mlir: str,
                                 do_winograd,
                                 q_group_size,
                                 addr_mode,
-                                matmul_perchannel)
+                                matmul_perchannel,
+                                gelu_mode)
     cmd.extend(options)
     cmd.extend(["-o", tpu_mlir])
     log_file = ""
@@ -380,7 +385,7 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd,log_level=log_level)
 
     # compile ppl code
-    build_ppl()
+    # build_ppl()
 
     # codegen based on final mlir
     cmd = ["tpuc-opt", final_mlir]
@@ -440,7 +445,8 @@ def origin_mlir_txt_to_bmodel(converter,
                               log_level: str = 'normal',
                               future_update_rank: int = 0,
                               future_update_list: str = "",
-                              matmul_perchannel: bool = False):
+                              matmul_perchannel: bool = False,
+                              gelu_mode: str = "normal"):
 
     options = []
     new_options = top_opt_options(add_postprocess)
@@ -460,7 +466,8 @@ def origin_mlir_txt_to_bmodel(converter,
                                     do_winograd,
                                     q_group_size,
                                     addr_mode,
-                                    matmul_perchannel)
+                                    matmul_perchannel,
+                                    gelu_mode)
     options.extend(new_options)
     new_options =   tpu_opt_options(quant_input,
                                     quant_output,

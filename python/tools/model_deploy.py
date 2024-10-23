@@ -126,6 +126,7 @@ class DeployTool:
         self.enable_maskrcnn   = args.enable_maskrcnn
         self.future_update_rank = args.future_update_rank
         self.future_update_list = args.future_update_list
+        self.gelu_mode = args.gelu_mode
 
     def cleanup(self):
         file_clean()
@@ -184,7 +185,8 @@ class DeployTool:
                                      True if self.patterns_count else False,
                                      addr_mode=self.addr_mode,
                                      mute=self.mute,
-                                     matmul_perchannel=self.matmul_perchannel)
+                                     matmul_perchannel=self.matmul_perchannel,
+                                     gelu_mode=self.gelu_mode)
             if self.do_validate and self.cache_tool.do_tpu_validate(
                     self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info) \
                and not self.enable_maskrcnn:
@@ -448,6 +450,8 @@ if __name__ == '__main__':
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')
+    parser.add_argument("--gelu_mode", default="normal", type=str.lower,
+                        help="how to approximate gelu, possible options: normal/tanh/sigm")
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")

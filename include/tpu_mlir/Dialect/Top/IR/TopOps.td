@@ -80,6 +80,7 @@ def RequantModeAttr: AnyStrAttrOf<["TFLite_LShift", "TFLite", "MultiplierShift",
 def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
 def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
+def GELUModeAttr: AnyStrAttrOf<["normal", "tanh", "sigm"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1247,7 +1248,8 @@ def Top_GELUOp : Top_Op<"GELU"> {
   }];
   let arguments = (
     ins AnyTensor:$input,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<GELUModeAttr, "\"normal\"">:$approx_mode
   );
 
   let results = (outs AnyTensor:$output);

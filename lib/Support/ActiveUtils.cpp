@@ -24,6 +24,18 @@ static inline double gelu(double x) {
   return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)));
 }
 
+static inline double tgelu(double x) {
+  return 0.5 * x * (1.0 + std::tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)));
+}
+
+static inline double sigmoid(double x) {
+  return 1 / (1 + std::exp(-x));
+}
+
+static inline double qgelu(double x) {
+  return x * sigmoid(1.702 * x);
+}
+
 static inline double square(double x) { return x * x; }
 
 static inline double hswish(double x) {
@@ -44,10 +56,6 @@ static inline double softplus(double x) {
   return x > 20 ? x : std::log(std::exp(x) + 1);
 }
 
-static inline double sigmoid(double x) {
-  return 1 / (1 + std::exp(-x));
-}
-
 static inline double silu(double x) {
   return x / (1 + std::exp(-x));
 }
@@ -60,15 +68,15 @@ static inline double logsigmoid(double x) {
   return std::log(1 / (1 + std::exp(-x)));
 }
 
-activate_f getActivateFunc(tpu::ActiveOp op) {
-switch (op.getMode()) {
+activate_f getActivateFunc(tpu::ActiveMode mode, f64_array_t coeffs) {
+  switch (mode) {
   case tpu::ActiveMode::ABSVAL:
     return [](double val) { return std::abs(val); };
   case tpu::ActiveMode::CEIL:
     return [](double val) { return std::ceil(val); };
   case tpu::ActiveMode::ELU: {
-    const auto coeffs_ = module::getF64Array(op.getCoeffs(), 1, 0);
-    const double alpha = coeffs_->at(0);
+    assert(coeffs && coeffs->size() == 1);
+    const double alpha = coeffs->at(0);
     return [alpha](double val) { return elu(val, alpha); };
   }
   case tpu::ActiveMode::ERF:
@@ -92,9 +100,9 @@ switch (op.getMode()) {
   case tpu::ActiveMode::LOG_SIGMOID:
     return [](double val) { return logsigmoid(val); };
   case tpu::ActiveMode::HSIGMOID: {
-    const auto coeffs_ = module::getF64Array(op.getCoeffs(), 2, 0);
-    const double alpha = coeffs_->at(1);
-    const double beta = coeffs_->at(0);
+    assert(coeffs && coeffs->size() == 2);
+    const double alpha = coeffs->at(1);
+    const double beta = coeffs->at(0);
     return [alpha, beta](double val) { return hsigmoid(val, alpha, beta);};
   }
   case tpu::ActiveMode::HSWISH:
@@ -109,6 +117,10 @@ switch (op.getMode()) {
     return [](double val) { return std::tanh(val); };
   case tpu::ActiveMode::GELU:
     return [](double val) { return gelu(val); };
+  case tpu::ActiveMode::TGELU:
+    return [](double val) { return tgelu(val); };
+  case tpu::ActiveMode::QGELU:
+    return [](double val) { return qgelu(val); };
   case tpu::ActiveMode::SOFT_PLUS:
     return [](double val) { return softplus(val); };
   case tpu::ActiveMode::FLOOR:
@@ -130,13 +142,33 @@ switch (op.getMode()) {
   case tpu::ActiveMode::SIGN:
     return [](double val) { return sign(val); };
   case tpu::ActiveMode::SWISH: {
-      const auto coeffs_ = module::getF64Array(op.getCoeffs(), 1, 0);
-      const double beta = coeffs_->at(0);
-      return [beta](double val) { return swish(val, beta); };
+    assert(coeffs && coeffs->size() == 1);
+    const double beta = coeffs->at(0);
+    return [beta](double val) { return swish(val, beta); };
   }
   default:
     llvm_unreachable("Not Implemented");
   }
+}
+
+activate_f getActivateFunc(tpu::ActiveOp op) {
+  f64_array_t coeffs;
+  switch (op.getMode()) {
+  case tpu::ActiveMode::ELU: {
+    coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
+  }
+  break;
+  case tpu::ActiveMode::HSIGMOID: {
+    coeffs = module::getF64Array(op.getCoeffs(), 2, 0);
+  }
+  break;
+  case tpu::ActiveMode::SWISH: {
+    coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
+  }
+  break;
+  default: ;
+  }
+  return getActivateFunc(op.getMode(), coeffs);
 }
 
 } // namespace tpu_mlir

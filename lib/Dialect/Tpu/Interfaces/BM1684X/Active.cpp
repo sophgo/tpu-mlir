@@ -61,6 +61,8 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::LOG_SIGMOID:
   case ActiveMode::SILU:
   case ActiveMode::SIGMOID:
+  case ActiveMode::TGELU:
+  case ActiveMode::QGELU:
     // |    work1    |    work0    | exp coeff  |
     // | tensor_size | tensor_size |     32     |
     buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);

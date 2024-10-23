@@ -35,6 +35,8 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
            "group size for per-group W4A16 quant">,
     Option<"matmulPerchannel", "matmul_perchannel", "bool", /*default=*/"false",
            "true if matmul uses perchannel quant, or false for pertensor quant">,
+    Option<"geluMode", "gelu_mode", "std::string", /*default=*/"\"normal\"",
+           "supported values: normal, tanh, sigm">,
   ];
 }
 

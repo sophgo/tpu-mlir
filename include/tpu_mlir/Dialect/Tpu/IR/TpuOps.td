@@ -296,6 +296,8 @@ def Tpu_ActiveMode : I32EnumAttr<"ActiveMode",
       I32EnumAttrCase<"SOFT_PLUS", 33>,
       I32EnumAttrCase<"SOFT_SIGN", 34>,
       I32EnumAttrCase<"LOG2", 35>,
+      I32EnumAttrCase<"TGELU", 36>, // TGELU(x) = 0.5 * x * (1.0 + tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
+      I32EnumAttrCase<"QGELU", 37>, // QGELU(x) = x * sigmoid(1.702 * x)
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
