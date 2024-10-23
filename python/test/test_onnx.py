@@ -53,7 +53,7 @@ class ONNX_IR_TESTER(object):
             "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y, N),
             "Atan":         (self.test_Arctan,        N, Y, Y, N, Y, N),
             "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y, N),
-            "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, N),
+            "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y),
             "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y),
             "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y),
             "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y, Y),
@@ -108,18 +108,18 @@ class ONNX_IR_TESTER(object):
             "Einsum12":     (self.test_Einsum12,      N, Y, Y, N, Y, Y),
             "Einsum13":     (self.test_Einsum13,      N, Y, N, N, Y, N),
             "Einsum14":     (self.test_Einsum14,      N, Y, Y, N, Y, N),
-            "Elu":          (self.test_Elu,           Y, Y, Y, N, Y, N),
+            "Elu":          (self.test_Elu,           Y, Y, Y, N, Y, Y),
             "Erf":          (self.test_Erf,           N, Y, Y, N, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y, Y, Y),
             "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N, Y, N),
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y, Y),
-            "Flip":         (self.test_Flip,          Y, Y, Y, N, Y, N),
+            "Flip":         (self.test_Flip,          Y, Y, Y, N, Y, Y),
             "Floor":        (self.test_Floor,         Y, Y, Y, N, Y, N),
             "FitPermute2Hdim": (self.test_FitPermute2Hdim, N, N, Y, Y, N, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y, N),
-            "GatherElements": (self.test_GatherElements, Y, Y, N, N, Y, N),
+            "GatherElements": (self.test_GatherElements, Y, Y, N, N, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, Y, N),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N, Y, N),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N, Y, N),
@@ -134,7 +134,7 @@ class ONNX_IR_TESTER(object):
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, N),
-            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, N), # output_y
+            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y), # output_y
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y, N), # output all
             "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y, N), # output_yh and output_yc
             "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y, N),
@@ -160,9 +160,9 @@ class ONNX_IR_TESTER(object):
             "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y, Y), # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y, Y, Y),
             "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y, Y),
-            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y, N), # y = x ^ n
-            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y, N), # y = n ^ x
-            "Pow3":         (self.test_Pow3,          Y, Y, Y, N, Y, N), # y = x1 ^ x2
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y, Y), # y = x ^ n
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y, Y), # y = n ^ x
+            "Pow3":         (self.test_Pow3,          Y, Y, Y, N, Y, Y), # y = x1 ^ x2
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y, Y),
             "Range":        (self.test_Range,         N, Y, Y, N, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y, Y),
@@ -185,7 +185,7 @@ class ONNX_IR_TESTER(object):
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N),
             "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N, N, Y),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y),
-            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, N),
+            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, N),
             "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y, N),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y),
@@ -236,8 +236,8 @@ class ONNX_IR_TESTER(object):
             "TorchHardSwish":       (self.test_TorchHardSwish,      Y, Y, Y, Y, Y, Y),
             "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, Y, Y, Y, Y, Y),
             "TorchGelu":            (self.test_TorchGelu,           Y, Y, Y, Y, Y, Y),
-            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, Y, N, Y, N),
-            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, Y, N, Y, N),
+            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, Y, N, Y, Y),
+            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, Y, N, Y, Y),
             "TorchGRU":             (self.test_TorchGRU,            N, Y, Y, Y, Y, N),
             "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y, Y),
             "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N, N),
@@ -264,7 +264,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,mars3_support)
             "ArgError":         (self.test_ArgError,        N, Y, Y, Y, Y, Y),
-            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N, Y, N),
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N, Y, Y),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   N, Y, Y, N, Y, Y),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y, Y, Y),
@@ -280,7 +280,7 @@ class ONNX_IR_TESTER(object):
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y, Y, Y),
             "MatMulTranspose2": (self.test_MatMulTranspose2, N, Y, Y, Y, Y, Y),
             "MatMulTranspose3": (self.test_MatMulTranspose3, N, Y, Y, Y, Y, Y),
-            "PadConv1d":        (self.test_PadConv1d,       N, N, N, Y, N, N),
+            "PadConv1d":        (self.test_PadConv1d,       N, N, N, Y, N, Y),
             "PadConv2d":        (self.test_PadConv2d,       Y, Y, Y, Y, Y, Y),
             "PadConv3d":        (self.test_PadConv3d,       N, N, N, N, N, Y),
             "PadPool1d":        (self.test_PadPool1d,       N, Y, Y, Y, Y, Y),
@@ -2682,7 +2682,13 @@ class ONNX_IR_TESTER(object):
                 """ % (case_name, keep, input_shape, output_shape, output_shape, 1 if keep else 0,
                        1 if keep else 0)
             graph_def = onnx.parser.parse_graph(graph_txt)
-            self.onnx_and_test(graph_def)
+            if (self.chip =="mars3"):
+                input_data = {
+                    "input": np.random.randint(0, np.iinfo(np.int16).max, input_shape).astype(np.int64)
+                    }
+                self.onnx_and_test(graph_def,input_data=input_data)
+            else:
+                self.onnx_and_test(graph_def)
 
     def test_Reduce(self, case_name):
         for keep in [True, False]:
@@ -4187,7 +4193,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        if self.chip in ['bm1684x', 'bm1690']:
+        if self.chip in ['bm1684x', 'bm1690', 'mars3']:
             # samples too large for regression is commented
             # but all samples following should be passed
             input_data = [
@@ -4252,7 +4258,7 @@ class ONNX_IR_TESTER(object):
                 indices_,
             )
 
-            if self.chip in ['bm1684x', 'bm1690']:
+            if self.chip in ['bm1684x', 'bm1690', 'mars3']:
                 graph_txt = """
                     %s (float%s data) => (float%s gather_output)
                     <int64%s indices>
@@ -5414,7 +5420,13 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, output_shape, output_shape, output_shape, arg_axis, reduce_axes,
                    reduce_axes)
         graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        if (self.chip =="mars3"):
+            input_data = {
+                "input": np.random.randint(0, np.iinfo(np.int16).max, input_shape).astype(np.int64)
+                }
+            self.onnx_and_test(graph_def,input_data=input_data)
+        else:
+            self.onnx_and_test(graph_def)
 
     # def test_LayerNorm(self, case_name):
     #     axis = 2

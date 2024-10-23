@@ -17,10 +17,16 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
   operands.push_back(op.getInput());
   std::vector<Type> new_types;
   const auto shape = module::getShape(op.getIndices());
-  const auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
+  const auto new_type = RankedTensorType::get(shape, rewriter.getI32Type()); //indices : Int32
   new_types.push_back(new_type);
   if (!module::isNone(op.getValues())) {
-    new_types.push_back(type);
+    if (module::isMARS3()){
+      const auto shape_value = module::getShape(op.getValues());
+      const auto new_type_value = RankedTensorType::get(shape_value, rewriter.getI16Type()); //value : Int16
+      new_types.push_back(new_type_value);
+    }else{
+      new_types.push_back(type);
+    }
   } else {
     new_types.push_back(op.getValues().getType());
   }
@@ -30,10 +36,7 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
 }
 
 void ArgLowering::LoweringF32(PatternRewriter &rewriter, top::ArgOp op) const {
-  if (module::isMARS3())
-    LoweringArg(rewriter, op, getQuantInt16Type(op.getValues()));
-  else
-    LoweringArg(rewriter, op, getQuantFloatType(op.getValues()));
+  LoweringArg(rewriter, op, getQuantFloatType(op.getValues()));
 }
 
 void ArgLowering::LoweringF16(PatternRewriter &rewriter, top::ArgOp op) const {
@@ -46,10 +49,7 @@ void ArgLowering::LoweringBF16(PatternRewriter &rewriter, top::ArgOp op) const {
 
 void ArgLowering::LoweringINT8(PatternRewriter &rewriter, top::ArgOp op,
                                bool asymmetric) const {
-  if (module::isMARS3())
-    LoweringArg(rewriter, op, getQuantInt8Type(op.getValues(), asymmetric));
-  else
-    LoweringF32(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
