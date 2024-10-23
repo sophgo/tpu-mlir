@@ -1477,7 +1477,7 @@ static bool backward_update_slice(
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  isa<tpu::Conv2DOp>(user) && module::isUniformQuantized(in)) ||
+                  (isa<tpu::Conv2DOp>(user) || isa<tpu::CastOp>(user) || isa<tpu::LutOp>(user)) && module::isUniformQuantized(in)) ||
                 lg_info.group_outs.size() != 1) {
               return false;
             }
@@ -1524,6 +1524,20 @@ static bool backward_update_slice(
                 std::pair<int64_t, int64_t>(w_lowest, w_highest - w_lowest));
           }
           tensor_infos[in] = tensor_info_t(si_both);
+
+          if (isa<tpu::LutOp>(op) || isa<tpu::CastOp>(op) )  {
+            auto val = op->getResult(0);
+            for (int i = 0; i < shape_secs.hsecs; i++){
+              tensor_infos[val].slice_info.h[i].first = tensor_infos[in].slice_info.h[i].first;
+              tensor_infos[val].slice_info.h[i].second = tensor_infos[in].slice_info.h[i].second;
+            }
+
+            for (int i = 0; i < shape_secs.wsecs; i++){
+              tensor_infos[val].slice_info.w[i].first = tensor_infos[in].slice_info.w[i].first;
+              tensor_infos[val].slice_info.w[i].second = tensor_infos[in].slice_info.w[i].second;
+           }
+          }
+
           tensor_infos[in].hold_in_lmem = hold_in_lmem;
         } else {
           return false;
