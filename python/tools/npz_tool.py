@@ -26,6 +26,7 @@ npz_tool_func = {
     "rename": npz_rename,
     "reshape": npz_reshape,
     "bf16_to_fp32": npz_bf16_to_fp32,
+    "fp16_to_fp32": npz_fp16_to_fp32,
     "permute": npz_permute,
     "get_shape": get_npz_shape,
     "to_bin": npz_to_bin,
