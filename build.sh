@@ -59,6 +59,9 @@ cmake -G Ninja \
 cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
 cmake --build $BUILD_PATH --target install -j${cpu_num}
 
+# build ppl code
+bash lib/PplBackend/build.sh
+
 # Clean up some files for release build
 if [ "$1" != "DEBUG" ]; then
   # build doc

@@ -454,6 +454,9 @@ class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
     if (supportMultiCore(op)) {
       return failure();
     }
+    if (op.getWeightBits() != 4) {
+      return failure();
+    }
     if (module::isOpInBlock(op)) {
       return failure();
     }

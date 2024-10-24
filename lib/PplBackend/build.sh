@@ -22,6 +22,6 @@ do
 done
 
 cmake ../ -DDEBUG=ON -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}"
-make install -j8
+make install
 
 popd

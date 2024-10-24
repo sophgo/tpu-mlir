@@ -1331,7 +1331,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   }];
 }
 
-def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
+def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
+    [DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "w8a16 / w4a16 matmul operator";
 
   let description = [{

@@ -63,8 +63,8 @@ void computePerChannelParam(
       float *p_weight = weight_data->data() + c * col;
       findMinMax(p_weight, col, &min_val, &max_val);
       scale->at(c) = std::max(max_val - min_val, (float)1e-5) / max_int;
-      zp->at(c) =
-          std::clamp(-(int)std::round(min_val / scale->at(c)), min_int, max_int);
+      zp->at(c) = std::clamp(-(int)std::round(min_val / scale->at(c)), min_int,
+                             max_int);
     }
   }
 }
@@ -271,9 +271,11 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         auto zp_i = zp[i];
         auto scale_i = scale[i];
         for (int j = 0; j < N; j++) {
-          new_weight[offset + j] = (((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i);
+          new_weight[offset + j] =
+              (((int(weight[(offset + j) / 2]) & 0x0F) - zp_i) * scale_i);
           j++;
-          new_weight[offset + j] = (((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i);
+          new_weight[offset + j] =
+              (((int(weight[(offset + j) / 2]) >> 4) - zp_i) * scale_i);
         }
       }
     } else {
@@ -281,9 +283,9 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
         auto scale_i = scale[quant_idx];
-        new_weight[i] =  (((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i);
+        new_weight[i] = (((int(weight[i / 2]) & 0x0F) - zp_i) * scale_i);
         i++;
-        new_weight[i] =  (((int(weight[i / 2]) >> 4) - zp_i) * scale_i);
+        new_weight[i] = (((int(weight[i / 2]) >> 4) - zp_i) * scale_i);
       }
     }
 
@@ -301,9 +303,9 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     for (int i = 0; i < K; i++) {
       auto offset = i * N;
       for (int j = 0; j < N; j++) {
-        weight[offset + j] = module::isSG2380() ?
-            ((weight[offset + j]) * scale[i] - zp[i]) :
-            ((weight[offset + j]) * scale[i]);
+        weight[offset + j] = module::isSG2380()
+                                 ? ((weight[offset + j]) * scale[i] - zp[i])
+                                 : ((weight[offset + j]) * scale[i]);
       }
     }
     // hand over the rest work to onednn matmul
@@ -327,7 +329,8 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
                                              PatternRewriter &rewriter) {
   auto input_value = op.getInput();
   auto ele_type = module::getElementType(input_value);
-  if (!ele_type.isF16() && !ele_type.isBF16() && !module::isCalibratedType(input_value)) {
+  if (!ele_type.isF16() && !ele_type.isBF16() &&
+      !module::isCalibratedType(input_value)) {
     llvm_unreachable("input of A16MatMul has to be F16 or BF16");
   }
   auto weight_op = op.getWeight().getDefiningOp<top::WeightOp>();
@@ -375,15 +378,18 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
 
   if (!q_group_size) {
     if (module::isSG2380())
-      computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale, zp_fp);
+      computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale,
+                             zp_fp);
     else
-       computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale, zp_int8);
+      computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale,
+                             zp_int8);
   } else {
     op.setQGroupSize(q_group_size);
     if (module::isSG2380())
       computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp_fp);
     else
-      computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp_int8);
+      computePerGroupParam(trans_weight, row, col, q_group_size, scale,
+                           zp_int8);
   }
 
   // 2. quantize weight to low bit integer
@@ -414,10 +420,12 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
                                            : f32_scale_op.clone_bf16(op);
   op.setOperand(2, half_scale_value);
   if (module::isSG2380()) {
-    auto zp_type = RankedTensorType::get(quant_param_shape, rewriter.getF32Type());
+    auto zp_type =
+        RankedTensorType::get(quant_param_shape, rewriter.getF32Type());
     auto fp_zp_op = top::WeightOp::create(op, "zp", *zp_fp, zp_type)
                         .getDefiningOp<top::WeightOp>();
-    auto half_zp_value = ele_type.isF16() ? fp_zp_op.clone_f16(op) : fp_zp_op.clone_bf16(op);
+    auto half_zp_value =
+        ele_type.isF16() ? fp_zp_op.clone_f16(op) : fp_zp_op.clone_bf16(op);
     op.setOperand(3, half_zp_value);
   } else {
     if (bitwidth == 4) {
@@ -446,6 +454,34 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   return success();
 };
 
-bool tpu::A16MatMulOp::support_multi_core() {
-  return module::isSG2380();
+ArrayAttr tpu::A16MatMulOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  if (getWeightBits() == 4 || getWTranspose() != true) {
+    return Builder(ctx).getAffineMapArrayAttr({});
+  }
+  auto outShape = module::getShape(getOutput());
+  auto num_dims = outShape.size();
+  // TODO(pengchao.hu): Only Weight slice
+  auto out_nums = module::getNumElements(getOutput());
+  if (out_nums != outShape[num_dims-1]) {
+    return Builder(ctx).getAffineMapArrayAttr({});
+  }
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
+  AffineMap inputMap = AffineMap::get(
+      num_dims, 0, outMap.getResults().slice(0, num_dims - 1), ctx);
+  AffineMap weightMap = AffineMap::get(
+      num_dims, 0, outMap.getResults().slice(num_dims - 1, 1), ctx);
+  AffineMap scaleMap = AffineMap::get(
+      num_dims, 0, outMap.getResults().slice(num_dims - 1, 1), ctx);
+  AffineMap emptyMap = AffineMap::get(num_dims, 0, ctx);
+  SmallVector<AffineMap> indexingMaps{inputMap, weightMap, scaleMap, emptyMap};
+  if (module::isNone(getBias())) {
+    indexingMaps.push_back(emptyMap);
+  } else {
+    indexingMaps.push_back(scaleMap);
+  }
+  indexingMaps.push_back(outMap);
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 }
+
+bool tpu::A16MatMulOp::support_multi_core() { return module::isSG2380(); }
