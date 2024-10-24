@@ -254,10 +254,11 @@ def tpu_ada_options(dynamic: bool = False,
 
 def codegen_options(model: str,
                     embed_debug_info: bool = False,
-                    model_version: str = ""):
+                    model_version: str = "",
+                    bmodel_only: bool = False):
     options = [
-        '--codegen="model_file={} embed_debug_info={} model_version={}"'.format(
-            model, str(embed_debug_info).capitalize(), str(model_version).lower())
+        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={}"'.format(
+          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize())
     ]
     return options
 
@@ -479,7 +480,8 @@ def origin_mlir_txt_to_bmodel(converter,
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel",
                                   embed_debug_info,
-                                  model_version)
+                                  model_version,
+                                  True)
     options.extend(new_options)
     options.extend(['--deinit="no_save_weight=True"'])
 
