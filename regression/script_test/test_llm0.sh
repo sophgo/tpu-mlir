@@ -60,6 +60,19 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_bm1688_2core_static.bmodel
 
+model_deploy.py \
+  --mlir llama2_block_cache_0.mlir \
+  --quantize W8F16 \
+  --chip bm1688 \
+  --num_core 2 \
+  --quant_input \
+  --quant_output \
+  --addr_mode io_alone \
+  --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+  --test_reference llama2_block_cache_0_top_outputs.npz \
+  --tolerance 0.98,0.84 \
+  --model llama2_block_cache_0_bm1688_2core_static.bmodel
+
 # dynamic
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
