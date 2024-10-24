@@ -57,9 +57,6 @@ void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
   get_stride(aligned_stride, shape, TPU_ALIGN, EU_BYTES / eu_size, start_idx);
 }
 
-int min(int, int);
-int max(int, int);
-
 template<typename T>
 data_type_t convert_dtype() {
   if constexpr (std::is_same_v<T, float>) {
@@ -105,6 +102,21 @@ int dim4_index(const dim4* d, int index) {
   else return -1;
 }
 
+template <typename dtype, typename dimT>
+tensor<dtype> &make_tensor(dimT &block_shape, dimT &real_shape,
+                           align_mode_t align_mode = TPU_ALIGN) {
+  tensor<dtype> new_tensor(block_shape, align_mode);
+  return new_tensor.view(real_shape);
+}
+
+template <typename dtype>
+gtensor<dtype> &make_gtensor(dim4 &shape, tensor_mode_t mode, dtype *addr,
+                             dim4 &stride) {
+  gtensor<dtype> new_tensor(shape, mode, addr);
+  return new_tensor.view(shape, stride);
+}
+
+
 template <typename dtype>
 gtensor<dtype> &make_gtensor_permute(dim4 &mem_shape, tensor_mode_t mode,
                                         dtype *addr, int order[4]) {
@@ -130,6 +142,25 @@ template <typename dtype>
 gtensor<dtype> &make_gtensor_permute(dim4 &mem_shape, tensor_mode_t mode, dtype *addr) {
   int default_order[4] = {0, 1, 2, 3};
   return make_gtensor_permute(mem_shape, mode, addr, default_order);
+}
+
+template <typename DataType> int get_eu_num() {
+  if constexpr (std::is_same_v<DataType, int4>) {
+    return 2 * EU_BYTES;
+  } else {
+    return EU_BYTES / sizeof(DataType);
+  }
+}
+
+template <typename DataType> int get_nic() {
+  if constexpr (std::is_same_v<DataType, fp32>) {
+    return 1;
+  } else if constexpr (std::is_same_v<DataType, int4> ||
+                       std::is_same_v<DataType, uint4>) {
+    return LANE_NUM * 2;
+  } else {
+    return LANE_NUM / sizeof(DataType);
+  }
 }
 
 } // namespace ppl

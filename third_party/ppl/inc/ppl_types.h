@@ -115,22 +115,17 @@ struct padding_t {
 
 template <typename dtype> struct tensor {
 public:
-  tensor(align_mode_t align_mode = TPU_ALIGN, long long address = -1,
-         bool unsigned_flag = IS_UNSIGNED(dtype));
+  tensor(align_mode_t align_mode = TPU_ALIGN, long long address = -1);
   // tensor(const tensor&) = delete;
   tensor &operator=(const tensor &) = delete;
 
   template <typename dimT>
   explicit tensor(dimT &_shape, align_mode_t align_mode = TPU_ALIGN,
-                  long long address = -1,
-                  bool unsigned_flag = IS_UNSIGNED(dtype));
-  template <typename dtype2>
-  tensor<dtype2> &view(bool unsigned_flag = IS_UNSIGNED(dtype2));
+                  long long address = -1);
+  template <typename dtype2> tensor<dtype2> &view();
+  template <typename dtype2, typename dimT> tensor<dtype2> &view(dimT &_shape);
   template <typename dtype2, typename dimT>
-  tensor<dtype2> &view(dimT &_shape, bool unsigned_flag = IS_UNSIGNED(dtype2));
-  template <typename dtype2, typename dimT>
-  tensor<dtype2> &view(dimT &_shape, dimT &_stride,
-                       bool unsigned_flag = IS_UNSIGNED(dtype2));
+  tensor<dtype2> &view(dimT &_shape, dimT &_stride);
   template <typename dimT> tensor<dtype> &view(dimT &_shape);
   template <typename dimT> tensor<dtype> &view(dimT &_shape, dimT &_stride);
   template <typename dimT> tensor<dtype> &sub_view(dimT &_shape, dimT &_offset);
@@ -141,21 +136,16 @@ private:
 
 template <typename dtype> struct gtensor {
 public:
-  gtensor(tensor_mode_t mode, dtype *address = nullptr,
-          bool unsigned_flag = IS_UNSIGNED(dtype));
+  gtensor(tensor_mode_t mode, dtype *address = nullptr);
   // gtensor(const gtensor&) = delete;
   gtensor &operator=(const gtensor &) = delete;
 
   template <typename dimT>
-  explicit gtensor(dimT &_shape, tensor_mode_t mode, dtype *address = nullptr,
-                   bool unsigned_flag = IS_UNSIGNED(dtype));
-  template <typename dtype2>
-  gtensor<dtype2> &view(bool unsigned_flag = IS_UNSIGNED(dtype2));
+  explicit gtensor(dimT &_shape, tensor_mode_t mode, dtype *address = nullptr);
+  template <typename dtype2> gtensor<dtype2> &view();
+  template <typename dtype2, typename dimT> gtensor<dtype2> &view(dimT &_shape);
   template <typename dtype2, typename dimT>
-  gtensor<dtype2> &view(dimT &_shape, bool unsigned_flag = IS_UNSIGNED(dtype2));
-  template <typename dtype2, typename dimT>
-  gtensor<dtype2> &view(dimT &_shape, dimT &_stride,
-                        bool unsigned_flag = IS_UNSIGNED(dtype2));
+  gtensor<dtype2> &view(dimT &_shape, dimT &_stride);
   template <typename dimT> gtensor<dtype> &view(dimT &_shape);
   template <typename dimT> gtensor<dtype> &view(dimT &_shape, dimT &_stride);
   template <typename dimT>
@@ -164,18 +154,5 @@ public:
 private:
   dtype *data;
 };
-
-template <typename dtype, typename dimT>
-tensor<dtype> &make_tensor(dimT &block_shape, dimT &real_shape) {
-  tensor<dtype> new_tensor(block_shape);
-  return new_tensor.view(real_shape);
-}
-
-template <typename dtype>
-gtensor<dtype> &make_gtensor(dim4 &shape, tensor_mode_t mode, dtype *addr,
-                             dim4 &stride) {
-  gtensor<dtype> new_tensor(shape, mode, addr);
-  return new_tensor.view(shape, stride);
-}
 
 } // namespace ppl
