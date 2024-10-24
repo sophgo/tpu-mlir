@@ -3,6 +3,29 @@
 #include "ppl_utils.h"
 
 namespace ppl {
+
+/******************************/
+/*       for kernel           */
+/******************************/
+
+template <typename... Args> void print(const char *format, Args... args);
+
+template <typename DataType> char *to_string(tensor<DataType> &src);
+
+template <typename DataType> char *to_string(gtensor<DataType> &src);
+
+template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
+
+// template <typename DataType>
+// uint64 get_gmem_addr(DataType *address);
+
+template <typename DataType> DataType get_value(int64 gaddr);
+
+
+
+/******************************/
+/*       for host           */
+/******************************/
 /*
  * Note:
  * 1. The random number generation interval is [min_val, max_val)
@@ -45,18 +68,6 @@ template <typename DataType> DataType *rand(dim4 *shape) {
 
 template <typename DataType> DataType *malloc(dim4 *shape);
 
-void enable_pipeline();
-
-void set_core_num(int num);
-
-int get_core_num();
-
-int get_core_index();
-
-void tpu_sync_core();
-
-void sync();
-
 template <typename DataType> void assert(DataType condition);
 
 template <typename DataType>
@@ -73,31 +84,12 @@ void read_bin(DstType *dst, const char *file_path) {
   read_bin(dst, file_path, (FileType)0);
 }
 
-void hau_poll();
+/*****************************************/
+/*    for   kernel and host           */
+/*****************************************/
+int min(int, int);
+int max(int, int);
 
-void tpu_poll();
-
-template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
-
-// template <typename DataType>
-// uint64 get_gmem_addr(DataType *address);
-
-template <typename DataType> DataType get_value(int64 gaddr);
-
-void msg_send(int msg_idx, int wait_cnt, bool is_dma);
-
-void msg_wait(int msg_idx, int send_cnt, bool is_dma);
-
-void fence();
-
-void lane_mask(int mask, bool long_valid);
-
-void vset(int ew, int lmul, int v_len);
-
-template <typename... Args> void print(const char *format, Args... args);
-
-template <typename DataType> char *to_string(tensor<DataType> &src);
-
-template <typename DataType> char *to_string(gtensor<DataType> &src);
-
+float log(float x);
+float sqrt(float x);
 } // namespace ppl

@@ -6,10 +6,11 @@
 #define __KERNEL__ __attribute__((deprecated("kernel")))
 #define __TEST__ __attribute__((deprecated("test")))
 #define __HOST__ __attribute__((deprecated("host")))
-#define IS_UNSIGNED(dtype)                                                     \
-  (std::is_same_v<dtype, uint8> || std::is_same_v<dtype, uint16> ||            \
-   std::is_same_v<dtype, uint32> || std::is_same_v<dtype, uint8 *> ||          \
-   std::is_same_v<dtype, uint16 *> || std::is_same_v<dtype, uint32 *>)
+#define IS_UNSIGNED(dtype)                                              \
+  (std::is_same_v<dtype, uint8>  || std::is_same_v<dtype, uint8 *> ||   \
+   std::is_same_v<dtype, uint32> || std::is_same_v<dtype, uint32 *> ||  \
+   std::is_same_v<dtype, uint4>  || std::is_same_v<dtype, uint4 *> ||   \
+   std::is_same_v<dtype, uint16> || std::is_same_v<dtype, uint16 *>)
 
 #define DEFAULT_SDMA_PORT -1
 
@@ -22,7 +23,7 @@ using int32 = int;
 using uint32 = unsigned int;
 using int8 = char;
 using uint8 = unsigned char;
-using int16 = char16_t;
+using int16 = short;
 using uint16 = unsigned short;
 using int64 = long long;
 using uint64 = unsigned long long;

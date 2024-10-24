@@ -54,6 +54,7 @@ void api_avgpool_global(void *param, size_t param_size, void *input_spec,
         int *block_ptr = std::get<0>(item);
         *block_ptr = align_up(max_val / secs, std::get<2>(item));
         int ret = call_kernel();
+        CHECK_PPL_RET(ret);
         if (!ret) {
           return 0;
         }

@@ -35,9 +35,7 @@ void topk(gtensor<DataType> &dst, gtensor<int> &dst_idx,
 template <typename DataType0, typename DataType1, typename DataType2>
 void gather_line(gtensor<DataType0> &dst, gtensor<DataType0> &param,
                  gtensor<DataType1> &index, DataType2 C, int start,
-                 int end, bool fill_const,
-                 bool is_unsigned = IS_UNSIGNED(DataType0),
-                 bool index_is_unsigned = IS_UNSIGNED(DataType1));
+                 int end, bool fill_const);
 
 } // namespace hau
 } // namespace ppl

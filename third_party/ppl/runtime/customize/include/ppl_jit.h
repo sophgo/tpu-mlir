@@ -16,6 +16,19 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+enum PplErrorCode {
+  PplAddressAssignErr = 0x1001,
+  FileErr = 0x1002,
+  LlvmFeErr = 0x1003,
+  PplFeErr = 0x1004,
+  PplOpt1Err = 0x1005,
+  PplOpt2Err = 0x1006,
+  PplFinalErr = 0x1007,
+  PplTransErr = 0x1008,
+  EnvErr = 0x1009,
+};
+
 namespace fs = std::filesystem;
 
 typedef void (*KERNEL_FUNC)(void *);
@@ -196,13 +209,23 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
         << inc_path << " " << path << " " << chip << " " << args
         << " > nul 2>nul";
     auto ret = system(cmd.str().c_str());
-    if (ret != 0) {
-      // printf("generate kernel function failed!\n");
+    switch (ret) {
+    case 0: {
+      gen_flag(cache_dir + "/", key, true);
+      break;
+    }
+    case PplAddressAssignErr: {
       fs::remove_all(path);
       gen_flag(cache_dir + "/", key, false);
-      return -1;
-    } else {
-      gen_flag(cache_dir + "/", key, true);
+      return ret;
+    }
+    default: {
+      cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
+          << inc_path << " " << path << " " << chip << " " << args;
+      fs::remove_all(path);
+      gen_flag(cache_dir + "/", key, false);
+      return system(cmd.str().c_str());
+    }
     }
     cache.put(key, *v);
   }

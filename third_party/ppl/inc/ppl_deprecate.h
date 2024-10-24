@@ -123,7 +123,7 @@ void fmm2(tensor<DataType0> &dst, tensor<DataType1> &left,
           tensor<DataType1> &right, DataType2 &bias, bool ltrans, bool rtrans,
           bool do_relu, bool result_add, bool out_dtype,
           bool do_saturate = false) {
-  fmm2(dst, left, right, bias, ltrans, rtrans, do_relu, result_add,
+  fmm2(dst, left, right, bias, ltrans, rtrans, false, do_relu, result_add,
        static_cast<data_type_t>(out_dtype), true, do_saturate);
 }
 
@@ -131,45 +131,51 @@ template <typename DataType0, typename DataType1>
 void fmm2(tensor<DataType0> &dst, tensor<DataType1> &left,
           tensor<DataType1> &right, bool ltrans, bool rtrans, bool do_relu,
           bool result_add, bool out_dtype, bool do_saturate = false) {
-  tensor<DataType1> *bias = nullptr;
-  fmm2(dst, left, right, bias, ltrans, rtrans, do_relu, result_add, out_dtype,
-       do_saturate);
-}
-
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
-         DataType2 &bias, int zp_val, bool ltrans, bool rtrans,
-         bool result_add);
-template <typename DataType0, typename DataType1>
-void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
-         int zp_val, bool ltrans, bool rtrans, bool result_add) {
-  tensor<DataType1> *bias = nullptr;
-  mm2(dst, left, right, bias, zp_val, ltrans, rtrans, result_add);
+  tensor<DataType0> *bias = nullptr;
+  fmm2(dst, left, right, bias, ltrans, rtrans, false, do_relu, result_add,
+       static_cast<data_type_t>(out_dtype), false, do_saturate);
 }
 
 template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
-         DataType2 &bias, tensor<DataType1> &zp_val, bool ltrans, bool rtrans,
-         bool result_add);
-template <typename DataType0, typename DataType1>
-void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
-         tensor<DataType1> &zp_val, bool ltrans, bool rtrans, bool result_add) {
-  tensor<DataType1> *bias = nullptr;
-  mm2(dst, left, right, bias, zp_val, ltrans, rtrans, result_add);
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool ltrans, bool rtrans, bool rst_trans, bool result_add,
+          data_type_t out_dtype, bool saturate = false) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2(dst, left, right, bias, ltrans, rtrans, rst_trans, false, result_add,
+       out_dtype, false, saturate);
 }
+// template <typename DataType0, typename DataType1, typename DataType2>
+// void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
+//          DataType2 &bias, int zp_val, bool ltrans, bool rtrans,
+//          bool result_add);
+// template <typename DataType0, typename DataType1>
+// void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
+//          int zp_val, bool ltrans, bool rtrans, bool result_add) {
+//   tensor<DataType1> *bias = nullptr;
+//   mm2(dst, left, right, bias, zp_val, ltrans, rtrans, result_add);
+// }
 
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5>
-void mm2(tensor<DataType0> &dst, DataType1 &left, tensor<DataType2> &right,
-         DataType3 &bias, DataType4 &r_zp, DataType5 &requant, int multiplier,
-         int8 rshift, int16 y_zp, bool ltrans, bool rtrans, bool result_add,
-         bool do_relu, bool do_rq, bool is_perchannel, bool saturate,
-         rounding_mode_t round_mode);
+// template <typename DataType0, typename DataType1, typename DataType2>
+// void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
+//          DataType2 &bias, tensor<DataType1> &zp_val, bool ltrans, bool
+//          rtrans, bool result_add);
+// template <typename DataType0, typename DataType1>
+// void mm2(tensor<int> &dst, tensor<DataType0> &left, tensor<DataType1> &right,
+//          tensor<DataType1> &zp_val, bool ltrans, bool rtrans, bool
+//          result_add) {
+//   tensor<DataType1> *bias = nullptr;
+//   mm2(dst, left, right, bias, zp_val, ltrans, rtrans, result_add);
+// }
+
+// template <typename DataType0, typename DataType1, typename DataType2,
+//           typename DataType3, typename DataType4, typename DataType5>
+// void mm2(tensor<DataType0> &dst, DataType1 &left, tensor<DataType2> &right,
+//          DataType3 &bias, DataType4 &r_zp, DataType5 &requant, int
+//          multiplier, int8 rshift, int16 y_zp, bool ltrans, bool rtrans, bool
+//          result_add, bool do_relu, bool do_rq, bool is_perchannel, bool
+//          saturate, rounding_mode_t round_mode);
 
 } // namespace tiu
 
-namespace hau {
-
-}
+namespace hau {}
 } // namespace ppl

@@ -53,7 +53,6 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
     }
   }
 
-  bool success = false;
   while (block_m > 0 && block_k > 0) {
     if (in_spec[0].dtype == DTYPE_FP16) {
       ret = flash_attention_gqa_f16(
@@ -72,18 +71,13 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
     } else {
       assert(0);
     }
-    if (ret == 0) {
-      success = true;
-      break;
-    } else if (ret == -1) {
+    CHECK_PPL_RET(ret);
+    if (ret == PplAddressAssignErr) {
       block_m -= 2;
       block_k -= 2;
       continue;
     }
     break;
-  }
-  if (!success) {
-    assert(0 && "fattention compile failed\n");
   }
 }
 

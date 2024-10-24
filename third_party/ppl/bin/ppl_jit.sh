@@ -13,8 +13,11 @@ fi
 
 ppl-compile "$SRC"  --I $INC  --x ir --chip $CHIP -D__${CHIP}__ --O3 --desc --device ${OPTION_ARG} -o ${OUT}
 ret=$?
-if [ $ret != 0 ]; then
-  return 1
+if [ $ret -eq 0x1001 ]; then
+    echo "Error: Address assign failed!"
+    return 0x1001
+elif [ $ret -ne 0 ]; then
+    return $ret
 fi
 
 cp $PPL_PROJECT_ROOT/runtime/scripts/DescDevice.cmake $OUT/CMakeLists.txt
