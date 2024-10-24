@@ -41,9 +41,11 @@ def bmprofile_check_command(input_dir: str, output_dir: str, mark_str, arch="bm1
 
 def bmprofile_parse_perfAI(input_dir: str, output_dir: str, mark_str, arch="A2", debug=False):
     core_num = 2
+    style = 1
     if arch == "BM1690":
         from bmprofile_perfAI_2260 import BMProfileParserPerfAI
         core_num = 8
+        style = 0
     else:
         from bmprofile_perfAI import BMProfileParserPerfAI
 
@@ -52,7 +54,9 @@ def bmprofile_parse_perfAI(input_dir: str, output_dir: str, mark_str, arch="A2",
 
     bmProfile.to_txt(output_dir)
     if not debug:
+        print("Generate web...")
         subprocess.run(
             [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(output_dir)} --name PerfAI_web"],  shell=True)
+        print("Generate doc...")
         subprocess.run(
-            [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} {core_num} --style 1"],  shell=True)
+            [f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} {core_num} --style {style}"],  shell=True)

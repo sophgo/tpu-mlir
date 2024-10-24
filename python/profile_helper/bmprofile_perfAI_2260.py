@@ -18,6 +18,7 @@ from typing import List
 from pathlib import Path
 import itertools
 import glob
+from tqdm import tqdm
 
 def get_cmd_id(c):
     if hasattr(c, 'cmd_id'):
@@ -46,7 +47,8 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.is_dyn = False
 
     def parse_cmd(self, file_list):
-        for infile in file_list:
+        print("Parsing...")
+        for infile in tqdm(file_list):
             blocks = parse_data_blocks(infile)
             if blocks is None:
                 continue
@@ -100,11 +102,12 @@ class BMProfileParserPerfAI(BMProfileParser):
         dma_file = os.path.join(self.out_dir, "tdmaRegInfo_{}.txt")
         tiu_file = os.path.join(self.out_dir, "tiuRegInfo_{}.txt")
         # write engine info
-        for idx, pair in enumerate(self.gdma_pairs):
+        print("Write engine info...")
+        for idx, pair in tqdm(enumerate(self.gdma_pairs)):
             self.__write_engine_info(dma_file, idx, pair, self.archlib.EngineType.GDMA)
-        for idx, pair in enumerate(self.sdma_pairs):
+        for idx, pair in tqdm(enumerate(self.sdma_pairs)):
             self.__write_engine_info(dma_file, idx, pair, self.archlib.EngineType.SDMA, False)
-        for idx, pair in enumerate(self.bd_pairs):
+        for idx, pair in tqdm(enumerate(self.bd_pairs)):
             self.__write_engine_info(tiu_file, idx, pair, self.archlib.EngineType.BD)
         # write cpu info
         cpu_file = os.path.join(self.out_dir, "cpuInfo_{}.txt")
@@ -322,30 +325,49 @@ class BMProfileParserPerfAI(BMProfileParser):
             des_tsk_eu_typ = cmd.des_tsk_eu_typ
         return des_tsk_typ, des_tsk_eu_typ
 
-    def __match_sections(self, long_list, short_list):
-        if len(short_list) > len(long_list):
-            raise ValueError(f"short_list lenth should <= long_list lenth")
-        # mak pairs [monitor, cmds]
-        pairs = []
-        # abs_l_idx = 0
-        for i, item_s in enumerate(short_list):
-            lens = item_s[0]
-            for j, item_l in enumerate(long_list):
-                if item_l[0] == lens:
-                    if j != 0:
-                        for _item in long_list[:j]:
-                            pairs.append((_item[1], None))
-                    pairs.append((item_l[1], item_s[1]))
-                    long_list = long_list[j+1:]
-                    # print(i, abs_l_idx)
-                    # abs_l_idx += 1 + j
-                    break
-            else:
-                # print(i, lens, long_list)
-                raise ValueError(f"match failed")
-        return pairs
+    def __match_sections(self, monitor, cmd):
+        m, n = len(monitor), len(cmd)
+        dp = [[float('inf')] * (n + 1) for _ in range(m + 1)]
+        path = [[None] * (n + 1) for _ in range(m + 1)]
 
-    def __make_mix_pairs(self, cmd, monitor):
+        dp[0][0] = 0
+        for i in range(1, m + 1):
+            dp[i][0] = i
+            path[i][0] = (i - 1, 0)
+        for j in range(1, n + 1):
+            dp[0][j] = j
+            path[0][j] = (0, j - 1)
+
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if monitor[i - 1][0] == cmd[j - 1][0]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                    path[i][j] = (i - 1, j - 1)
+                else:
+                    options = [
+                        (dp[i - 1][j] + 1, (i - 1, j)),
+                        (dp[i][j - 1] + 1, (i, j - 1)),
+                        (dp[i - 1][j - 1] + 2, (i - 1, j - 1))
+                    ]
+                    dp[i][j], path[i][j] = min(options, key=lambda x: x[0])
+
+        i, j = m, n
+        result = []
+        while i > 0 or j > 0:
+            prev_i, prev_j = path[i][j]
+            if prev_i == i - 1 and prev_j == j - 1:
+                result.append((monitor[i - 1][1], cmd[j - 1][1]))
+            elif prev_i == i - 1:
+                result.append((monitor[i - 1][1], None))
+            # for debug purpose none_pmu, cmd
+            # else:
+            #     result.append((None, cmd[j - 1][1]))
+            i, j = prev_i, prev_j
+
+        result.reverse()
+        return result
+
+    def __make_mix_pairs(self, cmd, monitor, sys_code):
         _cmd = []
         _monitor = []
         cmd_slice = []
@@ -374,32 +396,44 @@ class BMProfileParserPerfAI(BMProfileParser):
             last_idx = cmd_id
         if cmd_slice:
             _cmd.append((last_idx - start_idx + 1, cmd_slice))
-        # compatible code, force align
-        if len(_cmd) == 1 and len(_monitor) == 1:
-            if _cmd[-1][0] != _monitor[-1][0]:
-                max_len = max(_cmd[-1][0], _monitor[-1][0])
-                _cmd[-1] = (max_len,  _cmd[-1][1])
-                _monitor[-1] = (max_len,  _monitor[-1][1])
-        # pairs should be [[monitors, cmds]...]
-        # print(len(_monitor), _monitor[0][0], len(_cmd), _cmd[0][0])
-        if len(_monitor) > len(_cmd):
-            # mix mode (pio && des)
-            pairs = self.__match_sections(_monitor, _cmd)
-        else:
-            pairs = self.__match_sections(_cmd, _monitor)
-            pairs = [p[::-1] for p in pairs]
+        # compatible code for tpu-train: pmu miss sys pair reason unknow
+        # force align
+        if len(_cmd) == len(_monitor):
+            for i in range(len(_cmd))[::-1]:
+                if _cmd[i][0] == 2 and _monitor[i][0] == 2:
+                    des_tsk_typ, _ = self.__get_cmd_type(_cmd[i][1][0])
+                    if des_tsk_typ == sys_code:
+                        continue
+                if _cmd[i][0] == 2 and _cmd[i][0] != _monitor[i][0]:
+                    _cmd.pop(i)
+                    break
+            if len(_cmd) == 1 and len(_monitor) == 1:
+                if _cmd[-1][0] != _monitor[-1][0]:
+                    max_len = max(_cmd[-1][0], _monitor[-1][0])
+                    _cmd[-1] = (max_len,  _cmd[-1][1])
+                    _monitor[-1] = (max_len,  _monitor[-1][1])
+        pairs = self.__match_sections(_monitor, _cmd)
+        # print("####################### pmu ###########################")
+        # # for m in _monitor:
+        # #     print(m[0], [i.inst_id + 1 for i in m[1]])
+        # print([m[0] for m in _monitor])
+        # print("####################### cmd ###########################")
+        # # for m in _cmd:
+        # #     print(m[0], [i.inst_id for i in m[1]])
+        # print([m[0] for m in _cmd])
         return pairs
 
 
-    def __make_pairs(self, cmd, monitor, skip_ok=False):
+    def __make_pairs(self, cmd, monitor, sys_code, mix_mode=True):
         pairs = []
-        for p_monitor, p_cmd in self.__make_mix_pairs(cmd, monitor):
+        for p_monitor, p_cmd in self.__make_mix_pairs(cmd, monitor, sys_code):
             if p_monitor is None:
                 continue
             if p_cmd is None:
                 # TODO get cmd from des comand and dyn command here
-                for m in p_monitor:
-                    pairs.append({"monitor": m, "cmd": None})
+                if mix_mode:
+                    for m in p_monitor:
+                        pairs.append({"monitor": m, "cmd": None})
                 continue
             # len(cmd) >= len(pmu) cause pmu will drop some data
             m_start_idx = p_monitor[0].inst_id
@@ -410,11 +444,8 @@ class BMProfileParserPerfAI(BMProfileParser):
                     c_idx = get_cmd_id(c) - c_start_idx
                     if m_idx == c_idx:
                         pairs.append({"monitor": m, "cmd": c})
-                        p_monitor = p_monitor[i+1:]
+                        p_cmd = p_cmd[i+1:]
                         break
-                else:
-                    if not skip_ok:
-                        raise ValueError(f"can't find inst_id: {m_idx} in cmd list")
         return pairs
 
     def __find_profile_sync_points(self, cmd, monitor, sys_code, cmd_offset=0, omit_end_sys=True):
@@ -433,10 +464,10 @@ class BMProfileParserPerfAI(BMProfileParser):
                 time_point = m.inst_end_time
                 sys_num += 1
         # skip last dma cpy for bmodel outputs, TODO parse from dyn_cmd
-        skip = False
+        mix_mode = True
         if cmd_offset and sys_code == self.archlib.dma_sys_code:
-            skip = True
-        pairs = self.__make_pairs(cmd, monitor, skip)
+            mix_mode = False
+        pairs = self.__make_pairs(cmd, monitor, sys_code, mix_mode)
         if cmd_offset:
             # for bmodel remove monitor date without cmd
             n = 0
@@ -449,6 +480,8 @@ class BMProfileParserPerfAI(BMProfileParser):
                 pairs.pop(0)
 
         for i, j in enumerate(pairs):
+            if j["cmd"] is None:
+                break
             des_tsk_typ, des_tsk_eu_typ = self.__get_cmd_type(j["cmd"])
             if des_tsk_typ != sys_code or sys_num == self.archlib.profile_sys_num:
                 break
@@ -469,6 +502,8 @@ class BMProfileParserPerfAI(BMProfileParser):
             extra_sys = []
             part = []
             for i in range(len(pairs))[::-1]:
+                if pairs[i]["cmd"] is None:
+                    break
                 des_tsk_typ, _ = self.__get_cmd_type(pairs[i]["cmd"])
                 if des_tsk_typ != sys_code:
                     break
@@ -480,6 +515,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             sys_end_num = len(extra_sys)
             for i in extra_sys:
                 pairs.pop(i)
+            # assert(len(pairs) != 0)
         return pairs, sys_num
 
     def __read_dyn_command_data(self, item):
@@ -537,7 +573,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
     bmProfile = BMProfileParserPerfAI()
-    # bmProfile.parse("/workspace/tpu-mlir/tmp/bmprofile_data-1_v2")
-    # bmProfile.parse("/workspace/workdir/prf/cdm_profile_data-0_core1")
     bmProfile.parse("/workspace/workdir/prf/cdm_profile_data-0_core8")
     # bmProfile.to_txt('tmp')
