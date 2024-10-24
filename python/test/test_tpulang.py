@@ -4441,6 +4441,11 @@ def test_all_base(tester: TPULANG_IR_TESTER):
     return error_cases, success_cases
 
 def test_all(tester: TPULANG_IR_TESTER):
+    tester.no_save = False
+    f, s = test_all_base(tester)
+    if f:
+      return f
+    tester.no_save = True
     f, s = test_all_base(tester)
     return f
 
