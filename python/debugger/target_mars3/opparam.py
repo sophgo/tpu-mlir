@@ -744,15 +744,7 @@ def sRQ_sDQ_converter(context: "MARS3Context", reg: sRQ_sDQ_reg):
         layout=Layout.compact,
     )
     opds = []
-    if reg.tsk_eu_typ == 0:  # rq_0
-        opd1["dtype"] = DType.f32
-        opd1["shape"] = (1, c, 1, 1)
-        opd2 = dict(opd1)
-        opd2["address"] += 4
-        if opd1["is_const"]:
-            opd2["address"] = reg.opd2_addr
-        opds = [opd0, opd1, opd2]
-    elif reg.tsk_eu_typ == 1:  # rq_1
+    if reg.tsk_eu_typ == 1:  # rq_1
         opd1["dtype"] = DType.si32
         opd1["shape"] = (1, c, 1, 1)
         opd2 = dict(opd1)
@@ -775,22 +767,12 @@ def sRQ_sDQ_converter(context: "MARS3Context", reg: sRQ_sDQ_reg):
         if opd1["is_const"]:
             opd2["address"] = reg.opd2_addr
         opds = [opd0, opd1, opd2]
-    elif reg.tsk_eu_typ == 4:  # dq_1
-        opd1["dtype"] = DType.si32  # multiplier
-        opd1["shape"] = (1, c, 1, 1)
-        opd2 = dict(opd1)  # shift
-        opd2["dtype"] = DType.si8
-        opd2["address"] += 4
-        opd3 = dict(opd2)  # yzp
-        opd3["address"] += 4
-        opds = [opd0, opd1, opd2, opd3]
-        if opd1["is_const"]:
-            opd1["dtype"] = (DType.i16, reg.opt_opd0_sign)  # multiplier
-            opd2["address"] = reg.opd2_addr // 2**16  # shift
-            opd2["dtype"] = DType.si16
-            opd3["address"] = reg.opd2_addr  # scale
-            opd3["dtype"] = DType.si8
-            opds = [opd0, opd1, opd3, opd2]
+    elif reg.tsk_eu_typ == 5:  # dq_2
+        gsize = 1 << (reg.opd2_n_str + 5)
+        assert(gsize in (32, 64, 128, 256))
+        opd1["dtype"] = DType.si32
+        opd1["shape"] = (n, c, h, div_up(w, gsize))
+        opds = [opd0, opd1]
     else:
         raise KeyError("Should not be here.")
     attr = dict(round_mode=reg.opd2_n_str)
@@ -986,35 +968,29 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
             (reg.dst_start_addr_l32, reg.dst_start_addr_h13),
         ]
 
-    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
     opd0 = dict(
         address=dma_addr(*addr[0]),
         dtype=DType(reg.src_data_format),
         shape=tuple(reg[f"src_{d}size"] for d in "nchw"),
         stride=tuple(reg[f"src_{d}stride"] for d in "nchw"),
-        layout=Layout.DMAstride(lane_mask),
+        layout=Layout.DMAstride(-1),
     )
     res0 = dict(
         address=dma_addr(*addr[1]),
         dtype=DType(reg.src_data_format),
         shape=tuple(reg[f"dst_{d}size"] for d in "nchw"),
         stride=tuple(reg[f"dst_{d}stride"] for d in "nchw"),
-        layout=Layout.DMAstride(lane_mask),
+        layout=Layout.DMAstride(-1),
     )
     if reg.nchw_copy:
         res0["shape"] = opd0["shape"]
 
-    attr = dict()
-    if lane_mask != (2**64 - 1):
-        attr["lane_mask"] = hex(lane_mask)
-
     if reg.fill_constant_en:
-        attr = {}
         opd0 = dict(
             address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
         )
 
-    return res0, attr, opd0
+    return res0, {}, opd0
 
 
 @opparam_converter_regitstry("DMA_tensor（0x000）")
@@ -1056,7 +1032,6 @@ def DMA_tensor_0x000__converter(context: "MARS3Context", reg: DMA_tensor_0x000__
 @opparam_converter_regitstry("DMA_matrix")
 def DMA_matrix_converter(context: "MARS3Context", reg: DMA_matrix_reg):
     res0, attr, opd0 = dma_reg_fmt_base(reg)
-    lane_mask = opd0["layout"].args[0]
     l, r = memmap[MType.R]
     s_addr = opd0["address"]
     is_trans = reg.cmd_special_function == 1
@@ -1070,7 +1045,7 @@ def DMA_matrix_converter(context: "MARS3Context", reg: DMA_matrix_reg):
         if is_trans:
             H, W = W, H
         opd0["shape"] = (H, W)
-        opd0["layout"] = Layout.DMAmatrix(lane_mask, reg.src_wsize)
+        opd0["layout"] = Layout.DMAmatrix(-1, reg.src_wsize)
         n, c, _, _ = opd0["stride"]
         opd0["stride"] = (n, c, 0, 1)
     else:
@@ -1085,7 +1060,7 @@ def DMA_matrix_converter(context: "MARS3Context", reg: DMA_matrix_reg):
         res0["shape"] = (H, W)
         n, c, _, _ = res0["stride"]
         res0["stride"] = (n, c, 0, 1)
-        res0["layout"] = Layout.DMAmatrix(lane_mask, reg.dst_wsize)
+        res0["layout"] = Layout.DMAmatrix(-1, reg.dst_wsize)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
@@ -1138,10 +1113,6 @@ def DMA_general_converter(context: "MARS3Context", reg: DMA_general_reg):
         stride=(1,),
         layout=Layout.DMAlinear,
     )
-    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
-    attr = dict()
-    if lane_mask != (2**64 - 1):
-        attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
         opd0 = dict(
@@ -1155,33 +1126,28 @@ def DMA_general_converter(context: "MARS3Context", reg: DMA_general_reg):
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
 
-    return (results, attr, operands)
+    return (results, {}, operands)
 
 
 @opparam_converter_regitstry("DMA_cw_transpose")
 def DMA_cw_transpose_converter(context: "MARS3Context", reg: DMA_cw_transpose_reg):
-    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
         shape=(n, c, h, w),
         stride=(*(reg[f"src_{d}stride"] for d in "nch"), 1),
-        layout=Layout.DMAstride(lane_mask),
+        layout=Layout.DMAstride(-1),
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
         shape=(n, w, h, c),
         stride=(*(reg[f"dst_{d}stride"] for d in "nch"), 1),
-        layout=Layout.DMAstride(lane_mask),
+        layout=Layout.DMAstride(-1),
     )
-    attr = dict()
-    if lane_mask != (2**64 - 1):
-        attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        attr = {}
         opd0 = dict(
             address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
         )
@@ -1189,7 +1155,7 @@ def DMA_cw_transpose_converter(context: "MARS3Context", reg: DMA_cw_transpose_re
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
 
-    return (results, attr, operands)
+    return (results, {}, operands)
 
 
 @opparam_converter_regitstry("DMA_nonzero")
@@ -1220,7 +1186,6 @@ def DMA_nonzero_converter(context: "MARS3Context", reg: DMA_nonzero_reg):
 
 
 def dma_gather_base(context, reg: DMA_gather_reg):
-    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
     c, h, w = (reg[f"src_{d}size"] for d in "chw")
     d_h = reg.dst_hsize
     if reg.nchw_copy:
@@ -1238,7 +1203,7 @@ def dma_gather_base(context, reg: DMA_gather_reg):
         dtype=DType(reg.src_data_format),
         shape=(1, max(c, reg.index_csize), d_h, w),
         stride=(0, reg.dst_cstride, reg.dst_hstride, 1),
-        layout=Layout.DMAstride(lane_mask),
+        layout=Layout.DMAstride(-1),
     )
     opd1 = dict(
         address=dma_addr(reg.index_start_addr_h13, reg.index_start_addr_l32),
@@ -1299,17 +1264,6 @@ def DMA_reverse_converter(context: "MARS3Context", reg: DMA_reverse_reg):
     results = [get_value(context, **res0)]
 
     return (results, attr, operands)
-
-
-@opparam_converter_regitstry("DMA_compress")
-def DMA_compress_converter(context: "MARS3Context", reg: DMA_compress_reg):
-    return ([],) * 3
-
-
-@opparam_converter_regitstry("DMA_decompress ")
-def DMA_decompress_converter(context: "MARS3Context", reg: DMA_decompress__reg):
-    return ([],) * 3
-
 
 @opparam_converter_regitstry("sDMA_sys")
 def sDMA_sys_converter(context: "MARS3Context", reg: sDMA_sys_reg):
