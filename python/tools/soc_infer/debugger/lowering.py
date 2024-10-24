@@ -24,34 +24,34 @@ equal_dtypes = {
 def lowering(input, pdtype, pshape, pzero_point=0, pscale=1):
     if equal_dtypes.get(pdtype, pdtype) == input.dtype.name:
         res = input.reshape(pshape)
-    elif pdtype == "i8" and input.dtype == np.float32:
+    elif (pdtype == "i8" or pdtype == "si8") and (input.dtype == np.float32 or input.dtype == np.float64):
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, -128, 127).astype(np.int8).reshape(pshape)
-    elif pdtype == "i8" and input.dtype == np.int32:
+    elif (pdtype == "i8" or pdtype == "si8") and input.dtype == np.int32:
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, -128, 127).astype(np.int8).reshape(pshape)
-    elif pdtype == "u8" and input.dtype == np.int32:
+    elif (pdtype == "u8" or pdtype == "ui8") and input.dtype == np.int32:
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, 0, 255).astype(np.int8).reshape(pshape)
-    elif pdtype == "u8" and input.dtype == np.float32:
+    elif (pdtype == "u8" or pdtype == "ui8") and (input.dtype == np.float32 or input.dtype == np.float64):
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, 0, 255).astype(np.uint8).reshape(pshape)
-    elif pdtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
+    elif (pdtype == "u16" or pdtype == "ui16") and (input.dtype == np.float32 or input.dtype == np.float64 or input.dtype == np.int32):
         res = input.astype(np.uint16).reshape(pshape)
-    elif pdtype == "i16" and (input.dtype == np.float32 or input.dtype == np.int32):
+    elif pdtype == "i16" and (input.dtype == np.float32 or input.dtype == np.float64 or input.dtype == np.int32):
         res = input.astype(np.int16).reshape(pshape)
-    elif pdtype == "f16" and input.dtype == np.float32:
+    elif pdtype == "f16" and (input.dtype == np.float32 or input.dtype == np.float64):
         res = input.astype(np.float16)
-    elif pdtype == "bf16" and input.dtype == np.float32:
+    elif pdtype == "bf16" and (input.dtype == np.float32 or input.dtype == np.float64):
         res = fp32_to_bf16(input).reshape(pshape)
-    elif pdtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
+    elif pdtype == "i32" and (input.dtype == np.float32 or input.dtype == np.float64 or input.dtype == np.int64):
         res = input.astype(np.int32).reshape(pshape)
-    elif pdtype == "u32" and (input.dtype == np.float32 or input.dtype == np.int64 or input.dtype == np.uint32):
+    elif pdtype == "ui32" and (input.dtype == np.float32 or input.dtype == np.float64 or input.dtype == np.int64 or input.dtype == np.uint32):
         res = input.astype(np.uint32).reshape(pshape)
-    elif pdtype == "i4" and input.dtype == np.float32:
+    elif pdtype == "i4" and input.dtype == (np.float32 or input.dtype == np.float64):
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, -8, 7).astype(np.int8).reshape(pshape)
-    elif pdtype == "u4" and input.dtype == np.float32:
+    elif (pdtype == "u4" or pdtype == "ui4") and (input.dtype == np.float32 or input.dtype == np.float64):
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, 0, 15).astype(np.uint8).reshape(pshape)
     elif pdtype == "f32":
