@@ -934,7 +934,7 @@ public:
     auto def_op = opd.getDefiningOp();
     auto input_shape = module::getShape(opd);
     auto newType =
-        RankedTensorType::get(input_shape, module::getStorageType(opd));
+        RankedTensorType::get(input_shape, module::getElementType(opd));
     auto name = module::getName(opd).str();
     if (opd && !isa<ReturnOp>(def_op)) {
       name += "_" + module::getName(op.getOperation()).str();
