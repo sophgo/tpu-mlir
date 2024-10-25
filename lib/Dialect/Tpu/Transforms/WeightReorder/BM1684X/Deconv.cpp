@@ -95,7 +95,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
     // do kernel_rotate first
     if(module::isMARS3()){
       std::vector<uint16_t> newFilter(filter_u16->size(), 0);
-      for (uint32_t i = 0; i < attr.n*attr.ic; ++i) {
+      for (uint32_t i = 0; i < attr.oc*attr.ic; ++i) {
         int swap_count = 0;
         for (uint32_t j = 0; j < attr.kh; ++j) {
           for (uint32_t k = 0; k < attr.kw; ++k) {
@@ -110,8 +110,9 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
         }
       }
       filterOp.update(newFilter, newFilter.size());
-    } // end kernel_rotate
-
+    }
+    // end kernel_rotate
+    auto filter_rotate_u16 = filterOp.read<uint16_t>();
     auto filter_type = module::getStorageType(op.getFilter());
     std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                         attr.kw};
@@ -120,10 +121,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
       auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
       op.getFilter().setType(new_filter_type);
     } else {
-      filter_reorder(filter_u16, filter_shape);
+      filter_reorder(filter_rotate_u16, filter_shape);
       auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
       auto newFilterOp =
-          top::WeightOp::create(op, "_reordered", *filter_u16, new_filter_type);
+          top::WeightOp::create(op, "_reordered", *filter_rotate_u16, new_filter_type);
       op->setOperand(1, newFilterOp);
     }
   }
