@@ -41,7 +41,8 @@ class TORCH_IR_TESTER(object):
                  debug: bool = False,
                  num_core : int = 1,
                  debug_cmd: str = '',
-                 cuda: bool = False):
+                 cuda: bool = False,
+                 dynamic: bool = False):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
@@ -49,6 +50,7 @@ class TORCH_IR_TESTER(object):
         self.debug_cmd = debug_cmd
         self.group_opt = 2
         self.test_cuda = cuda
+        self.dynamic = dynamic
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -353,7 +355,7 @@ class TORCH_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + self.model_file
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, opt= self.group_opt, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug, debug_cmd = f'--debug_cmd={self.debug_cmd}')
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, opt= self.group_opt, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug, debug_cmd = f'--debug_cmd={self.debug_cmd}', dynamic=self.dynamic)
 
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -3772,13 +3774,14 @@ if __name__ == "__main__":
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--quant_input", action="store_true", help='quant input')
     parser.add_argument("--quant_output", action="store_true", help='quant output')
+    parser.add_argument("--dynamic", action="store_true", help='dynamic mode in model deployment')
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
     # yapf: enable
     args = parser.parse_args()
     tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread,
                              args.quant_input, args.quant_output, args.debug, args.num_core,
-                             args.debug_cmd, args.cuda)
+                             args.debug_cmd, args.cuda, args.dynamic)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
