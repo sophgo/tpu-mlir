@@ -36,8 +36,11 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
                                       top::ReciprocalOp op) const {
-  // lowering_common_bf16<tpu::ReciprocalOp>(rewriter, op);
-  LoweringF32(rewriter, op);
+  if (module::isMARS3()) {
+    lowering_common_bf16<tpu::ReciprocalOp>(rewriter, op);
+  } else {
+    LoweringF32(rewriter, op);
+  }
 }
 
 void ReciprocalLowering::LoweringF16(PatternRewriter &rewriter,

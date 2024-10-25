@@ -175,7 +175,7 @@ class ONNX_IR_TESTER(object):
             "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y, Y),
             "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y, Y),
             "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N, Y, Y),
-            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y, N),
+            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y, Y),
             "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N, N, Y),
             "Round":        (self.test_Round,         N, Y, N, N, Y, Y),
