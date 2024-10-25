@@ -1218,6 +1218,9 @@ public:
     if (!module::isNone(WhereOp.getBuffer())) {
       return failure();
     }
+    if (module::isOpInGroup(WhereOp)){
+      return failure();
+    }
     auto out_shape = module::getShape(WhereOp.getOutput());
     auto cond_shape = module::getShape(WhereOp.getCond());
     auto out_dim = out_shape.size();

@@ -429,6 +429,23 @@ class TorchConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
+    def is_custom_triangular(self, weight, threadhold):
+        for index in np.ndindex(weight.shape[:-2]):
+            matrix = weight[index]
+
+            rows, cols = matrix.shape
+            if rows != cols:
+                return False
+
+            for i in range(rows):
+                for j in range(cols):
+                    if i >= j and matrix[i, j] != 0:
+                        return False
+                    if i < j and matrix[i, j] > threadhold:
+                        return False
+        return True
+
+
     def convert_base_conv_op(self, torch_node: TorchNode, mode=False):
 
         def _data_expand(data, length):
@@ -651,9 +668,10 @@ class TorchConverter(BaseConverter):
         key = self.getOp(torch_node.inputs[1])
         value = self.getOp(torch_node.inputs[2])
         mask = self.getOp(torch_node.inputs[3])
+        assert mask == self.mlir.none_op or self.is_custom_triangular(self.getWeight(torch_node.inputs[3]), -3.4028234663852886e+38)
         dropout_p = self.const_val[torch_node.inputs[4]]
         is_causal = self.const_val[torch_node.inputs[5]]
-        scale = 0.0#default value for no scale
+        scale = 0.0 #default value for no scale
         if len(torch_node.inputs) > 6:
             if torch_node.inputs[6] in self.const_val.keys():
                 scale = self.const_val[torch_node.inputs[6]]
@@ -661,7 +679,7 @@ class TorchConverter(BaseConverter):
                                                  query,
                                                  key,
                                                  value,
-                                                 mask,
+                                                 self.mlir.none_op, # only support mask as none now
                                                  dropout_p=dropout_p,
                                                  is_causal=is_causal,
                                                  scale=scale,

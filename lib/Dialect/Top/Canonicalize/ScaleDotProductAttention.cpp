@@ -27,8 +27,8 @@ struct TopScaleDotProductAttentionSplitV2 : public OpRewriterPatternEx<ScaleDotP
     auto mask_op  = op.getMask();
     auto scaled   = op.getScale().convertToDouble();
     auto none = module::getNoneOp(op);
-    if(mask_op != none) {
-      llvm_unreachable("Not support ScaleDotProductAttention when mask is not none.");
+    if(!module::isNone(mask_op)) {
+      UNREACHABLE_OP("Not support ScaleDotProductAttention when mask is not none.",op);
     }
     std::string query_name = module::getName(query_op).str();
     std::string key_name   = module::getName(key_op).str();
