@@ -38,14 +38,12 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
     assert(count <= 4 && "only support 1D / 2D reflectionpad!");
     std::vector<int64_t> lrpad = {pads->at(nofDims - 1),
                                   pads->at(nofDims * 2 - 1)};
-    if(pads->at(nofDims - 1) == 0 && pads->at(nofDims * 2 - 1) == 0) {
-      // for torch reflectionpad2d, pad [0, 0, 8, 8]
-      // convert to onnx model, pad [0, 0, 8, 8] -> [0, 0, 8, 0, 0, 8, 0]
-      lrpad = {pads->at(nofDims - 2),
-              pads->at(nofDims * 2 - 2)};
-    }
     for (int i = 0; i < lrpad.size(); i++) {
       auto k = lrpad.at(i);
+      if(k == 0) {
+        operands.push_back(module::getNoneOp(op));
+        continue;
+      }
       auto select = std::vector<int8_t>(k * k, 0);
       for (int i = 0; i < k; i++) {
         int last = k - i - 1;
@@ -87,12 +85,12 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
     assert(count <= 4 && "only support 1D / 2D reflectionpad!");
     std::vector<int64_t> lrpad = {pads->at(nofDims - 1),
                                   pads->at(nofDims * 2 - 1)};
-    if(pads->at(nofDims - 1) == 0 && pads->at(nofDims * 2 - 1) == 0) {
-      lrpad = {pads->at(nofDims - 2),
-              pads->at(nofDims * 2 - 2)};
-    }
     for (int i = 0; i < lrpad.size(); i++) {
       auto k = lrpad.at(i);
+      if(k == 0) {
+        operands.push_back(module::getNoneOp(op));
+        continue;
+      }
       auto select = std::vector<float_t>(k * k, 0);
       for (int i = 0; i < k; i++) {
         int last = k - i - 1;
