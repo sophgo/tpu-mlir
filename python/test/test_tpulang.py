@@ -4259,9 +4259,6 @@ class TPULANG_IR_TESTER(object):
                         mul1_round_mode = 'half_up',
                         mul2_round_mode = 'half_up',
                         add_round_mode = 'half_up',
-                        mul1_shift = 0,
-                        mul2_shift = 0,
-                        add_shift= 0,
                         mul1_saturation = True,
                         mul2_saturation = True,
                         add_saturation = True

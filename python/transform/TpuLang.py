@@ -2632,21 +2632,25 @@ def rope(input: Tensor,
         mul2_saturation: bool = True,
         add_saturation: bool = True,
         out_name: str = None):
-        # assert o_dtype in ["int8", "uint8"]
+
+        attr = {
+            "is_permute_optimize": Attr(is_permute_optimize, "bool"),
+            "mul1_round_mode": Attr(round_mode_convert(mul1_round_mode), data_type="string"),
+            "mul2_round_mode": Attr(round_mode_convert(mul2_round_mode), data_type="string"),
+            "add_round_mode": Attr(round_mode_convert(add_round_mode), data_type="string"),
+            "mul1_saturation": Attr(mul1_saturation, "bool"),
+            "mul2_saturation": Attr(mul2_saturation, "bool"),
+            "add_saturation": Attr(add_saturation, "bool")
+        }
+
+        if input.dtype not in ["float32", "float16"]:
+            attr.update({
+                "mul1_shift": Attr(mul1_shift, data_type="int32"),
+                "mul2_shift": Attr(mul2_shift, data_type="int32"),
+                "add_shift": Attr(add_shift, data_type="int32")
+            })
 
 
-        attr={
-                "is_permute_optimize": Attr(is_permute_optimize, "bool"),
-                "mul1_round_mode": Attr(round_mode_convert(mul1_round_mode), data_type="string"),
-                "mul2_round_mode": Attr(round_mode_convert(mul2_round_mode), data_type="string"),
-                "add_round_mode": Attr(round_mode_convert(add_round_mode), data_type="string"),
-                "mul1_shift": Attr(mul1_shift,data_type="int32"),
-                "mul2_shift": Attr(mul2_shift,data_type="int32"),
-                "add_shift": Attr(add_shift,data_type="int32"),
-                "mul1_saturation": Attr(mul1_saturation, "bool"),
-                "mul2_saturation": Attr(mul2_saturation, "bool"),
-                "add_saturation": Attr(add_saturation, "bool")
-            }
         output = Tensor(dtype=input.dtype, name=out_name)
         if  len(input.shape) == 4:
             if not is_permute_optimize:
