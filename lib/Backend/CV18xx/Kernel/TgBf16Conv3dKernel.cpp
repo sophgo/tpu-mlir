@@ -277,7 +277,7 @@ static int conv_split(SLICES &slices, int input_n, int input_c, int input_d,
 
     // Split oh
     for (slices.h = 1; slices.h <= oh; ++slices.h) {
-      for (; slices.oc <= oc; ++slices.oc) {
+      for (slices.oc = 1; slices.oc <= oc; ++slices.oc) {
         int oc_step = ceiling_func(oc, slices.oc);
 
         // We may need to put EU-alignment info in one place
