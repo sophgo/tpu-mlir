@@ -39,10 +39,10 @@ void SG2380::after_codegen(int64_t flops) {
   useCore(0); // Reset buffer swapping.
   useCode0 = false;
   dl_gen_riscv_code_end();
-  system("riscv_code_opt.py -f riscv_code_0.h");
-  system("riscv_code_opt.py -f riscv_code_1.h");
-  system("riscv_code_opt.py -f riscv_code_2.h");
-  system("riscv_code_opt.py -f riscv_code_3.h");
+  // system("riscv_code_opt.py -f riscv_code_0.h");
+  // system("riscv_code_opt.py -f riscv_code_1.h");
+  // system("riscv_code_opt.py -f riscv_code_2.h");
+  // system("riscv_code_opt.py -f riscv_code_3.h");
   unsetenv("GEN_RISCV_CODE");
 }
 

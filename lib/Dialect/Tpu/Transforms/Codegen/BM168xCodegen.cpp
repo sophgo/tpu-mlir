@@ -288,7 +288,7 @@ void BMCodegen::store() {
     snprintf(command, sizeof(command),
              "riscv64-unknown-linux-gnu-clang \
               -march=rv64imafdcv_zicsr_zifencei_zfh_zba_zbb_zvfh_xsfvfnrclipxfqf_xsfvfwmaccqqq_xsfvqmaccqoq_xsfvcp_xsgmat \
-              -mabi=lp64d -g -shared -fPIC riscv_code.c -o %s", filename);
+              -mabi=lp64d -Wno-implicit-function-declaration -g -shared -fPIC riscv_code.c -o %s", filename);
     if (system(command) == 0) {
       bmodel::Binary lib_backend = CreateBinaryFromFile(&(*model_gen), filename);
       model_gen->AddLibBackend(lib_backend);
