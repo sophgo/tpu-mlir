@@ -1477,7 +1477,7 @@ static bool backward_update_slice(
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  (isa<tpu::Conv2DOp>(user) || isa<tpu::CastOp>(user) || isa<tpu::LutOp>(user)) && module::isUniformQuantized(in)) ||
+                  (isa<tpu::Conv2DOp>(user) || ((isa<tpu::CastOp>(user) || isa<tpu::LutOp>(user)) && module::getCoreNum() == 1)) && module::isUniformQuantized(in)) ||
                 lg_info.group_outs.size() != 1) {
               return false;
             }
