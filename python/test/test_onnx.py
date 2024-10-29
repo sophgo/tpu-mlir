@@ -166,7 +166,7 @@ class ONNX_IR_TESTER(object):
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y, Y),
             "Range":        (self.test_Range,         N, Y, Y, N, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y, Y),
-            "Resize2":      (self.test_Resize2,       N, Y, Y, Y, Y, N),
+            "Resize2":      (self.test_Resize2,       N, Y, Y, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N, Y, Y),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y),
@@ -227,7 +227,7 @@ class ONNX_IR_TESTER(object):
             #####################################
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,mars3_support)
             "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y, Y, N),
-            "TorchArg":             (self.test_TorchArg,            N, Y, Y, N, Y, N),
+            "TorchArg":             (self.test_TorchArg,            N, Y, Y, N, Y, Y),
             "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y, Y),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          N, Y, Y, Y, Y, Y),
@@ -306,7 +306,7 @@ class ONNX_IR_TESTER(object):
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N, Y, Y),
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y, N),
-            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, N),
+            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
             ## only for test
@@ -3682,7 +3682,10 @@ class ONNX_IR_TESTER(object):
                 return a, b
 
         # generate data with duplicate values
-        x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
+        if (self.chip =="mars3"):
+            x = np.random.randint(1, 666, size=(2, 32, 40, 80)).astype(np.float32)
+        else:
+            x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
         x = torch.from_numpy(x)
         self.torch_and_test(x, Model(), case_name)
 
@@ -5390,7 +5393,13 @@ class ONNX_IR_TESTER(object):
             }
             """ % (case_name, input_shape, reduce_output_shape, transpose_order, arg_keepdims, arg_axis)
         graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        if (self.chip =="mars3"):
+            input_data = {
+                "input": np.random.randint(0, np.iinfo(np.int16).max, input_shape).astype(np.int64)
+                }
+            self.onnx_and_test(graph_def,input_data=input_data)
+        else:
+            self.onnx_and_test(graph_def)
 
     def test_ArgError(self, case_name):
         input_shape = [1, 1000, 1, 1]
