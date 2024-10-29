@@ -24,8 +24,8 @@ void tpu::SubOp::codegen_global_bm1684() {
   auto a_dims = module::getShape(getInputs()[0]).size();
   auto b_dims = module::getShape(getInputs()[1]).size();
   auto out_dims = module::getShape(getOutput()).size();
-  module::getGlobalShape(getInputs()[0], a_shape);
-  module::getGlobalShape(getInputs()[1], b_shape);
+  module::getGlobalShape(getInputs()[0], a_shape,out_dims);
+  module::getGlobalShape(getInputs()[1], b_shape,out_dims);
   if (false == module::isUniformQuantized(getOutput())) {
     auto dtype = BM1684::getDataType(getOutput());
     int src_int32 = dtype == DTYPE_FP32 ? 0 : 1;
