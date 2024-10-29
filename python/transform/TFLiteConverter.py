@@ -936,6 +936,90 @@ class TFLiteConverter(BaseConverter):
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
         return "top.Permute", attr, False
+    def generate_dimension_map(self,input_dims, output_dims):
+        dim_map = {}
+        input_index = 0
+        output_index = 0
+        lastkey=None
+        last_add1=False
+        while input_index < len(input_dims) and output_index < len(output_dims):
+            current_input = input_dims[input_index]
+            current_output = output_dims[output_index]
+
+            if current_input == current_output:
+                dim_map[tuple([input_index])] = [output_index]
+                lastkey=tuple([input_index])
+                input_index += 1
+                output_index += 1
+                last_add1=True
+            elif current_input < current_output:
+                if current_input==1 and last_add1:
+                    value = dim_map[lastkey]
+                    del dim_map[lastkey]
+                    lastkey=lastkey+(input_index,)
+                    dim_map[lastkey]=value
+                    input_index += 1
+                else:
+                    product = current_input
+                    start_input_index = input_index
+                    while product < current_output and input_index < len(input_dims) - 1:
+                        input_index += 1
+                        product *= input_dims[input_index]
+                    if product == current_output:
+                        dim_map[tuple(range(start_input_index, input_index + 1))] = [output_index]
+
+                        lastkey=tuple(range(start_input_index, input_index + 1))
+                        output_index += 1
+                        input_index += 1
+                    else:
+                        raise ValueError("reshape dimension error")
+            else:
+                product = current_output
+                start_output_index = output_index
+                while product < current_input and output_index < len(output_dims) - 1:
+                    output_index += 1
+                    product *= output_dims[output_index]
+                if product == current_input:
+                    dim_map[tuple([input_index])] = list(range(start_output_index, output_index + 1))
+                    lastkey=tuple([input_index])
+                    input_index += 1
+                    output_index += 1
+                else:
+                    raise ValueError("reshape dimension error")
+
+        return dim_map,lastkey
+
+    def calculate_next_permute(self,initial_perm, final_perm):
+        index_map = {dim: i for i, dim in enumerate(initial_perm)}
+        next_permute = [index_map[dim] for dim in final_perm]
+
+        return next_permute
+
+    def validate_and_transform_dims(self,input_dims, output_dims):
+
+        if len(input_dims) != 4 or len(output_dims) != 4:
+            return False,None,None
+        need_permute = True
+        dim_map,lastkey = self.generate_dimension_map(input_dims, output_dims)
+
+        if tuple(lastkey) in dim_map and len(dim_map[tuple(lastkey)]) > 1:
+            reshape_permute_dim=[0]
+            add_idx=1
+            start_idx=1
+            for i in dim_map[tuple(lastkey)]:
+                reshape_permute_dim.append(i)
+                add_idx+=1
+            for j in range(add_idx,len(output_dims)):
+                reshape_permute_dim.append(start_idx)
+                start_idx+=1
+
+            next_permute_dims=self.calculate_next_permute(reshape_permute_dim,[0,3,1,2])
+
+        else:
+            reshape_permute_dim = [0,1,2,3]
+            next_permute_dims = [0,3,1,2]
+
+        return  need_permute,reshape_permute_dim,next_permute_dims
 
     def convert_subgraph(self, subgraph):
 
@@ -988,6 +1072,8 @@ class TFLiteConverter(BaseConverter):
                 operation)
 
             trans_suffix = ""
+            need_permute=None
+            next_permute_dims=None
             if channel_last and self.need_transpose is False:
                 # do transpose (NCHW to NCHW)
                 operands = []
@@ -1009,13 +1095,20 @@ class TFLiteConverter(BaseConverter):
                 ]
             else:
                 if operation.type == 'RESHAPE':
-                    operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
+                    operands = [symbol_table[operation.inputs[0]]]
+                    need_permute,reshape_out_dim,next_permute_dims = self.validate_and_transform_dims(operation.inputs[0].shape,operation.outputs[0].shape)
+                    if need_permute:
+                        shape = self.__shape_transpose(operation.outputs[0].shape, reshape_out_dim)
+                        rst_type = [self.__get_tensor_type(operation.outputs[0],shape)]
+                    else:
+                        rst_type = [self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs]
+
                 else:
                     operands = []
                     for x in operation.inputs:
                         operands.append(symbol_table[self.__nhwc2nchw(x)]
                                         if x is not None else self.mlir.none_op)
-                rst_type = [self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs]
+                    rst_type = [self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs]
 
             name_loc = Location.fused(
                 [Location.name(x.name + trans_suffix) for x in operation.outputs])
@@ -1027,6 +1120,21 @@ class TFLiteConverter(BaseConverter):
                 loc=name_loc,
             )
             self.mlir.insert_point.insert(op)
+            if operation.type == 'RESHAPE'and need_permute:
+                shape = self.__shape_transpose(op.results.types[0].shape, next_permute_dims)
+                tensor_type = self.__get_tensor_type(operation.inputs[0], shape)
+                name_loc = Location.name(self.__get_new_name())
+                attr = {
+                    "order": self.mlir.ArrayAttr(next_permute_dims),
+                }
+                op = Operation.create(
+                    "top.Permute",
+                    results=[tensor_type],
+                    operands=[op.results[0]],
+                    attributes=attr,
+                    loc=name_loc,
+                )
+                self.mlir.insert_point.insert(op)
             if channel_last and self.need_transpose is False:
                 # do transpose (NCHW to NHWC)
                 res = []
