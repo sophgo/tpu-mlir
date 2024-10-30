@@ -31,6 +31,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #bm1688 sha256: 906153e8252d30b141a2c09e23cf6b2d2f59d542
 # + cswin_base build_failed: dab3775dfc4255bb3fdc2fc1f2417b0f32141477
+# - MDSR_x3/x4 perf: 253d8e58e7b2764d625bfcdd9d049d0184a0f602
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
