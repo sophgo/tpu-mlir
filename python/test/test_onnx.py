@@ -292,7 +292,7 @@ class ONNX_IR_TESTER(object):
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y, Y),
             "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y, Y, Y),
             "PermutePad":       (self.test_PermutePad,      N, Y, Y, N, Y, Y),
-            "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y, Y, N),
+            "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y, Y, Y),
             "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y, Y, Y),
             "PermuteToReshape": (self.test_PermuteToReshape, Y, Y, Y, N, Y, Y),
             "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y, Y, Y),
