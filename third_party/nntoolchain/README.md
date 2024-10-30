@@ -18,6 +18,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 #bm1684x sha256: 906153e8252d30b141a2c09e23cf6b2d2f59d542
 # + cswin_base build_failed: dab3775dfc4255bb3fdc2fc1f2417b0f32141477
 # + draggan build_failed: 66bf49daf2c54c54ff382a7f9875f9c89b06ea79
+# - yolov5s perf revive: 5fd5cfea836a56e91faf59ae669b1865959019a4
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
