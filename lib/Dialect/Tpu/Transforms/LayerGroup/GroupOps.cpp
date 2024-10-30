@@ -153,6 +153,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
       }
     }
 
+    doReorder = false;
     // 3. do it
     if (doReorder) {
       // adjust lg_pass_ir_->subnet_ops
