@@ -56,139 +56,139 @@ class TORCH_IR_TESTER(object):
             ##################################
             # Torch Test Case, Alphabetically
             ##################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
-            "Abs":              (self.test_Abs,               N, Y, Y, Y),
-            "Activation":       (self.test_Activation,        Y, Y, Y, Y),
-            "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N),
-            "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
-            "Add":              (self.test_Add,               N, Y, Y, Y),
-            "AddLarge":         (self.test_AddLarge,          N, Y, Y, N),
-            "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
-            "Add6d":            (self.test_Add6d,             N, Y, Y, Y),
-            "Addmm":            (self.test_Addmm,             N, Y, Y, Y),
-            "Arange":           (self.test_Arange,            N, Y, Y, Y),
-            "Arctan":           (self.test_Arctan,            N, Y, Y, N),
-            "Arctanh":          (self.test_Arctanh,           Y, Y, Y, N),
-            "Arccos":           (self.test_Arccos,            Y, Y, Y, N),
-            "Arg":              (self.test_Arg,               Y, Y, Y, N),
-            "Attention":        (self.test_Attention,         N, Y, Y, Y),
-            "AttentionNew":     (self.test_AttentionNew,      N, Y, N, N),
-            "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y, Y),
-            "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y, Y),
-            "AvgPool3d":        (self.test_AvgPool3d,         N, Y, Y, Y),
-            "BatchNorm":        (self.test_BatchNorm,         N, Y, Y, Y),
-            "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y),
-            "Ceil":             (self.test_Ceil,              N, Y, N, N),
-            "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y),
-            "Chunk":            (self.test_Chunk,             N, Y, Y, Y),
-            "Clamp":            (self.test_Clamp,             Y, Y, Y, N),
-            "Compare":          (self.test_Compare,           Y, Y, Y, N),
-            "Concat":           (self.test_Concat,            N, Y, Y, Y),
-            "ConstantLike":     (self.test_ConstantLike,      N, Y, Y, Y),
-            "Conv1d":           (self.test_Conv1d,            N, Y, Y, Y),
-            "Conv2d":           (self.test_Conv2d,            N, Y, Y, Y),
-            "Conv3d":           (self.test_Conv3d,            Y, Y, Y, N),
-            "ConvMerge":        (self.test_ConvMerge,         N, Y, Y, Y),
-            "ConvGroup":        (self.test_ConvGroup,         N, Y, Y, Y),
-            "ConvTrans":        (self.test_ConvTrans,         N, Y, Y, Y),
-            "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
-            "DeformConv2D":     (self.test_DeformConv2D,      Y, Y, N, N),
-            "Div":              (self.test_Div,               N, Y, Y, Y),
-            "Dot":              (self.test_Dot,               N, Y, N, N),
-            "Dropout":          (self.test_Dropout,           N, Y, Y, Y),
-            "Elu":              (self.test_Elu,               Y, Y, Y, Y),
-            "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
-            "FAttention":       (self.test_FAttention,        N, Y, N, N),
-            "Flatten":          (self.test_Flatten,           N, Y, Y, N),
-            "Flip":             (self.test_Flip,              N, Y, Y, N),
-            "Floor":            (self.test_Floor,             N, Y, Y, N),
-            "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
-            "FrobeniusNorm":    (self.test_FrobeniusNorm,     N, Y, Y, N),
-            "Gather":           (self.test_Gather,            N, N, N, N),
-            "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
-            "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
-            "GridSampler3DPermute": (self.test_GridSampler3DPermute,     N, N, N, N), # bm1684x has random error casued by 2.18 commit
-            "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
-            "GRU":              (self.test_GRU,               Y, Y, Y, Y),
-            "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
-            "Index":            (self.test_IndexPut,          N, Y, Y, N),
-            "IndexSelect":      (self.test_IndexSelect,       N, Y, Y, Y),
-            "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y, Y),
-            "Interp":           (self.test_Interp,            N, Y, Y, Y),
-            "Interp2":           (self.test_Interp2,          N, Y, Y, N),
-            "LayerNorm":        (self.test_LayerNorm,         N, Y, Y, Y),
-            "LeakyRelu":        (self.test_LeakyRelu,         N, Y, Y, Y),
-            "Linear":           (self.test_Linear,            N, Y, Y, Y),
-            "LogSoftmax":       (self.test_LogSoftmax,        N, Y, Y, Y),
-            "LSTM":             (self.test_LSTM,              N, Y, Y, Y),
-            "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N),
-            "Math":             (self.test_Math,              N, Y, Y, N),
-            "MatMul":           (self.test_MatMul,            N, Y, Y, Y),
-            "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y),
-            "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N),
-            "Max":              (self.test_Max,               N, Y, Y, N),
-            "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y),
-            "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y),
-            "MaxPool3d":        (self.test_MaxPool3d,         N, Y, Y, Y),
-            "MeshGrid":         (self.test_MeshGrid,          N, N, N, N),
-            "Min":              (self.test_Min,               N, Y, Y, N),
-            "MM":               (self.test_MM,                N, Y, Y, Y),
-            "MV":               (self.test_MV,                N, Y, N, N),
-            "Mul":              (self.test_Mul,               N, Y, Y, Y),
-            "MulConst":         (self.test_MulConst,          N, Y, Y, Y),
-            "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
-            "NonZero":          (self.test_NonZero,           N, Y, Y, N),
-            # "Normalize":        (self.test_Normalize,         N, Y, Y, N),
-            "New_full":         (self.test_New_full,          N, Y, Y, Y),
-            "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
-            "Remainder":        (self.test_Remainder,         Y, Y, N, N),
-            "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
-            "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
-            "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N),
-            "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
-            "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N),
-            "Roll":             (self.test_Roll,              N, Y, Y, N),
-            "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
-            "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y),
-            "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
-            "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
-            "Permute":          (self.test_Permute,           N, Y, Y, Y),
-            "Permute2":         (self.test_Permute2,          N, Y, Y, N),
-            "Pad1d":            (self.test_Pad1d,             Y, Y, Y, Y),
-            "Pad2d":            (self.test_Pad2d,             Y, Y, Y, Y),
-            "Pow":              (self.test_Pow,               N, Y, Y, Y),
-            "Scatter":          (self.test_Scatter,           N, N, N, N),
-            "ScaleDotAtten":    (self.test_ScaleDotAtten,     N, Y, N, N),
-            "Select":           (self.test_Select,            N, Y, Y, Y),
-            "Sign":             (self.test_Sign,              N, Y, Y, N),
-            "Slice":            (self.test_Slice,             N, Y, Y, Y),
-            "Softmax":          (self.test_Softmax,           N, Y, Y, Y),
-            "Softmin":          (self.test_Softmin,           N, Y, Y, Y),
-            "Split":            (self.test_Split,             N, Y, Y, Y),
-            "Squeeze":          (self.test_Squeeze,           N, Y, Y, Y),
-            "Stack":            (self.test_Stack,             N, Y, Y, Y),
-            "Sub":              (self.test_Sub,               Y, Y, Y, Y),
-            "T":                (self.test_T,                 N, Y, Y, Y),
-            "Tile":             (self.test_Tile,              Y, Y, Y, Y),
-            "To":               (self.test_To,                N, Y, Y, Y),
-            "Type_as":          (self.test_Type_as,           N, Y, Y, Y),
-            "Transpose":        (self.test_Transpose,         N, Y, Y, Y),
-            "Unbind":           (self.test_Unbind,            N, Y, Y, Y),
-            "Upsample":         (self.test_Upsample,          N, Y, Y, Y),
-            "Unary":            (self.test_Unary,             N, Y, Y, Y),
-            "Unsqueeze":        (self.test_Unsqueeze,         N, Y, Y, Y),
-            "View":             (self.test_View,              N, Y, Y, Y),
-            "Where":            (self.test_Where,             N, Y, Y, N),
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, mars3_support)
+            "Abs":              (self.test_Abs,               N, Y, Y, Y, Y),
+            "Activation":       (self.test_Activation,        Y, Y, Y, Y, N),
+            "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N, Y),
+            "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y, N),
+            "Add":              (self.test_Add,               N, Y, Y, Y, Y),
+            "AddLarge":         (self.test_AddLarge,          N, Y, Y, N, Y),
+            "Add5d":            (self.test_Add5d,             N, Y, Y, Y, Y),
+            "Add6d":            (self.test_Add6d,             N, Y, Y, Y, Y),
+            "Addmm":            (self.test_Addmm,             N, Y, Y, Y, Y),
+            "Arange":           (self.test_Arange,            N, Y, Y, Y, Y),
+            "Arctan":           (self.test_Arctan,            N, Y, Y, N, N),
+            "Arctanh":          (self.test_Arctanh,           Y, Y, Y, N, N),
+            "Arccos":           (self.test_Arccos,            Y, Y, Y, N, N),
+            "Arg":              (self.test_Arg,               Y, Y, Y, N, Y),
+            "Attention":        (self.test_Attention,         N, Y, Y, Y, Y),
+            "AttentionNew":     (self.test_AttentionNew,      N, Y, N, N, N),
+            "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y, Y, Y),
+            "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y, Y, Y),
+            "AvgPool3d":        (self.test_AvgPool3d,         N, Y, Y, Y, N),
+            "BatchNorm":        (self.test_BatchNorm,         N, Y, Y, Y, Y),
+            "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y, Y),
+            "Ceil":             (self.test_Ceil,              N, Y, N, N, Y),
+            "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y, Y),
+            "Chunk":            (self.test_Chunk,             N, Y, Y, Y, Y),
+            "Clamp":            (self.test_Clamp,             Y, Y, Y, N, Y),
+            "Compare":          (self.test_Compare,           Y, Y, Y, N, Y),
+            "Concat":           (self.test_Concat,            N, Y, Y, Y, Y),
+            "ConstantLike":     (self.test_ConstantLike,      N, Y, Y, Y, Y),
+            "Conv1d":           (self.test_Conv1d,            N, Y, Y, Y, Y),
+            "Conv2d":           (self.test_Conv2d,            N, Y, Y, Y, Y),
+            "Conv3d":           (self.test_Conv3d,            Y, Y, Y, N, Y),
+            "ConvMerge":        (self.test_ConvMerge,         N, Y, Y, Y, Y),
+            "ConvGroup":        (self.test_ConvGroup,         N, Y, Y, Y, Y),
+            "ConvTrans":        (self.test_ConvTrans,         N, Y, Y, Y, N),
+            "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y, Y),
+            "DeformConv2D":     (self.test_DeformConv2D,      Y, Y, N, N, N),
+            "Div":              (self.test_Div,               N, Y, Y, Y, Y),
+            "Dot":              (self.test_Dot,               N, Y, N, N, Y),
+            "Dropout":          (self.test_Dropout,           N, Y, Y, Y, Y),
+            "Elu":              (self.test_Elu,               Y, Y, Y, Y, N),
+            "Embedding":        (self.test_Embedding,         N, Y, Y, Y, N),
+            "FAttention":       (self.test_FAttention,        N, Y, N, N, Y),
+            "Flatten":          (self.test_Flatten,           N, Y, Y, N, Y),
+            "Flip":             (self.test_Flip,              N, Y, Y, N, N),
+            "Floor":            (self.test_Floor,             N, Y, Y, N, Y),
+            "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N, Y),
+            "FrobeniusNorm":    (self.test_FrobeniusNorm,     N, Y, Y, N, N),
+            "Gather":           (self.test_Gather,            N, N, N, N, N),
+            "GridSampler":      (self.test_GridSampler,       N, Y, N, Y, N),
+            "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
+            "GridSampler3DPermute": (self.test_GridSampler3DPermute,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
+            "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N, N),
+            "GRU":              (self.test_GRU,               Y, Y, Y, Y, N),
+            "IndexPut":         (self.test_IndexPut,          N, Y, Y, N, Y),
+            "Index":            (self.test_IndexPut,          N, Y, Y, N, Y),
+            "IndexSelect":      (self.test_IndexSelect,       N, Y, Y, Y, Y),
+            "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y, Y, N),
+            "Interp":           (self.test_Interp,            N, Y, Y, Y, Y),
+            "Interp2":           (self.test_Interp2,          N, Y, Y, N, Y),
+            "LayerNorm":        (self.test_LayerNorm,         N, Y, Y, Y, N),
+            "LeakyRelu":        (self.test_LeakyRelu,         N, Y, Y, Y, Y),
+            "Linear":           (self.test_Linear,            N, Y, Y, Y, Y),
+            "LogSoftmax":       (self.test_LogSoftmax,        N, Y, Y, Y, N),
+            "LSTM":             (self.test_LSTM,              N, Y, Y, Y, N),
+            "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N, Y),
+            "Math":             (self.test_Math,              N, Y, Y, N, N),
+            "MatMul":           (self.test_MatMul,            N, Y, Y, Y, Y),
+            "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y, Y),
+            "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N, N),
+            "Max":              (self.test_Max,               N, Y, Y, N, Y),
+            "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y, Y),
+            "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y, Y),
+            "MaxPool3d":        (self.test_MaxPool3d,         N, Y, Y, Y, Y),
+            "MeshGrid":         (self.test_MeshGrid,          N, N, N, N, Y),
+            "Min":              (self.test_Min,               N, Y, Y, N, Y),
+            "MM":               (self.test_MM,                N, Y, Y, Y, Y),
+            "MV":               (self.test_MV,                N, Y, N, N, Y),
+            "Mul":              (self.test_Mul,               N, Y, Y, Y, Y),
+            "MulConst":         (self.test_MulConst,          N, Y, Y, Y, Y),
+            "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y, Y),
+            "NonZero":          (self.test_NonZero,           N, Y, Y, N, N),
+            # "Normalize":        (self.test_Normalize,         N, Y, Y, N, N),
+            "New_full":         (self.test_New_full,          N, Y, Y, Y, Y),
+            "Reduce":           (self.test_Reduce,            N, Y, Y, Y, Y),
+            "Remainder":        (self.test_Remainder,         Y, Y, N, N, Y),
+            "Repeat":           (self.test_Repeat,            N, Y, Y, Y, Y),
+            "Reshape":          (self.test_Reshape,           N, Y, Y, Y, Y),
+            "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N, Y),
+            "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N, N),
+            "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N, N),
+            "Roll":             (self.test_Roll,              N, Y, Y, N, Y),
+            "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y, Y),
+            "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y, Y),
+            "PRelu":            (self.test_PRelu,             N, Y, Y, Y, Y),
+            "PRelu":            (self.test_PRelu,             N, Y, Y, Y, Y),
+            "Permute":          (self.test_Permute,           N, Y, Y, Y, Y),
+            "Permute2":         (self.test_Permute2,          N, Y, Y, N, Y),
+            "Pad1d":            (self.test_Pad1d,             Y, Y, Y, Y, Y),
+            "Pad2d":            (self.test_Pad2d,             Y, Y, Y, Y, Y),
+            "Pow":              (self.test_Pow,               N, Y, Y, Y, N),
+            "Scatter":          (self.test_Scatter,           N, N, N, N, N),
+            "ScaleDotAtten":    (self.test_ScaleDotAtten,     N, Y, N, N, Y),
+            "Select":           (self.test_Select,            N, Y, Y, Y, Y),
+            "Sign":             (self.test_Sign,              N, Y, Y, N, Y),
+            "Slice":            (self.test_Slice,             N, Y, Y, Y, Y),
+            "Softmax":          (self.test_Softmax,           N, Y, Y, Y, Y),
+            "Softmin":          (self.test_Softmin,           N, Y, Y, Y, Y),
+            "Split":            (self.test_Split,             N, Y, Y, Y, Y),
+            "Squeeze":          (self.test_Squeeze,           N, Y, Y, Y, Y),
+            "Stack":            (self.test_Stack,             N, Y, Y, Y, Y),
+            "Sub":              (self.test_Sub,               Y, Y, Y, Y, Y),
+            "T":                (self.test_T,                 N, Y, Y, Y, Y),
+            "Tile":             (self.test_Tile,              Y, Y, Y, Y, Y),
+            "To":               (self.test_To,                N, Y, Y, Y, Y),
+            "Type_as":          (self.test_Type_as,           N, Y, Y, Y, Y),
+            "Transpose":        (self.test_Transpose,         N, Y, Y, Y, Y),
+            "Unbind":           (self.test_Unbind,            N, Y, Y, Y, Y),
+            "Upsample":         (self.test_Upsample,          N, Y, Y, Y, N),
+            "Unary":            (self.test_Unary,             N, Y, Y, Y, Y),
+            "Unsqueeze":        (self.test_Unsqueeze,         N, Y, Y, Y, Y),
+            "View":             (self.test_View,              N, Y, Y, Y, Y),
+            "Where":            (self.test_Where,             N, Y, Y, N, Y),
             ## Special Case
-            "Connect":          (self.test_Connect,           N, N, N, N),
-            "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N),
-            "InfError":         (self.test_InfError,          N, Y, Y, N),
-            "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
-            "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
+            "Connect":          (self.test_Connect,           N, N, N, N, N),
+            "GatherMulConst":   (self.test_GatherMulConst,    N, Y, Y, N, N),
+            "InfError":         (self.test_InfError,          N, Y, Y, N, N),
+            "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y, Y),
+            "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y, Y),
             ## only for test, only run test_single
-            "user_define_net":   (self.user_define_net,    N, N, N, N),
+            "user_define_net":   (self.user_define_net,    N, N, N, N, N),
             ## Canonicalization
-            "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N)
+            "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N, Y)
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -211,6 +211,9 @@ class TORCH_IR_TESTER(object):
             self.is_cv18xx = True
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
+            self.support_asym = [False]
+        elif self.chip == "mars3":
+            self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
@@ -236,14 +239,14 @@ class TORCH_IR_TESTER(object):
         if case in self.test_cases:
             os.makedirs(case, exist_ok=True)
             os.chdir(case)
-            func, _, _, _, _ = self.test_cases[case]
+            func, _, _, _, _, _ = self.test_cases[case]
             func()
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, mars3_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
@@ -252,7 +255,7 @@ class TORCH_IR_TESTER(object):
             return True
         if self.chip in ["bm1688","cv186x"] and bm1688_support:
             return True
-        if self.chip == "mars3" and bm1688_support:
+        if self.chip == "mars3" and mars3_support:
             return True
         return False
 
@@ -726,7 +729,10 @@ class TORCH_IR_TESTER(object):
                     else:
                         return max_values, max_indices
 
-            self.trace_and_test([shape], Model())
+            if (self.chip == "mars3"):
+                self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
+            else:
+                self.trace_and_test([shape], Model())
 
         for ret_case in [0, 1, 2]:
             _test_max((4, 30), 1, ret_case)
@@ -773,7 +779,10 @@ class TORCH_IR_TESTER(object):
                     else:
                         return min_values, min_indices
 
-            self.trace_and_test([shape], Model())
+            if (self.chip == "mars3"):
+                self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
+            else:
+                self.trace_and_test([shape], Model())
 
         for ret_case in [0, 1, 2]:
             _test_min((4, 30), 1, ret_case)
@@ -2080,7 +2089,10 @@ class TORCH_IR_TESTER(object):
                     y = func(x, axis, keepdim=keepdim)
                     return y
 
-            self.trace_and_test([(4, 3, 16, 16)], Model())
+            if (self.chip == "mars3"):
+                self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('int', 1, 100)])
+            else:
+                self.trace_and_test([(4, 3, 16, 16)], Model())
 
         for f in [torch.argmin, torch.argmax]:
             for axis in [0, 1, 2, 3]:

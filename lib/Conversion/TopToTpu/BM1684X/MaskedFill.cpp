@@ -19,7 +19,10 @@ void MaskedFillLowering::LoweringF32(PatternRewriter &rewriter,
 
 void MaskedFillLowering::LoweringINT8(PatternRewriter &rewriter, top::MaskedFillOp op,
                                       bool asymmetric) const {
-  lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);
+  if(module::isMARS3())
+    lowering_common_bf16<tpu::MaskedFillOp>(rewriter, op);
+  else
+    lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);
 }
 void MaskedFillLowering::LoweringINT4(PatternRewriter &rewriter, top::MaskedFillOp op,
                                    bool asymmetric) const {

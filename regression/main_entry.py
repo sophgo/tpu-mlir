@@ -66,7 +66,7 @@ class MAIN_ENTRY(object):
         }
         self.op1_test_types = {
             # op_source: (tester, test_all_func, chips)
-            "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x"]),
+            "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x", "mars3"]),
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x", "bm1688"]),
             "custom_tpulang":  (test_custom_tpulang.CUSTOM_TPULANG_TESTER, test_custom_tpulang.test_all, ["bm1684x", "bm1688"]),
         }
