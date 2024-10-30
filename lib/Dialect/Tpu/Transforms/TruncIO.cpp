@@ -1138,10 +1138,15 @@ public:
     }
     FuncDataFlowAnalysis::analyze_from_bt(live_values, sn_upd_info, blk_upd_infos);
     Set<PValue> new_ins;
+    const auto ctx = g_moduleOp.getContext();
+    OpBuilder builder(ctx);
     for (auto pv : sn_upd_info.new_ins) {
       auto v = Value(pv);
       auto arg = create_new_arg(mainFuncOp, v);
-      v.replaceAllUsesWith(arg);
+      builder.setInsertionPointAfterValue(arg);
+      auto inputOp = builder.create<top::InputOp>(
+        v.getLoc(), v.getType(), ValueRange{arg});
+      v.replaceAllUsesWith(inputOp.getOutput());
       new_ins.insert(arg.getImpl());
     }
     sn_upd_info.new_ins = new_ins;
