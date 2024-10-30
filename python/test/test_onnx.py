@@ -133,7 +133,7 @@ class ONNX_IR_TESTER(object):
             "GRU4":         (self.test_GRU4,          N, Y, Y, N, Y, N), # test gru output Y and Yh,also splitting batch dim
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N),
-            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, N),
+            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, Y),
             "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y), # output_y
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y, N), # output all
             "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y, N), # output_yh and output_yc
@@ -187,7 +187,7 @@ class ONNX_IR_TESTER(object):
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, N),
-            "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y, N),
+            "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y),
             "Sign":         (self.test_Sign,          N, Y, Y, N, Y, Y),
@@ -304,7 +304,7 @@ class ONNX_IR_TESTER(object):
             "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, Y, N, Y, Y),
             "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y, Y, Y),
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N, Y, Y),
-            "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y, N),
+            "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y, Y),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
