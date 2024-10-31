@@ -38,6 +38,8 @@ onnx_attr_translator = {
     "to": lambda x: onnx_dtype(x),
 }
 
+int64_max = np.iinfo(np.int64).max
+int32_max = np.iinfo(np.int32).max
 
 def translate_onnx(key, val):
     return onnx_attr_translator.get(key, lambda x: x)(val)
@@ -114,7 +116,8 @@ class OnnxConverter(BaseConverter):
                  dynamic_shape_input_names=[],
                  shape_influencing_input_names=[],
                  dynamic=False,
-                 dump_final_opt=True):
+                 dump_final_opt=True,
+                 op_custom_shape: dict = {}):
         super().__init__()
 
         self.dynamic_shape_input_names = dynamic_shape_input_names
@@ -129,6 +132,7 @@ class OnnxConverter(BaseConverter):
             self.dynamic = "off"
         self.run_mode = "DYNAMIC" if dynamic else "STATIC"
         self.dynamic_shapes = dict()
+        self.op_custom_shape = op_custom_shape
         self.test_input = test_input
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
@@ -496,8 +500,8 @@ class OnnxConverter(BaseConverter):
             # TODO: for quantized onnx, keep the same type
         self.get_output_name(self.model.graph)
         # self.add_shape_info(self.model.graph)
-        # if self.dynamic:
-        #     self.get_dynamic_op_shape(self.model)
+        if self.dynamic:
+            self.get_dynamic_op_shape(self.model)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
         try:
@@ -545,7 +549,7 @@ class OnnxConverter(BaseConverter):
         return self.dynamic_shapes[name]
 
     def get_dynamic_op_shape(self, model):
-        dynamic_op = ["RandomNormalLike", "Range"]
+        dynamic_op = ["RandomNormalLike"]
         ori_outputs = []
         ori_outputs.extend(model.graph.output)
         del self.model.graph.output[:]
@@ -849,14 +853,16 @@ class OnnxConverter(BaseConverter):
         last_name = None
         for x in onnx_node.inputs:
             if self.isWeight(x):
-                last_name = x
                 data = self.getWeight(x)
+                data[data == int64_max] = int32_max - 1024
                 if len(data.shape) == 1 and data.shape[0] == 0:
                     continue
                 if weight_data is not None:
                     weight_data = np.concatenate((weight_data, data), axis=axis)
+                    last_name = "{}_{}".format(last_name, x)
                 else:
                     weight_data = data
+                    last_name = x
                 continue
             else:
                 if weight_data is not None:
@@ -1357,15 +1363,37 @@ class OnnxConverter(BaseConverter):
 
     def convert_range_op(self, onnx_node):
         assert (onnx_node.op_type == "Range")
+        output_shape = None
+        if self.op_custom_shape is None:
+            self.op_custom_shape = {}
+        range_custom_shape = self.op_custom_shape.get('Range', {})
+        if onnx_node.name in range_custom_shape:
+            output_len = range_custom_shape[onnx_node.name]
+            if isinstance(output_len, int):
+                output_shape = [output_len]
+                print("[OnnxConver] Get custom shape for RangeOp \"{}\": {}".format(onnx_node.name, output_shape))
+            elif isinstance(output_len, list):
+                output_shape = output_len
+                print("[OnnxConver] Get custom shape for RangeOp \"{}\": {}".format(onnx_node.name, output_shape))
+            else:
+                raise ValueError("op_custom_shape should be int or list, get {}".format(output_len))
         start = self.getOp(onnx_node.inputs[0])
         limit = self.getOp(onnx_node.inputs[1])
         delta = self.getOp(onnx_node.inputs[2])
-        range_op = top.RangeOp(self.unranked_type,
-                            start,
-                            limit,
-                            delta,
-                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                            ip=self.mlir.insert_point).output
+        if output_shape is None:
+            range_op = top.RangeOp(self.unranked_type,
+                                start,
+                                limit,
+                                delta,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        else:
+            range_op = top.RangeOp(self.mlir.get_tensor_type(output_shape),
+                                start,
+                                limit,
+                                delta,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, range_op)
 
     def convert_sigmoid_op(self, onnx_node):
@@ -1415,6 +1443,7 @@ class OnnxConverter(BaseConverter):
             ret_op = self.mlir.none_op
             if is_const:
                 ret_list = self.getWeight(node.inputs[i])
+                ret_list[ret_list == int64_max] = int32_max - 1024
                 ret_op = self.getWeightOp(node.inputs[i])
             elif attr in node.attrs:
                 ret_list = node.attrs.get(attr)

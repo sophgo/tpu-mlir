@@ -14,10 +14,8 @@ namespace bm1684x {
 
 void MaxConstTryLowering::Lowering(PatternRewriter &rewriter,
                                    top::MaxConstOp op) const {
-  auto prev_op = op.getInput().getDefiningOp();
-  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  if (!isa_shape_subnet_op(op))
     return;
-  }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Max")));
   auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));

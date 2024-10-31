@@ -145,7 +145,8 @@ class OnnxTransformer(ModelTransformer):
                  dynamic_shape_input_names: list = [],
                  dynamic=False,
                  shape_influencing_input_names: list = [],
-                 dump_final_opt=True):
+                 dump_final_opt=True,
+                 op_custom_shape: dict = {}):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -159,7 +160,8 @@ class OnnxTransformer(ModelTransformer):
                                        dynamic_shape_input_names=dynamic_shape_input_names,
                                        dynamic=dynamic,
                                        shape_influencing_input_names=shape_influencing_input_names,
-                                       dump_final_opt=dump_final_opt)
+                                       dump_final_opt=dump_final_opt,
+                                       op_custom_shape=op_custom_shape)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -311,7 +313,8 @@ def get_model_transform(args):
                                dynamic_shape_input_names=args.dynamic_shape_input_names,
                                dynamic=args.dynamic,
                                shape_influencing_input_names=args.shape_influencing_input_names,
-                               dump_final_opt=args.dump_final_opt)
+                               dump_final_opt=args.dump_final_opt,
+                               op_custom_shape=args.op_custom_shape)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict(),
@@ -385,6 +388,8 @@ if __name__ == '__main__':
                         help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis \
                             as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names')
     parser.add_argument("--path_yaml", type=str, default=None, help="path of the yaml file")
+    parser.add_argument("--not_inference", action='store_true', help='only do model transform, not inference')
+    parser.add_argument("--op_custom_shape", type=str, help="set custom shape for some op, like:\'{\"Range\":{\"/Range_output_0\":[2048],\"/Range_1_output_0\":[2048]}}\'")
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action='store_true', help="if enable maskrcnn")
 
@@ -402,10 +407,14 @@ if __name__ == '__main__':
             assert os.path.exists(input), f"test_input {input} not exist!"
     if args.shape_influencing_input_names:
         assert args.test_input, "if shape_influencing_input_names is set, test_input is required!"
+    if args.op_custom_shape:
+        import json
+        args.op_custom_shape = json.loads(args.op_custom_shape)
+        print("op_custom_shape:", args.op_custom_shape)
     cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
-    if args.test_input and cache_tool.do_top_validate(tool.mlir_file, tool.in_f32_npz, args.tolerance, args.debug):
+    if (not args.not_inference) and args.test_input and cache_tool.do_top_validate(tool.mlir_file, tool.in_f32_npz, args.tolerance, args.debug):
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
     if not args.debug:

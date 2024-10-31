@@ -13,6 +13,10 @@ LogicalResult tpu::ShapeReshapeOp::init(InferenceParameter &p) { return success(
 void tpu::ShapeReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeReshapeOp::inference(InferenceParameter &p) {
+  if (p.inputs[0] != p.outputs[0]) {
+    auto num_elem = module::getNumElements(getOutput());
+    memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  }
   return success();
 }
 

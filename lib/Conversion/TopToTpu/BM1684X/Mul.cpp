@@ -27,7 +27,7 @@ void MulTryLowering::Lowering(PatternRewriter &rewriter, top::MulOp op) const {
     Type new_type =
       RankedTensorType::get(module::getShape(op.getOutput()),
                             IntegerType::get(op.getOutput().getContext(), 32));
-      rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);                           
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
   }
 }
 

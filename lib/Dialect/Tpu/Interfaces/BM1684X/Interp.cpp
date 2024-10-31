@@ -175,11 +175,15 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  param.spec.shape_is_fixed = false;
-  auto out_shape = module::getShape(getOutput());
-  param.spec.dims = out_shape.size();
-  for (int i=0; i < param.spec.dims; i++)
-    param.spec.shape[i] = out_shape[i];
+  if (module::isNone(getShapeT())) {
+    auto out_shape = module::getShape(getOutput());
+    param.spec.dims = out_shape.size();
+    for (int i=0; i < param.spec.dims; i++)
+      param.spec.shape[i] = out_shape[i];
+    param.spec.shape_is_fixed = true;
+  } else {
+    param.spec.shape_is_fixed = false;
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

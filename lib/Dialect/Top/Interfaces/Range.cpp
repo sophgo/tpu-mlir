@@ -69,7 +69,8 @@ void top::RangeOp::shape_inference() {
     ASSERT_THIS(limit_v.size() == 1);
     limit = limit_v[0];
   } else {
-    llvm_unreachable("limit must be a weight or a shape");
+    dump();
+    llvm_unreachable("Should set op_custom_shape in model_transform.\n");
   }
   auto out_size = (limit - start) / delta;
   module::setShapeOrVerify(getOutput(), {out_size});

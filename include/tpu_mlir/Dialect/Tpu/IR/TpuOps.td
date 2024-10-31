@@ -2085,7 +2085,7 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [
   }];
 }
 
-def Tpu_ShapeTransposeOp: Tpu_Op<"ShapeTransposeOp",[
+def Tpu_ShapeTransposeOp: Tpu_Op<"ShapeTranspose",[
   ShapeProducer, ShapeConsumer]> {
 
   let summary = "ShapeTransposeOp operator";
