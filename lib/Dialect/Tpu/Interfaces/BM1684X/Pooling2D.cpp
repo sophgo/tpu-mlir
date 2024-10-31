@@ -66,16 +66,16 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   SpecAssign(attr, spec);
   if (getPoolMode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (module::isUniformQuantized(getInput())) {
-      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
-      spec.avg_pooling_quant_mode =
-          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
-      auto out_type = module::getStorageType(getOutput());
-      if (out_type.isa<Float8E4M3FNType>() || out_type.isa<Float8E5M2Type>()) {
+    auto out_type = module::getStorageType(getOutput());
+    if (out_type.isa<Float8E4M3FNType>() || out_type.isa<Float8E5M2Type>()) {
         spec.rq_scale = getFp8OutScale().has_value()
                             ? (getFp8OutScale().value().convertToDouble())
                             : 1.;
-      } else if (spec.avg_pooling_quant_mode == 0) {
+    } else if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
+      spec.avg_pooling_quant_mode =
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+      if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier =
             getMultiplier().has_value() ? getMultiplier().value() : 1;
         spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
