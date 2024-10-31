@@ -60,7 +60,10 @@ void InstanceNormLowering::LoweringF32(PatternRewriter &rewriter,
 void InstanceNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::InstanceNormOp op,
                                      bool asymmetric) const {
-  LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
+  if(module::isMARS3())
+    LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
+  else
+    LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringINT4(PatternRewriter &rewriter,
@@ -71,7 +74,7 @@ void InstanceNormLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void InstanceNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::InstanceNormOp op) const {
-  LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
+  LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
 }
 
 void InstanceNormLowering::LoweringF16(PatternRewriter &rewriter,

@@ -168,7 +168,6 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
     op.replaceAllUsesWith(ex_op.getOperation());
     return ex_op.getOutput();
   };
-  // support f32, change type when needed
   auto insert_abs = [&rewriter](top::PowOp &op) -> tpu::ActiveOp {
     auto name = module::getName(op.getOutput());
     std::vector<NamedAttribute> attrs;
@@ -176,12 +175,13 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
     attrs.push_back(rewriter.getNamedAttr(
         "mode",
         tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ABSVAL)));
+    auto new_type = getQuantBF16Type(op.getResult());
     auto abs_op = rewriter.create<tpu::ActiveOp>(
-        abs_loc, op.getOutput().getType(), ValueRange{op.getInput()}, attrs);
+        abs_loc, new_type, ValueRange{op.getInput()}, attrs);
     op->setOperand(0, abs_op.getOutput());
     return abs_op;
   };
-
+  // support f32, change type when needed
   double exponent = op.getExponent().convertToDouble();
 
   if (fmod(exponent, 2) == 0) {

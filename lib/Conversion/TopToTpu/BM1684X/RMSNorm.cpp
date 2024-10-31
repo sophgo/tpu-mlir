@@ -58,7 +58,10 @@ void RMSNormLowering::LoweringF32(PatternRewriter &rewriter,
 
 void RMSNormLowering::LoweringINT8(PatternRewriter &rewriter, top::RMSNormOp op,
                                    bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if(module::isMARS3())
+    LoweringBF16(rewriter, op);
+  else
+    LoweringF16(rewriter, op);
 }
 
 void RMSNormLowering::LoweringINT4(PatternRewriter &rewriter, top::RMSNormOp op,

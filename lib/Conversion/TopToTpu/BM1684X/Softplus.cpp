@@ -37,12 +37,25 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::SoftplusOp op) const {
-  LoweringF32(rewriter, op);
+    if(module::isMARS3()){
+      auto op_ = op.getOperation();
+      op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+                                                  tpu::ActiveMode::SOFT_PLUS));
+      lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+    } else {
+      LoweringF32(rewriter, op);
+    }
+
 }
 
 void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::SoftplusOp op) const {
   LoweringF32(rewriter, op);
+  // uncomment when needed
+  // auto op_ = op.getOperation();
+  //     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+  //                                               tpu::ActiveMode::SOFT_PLUS));
+  // lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SoftplusLowering::LoweringF8(PatternRewriter &rewriter,
