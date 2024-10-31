@@ -283,10 +283,15 @@ def get_memory_type(s):
         'bf16': DataType.BF16,
         'si8': DataType.INT8,
         'u8': DataType.UINT8,
+        'ui8': DataType.UINT8,
         'i16': DataType.INT16,
         'u16': DataType.UINT16,
+        'ui16': DataType.UINT16,
+        'si16': DataType.INT16,
         'i32': DataType.INT32,
-        'u32': DataType.UINT32
+        'u32': DataType.UINT32,
+        'ui32': DataType.UINT32,
+        'si32': DataType.INT32,
     }
 
     s = s[1:-1]
