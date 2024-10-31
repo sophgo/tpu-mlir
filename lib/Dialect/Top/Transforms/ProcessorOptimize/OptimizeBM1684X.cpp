@@ -2136,68 +2136,6 @@ protected:
   }
 };
 
-// x / sqrt(y) => x * rsqrt(y)
-class ConvertToRSqrt : public OpRewriterPatternEx<top::DivOp> {
-public:
-  ConvertToRSqrt(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::DivOp>(context, "ConvertToRSqrt", benefit) {}
-
-protected:
-  LogicalResult matchAndRewriteImpl(top::DivOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
-    auto divisor = op.getIsReverse() ? op->getOperand(0) : op->getOperand(1);
-    auto dividend = op.getIsReverse() ? op->getOperand(1) : op->getOperand(0);
-    auto def_op = divisor.getDefiningOp();
-    if (!def_op->hasOneUse())
-      return failure();
-    if (auto sqrtOp = dyn_cast<top::SqrtOp>(def_op)) {
-      auto in = def_op->getOperand(0);
-      // rsqrt
-      auto rsqrtOp = rewriter.create<top::RsqrtOp>(
-        NameLoc::get(
-          rewriter.getStringAttr(module::getName(divisor).str() + "_inv")),
-        divisor.getType(), ValueRange{in});
-      auto out = op.getOutput();
-      // mul
-      auto mulOp = rewriter.create<top::MulOp>(
-        out.getLoc(), out.getType(),
-        ValueRange{dividend, rsqrtOp.getOutput()},
-        op->getAttrs());
-      mulOp->removeAttr(rewriter.getStringAttr("is_reverse"));
-      out.replaceAllUsesWith(mulOp.getOutput());
-    } else {
-      return failure();
-    }
-    return success();
-  }
-};
-
-// abs(x) * abs(x) => x * x
-class ConvertToSquare : public OpRewriterPatternEx<top::MulOp> {
-public:
-  ConvertToSquare(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::MulOp>(context, "ConvertToSquare", benefit) {}
-
-protected:
-  LogicalResult matchAndRewriteImpl(top::MulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
-    auto in0 = op->getOperand(0);
-    auto in1 = op->getOperand(1);
-    if (in0 != in1)
-      return failure();
-    auto def_op = in0.getDefiningOp();
-    if (!def_op->hasOneUse())
-      return failure();
-    if (auto absOp = dyn_cast<top::AbsOp>(def_op)) {
-      auto in = def_op->getOperand(0);
-      op->setOperands({in, in});
-    } else {
-      return failure();
-    }
-    return success();
-  }
-};
-
 } // namespace bm1684x
 
 namespace top {
@@ -2209,8 +2147,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             ConvertMatMulWithRightTranspose, ConvertMatMul2Attention,
             ReshapeReorderPattern, ConvertMultiInputAdd, WhereBroadcastToTile,
             ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
-            ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
-            ConvertToRSqrt, ConvertToSquare>(
+            ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape>(
           patterns->getContext(), 8);
 }
 } // namespace top
