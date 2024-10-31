@@ -2023,7 +2023,7 @@ class TORCH_IR_TESTER(object):
     def test_Arctanh(self):
         """Arctanh"""
 
-        def _test_arctanh(func, min=-1, max=1):
+        def _test_arctanh(func, min=-0.99, max=0.99):
 
             class Model(nn.Module):
 

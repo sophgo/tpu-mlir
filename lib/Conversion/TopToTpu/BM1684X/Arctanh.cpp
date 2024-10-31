@@ -29,7 +29,11 @@ void ArctanhLowering::LoweringINT8(PatternRewriter &rewriter, top::ArctanhOp op,
   // this op not suitable for int8 quant cuz slight deviation in the former op
   // would result in great difference in arctanh
   set_arctanh_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3()) {
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  } else {
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  }
 }
 
 void ArctanhLowering::LoweringINT4(PatternRewriter &rewriter, top::ArctanhOp op,
@@ -40,7 +44,11 @@ void ArctanhLowering::LoweringINT4(PatternRewriter &rewriter, top::ArctanhOp op,
 void ArctanhLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ArctanhOp op) const {
   set_arctanh_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3()) {
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  } else {
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  }
 }
 
 void ArctanhLowering::LoweringF16(PatternRewriter &rewriter,

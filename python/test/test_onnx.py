@@ -46,13 +46,13 @@ class ONNX_IR_TESTER(object):
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y),
             "Add_5dim_bc":  (self.test_Add_5dim_bc,   N, Y, Y, N, N, Y),
-            "And":          (self.test_And,           N, Y, Y, N, Y, N),
+            "And":          (self.test_And,           N, Y, Y, N, Y, Y),
             "AddBcast":     (self.test_AddBcast,      N, N, N, N, Y, N), # bm1684x has random error caused by 2.27 commit
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N, N), # failed cases
-            "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y, N),
-            "Atan":         (self.test_Arctan,        N, Y, Y, N, Y, N),
-            "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y, N),
+            "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y, Y),
+            "Atan":         (self.test_Arctan,        N, Y, Y, N, Y, Y),
+            "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y, Y),
             "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y),
             "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y),
             "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y),
