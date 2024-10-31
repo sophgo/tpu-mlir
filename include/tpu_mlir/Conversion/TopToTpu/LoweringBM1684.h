@@ -121,5 +121,6 @@ LOWERING_BM1684(StridedSlice)
 LOWERING_BM1684(MaskedFill)
 LOWERING_BM1684(Where)
 LOWERING_BM1684(GatherElements)
+LOWERING_BM1684(Mod)
 } // namespace bm1684
 } // namespace tpu_mlir

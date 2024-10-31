@@ -108,7 +108,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaskedFillLowering,
       WhereLowering,
       GatherElementsLowering,
-      RMSNormLowering
+      RMSNormLowering,
+      ModLowering
       // clang-format on
       >(patterns->getContext());
 }
