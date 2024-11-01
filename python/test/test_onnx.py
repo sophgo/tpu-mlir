@@ -309,6 +309,11 @@ class ONNX_IR_TESTER(object):
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
+            #########################################
+            # Dynamic test case, Alphabetically
+            #########################################
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
+            "DynamicSlice":     (self.test_DynamicSlice,    N, Y, Y, N, N, N),
             ## only for test
             "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }
@@ -416,7 +421,9 @@ class ONNX_IR_TESTER(object):
                      quant_modes: list,
                      static_shape=True,
                      version=14,
-                     dynamic=False):
+                     dynamic=False,
+                     dynamic_shape_input_names = [],
+                     shape_influencing_input_names=[]):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -430,14 +437,20 @@ class ONNX_IR_TESTER(object):
                 input_data[name] = input_data[name].astype(np.float32)
         np.savez(input_npz, **input_data)
         onnx.checker.check_model(model_def)
-        tool = OnnxTransformer(model_name, model_def, test_input=input_npz, static_shape=static_shape, dynamic=dynamic)
+        tool = OnnxTransformer(model_name,
+                               model_def,
+                               test_input=input_npz,
+                               static_shape=static_shape,
+                               dynamic=dynamic,
+                               dynamic_shape_input_names = dynamic_shape_input_names,
+                               shape_influencing_input_names=shape_influencing_input_names)
         node_name_mapping = tool.converter.node_name_mapping
         tool.model_transform(fp32_mlir)
 
-        onnx_model = "{}_opt.onnx".format(model_name)
+        onnx_opt_model = "{}_opt.onnx".format(model_name)
         # top mlir outputs will be inferenced first in case the quant mode is int8
-        show_fake_cmd(input_npz, onnx_model, "onnx_out.npz")
-        onnx_outs = onnx_inference(input_data, onnx_model, True)
+        show_fake_cmd(input_npz, onnx_opt_model, "onnx_out.npz")
+        onnx_outs = onnx_inference(input_data, onnx_opt_model, True)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
         # save ref and cali table
@@ -641,18 +654,30 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True, dynamic=False):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True, dynamic=False,
+                       support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[]):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
             origin_output = torch_model(inputs)
         onnx_file = model_name + ".onnx"
         in_names = []
+        if dynamic_axes is not None:
+            assert isinstance(dynamic_axes, dict)
+            assert dynamic_in_names is not None
+        if dynamic_in_names is not None:
+            assert isinstance(dynamic_in_names, list)
         in_data = {}
         if isinstance(inputs, tuple):
+            if dynamic_in_names is not None:
+                assert len(dynamic_in_names) == len(inputs)
+                in_names = dynamic_in_names
             for idx, input in enumerate(inputs):
-                name = "in_{}".format(idx)
-                in_names.append(name)
+                if dynamic_in_names is not None:
+                    name = in_names[idx]
+                else:
+                    name = "in_{}".format(idx)
+                    in_names.append(name)
                 if input.data.dtype == torch.float64:
                     in_data[name] = input.data.numpy().astype(np.float64)
                 elif input.data.dtype == torch.float32:
@@ -664,8 +689,12 @@ class ONNX_IR_TESTER(object):
                 else:
                     in_data[name] = input.data.numpy().astype(np.float32)
         else:
-            in_names.append('in_0')
-            in_data['in_0'] = inputs.data.numpy().astype(np.float32)
+            if dynamic_in_names is not None:
+                assert len(dynamic_in_names) == 1
+                in_names.append(dynamic_in_names[0])
+            else:
+                in_names.append('in_0')
+            in_data[in_names[0]] = inputs.data.numpy().astype(np.float32)
 
         torch.onnx.export(
             torch_model,
@@ -674,14 +703,18 @@ class ONNX_IR_TESTER(object):
             export_params=True,
             verbose=True,
             opset_version=14,  # export hardswish needed
-            input_names=in_names)
+            input_names=in_names,
+            dynamic_axes=dynamic_axes)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph,
                            name=model_name,
                            input_data=in_data,
                            static_shape=static_shape,
-                           dynamic=dynamic)
+                           support_modes=support_modes,
+                           dynamic=dynamic,
+                           dynamic_shape_input_names = dynamic_shape_input_names,
+                           shape_influencing_input_names=shape_influencing_input_names)
 
     def onnx_and_test(self,
                       graph_def,
@@ -692,7 +725,9 @@ class ONNX_IR_TESTER(object):
                       support_modes=None,
                       version=14,
                       dynamic=False,
-                      matmul_perchannel=False):
+                      matmul_perchannel=False,
+                      dynamic_shape_input_names = [],
+                      shape_influencing_input_names=[]):
         print(matmul_perchannel)
         if support_modes is None:
             quant_modes = self.quant_modes
@@ -708,7 +743,9 @@ class ONNX_IR_TESTER(object):
             quant_modes,
             static_shape=static_shape,
             version=version,
-            dynamic=dynamic)
+            dynamic=dynamic,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            shape_influencing_input_names=shape_influencing_input_names)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -6253,6 +6290,33 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+    def test_DynamicSlice(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, offsets, ends):
+                y = x[:, :, offsets[0]:ends[0], offsets[1]:ends[1]]
+                return y
+        x = torch.randn(1, 3, 256, 256).float()
+        offsets = torch.tensor([64, 128], dtype=torch.int64)
+        ends = torch.tensor([128, 192], dtype=torch.int64)
+        dynamic_in_names = ['x', 'offsets', 'ends']
+        shape_influencing_input_names = ['offsets', 'ends']
+        try:
+            self.dynamic = True
+            self.torch_and_test(
+                (x, offsets, ends),
+                Model(),
+                case_name,
+                support_modes=["f32", "f16", "bf16"],
+                dynamic_in_names=dynamic_in_names,
+                shape_influencing_input_names=shape_influencing_input_names,
+            )
+        finally:
+            self.dynamic = False
 
     def user_define_net(self, case_name):
         """user_define_net"""

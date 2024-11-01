@@ -26,53 +26,62 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
     std::vector<Value> operands;
     const auto& opd = op->getOperand(0);
     operands.push_back(opd);
-    auto none = module::getNoneOp(op);
+    auto none_op = module::getNoneOp(op);
     auto axis_op = op.getAxis().getDefiningOp<top::WeightOp>();
-    auto axis = axis_op.read_as_float()->at(0);
-    if (axis < 0)
-      axis += dims;
-    float start = 0, end = in_shape[axis], step = 1;
-    if (module::isWeight(op.getStart())) {
-      auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
-      start = start_op.read_as_float()->at(0);
-      if (start < 0)
-        start += in_shape[axis];
-      operands.push_back(none);
-    } else {
-      auto start_op = op.getStart();
-      operands.push_back(start_op);
+    auto axis_dims = module::getShape(axis_op)[0];
+    auto axis_data = axis_op.read_as_float();
+    std::vector<int64_t> axis(axis_dims, 0);
+    for (int i = 0; i < axis_dims; i++){
+      axis[i] = axis_data->at(i);
+      if (axis[i] < 0) axis[i] += dims;
+    }
+    std::vector<int64_t> offset(dims, 0);
+    std::vector<int64_t> steps(dims, 1);
+    std::vector<int64_t> ends(dims, std::numeric_limits<int64_t>::max());
+    if (!module::isNone(op.getStart())){
+      if (module::isWeight(op.getStart())){
+        auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
+        auto start_data = start_op.read_as_float();
+        for (int i = 0; i < axis_dims; i++){
+          auto axis = axis_data->at(i);
+          offset[axis] = start_data->at(i);
+        }
+        operands.push_back(none_op);
+      } else {
+        auto start_op = op.getStart();
+        operands.push_back(start_op);
+      }
     }
 
-    if (module::isWeight(op.getEnd())) {
-      auto end_op = op.getEnd().getDefiningOp<top::WeightOp>();
-      end = end_op.read_as_float()->at(0);
-      if (end < 0)
-        end += in_shape[axis];
-      if (end > in_shape[axis])
-        end = in_shape[axis];
-      operands.push_back(none);
-    } else {
-      auto end_op = op.getEnd();
-      operands.push_back(end_op);
+    if (!module::isNone(op.getEnd())){
+      if (module::isWeight(op.getEnd())){
+        auto end_op = op.getEnd().getDefiningOp<top::WeightOp>();
+        auto end_data = end_op.read_as_float();
+        for (int i = 0; i < axis_dims; i++){
+          auto axis = axis_data->at(i);
+          ends[axis] = end_data->at(i);
+        }
+        operands.push_back(none_op);
+      } else {
+        auto end_op = op.getEnd();
+        operands.push_back(end_op);
+      }
     }
 
-    if (module::isWeight(op.getStep())) {
+    if (!module::isNone(op.getStep())){
+      ASSERT_OP(module::isWeight(op.getStep()), op);
       auto step_op = op.getStep().getDefiningOp<top::WeightOp>();
-      step = step_op.read_as_float()->at(0);
-      operands.push_back(none);
+      auto step_data = step_op.read_as_float();
+      for (int i = 0; i < axis_dims; i++){
+        auto axis = axis_data->at(i);
+        steps[axis] = step_data->at(i);
+        ASSERT_OP(steps[axis] != 0, op);
+      }
+      operands.push_back(none_op);
     } else {
       auto step_op = op.getStep();
       operands.push_back(step_op);
     }
-    std::vector<int64_t> offset(dims, 0);
-    std::vector<int64_t> steps(dims, 1);
-    std::vector<int64_t> ends(dims, -1);
-    for (int i = 0; i < dims; i++) {
-      ends[i] = in_shape[i];
-    }
-    offset[axis] = start;
-    steps[axis] = step;
-    ends[axis] = end;
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offset)));
@@ -85,8 +94,7 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
         (!module::isNone(op.getStep()) && !module::isWeight(op.getStep()))) {
       attrs.push_back(
           rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axis)));
-    }
-    else{
+    } else {
       std::vector<int64_t> axes(dims, 0);
       for (int i = 0; i < dims; i++) {
         axes[i] = i;

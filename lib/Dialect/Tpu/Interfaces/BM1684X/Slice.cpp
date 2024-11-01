@@ -157,31 +157,35 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.begin_as_tensor = !module::isNone(getOffsetT());
   param.end_as_tensor = !module::isNone(getEndsT());
   param.stride_as_tensor = !module::isNone(getStepsT());
-  int axis = param.is_dynamic ? module::getI64Array(getAxes())->at(0) : 0;
-  for (int i = 0; i < num_dims; i++) {
-    param.common.begin_index[i] = offset->at(i);
-    param.common.strides[i] = steps->at(i);
-    // TODO: fix canonicalizers and reactivate this
-    // param.common.end_index[i] = ends->at(i);
-    auto offset_tmp = offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
-    if (param.begin_as_tensor) {
-      param.common.end_index[i] = ends->at(i);
-    } else {
-      param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
-    }
-  }
+  auto axis = param.is_dynamic ? module::getI64Array(getAxes()) : NULL;
+  auto axis_dims = axis ? axis->size() : 0;
 
   /* for dynamic input shape, it need the begin_mask/end_mask
     to deduction the actual output shape */
-  for (int i = 0; i < num_dims; i++) {
+  bool flag = false;
+  for (int i = 0, j = 0; i < num_dims; i++){
+    param.common.begin_index[i] = offset->at(i);
+    param.common.strides[i] = steps->at(i);
+    auto offset_tmp = offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
     if (!param.begin_as_tensor && input_shape[i] == output_shape[i] ||
-        param.begin_as_tensor && axis != i) {
+        j == axis_dims && axis_dims != 0 ||
+        param.begin_as_tensor && axis->at(j) != i) {
       param.common.begin_mask |= (1 << i);
+      param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
+    } else {
+      flag = true;
+      param.common.end_index[i] = ends->at(i);
     }
-    if (!param.end_as_tensor &&
-            input_shape[i] == output_shape[i] ||
-        param.end_as_tensor && axis != i) {
+    if (!param.end_as_tensor && input_shape[i] == output_shape[i] ||
+        j == axis_dims && axis_dims != 0 ||
+        param.end_as_tensor && axis->at(j) != i) {
       param.common.end_mask |= (1 << i);
+    } else {
+      flag = true;
+    }
+    if (flag) {
+      j++;
+      flag = false;
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);

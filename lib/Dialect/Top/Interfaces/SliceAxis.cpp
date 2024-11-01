@@ -53,62 +53,63 @@ LogicalResult top::SliceAxisOp::inference(InferenceParameter &p) {
 }
 
 void top::SliceAxisOp::shape_inference() {
-  float start = 0;
-  float step = 1;
-  float end;
   auto in_shape = module::getShape(getInput());
   ASSERT_THIS(module::isWeight(getAxis()));
   auto axis_op = getAxis().getDefiningOp<top::WeightOp>();
   auto axis_data = axis_op.read<float>();
-  auto axis = axis_data->at(0);
+  std::vector<int64_t> axes(axis_data->begin(), axis_data->end());
+  std::vector<int64_t> starts(axes.size(), 0);
+  std::vector<int64_t> steps(axes.size(), 1);
+  std::vector<int64_t> ends(axes.size());
+  for (size_t i = 0; i < axes.size(); ++i) {
+    auto axis = axes[i];
+    ends[i] = in_shape[axis];
+  }
   if (module::isNone(getEnd()) == false) {
     if (module::isWeight(getEnd())) {
       auto end_op = getEnd().getDefiningOp<top::WeightOp>();
       auto end_data = end_op.read<float>();
-      end = end_data->at(0);
+      ends.assign(end_data->begin(), end_data->end());
     } else if (module::isShape(getEnd())) {
       auto end_v = module::getShapeTensorValue(getEnd());
-      ASSERT_THIS(end_v.size() == 1);
-      end = end_v[0];
-    } else {
-      end = in_shape[(int)axis];
+      ASSERT_THIS(end_v.size() == axes.size());
+      ends.assign(end_v.begin(), end_v.end());
     }
   }
   if (module::isNone(getStart()) == false) {
     if (module::isWeight(getStart())) {
       auto start_op = getStart().getDefiningOp<top::WeightOp>();
       auto start_data = start_op.read<float>();
-      start = start_data->at(0);
+      starts.assign(start_data->begin(), start_data->end());
     } else if (module::isShape(getStart())) {
       auto start_v = module::getShapeTensorValue(getStart());
-      ASSERT_THIS(start_v.size() == 1);
-      start = start_v[0];
-    } else {
-      start = 0;
+      ASSERT_THIS(start_v.size() == axes.size());
+      starts.assign(start_v.begin(), start_v.end());
     }
   }
   if (module::isNone(getStep()) == false) {
     ASSERT_THIS(module::isWeight(getStep()));
     auto step_op = getStep().getDefiningOp<top::WeightOp>();
     auto step_data = step_op.read<float>();
-    step = step_data->at(0);
-    ASSERT_THIS(step != 0);
+    steps.assign(step_data->begin(), step_data->end());
+    ASSERT_THIS(std::find(steps.begin(), steps.end(), 0) == steps.end());
   }
   auto dims = in_shape.size();
-  if (axis < 0) {
-    axis += dims;
-  }
-  if (start < 0) {
-    if(end - start == 1 && step == 1)
-      end = start + in_shape[axis] + 1;
-    start += in_shape[axis];
-  }
-  if (end < 0) {
-    end += in_shape[axis];
-  } else if (end > in_shape[axis]) {
-    end = in_shape[axis];
-  }
   std::vector<int64_t> out_shape(in_shape);
-  out_shape[axis] = (end - start + step - 1) / step;
+  for (size_t i=0; i<axes.size(); ++i) {
+    int axis = axes[i];
+    if (axis < 0) {
+      axis += dims;
+    }
+    if (starts[i] < 0) {
+      starts[i] += in_shape[axis];
+    }
+    if (ends[i] < 0) {
+      ends[i] += in_shape[axis];
+    }
+    starts[i] = steps[i] > 0 ? std::clamp(starts[i], 0L, in_shape[axis]) : std::clamp(starts[i], 0L, in_shape[axis] - 1);
+    ends[i] = steps[i] > 0 ? std::clamp(ends[i], 0L, in_shape[axis]) : std::clamp(ends[i], -1L, in_shape[axis] - 1);
+    out_shape[axis] = abs_ceiling_func(ends[i] - starts[i], steps[i]);
+  }
   module::setShapeOrVerify(getOutput(), out_shape);
 }

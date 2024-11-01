@@ -207,6 +207,9 @@ struct TopSliceToGather : public OpRewriterPatternEx<SliceOp> {
 
   LogicalResult matchAndRewriteImpl(SliceOp op,
                                     PatternRewriter &rewriter) const override {
+    if (module::isDynamic()) {
+      return failure();
+    }
     auto in_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto in_dims = in_shape.size();

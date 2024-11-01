@@ -26,10 +26,8 @@ static void _try_insert_device2host(top::SliceOp op) {
 
 void SliceTryLowering::Lowering(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  auto prev_op = op.getInput().getDefiningOp();
-  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  if (!isa_shape_subnet_op(op))
     return;
-  }
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs())  {
