@@ -946,7 +946,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
               sub_group.dump_lginfo();
           });
           int64_t group_cost = calc_cost(start_idx, end_idx);
-          int64_t optimal_point = end;
+          int64_t optimal_point = end_idx;
           // sweep_for_min_cost(&group_cost, &optimal_point, start, end,
           //                    cost_table);
           DEBUG_WITH_TYPE("lg_cost", {
