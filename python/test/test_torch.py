@@ -122,7 +122,7 @@ class TORCH_IR_TESTER(object):
             "LogSoftmax":       (self.test_LogSoftmax,        N, Y, Y, Y, N),
             "LSTM":             (self.test_LSTM,              N, Y, Y, Y, N),
             "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N, Y),
-            "Math":             (self.test_Math,              N, Y, Y, N, N),
+            "Math":             (self.test_Math,              N, Y, Y, N, Y),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y, Y),
             "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y, Y),
             "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N, N),
@@ -2001,8 +2001,12 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([(4, 3, 16, 16)], Model())
 
-        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp, torch.sort]:
-            _test_math(f)
+        if (self.chip == "mars3"):
+            for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.exp]:
+                _test_math(f)
+        else:
+            for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp, torch.sort]:
+                _test_math(f)
 
     #######################################################################
     # arctan

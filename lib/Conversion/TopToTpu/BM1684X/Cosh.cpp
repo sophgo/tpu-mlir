@@ -41,7 +41,11 @@ void CoshLowering::LoweringINT4(PatternRewriter &rewriter, top::CoshOp op,
 void CoshLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::CoshOp op) const {
   set_cosh_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isMARS3()) {
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
+  } else {
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  }
 }
 
 void CoshLowering::LoweringF16(PatternRewriter &rewriter,
