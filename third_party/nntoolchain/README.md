@@ -45,6 +45,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #bm1690 sha256: 24b54351e328e3030c52c9bc13237287b82547a9
 # - draggan build_failed: 56920dddf04e6caeca6dfaf0fcd6bfe6278d8cc1
 # + sd3 opt: b8e4214435bf3e41d81bf51d844bf49595bedba5
+# + convbwd prob: 96deec16b399af924737eeabc5d6bfa886c4180b
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel

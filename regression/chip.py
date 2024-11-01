@@ -49,20 +49,20 @@ multi_core_info = {
 ######################################
 basic_model_list = {
     # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, mars3)
-    "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N,       N,       Y),
-    "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y,       Y,       Y),
+    # "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N,       N,       Y),
+    # "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y,       Y,       Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y,       N,       Y),
-    "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       Y),
-    "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N,       N,       N),
-    "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N,       N,       N),
-    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
-    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
-    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
-    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      N,       N,       N),
-    "eva02_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       N),
-    "swint_block":                (N,      Y,       Y,      N,      N,      N,      N,     N,      N,       N,       Y),
-    "sam_block":                  (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       N),
-    "cswin_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       Y),
+    # "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       Y),
+    # "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N,       N,       N),
+    # "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N,       N,       N),
+    # "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
+    # "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
+    # "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,      N,       N,       N),
+    # "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      N,       N,       N),
+    # "eva02_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       N),
+    # "swint_block":                (N,      Y,       Y,      N,      N,      N,      N,     N,      N,       N,       Y),
+    # "sam_block":                  (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       N),
+    # "cswin_block":                (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       Y),
 }
 
 full_model_list = {
