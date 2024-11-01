@@ -416,7 +416,10 @@ public:
         continue;
       }
       if (is_special_blk_op(&op)) {
-        return BlkDataFlowAnalysis::analyze_from_tp(&op);
+        Operation* may_be_end_op = BlkDataFlowAnalysis::analyze_from_tp(&op);
+        if (may_be_end_op) {
+          return may_be_end_op;
+        }
       } else {
         for (auto v : op.getResults()) {
           if (module::isNone(v))
