@@ -224,6 +224,14 @@ LogicalResult tpu::Pool2DOp::LocalGenSupport() {
   if ((stride->at(0) > 15 || stride->at(1) > 15 || getIsAdaptive())) {
     return failure();
   }
+  // tempo workaround cause current backedn impl of avgpool not suitable for
+  // 1x48x160x160xbf16 global avgpooling in pp_yoloe
+  // bf16 dtype risk losing significant precision
+  auto p = parseParam();
+  if (module::isBM1688() && module::getStorageType(getOutput()).isBF16() &&
+      p.is_global && p.ih > 80 && p.iw > 80) {
+    return failure();
+  }
   return success();
 }
 
