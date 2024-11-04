@@ -206,8 +206,15 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
     layout += "_group3d"; // {d * n, c, h, w}
   }
 
+  auto shape = ArrayRef(module::getShape(val));
+  json::Array shapeArray;
+  for (auto dim : shape) {
+    shapeArray.push_back(dim);
+  }
+
   return json::Object{
       {"name", name},     {"address", address}, {"memory_type", memory_type},
+      {"shape", std::move(shapeArray)},
       {"layout", layout}, {"type", type},       {"reshape", reshape},
       {"slice", slice}};
 }
@@ -240,6 +247,7 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
 
   std::string sliceStr = "[...]";
   std::string name = module::getName(v).str();
+  std::vector<int64_t> orgShape;
 
   { // coreGroup slice
     Value value;
@@ -253,9 +261,9 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
         value = joinOp->getResult(0);
     }
 
+    orgShape = std::vector<int64_t>(module::getShape(value ? value : v));
     if (value) {
       auto baseAddr = module::getAddress(value);
-      auto orgShape = module::getShape(value);
       auto shape = ArrayRef(v_spc.shape, v_spc.dims);
       auto fmt_bytes = BM168x::getFmtBytes((DATA_TYPE_T)v_spc.dtype);
       auto offset = ind2sub((address - baseAddr) / fmt_bytes, orgShape);
@@ -270,8 +278,14 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
     }
   }
 
+  json::Array shapeArray;
+  for (auto dim : orgShape) {
+    shapeArray.push_back(dim);
+  }
+
   return json::Object{
       {"name", name},     {"address", address}, {"memory_type", memory_type},
+      {"shape", std::move(shapeArray)},
       {"layout", layout}, {"type", type},       {"reshape", ""},
       {"slice", sliceStr}};
 }

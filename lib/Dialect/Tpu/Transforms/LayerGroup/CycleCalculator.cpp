@@ -323,16 +323,16 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   });
   }
 
-  DEBUG_WITH_TYPE("mc_lg_refactor", {
-    if(num_core == 8){
+  if(num_core == 8){
+    if(!getenv("NO_MC")){
       loop_num = loop_num / num_core + (loop_num % num_core > 0);
-          DEBUG_WITH_TYPE("cycle_calc", {
+        DEBUG_WITH_TYPE("cycle_calc", {
         llvm::dbgs() << "; action = cycle_calc"
           << "; step = multi_core_refactor"
           << "; loop_num = " << loop_num << "\n";
       });
     }
-  });
+  }
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
   int64_t total_layer_cycle = 0, total_gdma_cycle = 0;
