@@ -1369,7 +1369,7 @@ void LmemAllocator::sc_method_multi_core_v3(
                      << "; cost = " << _group_cost
                      << "\n";
       });
-      if (_group_cost == 96230) {
+      if (_group_cost == 88611) {
         for (auto op : lg_info.group_ops) {
           if (auto matmul = dyn_cast<tpu::MatMulOp>(op)) {
             if (matmul.getHdimIsBatch()) {
