@@ -125,7 +125,7 @@ class TORCH_IR_TESTER(object):
             "Math":             (self.test_Math,              N, Y, Y, N, Y),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y, Y),
             "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y, Y),
-            "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N, N),
+            "MatMulSplit":      (self.test_MatMulSplit,       N, N, Y, N, Y),
             "Max":              (self.test_Max,               N, Y, Y, N, Y),
             "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y, Y),
