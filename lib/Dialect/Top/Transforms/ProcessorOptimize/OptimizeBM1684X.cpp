@@ -2197,6 +2197,65 @@ protected:
     return success();
   }
 };
+  
+// x * sigmoid(1.7020000219345093 * x) => QGELU(x)
+class ConvertToQGELU : public OpRewriterPatternEx<top::MulOp> {
+public:
+  ConvertToQGELU(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MulOp>(context, "ConvertToQGELU", benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::MulOp op,
+                                    mlir::PatternRewriter &rewriter) const override {
+    if (op->getNumOperands() != 2)
+      return failure();
+    if (op.getDoRelu())
+      return failure();
+    auto ins = op->getOperands();
+    Operation* def_ops[2] = {nullptr, nullptr};
+    bool is_sigmoid[2] = {false, false};
+    for (auto i = 0; i < 2; ++i) {
+      def_ops[i] = ins[i].getDefiningOp();
+      is_sigmoid[i] = isa<top::SigmoidOp>(def_ops[i]) && def_ops[i]->hasOneUse();
+    }
+    if (!is_sigmoid[0] && !is_sigmoid[1])
+      return failure();
+    int j = -1;
+    for (auto i = 0; i < 2; ++i) {
+      auto x = ins[1 - i];
+      if (is_sigmoid[i]) {
+        auto sigmOp = dyn_cast<top::SigmoidOp>(def_ops[i]);
+        auto sigm_in = sigmOp.getInput();
+        auto may_be_mulc_op = sigm_in.getDefiningOp();
+        if (!may_be_mulc_op->hasOneUse())
+          continue;
+        if (auto mulcOp = dyn_cast<top::MulConstOp>(may_be_mulc_op)) {
+          if (mulcOp.getDoRelu())
+            continue;
+          if (mulcOp.getConstVal().convertToDouble() != 1.7020000219345093)
+            continue;
+          if (x != mulcOp.getInput())
+            continue;
+          j = 1 - i;
+        }
+      }
+    }
+    if (j == -1)
+      return failure();
+    auto out = op.getOutput();
+    llvm::SmallVector<NamedAttribute> attrs;
+    attrs.push_back(
+      rewriter.getNamedAttr(
+        "approx_mode",
+        rewriter.getStringAttr("sigm")));
+    auto qgeluOp = rewriter.create<top::GELUOp>(
+        out.getLoc(), out.getType(),
+        ValueRange{ins[j]},
+        attrs);
+    out.replaceAllUsesWith(qgeluOp.getOutput());
+    return success();
+  }
+};
 
 } // namespace bm1684x
 
@@ -2210,7 +2269,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             ReshapeReorderPattern, ConvertMultiInputAdd, WhereBroadcastToTile,
             ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
             ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
-            ConvertToRSqrt, ConvertToSquare>(
+            ConvertToRSqrt, ConvertToSquare, ConvertToQGELU>(
           patterns->getContext(), 8);
 }
 } // namespace top
