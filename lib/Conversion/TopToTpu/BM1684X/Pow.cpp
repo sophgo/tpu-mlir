@@ -181,7 +181,6 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
     op->setOperand(0, abs_op.getOutput());
     return abs_op;
   };
-  // support f32, change type when needed
   double exponent = op.getExponent().convertToDouble();
 
   if (fmod(exponent, 2) == 0) {
@@ -204,8 +203,9 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
       std::vector<Value> mul_operands;
       mul_operands.push_back(x);
       mul_operands.push_back(v_replaced);
+      auto new_type = getQuantBF16Type(op.getResult());
       auto mul_op = rewriter.create<tpu::MulOp>(
-          mul_loc, op.getOutput().getType(), mul_operands, attrs);
+          mul_loc, new_type, mul_operands, attrs);
       v_replaced.replaceAllUsesExcept(mul_op.getOutput(), mul_op);
       rewriter.eraseOp(op);
     } else {
