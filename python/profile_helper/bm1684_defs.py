@@ -1165,11 +1165,18 @@ class BaseCommandParser:
                 cmd.__dict__[name] = total_val
             cmd.type = self.__class__._type_func_(cmd)
             cmd.mem_records = self.__class__._mem_record_func_(cmd)
-            cmd.dep_id = -1
             cmd_list.append(cmd)
             buf = buf[self.command_byte_len():]
             cmd.alg_ops = 0
             cmd.arch_ops = 0
+            try:
+                cmd.cmd_id = cmd.CMD_ID
+                cmd.dep_id = cmd.ENG0_SYNC_ID
+                cmd.cmd_type = cmd.SPECIAL_FUNC
+            except:
+                cmd.cmd_id = cmd.CMD_ID_TPU
+                cmd.dep_id = cmd.CMD_ID_GDMA
+                cmd.cmd_type = cmd.TSK_TYP
         return cmd_list
 
     def attr_names(self):
