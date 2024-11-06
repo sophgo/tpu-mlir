@@ -4223,7 +4223,7 @@ public:
     if (m_fuse_rq)  // If matmul supports per-channel quantization in the lowering stage, don't fuse rq!
       failure();
 
-    if (!module::isBM1684X() || !op->hasOneUse()) {
+    if (!(module::isBM1684X() || module::isBM1688()) || !op->hasOneUse()) {
       return failure();
     }
 
@@ -4247,8 +4247,11 @@ public:
     std::vector<int64_t> new_rshift0(1);
 
     for (int i = 0; i < channels; ++i) {
-      new_multi0[i] = quantData[i * 3];      // multi
-      // new_rshift0[i] = quantData[i * 3 + 1]; // rshift
+      if (module::isBM1684X()) {
+        new_multi0[i] = quantData[i * 3]; // multi
+      } else if (module::isBM1688()) {
+        new_multi0[i] = quantData[i * 2]; // multi
+      }
     }
     new_rshift0[0] = quantData[1];
 
