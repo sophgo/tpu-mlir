@@ -29,7 +29,6 @@ def get_cmd_id(c):
 
 class DynCpuInfo(object):
     def __init__(self, begin_cycle, end_cycle, type, inst_id) -> None:
-        self.begin_cycle = begin_cycle
         self.end_cycle = end_cycle
         self.type = type
         self.inst_id = inst_id
@@ -71,8 +70,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             elif item.dyn_data:
                 self.__read_dyn_command_data(item)
             else:
-                logging.fatal("can't find cmd data.")
-                exit(-1)
+                self.__read_pure_pmu_data(item)
 
     def parse(self, in_dir):
         self.in_dir = in_dir
@@ -88,9 +86,9 @@ class BMProfileParserPerfAI(BMProfileParser):
         elif dyn_cmd:
             self.is_dyn = True
             self.parse_cmd(dyn_cmd)
-        else:
-            logging.fatal("can't find cmd data.".format(in_dir))
-            exit(-1)
+        # else:
+        #     logging.fatal("can't find cmd data.".format(in_dir))
+        #     exit(-1)
 
     def to_txt(self, out_dir):
         assert self.bd_pairs != [] and self.gdma_pairs != [], ""
@@ -115,7 +113,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             with open(cpu_file.format(i), 'w') as f:
                 for j in cdm_cpu:
                     info = f"core: {i} type: {self.archlib.DynRecordType(j.type).name:<14} " \
-                        f"{self.archlib.EngineType(j.engine).name:<5} time_stamp(us): {j.begin_cycle/1000. :<12} " \
+                        f"{self.archlib.EngineType(j.engine).name:<5} " \
                         f"cmd_type: {j.des_tsk_typ:<2}:{j.des_tsk_eu_typ:>2}   " \
                         f"inst_id: {f'{j.inst_id!s:<6}' if isinstance(j.inst_id, dict) else f'{j.inst_id:<6}'}\n"
                     f.write(info)
@@ -167,12 +165,12 @@ class BMProfileParserPerfAI(BMProfileParser):
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - delta_cyle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - delta_cyle)
                 assert(j1["monitor"].inst_start_time  > 0 and j1["monitor"].inst_end_time > 0)
-        for i, (cpu, cycle) in enumerate(zip(self.cdmlib_extra, self.profile_sync_points)):
-            if i == 0:
-                continue
-            delta_cyle = cycle - self.profile_sync_points[0]
-            for j1 in cpu:
-                j1.begin_cycle = int(j1.begin_cycle - delta_cyle)
+        # for i, (cpu, cycle) in enumerate(zip(self.cdmlib_extra, self.profile_sync_points)):
+        #     if i == 0:
+        #         continue
+        #     delta_cyle = cycle - self.profile_sync_points[0]
+        #     for j1 in cpu:
+        #         j1.begin_cycle = int(j1.begin_cycle - delta_cyle)
 
     def __shift_time(self):
         start_cycle = self.gdma_pairs[0][0]["monitor"].inst_start_time
@@ -193,19 +191,19 @@ class BMProfileParserPerfAI(BMProfileParser):
             for j1 in sdma_pair:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
-        for i, cdm_cpu in enumerate(self.cdmlib_extra):
-            g_cmd_time = self.gdma_pairs[i][0]["cmd"].begin_cycle
-            shift = min(self.gdma_pairs[i][0]["monitor"].inst_start_time,
-                        self.bd_pairs[i][0]["monitor"].inst_start_time)
-            for j1 in cdm_cpu:
-                j1.begin_cycle = int(j1.begin_cycle - g_cmd_time + shift)
+        # for i, cdm_cpu in enumerate(self.cdmlib_extra):
+        #     g_cmd_time = self.gdma_pairs[i][0]["cmd"].begin_cycle
+        #     shift = min(self.gdma_pairs[i][0]["monitor"].inst_start_time,
+        #                 self.bd_pairs[i][0]["monitor"].inst_start_time)
+        #     for j1 in cdm_cpu:
+        #         j1.begin_cycle = int(j1.begin_cycle - g_cmd_time + shift)
 
     def __parse_dyn_data(self, dyn_data: List, raw_data):
         tmp = parse_fixed_length_items(raw_data, self.archlib.ProfileFormat)
         if len(tmp) > 0:
-            start_time = tmp[0].begin_cycle
-            for i in tmp:
-                i.begin_cycle -= start_time;
+            # start_time = tmp[0].begin_cycle
+            # for i in tmp:
+            #     i.begin_cycle -= start_time;
             dyn_data.extend(tmp)
 
     def __veryfy_cmd_id(self, data):
@@ -426,6 +424,10 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     def __make_pairs(self, cmd, monitor, sys_code, mix_mode=True):
         pairs = []
+        if cmd == []:
+            for m in monitor:
+                pairs.append({"monitor": m, "cmd": None})
+            return pairs
         for p_monitor, p_cmd in self.__make_mix_pairs(cmd, monitor, sys_code):
             if p_monitor is None:
                 continue
@@ -448,7 +450,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                         break
         return pairs
 
-    def __find_profile_sync_points(self, cmd, monitor, sys_code, cmd_offset=0, omit_end_sys=True):
+    def __find_profile_sync_points(self, cmd, monitor, sys_code, cmd_offset=0, omit_end_sys=True, pure_pmu=False):
         # sys_code:
         # dma sys tsk_typ 6  eu_typ:[3 send, 4 wait]
         # tiu sys tsk_typ 15 eu_typ:[8 send, 9 wait]
@@ -468,7 +470,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         if cmd_offset and sys_code == self.archlib.dma_sys_code:
             mix_mode = False
         pairs = self.__make_pairs(cmd, monitor, sys_code, mix_mode)
-        if cmd_offset:
+        if cmd_offset and not pure_pmu:
             # for bmodel remove monitor date without cmd
             n = 0
             for item in pairs:
@@ -478,7 +480,6 @@ class BMProfileParserPerfAI(BMProfileParser):
                     break
             for i in range(n):
                 pairs.pop(0)
-
         for i, j in enumerate(pairs):
             if j["cmd"] is None:
                 break
@@ -545,6 +546,14 @@ class BMProfileParserPerfAI(BMProfileParser):
             self.sdma_pairs.append(sdma_pair)
             # skip profile init and call sync_all
             self.cdmlib_extra.append(dyn_data[1 + bd_sys_num + sdma_sys_num + gdma_sys_num:])
+
+    def __read_pure_pmu_data(self, item):
+            bd_pair, _ = self.__find_profile_sync_points([], item.monitor_bd[0], self.archlib.bd_sys_code, self.archlib.profile_sys_num, pure_pmu=True)
+            sdma_pair, _ = self.__find_profile_sync_points([], item.monitor_sdma[0], self.archlib.dma_sys_code, self.archlib.profile_sys_num, pure_pmu=True)
+            gdma_pair, _ = self.__find_profile_sync_points([], item.monitor_gdma[0], self.archlib.dma_sys_code, self.archlib.profile_sys_num, pure_pmu=True)
+            self.bd_pairs.append(bd_pair)
+            self.gdma_pairs.append(gdma_pair)
+            self.sdma_pairs.append(sdma_pair)
 
     def __base_read_command_data(self, base, offset, engine_type, core_num, command_parser):
         basename = "cmd_%x_%d_%d.dat"

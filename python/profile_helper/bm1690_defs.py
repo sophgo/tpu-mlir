@@ -257,7 +257,7 @@ class ProfileFormat(dictStructure):
         ("type", ct.c_uint32, 8),     ("engine", ct.c_uint32, 3),
         ("des_tsk_typ", ct.c_uint32, 5),   ("des_tsk_eu_typ", ct.c_uint32, 5),
         ("parellel", ct.c_uint32, 1),       ("extra_info", ct.c_uint32, 10),
-        ("inst_id", ct.c_uint32), ("begin_cycle", ct.c_uint32)
+        ("inst_id", ct.c_uint32)
     ]
 
 class GDMACommandParser():
