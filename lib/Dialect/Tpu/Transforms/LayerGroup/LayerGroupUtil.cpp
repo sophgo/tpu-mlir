@@ -1076,6 +1076,9 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
       if (is_broadcast_tensor && n == 1) {
         idx = 0;
         slice = 1;
+      } else if (is_right_matrix && n == 1) {
+        idx = 0;
+        slice = 1;
       } else {
         if (failed(ret) || slice == 0) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardN fail, at op:"

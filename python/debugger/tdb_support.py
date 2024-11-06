@@ -328,8 +328,9 @@ class TdbCmdBackend(cmd.Cmd):
         self.memory.clear_memory()
         coeff = self.atomic_mlir.functions[0].regions[0].data
         self.memory.set_neuron_size(self.bmodel.neuron_size)
-        coeff_data = np.frombuffer(coeff.data, dtype=np.uint8)
-        self.memory.set_coeff_size(coeff_data.size)
+        if hasattr(coeff, "data"):
+            coeff_data = np.frombuffer(getattr(coeff, "data"), dtype=np.uint8)
+            self.memory.set_coeff_size(coeff_data.size)
 
         if coeff:
             address = coeff.address
