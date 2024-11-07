@@ -211,7 +211,7 @@ class ONNX_IR_TESTER(object):
             "TileDyn":      (self.test_TileDyn,       N, Y, Y, N, Y, N),
             "Transpose":    (self.test_Transpose,     Y, Y, Y, Y, Y, Y),
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y, Y, Y),
-            "Trilu":        (self.test_Trilu,         N, Y, N, N, N, N),
+            "Trilu":        (self.test_Trilu,         N, Y, N, N, N, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N, Y, N),
             "TopK2":        (self.test_TopK2,         N, Y, N, N, Y, N),
             "TopK4":        (self.test_TopK4,         N, N, N, Y, N, N),
