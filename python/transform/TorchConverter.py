@@ -1695,9 +1695,9 @@ class TorchConverter(BaseConverter):
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         normalized_shape = self.const_val[torch_node.inputs[1]]
-        if not self.isScalar_(torch_node.inputs[2], 1):
+        if not self.isScalar_(torch_node.inputs[2], 1) and self.isWeight(torch_node.inputs[2]):
             scale_opd = self.getWeightOp(torch_node.inputs[2])
-        if not self.isScalar_(torch_node.inputs[3], 0):
+        if not self.isScalar_(torch_node.inputs[3], 0) and self.isWeight(torch_node.inputs[3]):
             bias_opd = self.getWeightOp(torch_node.inputs[3])
         eps = self.const_val[torch_node.inputs[4]]
         out = top.LayerNormOp(self.unranked_type,
