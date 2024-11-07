@@ -164,7 +164,6 @@ class BMProfileParserPerfAI(BMProfileParser):
             for j1 in sdma:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - delta_cyle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - delta_cyle)
-                assert(j1["monitor"].inst_start_time  > 0 and j1["monitor"].inst_end_time > 0)
         # for i, (cpu, cycle) in enumerate(zip(self.cdmlib_extra, self.profile_sync_points)):
         #     if i == 0:
         #         continue
@@ -186,11 +185,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             for j1 in itertools.chain(bd_pair, gdma_pair):
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
-                assert(j1["monitor"].inst_start_time  >= 0 and j1["monitor"].inst_end_time >= 0)
+                assert(j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
         for sdma_pair in self.sdma_pairs:
             for j1 in sdma_pair:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
+                assert(j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
         # for i, cdm_cpu in enumerate(self.cdmlib_extra):
         #     g_cmd_time = self.gdma_pairs[i][0]["cmd"].begin_cycle
         #     shift = min(self.gdma_pairs[i][0]["monitor"].inst_start_time,
@@ -223,12 +223,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             current_time = c.inst_start_time
             if current_time < last_time:
                 delta_time += uint32_max # uint32 max
-            last_time = current_time
             c.inst_start_time += delta_time
             c.inst_end_time += delta_time
             if c.inst_end_time < c.inst_start_time:
                # start not overflow but end does
                c.inst_end_time += uint32_max
+            last_time = c.inst_end_time
 
     def __parse_monitor_tiu(self, monitor_tiu: List, raw_data):
         tmp = parse_monitor_bd(raw_data, self.archlib)
@@ -285,24 +285,25 @@ class BMProfileParserPerfAI(BMProfileParser):
             # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
                                                     self.archlib.EngineType.VSDMA,
                                                     core_num, gdma_parser)
+
+            bd_pair, _ = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[core_num],
+                                            self.archlib.bd_sys_code, self.archlib.profile_sys_num)
+            gdma_pair, _ = self.__find_profile_sync_points(gdma_cmd, item.monitor_gdma[core_num],
+                                                self.archlib.dma_sys_code, self.archlib.profile_sys_num)
+            sdma_pair, _ = self.__find_profile_sync_points(sdma_cmd, item.monitor_sdma[core_num],
+                                        self.archlib.dma_sys_code, self.archlib.profile_sys_num)
+
             if core_num <= len(self.bd_pairs):
-                bd_pair, _ = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[core_num],
-                                                self.archlib.bd_sys_code, self.archlib.profile_sys_num)
                 if item.monitor_bd[core_num]:
                     self.bd_pairs.append(bd_pair)
             else:
                 self.bd_pairs[core_num].extend(bd_pair)
-
             if core_num <= len(self.gdma_pairs):
-                gdma_pair, _ = self.__find_profile_sync_points(gdma_cmd, item.monitor_gdma[core_num],
-                                                self.archlib.dma_sys_code, self.archlib.profile_sys_num)
                 if item.monitor_gdma[core_num]:
                     self.gdma_pairs.append(gdma_pair)
             else:
                 self.gdma_pairs[core_num].extend(gdma_pair)
             if core_num <= len(self.sdma_pairs):
-                sdma_pair, _ = self.__find_profile_sync_points(sdma_cmd, item.monitor_sdma[core_num],
-                                                self.archlib.dma_sys_code, self.archlib.profile_sys_num)
                 if item.monitor_sdma[core_num]:
                     self.sdma_pairs.append(sdma_pair)
             else:
@@ -504,7 +505,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             part = []
             for i in range(len(pairs))[::-1]:
                 if pairs[i]["cmd"] is None:
-                    break
+                    if pure_pmu:
+                        break
+                    else:
+                        # for bmodel
+                        extra_sys.append(i)
+                        continue
                 des_tsk_typ, _ = self.__get_cmd_type(pairs[i]["cmd"])
                 if des_tsk_typ != sys_code:
                     break
