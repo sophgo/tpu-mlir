@@ -139,9 +139,8 @@ class MODEL_RUN(object):
                     self.quant_modes["f16"] = 1
                     self.quant_modes["bf16"] = 1
                     self.quant_modes["f32"] = 1
-                    if self.arch == 'bm1690':
-                        self.quant_modes["f8e4m3"] = 1
-                        self.quant_modes["f8e5m2"] = 1
+                    self.quant_modes["f8e4m3"] = 1
+                    self.quant_modes["f8e5m2"] = 1
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
             if f"do_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"do_{quant_mode}"])
@@ -150,8 +149,6 @@ class MODEL_RUN(object):
                 assert (chip_support[self.chip][idx]
                         and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
-            if chip =='bm1690' and f"test_{quant_mode}" in self.ini_content:
-                self.quant_modes[quant_mode] = int(self.ini_content[f"test_{quant_mode}"])
 
             if f"{chip}_{quant_mode}_time" in self.arch_content.keys():
                 self.time_record[quant_mode] = eval(self.arch_content[f"{chip}_{quant_mode}_time"])
