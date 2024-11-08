@@ -333,6 +333,13 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
       !module::isCalibratedType(input_value)) {
     llvm_unreachable("input of A16MatMul has to be F16 or BF16");
   }
+  bool use_dq2 = false;
+  if(module::isMARS3()) {
+    use_dq2 = (module::getQuantGroupSize() >= 32) && (module::getQuantGroupSize() % 32 == 0) && (op.getWeightBits() == 4);
+    if (use_dq2) {
+      assert(ele_type.isBF16());
+    }
+  }
   auto weight_op = op.getWeight().getDefiningOp<top::WeightOp>();
   if (module::getElementType(weight_op.getOutput()).isInteger(8)) {
     return failure();
@@ -385,7 +392,7 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
                              zp_int8);
   } else {
     op.setQGroupSize(q_group_size);
-    if (module::isSG2380())
+    if (module::isSG2380() || use_dq2)
       computePerGroupParam(trans_weight, row, col, q_group_size, scale, zp_fp);
     else
       computePerGroupParam(trans_weight, row, col, q_group_size, scale,
@@ -402,7 +409,7 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   auto uint_weight_data =
       std::make_shared<std::vector<uint8_t>>(weight_size, 0);
 
-  if (module::isSG2380())
+  if (module::isSG2380() || use_dq2)
     weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
                        scale, zp_fp, int_weight_data, uint_weight_data);
   else
@@ -419,7 +426,7 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
   auto half_scale_value = ele_type.isF16() ? f32_scale_op.clone_f16(op)
                                            : f32_scale_op.clone_bf16(op);
   op.setOperand(2, half_scale_value);
-  if (module::isSG2380()) {
+  if (module::isSG2380() || use_dq2) {
     auto zp_type =
         RankedTensorType::get(quant_param_shape, rewriter.getF32Type());
     auto fp_zp_op = top::WeightOp::create(op, "zp", *zp_fp, zp_type)

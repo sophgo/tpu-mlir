@@ -38,7 +38,8 @@ void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns) {
     WeightReorder<tpu::AttentionOp, int8_t>,
     WeightReorder<tpu::AttentionOp, BFloat16Type>,
     WeightReorder<tpu::AttentionOp, Float16Type>,
-    WeightReorder<tpu::A16MatMulOp, Float16Type>
+    WeightReorder<tpu::A16MatMulOp, Float16Type>,
+    WeightReorder<tpu::A16MatMulOp, BFloat16Type>
   >(patterns->getContext());
   // clang-format on
 };

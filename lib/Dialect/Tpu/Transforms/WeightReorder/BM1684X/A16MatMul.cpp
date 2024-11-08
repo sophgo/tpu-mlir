@@ -35,11 +35,19 @@ static inline data_type_t tpu_type_convert(DATA_TYPE_T data_type) {
     return dtype;
 }
 
-template <>
-LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
-    tpu::A16MatMulOp op, PatternRewriter &rewriter) const {
+LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
+                                          PatternRewriter &rewriter) {
   if (op.getWeightBits() != 4 || op.getQGroupSize() <= 0) {
     return failure();
+  }
+
+  bool use_dq2 = false;
+  if(module::isMARS3()) {
+    use_dq2 = (module::getQuantGroupSize() >= 32) && (module::getQuantGroupSize() % 32 == 0) && (op.getWeightBits() == 4);
+    if (use_dq2) {
+      auto ele_type = module::getElementType(op.getInput());
+      assert(ele_type.isBF16());
+    }
   }
   auto scale_stype = module::getStorageType(op.getScale());
   auto scaleOp = op.getScale().getDefiningOp<top::WeightOp>();
@@ -189,7 +197,47 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
         }
         weightOp.update(*weight_data, weight_shape[0] * weight_shape[1]);
     }
-  } else {
+  } else if (use_dq2) {
+      /*
+        Step-1
+            [31:16]  scale_bf16
+            [15:0]   zp_bf16
+        Step-2
+        As Weight.T--N,k]
+            quant-[N,K/g]----<reshape>--->[N/NPU, NPU, N/g]---<permute(1,0,2)>---->[NPU, N/NPU, K/g]
+      */
+      auto ori_zp_data = zpOp.read<uint16_t>();
+
+      int64_t npu_num = backend::Arch::NPU_NUM;
+      if (scale_shape[0] % npu_num) {
+        llvm_unreachable("invalid scale channel");
+      }
+      auto w = scale_shape[1];           // K/g
+      auto h = scale_shape[0] / npu_num; // N/NPU
+
+      auto quant_data = std::make_shared<std::vector<uint16_t>>(
+          scale_shape[0] * scale_shape[1] * 2, 0);
+
+      for (auto i = 0; i < npu_num; i++) {
+        for (auto j = 0; j < h; j++) {
+          auto offset_new = 2 * (i * h * w + j * w);   //[NPU,h,w] = [NPU,N/NPU,K/g]
+          auto offset_ori = i * w + npu_num * j * w;   //[h,NPU,w] = [NPU,N/NPU,K/g]
+          auto target_s_zp_combined = quant_data->data()     + offset_new;
+          auto ori_scale_data_ij    = ori_scale_data->data() + offset_ori;
+          auto ori_zp_data_ij       = ori_zp_data->data()    + offset_ori;
+          for (auto k = 0; k < w; k++) {
+            target_s_zp_combined[2 * k]     = ori_zp_data_ij[k];
+            target_s_zp_combined[2 * k + 1] = ori_scale_data_ij[k];
+          }
+        }
+      }
+      //Still save dtype=bf16, thus shape * 2 indicates dual-bf16 combined
+      auto quant_type = RankedTensorType::get({npu_num, h, 2 * w}, scale_stype);
+      auto scaleZpOp =
+          top::WeightOp::create(op, "reordered_s_zp", *quant_data, quant_type);
+      op.setOperand(2, scaleZpOp);
+      op.setOperand(3, module::getNoneOp(op));
+  } else{
     auto ori_zp_data = zpOp.read<uint8_t>();
 
     auto new_scale_data = std::make_shared<std::vector<uint16_t>>(
@@ -224,4 +272,22 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
     op.setOperand(3, new_zpOp);
   }
   return success();
+}
+
+template <>
+LogicalResult WeightReorder<tpu::A16MatMulOp, BFloat16Type>::matchAndRewriteImpl(
+    tpu::A16MatMulOp op, PatternRewriter &rewriter) const {
+  if (!module::getElementType(op.getInput()).isBF16())
+    return failure();
+
+  return weight_reorder_A16MatMul(op, rewriter);
+}
+
+template <>
+LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewriteImpl(
+    tpu::A16MatMulOp op, PatternRewriter &rewriter) const {
+  if (!module::getElementType(op.getInput()).isF16())
+    return failure();
+
+  return weight_reorder_A16MatMul(op, rewriter);
 }
