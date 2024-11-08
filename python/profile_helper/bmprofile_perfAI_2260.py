@@ -505,12 +505,9 @@ class BMProfileParserPerfAI(BMProfileParser):
             part = []
             for i in range(len(pairs))[::-1]:
                 if pairs[i]["cmd"] is None:
-                    if pure_pmu:
+                    if self.is_dyn:
                         break
-                    else:
-                        # for bmodel
-                        extra_sys.append(i)
-                        continue
+                    continue
                 des_tsk_typ, _ = self.__get_cmd_type(pairs[i]["cmd"])
                 if des_tsk_typ != sys_code:
                     break
