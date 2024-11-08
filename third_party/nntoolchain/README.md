@@ -37,17 +37,18 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 8453b87d6b1ad8858692f8ca4cd2441e7b677f1e
+#bm1690 sha256: 90428e6d47c53c73fab8f846a1f579af456862aa
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
-cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.so
-rebuild_firmware
+export EXTRA_CONFIG="-DDEBUG=ON -DUSING_FW_DEBUG=ON" && rebuild_test sgdnn
+cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+ln -s libtpuv7_emulator.so libcmodel_bm1690.so
+unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
-cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 
 #sg2380 sha256: 8453b87d6b1ad8858692f8ca4cd2441e7b677f1e
 cd TPU1686
@@ -92,12 +93,12 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2024-08-21
-build from tpuv7-runtime 1d1c1fbc4c876be4bcce8d7a79afafae447270e9
+## tpuv7-runtime 2024-11-08
+build from tpuv7-runtime 007069c8ec10823a60fedb7a1be8dafd49aae15e
 ```bash
 mkdir -p -p build/emulator
 cd -p build/emulator
-cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=ON -DUSING_TP_DEBUG=ON ../..
+cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
 make -j$(nproc)
 cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp cdmlib/host/cdm_runtime/libtpuv7_rt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
