@@ -466,6 +466,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
   let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     conv_attr_t parseParam();
+    conv_attr_t dynparseParam();
   }];
 }
 
@@ -902,6 +903,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
+    matmul_attr_t dynparseParam();
   }];
 }
 
@@ -1067,7 +1069,8 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   let arguments = (ins
     AnyTensor:$input,
     Optional<AnyTensor>:$shapeT,
-    OptionalAttr<I64ArrayAttr>:$shape
+    OptionalAttr<I64ArrayAttr>:$shape,
+    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
@@ -1288,7 +1291,8 @@ def Top_SliceOp: Top_Op<"Slice"> {
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
     I64ArrayAttr:$ends,
-    DefaultValuedAttr<I64ArrayAttr, "{}">:$axes
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$axes,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
@@ -1801,6 +1805,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     deconv_attr_t parseParam();
+    deconv_attr_t dynparseParam();
   }];
 }
 

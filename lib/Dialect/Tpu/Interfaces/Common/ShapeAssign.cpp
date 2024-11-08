@@ -15,6 +15,33 @@ LogicalResult tpu::ShapeAssignOp::init(InferenceParameter &p) {
 void tpu::ShapeAssignOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeAssignOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  int num = 1;
+  for (int i = 0; i < in_shape.size(); i++) {
+    num *= in_shape[i];
+  }
+  int x = -1;
+  auto shape_num_elem = module::getNumElements(getShape());
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < shape_num_elem; i++) {
+    auto s = p.inputs[1][i];
+    if (s > 0) {
+      out_shape.push_back(s);
+      num /= s;
+    } else if (s == 0) {
+      out_shape.push_back(in_shape[i]);
+      num /= in_shape[i];
+    } else if (s == -1) {
+      out_shape.push_back(-1);
+      x = i;
+    } else {
+      UNREACHABLE_THIS("shape is illegal");
+    }
+  }
+  if (x >= 0) {
+    out_shape[x] = num;
+  }
+  module::setShape(getOutput(), out_shape);
   const int num_elem = module::getNumElements(getInput());
   std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
   return success();

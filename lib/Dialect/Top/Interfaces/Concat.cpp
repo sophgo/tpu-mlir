@@ -57,6 +57,42 @@ LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto concat = (Concat *)p.handle;
+  auto axis_ = getAxis();
+  auto in0_shape = module::getShape(getInputs()[0]);
+  if (axis_ < 0) {
+    axis_ += in0_shape.size();
+    setAxis(axis_);
+  }
+  int64_t shape_axis = 0;
+  for (auto inp : getInputs()) {
+    auto shape = module::getShape(inp);
+    shape_axis += shape[axis_];
+  }
+  std::vector<int64_t> out_shape(in0_shape);
+  out_shape[axis_] = shape_axis;
+  module::setShape(getOutput(), out_shape);
+
+  concat_attr_t attr;
+  attr.num_src = getInputs().size();
+  for (int i = 0; i < attr.num_src; i++) {
+    auto input_shape = module::getShape(getInputs()[i]);
+    int channel = input_shape[axis_];
+
+    int outer_dim = 1;
+    for (int i = 0; i < axis_; i++) {
+      outer_dim *= input_shape[i];
+    }
+    int inner_dim = 1;
+    for (int i = axis_ + 1; i < input_shape.size(); i++) {
+      inner_dim *= input_shape[i];
+    }
+
+    attr.src_shapes.push_back({outer_dim, channel, inner_dim});
+  }
+
+  attr.dst_shape = module::getShape(getOutput());
+  attr.axis = 1;
+  concat->setup(p.inputs, p.outputs[0], attr);
   concat->run();
 
   if (getDoRelu()) {

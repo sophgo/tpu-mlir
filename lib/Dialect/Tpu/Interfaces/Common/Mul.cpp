@@ -38,6 +38,8 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
 

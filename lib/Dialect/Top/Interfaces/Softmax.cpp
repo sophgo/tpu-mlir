@@ -55,6 +55,26 @@ LogicalResult top::SoftmaxOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto softmax = (Softmax *)p.handle;
+  auto axis_ = getAxis();
+  auto input_shape = module::getShape(getInput());
+  module::setShape(getOutput(), input_shape);
+  softmax_attr_t attr;
+  int channel = input_shape[axis_];
+
+  int outer_dim = 1;
+  for (int i = 0; i < axis_; i++) {
+    outer_dim *= input_shape[i];
+  }
+  int inner_dim = 1;
+  for (int i = axis_ + 1; i < input_shape.size(); i++) {
+    inner_dim *= input_shape[i];
+  }
+
+  attr.src_shape = {outer_dim, channel, inner_dim};
+  attr.dst_shape = attr.src_shape;
+  attr.axis = 1;
+  attr.log = getLog();
+  softmax->setup(p.inputs[0], p.outputs[0], attr);
   softmax->run();
   return success();
 }

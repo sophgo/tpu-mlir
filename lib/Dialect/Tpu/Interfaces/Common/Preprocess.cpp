@@ -303,7 +303,8 @@ private:
     int64_t start_w = resize_w / 2 - w / 2;
     std::vector<int64_t> slice_offset{0, 0, start_h, start_w};
     std::vector<int64_t> slice_step{1, 1, 1, 1};
-    std::vector<int64_t> slice_ends{-1, -1, -1, -1};
+    std::vector<int64_t> slice_ends{-1, -1, resize_h-start_h, resize_w-start_w};
+    std::vector<int64_t> axes{2,3};
     std::vector<NamedAttribute> attrs;
     auto none = module::getNoneOp(opd.getDefiningOp());
     attrs.emplace_back(rewriter.getNamedAttr(
@@ -312,6 +313,8 @@ private:
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_step)));
     attrs.emplace_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(slice_ends)));
+      attrs.emplace_back(
+        rewriter.getNamedAttr("hasparamConvert_axes", rewriter.getI64ArrayAttr(axes)));
     RankedTensorType type;
     type = RankedTensorType::get({n, c, h, w},
                                  module::getUniformQuantizedType(opd));

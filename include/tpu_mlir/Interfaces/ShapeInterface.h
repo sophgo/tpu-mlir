@@ -22,6 +22,8 @@ void broadcast_shape_inference(mlir::Operation *op);
 // reshape broadcast tensor if shape dim is not same with the expected tensor
 void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value input);
 
+llvm::SmallVector<int64_t> computer_broadcast_shape(mlir::Operation *op);
+
 } // namespace tpu_mlir
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/ShapeInterface.h.inc"

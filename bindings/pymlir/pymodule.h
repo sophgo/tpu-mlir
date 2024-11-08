@@ -27,11 +27,13 @@ public:
 
   void set_tensor(
       std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data);
+      py::array_t<float, py::array::c_style | py::array::forcecast> data,
+      std::vector<int64_t> shape);
 
   void set_tensor_from_int(
       std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data);
+      py::array_t<float, py::array::c_style | py::array::forcecast> data,
+      std::vector<int64_t> shape);
 
   // Warning: using copy in python
   py::array get_tensor(std::string name);

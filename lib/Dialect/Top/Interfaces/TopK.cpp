@@ -49,7 +49,16 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
       }
     }
   }
-
+  std::vector<int64_t> output_shape(input_shape.size());
+  for (int i =0; i < input_shape.size(); i++) {
+    if (i == axis) {
+      output_shape[i] = K;
+    } else {
+      output_shape[i] = input_shape[i];
+    }
+  }
+  module::setShape(getValues(), output_shape);
+  module::setShape(getIndices(), output_shape);
   return success();
 }
 

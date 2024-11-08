@@ -15,6 +15,8 @@ LogicalResult top::SqrtOp::init(InferenceParameter &p) { return success(); }
 void top::SqrtOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SqrtOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {

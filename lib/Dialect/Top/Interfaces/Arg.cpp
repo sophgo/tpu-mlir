@@ -80,6 +80,18 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
       output_val[n] = target_val;
     }
   }
+  std::vector<int64_t> output_shape;
+  output_shape.reserve(input_dims);
+  output_shape.assign(input_shape.begin(), input_shape.begin() + axis);
+  if (getKeepdims()) {
+    output_shape.push_back(1);
+  }
+  output_shape.insert(output_shape.end(), input_shape.begin() + axis + 1, input_shape.end());
+  module::setShape(getIndices(), output_shape);
+  if (!module::isNone(getValues())) {
+    module::setShape(getValues(), output_shape);
+  }
+
   return success();
 }
 

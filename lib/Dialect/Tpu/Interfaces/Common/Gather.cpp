@@ -17,6 +17,7 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   const float *inds = p.inputs[1];
   float *dst = p.outputs[0];
   auto num_indices = module::getNumElements(getIndices());
+  auto indices_shape = module::getShape(getIndices());
   auto ax = getAxis();
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
@@ -46,6 +47,17 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
       }
     }
   }
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < ax; ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  for (int s : indices_shape) {
+    out_shape.push_back(s);
+  }
+  for (int i = ax + 1; i < input_shape.size(); ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  module::setShape(getOutput(), out_shape);
 
   return success();
 }

@@ -16,6 +16,25 @@ LogicalResult tpu::ConstantFillOp::init(InferenceParameter &p) {
 void tpu::ConstantFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ConstantFillOp::inference(InferenceParameter &p) {
+  if (module::isWeight(getInput())) {
+    auto weight = cast<top::WeightOp>(getInput().getDefiningOp());
+    const auto shape = weight.read<float>();
+    std::vector<int64_t> shape_(shape->begin(), shape->end());
+    int idx = 0;
+    for(auto a : shape_) {
+      if(a == -1)
+        shape_[idx] = (int64_t)1;
+      idx += 1;
+    }
+    module::setShape(getOutput(), shape_);
+  } else {
+    auto num_elem = module::getNumElements(getInput());
+    std::vector<int64_t> out_shape;
+    for (int i = 0; i < num_elem; i++) {
+      out_shape.push_back(p.inputs[0][i]);
+    }
+    module::setShape(getOutput(), out_shape);
+  }
   auto num_elem = module::getNumElements(getOutput());
   float const_val = getValue().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

@@ -17,6 +17,19 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
   auto axis_ = getAxis();
   bool is_cv18xx = module::isCV18xx();
   auto nInputs = getInputs().size();
+  auto in0_shape = module::getShape(getInputs()[0]);
+  if (axis_ < 0) {
+    axis_ += in0_shape.size();
+    setAxis(axis_);
+  }
+  int64_t shape_axis = 0;
+  for (auto inp : getInputs()) {
+    auto shape = module::getShape(inp);
+    shape_axis += shape[axis_];
+  }
+  std::vector<int64_t> out_shape(in0_shape);
+  out_shape[axis_] = shape_axis;
+  module::setShape(getOutput(), out_shape);
   // allocate tmp input
   std::vector<float *> tmp_inputs(nInputs);
   for (int i = 0; i < nInputs; ++i) {
@@ -46,9 +59,10 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
   auto op0_shape = getInputs()[0].getType().cast<RankedTensorType>().getShape();
 
   int64_t high = 1;
-  for (int64_t i = 0; i < axis_; ++i)
-    high *= op0_shape[i];
-
+  for (int64_t i = 0; i < axis_; ++i) {
+    if (op0_shape[i])
+      high *= op0_shape[i];
+  }
   SmallVector<int64_t> tailNum(getInputs().size());
   for (auto idt : llvm::enumerate(getInputs())) {
     tailNum[idt.index()] =

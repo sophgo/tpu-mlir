@@ -1330,6 +1330,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   let hasCanonicalizeMethod = 1;
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
+    matmul_attr_t dynparseParam();
     void assign_fw_param(void *param);
   }];
 }
@@ -1488,7 +1489,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
   let arguments = (ins
     AnyRankedTensor:$input,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
-    Optional<AnyTensorOrNone>:$buffer
+    Optional<AnyTensorOrNone>:$buffer,
+    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2232,7 +2234,8 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
     I64ArrayAttr:$ends,
-    DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes
+    DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;

@@ -37,7 +37,6 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
       int64_t index = (int64_t)inds_f32->at(0);
-
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> ends(input_shape.size(),
                                 std::numeric_limits<int64_t>::max());
@@ -63,7 +62,7 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       auto new_loc = module::getLocLike(op.getOutput(), "slice");
       auto slice_op =
           rewriter.create<SliceOp>(new_loc, new_type, operands, attrs);
-      if (slice_shape.size() != 1) {
+      if (slice_shape.size() != 1 && !op.getKeepdims()) {
         std::vector<int64_t> axes(1, ax);
         std::vector<NamedAttribute> squeeze_attrs;
         squeeze_attrs.push_back(
@@ -92,11 +91,11 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
-      std::vector<int64_t> ends(input_shape.size(), -1);
+      std::vector<int64_t> ends(input_shape.size(), std::numeric_limits<int64_t>::max());
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
       steps[ax] = step;
-      ends[ax] = offsets[ax] + steps[ax] * (inds_shape[0] - 1);
+      ends[ax] = offsets[ax] + steps[ax] * inds_shape[0];
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));

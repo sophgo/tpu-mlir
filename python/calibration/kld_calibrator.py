@@ -384,7 +384,7 @@ class SimpleTuner:
             threshold = self.threshold_table.thresholds_map[input_op][0]
             data_q = import_quant_bias(data, threshold)
             cos_sim = cosine_sim(data, data_q)
-            self.module_dq.set_tensor(input_op, data_q)
+            self.module_dq.set_tensor(input_op, data_q, data_q.shape)
             if i == 0:
                 tmp += '\nits input:{} import_quant_bias, th:{}, cos:{:.4f}'.format(
                     input_op, threshold, cos_sim)
@@ -429,7 +429,7 @@ class SimpleTuner:
             if i == 0:
                 tmp += '\nits input:{}, refcount:{}'.format(input_op, refcount)
 
-            self.module.set_tensor(input_op, data)
+            self.module.set_tensor(input_op, data, data.shape)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             outputs = self.parser.get_outputs_by_op_name(op_name)
@@ -463,7 +463,7 @@ class SimpleTuner:
                     print('error, calc_distance get tensor fail')
                     return None, None
                 value = import_quant_bias(value, threshold)
-                self.module_dq.set_tensor(input, value)
+                self.module_dq.set_tensor(input, value, value.shape)
             target_activations = self.module_dq.invoke_at(evaled_op)
             target_fp32_activations = self.get_ref_tensor(idx, evaled_op)
             total_cosine_similarity += cosine_sim(target_activations, target_fp32_activations)
@@ -876,7 +876,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 for input_op in input_ops:
                     if input_op in self.ref_activations[i]:
                         data = self.ref_activations[i][input_op][0]
-                        self.module.set_tensor(input_op, data)
+                        self.module.set_tensor(input_op, data, data.shape)
         def get_func(layer_name):
             if layer_name==op_name:
                 count = self.parser.get_use_count_by_op_name(op_name)
@@ -1299,7 +1299,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             for name in list(self.ref_activations[idx].keys()):
                 data.append(self.ref_activations[idx][name][0])
             for k, v in zip(self.module.input_names, data):
-                self.module.set_tensor(k, v)
+                self.module.set_tensor(k, v, v.shape)
             self.module.invoke()
             self.parallel_statistic(all_tensors,idx)
             self.process_statistic_muti(muti_output_tensor,idx)
@@ -1568,7 +1568,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             for name in list(self.ref_activations[idx].keys()):
                 data.append(self.ref_activations[idx][name][0])
             for k, v in zip(self.module.input_names, data):
-                self.module.set_tensor(k, v)
+                self.module.set_tensor(k, v, v.shape)
             self.module.invoke()
             self._parallel_statistic(all_tensors,idx)
             self._process_statistic_muti(muti_output_tensor,idx)

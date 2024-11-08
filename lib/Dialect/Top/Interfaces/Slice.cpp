@@ -50,19 +50,59 @@ void top::SliceOp::paramConvert() {
   setStepsAttr(builder.getI64ArrayAttr(*steps_v));
   setEndsAttr(builder.getI64ArrayAttr(*ends_v));
   setAxesAttr(builder.getI64ArrayAttr(std::nullopt));
+  setHasparamConvertAxesAttr(builder.getI64ArrayAttr(*axes_ori));
 }
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto out_num_elem = module::getNumElements(getOutput());
   auto offset_v = module::getI64Array(getOffset());
   auto steps_v = module::getI64Array(getSteps());
-  std::vector<int64_t> out_shape = module::getShape(getOutput());
   std::vector<int64_t> in_shape = module::getShape(getInput());
   if (out_num_elem == 0) {
     return success();
   }
+  auto ends_v_old = module::getI64Array(getEnds());
   const size_t slice_dims = offset_v->size();
+  auto axes = module::getI64Array(getHasparamConvertAxesAttr());
+  auto slice_n = axes->size();
+  auto ends_v = ends_v_old;
+  if(slice_n) {
+    ends_v = std::make_shared<std::vector<int64_t>>(in_shape);
+  }
+  for (int i = 0; i < slice_n; ++i) {
+    int axis = axes->at(i);
+    int step = steps_v->at(axis);
+    int64_t end = ends_v_old->at(axis);
+    int64_t offset = offset_v->at(axis);
+    offset_v->at(axis) = offset;
+    ends_v->at(axis) = end;
+    steps_v->at(axis) = step;
+  }
+  for (int i = 0; i < slice_dims; ++i) {
+    if (offset_v->at(i) < 0) {
+      offset_v->at(i) += in_shape[i];
+    }
+  }
   auto in_dims = in_shape.size();
+  std::vector<int64_t> out_shape(in_dims);
+  for (size_t i = 0; i < in_dims; ++i) {
+    if (i < slice_dims) {
+      auto offset = offset_v->at(i);
+      auto end = ends_v->at(i);
+      auto step = steps_v->at(i);
+      if (end < 0) {
+        end += in_shape[i];
+      }
+      offset = step > 0 ? std::clamp(offset, 0L, in_shape[i])
+                        : std::clamp(offset, 0L, in_shape[i] - 1);
+      end = step > 0 ? std::clamp(end, 0L, in_shape[i])
+                     : std::clamp(end, -1L, in_shape[i] - 1);
+      out_shape[i] = abs_ceiling_func(end - offset, step);
+    } else {
+      out_shape[i] = in_shape[i];
+    }
+  }
+  module::setShape(getOutput(), out_shape);
   auto out_dims = out_shape.size();
   while (out_dims < in_dims) {
     out_shape.insert(out_shape.begin(), 1);

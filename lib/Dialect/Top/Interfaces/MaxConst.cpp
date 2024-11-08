@@ -17,6 +17,8 @@ LogicalResult top::MaxConstOp::init(InferenceParameter &p) { return success(); }
 void top::MaxConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MaxConstOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   const int64_t num_elem = module::getNumElements(getOutput());
   const float const_val_ = getConstVal().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

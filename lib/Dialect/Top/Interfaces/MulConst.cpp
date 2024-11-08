@@ -17,6 +17,8 @@ LogicalResult top::MulConstOp::init(InferenceParameter &p) { return success(); }
 void top::MulConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MulConstOp::inference(InferenceParameter &p) {
+  auto input_shape = module::getShape(getInput());
+  module::setShape(getOutput(), input_shape);
   int64_t num_elem = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {

@@ -16,6 +16,7 @@ void tpu::SoftmaxOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   auto axis_ = getAxis();
   auto input_shape = module::getShape(getInput());
+  module::setShape(getOutput(), input_shape);
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   bool is_cv18xx = module::isCV18xx();

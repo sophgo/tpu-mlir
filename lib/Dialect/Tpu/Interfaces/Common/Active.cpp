@@ -25,6 +25,8 @@ static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 }
 
 LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   t = module::getStorageType(getOutput());
   auto num_element = module::getNumElements(getInput());
   active_func(p, num_element, getActivateFunc(*this));

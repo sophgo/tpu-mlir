@@ -37,6 +37,8 @@ LogicalResult top::ScatterNDOp::inference(InferenceParameter &p) {
   updates.size = module::getNumElements(getUpdates());
   param.inputs.push_back(updates);
 
+  module::setShape(getOutput(), input.shape);
+
   tensor_list_t output;
   output.ptr = p.outputs[0];
   output.shape = module::getShape(getOutput());

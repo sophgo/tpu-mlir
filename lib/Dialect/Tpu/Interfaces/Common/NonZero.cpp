@@ -55,6 +55,15 @@ LogicalResult tpu::NonZeroOp::inference(InferenceParameter &p) {
       output[i] = indices_[i];
     }
   }
+  std::vector<int64_t> output_shape;
+  if (order) {
+    output_shape.push_back(dims);
+    output_shape.push_back(pos_num);
+  } else {
+    output_shape.push_back(pos_num);
+    output_shape.push_back(dims);
+  }
+  module::setShape(getOutput(), output_shape);
   return success();
 }
 

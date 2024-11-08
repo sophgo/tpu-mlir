@@ -17,6 +17,8 @@ LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }
 void top::ClipOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ClipOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto num_element = module::getNumElements(getOutput());
   auto min_v = static_cast<float>(getMin().convertToDouble());
   auto max_v = static_cast<float>(getMax().convertToDouble());

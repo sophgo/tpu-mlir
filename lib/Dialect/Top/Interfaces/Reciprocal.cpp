@@ -19,6 +19,8 @@ LogicalResult top::ReciprocalOp::init(InferenceParameter &p) {
 void top::ReciprocalOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReciprocalOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   int64_t num_elem = module::getNumElements(getOutput());
   float const_s = getConstVal().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

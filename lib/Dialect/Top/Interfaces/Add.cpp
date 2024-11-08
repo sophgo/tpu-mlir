@@ -43,6 +43,8 @@ void top::AddOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult top::AddOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   if (getInputs().size() == 2) {
     if (p.handle == nullptr) {
       return failure();

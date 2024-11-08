@@ -262,7 +262,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,mars3_support)
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
             "ArgError":         (self.test_ArgError,        N, Y, Y, Y, Y, Y),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N, Y, Y),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y),
@@ -312,9 +312,31 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Dynamic test case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
-            "DynamicSlice":     (self.test_DynamicSlice,    N, Y, Y, N, N, N),
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            "DynamicSlice":     (self.test_DynamicSlice,    N, Y, N, N, N, N),
             "DynamicPad":     (self.test_DynamicPad,        N, Y, Y, N, N, N),
+            "DynamicAdd":       (self.test_DynamicAdd,      N, Y, N, N, N, N),
+            "DynamicArg":       (self.test_DynamicArg,      N, Y, N, N, N, N),
+            "DynamicClip":      (self.test_DynamicClip,     N, Y, N, N, N, N),
+            "DynamicConcat":    (self.test_DynamicConcat,   N, Y, N, N, N, N),
+            "DynamicConv1d":    (self.test_DynamicConv1d,   N, Y, N, N, N, N),
+            "DynamicConv2d":    (self.test_DynamicConv2d,   N, Y, N, N, N, N),
+            "DynamicDeconv":    (self.test_DynamicDeconv,   N, Y, N, N, N, N),
+            "DynamicFloor":     (self.test_DynamicFloor,    N, Y, N, N, N, N),
+            "DynamicGather":    (self.test_DynamicGather,   N, Y, N, N, N, N),
+            "DynamicLog":       (self.test_DynamicLog,      N, Y, N, N, N, N),
+            "DynamicMaxconst":  (self.test_DynamicMaxconst, N, Y, N, N, N, N),
+            "DynamicMinconst":  (self.test_DynamicMinconst, N, Y, N, N, N, N),
+            "DynamicMul":       (self.test_DynamicMul,      N, Y, N, N, N, N),
+            "DynamicMatMul":    (self.test_DynamicMatMul,   N, Y, N, N, N, N),
+            "DynamicSigmoid":   (self.test_DynamicSigmoid,  N, Y, N, N, N, N),
+            "DynamicSub":       (self.test_DynamicSub,      N, Y, N, N, N, N),
+            "DynamicSqrt":      (self.test_DynamicSqrt,     N, Y, N, N, N, N),
+            "DynamicSqueeze":   (self.test_DynamicSqueeze,  N, Y, N, N, N, N),
+            "DynamicPermute":   (self.test_DynamicPermute,  N, Y, N, N, N, N),
+            "DynamicUnsqueeze": (self.test_DynamicUnsqueeze,N, Y, N, N, N, N),
+            "DynamicRelu":      (self.test_DynamicRelu,     N, Y, N, N, N, N),
+            "DynamicReduce":   (self.test_DynamicReduce,    N, Y, N, N, N, N),
             ## only for test
             "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }
@@ -417,6 +439,7 @@ class ONNX_IR_TESTER(object):
 
     def onnx_convert(self,
                      input_data: dict,
+                     small_input_data: dict,
                      graph_def,
                      model_name: str,
                      quant_modes: list,
@@ -430,30 +453,54 @@ class ONNX_IR_TESTER(object):
         model_def = helper.make_model(graph_def, producer_name=model_name)
         model_def.opset_import[0].version = version
         input_npz = "{}_in_fp32.npz".format(model_name)
+        input_shapes = []
         file_mark(input_npz)
         for name in input_data:
             if input_data[name].dtype in [np.int64, np.int32]:
                 input_data[name] = input_data[name].astype(np.int32)
+                input_shapes.append(list(input_data[name].shape))
             else:
                 input_data[name] = input_data[name].astype(np.float32)
+                input_shapes.append(list(input_data[name].shape))
         np.savez(input_npz, **input_data)
         onnx.checker.check_model(model_def)
-        tool = OnnxTransformer(model_name,
-                               model_def,
-                               test_input=input_npz,
-                               static_shape=static_shape,
-                               dynamic=dynamic,
-                               dynamic_shape_input_names = dynamic_shape_input_names,
-                               shape_influencing_input_names=shape_influencing_input_names)
+        if small_input_data is not None:
+            tool = OnnxTransformer(model_name,
+                                   model_def,
+                                   test_input=input_npz,
+                                   input_shapes = input_shapes,
+                                   static_shape=static_shape,
+                                   dynamic=dynamic,
+                                   dynamic_shape_input_names = dynamic_shape_input_names,
+                                   shape_influencing_input_names=shape_influencing_input_names)
+        else:
+            tool = OnnxTransformer(model_name,
+                                model_def,
+                                test_input=input_npz,
+                                static_shape=static_shape,
+                                dynamic=dynamic,
+                                dynamic_shape_input_names = dynamic_shape_input_names,
+                                shape_influencing_input_names=shape_influencing_input_names)
+
         node_name_mapping = tool.converter.node_name_mapping
         tool.model_transform(fp32_mlir)
-
+        onnx_model = "{}.onnx".format(model_name)
         onnx_opt_model = "{}_opt.onnx".format(model_name)
         # top mlir outputs will be inferenced first in case the quant mode is int8
         show_fake_cmd(input_npz, onnx_opt_model, "onnx_out.npz")
         onnx_outs = onnx_inference(input_data, onnx_opt_model, True)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
+        small_onnx_outs = None
+        small_top_mlir_outs = None
+        if small_input_data:
+            small_input_npz = "small_{}_in_fp32.npz".format(model_name)
+            file_mark(small_input_npz)
+            np.savez(small_input_npz, **small_input_data)
+            show_fake_cmd(small_input_npz, onnx_model, "small_onnx_out.npz")
+            small_onnx_outs = onnx_inference(small_input_data, onnx_model, True)
+            show_fake_cmd(small_input_npz, fp32_mlir, "small_top_out.npz")
+            small_top_mlir_outs = mlir_inference(small_input_data, fp32_mlir, True)
         # save ref and cali table
         self.ref_npz = "{}_top_out.npz".format(model_name)
         file_mark(self.ref_npz)
@@ -462,7 +509,7 @@ class ONNX_IR_TESTER(object):
         for qmode in quant_modes:
             self.make_test_calibration_table(top_mlir_outs, self.table_name, qmode)
 
-        return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
+        return (onnx_outs, top_mlir_outs, small_onnx_outs, small_top_mlir_outs, input_npz, node_name_mapping)
 
     def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False, matmul_perchannel: bool = False):
 
@@ -637,6 +684,8 @@ class ONNX_IR_TESTER(object):
 
     def compare(self, ref_out, targe_out):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
+            np.savez('ref_out.npz', x=ref_out)
+            np.savez('target_out.npz', x=targe_out)
             cos = self.cosine_similarity(ref_out, targe_out)
             assert (cos > 0.999)
         # else:
@@ -655,8 +704,7 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True, dynamic=False,
-                       support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[]):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str,  small_inputs=None, static_shape=True, dynamic=False, support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[]):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -668,7 +716,9 @@ class ONNX_IR_TESTER(object):
             assert dynamic_in_names is not None
         if dynamic_in_names is not None:
             assert isinstance(dynamic_in_names, list)
+
         in_data = {}
+        small_in_data = {}
         if isinstance(inputs, tuple):
             if dynamic_in_names is not None:
                 assert len(dynamic_in_names) == len(inputs)
@@ -696,6 +746,31 @@ class ONNX_IR_TESTER(object):
             else:
                 in_names.append('in_0')
             in_data[in_names[0]] = inputs.data.numpy().astype(np.float32)
+        if small_inputs is not None:
+            if isinstance(small_inputs, tuple):
+                if dynamic_in_names is not None:
+                    assert len(dynamic_in_names) == len(small_inputs)
+                    in_names = dynamic_in_names
+                for idx, input in enumerate(small_inputs):
+                    if dynamic_in_names is not None:
+                        name = in_names[idx]
+                    else:
+                        name = "in_{}".format(idx)
+                        in_names.append(name)
+                    if input.data.dtype == torch.float64:
+                        small_in_data[name] = input.data.numpy().astype(np.float64)
+                    elif input.data.dtype == torch.float32:
+                        small_in_data[name] = input.data.numpy().astype(np.float32)
+                    elif input.data.dtype == torch.int64:
+                        small_in_data[name] = input.data.numpy().astype(np.int64)
+                    elif input.data.dtype == torch.int32:
+                        small_in_data[name] = input.data.numpy().astype(np.int32)
+                    else:
+                        small_in_data[name] = input.data.numpy().astype(np.float32)
+                small_origin_output = torch_model(*small_inputs)
+            else:
+                small_in_data[in_names[0]] = small_inputs.data.numpy().astype(np.float32)
+                small_origin_output = torch_model(small_inputs)
 
         torch.onnx.export(
             torch_model,
@@ -708,19 +783,25 @@ class ONNX_IR_TESTER(object):
             dynamic_axes=dynamic_axes)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
+        if small_inputs is not None:
+            self.torch_and_onnx_compare(small_in_data, onnx_file, small_origin_output)
         self.onnx_and_test(onnx_model.graph,
                            name=model_name,
                            input_data=in_data,
+                           small_input_data=small_in_data,
                            static_shape=static_shape,
                            support_modes=support_modes,
                            dynamic=dynamic,
                            dynamic_shape_input_names = dynamic_shape_input_names,
                            shape_influencing_input_names=shape_influencing_input_names)
 
+
+
     def onnx_and_test(self,
                       graph_def,
                       name: str = "",
                       input_data: dict = None,
+                      small_input_data: dict = None,
                       static_shape=True,
                       check_last: bool = False,
                       support_modes=None,
@@ -737,8 +818,9 @@ class ONNX_IR_TESTER(object):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
-        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
+        onnx_outs, top_mlir_outs, small_onnx_outs, small_top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data,
+            small_input_data,
             graph_def,
             model_name,
             quant_modes,
@@ -770,6 +852,26 @@ class ONNX_IR_TESTER(object):
         if counter == 0:
             raise RuntimeError("No compare between onnx outs and mlir outts")
         print("Success: ONNX outs and Mlir outs are equal\n")
+        if small_top_mlir_outs:
+            for name in small_onnx_outs:
+                if name in small_top_mlir_outs:
+                    print("Compare onnx and mlir:{}\n".format(name))
+                    small_top_mlir_output = small_top_mlir_outs[name].ravel()
+                    small_onnx_output = small_onnx_outs[name].ravel()
+                    self.compare(small_onnx_output, small_top_mlir_output)
+                    counter += 1
+                elif name in node_name_mapping:
+                    mapped_name = node_name_mapping[name]
+                    if mapped_name in small_top_mlir_outs:
+                        print("Compare onnx and mlir:{}\n".format(mapped_name))
+                        small_top_mlir_output = small_top_mlir_outs[mapped_name].ravel()
+                        self.compare(small_onnx_output, small_top_mlir_output)
+                        counter += 1
+            if counter == 0:
+                raise RuntimeError("No compare between onnx outs and mlir outts")
+            print("Small Success: Small ONNX outs and Small Mlir outs are equal\n")
+
+
         for quant_mode in quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
@@ -784,6 +886,7 @@ class ONNX_IR_TESTER(object):
                              graph_def,
                              name: str = "",
                              input_data: dict = None,
+                             small_input_data: dict = None,
                              static_shape=True,
                              check_last: bool = False,
                              quant_modes=None,
@@ -794,8 +897,9 @@ class ONNX_IR_TESTER(object):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
-        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
+        onnx_outs, top_mlir_outs, small_onnx_outs, small_top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data,
+            small_input_data,
             graph_def,
             model_name,
             quant_modes,
@@ -6319,6 +6423,7 @@ class ONNX_IR_TESTER(object):
         finally:
             self.dynamic = False
 
+
     def test_DynamicPad(self, case_name):
         class Model(nn.Module):
 
@@ -6333,7 +6438,9 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 9, 96).float()
         pads = torch.tensor([1, 1, 1, 2, 2, 2], dtype=torch.int64)
         dynamic_in_names = ['x', 'pads']
+        dynamic_shape_input_names = ['pads']
         shape_influencing_input_names = ['pads']
+        dynamic_axes={'pads': {0: 'dynamic_pads'}}
         try:
             self.dynamic = True
             self.torch_and_test(
@@ -6342,10 +6449,613 @@ class ONNX_IR_TESTER(object):
                 case_name,
                 support_modes=["f32", "f16", "bf16"],
                 dynamic_in_names=dynamic_in_names,
+                dynamic_shape_input_names = dynamic_shape_input_names,
                 shape_influencing_input_names=shape_influencing_input_names,
+                dynamic_axes = dynamic_axes
             )
         finally:
             self.dynamic = False
+
+
+    def test_DynamicAdd(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = a + b
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1, 3, 56, 56).float()
+        s_a = torch.randn(1, 3, 28, 28).float()
+        s_b = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['a', 'b']
+        dynamic_shape_input_names = ['a', 'b']
+        dynamic_axes={'a': {2: 'input_height', 3: 'input_width'},
+                      'b': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            (s_a, s_b),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicClip(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.clamp(x,-1, 0.5)
+                return y
+        x = torch.randn(1, 3, 56, 56).float()
+        s_x = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicConcat(self, case_name):
+
+        def _test_concat(in0_shape, in1_shape, small_in0_shape, small_in1_shape, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, a, b):
+                    if dim is None:
+                        y = torch.concat((a, b))
+                    else:
+                        y = torch.concat((a, b), dim=dim)
+                    return y
+            a = torch.randn(in0_shape).float()
+            b = torch.randn(in1_shape).float()
+            s_a = torch.randn(small_in0_shape).float()
+            s_b = torch.randn(small_in1_shape).float()
+
+            dynamic_in_names = ['a', 'b']
+            dynamic_shape_input_names = ['a', 'b']
+            dynamic_axes={'a': {2: 'input_height', 3: 'input_width'},
+                        'b': {2: 'input_height', 3: 'input_width'}}
+            self.torch_and_test(
+                (a, b),
+                Model(),
+                case_name,
+                (s_a, s_b),
+                support_modes=["f32", "f16", "bf16"],
+                dynamic_in_names=dynamic_in_names,
+                dynamic_shape_input_names = dynamic_shape_input_names,
+                dynamic_axes = dynamic_axes
+            )
+
+
+        _test_concat((1, 3, 32, 32), (1, 6, 32, 32), (1, 3, 16, 16), (1, 6, 16, 16),1)
+
+    def test_DynamicConv1d(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.conv = nn.Conv1d(8, 8, 3, 1, 1)
+
+            def forward(self, x ):
+                y = self.conv(x)
+                return y
+        x = torch.randn(4, 8, 56).float()
+        s_x = torch.randn(1, 8, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {0: 'batch', 2: 'seqence_length'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicConv2d(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.conv = nn.Conv2d(8, 8, 3, 1, 1)
+
+            def forward(self, x ):
+                y = self.conv(x)
+                return y
+        x = torch.randn(4, 8, 56, 56).float()
+        s_x = torch.randn(1, 8, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {0: 'batch', 2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicDeconv(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.deconv = nn.ConvTranspose2d(16, 32, 3, stride=2)
+
+            def forward(self, x ):
+                y = self.deconv(x)
+                return y
+        x = torch.randn(2, 16, 28, 28).float()
+        s_x = torch.randn(1, 16, 8, 8).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {0: 'batch', 2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicGather(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, index ):
+                y = torch.gather(x, 3, index)
+                return y
+        x = torch.from_numpy((np.random.rand(1, 10, 349, 5538) * 20 - 10).astype(np.float32))
+        index = torch.from_numpy((np.random.rand(1, 10, 349, 1) * 5538).astype(np.int64))
+        s_x = torch.from_numpy((np.random.rand(1, 10, 349, 888) * 20 - 10).astype(np.float32))
+        s_index = torch.from_numpy((np.random.rand(1, 10, 349, 1) * 888).astype(np.int64))
+        dynamic_in_names = ['x','index']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (x,index),
+            Model(),
+            case_name,
+            (s_x,s_index),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicLog(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.log(x)
+                return y
+        x = torch.tensor(np.clip(np.random.randn(4,3,28,28).astype(np.float32) * 10.0, 0.5, 8))
+        s_x =torch.tensor(np.clip(np.random.randn(1,3,8,8).astype(np.float32) * 10.0, 0.5, 8))
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {0: 'batch', 2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicMaxconst(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = torch.max(a, b)
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1).float()
+        s_a = torch.randn(1, 3, 28, 28).float()
+        s_b = torch.randn(1).float()
+        dynamic_in_names = ['a', 'b']
+        dynamic_shape_input_names = ['a', 'b']
+        dynamic_axes={'a': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            (s_a, s_b),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicMinconst(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = torch.min(a, b)
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1).float()
+        s_a = torch.randn(1, 3, 28, 28).float()
+        s_b = torch.randn(1).float()
+        dynamic_in_names = ['a', 'b']
+        dynamic_shape_input_names = ['a', 'b']
+        dynamic_axes={'a': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            (s_a, s_b),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicMul(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = torch.multiply(a, b)
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1, 3, 56, 56).float()
+        s_a = torch.randn(1, 3, 28, 28).float()
+        s_b = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['a', 'b']
+        dynamic_shape_input_names = ['a', 'b']
+        dynamic_axes={'a': {2: 'input_height', 3: 'input_width'},
+                      'b': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            (s_a, s_b),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicMatMul(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = torch.matmul(a, b)
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1, 3, 56, 56).float()
+        # s_a = torch.randn(1, 3, 56, 56).float()
+        # s_b = torch.randn(1, 3, 56, 56).float()
+        dynamic_in_names = ['a', 'b']
+        # dynamic_shape_input_names = ['a', 'b']
+        # dynamic_axes={'a': {2: 'input_height', 3: 'input_width'},
+        #               'b': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names
+        )
+
+    def test_DynamicSub(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, a, b):
+                y = a - b
+                return y
+        a = torch.randn(1, 3, 56, 56).float()
+        b = torch.randn(1, 3, 56, 56).float()
+        s_a = torch.randn(1, 3, 28, 28).float()
+        s_b = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['a', 'b']
+        dynamic_shape_input_names = ['a', 'b']
+        dynamic_axes={'a': {2: 'input_height', 3: 'input_width'},
+                      'b': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            (a, b),
+            Model(),
+            case_name,
+            (s_a, s_b),
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicSqueeze(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.squeeze(x, dim=0)
+                return y
+        x = torch.randn(1, 3, 32, 32).float()
+        s_x = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicUnsqueeze(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.unsqueeze(x, dim=0)
+                return y
+        x = torch.randn(3, 32, 32).float()
+        s_x = torch.randn(3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {1: 'input_height', 2: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicRelu(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.relu(x)
+                return y
+        x = torch.randn(1, 3, 32, 32).float()
+        s_x = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicReduce(self, case_name):
+        """Arg"""
+
+        def _test_reduce(func, shape, small_shape, dim=None, keepdim=False):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x, dim, keepdim)
+                    return y
+            x = torch.randn(*shape).float()
+            small_x = torch.randn(*small_shape).float()
+            dynamic_in_names = ['x']
+            dynamic_shape_input_names = ['x']
+            dynamic_axes={'x': {1: 'batch', 2: 'input_height', 3: 'input_width'}}
+
+            self.torch_and_test(
+                x,
+                Model(),
+                case_name,
+                small_x,
+                support_modes=["f32", "f16", "bf16"],
+                dynamic_in_names=dynamic_in_names,
+                dynamic_shape_input_names = dynamic_shape_input_names,
+                dynamic_axes = dynamic_axes
+            )
+
+        _test_reduce(torch.sum, (1, 3, 64, 64), (1, 3, 32, 32), 1, True)
+        _test_reduce(torch.mean, (1, 3, 64, 64), (1, 3, 32, 32), 1, True)
+
+    def test_DynamicSqrt(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.sqrt(x)
+                return y
+        x = torch.randn(1, 3, 32, 32).float()
+        s_x = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicSigmoid(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.activation = nn.Sigmoid()
+
+            def forward(self, x):
+                y = self.activation(x)
+                return y
+        x = torch.randn(1, 3, 32, 32).float()
+        s_x = torch.randn(1, 3, 28, 28).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicFloor(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = torch.floor(x)
+                return y
+        x = torch.randn(4, 3, 32, 32).float()
+        s_x = torch.randn(1, 3, 4, 4).float()
+        dynamic_in_names = ['x']
+        dynamic_shape_input_names = ['x']
+        dynamic_axes={'x': {0: 'batch', 2: 'input_height', 3: 'input_width'}}
+        self.torch_and_test(
+            x,
+            Model(),
+            case_name,
+            s_x,
+            support_modes=["f32", "f16", "bf16"],
+            dynamic_in_names=dynamic_in_names,
+            dynamic_shape_input_names = dynamic_shape_input_names,
+            dynamic_axes = dynamic_axes
+        )
+
+    def test_DynamicPermute(self, case_name):
+        def _test_permute(in_shape, small_shape, dims):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = torch.permute(x, dims=dims)
+                    return y
+            x = torch.randn(*in_shape).float()
+            s_x = torch.randn(*small_shape).float()
+            dynamic_in_names = ['x']
+            dynamic_shape_input_names = ['x']
+            dynamic_axes={'x': {0: 'batch', 2: 'input_height', 3: 'input_width'}}
+            self.torch_and_test(
+                x,
+                Model(),
+                case_name,
+                s_x,
+                support_modes=["f32", "f16", "bf16"],
+                dynamic_in_names=dynamic_in_names,
+                dynamic_shape_input_names = dynamic_shape_input_names,
+                dynamic_axes = dynamic_axes
+            )
+        _test_permute((4, 3, 32, 32), (1, 3, 16, 16), (0, 3, 1, 2))
+
+    def test_DynamicArg(self, case_name):
+        """Arg"""
+
+        def _test_arg(func, axis, keepdim):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x, axis, keepdim=keepdim)
+                    return y
+            x = torch.randn(1, 3, 56, 56).float()
+            small_x = torch.randn(1, 3, 28, 28).float()
+            dynamic_in_names = ['x']
+            dynamic_shape_input_names = ['x']
+            dynamic_axes={'x': {2: 'input_height', 3: 'input_width'}}
+
+            self.torch_and_test(
+                x,
+                Model(),
+                case_name,
+                small_x,
+                support_modes=["f32", "f16", "bf16"],
+                dynamic_in_names=dynamic_in_names,
+                dynamic_shape_input_names = dynamic_shape_input_names,
+                dynamic_axes = dynamic_axes
+            )
+
+        for f in [torch.argmin, torch.argmax]:
+            for axis in [1]:
+                for keepdim in [True, False]:
+                    _test_arg(f, axis, keepdim)
 
     def user_define_net(self, case_name):
         """user_define_net"""

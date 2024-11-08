@@ -51,10 +51,10 @@ LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   for (int64_t j = 0; j < true_num; ++j) {
     p.outputs[0][j] = (float)tmp[j];
   }
-  // std::vector<int64_t> output_shape{0, 3};
-  // assert(true_num % 3 == 0);
-  // output_shape[0] = (true_num / 3);
-  // module::setShape(getOutput(), output_shape);
+  std::vector<int64_t> output_shape{0, 3};
+  assert(true_num % 3 == 0);
+  output_shape[0] = (true_num / 3);
+  module::setShape(getOutput(), output_shape);
   return success();
 }
 

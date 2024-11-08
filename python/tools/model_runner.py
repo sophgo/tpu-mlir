@@ -235,9 +235,9 @@ def final_mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) ->
         else:
             input = list(inputs.values())[0]
         if input.dtype == np.int8 or input.dtype == np.uint8:
-            g_final_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
+            g_final_mlir_module.set_tensor_from_int(name, input.astype(np.float32), input.shape)
         else:
-            g_final_mlir_module.set_tensor(name, input.astype(np.float32))
+            g_final_mlir_module.set_tensor(name, input.astype(np.float32), input.shape)
     tensors = dict()
     g_final_mlir_module.invoke()
     tensors = g_final_mlir_module.get_all_tensor()
@@ -297,9 +297,9 @@ def _mlir_inference_by_cpu(inputs: dict, mlir_file: str, dump_all: bool = True, 
         else:
             input = list(inputs.values())[0]
         if input.dtype == np.int8 or input.dtype == np.uint8:
-            g_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
+            g_mlir_module.set_tensor_from_int(name, input.astype(np.float32), input.shape)
         else:
-            g_mlir_module.set_tensor(name, input.astype(np.float32))
+            g_mlir_module.set_tensor(name, input.astype(np.float32), input.shape)
     tensors = dict()
     g_mlir_module.invoke(not out_fixed)
     tensors = g_mlir_module.get_all_tensor()
@@ -335,7 +335,7 @@ def _mlir_inference_by_cuda(inputs: dict, mlir_file: str, dump_all: bool = False
             input = inputs[name]
         else:
             input = list(inputs.values())[0]
-        g_mlir_cuda.set_tensor(name, input.astype(np.float32))
+        g_mlir_cuda.set_tensor(name, input.astype(np.float32), input.shape)
     g_mlir_cuda.invoke(dump_all)
     return g_mlir_cuda.get_all_tensor()
 

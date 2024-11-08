@@ -13,6 +13,8 @@ LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto limit = getReluLimit().convertToDouble();
   function_relu(p.inputs[0], p.outputs[0], module::getNumElements(getOutput()),
                 limit, module::getStorageType(getOutput()));

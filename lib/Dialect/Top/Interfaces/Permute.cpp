@@ -67,6 +67,13 @@ LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
   auto p_info = (permute_attr_t *)p.handle;
   function_permute(p.inputs[0], p.outputs[0], p_info->in_shape_fix,
                    p_info->order_fix);
+  i64_array_t in_order = module::getI64Array(getOrder());
+  auto in_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape;
+  for (int64_t i = 0; i < in_shape.size(); ++i) {
+    out_shape.push_back(in_shape[(*in_order)[i]]);
+  }
+  module::setShape(getOutput(), out_shape);
   return success();
 }
 

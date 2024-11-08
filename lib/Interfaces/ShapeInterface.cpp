@@ -15,8 +15,7 @@ namespace tpu_mlir {
 
 void common_shape_inference(mlir::Operation *op) {
   if (op->getNumResults() != 1) {
-    op->dump();
-    llvm_unreachable("input and output should be only one");
+    UNREACHABLE_OP("input and output should be only one", op);
   }
   auto in = op->getOperand(0);
   auto out = op->getResult(0);
@@ -31,10 +30,9 @@ void common_shape_inference(mlir::Operation *op) {
   }
 }
 
-void broadcast_shape_inference(mlir::Operation *op) {
+llvm::SmallVector<int64_t> computer_broadcast_shape(mlir::Operation *op) {
   if (op->getNumResults() != 1) {
-    op->dump();
-    llvm_unreachable("Only supports one output and two inputs.");
+    UNREACHABLE_OP("Only supports one output and two inputs.", op);
   }
   auto lhs_shape = module::getShape(op->getOperand(0));
   auto out_shape = llvm::SmallVector<int64_t>(lhs_shape);
@@ -58,6 +56,11 @@ void broadcast_shape_inference(mlir::Operation *op) {
       out_shape = llvm::SmallVector<int64_t>(llvm::reverse(tmp_shape));
     }
   }
+  return out_shape;
+}
+
+void broadcast_shape_inference(mlir::Operation *op) {
+  auto out_shape = computer_broadcast_shape(op);
   auto out = op->getResult(0);
   module::setShapeOrVerify(out, out_shape);
 }

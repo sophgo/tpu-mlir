@@ -41,10 +41,7 @@ void top::FlattenOp::shape_inference() {
                         std::multiplies<int64_t>());
     shape = {outer_dims, inner_dims};
   } else {
-    int64_t flatten_dim = 1;
-    for (int i = start_dim; i <= end_dim; i++) {
-      flatten_dim *= input_shape[i];
-    }
+    int64_t flatten_dim = -1;
 
     for (int i = 0; i < start_dim; i++) {
       shape.emplace_back(input_shape[i]);
@@ -62,6 +59,8 @@ void top::FlattenOp::shape_inference() {
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(
       builder.getNamedAttr("shape", builder.getI64ArrayAttr(shape)));
+  attrs.emplace_back(
+      builder.getNamedAttr("flatten_start_dim", builder.getI64IntegerAttr(start_dim)));
   auto new_op = builder.create<top::ReshapeOp>(
       getLoc(), out.getType(), ArrayRef<Value>{getInput()}, attrs);
   out.replaceAllUsesWith(new_op.getOutput());

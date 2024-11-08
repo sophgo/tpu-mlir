@@ -23,6 +23,7 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
   auto input_shape = module::getShape(getInput());
+  auto indices_shape = module::getShape(getIndices());
   if (ax < 0) {
     ax += input_shape.size();
   }
@@ -48,7 +49,34 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
       }
     }
   }
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < ax; ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
 
+  if (indices_shape.size() == 1 && indices_shape[0] == 1 && !getKeepdims()) {
+    // if indices_shape.size() == 1 and indices is scalar(not a array) do
+    // squeeze manner do nothing
+    if (input_shape.size() == 1) {
+      // if input_shape.size() == 1, output_shape should be scalar represent by 1D tensor
+      out_shape.push_back({1});
+      auto context = getContext();
+      mlir::Builder builder(context);
+      setIsScalarAttr(builder.getBoolAttr(true));
+    }
+  } else {
+    for (int s : indices_shape) {
+      out_shape.push_back(s);
+    }
+  }
+  for (int i = ax + 1; i < input_shape.size(); ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  if (out_shape.size() == input_shape.size()) {
+    auto builder = OpBuilder(getContext());
+    setKeepdimsAttr(builder.getBoolAttr(true));
+  }
+  module::setShape(getOutput(), out_shape);
   return success();
 }
 

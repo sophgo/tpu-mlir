@@ -44,10 +44,26 @@ void top::SubOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult top::SubOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   if (p.handle == nullptr) {
     return failure();
   }
   auto binary = (Binary *)p.handle;
+  int index0 = 0, index1 = 1;
+  if (getIsReverse()) {
+    index0 = 1, index1 = 0;
+  }
+  auto lhs_shape = module::getShape(getInputs()[index0]);
+  auto rhs_shape = module::getShape(getInputs()[index1]);
+
+  (*binary)
+      .hs(p.inputs[index0], p.inputs[index1], lhs_shape, rhs_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
+      .algorithem(algorithm::binary_sub)
+      .setup();
   binary->run();
   return success();
 }

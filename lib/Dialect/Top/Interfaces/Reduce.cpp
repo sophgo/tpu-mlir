@@ -118,23 +118,22 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
       tmp_ishape = tmp_oshape;
     }
   }
-  // auto num_dims = input_shape.size();
-  // std::vector<int64_t> out_shape;
-  // for (int i = 0; i < num_dims; i++) {
-  //   if (std::find(axes_val->begin(), axes_val->end(), i) != axes_val->end())
-  //   {
-  //     if (getKeepdims()) {
-  //       out_shape.push_back(1);
-  //     }
-  //   } else {
-  //     out_shape.push_back(input_shape[i]);
-  //   }
-  // }
-  // /* keepdims = false, reduce at all axis,
-  //   it need to set the shape to [1] */
-  // if (!out_shape.size())
-  //   out_shape.push_back(1);
-  // module::setShape(getOutput(), out_shape);
+  auto num_dims = input_shape.size();
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < num_dims; i++) {
+    if (std::find(axes_val->begin(), axes_val->end(), i) != axes_val->end()) {
+      if (getKeepdims()) {
+        out_shape.push_back(1);
+      }
+    } else {
+      out_shape.push_back(input_shape[i]);
+    }
+  }
+  /* keepdims = false, reduce at all axis,
+    it need to set the shape to [1] */
+  if (!out_shape.size())
+    out_shape.push_back(1);
+  module::setShape(getOutput(), out_shape);
   return success();
 }
 

@@ -17,6 +17,13 @@ LogicalResult top::RoiAlignOp::init(InferenceParameter &p) { return success(); }
 void top::RoiAlignOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::RoiAlignOp::inference(InferenceParameter &p) {
+  auto batch = module::getShape(getRois())[0];
+  auto shape = module::getShape(getInput()).vec();
+  uint32_t ndims = shape.size();
+  shape[0] = batch;
+  shape[ndims - 1] = getOutputWidth();
+  shape[ndims - 2] = getOutputHeight();
+  module::setShape(getOutput(), shape);
   RoiAlignParam param;
   param.mode = getMode().str() == "Avg" ? RoiAlignAvgMode : RoiAlignMaxMode;
   param.pooled_h = getOutputHeight();

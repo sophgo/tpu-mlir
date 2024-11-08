@@ -1311,7 +1311,7 @@ void ModuleInterpreter::backward_weight_at(const std::string op_name,
 }
 
 void ModuleInterpreter::setTensor(const std::string &name, const void *data,
-                                  size_t size, bool is_integer) {
+                                  size_t size, std::vector<int64_t> shape, bool is_integer) {
   module::init(module);
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
@@ -1330,11 +1330,12 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
       (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
           ? activation_offset[name].first
           : 0;
-  if (tensor_size * sizeof(float) != size) {
-    llvm::errs() << "Tensor " << name
-                 << " data need size: " << tensor_size * sizeof(float)
-                 << " , but set size: " << size << "\n";
-    llvm_unreachable("Error, setTensor failed");
+  if (tensor_size > size) {
+    tensor_size = size;
+    it->second->resize(size);
+    auto it_value = value_map.find(name);
+    module::setShape(it_value->second, shape);
+
   }
   auto value = value_map.at(name);
   if (is_integer == false && module::isUniformQuantized(value)) {
@@ -1356,7 +1357,7 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
     F8E5M2((const float *)data, act->data() + offset, tensor_size, 1., true);
 
   } else {
-    memcpy(act->data() + offset, data, size);
+    memcpy(act->data() + offset, data, size * sizeof(float));
   }
 }
 

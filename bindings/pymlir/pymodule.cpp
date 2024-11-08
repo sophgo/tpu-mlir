@@ -87,15 +87,17 @@ void py_module::set_mem_mode(std::string mem_mode) {
 
 void py_module::set_tensor(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data) {
-  interpreter_->setTensor(name, data.data(), data.size() * sizeof(float),
+    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    std::vector<int64_t> shape) {
+  interpreter_->setTensor(name, data.data(), data.size(), shape,
                           false);
 }
 
 void py_module::set_tensor_from_int(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data) {
-  interpreter_->setTensor(name, data.data(), data.size() * sizeof(float), true);
+    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    std::vector<int64_t> shape) {
+  interpreter_->setTensor(name, data.data(), data.size(), shape, true);
 }
 
 // Warning: using copy in python

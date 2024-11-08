@@ -135,6 +135,214 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   return p;
 }
 
+matmul_attr_t tpu::MatMulOp::dynparseParam() {
+  std::vector<int64_t> in0_shape = module::getShape(getInput());
+  std::vector<int64_t> in1_shape = module::getShape(getRight());
+  bool l_transpose = getLeftTranspose();
+  bool r_transpose = getRightTranspose();
+  bool hdim_is_batch = getHdimIsBatch();
+  auto in0_shape_new = in0_shape;
+  auto in1_shape_new = in1_shape;
+  int in0_dims = in0_shape.size();
+  int in1_dims = in1_shape.size();
+  if (l_transpose) {
+    if (hdim_is_batch) {
+      in0_shape_new[1] = in0_shape[2];
+      in0_shape_new[2] = in0_shape[1];
+      l_transpose = false;
+    }
+  }
+  if (r_transpose) {
+    if (hdim_is_batch) {
+      in1_shape_new[1] = in1_shape[2];
+      in1_shape_new[2] = in1_shape[1];
+      r_transpose = false;
+    }
+  }
+
+  auto k = in0_shape_new[in0_dims - 1];
+  bool keep_dims_ = getKeepDims();
+  int k_idx = in1_dims - (r_transpose ? 1 : 2);
+  int n_idx = in1_dims - (r_transpose ? 2 : 1);
+  auto n = in1_shape_new[n_idx];
+  std::vector<int64_t> out_shape;
+  if (in0_dims > in1_dims) {
+    out_shape = in0_shape;
+  } else if (in0_dims == in1_dims) {
+    out_shape = in0_shape_new;
+    for (int i = out_shape.size() - 3; i >= 0; i--) {
+      out_shape[i] = std::max(in0_shape_new[i], in1_shape_new[i]);
+    }
+  } else {
+    out_shape = in1_shape_new;
+    for (int i = 1; i <= 2; i++) {
+      out_shape[out_shape.size() - i] = in0_shape_new[in0_dims - i];
+    }
+  }
+  if (in1_dims == 1) {
+    ASSERT_THIS(in1_shape_new[0] == k);
+    out_shape.pop_back();
+  } else if (in1_shape_new[k_idx] == k) {
+    if (module::getPlatform() == module::Platform::CAFFE) {
+      // for caffe case
+      // shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
+      // shape case:[8, 1, 1, 4832] * [4832, 136] = [8, 136]
+      for (int i = 1; i < out_shape.size(); i++) {
+        if (out_shape[i] == 1) {
+          out_shape.erase(out_shape.begin() + i);
+          i--;
+        }
+      }
+      out_shape[out_shape.size() - 1] = n;
+    } else {
+      out_shape[out_shape.size() - 1] = n;
+    }
+  } else if (in1_dims == 2) {
+    auto sum = in1_shape_new[k_idx];
+    while (out_shape.size() > 0 && sum % out_shape.back() == 0 && sum != 1) {
+      sum = sum / out_shape.back();
+      out_shape.pop_back();
+    }
+    if (sum != 1) {
+      UNREACHABLE_THIS("shape is illegal");
+    }
+    out_shape.push_back(n);
+  } else {
+    out_shape[out_shape.size() - 1] = n;
+  }
+  if (!keep_dims_) {
+    int64_t batch_size = std::accumulate(out_shape.begin(), out_shape.end() - 1,
+                                         1, std::multiplies<int64_t>());
+    out_shape.resize(2);
+    out_shape[0] = batch_size;
+    out_shape[1] = n;
+  }
+  bool o_transpose = getOutputTranspose();
+  auto out_shape_new = out_shape;
+  if (o_transpose) {
+    if (hdim_is_batch) {
+      out_shape_new[1] = out_shape[2];
+      out_shape_new[2] = out_shape[1];
+    }
+  }
+  module::setShape(getOutput(), out_shape_new);
+
+  auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
+  module::setShape(getOutput(), o_s);
+  matmul_attr_t p = {0};
+  auto a_s = SmallVector<int64_t>(module::getShape(getInput()));
+  auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
+  // auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
+  p.input_zp = getInputZp();
+  p.with_bias = !module::isNone(getBias());
+  p.do_relu = getDoRelu();
+  p.relu_limit = this->getReluLimit().convertToDouble();
+  p.right_zp = getRightZp();
+  p.right_transpose = getRightTranspose();
+  p.left_transpose = getLeftTranspose();
+  p.output_transpose = getOutputTranspose();
+  p.hdim_is_batch = getHdimIsBatch();
+  p.left_reuse = getLeftReuse();
+  auto a_dims = a_s.size();
+  auto b_dims = b_s.size();
+  auto o_dims = o_s.size();
+  p.batch = 1;
+  p.batch_low = 1;
+  if (b_dims == 1) {
+    assert(p.right_transpose == false);
+    b_s.push_back(1);
+    o_s.push_back(1);
+    b_dims += 1;
+    o_dims += 1;
+  }
+  if (a_dims == 1) {
+    assert(p.left_transpose == false);
+    a_s.insert(a_s.begin(), 1);
+    o_s.insert(o_s.begin(), 1);
+    a_dims += 1;
+    o_dims += 1;
+  }
+  // for hdim_is_batch = true,
+  // BM1684x: (B0, M, B1, K) x (B0, K, B1, N) = (B0, M, B1, N)
+  // CV18xx:  (B0, B1, M, K) x (B0, K, B1, N) = (B0, B1, M, N)
+  // up to now bm168x right_trans, left_trans, output_trans always be true
+  //           cv18xx support either one to be true
+  if (p.right_transpose) {
+    if (p.hdim_is_batch) {
+      p.K = b_s[b_dims - 3];
+      p.N = b_s[b_dims - 1];
+      // fix bias_merge_izp size for bm1684x
+      if (module::isBM1684XFamily() || module::isBM1690Family()) {
+        p.N = b_s[b_dims - 3];
+        p.K = b_s[b_dims - 1];
+      }
+    } else {
+      // trans hw
+      p.N = b_s[b_dims - 2];
+      p.K = b_s[b_dims - 1];
+    }
+  } else {
+    p.N = b_s[b_dims - 1];
+    p.K = b_s[b_dims - 2];
+  }
+
+  if (p.left_transpose) {
+    if (p.hdim_is_batch) {
+      p.M = a_s[a_dims - 3];
+    } else {
+      // trans hw
+      p.M = a_s[a_dims - 1];
+      for (int i = 0; i < a_dims - 2; i++) {
+        p.batch *= a_s[i];
+      }
+    }
+  } else {
+    p.M = a_s[a_dims - 2];
+  }
+  // parse batch info from output
+  for (int i = 0; i < o_dims - 2; i++) {
+    p.batch *= o_s[i];
+  }
+  if (p.hdim_is_batch) {
+    p.batch = o_s[0];
+    if (!p.output_transpose && module::isCV18xx()) {
+      p.batch_low = o_s[1];
+    } else {
+      p.batch_low = o_s[2];
+      p.output_transpose = true; // tmp code remove later
+    }
+  }
+  if (!p.hdim_is_batch) {
+    // if right batch dim is broadcast, merge left batch to M
+    int right_batch = 1;
+    for (int i = 0; i < b_dims - 2; i++) {
+      right_batch *= b_s[i];
+    }
+    if (right_batch != p.batch && right_batch == 1) {
+      p.batch = 1;
+    }
+    if (p.batch > 1 || o_dims <= 2) {
+      p.M = o_s[o_dims - 2];
+    } else {
+      p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
+                            std::multiplies<int64_t>());
+    }
+    int b_temp = 1;
+    for (int i = 1; i < b_dims - 2; i++) {
+      b_temp *= b_s[i];
+    }
+    if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2) {
+      p.batch = b_s[0];
+      int a_temp = 1;
+      for (int i = 1; i < a_dims - 2; i++) {
+        a_temp *= a_s[i];
+      }
+      p.M = a_s[o_dims - 2] * a_temp;
+    }
+  }
+  return p;
+}
+
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   auto a = parseParam();
@@ -156,11 +364,12 @@ void tpu::MatMulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
-  }
-  auto matmul = (MatMul *)p.handle;
-
+  auto matmul = new MatMul();
+  auto a = dynparseParam();
+  matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
+                a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
+                a.input_zp, a.right_transpose, a.left_transpose,
+                a.output_transpose, a.hdim_is_batch);
   matmul->run();
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());

@@ -15,6 +15,8 @@ LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
 void top::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto limit = getReluLimit().convertToDouble();
   function_relu(p.inputs[0], p.outputs[0], module::getNumElements(getInput()),
                 limit);

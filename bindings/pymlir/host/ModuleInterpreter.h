@@ -56,7 +56,7 @@ public:
   void backward_weight_at(std::string name, const void *dst_grd,
                           const int dst_grd_len, const void *weight_grd,
                           const int weight_grd_len);
-  void setTensor(const std::string &name, const void *data, size_t size,
+  void setTensor(const std::string &name, const void *data, size_t size, std::vector<int64_t> shape,
                  bool is_integer = false);
   bool hasTensorMem(const std::string &name);
 

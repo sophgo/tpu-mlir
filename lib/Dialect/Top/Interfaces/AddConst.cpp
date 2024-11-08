@@ -17,6 +17,8 @@ LogicalResult top::AddConstOp::init(InferenceParameter &p) { return success(); }
 void top::AddConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::AddConstOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   const int64_t num_elem = module::getNumElements(getOutput());
   const float const_val_ = getConstVal().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

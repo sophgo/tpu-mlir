@@ -16,6 +16,8 @@ LogicalResult tpu::CompareConstOp::init(InferenceParameter &p) {
 void tpu::CompareConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CompareConstOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   const auto num_element = module::getNumElements(getOutput());
   float _const_val_ = getConstVal().convertToDouble();
   auto in_type = module::getStorageType(getInput());

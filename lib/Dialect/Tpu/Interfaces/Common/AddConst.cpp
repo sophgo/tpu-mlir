@@ -17,6 +17,8 @@ LogicalResult tpu::AddConstOp::init(InferenceParameter &p) { return success(); }
 void tpu::AddConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto num_elem = module::getNumElements(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());

@@ -53,6 +53,8 @@ void tpu::AddOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   if (module::isCV18xx() && getInputs().size() != 2) {
     p.handle = nullptr;
   } else {

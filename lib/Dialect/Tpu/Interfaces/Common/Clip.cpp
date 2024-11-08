@@ -23,6 +23,8 @@ LogicalResult tpu::ClipOp::inference(InferenceParameter &p) {
     auto val = p.inputs[0][i];
     p.outputs[0][i] = std::min(max_v, std::max(min_v, val));
   }
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   return success();
 }
 

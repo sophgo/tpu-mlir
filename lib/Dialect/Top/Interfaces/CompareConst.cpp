@@ -19,6 +19,7 @@ LogicalResult top::CompareConstOp::init(InferenceParameter &p) {
 void top::CompareConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CompareConstOp::inference(InferenceParameter &p) {
+  broadcast_shape_inference(getOperation());
   const auto num_element = module::getNumElements(getOutput());
   const float const_val_ = getConstVal().convertToDouble();
   if (!getInversed()) {
@@ -36,7 +37,8 @@ LogicalResult top::CompareConstOp::inference(InferenceParameter &p) {
 }
 
 void top::CompareConstOp::shape_inference() {
-  common_shape_inference(getOperation());
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   if (module::isShape(getInput())) {
     auto input_shape_v = module::getShapeTensorValue(getInput());
     auto out_shape = module::getShape(getOutput());

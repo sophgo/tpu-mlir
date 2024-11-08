@@ -18,6 +18,8 @@ LogicalResult tpu::ShapeOp::inference(InferenceParameter &p) {
   for (int i = 0; i < input_shape.size(); ++i) {
     output_data[i] = input_shape[i];
   }
+  std::vector<int64_t> output_shape({(int64_t)input_shape.size()});
+  module::setShape(getOutput(), output_shape);
   return success();
 }
 

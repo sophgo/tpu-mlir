@@ -26,6 +26,8 @@ LogicalResult top::RangeOp::inference(InferenceParameter &p) {
     for (int i = 0, n = start; n > limit; n += delta, ++i)
       output[i] = n;
   }
+  auto out_size = (limit - start) / delta;
+  module::setShape(getOutput(), {static_cast<long>(out_size)});
   return success();
 }
 

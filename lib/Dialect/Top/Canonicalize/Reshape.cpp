@@ -494,7 +494,6 @@ struct TopReshapeFuse2 : public OpRewriterPatternEx<ReshapeOp> {
       : OpRewriterPatternEx<ReshapeOp>(context, "TopReshapeFuse2") {}
   LogicalResult matchAndRewriteImpl(ReshapeOp op,
                                     PatternRewriter &rewriter) const override {
-
     auto in = op.getInput();
     auto pre_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
     if (!pre_op) {
@@ -665,6 +664,7 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
     if (input_shape_pre.size() + 1 == output_shape.size()) {
       // update the output shape of first reshape
       module::setShape(pre_reshape_op->getResult(0), new_out_shape_pre_reshape);
+      pre_reshape_op.setShapeAttr(rewriter.getI64ArrayAttr(new_out_shape_pre_reshape));
       rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
           op, depth2space_output_type, ValueRange{pre_reshape_op.getOutput()},
           attrs);

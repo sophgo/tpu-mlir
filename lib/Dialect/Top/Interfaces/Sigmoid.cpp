@@ -17,6 +17,8 @@ LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
 void top::SigmoidOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto num_element = module::getNumElements(getInput());
   bool log = getLog();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))

@@ -106,7 +106,7 @@ class MixQuantModel:
 
     def infer(self, data: list, global_compare_layers: list = None):
         for k, v in zip(self.module.input_names, data):
-            self.module.set_tensor(k, v)
+            self.module.set_tensor(k, v, v.shape)
         self.module.invoke()
         outputs = {}
         if global_compare_layers is None:
@@ -121,7 +121,7 @@ class MixQuantModel:
                    global_compare_layers: list = None):
         # print('mix model op list:', self.parser.get_op_name_list())
         for k in input_data_dict:
-            self.module.set_tensor_from_int(k, input_data_dict[k])
+            self.module.set_tensor_from_int(k, input_data_dict[k], input_data_dict[k].shape)
             print(f'infer_from set_tensor:{k}')
             # print('set value:', input_data_dict[k].flatten()[:32])
             next_ops = self.parser.get_next_op_by_op_name(k)
@@ -133,7 +133,7 @@ class MixQuantModel:
                     self.module.invoke_at(next_op)
         for k in extra_input_data_dict:
             print(f'infer_from set_extra_tensor:{k}')
-            self.module.set_tensor_from_int(k, extra_input_data_dict[k])
+            self.module.set_tensor_from_int(k, extra_input_data_dict[k], extra_input_data_dict[k].shape)
             next_ops = self.parser.get_next_op_by_op_name(k)
             print(f'infer_from {k}\'s next_ops:{next_ops}')
             for next_op in next_ops:
@@ -443,9 +443,9 @@ class MixPrecSearcher:
             if data is None:
                 raise Exception(f"{op_name} \'s input:{input_op} not exist")
             if is_int8_data:
-                model.module.set_tensor_from_int(input_op, data)
+                model.module.set_tensor_from_int(input_op, data, data.shape)
             else:
-                model.module.set_tensor(input_op, data)
+                model.module.set_tensor(input_op, data, data.shape)
         if len(input_ops) > 0:
             value = model.module.invoke_at(op_name).copy()
             self.logger.print_dbg(f'invoke_at {op_name}')

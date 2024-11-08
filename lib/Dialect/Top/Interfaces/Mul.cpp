@@ -44,6 +44,18 @@ LogicalResult top::MulOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto binary = (Binary *)p.handle;
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
+  auto lhs_shape = module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
+
+  (*binary)
+      .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
+      .algorithem(algorithm::binary_mul)
+      .setup();
   binary->run();
   return success();
 }
