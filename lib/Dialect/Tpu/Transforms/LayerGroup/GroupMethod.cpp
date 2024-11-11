@@ -249,7 +249,7 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
   }
-  lg_info.update_group_io(opt4_ori_opt_ < 0 ? opt_ : opt4_ori_opt_);
+  lg_info.update_group_io(opt_);
   set_group_type(lg_info);
 }
 
@@ -717,6 +717,8 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   // llvm::outs() << "nsecs = " << shape_secs.nsecs
   //              << ", hsecs = " << shape_secs.hsecs << "\n";
   PROFILE_LOG("is_layer_group_valid", false);
+  lg_info.shape_secs = shape_secs;
+  lg_info.group_cost = *group_cost;
   return status;
 }
 
@@ -2576,36 +2578,36 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
   auto start = std::chrono::high_resolution_clock::now();
   runmode_ = getRunMode(subnet_ops[0]);
-  auto func_name = pass_ir->func.getName();
+  // auto func_name = pass_ir->func.getName();
 
-  switch (LgPass::OPTIONS.opt) {
-  case 1:
-    simple_layer_group(lg_infos, subnet_ops);
-    dump_cut_results(func_name);
-    break;
-  case 2:
-    dynamic_programming_layer_group_with_cluster(lg_infos, subnet_ops);
-    dump_cut_results(func_name);
-    break;
-  case 3:
-    ilp_layer_group(pass_ir);
-    dump_cut_results(func_name);
-    break;
-  case 4: {
-    if(is_cut_results_exists(func_name)){
-      load_cut_results(func_name);
-      show_cut_results();
-      std::vector<std::vector<Operation *>> base_groups;
-      get_base_groups(base_groups, subnet_ops);
-      get_final_groups(lg_infos, base_groups);
-    }else{
-      llvm_unreachable("cut_results.txt not exist s, ues opt=1/2/3 to generate");
+  if (getenv("LOAD_TPU_GROUP") || LgPass::OPTIONS.opt == 4) {
+    if (is_lg_results_exists()) {
+      load_lg_results(lg_infos, subnet_ops);
+    } else {
+      llvm_unreachable(
+          "file not exist's, ues opt=1/2/3 to generate");
     }
-  } break;
-  default:
-    simple_layer_group(lg_infos, subnet_ops);
-    break;
+  } else {
+    switch (LgPass::OPTIONS.opt) {
+    case 1:
+      simple_layer_group(lg_infos, subnet_ops);
+      dump_lg_results(lg_infos);
+      break;
+    case 2:
+      dynamic_programming_layer_group_with_cluster(lg_infos, subnet_ops);
+      dump_lg_results(lg_infos);
+      break;
+    case 3:
+      ilp_layer_group(pass_ir);
+      dump_lg_results(lg_infos);
+      break;
+      break;
+    default:
+      simple_layer_group(lg_infos, subnet_ops);
+      break;
+    }
   }
+
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   llvm::errs() << "GroupMethod_process time:" << elapsed.count() << "\n";
@@ -2623,14 +2625,19 @@ void GroupMethod::get_final_groups(
     for (size_t j = 0; j < cut_result.size(); ++j) {
       end_idx = cut_result[j];
       get_layer_group(lg_info, base_group, start_idx, end_idx);
+      int64_t cost = -1;
+
+      if (base_group.size() > 1){
+        if (!is_layer_group_valid(lg_info, true, &cost)){
+          llvm_unreachable("group_cost is not valid");
+        }
+      }
       if (lg_info.group_ops.size() > 1 ||
           false == LgPass::OPTIONS.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
       DEBUG_WITH_TYPE("lg_results", {
         if(runmode_ == RunMode::TPU_STATIC){
-          int64_t cost = 0;
-          is_layer_group_valid(lg_info, true, &cost);
           llvm::dbgs() << "; action = lg_results"
           << "; start_idx = " << start_idx
                         << "; end_idx = " << end_idx
@@ -2659,57 +2666,207 @@ void GroupMethod::show_cut_results() {
 }
 
 
-bool GroupMethod::is_cut_results_exists(StringRef func_name){
-    return std::filesystem::exists("cut_results_" + func_name.str() + ".mlircache");
-
-}
-void GroupMethod::dump_cut_results(StringRef func_name) {
-  if(!LgPass::OPTIONS.lgcache){
-     return;
-  }
-  std::ofstream out("cut_results_" + func_name.str() + ".mlircache");
-  if (!out.is_open()) {
-    std::cerr << "Failed to open file for writing.\n";
-    return;
-  }
-  out << opt_ << "\n";
-  for (const auto &row : cut_results_) {
-    for (const auto &item : row) {
-      out << item << " ";
+bool GroupMethod::is_lg_results_exists(){
+    auto filename = "layer_group_cache." + module::getName(module::getModuleOp()).str() + ".json";
+    auto ret = std::filesystem::exists(filename);
+    if(!ret){
+      llvm::errs() << filename << "not exists\n";
     }
-    out << "\n"; // 每个内部vector结束后换行
-  }
+    return ret;
 
-  out.close();
 }
-
-void GroupMethod::load_cut_results(StringRef func_name) {
-  std::ifstream in("cut_results_" + func_name.str() + ".mlircache");
-  if (!in.is_open()) {
-    std::cerr << "Failed to open file for reading.\n";
+void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
+  if (!LgPass::OPTIONS.lgcache) {
     return;
   }
 
-  cut_results_.clear(); // 清空现有数据
-  std::string line;
-
-  in >> opt4_ori_opt_;
-  in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // 忽略到行尾，准备读取下一行
-
-  while (std::getline(in, line)) {
-
-    std::istringstream iss(line);
-    std::vector<int64_t> row;
-    int64_t value;
-
-    while (iss >> value) {
-      row.push_back(value);
-    }
-
-    cut_results_.push_back(row);
+  std::error_code EC;
+  llvm::raw_fd_ostream OS("layer_group_cache." + module::getName(module::getModuleOp()).str() + ".json", EC);
+  if (EC) {
+    llvm::errs() << "Failed to open file for writing: " << EC.message() << "\n";
+    return;
   }
 
-  in.close();
+  json::OStream J(OS, 2);
+  J.objectBegin();
+
+  J.attribute("opt", LgPass::OPTIONS.opt);
+  // Write GroupLayer array
+  J.attributeBegin("GroupLayer");
+  J.arrayBegin();
+
+  for (const auto &it : llvm::enumerate(lg_infos)) {
+    auto group = it.value();
+    if(group.group_ops.size() <= 1){
+      continue;
+    }
+    auto index = it.index();
+    llvm::dbgs() << index <<"\n";
+
+    J.objectBegin();
+    J.attribute("index", index);
+    J.attribute("group_cost", group.group_cost);
+    // Write locs array
+    J.attributeArray("locs", [&] {
+      for (const auto &loc : group.group_ops) {
+        J.value(module::getName(loc));
+      }
+    });
+
+    // Write shape_secs if available
+    J.attributeArray("shape_secs", [&] {
+      J.value(group.shape_secs.nsecs);
+      J.value(group.shape_secs.csecs);
+      J.value(group.shape_secs.dsecs);
+      J.value(group.shape_secs.hsecs);
+      J.value(group.shape_secs.wsecs);
+    });
+
+    J.objectEnd();
+  }
+  J.arrayEnd();
+  J.attributeEnd();
+
+  J.attributeArray("GlobalLayer", [&] {
+    for (const auto &it : llvm::enumerate(lg_infos)) {
+      auto index = it.index();
+      auto layer = it.value();
+      if(layer.group_ops.size() > 1){
+        continue;
+      }
+      J.objectBegin();
+      J.attribute("index", index);
+      J.attribute("group_cost", layer.group_cost);
+      J.attribute("loc", module::getName(layer.group_ops[0]).str());
+      J.objectEnd();
+    }
+  });
+
+
+  J.objectEnd();
+}
+
+
+void GroupMethod::load_lg_results(std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops) {
+  auto bufferOrErr = llvm::MemoryBuffer::getFile("layer_group_cache." + module::getName(module::getModuleOp()).str() + ".json");
+  if (!bufferOrErr) {
+    llvm::errs() << "Failed to open file: " << bufferOrErr.getError().message() << "\n";
+    return;
+  }
+
+  lg_infos.clear();
+
+  std::map<std::string, Operation*> op_map;
+  for (auto op : subnet_ops) {
+    op_map[module::getName(op).str()] = op;
+  }
+  // Parse JSON
+  auto jsonOrErr = json::parse((*bufferOrErr)->getBuffer());
+  if (!jsonOrErr) {
+    llvm::errs() << "Failed to parse JSON: " << toString(jsonOrErr.takeError()) << "\n";
+    return;
+  }
+
+  auto &root = *jsonOrErr;
+  int opt = LgPass::OPTIONS.opt;
+  // Load group layers
+  if (auto *rootObj = root.getAsObject()) {
+    if (auto opt_ = rootObj->getInteger("opt")){
+      opt = *opt_;
+    } else {
+      llvm_unreachable("opt not found");
+    }
+
+    if (auto groupLayerArray = rootObj->getArray("GroupLayer")) {
+      for (const auto &groupObj : *groupLayerArray) {
+        LgInfo lg_info;
+
+        if (auto *groupObj_ = groupObj.getAsObject()) {
+          // Get operation locations
+          if (auto index = groupObj_->getInteger("index")) {
+            lg_info.group_id = *index;
+          }
+          if (auto group_cost = groupObj_->getInteger("group_cost")) {
+            lg_info.group_cost = *group_cost;
+          }
+          if (auto locsArray = groupObj_->getArray("locs")) {
+            for (const auto &loc : *locsArray) {
+              if (auto opName = loc.getAsString()) {
+                // Find operation by name and add to group
+                if (auto op = op_map[opName->str()]) {
+                  lg_info.group_ops.push_back(op);
+                }
+              }
+            }
+          }
+          // Get shape_secs if available
+          if (auto shapeArray = groupObj_->getArray("shape_secs")) {
+            std::vector<int64_t> shape_values;
+            for (const auto &val : *shapeArray) {
+              if (auto num = val.getAsInteger()) {
+                shape_values.push_back(*num);
+              }
+            }
+            if (shape_values.size() == 5) {
+              lg_info.shape_secs.nsecs = shape_values[0];
+              lg_info.shape_secs.csecs = shape_values[1];
+              lg_info.shape_secs.dsecs = shape_values[2];
+              lg_info.shape_secs.hsecs = shape_values[3];
+              lg_info.shape_secs.wsecs = shape_values[4];
+            }
+          }
+        }
+
+        // Add group if valid
+        if (!lg_info.group_ops.empty()) {
+          lg_info.update_group_io(opt);
+          set_group_type(lg_info);
+          lg_infos.push_back(lg_info);
+        }
+      }
+    }
+
+    // Load global layers
+    if (auto globalArray = rootObj->getArray("GlobalLayer")) {
+      for (const auto &globalObj : *globalArray) {
+        LgInfo lg_info;
+        if (auto *globalObj_ = globalObj.getAsObject()) {
+          if (auto index = globalObj_->getInteger("index")) {
+            lg_info.group_id = *index;
+          }
+          if (auto group_cost = globalObj_->getInteger("group_cost")) {
+            lg_info.group_cost = *group_cost;
+          }
+          if (auto opName = globalObj_->getString("loc")) {
+            if (auto op = op_map[opName->str()]) {
+              lg_info.group_ops.push_back(op);
+              lg_info.update_group_io(opt);
+              set_group_type(lg_info);
+              lg_infos.push_back(lg_info);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Sort lg_infos by index if needed
+  std::sort(lg_infos.begin(), lg_infos.end(),
+    [](const LgInfo &a, const LgInfo &b) {
+      return a.group_id < b.group_id;
+  });
+
+
+  for( auto &lg_info : lg_infos){
+    int64_t cost = 0;
+    lg_info.use_cache = true;
+    if(lg_info.group_cost > 0){
+      if (!is_layer_group_valid(lg_info, true, &cost)){
+        llvm_unreachable("group_cost is not valid");
+      }
+    }
+  }
+
 }
 
 /// The pass of layer group searching

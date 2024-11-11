@@ -61,4 +61,9 @@ inline void SetLogFlag(int32_t log_level) { cur_log_level = log_level; }
     });                                                                        \
   } while (0)
 
+#define DEBUG_KV(key, value)                                                    \
+  do {                                                                         \
+      llvm::dbgs() << "; " << key << " = " << value << "\n";                    \
+  } while (0)
+
 } // namespace tpu_mlir

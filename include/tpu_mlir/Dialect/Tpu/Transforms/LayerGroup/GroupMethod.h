@@ -18,7 +18,8 @@
 #include <set>
 #include <fstream>
 #include <filesystem>
-
+#include <llvm/Support/JSON.h>
+#include <llvm/Support/MemoryBuffer.h>
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
@@ -86,9 +87,9 @@ public:
 
   void show_cut_results();
 
-  void dump_cut_results(StringRef func_name);
-  void load_cut_results(StringRef func_name);
-  bool is_cut_results_exists(StringRef func_name);
+  void dump_lg_results(std::vector<LgInfo> &lg_infos);
+  void load_lg_results(std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops);
+  bool is_lg_results_exists();
 
   void ilp_layer_group(LgPassIR *pass_ir);
   void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
@@ -109,7 +110,6 @@ protected:
   int64_t group_cost_;
   int64_t MAX_COST;
   int64_t opt_;
-  int64_t opt4_ori_opt_ = -1;
   RunMode runmode_;
 };
 

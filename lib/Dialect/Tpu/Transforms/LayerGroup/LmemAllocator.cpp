@@ -999,7 +999,6 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   min_total_secs_ = get_split_max_secs(time_step);
   std::vector<int64_t> group_costs;
   std::vector<shape_secs_t> shape_secs_space;
-  std::shared_ptr<CycleCalculator> cycle_calculator_;
   if (module::isCV18xx()) {
     Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
@@ -1010,6 +1009,9 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
 
   if (getenv("SC_BRUTE_FORCE")){
     sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step, group_costs, shape_secs_space, cycle_calculator_);
+  } else if (lg_info.use_cache){
+    group_costs.push_back(lg_info.group_cost);
+    shape_secs_space.push_back(lg_info.shape_secs);
   } else {
     sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step, group_costs, shape_secs_space, cycle_calculator_);
 

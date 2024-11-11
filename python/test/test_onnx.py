@@ -6598,6 +6598,9 @@ def test_all(tester: ONNX_IR_TESTER):
         # exit(1)
     else:
         print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+        for k in error_cases:
+            case_name = k.split(":")[0]
+            print("{} --chip {} --case {} failed".format(sys.argv[0], tester.chip, case_name))
     clean_kmp_files()
     return error_cases
 

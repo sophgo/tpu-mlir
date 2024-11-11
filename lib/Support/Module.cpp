@@ -1416,6 +1416,9 @@ StringRef getName(Operation *op, int index) {
   if (isa<top::NoneOp>(op)) {
     return "NoneOp";
   }
+  if (isa<tpu::YieldOp>(op)) {
+    return "tpu.yield";
+  }
   if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
     return loc.getName();
   }
@@ -1433,7 +1436,11 @@ StringRef getName(Operation *op, int index) {
   return "";
 }
 
-StringRef getName(Value v) { return getLoc(v).getName().strref(); }
+StringRef getName(Value v) {
+  if (isa<NoneType>(v.getType())){
+    return "none";
+  }
+  return getLoc(v).getName().strref(); }
 
 void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
                       std::vector<Value> &outputs) {

@@ -21,8 +21,8 @@ namespace tpu {
 
 struct ValueInfo {
   ValueInfo() {}
-  ValueInfo(void *_op, int _index) : op(_op), index(_index) {}
-  void *op = nullptr;
+  ValueInfo(Operation *_op, int _index) : op(_op), index(_index) {}
+  Operation *op = nullptr;
   int index = -1;
   bool operator<(const ValueInfo &rhs) const {
     if (op < rhs.op) {

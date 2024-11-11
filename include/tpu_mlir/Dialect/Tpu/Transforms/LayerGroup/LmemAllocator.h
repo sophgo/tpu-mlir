@@ -120,6 +120,9 @@ protected:
                              std::shared_ptr<CycleCalculator> cycle_calculator_);
   // mem_buffer_key_t recent_buffer_allocated_;
   // std::list<std::pair<int64_t, int64_t>> avail_lmems_;
+
+  std::shared_ptr<CycleCalculator> cycle_calculator_;
+
 };
 
 std::unique_ptr<LgPass> CreateLocalMemoryAllocationPass();

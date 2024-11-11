@@ -343,8 +343,9 @@ struct LgInfo {
   std::vector<Value> group_outs;
   // all op out tensors
   std::vector<Value> group_op_outs;
-
+  bool use_cache = false;
   shape_secs_t shape_secs;
+  int64_t group_cost;
   // layer group type
   group_type_t type;
   int64_t group_id = 0;
