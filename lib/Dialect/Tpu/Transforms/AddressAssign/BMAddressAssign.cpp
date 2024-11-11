@@ -43,14 +43,17 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   return ret;
 }
 
-bool valueIsRetrun(Value value) {
+bool valuesReturn(Value value) {
   for (auto op : value.getUsers()) {
-    if (op->hasTrait<OpTrait::IsTerminator>())
+    if (op->hasTrait<OpTrait::IsTerminator>()) {
       return true;
+    }
     if (BMAddressAssign::isInPlaceOp(op)) {
-      for (auto v : op->getResults())
-        if (valueIsRetrun(v))
+      for (auto v : op->getResults()) {
+        if (valuesReturn(v)) {
           return true;
+        }
+      }
     }
   }
   return false;
@@ -73,98 +76,6 @@ static int64_t getIOLimit(ModuleOp m) {
     }
   }
   return limit;
-}
-
-static inline bool buffer_must_in_l2(Operation *op) {
-  if (isa<tpu::BufferOp>(op) &&
-      tpu::BufferTypeAttr::get(op->getContext(), tpu::BufferType::L2) ==
-          op->getAttr("buffer_type"))
-    return true;
-  return false;
-}
-
-std::map<ValueInfo, int64_t>
-L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
-  if (!module::isBM1690Family())
-    return {};
-  // assign tensor with access hot
-  // mutableTensorUsage = uses + store
-  // only support L2 -> lmem, lmem  -> L2
-  // TODO: DDR -> L2 -> Lmem (need to insert loadOp)
-  int64_t l2memSize = 1 << 27;
-  auto core_num = module::getCoreNum();
-  const int MAX_CORES = 8;
-  l2memSize = (l2memSize / MAX_CORES) * core_num;
-  struct valueDemand {
-    int64_t size;
-    int64_t hot;
-  };
-  std::map<ValueInfo, valueDemand> valueIntensive;
-  // find all the data
-  for (auto &[value, live] : liveRange) {
-    auto op = (Operation *)value.op;
-    if (isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op))
-      continue;
-    if (buffer_must_in_l2(op) && live.tensor_size > l2memSize)
-      llvm_unreachable("BufferOp with L2 and size > l2memSize");
-
-    auto result = op->getResult(value.index);
-    if (valueIsRetrun(result))
-      continue;
-
-    auto uses = result.getUses();
-    int64_t hot = std::distance(uses.begin(), uses.end()) + 1;
-    if (live.tensor_size <= l2memSize)
-      valueIntensive[value] = valueDemand{live.tensor_size, hot};
-  }
-
-  auto getValues = [](std::map<ValueInfo, valueDemand> &valueMap) {
-    std::vector<ValueInfo> values;
-    values.reserve(valueMap.size());
-    for (auto &[key, v] : valueMap)
-      values.push_back(key);
-    return std::move(values);
-  };
-
-  int64_t start_addr = BM168x::instance()->L2_SRAM_START_ADDR;
-  std::map<ValueInfo, int64_t> L2MemMap;
-  int64_t l2memUsed = 0;
-  do {
-    L2MemMap.clear();
-    l2memUsed = 0;
-    auto ops = getValues(valueIntensive);
-    if (!ops.empty()) {
-      // FitFirstAssign should make sure op's start liverange ascendingly
-      GmemAllocator::sortOpByLiveStart(ops, liveRange);
-      GmemAllocator allocator(L2MemMap, BM168x::ALIGNMENT);
-      l2memUsed = allocator.assignGaddr(ops, liveRange, reuse_addr, start_addr);
-      if (l2memUsed > l2memSize) {
-        // remove the smallest one And try again
-        // Never Remove BufferOp with L2
-        int64_t minTraffic = 0;
-        ValueInfo vMin;
-        for (auto &[k, v] : valueIntensive) {
-          auto op = (Operation *)k.op;
-          if (buffer_must_in_l2(op))
-            continue;
-          if (minTraffic == 0 || minTraffic > v.size * v.hot) {
-            vMin = k;
-            minTraffic = v.size * v.hot;
-          }
-        }
-        valueIntensive.erase(vMin);
-      }
-    }
-  } while (l2memUsed > l2memSize);
-
-  for (auto &[value, live] : liveRange) {
-    auto op = (Operation *)value.op;
-    if (buffer_must_in_l2(op) && L2MemMap.count(value) == 0)
-      llvm_unreachable("BufferOp with MUST_L2 and not in L2MemMap");
-  }
-
-  LLVM_DEBUG(llvm::dbgs() << "L2Memory usage: " << l2memUsed / 1024 << " KB\n");
-  return std::move(L2MemMap);
 }
 
 std::set<ValueInfo> _8ChannelAssign(std::map<ValueInfo, TensorLive> &liveRange,
@@ -419,97 +330,140 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
   return;
 }
 
+void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
+  if (!module::isBM1690Family()) {
+    return;
+  }
+  int64_t alignment = BM168x::ALIGNMENT;
+  Builder builder(m.getContext());
+  std::map<ValueInfo, TensorLive> liveRange;
+  std::map<Operation *, uint32_t> ops_loc;
+  std::vector<ValueInfo> common_ops;
+  std::vector<ValueInfo> target_ops;
+  std::vector<ValueInfo> inplace_ops;
+  std::vector<Operation *> all_ops;
+  uint32_t loc = 0;
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk<WalkOrder::PreOrder>([&](Operation *op) {
+      ops_loc[op] = loc;
+      ++loc;
+      if (isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, func::FuncOp,
+              func::CallOp>(op) ||
+          module::isOpInGroup(op)) {
+        return;
+      }
+      if (module::isOpInCoreParallel(op) && !isa<tpu::BufferOp>(op)) {
+        return;
+      }
+      all_ops.emplace_back(op);
+    });
+  }
+  // update liverange from bottom to top.
+  for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); ++iter) {
+    auto op = *iter;
+    if (isa<ReturnOp, tpu::YieldOp>(op)) {
+      updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops, inplace_ops,
+                             alignment);
+    }
+    int n = op->getNumResults();
+    for (int i = 0; i < n; i++) {
+      if (module::isNone(op->getResult(i))) {
+        continue;
+      }
+      updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops,
+                             alignment);
+    }
+  }
+
+  for (auto &info : common_ops) {
+    auto v = ((Operation *)info.op)->getResult(info.index);
+    if (valuesReturn(v)) {
+      continue;
+    }
+    target_ops.emplace_back(info);
+  }
+  int64_t l2memSize = BM168x::L2_SRAM_SIZE;
+  auto core_num = module::getCoreNum();
+  const int MAX_CORES = 8;
+  l2memSize = (l2memSize / MAX_CORES) * core_num;
+
+  int64_t start_addr = BM168x::L2_SRAM_START_ADDR;
+  GmemAllocL2SRAM allocator(BM168x::ALIGNMENT, l2memSize);
+  int64_t l2memUsed =
+      allocator.assignGaddr(target_ops, liveRange, true, start_addr);
+  if (l2memUsed > l2memSize) {
+    llvm_unreachable("L2 mem allocate failed");
+  }
+  auto L2MemMap = allocator.getAddrMap();
+  for (auto &[info, addr] : L2MemMap) {
+    auto op = (Operation *)info.op;
+    auto v = op->getResult(info.index);
+    module::setAddress(v, addr);
+  }
+}
+
 void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(m.getContext());
-  // assign weight first
+  // ========================= assign weight first ============================
   auto addr = start_addr;
-  for (auto func : m.getOps<FuncOp>()) {
-    auto mode = getRunMode(func);
-    if (mode != RunMode::TPU_STATIC) {
-      continue;
+  bool array_static[2] = {true, false};
+  for (auto is_static : array_static) {
+    if (!is_static) {
+      module::setDynamicOffset(m, addr - start_addr);
     }
-    func.walk([&](top::WeightOp op) { // static
-      const auto out_value = op.getOutput();
-      auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
-      /// consider 4N/2N storage mode
-      /// store_mode, align_num, dtype_size
-      std::map<STORE_MODE_T, std::pair<int64_t, int32_t>> stmode_map = {
-          {STORE_MODE_1N, {1l, elm_bits}},
-          {STORE_MODE_2N, {2l, sizeof(int32_t) * 8}},
-          {STORE_MODE_4N, {4l, sizeof(int32_t) * 8}},
-      };
-      auto stmode = STORE_MODE_1N;
-      if (op.getStoreMode().has_value()) {
-        stmode = llvm::StringSwitch<STORE_MODE_T>(op.getStoreModeAttr())
-                     .Case("1N", STORE_MODE_1N)
-                     .Case("2N", STORE_MODE_2N)
-                     .Case("4N", STORE_MODE_4N)
-                     .Default(STORE_MODE_1N);
+    for (auto func : m.getOps<FuncOp>()) {
+      auto mode = getRunMode(func);
+      if (is_static && mode != RunMode::TPU_STATIC) {
+        continue;
+      } else if (!is_static && mode == RunMode::TPU_STATIC) {
+        continue;
       }
-      assert((stmode == STORE_MODE_1N) ||
-             (stmode == STORE_MODE_2N && elm_bits == 16) ||
-             (stmode == STORE_MODE_4N && elm_bits == 8));
+      func.walk([&](top::WeightOp op) { // static
+        const auto out_value = op.getOutput();
+        auto elm_bits =
+            module::getStorageType(out_value).getIntOrFloatBitWidth();
+        /// consider 4N/2N storage mode
+        /// store_mode, align_num, dtype_size
+        std::map<STORE_MODE_T, std::pair<int64_t, int32_t>> stmode_map = {
+            {STORE_MODE_1N, {1l, elm_bits}},
+            {STORE_MODE_2N, {2l, sizeof(int32_t) * 8}},
+            {STORE_MODE_4N, {4l, sizeof(int32_t) * 8}},
+        };
+        auto stmode = STORE_MODE_1N;
+        if (op.getStoreMode().has_value()) {
+          stmode = llvm::StringSwitch<STORE_MODE_T>(op.getStoreModeAttr())
+                       .Case("1N", STORE_MODE_1N)
+                       .Case("2N", STORE_MODE_2N)
+                       .Case("4N", STORE_MODE_4N)
+                       .Default(STORE_MODE_1N);
+        }
+        assert((stmode == STORE_MODE_1N) ||
+               (stmode == STORE_MODE_2N && elm_bits == 16) ||
+               (stmode == STORE_MODE_4N && elm_bits == 8));
 
-      module::setAddress(out_value, addr);
-      int64_t n, c, h, w;
-      module::getNCHW(out_value, n, c, h, w);
-      int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
-                      stmode_map.at(stmode).second * c * h * w;
-      /// consider int4 storage
-      bytes = ceiling_func(bytes, 8l);
-      addr = align_up(addr + bytes, alignment);
-    });
-  }
-  module::setDynamicOffset(m, addr - start_addr);
-  for (auto func : m.getOps<FuncOp>()) {
-    auto mode = getRunMode(func);
-    if (mode == RunMode::TPU_STATIC) {
-      continue;
+        module::setAddress(out_value, addr);
+        int64_t n, c, h, w;
+        module::getNCHW(out_value, n, c, h, w);
+        int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
+                        stmode_map.at(stmode).second * c * h * w;
+        /// consider int4 storage
+        bytes = ceiling_func(bytes, 8l);
+        addr = align_up(addr + bytes, alignment);
+      });
     }
-    func.walk([&](top::WeightOp op) { // dynamic
-      const auto out_value = op.getOutput();
-      auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
-      /// consider 4N/2N storage mode
-      /// store_mode, align_num, dtype_size
-      std::map<STORE_MODE_T, std::pair<int64_t, int32_t>> stmode_map = {
-          {STORE_MODE_1N, {1l, elm_bits}},
-          {STORE_MODE_2N, {2l, sizeof(int32_t) * 8}},
-          {STORE_MODE_4N, {4l, sizeof(int32_t) * 8}},
-      };
-      auto stmode = STORE_MODE_1N;
-      if (op.getStoreMode().has_value()) {
-        stmode = llvm::StringSwitch<STORE_MODE_T>(op.getStoreModeAttr())
-                     .Case("1N", STORE_MODE_1N)
-                     .Case("2N", STORE_MODE_2N)
-                     .Case("4N", STORE_MODE_4N)
-                     .Default(STORE_MODE_1N);
-      }
-      assert((stmode == STORE_MODE_1N) ||
-             (stmode == STORE_MODE_2N && elm_bits == 16) ||
-             (stmode == STORE_MODE_4N && elm_bits == 8));
-
-      module::setAddress(out_value, addr);
-      int64_t n, c, h, w;
-      module::getNCHW(out_value, n, c, h, w);
-      int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
-                      stmode_map.at(stmode).second * c * h * w;
-      /// consider int4 storage
-      bytes = ceiling_func(bytes, 8l);
-      addr = align_up(addr + bytes, alignment);
-    });
   }
   module::setCoeffAddr(m, start_addr);
   module::setCoeffSize(m, addr - start_addr);
+  // ============================ assign l2sram to activation
+  // =================================
+  assignL2SRAM(m);
 
-  // assign activation
-  if (module::isBM1688() || module::isBM1690Family()) {
+  // ============================ assign ddr to activation
+  // =====================================
+  if (BM168x::SUPPORT_MEM_TAG) {
     addr = BM168x::CTX_START_ADDR;
-  } else if (module::isSG2380()) {
-    addr = SG2380::CTX_START_ADDR;
-  } else if (module::isMARS3()) {
-    addr = MARS3::CTX_START_ADDR;
   }
   start_addr = addr;
   uint32_t loc = 0;
@@ -532,7 +486,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       // The buffer Op will insert to parallel Op when needed.
       if (module::isOpInCoreParallel(op) && !isa<tpu::BufferOp>(op)) {
         return;
-      };
+      }
       all_ops.emplace_back(op);
     });
   }
@@ -545,22 +499,13 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
     int n = op->getNumResults();
     for (int i = 0; i < n; i++) {
-      if (module::isNone(op->getResult(i))) {
+      auto v = op->getResult(i);
+      if (module::isNone(v) || 0 != module::getAddress(v)) {
         continue;
       }
       updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops,
                              alignment);
     }
-  }
-  // L2MEM
-  auto l2memMap = L2MemAssign(liveRange, reuse_addr);
-  if (!l2memMap.empty()) {
-    std::vector<ValueInfo> values;
-    values.reserve(common_ops.size());
-    for (auto v : common_ops)
-      if (l2memMap.count(v) == 0)
-        values.push_back(v);
-    common_ops.swap(values);
   }
 
   // 8 channel
@@ -601,20 +546,11 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                             << gmemUsed / (1 << 20) << " MB\n");
   }
 
-  // merge l2memMap to gaddrMap
-  for (auto &[k, v] : l2memMap) {
-    gaddrMap[k] = v;
-  }
-
-  // 1.set common op address
-  std::vector<ValueInfo> group_ops;
   for (auto &op_value : gaddrMap) {
     auto op = static_cast<Operation *>(op_value.first.op);
     module::setAddress(op->getResult(op_value.first.index), op_value.second);
-    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
-      group_ops.emplace_back(op_value.first);
-    }
   }
+
   // update io address by basic and io_tag
   if (!module::isAddrMode(module::AddrMode::IO_ALONE)) {
     updateAddressByAddrMode(m, start_addr, addr);
@@ -683,10 +619,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
-  // 3.set group op address
-  for (auto &op_value : group_ops) {
-    auto op = static_cast<Operation *>(op_value.op);
-    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
+  // 3. set group op address
+  for (auto func : m.getOps<FuncOp>()) {
+    for (auto gOp : func.getOps<tpu::GroupOp>()) {
       auto &last_op = gOp.getBody().back().back();
       auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
       assert(yield_op);
@@ -698,6 +633,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       }
     }
   }
+
   // 4. populate groupParallel address to its regions.
   for (auto func : m.getOps<FuncOp>()) {
     for (auto groupParallelOp : func.getOps<tpu::GroupParallelOp>()) {

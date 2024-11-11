@@ -319,5 +319,115 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
   }
   return total_consumption;
 }
+
+static std::map<ValueInfo, int64_t> emptyMap;
+GmemAllocL2SRAM::GmemAllocL2SRAM(uint32_t aligment, int64_t l2_size)
+    : GmemAllocatorMethod(emptyMap, aligment) {
+  name_ = "L2SRamAssign";
+  l2sram_size = l2_size;
+}
+
+int64_t GmemAllocL2SRAM::assignGaddr(std::vector<ValueInfo> &ops,
+                                     std::map<ValueInfo, TensorLive> &liveRange,
+                                     bool neuronMemoryReuse,
+                                     int64_t baseGaddr) {
+  // 0:must allocate l2sram; 1: only one use value; 2: other
+  std::list<std::shared_ptr<OpAddr>> op_list[3];
+  std::list<std::shared_ptr<OpAddr>> allocated_op_list;
+  assert(neuronMemoryReuse);
+  for (auto &info : ops) {
+    auto op_ = (Operation *)info.op;
+    bool is_must = isa<tpu::BufferOp>(op_);
+    uint32_t op_size = liveRange[info].tensor_size;
+    if (op_size > l2sram_size) {
+      if (!is_must) {
+        continue;
+      }
+      UNREACHABLE_OP("L2SRam is smaller than op must", op_);
+    }
+    auto is_continuous = false;
+    if (op_->getResult(info.index).hasOneUse()) {
+      auto out = op_->getResult(info.index);
+      auto user = *out.getUsers().begin();
+      if (op_->getNextNode() == user) {
+        is_continuous = true;
+      }
+    }
+    std::shared_ptr<OpAddr> op_addr = std::make_shared<OpAddr>(
+        info, op_size, liveRange[info].start, liveRange[info].end);
+    if (is_must) {
+      op_list[0].emplace_back(op_addr);
+    } else if (is_continuous) {
+      op_list[1].emplace_back(op_addr);
+    } else {
+      op_list[2].emplace_back(op_addr);
+    }
+  }
+  // sort by tensor size
+  for (auto &list : op_list) {
+    list.sort([](std::shared_ptr<OpAddr> &a, std::shared_ptr<OpAddr> &b) {
+      return a->size >= b->size;
+    });
+  }
+  int64_t total_consumption = 0;
+  int64_t totalNeuronSize = 0;
+  for (auto &list : op_list) {
+    for (auto &op_addr : list) {
+      int64_t prev_offset = 0;
+      int64_t best_offset = -1;
+      int64_t smallest_gap = std::numeric_limits<int64_t>::max();
+      for (auto &allocated_op_addr : allocated_op_list) {
+        uint32_t max_first_pos =
+            std::max(op_addr->first_pos, allocated_op_addr->first_pos);
+        uint32_t min_last_pos =
+            std::min(op_addr->end_pos, allocated_op_addr->end_pos);
+        if (max_first_pos < min_last_pos) {
+          int64_t gap = allocated_op_addr->start - prev_offset;
+          if (gap >= op_addr->size && gap < smallest_gap) {
+            smallest_gap = gap;
+            best_offset = prev_offset;
+          }
+          prev_offset = std::max(prev_offset, allocated_op_addr->end);
+        }
+      }
+      if (best_offset == -1) {
+        best_offset = prev_offset;
+      }
+      op_addr->start = best_offset;
+      op_addr->end = op_addr->start + op_addr->size;
+      if (op_addr->end > l2sram_size) {
+        // op can't allocate l2sram
+        continue;
+      }
+      total_consumption = std::max(total_consumption, op_addr->end);
+      auto iter =
+          std::find_if(allocated_op_list.begin(), allocated_op_list.end(),
+                       [&op_addr](std::shared_ptr<OpAddr> &p) {
+                         return p->start >= op_addr->start;
+                       });
+      allocated_op_list.emplace(iter, op_addr);
+      gaddrMap_[op_addr->op] = op_addr->start;
+      totalNeuronSize += op_addr->size;
+    }
+  }
+
+  int32_t reuseRate = 0;
+  if (totalNeuronSize) {
+    reuseRate = (int32_t)((totalNeuronSize - total_consumption) * 100 /
+                          totalNeuronSize);
+  }
+
+  LLVM_DEBUG(llvm::errs() << "GmemAllocMethod:" << name_.c_str()
+                          << "  Gmem Used: " << total_consumption << "/"
+                          << totalNeuronSize
+                          << ", gmem reused rate:" << reuseRate << "%\n";);
+
+  for (auto &[addr, v] : gaddrMap_) {
+    // update gaddr map by adding base gaddr.
+    v += baseGaddr;
+  }
+  return total_consumption;
+}
+
 } // namespace tpu
 } // namespace tpu_mlir

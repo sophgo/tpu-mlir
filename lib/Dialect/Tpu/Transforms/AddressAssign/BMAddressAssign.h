@@ -20,7 +20,6 @@ class BMAddressAssign {
 public:
   BMAddressAssign() {}
   void assign(ModuleOp &module, bool reuse_addr);
-
   static bool isInPlaceOp(Operation *op);
 
 protected:
@@ -39,6 +38,7 @@ protected:
                                int64_t addr_limit);
   std::vector<uint32_t>
   getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
+  void assignL2SRAM(ModuleOp &module);
 
 protected:
   StringRef chip;

@@ -152,6 +152,7 @@ protected:
     IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
     IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
     IO_ADDR[4] = GMEM_START_ADDR | TAG_IO4;
+    SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_sg2380.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;

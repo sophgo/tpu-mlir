@@ -1772,7 +1772,7 @@ void GroupMethod::cut_this_group_is_better(
             CreateIlpLgInfo(sortOpsByOtherOpsOrder(group_ops, tmp_ops),
                             STRATEGY_SEARCH_CONV_CUT);
         left_sub_group->base_solver(pass_ir, cycle_calculator_);
-        if (left_sub_group->group_cycle > 0) { //确保group成功才行
+        if (left_sub_group->group_cycle > 0) { // 确保group成功才行
           left_sub_group_cost = left_sub_group->group_cycle;
         }
       }
@@ -1927,7 +1927,7 @@ static void l2m_process(ilp_LgInfo &sub_group,
     int parallel_core_num = core_num_per_pipe0;
     int min = itr.load_ts;
     for (int j = 1; j < grp_time_step.size();
-         j++) { //遍历除第1个流水外的其他流水，第1个流水最长
+         j++) { // 遍历除第1个流水外的其他流水，第1个流水最长
       parallel_core_num += grp_time_step[j]->ncdhw_steps.size();
       for (auto itr3 = grp_time_step[j]->vec_l2m_value_info.begin();
            itr3 != grp_time_step[j]->vec_l2m_value_info.end(); ++itr3) {
@@ -1997,14 +1997,14 @@ static void l2m_process(ilp_LgInfo &sub_group,
       std::map<int, std::vector<l2m_value_info>> map_l2m_free;
       bool failed = false;
       for (int m = -1; m < ts_count; m++) {
-        //处理在该时隙需要释放的l2m tensor
+        // 处理在该时隙需要释放的l2m tensor
         if (map_l2m_free.find(m) != map_l2m_free.end()) {
           for (auto it3 : map_l2m_free[m]) {
             auto name = module::getName(it3.value).str();
             l2mem_alloc_ptr->free(it3.slice_idx, name);
           }
         }
-        //处理在该时隙需要分配的l2m tensor
+        // 处理在该时隙需要分配的l2m tensor
         if (map_l2m_load.find(m) != map_l2m_load.end()) {
           for (auto it3 : map_l2m_load[m]) {
             if (std::find(value_l2m.begin(), value_l2m.end(), it3.value) ==
@@ -2015,7 +2015,7 @@ static void l2m_process(ilp_LgInfo &sub_group,
               if (failed) {
                 break;
               }
-              //记录当前分配的l2m tensor待释放的时隙
+              // 记录当前分配的l2m tensor待释放的时隙
               if (map_l2m_free.find(it3.free_ts) == map_l2m_free.end()) {
                 map_l2m_free[it3.free_ts] = std::vector<l2m_value_info>();
               }
@@ -2219,7 +2219,7 @@ ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
   while (true) {
     if (++slice_try_count > max_slice_cut_count) {
       LAYER_GROUP_LOG_DEBUG_BLOCK({ llvm::outs() << "layer group fail\n"; });
-      return false; //设为global layer
+      return false; // 设为global layer
     }
     int64_t secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.dsecs *
                    shape_secs.hsecs * shape_secs.wsecs;
@@ -2302,7 +2302,7 @@ ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
         }
         if (!ret) {
           if (sub_group._cur_strategy != STRATEGY_SLICE_CUT_FIRST) {
-            return false; //里面会校验内存是否满足，需要切割
+            return false; // 里面会校验内存是否满足，需要切割
           } else {
             break;
           }
@@ -2354,7 +2354,7 @@ ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
                 "global_info", "ilp_timeStep->mem_alloc fail, for core_id:" +
                                    std::to_string(core_id));
           }
-          break; //分配内存失败则可以考虑切成更小片
+          break; // 分配内存失败则可以考虑切成更小片
         }
 
         int group_cycle, group_cycle_diff;
@@ -2514,7 +2514,7 @@ void ilp_LgInfo::base_solver(
                                   is_fail_op_in_grp, cycle_calculator_);
   if (!ret) {
     if (_cur_strategy == STRATEGY_SEARCH_CONV_CUT) {
-      return; //搜索模式下不再嵌套group
+      return; // 搜索模式下不再嵌套group
     }
     if (fail_op && fail_process_mode == 0) {
       LAYER_GROUP_LOG_DEBUG_BLOCK({
@@ -2737,7 +2737,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   }
 
   auto base_groups3 = expandAllNestedLgInfo(base_groups2);
-  try_cut_some_group(pass_ir, *base_groups3); //优先大的group，放到后面去处理
+  try_cut_some_group(pass_ir, *base_groups3); // 优先大的group，放到后面去处理
 
   auto base_groups4 = expandAllNestedLgInfo(*base_groups3);
   for (int64_t i = 0, grp_num = base_groups4->size(); i < grp_num; i++) {

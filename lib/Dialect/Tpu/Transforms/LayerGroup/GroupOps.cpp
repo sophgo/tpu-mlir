@@ -450,7 +450,7 @@ void GroupOps::buildMlir_for_opt3() {
   for (int64_t i = 0; i < group_num; i++) {
     if (lg_infos[i].group_ops.size() > 1) {
       node_info tmp(&lg_infos[i]);
-      tmp.show_info("add group");
+      // tmp.show_info("add group");
       nodes.push_back(tmp);
       all_local_ops.insert(all_local_ops.begin(), lg_infos[i].group_ops.begin(),
                            lg_infos[i].group_ops.end());
@@ -1101,8 +1101,8 @@ void GroupOps::buildMlir_for_opt3() {
         group_loc.dump();
 #endif
         builder.create<tpu::YieldOp>(group_loc, new_stores);
-        LOG(INFO) << "groupOp.dump: ";
-        groupOp.dump();
+        // LOG(INFO) << "groupOp.dump: ";
+        // groupOp.dump();
         current_op_ = groupOp; //下一个group插入在当前group后
       }
       if (!one_grp) {

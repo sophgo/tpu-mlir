@@ -81,13 +81,12 @@ public:
                           std::map<ValueInfo, TensorLive> &liveRange);
 
   // static uint32_t getTensorGmemSize(Value &tensor, uint32_t aligment_);
-
-public:
-  std::map<ValueInfo, int64_t> gaddrMap_;
+  const std::map<ValueInfo, int64_t> &getAddrMap() const { return gaddrMap_; }
 
 protected:
   std::string name_;
   uint32_t aligment_;
+  std::map<ValueInfo, int64_t> gaddrMap_;
   std::vector<std::list<GmemBlock>> album_;
 };
 
@@ -127,6 +126,37 @@ public:
   int64_t assignGaddr(std::vector<ValueInfo> &ops,
                       std::map<ValueInfo, TensorLive> &liveRange,
                       bool neuronMemoryReuse, int64_t baseGaddr) override;
+};
+
+class GmemAllocL2SRAM : public GmemAllocatorMethod {
+public:
+  struct OpAddr {
+    ValueInfo op;
+    int64_t start = 0;
+    int64_t end = 0;
+    uint32_t size = 0;
+    uint32_t first_pos = 0;
+    uint32_t end_pos = 0;
+
+    OpAddr(ValueInfo _op, uint32_t _size, uint32_t _first_pos,
+           uint32_t _end_pos) {
+      op = _op;
+      size = _size;
+      first_pos = _first_pos;
+      end_pos = _end_pos;
+    }
+  };
+  // typedef std::list<std::shared_ptr<OpAddr>> LineSet;
+
+public:
+  GmemAllocL2SRAM(uint32_t aligment, int64_t l2sram_size);
+
+  int64_t assignGaddr(std::vector<ValueInfo> &ops,
+                      std::map<ValueInfo, TensorLive> &liveRange,
+                      bool neuronMemoryReuse, int64_t baseGaddr) override;
+
+private:
+  int64_t l2sram_size;
 };
 
 class GmemAllocatorMethodFactory {

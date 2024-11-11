@@ -67,7 +67,7 @@ class MODEL_RUN(object):
         self.disable_thread = disable_thread
         self.debug = debug
         self.model_type = chip_support[self.chip][-1]
-        self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
+        self.command = f"run_model.py {model_name} --chip {chip} --mode {mode} --num_core {num_core}"
         self.num_core = num_core
         self.use_cuda = use_cuda
 

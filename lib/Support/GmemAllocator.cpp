@@ -110,7 +110,8 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
     llvm::outs() << "GmemAllocator use " << alloc_methods[idx]->getName()
                  << "\n";
   });
-  gaddrMap_.swap(alloc_methods[idx]->gaddrMap_);
+  auto addrMap = alloc_methods[idx]->getAddrMap();
+  gaddrMap_.swap(addrMap);
   return min_gmem_size;
 }
 

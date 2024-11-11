@@ -119,6 +119,7 @@ protected:
     IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
     IO_ADDR[4] = GMEM_START_ADDR | TAG_IO4;
     LIB_BACKEND_NAME = "libbackend_1688.so";
+    SUPPORT_MEM_TAG = true;
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;
