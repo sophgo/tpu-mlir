@@ -18,8 +18,12 @@ struct pad_info {
 LogicalResult tpu::PadOp::init(InferenceParameter &p) {
   auto info = new pad_info();
   std::vector<int64_t> in_shape = module::getShape(getInput());
-  i64_array_t pads = module::getI64Array(getPaddings());
-  auto ret = pad_reset(in_shape, *pads, info->shape_4, info->pads_4);
+  i64_array_t pads_origin = module::getI64Array(getPaddings());
+  std::vector<int64_t> pads(in_shape.size() * 2, 0);
+  if (module::isNone(getPaddingsT())) {
+    pads = *pads_origin;
+  }
+  auto ret = pad_reset(in_shape, pads, info->shape_4, info->pads_4);
   if (ret == false) {
     UNREACHABLE_THIS("Not Implemented");
   }
@@ -47,6 +51,19 @@ void tpu::PadOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
+  if (!module::isNone(getPaddingsT())){
+    std::vector<int64_t> in_shape = module::getShape(getInput());
+    int pad_dim = in_shape.size() * 2;
+    std::vector<int64_t> pads(pad_dim, 0);
+    for (int i = 0; i < pad_dim; i++) {
+      pads[i] = p.inputs[1][i];
+    }
+    auto ret = pad_reset(in_shape, pads, p_info->shape_4, p_info->pads_4);
+    if (ret == false) {
+      dump();
+      UNREACHABLE_THIS("Not Implemented");
+    }
+  }  
   std::vector<int> pads(p_info->pads_4.begin(), p_info->pads_4.end());
   int64_t in = p_info->shape_4[0];
   int64_t ic = p_info->shape_4[1];
@@ -284,6 +301,27 @@ void tpu::PadOp::assign_fw_param(void *param) {
         module::getAddress(getBuffer()) + buffer_offset;
   }
   memcpy(param, &fw_pad_layer_param, sizeof(fw_pad_layer_param_t));
+}
+
+mlir::Type tpu::PadOp::type_verify(uint64_t opd_idx,
+                                              TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 1) {
+    // indices
+    auto opd = op->getOperand(1);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    auto stype = module::getStorageType(opd);
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwidth = 32;
+    return Builder(op).getIntegerType(bitwidth);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
 }
 
 bool tpu::PadOp::support_multi_core() { return false; }

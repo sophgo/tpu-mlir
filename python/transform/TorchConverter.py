@@ -1810,6 +1810,7 @@ class TorchConverter(BaseConverter):
         assert (mode in ("constant", "reflect", "edge"))
         new_op = top.PadOp(self.unranked_type,
                            op,
+                           self.mlir.none_op,
                            paddings=pads,
                            mode=StringAttr.get(mode),
                            val=val,

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include <algorithm>
 using namespace tpu_mlir::backend;
 
 void tpu::SliceOp::codegen_global_bm1684x() {
@@ -174,7 +175,7 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
       param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
     } else {
       flag = true;
-      param.common.end_index[i] = ends->at(i);
+      param.common.end_index[i] = std::min(ends->at(i), input_shape.at(i));
     }
     if (!param.end_as_tensor && input_shape[i] == output_shape[i] ||
         j == axis_dims && axis_dims != 0 ||

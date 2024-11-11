@@ -51,18 +51,19 @@ int64_t tpu::PadOp::dyn_codegen_global_bm1684x(void *buffer) {
   std::vector<int64_t> shape_4;
   std::vector<int64_t> pads_4;
   std::vector<int64_t> shape = module::getShape(getInput());
-  i64_array_t pads = module::getI64Array(getPaddings());
-  auto ret = pad_reset(shape, *pads, shape_4, pads_4);
-  if (ret == false) {
-    UNREACHABLE_THIS("Not Implemented");
-  }
-  std::vector<int64_t> in_shape(shape_4.begin(), shape_4.end());
-  std::vector<int64_t> out_shape(shape_4.begin(), shape_4.end());
   pad_param_t param = {0};
-  for (int i = 0; i < 4; i++) {
-    param.pad[i][0] = pads_4[i];
-    param.pad[i][1] = pads_4[i + 4];
-    out_shape[i] += (pads_4[i] + pads_4[i + 4]);
+  if (module::isNone(getPaddingsT())) {
+    i64_array_t pads = module::getI64Array(getPaddings());
+    auto ret = pad_reset(shape, *pads, shape_4, pads_4);
+    if (ret == false) {
+      UNREACHABLE_THIS("Not Implemented");
+    }
+    for (int i = 0; i < 4; i++) {
+      param.pad[i][0] = pads_4[i];
+      param.pad[i][1] = pads_4[i + 4];
+    }
+  } else {
+    param.is_dynamic = true;
   }
   param.type = (int)getMode();
   param.constant = getVal().convertToDouble();

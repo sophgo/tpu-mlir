@@ -17,7 +17,7 @@ void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
   auto mode = tpu::symbolizePaddingMode(op.getMode())
                   .value_or(tpu::PaddingMode::constant);
   op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
-  lowering_common_f32<tpu::PadOp>(rewriter, op, 4);
+  lowering_common_f32<tpu::PadOp>(rewriter, op, 5);
 }
 
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
@@ -26,6 +26,11 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   double in_scale;
   std::vector<Value> operands;
   operands.push_back(op.getInput());
+  if (!module::isNone(op.getPaddingsT())){
+    operands.push_back(op.getPaddingsT());
+  }else{
+    operands.push_back(module::getNoneOp(op));
+  }
   operands.push_back(module::getNoneOp(op));
   operands.push_back(module::getNoneOp(op));
   operands.push_back(module::getNoneOp(op));

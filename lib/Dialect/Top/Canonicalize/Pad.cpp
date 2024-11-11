@@ -22,7 +22,8 @@ struct TopFusePad : public OpRewriterPatternEx<PadOp> {
 
     if (op.getInput().getType().dyn_cast<TensorType>().getShape().size() < 3)
       return failure();
-
+    if (!module::isNone(op.getPaddingsT()))
+      return failure();
     auto paddings = module::getI64Array(op.getPaddings());
     // without batch or channel padding
     int tensor_dim = paddings.get()->size() / 2;

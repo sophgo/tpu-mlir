@@ -964,6 +964,7 @@ def Top_PadOp:Top_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    AnyTensorOrNone:$paddingsT,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
     PaddingModeAttr:$mode

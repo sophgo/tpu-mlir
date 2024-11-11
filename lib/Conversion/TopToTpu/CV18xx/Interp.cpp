@@ -70,7 +70,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
       rewriter.getNamedAttr("mode", rewriter.getStringAttr("edge")));
   auto pad_type = module::getTypeLike(op.getInput(), shape_after_pad);
   auto pad_op = rewriter.create<top::PadOp>(
-      loc, pad_type, ValueRange{op.getInput()}, pad_attrs);
+      loc, pad_type, ValueRange{op.getInput(), module::getNoneOp(op)}, pad_attrs);
 
   // insert conv op
   int64_t ic = shape_after_pad[1];

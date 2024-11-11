@@ -60,6 +60,7 @@ LargePadConvPattern::matchAndRewriteImpl(tpu::Conv2DOp op,
     operands_pad.push_back(module::getNoneOp(op));
     operands_pad.push_back(module::getNoneOp(op));
     operands_pad.push_back(module::getNoneOp(op));
+    operands_pad.push_back(module::getNoneOp(op));
     std::vector<NamedAttribute> attrs_pad;
     // pad_paddings[0/1/4/5]: n/c paddings for new pad layer, are always 0
     // pad_paddings[2/3/6/7]: h/w paddings for new pad layer

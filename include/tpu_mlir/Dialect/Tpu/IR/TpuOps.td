@@ -2159,7 +2159,8 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
 }
 
 def Tpu_PadOp:Tpu_Op<"Pad", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
@@ -2170,6 +2171,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$paddingsT,
     // for cv18xx reflect mode
     AnyTensorOrNone:$left_select,
     AnyTensorOrNone:$right_select,

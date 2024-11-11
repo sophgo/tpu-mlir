@@ -110,6 +110,9 @@ void MulLowering::LoweringBF16(PatternRewriter &rewriter, top::MulOp op) const {
 }
 
 void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f16<tpu::MulOp>(rewriter, op);
 }
 

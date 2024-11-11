@@ -27,6 +27,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   operands.push_back(op.getInput());
   if (m == tpu::PaddingMode::reflect) {
     // pad reflect
+    operands.push_back(module::getNoneOp(op));
     auto nofDims = module::getShape(op.getInput()).size();
     auto pads = module::getI64Array(op.getPaddings());
     int32_t count = 0;
@@ -57,6 +58,11 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
       operands.push_back(selectOp);
     }
   } else {
+    if (!module::isNone(op.getPaddingsT())){
+      operands.push_back(op.getPaddingsT());
+    }else{
+      operands.push_back(module::getNoneOp(op));
+    }
     operands.push_back(module::getNoneOp(op));
     operands.push_back(module::getNoneOp(op));
   }
@@ -74,6 +80,7 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
   operands.push_back(op.getInput());
   if (m == tpu::PaddingMode::reflect) {
     // pad reflect
+    operands.push_back(module::getNoneOp(op));
     auto nofDims = module::getShape(op.getInput()).size();
     auto pads = module::getI64Array(op.getPaddings());
     int32_t count = 0;
@@ -106,6 +113,11 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
       operands.push_back(selectOp.clone_bf16(op));
     }
   } else {
+    if (!module::isNone(op.getPaddingsT())){
+      operands.push_back(op.getPaddingsT());
+    }else{
+      operands.push_back(module::getNoneOp(op));
+    }
     operands.push_back(module::getNoneOp(op));
     operands.push_back(module::getNoneOp(op));
   }

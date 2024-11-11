@@ -2405,7 +2405,7 @@ def pad(input: Tensor,
         "mode": Attr(method, "string"),
     }
     output = Tensor(dtype=input.dtype, name=out_name)
-    TpuLang.insert_op("top.Pad", inputs=[input], outputs=[output], params=attr)
+    TpuLang.insert_op("top.Pad", inputs=[input, None], outputs=[output], params=attr)
     return output
 
 @auto_name()

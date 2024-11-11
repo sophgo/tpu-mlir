@@ -1032,6 +1032,7 @@ typedef struct {
   int pad[4][2];
   int type;
   float constant;
+  bool is_dynamic;
 } pad_param_t;
 
 typedef struct {

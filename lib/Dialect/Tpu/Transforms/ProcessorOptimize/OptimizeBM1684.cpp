@@ -313,6 +313,7 @@ protected:
       operands_pad.push_back(module::getNoneOp(op));
       operands_pad.push_back(module::getNoneOp(op));
       operands_pad.push_back(module::getNoneOp(op));
+      operands_pad.push_back(module::getNoneOp(op));
       llvm::SmallVector<int64_t> pad_paddings(8, 0);
       pad_paddings[2] = pad_top;
       pad_paddings[6] = pad_bottom;

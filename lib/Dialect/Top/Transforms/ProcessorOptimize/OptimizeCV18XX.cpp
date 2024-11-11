@@ -423,6 +423,7 @@ protected:
     auto padOp = rewriter.create<top::PadOp>(loc, new_type,
                                              ValueRange{
                                                  op.getInput(),
+                                                 module::getNoneOp(op),
                                              },
                                              attrs);
     op->setAttr("pads", rewriter.getI64ArrayAttr(pad_v));

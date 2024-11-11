@@ -1648,17 +1648,23 @@ class OnnxConverter(BaseConverter):
 
     def convert_pad_op(self, onnx_node):
         assert (onnx_node.op_type == "Pad")
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0])
         # get pad mode
         mode = onnx_node.attrs.get("mode", "constant")
         if isinstance(mode, bytes):
             mode = mode.decode("utf-8")
         assert (mode in ("constant", "reflect", "edge"))
+        pads = None
+        padsT = None
         if len(onnx_node.inputs) > 1:
-            pads = list(self.getWeight(onnx_node.inputs[1]))
+            if self.isWeight(onnx_node.inputs[1]):
+                pads = list(self.getWeight(onnx_node.inputs[1]))
+            else:
+                pads = []
+                padsT = self.getOperand(onnx_node.inputs[1])
         else:
             pads = onnx_node.attrs.get("pads")
-        if pads == None:
+        if pads == None and padsT == None:
             raise RuntimeError("No paddings value")
         # opset 11, value from second input
         val = 0.0
@@ -1667,13 +1673,24 @@ class OnnxConverter(BaseConverter):
         else:
             val = onnx_node.attrs.get("value", 0.0)
 
-        new_op = top.PadOp(self.unranked_type,
-                           op,
-                           paddings=pads,
-                           val=val,
-                           mode=StringAttr.get(mode),
-                           loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                           ip=self.mlir.insert_point).output
+        if padsT:
+            new_op = top.PadOp(self.unranked_type,
+                               op,
+                               paddingsT=padsT,
+                               paddings=pads,
+                               val=val,
+                               mode=StringAttr.get(mode),
+                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                               ip=self.mlir.insert_point).output
+        else:
+            new_op = top.PadOp(self.unranked_type,
+                            op,
+                            self.mlir.none_op,
+                            paddings=pads,
+                            val=val,
+                            mode=StringAttr.get(mode),
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_div_op(self, onnx_node):

@@ -19,8 +19,12 @@ struct pad_info {
 LogicalResult top::PadOp::init(InferenceParameter &p) {
   auto info = new pad_info();
   std::vector<int64_t> in_shape = module::getShape(getInput());
-  i64_array_t pads = module::getI64Array(getPaddings());
-  auto ret = pad_reset(in_shape, *pads, info->shape_4, info->pads_4);
+  i64_array_t pads_origin = module::getI64Array(getPaddings());
+  std::vector<int64_t> pads(in_shape.size() * 2, 0);
+  if (module::isNone(getPaddingsT())) {
+    pads = *pads_origin;
+  }
+  auto ret = pad_reset(in_shape, pads, info->shape_4, info->pads_4);
   if (ret == false) {
     dump();
     UNREACHABLE_THIS("Not Implemented");
@@ -49,6 +53,19 @@ void top::PadOp::deinit(InferenceParameter &p) {
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
   auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
+  if (!module::isNone(getPaddingsT())){
+    std::vector<int64_t> in_shape = module::getShape(getInput());
+    int pad_dim = in_shape.size() * 2;
+    std::vector<int64_t> pads(pad_dim, 0);
+    for (int i = 0; i < pad_dim; i++) {
+      pads[i] = p.inputs[1][i];
+    }
+    auto ret = pad_reset(in_shape, pads, p_info->shape_4, p_info->pads_4);
+    if (ret == false) {
+      dump();
+      UNREACHABLE_THIS("Not Implemented");
+    }
+  }  
   std::vector<int> pads(p_info->pads_4.begin(), p_info->pads_4.end());
   int64_t in = p_info->shape_4[0];
   int64_t ic = p_info->shape_4[1];
@@ -217,8 +234,12 @@ void top::PadOp::shape_inference() {
     Builder builder(getContext());
     setPaddingsAttr(builder.getI64ArrayAttr(pads));
   } else {
+    if (module::isShape(getPaddingsT())){
+      pads = module::getShapeTensorValue(getPaddingsT());
+    } else {    
     ASSERT_THIS(pads_origin->size() == dim * 2);
     pads = *pads_origin;
+    }
   }
   std::vector<int64_t> out_shape(input_shape);
   for (int i = 0; i < dim; i++)
