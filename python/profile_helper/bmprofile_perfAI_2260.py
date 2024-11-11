@@ -8,11 +8,11 @@
 #
 # ==============================================================================
 
-from profile_helper.bmprofile_parser import BMProfileParser, parse_data_blocks, IterRecord, parse_monitor_bd, parse_monitor_gdma, parse_dyn_data, parse_dyn_extra, parse_fixed_length_items
+from profile_helper.bmprofile_parser import BMProfileParser, parse_data_blocks, IterRecord, parse_monitor_bd, parse_monitor_gdma, parse_monitor_cdma, parse_dyn_data, parse_dyn_extra, parse_fixed_length_items
 from profile_helper.bmprofile_common import BlockType, GlobalInfo, Arch
 from profile_helper.bmprofile_utils import re_key_value
 from profile_helper.bm1690_defs import get_tiu_info, get_dma_info, get_tiu_info_dyn, get_dma_info_dyn
-import os
+import os, re
 import logging
 from typing import List
 from pathlib import Path
@@ -38,6 +38,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         super().__init__()
         self.gdma_pairs = []
         self.sdma_pairs = []
+        self.cdma_pairs = []
         self.bd_pairs = []
         self.cdmlib_extra = []
         self.profile_sync_points = []
@@ -45,8 +46,30 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.out_dir = None
         self.is_dyn = False
 
+    def parse_cdma_cmd(self, file_list):
+        print("Parsing...")
+        self.cdma_pairs = [[] for _ in range(self.archlib.CDMA_NUM)]
+        for idx, infile in enumerate(file_list):
+            blocks = parse_data_blocks(infile)
+            if blocks is None or blocks == []:
+                continue
+            item = IterRecord()
+            item.command_info = []
+            blocks_factory = {
+                BlockType.MONITOR_CDMA.value: (item.monitor_cdma, self.__parse_monitor_cdma),
+            }
+            for block in blocks:
+                item_list, item_func = blocks_factory.get(
+                    block.type.value, (0, lambda x, y: 0))
+                item_func(item_list, block.content)
+            for m in item.monitor_cdma[0]:
+                self.cdma_pairs[idx].append({"monitor": m, "cmd": None})
+                # todo pars cmd and pmu pair (cdma has des mode?)
+
+
     def parse_cmd(self, file_list):
         print("Parsing...")
+        self.cdma_cmd = [[] for _ in range(self.archlib.CDMA_NUM)]
         for infile in tqdm(file_list):
             blocks = parse_data_blocks(infile)
             if blocks is None:
@@ -73,19 +96,25 @@ class BMProfileParserPerfAI(BMProfileParser):
                 self.__read_pure_pmu_data(item)
 
     def parse(self, in_dir):
+        def sort_key_func(filename):
+            numbers = re.findall(r'\d+', filename)
+            return [int(num) for num in numbers]
         self.in_dir = in_dir
         if not os.path.exists(in_dir):
             logging.fatal("'{}' does not exist".format(in_dir))
             exit(-1)
         global_file_path = os.path.join(in_dir, self.global_filename)
         self.__parse_global_file(global_file_path)
-        dyn_cmd = sorted(glob.glob(in_dir + "/cdm*.profile"))
-        staic_cmd = sorted(glob.glob(in_dir + "/iter*.profile"))
+        dyn_cmd = sorted(glob.glob(in_dir + "/cdmlib*.profile"), key=sort_key_func)
+        staic_cmd = sorted(glob.glob(in_dir + "/iter*.profile"), key=sort_key_func)
+        cdma_cmd = sorted(glob.glob(in_dir + "/cdma*.profile"), key=sort_key_func)
         if staic_cmd:
             self.parse_cmd(staic_cmd)
         elif dyn_cmd:
             self.is_dyn = True
             self.parse_cmd(dyn_cmd)
+        if cdma_cmd:
+            self.parse_cdma_cmd(cdma_cmd)
         # else:
         #     logging.fatal("can't find cmd data.".format(in_dir))
         #     exit(-1)
@@ -99,6 +128,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         Path(self.out_dir).mkdir(parents=True, exist_ok=True)
         dma_file = os.path.join(self.out_dir, "tdmaRegInfo_{}.txt")
         tiu_file = os.path.join(self.out_dir, "tiuRegInfo_{}.txt")
+        cdma_file = os.path.join(self.out_dir, "cdmaPmuInfo_{}.txt")
         # write engine info
         print("Write engine info...")
         for idx, pair in tqdm(enumerate(self.gdma_pairs)):
@@ -107,6 +137,8 @@ class BMProfileParserPerfAI(BMProfileParser):
             self.__write_engine_info(dma_file, idx, pair, self.archlib.EngineType.SDMA, False)
         for idx, pair in tqdm(enumerate(self.bd_pairs)):
             self.__write_engine_info(tiu_file, idx, pair, self.archlib.EngineType.BD)
+        for idx, pair in tqdm(enumerate(self.cdma_pairs)):
+            self.__write_engine_info(cdma_file, idx, pair, self.archlib.EngineType.CDMA)
         # write cpu info
         cpu_file = os.path.join(self.out_dir, "cpuInfo_{}.txt")
         for i, cdm_cpu in enumerate(self.cdmlib_extra):
@@ -130,6 +162,20 @@ class BMProfileParserPerfAI(BMProfileParser):
             fn = self.__get_tiu_info
             arch = self.archlib.TIU_ARCH
             tag = "__TIU_REG_INFO__\n"
+        elif engine == self.archlib.EngineType.CDMA:
+            if pairs:
+                with open(nfile.format(idx), fmode) as f:
+                    for n, p in enumerate(pairs):
+                        p = p["monitor"]
+                        info = f"[{idx:<2}]---> cdma record #{n:<7} inst_id: {p.inst_id:<10} thread_id: {p.thread_id:<4} start_time: {p.inst_start_time:<14} " \
+                            f"inst_end_time: {p.inst_end_time:<14} cycle: {p.inst_end_time - p.inst_start_time}\n"
+                        f.write(info)
+                with open(nfile.format(f'{idx}_cmd'), fmode) as f:
+                    for n, p in enumerate(self.cdma_cmd[idx]):
+                        info = f"[{idx:<2}]---> cdma record #{n:<7} inst_id: {p.inst_id:<10} cmd_type: {p.des_tsk_typ:<4} cmd_func: {p.des_tsk_eu_typ:<4}\n"
+                        f.write(info)
+            return
+
         else:
             raise ValueError(f"Not support parse {self.archlib.EngineType(engine).name} now.")
         with open(nfile.format(idx), fmode) as f:
@@ -164,6 +210,13 @@ class BMProfileParserPerfAI(BMProfileParser):
             for j1 in sdma:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - delta_cyle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - delta_cyle)
+        # for i, (cdma, cycle) in enumerate(zip(self.cdma_pairs, self.profile_sync_points)):
+        #     if i == 0:
+        #         continue
+        #     delta_cyle = cycle - self.profile_sync_points[0]
+        #     for j1 in cdma:
+        #         j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - delta_cyle)
+        #         j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - delta_cyle)
         # for i, (cpu, cycle) in enumerate(zip(self.cdmlib_extra, self.profile_sync_points)):
         #     if i == 0:
         #         continue
@@ -191,7 +244,13 @@ class BMProfileParserPerfAI(BMProfileParser):
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
                 assert(j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
-        # for i, cdm_cpu in enumerate(self.cdmlib_extra):
+
+        # for cdma_pair in self.cdma_pairs:
+        #     for j1 in cdma_pair:
+        #         print(j1["monitor"].inst_start_time,  start_cycle)
+        #         j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
+        #         j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
+        # # for i, cdm_cpu in enumerate(self.cdmlib_extra):
         #     g_cmd_time = self.gdma_pairs[i][0]["cmd"].begin_cycle
         #     shift = min(self.gdma_pairs[i][0]["monitor"].inst_start_time,
         #                 self.bd_pairs[i][0]["monitor"].inst_start_time)
@@ -235,6 +294,13 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.__veryfy_cmd_id(tmp)
         self.__veryfy_time(tmp)
         monitor_tiu.append(tmp)
+
+    def __parse_monitor_cdma(self, monitor_cdma: List, raw_data):
+        tmp = parse_monitor_cdma(raw_data, self.archlib)
+        self.__veryfy_cmd_id(tmp)
+        self.__veryfy_time(tmp)
+        monitor_cdma.append(tmp)
+
 
     def __parse_monitor_dma_base(self, raw_data):
         tmp = parse_monitor_gdma(raw_data, self.archlib)
@@ -544,6 +610,9 @@ class BMProfileParserPerfAI(BMProfileParser):
                         sdma_cmd.append(d)
                     elif d.engine == self.archlib.EngineType.BD.value:
                         bd_cmd.append(d)
+                    elif d.engine == self.archlib.EngineType.CDMA.value:
+                        print(d.extra_info >> 7)
+                        self.cdma_cmd[d.extra_info >> 7].append(d)
             bd_pair, bd_sys_num = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[0], self.archlib.bd_sys_code)
             sdma_pair, sdma_sys_num = self.__find_profile_sync_points(sdma_cmd, item.monitor_sdma[0], self.archlib.dma_sys_code)
             gdma_pair, gdma_sys_num = self.__find_profile_sync_points(gdma_cmd, item.monitor_gdma[0], self.archlib.dma_sys_code)

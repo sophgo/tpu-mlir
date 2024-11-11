@@ -98,6 +98,9 @@ def parse_monitor_bd(raw_data, archlib):
 def parse_monitor_gdma(raw_data, archlib):
     return parse_fixed_length_items(raw_data, archlib.GDMAProfileFormat)
 
+def parse_monitor_cdma(raw_data, archlib):
+    return parse_fixed_length_items(raw_data, archlib.CDMAProfileFormat)
+
 def parse_data_blocks(filename):
     BlockItem=namedtuple("BlockItem", "type content")
     if not os.path.isfile(filename):
@@ -253,6 +256,7 @@ class IterRecord():
         self.dyn_extra = dict()
         self.monitor_gdma = []
         self.monitor_sdma = []
+        self.monitor_cdma = []
         self.monitor_bd = []
         self.summary = None
         self.command_info = None

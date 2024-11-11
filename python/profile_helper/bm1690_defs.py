@@ -18,12 +18,14 @@ ID_WIDTH = 20
 GDMA_FREQ = 1000
 BD_FREQ = 1000
 BYTE_PER_BEAT = 128
+CDMA_NUM = 11
 GDMACyclePeriod = 1.0 / GDMA_FREQ
 BDCyclePeriod = 1.0 / BD_FREQ
 PeriodFixed = False
 arch_name = "BM1690"
 bd_sys_code = 15
 dma_sys_code = 6
+cdma_sys_code = 7
 profile_sys_num = 2
 
 class DynRecordType(Enum):
@@ -210,6 +212,37 @@ class GDMAProfileFormat(dictStructure):
         ("gif_wr_valid_cntr", ct.c_uint32),    ("gif_rd_valid_cntr", ct.c_uint32),
     ]
 
+class CDMAProfileFormat(dictStructure):
+    _pack_ = 1
+    _fields_ = [
+        # 32 bit align
+        # H0
+        ("inst_start_time", ct.c_uint32),      ("inst_end_time", ct.c_uint32),
+        ("inst_id", ct.c_uint32, 24),           ("thread_id", ct.c_uint32, 1),
+        ("reserved0", ct.c_uint32, 7),           ("_reserved0", ct.c_uint32),
+        # H1
+        ("m0_data_aw_cntr", ct.c_uint32),   ("m0_data_w_cntr", ct.c_uint32),
+        ("m0_data_ar_cntr", ct.c_uint32),   ("reserved1", ct.c_uint32),
+        # H2
+        ("m0_data_wr_valid_cntr", ct.c_uint32), ("m0_data_wr_stall_cntr", ct.c_uint32),
+        ("m0_data_rd_valid_cntr", ct.c_uint32),       ("m0_data_rd_stall_cntr", ct.c_uint32),
+        # H3
+        ("ati_data_valid_cntr", ct.c_uint32), ("ati_data_stall_cntr", ct.c_uint32),
+        ("ari_data_valid_cntr", ct.c_uint32),    ("ari_data_stall_cntr", ct.c_uint32),
+        # H4
+        ("ati_txfifo_stall_cntr", ct.c_uint32), ("replay_number", ct.c_uint32),
+        ("m0_data_b_st", ct.c_uint32),    ("m0_data_b_end", ct.c_uint32),
+        # H5
+        ("m0_data_ar_st", ct.c_uint32), ("m0_data_ar_end", ct.c_uint32),
+        ("m0_data_aw_st", ct.c_uint32),    ("m0_data_aw_end", ct.c_uint32),
+        # H6
+        ("m0_data_rd_st", ct.c_uint32), ("m0_data_rd_end", ct.c_uint32),
+        ("m0_data_wr_st", ct.c_uint32),    ("m0_data_wr_end", ct.c_uint32),
+        # H7
+        ("ati_data_st", ct.c_uint32), ("ati_data_end", ct.c_uint32),
+        ("ari_data_st", ct.c_uint32),   ("ari_data_end", ct.c_uint32),
+    ]
+
 class GDMACmdFormat(dictStructure):
     _pack_ = 1
     _fields_ = [
@@ -244,9 +277,9 @@ class GDMACmdFormat(dictStructure):
     ]
 
 class ProfileFormat(dictStructure):
-    ''' |0.....|8.......|11.............|16................|21.......|22...................|32
-        | type | engine | bd_op/dma_op  | bd_func/dma_dir  | parellel| rsvd/dtype/sys_info |
-        | 8    |  3     | 5             | 5                | 1       | 10                 |
+    ''' |0.....|8.......|11.............|16................|21................................................|32
+        | type | engine | bd_op/dma_op  | bd_func/dma_dir  | rsvd/dtype/direction/sys_info/cdam_port/parellel |
+        | 8    |  3     | 5             | 5                | 11                                               |
         rsvd/dtype/sys_info:
            bd: dtype (0xf, 4bits)
            dma: (direct << 4 | dtype) (0x7f, 7bit)
@@ -256,8 +289,7 @@ class ProfileFormat(dictStructure):
     _fields_ = [
         ("type", ct.c_uint32, 8),     ("engine", ct.c_uint32, 3),
         ("des_tsk_typ", ct.c_uint32, 5),   ("des_tsk_eu_typ", ct.c_uint32, 5),
-        ("parellel", ct.c_uint32, 1),       ("extra_info", ct.c_uint32, 10),
-        ("inst_id", ct.c_uint32)
+        ("extra_info", ct.c_uint32, 11), ("inst_id", ct.c_uint32)
     ]
 
 class GDMACommandParser():
@@ -333,7 +365,7 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     # step1 : get registor information from command
     dtype = extra_info&0xF
     data_type = DATATYPE(dtype)
-    direction = extra_info >> 4
+    direction = (extra_info >> 4) & 0x7
     src_type, dst_type = get_src_dst_type(direction)
     # step2: get custom information
     dma_info["Engine Id"] = engine_id
@@ -499,7 +531,7 @@ def get_tiu_info_dyn(monitor_info, reg_info):
     tiu_info0["Function Type"], tiu_info0["Function Name"] = getTiuFunctionName(
         reg_info.des_tsk_typ, reg_info.des_tsk_eu_typ)
     if tiu_info0["Function Type"] != 'sys':
-        tiu_info1["des_opt_res0_prec"] = reg_info.extra_info
+        tiu_info1["des_opt_res0_prec"] = reg_info.extra_info & 0x7f
     tiu_info0["Start Cycle"] = monitor_info.inst_start_time
     tiu_info0["End Cycle"] = monitor_info.inst_end_time
     tiu_info0["Cmd Id"] = monitor_info.inst_id + 1
