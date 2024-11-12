@@ -324,9 +324,8 @@ void top::InterpOp::shape_inference() {
           setOperand(1, module::getNoneOp(getOperation()));
         }
       } else if (in_shape.size() == 4) {
-        // TODO
-        // Temporarily modify to use fixed shape for SAM
-        out_shape = {in_shape[0], in_shape[1], 2000, 2000};
+        auto out_shape_ = module::getShapeTensorValue(target_shape_);
+        out_shape.assign(out_shape_.begin(), out_shape_.end());
         setScaleH(APFloat((double)out_shape[hidx] / in_shape[hidx]));
         setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
       } else {
