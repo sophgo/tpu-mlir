@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "lut_kernel"
 
 #define METHOD_MANTISSA 0
