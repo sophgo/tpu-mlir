@@ -221,7 +221,7 @@ def sCONV_BW_converter(context: "BM1690Context", reg: sCONV_BW_reg):
         is_const=reg.opt_opd1_const,
         shape=[reg.res0_c, reg.opd0_c, reg.opd1_h, reg.opd1_w],
         dtype=(reg.opt_opd1_prec, reg.opt_opd1_sign),
-        layout=Layout._1IC,
+        layout=Layout.alignIC,
     )
     opd2 = dict(
         address=reg.opd2_addr,
@@ -237,14 +237,7 @@ def sCONV_BW_converter(context: "BM1690Context", reg: sCONV_BW_reg):
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2]
-    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8:
-        opd1["layout"] = Layout._64IC
-    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8:
-        opd1["layout"] = Layout._64IC
-    elif reg.opt_opd0_prec == FP16 or reg.opt_opd0_prec == BF16:
-        opd1["layout"] = Layout._32IC
-    elif reg.opt_opd0_prec == FP32:
-        opd1["layout"] = Layout._1IC
+    opd1["layout"] = Layout.alignIC
 
     results = [get_value(context, **res0)]
 

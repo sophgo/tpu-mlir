@@ -238,11 +238,7 @@ class MemRef(MemRefBase):
         return r_addr
 
     @property
-    @functools.lru_cache()
-    def name(self):
-        """
-        use relative address
-        """
+    def _backend_name(self):
         k = self.mtype
         if k == MType.UNKNOWN:
             return f"%?.{self.address}"
@@ -257,11 +253,11 @@ class MemRef(MemRefBase):
             return mem_str
         if k == MType.G:
             tag = (self.address >> 40) & 0x1F
-            offset = (self.address & 0xFFFFFFFFFF)
+            offset = self.address & 0xFFFFFFFFFF
             return f"%{k.name}{tag}.0x{offset:x}"
         elif k == MType.L:
             tag = (self.address >> 40) & 0x1E
-            offset = (self.address & 0xFFFFFFFFFF)
+            offset = self.address & 0xFFFFFFFFFF
             return f"%{k.name}{tag}.0x{offset:x}"
         return f"%{k.name}0x{self.r_addr:x}"
 

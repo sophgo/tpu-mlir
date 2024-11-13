@@ -164,7 +164,9 @@ class TensorCompare(_TensorCompare):
             int8_tensor_close=True,
         )[0]
 
-    def assert_allclose(self, actual: np.ndarray, desired: np.ndarray, dump_mode: DumpMode):
+    def assert_allclose(
+        self, actual: np.ndarray, desired: np.ndarray, dump_mode: DumpMode
+    ):
         from functools import partial
         from numpy.core import array_repr
 
@@ -190,32 +192,43 @@ class TensorCompare(_TensorCompare):
                 max_line_width=get_console().size.width,
             )
             msg.append("top10_diff:")
-            msg.extend(f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items())
-            msg.extend((
-                "0:10_data:",
-                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
-                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
-            ))
+            msg.extend(
+                f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items()
+            )
+            msg.extend(
+                (
+                    "0:10_data:",
+                    f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                    f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+                )
+            )
             try:
-                np.testing.assert_allclose(actual, desired, rtol=1e-3, atol=1e-1, verbose=False)
+                np.testing.assert_allclose(
+                    actual, desired, rtol=1e-3, atol=1e-1, verbose=False
+                )
             except AssertionError as e:
                 msg.append(str(e))
 
             msg = "\n".join(msg)
         elif dump_mode == DumpMode.ALL:
-            header = ("Succeed comparasion: " + f"cos={self.cosine_similarity_tol}" +
-                      f", euc={self.euclidean_similarity_tol}")
+            header = (
+                "Succeed comparasion: "
+                + f"cos={self.cosine_similarity_tol}"
+                + f", euc={self.euclidean_similarity_tol}"
+            )
             msg = ["\n" + header, ""]
             r_func = partial(
                 array_repr,
                 precision=6,
                 max_line_width=get_console().size.width,
             )
-            msg.extend((
-                "0:10_data:",
-                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
-                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
-            ))
+            msg.extend(
+                (
+                    "0:10_data:",
+                    f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                    f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+                )
+            )
             msg = "\n".join(msg)
 
         return cmp_res, msg
@@ -247,6 +260,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 self.ref_data.append(np.load(ref_fn))
                 self.mlir_ref = False or self.mlir_ref
 
+        self.failed_summary_info = []
+        self.watch = None
         self.tc = TensorCompare(
             cosine_similarity_tol=0.99,
             euclidean_similarity_tol=0.99,
@@ -264,16 +279,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.out_fixed = False
         self.is_soc = False
         self.skip_check = False
+        self.bmodel_output = {}
 
     def collect_op_name_dict(self, ref_fn, tdb: TdbCmdBackend):
-        if tdb.cache_mode in {'generate', 'online'}:
+        if tdb.cache_mode in {"generate", "online"}:
             from utils.mlir_parser import MlirParser
+
             ops = MlirParser(ref_fn).collect_op_name_dict()
-            if tdb.cache_mode == 'generate':
-                with open(f"{ref_fn}.tdb_cache.ops.pickle", 'wb') as w:
+            if tdb.cache_mode == "generate":
+                with open(f"{ref_fn}.tdb_cache.ops.pickle", "wb") as w:
                     pickle.dump(ops, w)
-        elif tdb.cache_mode == 'offline':
-            with open(f"{ref_fn}.tdb_cache.ops.pickle", 'rb') as r:
+        elif tdb.cache_mode == "offline":
+            with open(f"{ref_fn}.tdb_cache.ops.pickle", "rb") as r:
                 ops = pickle.load(r)
         return ops
 
@@ -327,7 +344,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self.dump_mode = mode
             self.tdb.message(f"enable {mode}")
         else:
-            self.tdb.message(f"Unknown dump mode {arg}, support {DumpMode._member_names_}")
+            self.tdb.message(
+                f"Unknown dump mode {arg}, support {DumpMode._member_names_}"
+            )
 
     def reduce_summary(self):
         summary: Dict[int, List[List[str]]] = {}
@@ -408,7 +427,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         pd.set_option("display.expand_frame_repr", False)
 
         data_str = self.index.index_df.to_string()
-        with open(os.path.join(path, "dumped_dataframe.txt"), "w+", encoding="utf-8") as f:
+        with open(
+            os.path.join(path, "dumped_dataframe.txt"), "w+", encoding="utf-8"
+        ) as f:
             f.write(data_str)
 
         # reset debug option
@@ -509,6 +530,30 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def complete_ignore_failed(self, text: str, state: int) -> Union[List[str], None]:
         return ["True", "False"]
 
+    def format_data(self, operand: TLValue, arr: np.ndarray):
+        reshape = operand.reshape
+        if arr is None:
+            arr = np.zeros(operand.shape)
+
+        if reshape:
+            reshape = eval(reshape[1:-1].replace("x", ","))  # '1,3,1,192,1024'
+            arr = arr.reshape(reshape)
+
+        _slice = operand.slice
+        data = eval(f"arr{_slice}")  # type: np.ndarray
+        # The data in HW has a transposed collapsed shape.
+        # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
+        if operand.layout in (
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
+        ):
+            n, c, d, h, w = 0, 1, 2, 3, 4
+            data = data.transpose((d, n, c, h, w))
+        return data
+
     def get_ref_data(self, operand: TLValue):
         for ref in self.ref_data:
             name = operand.name
@@ -516,27 +561,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 name = name.replace("load_", "")
             if name not in ref:
                 continue
-            reshape = operand.reshape
+
             ref_data = ref[name]
-
-            if reshape:
-                reshape = eval(reshape[1:-1].replace("x", ","))  # '1,3,1,192,1024'
-                ref_data = ref_data.reshape(reshape)
-
-            _slice = operand.slice
-            data = eval(f"ref_data{_slice}")  # type: np.ndarray
-            # The data in HW has a transposed collapsed shape.
-            # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
-            if operand.layout in (
-                "continuous_group3d",
-                "eu_align_group3d",
-                "compact_group3d",
-                "eu_align_xn_group3d",
-                "compact_xn_group3d",
-            ):
-                n, c, d, h, w = 0, 1, 2, 3, 4
-                data = data.transpose((d, n, c, h, w))
-            return data
+            return self.format_data(operand, ref_data)
 
         return None
 
@@ -569,6 +596,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                     slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
                     for s in slice_list
                 ]
+            if desired is None:
+                desired = self.format_data(operand, None)
             actual = actual.reshape(desired.shape)
 
             if operand.layout in (
@@ -582,21 +611,51 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 actual = actual.transpose((n, c, d, h, w))
 
             reshape = operand.reshape
-            origin_shape = ref[operand.name].shape
+
+            origin_shape = operand.shape
             if reshape:
                 reshape = eval(reshape[1:-1].replace("x", ","))
             else:
                 reshape = sliced_shape
 
-            if operand.name not in self.ref_data_from_inference[idx]:
-                tmp = np.zeros(reshape)
+            tmp = self.ref_data_from_inference[idx].get(operand.name, None)
+            if tmp is None:
+                tmp = np.zeros(origin_shape)
+
+            try:
+                if len(tmp.shape) != len(sliced_shape):
+                    unsqeeze_shape = []
+                    left_index = 0
+                    right_index = 0
+                    while len(unsqeeze_shape) < len(sliced_shape):
+                        if left_index >= len(tmp.shape):
+                            unsqeeze_shape.append(1)
+                            right_index += 1
+                        elif (
+                            tmp.shape[left_index] > 1 and sliced_shape[right_index] > 1
+                        ):
+                            unsqeeze_shape.append(tmp.shape[left_index])
+                            left_index += 1
+                            right_index += 1
+                        elif tmp.shape[left_index] == sliced_shape[right_index]:
+                            unsqeeze_shape.append(tmp.shape[left_index])
+                            left_index += 1
+                            right_index += 1
+                        else:
+                            unsqeeze_shape.append(1)
+                            right_index += 1
+                    tmp = tmp.reshape(unsqeeze_shape)
                 tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(origin_shape)
-            else:
-                tmp = self.ref_data_from_inference[idx][operand.name]
-                tmp = tmp.reshape(reshape)
-                tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(origin_shape)
+                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
+                    origin_shape
+                )
+            except:
+                print(f"{operand.name} store failed")
+                print(operand)
+                print(tmp.shape)
+                print(actual.shape)
+
+                return
             return
 
     def cal_desired_shape(self, sliced_shape: Tuple[int], layout: str):
@@ -668,6 +727,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             tmp[tuple(slices)] = actual
             self.ref_data_from_inference[0][operand.name] = tmp.reshape(origin_shape)
 
+    def do_watch_mem(self, args):
+        try:
+            args = int(args)
+            cmd = self.tdb.cmditer[int(args)]
+        except ValueError:
+            cmd = self.tdb.get_cmd()
+        self.watch = cmd
+        self.watch_data = []
+
+    def do_display_cmd(self, args):
+        self.tdb.message(self.tdb.cmditer[int(args)])
+
     def check_data(
         self, point_index, is_operand, value_view: ValueView
     ) -> ComparedResult:
@@ -685,8 +756,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                     return value_res
 
         context = self.tdb.context
-        memref = value.get_memref(context)
         # only used for pcie mode
+        memref = value.get_memref(context)
         if not self.is_soc and not context.using_cmodel:
             if memref.mtype != MType.G and memref.mtype != MType.R:
                 value_res = ComparedResult(value_view, None, msg="ignore")
@@ -698,16 +769,32 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         if self.is_soc:
             if is_operand:
                 DataCheck.soc_values_in[point_index].append(
-                    Pickled_Value(value, memref, value.dtype, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
+                    Pickled_Value(
+                        value,
+                        memref,
+                        value.dtype,
+                        value.zero_point,
+                        value.scale,
+                        value_view.file_line,
+                        value_view.cmd_point,
+                    )
                 )
             else:
                 # memref_type = 0 if isinstance(memref, Scalar) else 1
                 DataCheck.soc_values_out.append(
-                    Pickled_Value(value, memref, value.dtype, value.zero_point, value.scale, value_view.file_line, value_view.cmd_point)
+                    Pickled_Value(
+                        value,
+                        memref,
+                        value.dtype,
+                        value.zero_point,
+                        value.scale,
+                        value_view.file_line,
+                        value_view.cmd_point,
+                    )
                 )
             return ComparedResult(value_view, None, msg="ignore")
 
-        if self.tdb.cache_mode == 'generate':
+        if self.tdb.cache_mode == "generate":
             if is_operand:
                 DataCheck.soc_values_in[point_index].append(value)
             else:
@@ -731,12 +818,14 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         if desired is None:
             value_res = ComparedResult(value_view, None)
-            name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
+            name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
             if self.dump_mode == DumpMode.ALL:
                 self.failed_tensor[f"{name}_actual"] = actual
         else:
             actual = actual.reshape(desired.shape)
-            cmp_res, msg = list(self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode))
+            cmp_res, msg = list(
+                self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode)
+            )
 
             value_res = ComparedResult(
                 value_view,
@@ -746,7 +835,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 msg=msg,
             )
             cmd_failed = not cmp_res[0]
-            name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
+            name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
             if self.dump_mode == DumpMode.ALL:
                 self.failed_tensor[f"{name}_actual"] = actual
                 if cmd_failed:
@@ -754,8 +843,28 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             elif self.dump_mode == DumpMode.FAILED and cmd_failed:
                 self.failed_tensor[f"{name}_actual"] = actual
                 self.failed_tensor[f"{name}_desired"] = desired
-
+                cmd = self.tdb.get_cmd()
+                self.failed_summary_info.append(
+                    {
+                        "loc": value.name,
+                        "cmd_point": value_view.cmd_point,
+                        "cmd_id": cmd.cmd_id,
+                        "core_id": cmd.core_id,
+                        "subnet_id": cmd.subnet_id,
+                        "loc_index": value_view.loc_index,
+                        "operand": is_operand,
+                    }
+                )
         return value_res
+
+    def do_dump_failed_summary(self, args):
+        if not self.failed_summary_info:
+            return
+
+        fn = "bmodel_failed_summary.json"
+        with open(fn, "w") as w:
+            w.write(json.dumps(self.failed_summary_info, indent=2, ensure_ascii=False))
+            print(f"write to {fn}")
 
     def compare(self, tdb: TdbCmdBackend, is_operand):
         index_plugin = self.index
@@ -813,6 +922,22 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             raise StopIteration()
 
     def after_step(self, tdb: TdbCmdBackend):
+        if self.watch is not None:
+
+            for ret in self.watch.results:
+                self.watch_data.append(
+                    self.tdb.context.memory.get_data(
+                        ret.to_ref(core_id=self.watch.core_id)
+                    ).copy()
+                )
+                if len(self.watch_data) > 1:
+                    np.savez(
+                        f"watch_data_{len(self.watch_data)}.npz", self.watch_data[-1]
+                    )
+                    if not (self.watch_data[-2] == self.watch_data[-1]).all():
+                        self.tdb.message("change")
+                        raise BreakpointStop()
+
         if self.ref_data is None or not self.enabled:
             return
 
@@ -831,7 +956,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
 
 class CheckLMem(TdbPlugin):
-    name = 'check-lmem'
+    name = "check-lmem"
 
     def __init__(self, tdb: TdbCmdBackend) -> None:
         super().__init__(tdb)
@@ -847,14 +972,17 @@ class CheckLMem(TdbPlugin):
         import ctypes
         import platform
         from debugger.target_1688.device_rt import DeviceRunner
+
         runner: DeviceRunner = tdb.runner
         runner.lib.memcpy_l2s(
             runner.runner_p,
             runner.memory.LMEM[0].ctypes.data_as(ctypes.c_void_p),
         )
-        self.RET.append([str(tdb.get_cmd()), tdb.cmd_point, runner.memory.LMEM[0].copy()])
+        self.RET.append(
+            [str(tdb.get_cmd()), tdb.cmd_point, runner.memory.LMEM[0].copy()]
+        )
 
         if tdb.cmd_point == 11:
-            with open(f"{platform.machine()}.npz",'wb') as w:
+            with open(f"{platform.machine()}.npz", "wb") as w:
                 pickle.dump(self.RET, w)
             raise StopIteration()

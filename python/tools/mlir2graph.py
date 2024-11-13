@@ -166,7 +166,8 @@ def escape(name: str):
 
 label_template = """
 <<table border="0" cellborder="1" cellspacing="0">
-    <tr><td align="center">{res_ids} = {op_type}({opd_ids})</td></tr>
+    <tr><td align="center">{res_ids} = {op_type}</td></tr>
+    <tr><td align="center">({opd_ids})</td></tr>
     <tr><td align="center"> -&gt; {shape}</td></tr>
     <tr><td align="center">{name}</td></tr>
 </table>>
@@ -229,7 +230,23 @@ def make_label(op: OpView, **kwargs):
 
 
 def make_tooltips(op: Operation):
-    attr_str = json.dumps(parse_attribute(op.attributes), ensure_ascii=False, indent=2)
+    # breakpoint()
+    operands = [
+        get_opname(i) + "({})".format("x".join(map(str, i.type.shape)))
+        for i in op.operands
+        if hasattr(i.type, "shape")
+    ]
+    results = [
+        get_opname(i) + "({})".format("x".join(map(str, i.type.shape)))
+        for i in op.results
+        if hasattr(i.type, "shape")
+    ]
+
+    attr_str = json.dumps(
+        [{"operands": operands, "results": results}, parse_attribute(op.attributes)],
+        ensure_ascii=False,
+        indent=2,
+    )
     logger.debug(attr_str)
     res = f"<{attr_str}>"
     return res
@@ -268,6 +285,8 @@ def get_opname(op):
         return op.name
     elif isinstance(op, Value):
         return get_opname(op.owner)
+    elif isinstance(op, Block):
+        return "block"
     raise NotImplementedError(op)
 
 
@@ -328,6 +347,126 @@ def create_edge(pre_op_loc, op_loc, label, ltail=None, href=None):
     return edge
 
 
+class MlirCluster(pydot.Cluster):
+    def __init__(
+        self,
+        graph_name="subG",
+        obj_dict=None,
+        suppress_disconnected=False,
+        simplify=False,
+        **attrs,
+    ):
+        super().__init__(graph_name, obj_dict, suppress_disconnected, simplify, **attrs)
+        self.obj_dict["type"] = "locs"
+
+    def set_op_locs(self, locs: list):
+        self.obj_dict["locs"] = locs
+
+    def to_string(self):
+        self.obj_dict["type"] = "subG"
+        repr = super().to_string()
+        self.obj_dict["type"] = "locs"
+        locs = " -> ".join([f'"{i}"' for i in self.obj_dict.get("locs", [])])
+        return repr.replace("}", f"{locs}\n}}")
+
+
+from pydot.core import quote_id_if_necessary, Node, Subgraph, Edge
+
+
+def to_string(self):
+    """Return string representation of graph in DOT language.
+
+    @return: graph and subelements
+    @rtype: `str`
+    """
+    graph = []
+
+    if self.obj_dict.get("strict", None) is not None:
+        if self == self.get_parent_graph() and self.obj_dict["strict"]:
+            graph.append("strict ")
+
+    graph_type = self.obj_dict["type"]
+    if graph_type == "subgraph" and not self.obj_dict.get("show_keyword", True):
+        graph_type = ""
+    graph_name = quote_id_if_necessary(self.obj_dict["name"])
+    s = f"{graph_type} {graph_name} {{\n"
+    graph.append(s)
+
+    graph.extend(f"{a};\n" for a in self.formatted_attr_list())
+
+    edges_done = set()
+
+    edge_obj_dicts = []
+    for k in self.obj_dict["edges"]:
+        edge_obj_dicts.extend(self.obj_dict["edges"][k])
+
+    if edge_obj_dicts:
+        edge_src_set, edge_dst_set = list(
+            zip(*[obj["points"] for obj in edge_obj_dicts])
+        )
+        edge_src_set, edge_dst_set = set(edge_src_set), set(edge_dst_set)
+    else:
+        edge_src_set, edge_dst_set = set(), set()
+
+    node_obj_dicts = []
+    for k in self.obj_dict["nodes"]:
+        node_obj_dicts.extend(self.obj_dict["nodes"][k])
+
+    sgraph_obj_dicts = []
+    for k in self.obj_dict["subgraphs"]:
+        sgraph_obj_dicts.extend(self.obj_dict["subgraphs"][k])
+
+    obj_list = [
+        (obj["sequence"], obj)
+        for obj in (edge_obj_dicts + node_obj_dicts + sgraph_obj_dicts)
+    ]
+    obj_list.sort(key=lambda x: x[0])
+
+    for idx, obj in obj_list:
+        if "locs" in obj:
+            locs = " -> ".join([f'"{i}"' for i in obj.get("locs", [])])
+            style = '[style=bold,color=black,arrowsize=0,style="dotted"]'
+            graph.append(f"{locs} {style};\n")
+
+        if obj["type"] == "node":
+            node = Node(obj_dict=obj)
+
+            if self.obj_dict.get("suppress_disconnected", False):
+                if (
+                    node.get_name() not in edge_src_set
+                    and node.get_name() not in edge_dst_set
+                ):
+                    continue
+
+            graph.append(node.to_string() + "\n")
+
+        elif obj["type"] == "locs":
+            sgraph = MlirCluster(obj_dict=obj)
+            graph.append(sgraph.to_string() + "\n")
+
+        elif obj["type"] == "edge":
+            edge = Edge(obj_dict=obj)
+
+            if self.obj_dict.get("simplify", False) and edge in edges_done:
+                continue
+
+            graph.append(edge.to_string() + "\n")
+            edges_done.add(edge)
+
+        else:
+
+            sgraph = Subgraph(obj_dict=obj)
+            graph.append(sgraph.to_string() + "\n")
+
+    graph.append("}\n")
+
+    return "".join(graph)
+
+
+pydot.Dot.to_string = to_string
+MlirCluster.to_string = to_string
+Subgraph.to_string = to_string
+
 weight_op = set()
 
 skip_op = set()
@@ -340,6 +479,7 @@ graph = []
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mlir", required=True, help="model name")
+    parser.add_argument("--simple", help="simple mode", action="store_true")
     parser.add_argument("--output",
                         help="output dot file, if not assigned, use {mlir file}.{suffix}")
     parser.add_argument(
@@ -373,6 +513,11 @@ if __name__ == "__main__":
         help="export group keys in final.mlir for tpu.mlir colorful render",
     )
     parser.add_argument(
+        "--mlir_order",
+        action="store_true",
+        help="render in mlir order",
+    )
+    parser.add_argument(
         "--colorful",
         default=None,
         help="render op color by groups",
@@ -395,8 +540,12 @@ if __name__ == "__main__":
 
     failed_keys = set()
     if args.bmodel_checker_data is not None:
-        report = np.load(args.bmodel_checker_data, allow_pickle=True)
-        failed_keys.update({k.split("_asm_")[0] for k in list(report.files) if "actual" in k})
+        if args.bmodel_checker_data.endswith("npz"):
+            report = np.load(args.bmodel_checker_data, allow_pickle=True)
+            failed_keys.update({k.split("_asm_")[0] for k in list(report.files) if "actual" in k})
+        else:
+            keys = Path(args.bmodel_checker_data).read_text().splitlines()
+            failed_keys.update({k.split("_asm_")[0].strip() for k in keys})
 
     if args.failed_keys is not None:
         failed_keys.update({i.strip() for i in args.failed_keys.split(",")})
@@ -435,7 +584,7 @@ if __name__ == "__main__":
         )
 
         for op in group.regions[0].blocks[0].operations:
-            if is_opname(op, "tpu.Yield", "tpu.Store"):
+            if is_opname(op, "tpu.Yield"):
                 continue
 
             oop_loc = get_op_loc(op)
@@ -445,7 +594,7 @@ if __name__ == "__main__":
             node_attrs = {}
             # node_attrs["shape"] = "box"
             if op_loc in color_map:
-                node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc]  % len(MAP_COLOR)]
+                node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc] % len(MAP_COLOR)]
                 node_attrs["style"] = "filled"
                 node_attrs["suffix"] = f"group({color_map[op_loc]})"
 
@@ -514,7 +663,10 @@ if __name__ == "__main__":
                     shape="plain",
                 )
         logger.info(f"parse func {func_name}")
+
+        loc_seq = []
         for op in tqdm(list(iter_function_op(func))):
+
             if is_opname(op, "top.None"):
                 continue
             op_loc = get_op_loc(op)
@@ -543,7 +695,9 @@ if __name__ == "__main__":
                 node_attrs["failed"] = op_loc in failed_keys
 
                 if op_loc in color_map:
-                    node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc] % len(MAP_COLOR)]
+                    node_attrs["fillcolor"] = MAP_COLOR[
+                        color_map[op_loc] % len(MAP_COLOR)
+                    ]
                     node_attrs["style"] = "filled"
                     node_attrs["suffix"] = f"group({color_map[op_loc]})"
 
@@ -559,7 +713,12 @@ if __name__ == "__main__":
 
                 if not is_opname(op, "func.return"):
                     node = create_node(op, op_loc, node_attrs)
-                    func_graph.add_node(node)
+
+                    if is_opname(op, "top.Weight"):
+                        dot.add_node(node)
+                    else:
+                        loc_seq.append(op_loc)
+                        func_graph.add_node(node)
 
                     for opd_index, iopd in enumerate(op.operands):
                         if "arg" in iopd.get_name():
@@ -570,7 +729,8 @@ if __name__ == "__main__":
                                 if isinstance(pre_op_loc, list):
                                     pre_subnet_name, pre_subnet_opd_index = pre_op_loc
                                     pre_op_loc = func_output_names[pre_subnet_name][
-                                        pre_subnet_opd_index]
+                                        pre_subnet_opd_index
+                                    ]
                         elif is_opname(iopd, "top.None", "tpu.Yield"):
                             continue
                         else:
@@ -584,7 +744,7 @@ if __name__ == "__main__":
                         edge = create_edge(
                             pre_op_loc,
                             op_loc,
-                            label=iopd.get_name(),
+                            label="",
                             href=f"#{pre_op_loc}",
                         )
 
@@ -597,6 +757,9 @@ if __name__ == "__main__":
                         for opd in op.operands:
                             func_output_names[func_name].append(get_op_loc(opd))
         dot.add_subgraph(func_graph)
+
+        if args.mlir_order:
+            func_graph.obj_dict["locs"] = loc_seq
 
     for func in module.body.operations:
 

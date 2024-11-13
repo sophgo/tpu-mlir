@@ -7,11 +7,12 @@
 #
 # ==============================================================================
 import struct
-from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple, Type
+from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple
 from enum import Enum, IntEnum
 import functools
 import ctypes
 import numpy as np
+import os
 from dataclasses import dataclass
 
 __all__ = [
@@ -361,6 +362,10 @@ class MemRefBase(Value):
         return super().__init_subclass__()
 
     @property
+    def use_raw_addr(self):
+        return os.getenv("USE_RAW_ADDR")
+
+    @property
     @functools.lru_cache()
     def r_addr(self):
         if self.mtype == MType.UNKNOWN:
@@ -399,6 +404,15 @@ class MemRefBase(Value):
         k = self.mtype
         if k == MType.UNKNOWN:
             return f"%?.{self.address}"
+
+        if self.use_raw_addr:
+            return f"{self.address}"
+
+        return self._backend_name
+
+    @property
+    def _backend_name(self):
+        k = self.mtype
         if k == MType.R:
             # R{bank_index}.{bank_offset}.L{NPU_OFFSET}
             # R0.123.L0
@@ -562,7 +576,6 @@ class BaseTpuCmd(BaseCmd):
         subnet_id=0,
         core_id=0,
         param_fn=None,
-        cmd_id=None,
     ) -> None:
         self.reg = reg
         self.buf = buf
@@ -633,7 +646,7 @@ class RegIndex:
     def __repr__(self):
         return str(self.storage)
 
-    def get(self, key, default) -> Type[BaseTpuCmd]:
+    def get(self, key, default) -> BaseTpuCmd:
         if key in self.storage:
             return self.storage[key]
         return default

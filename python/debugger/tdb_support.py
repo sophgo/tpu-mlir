@@ -28,6 +28,8 @@ from .target_mars3.context import MARS3Context
 import pandas as pd
 import builtins
 
+from collections import Counter
+
 
 class TdbStatus(Enum):
     # bmodel not loaded
@@ -183,7 +185,12 @@ def commom_args(parser: ArgumentParser):
               This option only effect PCIE and SOC mode, disable this may decrease time cost,\
               but may have timeout error when an op contain too many atomic cmds. "                                                                                   ,
     )
-
+    parser.add_argument(
+        "--force_reindex_cmd",
+        action="store_true",
+        default=False,
+        help="force reindex cmds when bmodel has dumplicated index",
+    )
     parser.add_argument(
         "--ddr_size",
         type=int,
@@ -414,6 +421,43 @@ class TdbCmdBackend(cmd.Cmd):
 
         op_df = pd.DataFrame.from_records(cmd_records)
         op_df["executed_id"] = op_df["executed_id"].astype(int)
+
+        index_counter = Counter(op_df.index)
+        if index_counter.most_common(1)[0][1] == 1:
+            self.op_df = op_df.set_index("cmd_index", drop=False)
+            return
+
+        if not self.args.get("force_reindex_cmd"):
+            op_df.to_csv("cmd_records.csv")
+            pprint(
+                "top10 cmd_id and its rows",
+                op_df.sort_values("cmd_id", ascending=False)
+                .head(10)
+                .to_dict("records"),
+            )
+            msg = """
+                bmodel has dumplicated index, cmd info has been saved into cmd_records.csv.
+                before we sovle this problem, you can use --force_reindex_cmd to skip this check and run the program.
+            """
+            raise ValueError(msg)
+
+        subnet_core_id_counter = {}
+
+        def fix_cmd_index(x):
+            subnet_id, tiu, dma, core_id = x
+            counter = subnet_core_id_counter.setdefault((subnet_id, core_id), Counter())
+            if tiu is not None:
+                counter["tiu"] += 1
+                tiu_offset = counter["tiu"]
+                tiu = tiu_offset
+            elif dma is not None:
+                counter["dma"] += 1
+                dma_offset = counter["dma"]
+                dma = dma_offset
+            return (subnet_id, tiu, dma, core_id)
+
+
+        op_df['cmd_index'] = op_df['cmd_index'].apply(fix_cmd_index)
         self.op_df = op_df.set_index("cmd_index", drop=False)
 
     def add_plugin(self, plugin_name: str):

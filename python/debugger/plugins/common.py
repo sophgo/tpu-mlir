@@ -507,15 +507,19 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         if self.dump_all:
             self.dump_current()
 
-        # from debugger.target_1688.regdef import DMA_tensor_0x000__reg
-        # if tdb.cmd_point > 1 and isinstance(tdb.get_precmd().reg, DMA_tensor_0x000__reg):
-        #     cmd = tdb.get_precmd()
-        #     ipt = tdb.memory.get_data(cmd.operands[0].to_ref(core_id=cmd.core_id))
-        #     opt = tdb.memory.get_data(cmd.results[0].to_ref(core_id=cmd.core_id))
-        #     if not (ipt == opt).all():
-        #         breakpoint()
-        #     else:
-        #         tdb.message("succeed dma ops")
+    def do_load_range(self, args):
+        try:
+            cmd = self.tdb.get_cmd()
+            if cmd.cmd_type.is_static():
+                for i, result in enumerate(cmd.operands):
+                    if not result.is_scalar:
+                        ipt = np.arange(np.prod(result.shape), dtype=result.np_dtype).reshape(result.shape)
+                        self.tdb.memory.set_data(result, ipt)
+            else:
+                self.tdb.error("")
+                return
+        except StopIteration:
+            self.tdb.message("no cmd pre.")
 
     def dump_current(self):
         if self.tdb.context.using_cmodel:
@@ -526,6 +530,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         datas = {}
         try:
             cmd = self.tdb.get_cmd()
+            datas[f"i_cmd"] = str(cmd)
             if cmd.cmd_type == CMDType.cpu:
                 data = self.tdb.memory.get_cpu_data(cmd.cmd_id)
                 for i, d in enumerate(data):
@@ -542,6 +547,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
         try:
             cmd = self.tdb.get_precmd()
+            datas[f"o_cmd"] = str(cmd)
             if cmd.cmd_type == CMDType.cpu:
                 data = self.tdb.memory.get_cpu_data(cmd.cmd_id)
                 for i, d in enumerate(data):
@@ -556,7 +562,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         except StopIteration:
             self.tdb.message("no cmd pre.")
 
-        np.savez(filename, datas)
+        np.savez(filename, **datas)
         self.tdb.message(f"dump in {filename}")
 
     def do_dump_current(self, args):

@@ -68,6 +68,7 @@ class TLValue:
     address: int
     layout: str
     name: str
+    shape: List[int]
     reshape: str
     slice: str
     dtype: np.dtype
@@ -84,6 +85,8 @@ class TLValue:
         self.layout = dic["layout"]
         self.memory_type = dic["memory_type"]
         self.name = dic["name"]
+        self.shape = dic["shape"]
+
         self.reshape = dic["reshape"]
         self.slice = dic["slice"]
         self.mlir_type_str = dic["type"]
@@ -154,7 +157,7 @@ class TLValue:
         return context.MemRef(address, shape, dtype, layout=layout, stride=stride)
 
     def __repr__(self) -> str:
-        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type_str}, memory_type={self.memory_type}}})"
+        return f"@{self.address}({{name={self.name}, layout={self.layout}, shape={self.shape}, slice={self.slice}, mlir_type={self.mlir_type_str}, memory_type={self.memory_type}}})"
 
 
 class Pickled_Value:

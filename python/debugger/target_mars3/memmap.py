@@ -243,16 +243,9 @@ class MemRef(MemRefBase):
         # print("r_addr",r_addr)
         return r_addr
 
-
     @property
-    @functools.lru_cache()
-    def name(self):
-        """
-        use relative address
-        """
+    def _backend_name(self):
         k = self.mtype
-        if k == MType.UNKNOWN:
-            return f"%?.{self.address}"
         if k == MType.R:
             # R{bank_index}.{bank_offset}.L{NPU_OFFSET}
             # R0.123.L0

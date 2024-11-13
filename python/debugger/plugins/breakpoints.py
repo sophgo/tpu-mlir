@@ -70,12 +70,17 @@ class AddrBreakpoint(Breakpoint):
 
 class CmdIdBreakpoint(Breakpoint):
     type = "cmd-id"
-    pattern = re.compile("^[BD][0-9]+")
+    pattern = re.compile("^[TD][0-9]+(C[0-9])?")
 
     def __init__(self, text, cond=None, index=-1) -> None:
         super().__init__(text, cond, index)
         self.match_type = CMDType.tiu if text[0] == "T" else CMDType.dma
-        self.match_index = int(text[1:])
+        ret = text.split("C")
+        self.match_index = int(ret[0][1:])
+        if len(ret) > 1:
+            self.match_core = int(ret[1])
+        else:
+            self.match_core = -1
 
     def should_stop(self, tdb: "TdbCmdBackend") -> bool:
         cmd = tdb.get_cmd()
@@ -86,6 +91,8 @@ class CmdIdBreakpoint(Breakpoint):
         if cmd.cmd_id != self.match_index:
             return False
 
+        if self.match_core != -1 and cmd.core_id != self.match_core:
+            return False
         return True
 
 

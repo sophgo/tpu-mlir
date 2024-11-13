@@ -416,7 +416,7 @@ class Memory(CModelMemory):
             index = np.zeros(_c * info.NPU_NUM, bool)
             index[NPU_OFFSET : NPU_OFFSET + c] = True
             index = index.reshape(_c, info.NPU_NUM)
-            index[:, lane_mask == 0] = False
+            index[:,( lane_mask == 0)[:info.NPU_NUM]] = False
             return index.flatten()
 
         def get_dma4bank_data():
