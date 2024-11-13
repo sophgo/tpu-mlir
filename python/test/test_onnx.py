@@ -314,7 +314,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "DynamicSlice":     (self.test_DynamicSlice,    N, Y, Y, N, N, N),
-            # "DynamicPad":     (self.test_DynamicPad,        N, Y, Y, N, N, N),
+            "DynamicPad":     (self.test_DynamicPad,        N, Y, Y, N, N, N),
             ## only for test
             "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }
@@ -6333,9 +6333,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 9, 96).float()
         pads = torch.tensor([1, 1, 1, 2, 2, 2], dtype=torch.int64)
         dynamic_in_names = ['x', 'pads']
-        dynamic_shape_input_names = ['pads']
         shape_influencing_input_names = ['pads']
-        dynamic_axes={'pads': {0: 'dynamic_pads'}}
         try:
             self.dynamic = True
             self.torch_and_test(
@@ -6344,9 +6342,7 @@ class ONNX_IR_TESTER(object):
                 case_name,
                 support_modes=["f32", "f16", "bf16"],
                 dynamic_in_names=dynamic_in_names,
-                dynamic_shape_input_names = dynamic_shape_input_names,
                 shape_influencing_input_names=shape_influencing_input_names,
-                dynamic_axes = dynamic_axes
             )
         finally:
             self.dynamic = False

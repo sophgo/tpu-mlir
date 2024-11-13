@@ -61,5 +61,13 @@ LogicalResult top::CumSumOp::inference(InferenceParameter &p) {
 }
 
 void top::CumSumOp::shape_inference() {
-common_shape_inference(getOperation());
+  int axis = getAxis();
+  auto src_dim = module::getShape(getInput()).size();
+  if (axis < 0) {
+    axis += src_dim;
+    // setAxis(axis);
+    Builder builder(getContext());
+    setAxisAttr(builder.getI64IntegerAttr(axis));
+  }
+  common_shape_inference(getOperation());
 }
