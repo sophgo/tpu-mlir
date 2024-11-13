@@ -40,7 +40,7 @@ struct TopScaleDotProductAttentionSplitV2 : public OpRewriterPatternEx<ScaleDotP
     if (shape_len != 4) return failure();
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
-    ArrayRef<int64_t> order = {0,1,3,2};
+    std::vector<int64_t> order = {0, 1, 3, 2};
     rewriter.setInsertionPointAfter(op);
     RankedTensorType newType, outputType;
     NameLoc loc;
