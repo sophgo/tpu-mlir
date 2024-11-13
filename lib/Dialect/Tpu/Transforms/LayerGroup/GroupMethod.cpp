@@ -2807,12 +2807,15 @@ void GroupMethod::load_lg_results(std::vector<LgInfo> &lg_infos, const llvm::Set
                 shape_values.push_back(*num);
               }
             }
-            if (shape_values.size() == 5) {
+            if (shape_values.size() == 5 && shape_values[0] != 0) {
               lg_info.shape_secs.nsecs = shape_values[0];
               lg_info.shape_secs.csecs = shape_values[1];
               lg_info.shape_secs.dsecs = shape_values[2];
               lg_info.shape_secs.hsecs = shape_values[3];
               lg_info.shape_secs.wsecs = shape_values[4];
+            } else {
+              // to indicate running shape_secs search in assignLmemAddrWithSecs
+              lg_info.shape_secs.nsecs = 0;
             }
           }
         }

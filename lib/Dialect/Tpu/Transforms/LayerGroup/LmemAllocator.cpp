@@ -1009,7 +1009,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
 
   if (getenv("SC_BRUTE_FORCE")){
     sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step, group_costs, shape_secs_space, cycle_calculator_);
-  } else if (lg_info.use_cache){
+  } else if (lg_info.use_cache && lg_info.shape_secs.nsecs != 0){
     group_costs.push_back(lg_info.group_cost);
     shape_secs_space.push_back(lg_info.shape_secs);
   } else {
