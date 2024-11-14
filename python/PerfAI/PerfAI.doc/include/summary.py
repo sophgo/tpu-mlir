@@ -344,8 +344,10 @@ class Summary:
             else:
                 s[func_name] = {i.layer_name}
         self.layer_summary_rows = sorted(list(s.keys()))
-        self.layer_summary_rows.remove("Others")
-        self.layer_summary_rows.append("Others")
+        if "Others" in self.layer_summary_rows:
+            # to keep Others at the tail of the list
+            self.layer_summary_rows.remove("Others")
+            self.layer_summary_rows.append("Others")
         total_weight_size = 0
         total_alg_ops = 0
         total_arch_ops = 0

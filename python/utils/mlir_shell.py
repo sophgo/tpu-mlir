@@ -405,6 +405,8 @@ def mlir_to_model(tpu_mlir: str,
             # bm1684 uses ".dat", bm1684x uses ".txt".
             _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"], log_level=log_level)
             _os_system(["mv net_0.profile", model + ".net_0.profile"],log_level=log_level)
+            tensor_loc = model + ".json"
+            shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
     except RuntimeError:
         pass
 

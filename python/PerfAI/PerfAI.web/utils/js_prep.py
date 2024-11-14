@@ -22,10 +22,10 @@ from src.mlir_json import GlobalProfileParser
 from utils.utils import *
 
 
-def generate_jsfile(dirpath, name, out_path, file_path):
+def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     include_layer = False
     parser = GlobalProfileParser()
-    result = parser.parse(dirpath)
+    result = parser.parse(layerinfo_path)
     if result is not None:
         mlir_info, file_line_dict = result
         tiu_layer_map, dma_layer_map = get_engine_layer(mlir_info)

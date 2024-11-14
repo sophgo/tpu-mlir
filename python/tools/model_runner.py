@@ -35,13 +35,8 @@ def get_chip_from_model(model_file: str) -> str:
 
 def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
-    tensor_loc = model_file + ".json"
-    if not os.path.isfile(tensor_loc):
-        yield None
-        return
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
-    shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
     with open(out_dir + "/input_ref_data.dat", "wb") as f:
         for i in net.inputs:
             i.data.tofile(f)

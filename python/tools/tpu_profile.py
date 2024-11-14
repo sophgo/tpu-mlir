@@ -17,12 +17,12 @@ from profile_helper.interface import *
 def profileArgParser():
     parser = arg.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "perfAI", "lg"],
+    parser.add_argument("--arch", type=str.upper, required=True, choices=["BM1684", "BM1684X", "BM1688", "CV186X", "BM1690"], help="chip arch")
+    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "lg"],
                         help="time: parse profile data to visualize. "
                         "sim: parse net_stat.sim in profile to visualize. "
                         "command: parse static commands in profile to analyse the command params. ",
                         default="time")
-    parser.add_argument("--arch", type=str, choices=["BM1684", "BM1684X", "A2", "BM1690"], help="chip arch", default="BM1684")
     parser.add_argument("--format", type=str, choices=["html", "csv", "console", "layer"], help="output format", default="html")
     parser.add_argument("--test", type=str, help="only for mode=command, check some condition for command", default="")
     parser.add_argument("--option", type=str, help="profile extra options, format is 'key1=value1,key2=value2,...'",
@@ -33,20 +33,20 @@ def profileArgParser():
     # yapf: enable
     return parser
 
-
 if __name__ == "__main__":
     parser = profileArgParser()
     args, unknown = parser.parse_known_args(sys.argv[1:] + ['profile_out'])
     if args.mode == "time":
-        bmprofile_analyze(args.input_dir, args.output_dir, args.format, args.option)
+        if args.arch in ["BM1688", "CV186X", "BM1690"]:
+            bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch, debug=args.debug)
+        else:
+            bmprofile_analyze(args.input_dir, args.output_dir, args.format, args.option)
     elif args.mode == "sim":
         bmprofile_simulate(args.input_dir, args.output_dir, args.format, args.option)
     elif args.mode == "command":
         bmprofile_parse_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
     elif args.mode == "check":
         bmprofile_check_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
-    elif args.mode == "perfAI":
-        bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch, debug=args.debug)
     elif args.mode == "lg":
         bmprofile_parse_layergroup_log(args.input_dir, args.output_dir, *unknown)
     else:

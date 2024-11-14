@@ -48,10 +48,10 @@ class GlobalProfileParser:
         json_file = filename + 'tensor_location.json'
         mlir_file = filename + 'final.mlir'
         if not os.path.exists(json_file):
-            logging.fatal("'{}' does not exist".format(json_file))
+            logging.warning("'{}' does not exist, layer info is mssing.".format(json_file))
             return None
         elif not os.path.exists(mlir_file):
-            logging.fatal("'{}' does not exist".format(mlir_file))
+            logging.warning("'{}' does not exist, layer info is mssing.".format(mlir_file))
             return None
         self.json_filename = json_file
         self.mlir_filename = mlir_file

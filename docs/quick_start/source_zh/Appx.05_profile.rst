@@ -2,7 +2,7 @@
 
 附录05：TPU Profile工具使用指南
 ==================================
-本章节主要是介绍如何利用Profile数据及TPU Profile工具，可视化模型的完整运行流程，以便于进行模型性能分析。
+本章节主要是介绍如何利用Profile数据及TPU Profile工具，可视化模型的完整运行流程，以便于进行模型性能分析。当前Profile工具支持 `BM1684`， `BM1684X` , `BM1688` , `CV186X` , `BM1690` 。
 
 
 编译bmodel
@@ -34,7 +34,7 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --processor bm1684x \
+       --processor BM1684X \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_1684x_f16.bmodel \
@@ -74,9 +74,11 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 
     # 将bmprofile_data-1目录的profile原始数据转换成网页放置到bmprofile_out目录
     # 如果有图形界面，会直接打开浏览器，直接看到结果
-    tpu_profile bmprofile_data-1 bmprofile_out
+    tpu_profile bmprofile_data-1 bmprofile_out --arch BM1684X
     ls bmprofile_out
     # echarts.min.js  profile_data.js  result.html
+
+对于 `BM1688` 或 `CV186X` 的模型，若要使profile中带有layer信息，需要额外拷贝 `yolov5s_1684x_f16` （与bmodel同名）目录下的 `tensor_location.json` 和 `final.mlir` 到 `bmprofile_data-1` 目录中。 `BM1690` 暂不支持显示模型layer信息。
 
 用浏览器打开 ``bmprofile_out/result.html`` 可以看到profile的图表。此外，该工具还有其他用法，可通过如下命令进行查看：
 

@@ -24,11 +24,11 @@ from src.generator.summary import generate_summary
 from src.parser.exfile_parser import GlobalProfileParser
 from utils.utils import get_total_time
 
-def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0, divided=0):
+def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0, divided=0, layerinfo_dir=""):
     input_fold = input if input[-1] == '/' else input + '/'
     out_file = output if '/' in output else input_fold + output
     parser = GlobalProfileParser()
-    global_info = parser.parse(input_fold)
+    global_info = parser.parse(layerinfo_dir)
     # PerfAI.doc do not support showing layer info without global.profile
     network = global_info.net_name if global_info and global_info.net_name else '--'
     flops = global_info.flops if global_info and global_info.flops else '--'
@@ -114,6 +114,11 @@ if __name__ == "__main__":
         help="The input file fold path, which contains tiuRegInfo、dmaRegInfo、simTotalCycle、globalProfile file.",
     )
     parser.add_argument(
+        '--layerinfo_dir',
+        type=str,
+        default='',
+        help='The folder path that contains tensor_location.json and final.mlir.')
+    parser.add_argument(
         "cores",
         type=int,
         default=1,
@@ -150,4 +155,4 @@ if __name__ == "__main__":
         help="If write the output Excel into several Excel files separately, which will solve the problem of excessive memory",
     )
     args = parser.parse_args()
-    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split, args.divided)
+    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split, args.divided, args.layerinfo_dir)
