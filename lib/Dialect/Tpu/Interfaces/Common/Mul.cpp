@@ -88,14 +88,18 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
     std::vector<float> rhs_tmp(rhs_num_elem);
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
-    auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
+    int rzp = 0;
+    if (!module::isWeight(getInputs()[1])) {
+      auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
+      rzp = r_qtype.getZeroPoint();
+    }
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
     for (int i = 0; i < lhs_num_elem; i++) {
       lhs_tmp[i] = p.inputs[0][i] - l_qtype.getZeroPoint();
     }
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
     for (int i = 0; i < rhs_num_elem; i++) {
-      rhs_tmp[i] = p.inputs[1][i] - r_qtype.getZeroPoint();
+      rhs_tmp[i] = p.inputs[1][i] - rzp;
     }
 
     auto binary = (Binary *)p.handle;

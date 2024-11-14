@@ -37,8 +37,8 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double val) { return val / (1 + std::exp(-val)); }, 8,
-      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym);
-  auto newType = getQuantInt8Type(op.getOutput(), output_asym);
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

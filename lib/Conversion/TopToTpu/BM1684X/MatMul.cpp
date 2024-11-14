@@ -94,7 +94,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     std::vector<double> w_scale(p.N, 1.0);
     bool input_asymmetric = op->hasAttr("input_asym");
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp,
-                                 input_asymmetric);
+                                 input_asymmetric || asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
     bool right_transpose = op.getRightTranspose();
     if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
