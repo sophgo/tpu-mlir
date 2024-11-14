@@ -165,6 +165,109 @@ struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
   bool shouldPrint(Operation *op) const override { return false; }
 };
 
+mlir::Operation *getPrevPositionOp(mlir::Operation *currentOp) {
+  if (!currentOp)
+    return nullptr;
+
+  mlir::Block *block = currentOp->getBlock();
+  mlir::Operation *prevOp = nullptr;
+  for (auto &op : block->getOperations()) {
+    if (&op == currentOp) {
+      return prevOp;
+    }
+    prevOp = &op;
+  }
+  return nullptr;
+}
+
+mlir::Operation *getNextPositionOp(mlir::Operation *currentOp) {
+  if (!currentOp)
+    return nullptr;
+
+  mlir::Block *block = currentOp->getBlock();
+  bool foundCurrentOp = false;
+  for (auto &op : block->getOperations()) {
+    if (foundCurrentOp) {
+      return &op;
+    }
+    if (&op == currentOp) {
+      foundCurrentOp = true;
+    }
+  }
+  return nullptr;
+}
+
+struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
+  ReshapeReorderPattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "ReshapeReorderPattern", 1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
+                                    PatternRewriter &rewriter) const override {
+    if (!isa<tpu::ReshapeOp>(op) || op->getNumOperands() > 1)
+      return failure();
+
+    auto reshapeOp = cast<tpu::ReshapeOp>(op);
+    auto parent_op = reshapeOp->getParentOp();
+    assert(isa<FuncOp>(parent_op));
+    auto funcOp = cast<FuncOp>(parent_op);
+
+    // if reshape is directly connected to ReturnOp
+    if ((dyn_cast_if_present<ReturnOp>(getNextPositionOp(op)) ||
+         dyn_cast_if_present<tpu::ReshapeOp>(getNextPositionOp(op))) &&
+        dyn_cast_if_present<top::InputOp>(op->getOperand(0).getDefiningOp())) {
+      return failure();
+    }
+
+    auto &entryBlock = funcOp.getBody().back();
+    mlir::Operation *returnOp = nullptr;
+    for (auto &iter_op : entryBlock) {
+      if (isa<ReturnOp>(iter_op)) {
+        returnOp = &iter_op;
+        break;
+      }
+    }
+    if (returnOp) {
+      for (auto operand : returnOp->getOperands()) {
+        auto definingOp = operand.getDefiningOp();
+        if (definingOp && isa<ReshapeOp>(definingOp) &&
+            definingOp->hasOneUse()) {
+          definingOp->moveBefore(returnOp);
+          return success();
+        }
+      }
+    }
+
+    // if reshape is directly connected to function arguments,
+    // this happens when reshapeOp is in subfunctions
+    for (auto arg : funcOp.getArguments()) {
+      if (dyn_cast_if_present<tpu::ReshapeOp>(getPrevPositionOp(op)) &&
+          arg == op->getOperand(0)) {
+        return failure();
+      }
+
+      if (arg == op->getOperand(0)) {
+        auto &entryBlock = funcOp.getBody().front();
+        op->moveBefore(&entryBlock, entryBlock.begin());
+        return success();
+      }
+    }
+
+    // if op is in outer function, and is directly connected to top::InputOp
+    if ((dyn_cast_if_present<top::InputOp>(getPrevPositionOp(op)) ||
+         dyn_cast_if_present<tpu::ReshapeOp>(getPrevPositionOp(op))) &&
+        dyn_cast_if_present<top::InputOp>(op->getOperand(0).getDefiningOp())) {
+      return failure();
+    }
+
+    if (auto inputOp =
+            dyn_cast<top::InputOp>(op->getOperand(0).getDefiningOp())) {
+      op->moveAfter(inputOp.getOperation());
+      return success();
+    }
+    return failure();
+  }
+  bool shouldPrint(Operation *op) const override { return false; }
+};
+
 class OpReorderPass : public OpReorderBase<OpReorderPass> {
 public:
   OpReorderPass() {}
@@ -182,9 +285,12 @@ public:
         // applyPatternsAndFoldGreedily(func, std::move(patterns));
         // special for attention
         patterns.clear();
+        patterns.add<ReshapeReorderPattern>(ctx);
+        applyPatternsAndFoldGreedily(func, std::move(patterns));
 
         // This pattern will lead to negative optimization, so disable it until
         // an update in the future
+        patterns.clear();
         patterns.add<AttentionReorderPattern>(ctx);
         applyPatternsAndFoldGreedily(func, std::move(patterns));
 
