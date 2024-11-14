@@ -26,7 +26,7 @@ void tpu::CompareConstOp::codegen_global_cv18xx(int64_t layer_id) {
   auto fmt =
       module::isUniformQuantized(getOutput()) ? CVK_FMT_U8 : CVK_FMT_BF16;
   // auto pos = positive();
-  auto pos = false;  // todo
+  auto pos = false;            // todo
   assert(fmt == CVK_FMT_BF16); // todo
   cvi_backend_zero_mask_kernel(layer_id, input_gaddr, output_gaddr, n, c, h, w,
                                pos, fmt);

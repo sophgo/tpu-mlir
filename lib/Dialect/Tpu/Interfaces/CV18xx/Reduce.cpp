@@ -10,9 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -28,7 +25,8 @@ void tpu::ReduceOp::codegen_global_cv18xx(int64_t layer_id) {
   std::vector<int64_t> input_shape = module::getShape(getInput());
   if (mode_ == "ReduceL2") {
     gaddr_t ga_table = module::getAddress(getBuffer());
-    gaddr_t ga_mantissa_table = module::getAddress(getReciprocalMantissaTable());
+    gaddr_t ga_mantissa_table =
+        module::getAddress(getReciprocalMantissaTable());
     cvi_backend_tg_bf16_reduce_l2_kernel(layer_id, ga_input, ga_output,
                                          ga_table, ga_mantissa_table,
                                          input_shape, axes_v);
@@ -38,8 +36,8 @@ void tpu::ReduceOp::codegen_global_cv18xx(int64_t layer_id) {
   if (module::isUniformQuantized(getOutput())) {
     int32_t shift =
         static_cast<int32_t>(module::getI64Array(getRshift().value())->at(0));
-    int32_t multi =
-        static_cast<int32_t>(module::getI64Array(getMultiplier().value())->at(0));
+    int32_t multi = static_cast<int32_t>(
+        module::getI64Array(getMultiplier().value())->at(0));
     if (mode_ == "ReduceMean") {
       cvi_backend_tg_fixed_reduce_mean_kernel(
           layer_id, ga_input, ga_output, input_shape, axes_v, multi, shift);

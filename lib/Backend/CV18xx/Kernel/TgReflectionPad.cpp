@@ -9,12 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
-
-
-
 #define DEBUG_TYPE "kernel_reflectionpad"
-
-
 
 namespace tpu_mlir {
 namespace backend {

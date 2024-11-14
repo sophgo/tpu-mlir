@@ -44,7 +44,8 @@ void WhereLowering::LoweringINT8(PatternRewriter &rewriter, top::WhereOp op,
     new_x_const_val =
         min < 0 ? to_int8(new_x_const_val) : to_uint8(new_x_const_val);
     op.setXConstVal(APFloat(new_x_const_val));
-  } if (op.getYIsConst()) {
+  }
+  if (op.getYIsConst()) {
     double y_const_val = op.getYConstVal().convertToDouble();
     double new_y_const_val = y_const_val / scale;
     new_y_const_val =
@@ -55,4 +56,3 @@ void WhereLowering::LoweringINT8(PatternRewriter &rewriter, top::WhereOp op,
 }
 } // namespace bm1684
 } // namespace tpu_mlir
-

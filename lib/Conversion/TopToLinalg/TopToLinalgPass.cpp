@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Conversion/TopToLinalg/OpLowering.h"
 #include "tpu_mlir/Conversion/Conversion.h"
+#include "tpu_mlir/Conversion/TopToLinalg/OpLowering.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOLINALG
@@ -104,7 +104,8 @@ struct EraseTopInputOp : public OpRewritePattern<top::InputOp> {
 //       rewriter.replaceOpWithNewOp<mlir::linalg::ConstOp>(op, outType, attr);
 //     } else {
 //       // auto out_shape = outType.cast<RankedTensorType>().getShape();
-//       // auto out_ty = RankedTensorType::get(out_shape, rewriter.getF32Type());
+//       // auto out_ty = RankedTensorType::get(out_shape,
+//       rewriter.getF32Type());
 //       // attr = DenseElementsAttr::get(out_ty, llvm::ArrayRef<float>());
 //       auto attr = DenseElementsAttr::get(
 //           RankedTensorType::get({}, rewriter.getI64Type()),
@@ -139,7 +140,8 @@ public:
 
     RewritePatternSet patterns(ctx_);
     ConversionTarget target(*ctx_);
-    target.addLegalDialect<mlir::linalg::LinalgDialect, mlir::func::FuncDialect>();
+    target.addLegalDialect<mlir::linalg::LinalgDialect,
+                           mlir::func::FuncDialect>();
 
     // Change data format for FuncOp
     // patterns.add<ModifyFuncOp>(ctx_);

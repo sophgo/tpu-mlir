@@ -13,33 +13,35 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void InterpLowering::LoweringF32(PatternRewriter &rewriter,
-                                   top::InterpOp op) const {
+                                 top::InterpOp op) const {
   auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
+  if (auto a =
+          tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>())) {
     op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
+                 tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
   }
 
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
+  if (auto a = tpu::symbolizeResizeCoordMode(
+          op_->getAttr("coord_mode").cast<StringAttr>())) {
     op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
+                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
   lowering_common_f32<tpu::InterpOp>(rewriter, op, 3);
 }
 
-void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
-                                    top::InterpOp op, bool asymmetric) const {
+void InterpLowering::LoweringINT8(PatternRewriter &rewriter, top::InterpOp op,
+                                  bool asymmetric) const {
   auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
+  if (auto a =
+          tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>())) {
     op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
+                 tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
   }
 
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
+  if (auto a = tpu::symbolizeResizeCoordMode(
+          op_->getAttr("coord_mode").cast<StringAttr>())) {
     op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
+                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
   // seems like NNTC's interp only support F32
   // bmcompiler/src/interface/bmcompiler_if.cpp :813

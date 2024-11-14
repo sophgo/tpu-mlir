@@ -92,7 +92,7 @@ void LayerNormLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void LayerNormLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::LayerNormOp op) const {
+                                   top::LayerNormOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

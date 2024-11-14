@@ -9,15 +9,10 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
-
-
-
-
 #define DEBUG_TYPE "cvi_backend_copy_kernel"
 namespace tpu_mlir {
 namespace backend {
-void cvi_backend_tg_copy_kernel(gaddr_t ga_input,
-                                gaddr_t ga_output,
+void cvi_backend_tg_copy_kernel(gaddr_t ga_input, gaddr_t ga_output,
                                 const std::vector<int> &shape,
                                 const std::vector<int> &i_stride,
                                 const std::vector<int> &o_stride,
@@ -39,8 +34,8 @@ void cvi_backend_tg_copy_kernel(gaddr_t ga_input,
   output_gstride.h = o_stride[2] * fmt_size;
   output_gstride.w = o_stride[3] * fmt_size;
 
-  CV18xx::tdma_g2g_tensor_copy(ga_input, input_shape, input_gstride, fmt, ga_output,
-                           output_shape, output_gstride, fmt);
+  CV18xx::tdma_g2g_tensor_copy(ga_input, input_shape, input_gstride, fmt,
+                               ga_output, output_shape, output_gstride, fmt);
 }
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

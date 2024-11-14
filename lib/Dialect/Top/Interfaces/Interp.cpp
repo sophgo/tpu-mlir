@@ -94,9 +94,13 @@ static inline void backward_map(int out_x, float scale, int d, float &xs,
   }
 }
 
-template <typename T> T fp_cast(float x);
+template <typename T>
+T fp_cast(float x);
 
-template <> float fp_cast<float>(float x) { return x; }
+template <>
+float fp_cast<float>(float x) {
+  return x;
+}
 
 template <typename T>
 void interp_core(const T *in, T *out, int input_h, int input_w, int output_h,
@@ -193,9 +197,9 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     auto target_shape = module::getShape(getTargetShape());
     float *target_shape_ = p.inputs[1];
     std::vector<int64_t> out_shape;
-    if(target_shape[0] == 3) {
+    if (target_shape[0] == 3) {
       out_shape = {(int)target_shape_[0], (int)target_shape_[1],
-            (int)target_shape_[2]};
+                   (int)target_shape_[2]};
       setScaleH(APFloat((double)out_shape[1] / ih));
       setScaleW(APFloat((double)out_shape[2] / iw));
       module::setShape(getOutput(), out_shape);
@@ -204,14 +208,13 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
 
     } else {
       out_shape = {(int)target_shape_[0], (int)target_shape_[1],
-              (int)target_shape_[2], (int)target_shape_[3]};
+                   (int)target_shape_[2], (int)target_shape_[3]};
       setScaleH(APFloat((double)out_shape[2] / ih));
       setScaleW(APFloat((double)out_shape[3] / iw));
       module::setShape(getOutput(), out_shape);
       oh = out_shape[2];
       ow = out_shape[3];
     }
-
   }
   PLATFORM_SUPPORT platform_sp;
   int coord = 0;

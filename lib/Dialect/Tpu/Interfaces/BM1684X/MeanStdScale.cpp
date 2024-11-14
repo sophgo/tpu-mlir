@@ -18,7 +18,8 @@ void tpu::MeanStdScaleOp::codegen_global_bm1684x() {
   auto scale = module::getF64Array(getScale());
   auto mean = module::getF64Array(getMean());
   auto zero_points = module::getF64Array(getZeroPoints());
-  auto round_mode = round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
+  auto round_mode =
+      round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
   auto rshift = module::getI32Array(getRshift());
   auto offset = module::getI32Array(getOffset());
   auto multi = module::getI32Array(getMulti());
@@ -35,13 +36,14 @@ void tpu::MeanStdScaleOp::codegen_global_bm1684x() {
   memcpy(param.scale, scale->data(), sizeof(param.scale));
   param.in_zp = zero_points->at(0);
   param.out_zp = zero_points->at(1);
-  memcpy(param.multi , multi->data(), sizeof(param.multi));
-  memcpy(param.rshift , rshift->data(), sizeof(param.rshift));
-  memcpy(param.offset , offset->data(), sizeof(param.offset));
+  memcpy(param.multi, multi->data(), sizeof(param.multi));
+  memcpy(param.rshift, rshift->data(), sizeof(param.rshift));
+  memcpy(param.offset, offset->data(), sizeof(param.offset));
   param.round_mode = round_mode;
 
   BM168x::call_global_func("backend_api_mean_std_scale_global", &param,
-          sizeof(param), input_spec->data(), output_spec->data());
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 int64_t tpu::MeanStdScaleOp::dyn_codegen_global_bm1684x(void *buffer) {
@@ -49,24 +51,18 @@ int64_t tpu::MeanStdScaleOp::dyn_codegen_global_bm1684x(void *buffer) {
   return 0;
 }
 
-int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684x() {
-  return FW_LAYER_UNKNOWN;
-}
+int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }
 
-void tpu::MeanStdScaleOp::codegen_global_bm1684() {
-}
+void tpu::MeanStdScaleOp::codegen_global_bm1684() {}
 
-uint32_t tpu::MeanStdScaleOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::MeanStdScaleOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
 
-int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684() {
-  return FW_LAYER_UNKNOWN;
-}
+int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684() { return FW_LAYER_UNKNOWN; }
 
-void tpu::MeanStdScaleOp::codegen_global_cv18xx(int64_t layer_id) {
-}
+void tpu::MeanStdScaleOp::codegen_global_cv18xx(int64_t layer_id) {}
 
 void tpu::MeanStdScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                                 int64_t h_step, int64_t d_step,

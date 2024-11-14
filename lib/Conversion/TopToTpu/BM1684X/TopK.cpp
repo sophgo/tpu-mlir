@@ -28,12 +28,15 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
     for (auto &attr : op->getAttrs()) {
       cpu_param.push_back(attr);
     }
-    // If only values or indices are used, record it to support only one output in cpu layer
-    if(!op.getValues().getUsers().empty() && op.getIndices().getUsers().empty()) {
-      cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(true)));
-    }
-    else {
-      cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(false)));
+    // If only values or indices are used, record it to support only one output
+    // in cpu layer
+    if (!op.getValues().getUsers().empty() &&
+        op.getIndices().getUsers().empty()) {
+      cpu_param.push_back(rewriter.getNamedAttr("values_used_only",
+                                                rewriter.getBoolAttr(true)));
+    } else {
+      cpu_param.push_back(rewriter.getNamedAttr("values_used_only",
+                                                rewriter.getBoolAttr(false)));
     }
     attrs.emplace_back(
         rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
@@ -49,7 +52,7 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
     std::vector<Value> operands;
     operands.push_back(op.getInput());
     rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_types, operands,
-                                                  attrs);
+                                                   attrs);
     return;
   }
 
@@ -78,9 +81,9 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
   auto builder = OpBuilder(ctx);
   builder.setInsertionPoint(op);
   auto NoneOp_0 = builder.create<top::NoneOp>(builder.getUnknownLoc(),
-                                            builder.getNoneType());
+                                              builder.getNoneType());
   auto NoneOp_1 = builder.create<top::NoneOp>(builder.getUnknownLoc(),
-                                            builder.getNoneType());
+                                              builder.getNoneType());
   operands.push_back(NoneOp_0);
   operands.push_back(NoneOp_1);
   rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, new_types, operands, attrs);
@@ -112,8 +115,7 @@ void TopKLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
-void TopKLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::TopKOp op) const {
+void TopKLowering::LoweringF8(PatternRewriter &rewriter, top::TopKOp op) const {
   // LoweringTopK(rewriter, op, rewriter.getF16Type());
   llvm_unreachable("FIXME: not implement");
 }

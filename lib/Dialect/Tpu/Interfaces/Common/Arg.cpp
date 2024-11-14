@@ -17,7 +17,7 @@ typedef enum {
   ARG_MIN,
 } arg_mode_t;
 
-template<typename T>
+template <typename T>
 std::function<bool(T, T)> get_compare_op(arg_mode_t mode, bool select_last) {
   if (select_last) {
     if (mode == ARG_MAX) {
@@ -87,7 +87,7 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
     for (int n = 0; n < num_iter; n++) {
       const int o = n / inner_dims;
       const int i = n % inner_dims;
-      const float* input_v_n = input_v + o * axis_dims * inner_dims + i;
+      const float *input_v_n = input_v + o * axis_dims * inner_dims + i;
       float target_val = input_v_n[0];
       int target_idx = 0;
       for (int a = 1; a < axis_dims; a++) {
@@ -111,7 +111,8 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (module::isCV18xx()) {
     return type_verify_case_same(op, opd_idx, mode);
   } else if (module::isMARS3()) {
-    return type_verify_case_type(op, opd_idx, Builder(op).getIntegerType(16, false), mode);
+    return type_verify_case_type(op, opd_idx,
+                                 Builder(op).getIntegerType(16, false), mode);
   } else {
     return type_verify_case_type(op, opd_idx, Builder(op).getF32Type(), mode);
   }

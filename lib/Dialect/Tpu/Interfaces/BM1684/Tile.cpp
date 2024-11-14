@@ -12,7 +12,6 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -35,8 +34,9 @@ void tpu::TileOp::codegen_global_bm1684() {
   }
   if (module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_tile_full_fix8b(
-        input_addr, output_addr, buffer_global_addr, NULL, (const uint32_t *)in_shape,
-        (const int *)tile_coeff, input_dim, input_format, output_format, 0,
+        input_addr, output_addr, buffer_global_addr, NULL,
+        (const uint32_t *)in_shape, (const int *)tile_coeff, input_dim,
+        input_format, output_format, 0,
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_tile_full(
@@ -71,7 +71,8 @@ int64_t tpu::TileOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   //   int64_t buffer_size = ceiling_func(top_shape[1], NPU_NUM) *
   //                         align_up(top_shape[2] * top_shape[3], EU_NUM);
   //   local_buffer_size =
-  //       ceiling_func(top_shape[0], 4 / type_len) * buffer_size * sizeof(float);
+  //       ceiling_func(top_shape[0], 4 / type_len) * buffer_size *
+  //       sizeof(float);
   // }
   // return local_buffer_size;
   return 0;
@@ -105,19 +106,19 @@ void tpu::TileOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   // if (module::isUniformQuantized(getInput())) {
   //   BM1684::instance().dl_nodechip_tile_fix8b_local(
   //       la_input, la_output, la_buffer, (const int *)input_shape,
-  //       (const int *)tile_coeff, input_dim, in_gdma_format, out_gdma_format, 0,
-  //       (CMD_ID_NODE *)BM1684::instance()->bdc_node,
-  //       (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+  //       (const int *)tile_coeff, input_dim, in_gdma_format, out_gdma_format,
+  //       0, (CMD_ID_NODE *)BM1684::instance()->bdc_node, (CMD_ID_NODE
+  //       *)BM1684::instance()->cmdid_node);
   // } else {
   //   BM1684::instance().dl_nodechip_tile_local(
-  //       la_input, la_output, (const int *)input_shape, (const int *)tile_coeff,
-  //       input_dim, in_gdma_format, out_gdma_format, 0,
+  //       la_input, la_output, (const int *)input_shape, (const int
+  //       *)tile_coeff, input_dim, in_gdma_format, out_gdma_format, 0,
   //       (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   // }
   llvm_unreachable("Not supported now");
 }
 
-uint32_t tpu::TileOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::TileOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   // GLOBAL_IR_COMMON(tile);
   UNREACHABLE_THIS("Not Implemented");
   return 0;

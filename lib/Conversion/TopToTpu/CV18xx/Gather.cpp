@@ -23,28 +23,32 @@ void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   auto ishape = module::getShape(op.getInput());
   auto axis = op.getAxis();
-  if (ishape.size()!=2 || axis != 0) {
+  if (ishape.size() != 2 || axis != 0) {
     llvm_unreachable("Not support now.\n");
   }
-  //auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
-  if (auto indiceOp = dyn_cast_or_null<top::WeightOp>( op.getIndices().getDefiningOp())) {
+  // auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
+  if (auto indiceOp =
+          dyn_cast_or_null<top::WeightOp>(op.getIndices().getDefiningOp())) {
     operands.emplace_back(indiceOp.clone_int(op));
   } else {
     operands.emplace_back(op.getIndices());
   }
   // operands.emplace_back(op.getIndices());
-  //operands.emplace_back(inputOp.clone_bf16(op));
-  if (auto inputOp = dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
+  // operands.emplace_back(inputOp.clone_bf16(op));
+  if (auto inputOp =
+          dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
     operands.emplace_back(inputOp.clone_bf16(op));
   } else {
     operands.emplace_back(op.getInput());
   }
   std::vector<NamedAttribute> attrs;
-  attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("embedding")));
-  attrs.emplace_back(rewriter.getNamedAttr("param", rewriter.getDictionaryAttr({})));
+  attrs.emplace_back(rewriter.getNamedAttr(
+      "cpu_op_name", rewriter.getStringAttr("embedding")));
+  attrs.emplace_back(
+      rewriter.getNamedAttr("param", rewriter.getDictionaryAttr({})));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op.getOperation(), newType,
-                                             operands, attrs);
+                                                 operands, attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

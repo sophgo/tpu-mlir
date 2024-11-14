@@ -35,7 +35,8 @@ LogicalResult tpu::ClipOp::LocalGenSupport() {
 
 ArrayAttr tpu::ClipOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

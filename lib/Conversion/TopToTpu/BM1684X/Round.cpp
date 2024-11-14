@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void RoundLowering::LoweringF32(PatternRewriter &rewriter, top::RoundOp op) const {
+void RoundLowering::LoweringF32(PatternRewriter &rewriter,
+                                top::RoundOp op) const {
   auto op_ = op.getOperation();
   op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                 tpu::ActiveMode::ROUND));
@@ -20,7 +21,7 @@ void RoundLowering::LoweringF32(PatternRewriter &rewriter, top::RoundOp op) cons
 }
 
 void RoundLowering::LoweringINT8(PatternRewriter &rewriter, top::RoundOp op,
-                               bool asymmetric) const {
+                                 bool asymmetric) const {
 
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::round(val); });
@@ -30,12 +31,12 @@ void RoundLowering::LoweringINT8(PatternRewriter &rewriter, top::RoundOp op,
 }
 
 void RoundLowering::LoweringINT4(PatternRewriter &rewriter, top::RoundOp op,
-                                   bool asymmetric) const {
+                                 bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 
 void RoundLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::RoundOp roundOp) const {
+                                 top::RoundOp roundOp) const {
   auto op = roundOp.getOperation();
   op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
                                                tpu::ActiveMode::ROUND));
@@ -43,7 +44,7 @@ void RoundLowering::LoweringBF16(PatternRewriter &rewriter,
 }
 
 void RoundLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::RoundOp roundOp) const {
+                                top::RoundOp roundOp) const {
   auto op = roundOp.getOperation();
   op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
                                                tpu::ActiveMode::ROUND));
@@ -51,16 +52,15 @@ void RoundLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void RoundLowering::LoweringF8(PatternRewriter &rewriter,
-                              top::RoundOp op) const {
+                               top::RoundOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RoundLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::RoundOp roundOp) const {
+                                      top::RoundOp roundOp) const {
   // UNREACHABLE_OP("Not Implemented", op);
   LoweringINT8(rewriter, roundOp, false);
 }
 
 } // namespace bm1684x
 } // namespace tpu_mlir
-

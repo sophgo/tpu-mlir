@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 LogicalResult tpu::MeanRstdOp::init(InferenceParameter &p) { return success(); }
 

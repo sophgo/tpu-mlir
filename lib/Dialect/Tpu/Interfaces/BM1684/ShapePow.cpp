@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
-
 using namespace tpu_mlir::backend;
 
 // ======================================

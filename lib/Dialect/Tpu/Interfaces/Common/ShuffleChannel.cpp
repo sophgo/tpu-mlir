@@ -7,16 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-LogicalResult tpu::ShuffleChannelOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShuffleChannelOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ShuffleChannelOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShuffleChannelOp::inference(InferenceParameter &p) {
   int64_t group = this->getGroup();
-  //auto input = this->getInput();
+  // auto input = this->getInput();
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
   auto input_shape = module::getShape(this->getInput());

@@ -12,8 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringBatchNorm(PatternRewriter &rewriter, top::BatchNormTrainOp op,
-                              Type type) {
+static void LoweringBatchNorm(PatternRewriter &rewriter,
+                              top::BatchNormTrainOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -52,41 +52,45 @@ static void LoweringBatchNorm(PatternRewriter &rewriter, top::BatchNormTrainOp o
     }
   }
   printf("xxxx2, len:%d\n", (int)opds.size());
-  rewriter.replaceOpWithNewOp<tpu::BatchNormTrainOp>(op, new_types, opds, attrs);
+  rewriter.replaceOpWithNewOp<tpu::BatchNormTrainOp>(op, new_types, opds,
+                                                     attrs);
   return;
 }
 
 void BatchNormTrainLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::BatchNormTrainOp op) const {
+                                         top::BatchNormTrainOp op) const {
   LoweringBatchNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void BatchNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::BatchNormTrainOp op) const {
+                                          top::BatchNormTrainOp op) const {
   LoweringBatchNorm(rewriter, op, rewriter.getBF16Type());
 }
 
 void BatchNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::BatchNormTrainOp op) const {
+                                         top::BatchNormTrainOp op) const {
   LoweringBatchNorm(rewriter, op, rewriter.getF16Type());
 }
 
 void BatchNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::BatchNormTrainOp op) const {
+                                        top::BatchNormTrainOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::BatchNormTrainOp op,
-                          bool asymmetric) const {
+void BatchNormTrainLowering::LoweringINT8(PatternRewriter &rewriter,
+                                          top::BatchNormTrainOp op,
+                                          bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormTrainLowering::LoweringINT4(PatternRewriter &rewriter, top::BatchNormTrainOp op,
-                          bool asymmetric) const {
+void BatchNormTrainLowering::LoweringINT4(PatternRewriter &rewriter,
+                                          top::BatchNormTrainOp op,
+                                          bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter, top::BatchNormTrainOp op) const {
+void BatchNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                               top::BatchNormTrainOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

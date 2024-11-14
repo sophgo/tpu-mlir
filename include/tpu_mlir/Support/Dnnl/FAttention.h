@@ -26,7 +26,8 @@ private:
   void *binary = nullptr, *softmax = nullptr, *matmul1 = nullptr;
 
   std::shared_ptr<std::vector<float>> data_0, data_binary, data_softmax;
-  float *p_mat0, *p_binary, *p_softmax, *p_mat1, *p_mat1_out, *p_mask, *p_output;
+  float *p_mat0, *p_binary, *p_softmax, *p_mat1, *p_mat1_out, *p_mask,
+      *p_output;
   int64_t num_elem, num_elem_out, dtype_, M_k_, M_q_, head_, batch_;
   float scale_;
 };

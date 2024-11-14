@@ -1,12 +1,12 @@
 #ifndef TPU_NNVLC_UTIL_H_
 #define TPU_NNVLC_UTIL_H_
 
+#include "mlir/IR/Types.h"
 #include <assert.h>
 #include <iostream>
+#include <memory.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <memory.h>
-#include "mlir/IR/Types.h"
 
 namespace tpu_mlir {
 

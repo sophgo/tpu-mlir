@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
+#include "tpu_mlir/Support/Patterns.h"
 
 using namespace tpu_mlir::top;
 
@@ -17,10 +17,10 @@ struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ConvertExpand(mlir::MLIRContext *context)
-    : OpRewriterPatternEx<ExpandOp>(context, "ConvertExpand") {}
+      : OpRewriterPatternEx<ExpandOp>(context, "ConvertExpand") {}
 
   LogicalResult matchAndRewriteImpl(ExpandOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!op.getShapeT()) {
       auto output_shape = module::getShape(op.getOutput());
       auto input_shape = module::getShape(op.getInput());
@@ -67,7 +67,8 @@ struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
           rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
       auto newType = RankedTensorType::get(output_shape, elt_type);
       auto loc = NameLoc::get(rewriter.getStringAttr(name));
-      new_op = rewriter.create<top::TileOp>(loc, newType, ValueRange{new_op}, attrs);
+      new_op =
+          rewriter.create<top::TileOp>(loc, newType, ValueRange{new_op}, attrs);
       op.replaceAllUsesWith(new_op.getDefiningOp());
       rewriter.eraseOp(op);
       return success();
@@ -96,8 +97,8 @@ struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
             rewriter.getNamedAttr("mode", rewriter.getStringAttr("Mul")));
         attrs.push_back(
             rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
-        auto mul = rewriter.create<BinaryShiftOp>(mul_loc, op.getOutput().getType(),
-                                          operands, attrs);
+        auto mul = rewriter.create<BinaryShiftOp>(
+            mul_loc, op.getOutput().getType(), operands, attrs);
         op.getOutput().replaceAllUsesWith(mul);
         rewriter.eraseOp(op);
         return success();

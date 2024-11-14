@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/LutFunc.h"
 
 gru_attr_t tpu::GRUOp::parseParam() {
@@ -285,9 +284,7 @@ private:
     } else {
       gp.r_z = p.inputs[2] + 3 * gp.hidden_size * gp.hidden_size;
       gp.r_bz = p.inputs[3] + 3 * gp.hidden_size;
-      gp.output_y =
-          gp.has_y ? gp.output_y + gp.batch_size * gp.hidden_size
-                   : 0;
+      gp.output_y = gp.has_y ? gp.output_y + gp.batch_size * gp.hidden_size : 0;
       gp.output_yh =
           gp.has_yh ? p.outputs[gp.out_yh_idx] + gp.batch_size * gp.hidden_size
                     : 0;

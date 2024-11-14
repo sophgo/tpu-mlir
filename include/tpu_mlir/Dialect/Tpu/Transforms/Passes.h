@@ -9,11 +9,10 @@
 
 #pragma once
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
-
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -41,5 +40,5 @@ std::unique_ptr<OperationPass<ModuleOp>> createTruncIOPass();
 #define GEN_PASS_CLASSES
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h.inc"
 
-} // namespace top
-} // namespace mlir
+} // namespace tpu
+} // namespace tpu_mlir

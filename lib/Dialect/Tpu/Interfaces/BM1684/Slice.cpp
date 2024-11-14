@@ -28,7 +28,8 @@ void tpu::SliceOp::codegen_global_bm1684() {
   // assign param and call func
   for (int i = 0; i < shape_dim; ++i) {
     input_shape[i] = p.is_4[i];
-    begin_index[i] = p.offset_4[i] < 0 ? p.offset_4[i] + p.is_4[i] : p.offset_4[i];
+    begin_index[i] =
+        p.offset_4[i] < 0 ? p.offset_4[i] + p.is_4[i] : p.offset_4[i];
     end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
     stride[i] = p.step_4[i];
   }

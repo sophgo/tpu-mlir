@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::BinaryShiftOp::init(InferenceParameter &p) {
   int index0 = 0, index1 = 1;
@@ -21,10 +21,9 @@ LogicalResult tpu::BinaryShiftOp::init(InferenceParameter &p) {
   auto lhs_shape = module::getShape(*(getODSOperands(index0).begin()));
   auto rhs_shape = module::getShape(*(getODSOperands(index1).begin()));
 
-  std::map<std::string, algorithm> map_mode = {
-      {"Add", algorithm::binary_add},
-      {"Sub", algorithm::binary_sub},
-      {"Mul", algorithm::binary_mul}};
+  std::map<std::string, algorithm> map_mode = {{"Add", algorithm::binary_add},
+                                               {"Sub", algorithm::binary_sub},
+                                               {"Mul", algorithm::binary_mul}};
 
   auto iter = map_mode.find(getModeAttr().str());
   algorithm binary_mode;

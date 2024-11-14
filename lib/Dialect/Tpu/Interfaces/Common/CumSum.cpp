@@ -7,19 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/LutFunc.h"
 
 LogicalResult tpu::CumSumOp::init(InferenceParameter &p) { return success(); }
 
-void tpu::CumSumOp::deinit(InferenceParameter &p) { }
+void tpu::CumSumOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CumSumOp::inference(InferenceParameter &p) {
   auto in_shape = module::getShape(getInput());
   auto dim = getAxis();
   int64_t num_dims = in_shape.size();
-  assert (num_dims <= 4);
-  assert (dim < in_shape.size());
+  assert(num_dims <= 4);
+  assert(dim < in_shape.size());
   int64_t length = in_shape[dim];
   // stride
   int64_t stride = 1;
@@ -35,9 +35,9 @@ LogicalResult tpu::CumSumOp::inference(InferenceParameter &p) {
       for (int64_t s = 0; s < stride; s++) {
         if (l == 0) {
           p.outputs[0][start + s] = p.inputs[0][start + s];
-        }
-        else {
-          p.outputs[0][start + s] = p.inputs[0][start + s] + p.outputs[0][start + s - stride];
+        } else {
+          p.outputs[0][start + s] =
+              p.inputs[0][start + s] + p.outputs[0][start + s - stride];
         }
       }
     }
@@ -47,4 +47,3 @@ LogicalResult tpu::CumSumOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::CumSumOp::support_multi_core() { return false; }
-

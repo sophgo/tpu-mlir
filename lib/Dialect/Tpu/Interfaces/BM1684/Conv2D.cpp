@@ -17,8 +17,8 @@
 using namespace tpu_mlir::backend;
 
 static int inline get_tensor_local_size(const int *shape, int type_len,
-                                        STORE_MODE_T store_mode, int npu_num, int eu_num,
-                                        bool is_aligned = true) {
+                                        STORE_MODE_T store_mode, int npu_num,
+                                        int eu_num, bool is_aligned = true) {
   int n = shape[0];
   if (store_mode == STORE_MODE_4N && type_len == 1) {
     n = align_up(n, 4);
@@ -142,7 +142,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684(
           ((w_pad > 2047 ? 2047 : w_pad) - ((p.kw - 1) * p.dw + 1)) / p.sw + 1;
       // split_shape[0][0] = n_slice;
       int new_shape[4] = {(int)in_nslice, (int)p.oc, real_h, real_w};
-      buffer_size = get_tensor_local_size(new_shape, 4, STORE_MODE_1N,  (int)NPU_NUM, (int)EU_NUM, true);
+      buffer_size = get_tensor_local_size(new_shape, 4, STORE_MODE_1N,
+                                          (int)NPU_NUM, (int)EU_NUM, true);
     }
     return buffer_size;
   } else {
@@ -157,8 +158,9 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684(
                      align_up(1 * 32, EU_NUM) * 2 * sizeof(int);
       return buffer_size;
     }
-    // workd/nntoolchain/net_compiler/bmcompiler/src/layers/bm1684/bm1684_conv.cpp 
-    // ##todo int8/uint8 datatype only when merged mulshift into conv need buffer;
+    // workd/nntoolchain/net_compiler/bmcompiler/src/layers/bm1684/bm1684_conv.cpp
+    // ##todo int8/uint8 datatype only when merged mulshift into conv need
+    // buffer;
   }
   return 0;
 }

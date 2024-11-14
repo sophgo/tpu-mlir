@@ -25,14 +25,9 @@ void tpu::BatchNormBwdOp::codegen_global_bm1684x() {
                            output_spec->data());
 }
 
-void tpu::BatchNormBwdOp::codegen_global_bm1684() {
+void tpu::BatchNormBwdOp::codegen_global_bm1684() {}
 
-}
-
-void tpu::BatchNormBwdOp::codegen_global_cv18xx(int64_t layer_id) {
-
-}
-
+void tpu::BatchNormBwdOp::codegen_global_cv18xx(int64_t layer_id) {}
 
 // // dynamic codegen
 // int64_t tpu::BatchNormBwdOp::dyn_codegen_local_bm1684x(void *buffer) {
@@ -47,4 +42,3 @@ int64_t tpu::BatchNormBwdOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::BatchNormBwdOp::get_fw_type_bm1684x() { return FW_BMNET_CONV; }
-

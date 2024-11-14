@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
-#include "tpu_mlir/Backend/BM168x/BM1690.h"
 
 using namespace tpu_mlir::backend;
 
@@ -56,7 +56,8 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       zero_guard = in.getDefiningOp<top::WeightOp>().getZeroGuard().value();
     }
   } else {
-    do_nnvlc2_decompress = this->getCompressInfo().has_value() && this->getCompressInfo()->getDoDecompress();
+    do_nnvlc2_decompress = this->getCompressInfo().has_value() &&
+                           this->getCompressInfo()->getDoDecompress();
     if (do_nnvlc2_decompress) {
       auto cinfo = this->getCompressInfo();
       bias0 = (uint8_t)cinfo->getBias0();
@@ -101,17 +102,19 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto inputOp = input.getDefiningOp();
   // if (inputOp != nullptr && !input.isa<BlockArgument>()) {
   if (inputOp != nullptr && module::isOpInGroup(inputOp)) {
-    //In the case of tensor store followed by load, the input to load is the output of the previous store
+    // In the case of tensor store followed by load, the input to load is the
+    // output of the previous store
     if (isa<tpu::StoreOp>(inputOp)) {
       auto input_gmem = inputOp->getOperand(1);
       assert(!isa<top::NoneOp>(input_gmem.getDefiningOp()));
       g_addr = module::getAddress(input_gmem);
     }
     if (isa<tpu::LoadToL2MOp>(inputOp)) {
-      g_addr = BM1690::L2_SRAM_START_ADDR + cast<LoadToL2MOp>(inputOp).getL2mAddr();
+      g_addr =
+          BM1690::L2_SRAM_START_ADDR + cast<LoadToL2MOp>(inputOp).getL2mAddr();
     }
 
-    for (auto user: inputOp->getUsers()) {
+    for (auto user : inputOp->getUsers()) {
       if (isa<tpu::StoreOp>(user)) {
         auto user2 = *user->getUsers().begin();
         if (isa<tpu::SliceMergeOp>(user2)) {
@@ -237,29 +240,25 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
             auto nnvlc_dtype = module::getStorageType(getOutput());
             int max_meta_bytes = tpu_compress_RACU_max_meta_bytes(nnvlc_shape);
             shape_t meta_stride = tpu_compress_RACU_meta_stride(nnvlc_shape);
-            shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
-            int64_t meta_gaddr = g_addr +
-                                (gi.n_idx * meta_stride.n +
-                                 div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
-                                 gi.h_idx * meta_stride.h +
-                                 gi.w_idx * meta_stride.w) * 4;
-            int64_t racu_gaddr = g_addr +
-                                 align_up(max_meta_bytes, Arch::EU_BYTES) +
-                                (gi.n_idx * racu_stride.n +
-                                 div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
-                                 gi.h_idx * racu_stride.h +
-                                 gi.w_idx * racu_stride.w);
+            shape_t racu_stride =
+                tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
+            int64_t meta_gaddr =
+                g_addr + (gi.n_idx * meta_stride.n +
+                          div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
+                          gi.h_idx * meta_stride.h + gi.w_idx * meta_stride.w) *
+                             4;
+            int64_t racu_gaddr =
+                g_addr + align_up(max_meta_bytes, Arch::EU_BYTES) +
+                (gi.n_idx * racu_stride.n +
+                 div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
+                 gi.h_idx * racu_stride.h + gi.w_idx * racu_stride.w);
 
             BM168x::instance()->dl_tensor_racu_decompress_gen_cmd(
-                gi.out_addr + cur_local_offset,
-                racu_gaddr,
-                meta_gaddr,
+                gi.out_addr + cur_local_offset, racu_gaddr, meta_gaddr,
                 gi.n_slice, cur_cslice, real_hslice, real_wslice,
-                c_num_local * c_stride, c_stride, real_wslice,
-                racu_stride.n, racu_stride.c, racu_stride.h,
-                meta_stride.n, meta_stride.c,
-                bias0, bias1, is_signed, zero_guard,
-                gdma_format, pid_node);
+                c_num_local * c_stride, c_stride, real_wslice, racu_stride.n,
+                racu_stride.c, racu_stride.h, meta_stride.n, meta_stride.c,
+                bias0, bias1, is_signed, zero_guard, gdma_format, pid_node);
           } else {
             int64_t src_offset_c =
                 (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *

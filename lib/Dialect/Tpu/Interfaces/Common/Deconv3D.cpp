@@ -142,4 +142,3 @@ void tpu::Deconv3DOp::assign_fw_param(void *param) {
 }
 
 bool tpu::Deconv3DOp::support_multi_core() { return false; }
-

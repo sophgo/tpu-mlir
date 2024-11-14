@@ -190,7 +190,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
                          attr.hidden_size;
       }
       for (int i = 0; i < attr.hidden_size; i++) {
-        gi[i] = sigmoid_(xi[i] + cont *hi[i]);
+        gi[i] = sigmoid_(xi[i] + cont * hi[i]);
         go[i] = sigmoid_(xo[i] + cont * ho[i]);
         gf[i] = sigmoid_(xf[i] + cont * hf[i]);
         gc[i] = tanh_(xc[i] + cont * hc[i]);

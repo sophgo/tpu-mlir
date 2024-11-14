@@ -20,7 +20,8 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   val = to_int8(val / in_scale, ROUNDING_HALF_UP);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  auto m = tpu::symbolizePaddingMode(op.getMode()).value_or(tpu::PaddingMode::constant);
+  auto m = tpu::symbolizePaddingMode(op.getMode())
+               .value_or(tpu::PaddingMode::constant);
   attrs.push_back(rewriter.getNamedAttr(
       "mode", tpu::PaddingModeAttr::get(op->getContext(), m)));
   std::vector<Value> operands;
@@ -41,7 +42,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
                                   pads->at(nofDims * 2 - 1)};
     for (int i = 0; i < lrpad.size(); i++) {
       auto k = lrpad.at(i);
-      if(k == 0) {
+      if (k == 0) {
         operands.push_back(module::getNoneOp(op));
         continue;
       }
@@ -58,9 +59,9 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
       operands.push_back(selectOp);
     }
   } else {
-    if (!module::isNone(op.getPaddingsT())){
+    if (!module::isNone(op.getPaddingsT())) {
       operands.push_back(op.getPaddingsT());
-    }else{
+    } else {
       operands.push_back(module::getNoneOp(op));
     }
     operands.push_back(module::getNoneOp(op));
@@ -94,7 +95,7 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
                                   pads->at(nofDims * 2 - 1)};
     for (int i = 0; i < lrpad.size(); i++) {
       auto k = lrpad.at(i);
-      if(k == 0) {
+      if (k == 0) {
         operands.push_back(module::getNoneOp(op));
         continue;
       }
@@ -113,9 +114,9 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
       operands.push_back(selectOp.clone_bf16(op));
     }
   } else {
-    if (!module::isNone(op.getPaddingsT())){
+    if (!module::isNone(op.getPaddingsT())) {
       operands.push_back(op.getPaddingsT());
-    }else{
+    } else {
       operands.push_back(module::getNoneOp(op));
     }
     operands.push_back(module::getNoneOp(op));

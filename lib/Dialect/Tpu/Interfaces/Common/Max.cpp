@@ -7,10 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
-
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 LogicalResult tpu::MaxOp::init(InferenceParameter &p) {
   auto binary = new Binary();
@@ -64,10 +63,10 @@ void tpu::MaxOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   module::getNCDHW(input1, n1, c1, d1, h1, w1, group_type);
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in0_gi =
-      LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step, w_step, c_step);
-  auto in1_gi =
-      LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step, w_step, c_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step,
+                                                w_step, c_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step,
+                                                w_step, c_step);
   sec_info.n_slice = std::max(in0_gi.n_slice, in1_gi.n_slice);
   sec_info.c_slice = std::max(in0_gi.c_slice, in1_gi.c_slice);
   sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);

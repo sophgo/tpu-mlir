@@ -47,12 +47,13 @@ void top::UnsqueezeOp::shape_inference() {
   if (module::isShape(getInput())) {
     if (out_shape.size() == 1 || out_shape.size() == 0) {
       auto input_shape_v = module::getShapeTensorValue(getInput());
-      auto output_shape_v =
-          module::commonShapeValInfer(getOperation(), {input_shape_v}, out_shape);
+      auto output_shape_v = module::commonShapeValInfer(
+          getOperation(), {input_shape_v}, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
       dump();
-      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor "
+                      "dimension > 1\n";
     }
   }
 }

@@ -343,8 +343,10 @@ int static_ld_g2l2_irgen_ctrl(Operation *op, int tensor_id,
   fw_gdma_ld_g2l2.l2_offset = local_addr;
   std::vector<int> local_shape(MAX_SHAPE_DIMS);
   module::getLocalShape(op->getOperand(0), 0, 0, (int *)local_shape.data());
-  fw_gdma_ld_g2l2.length = std::accumulate(
-      local_shape.begin(), local_shape.begin() + 4, 1, std::multiplies<int>{}) * sizeof(int);
+  fw_gdma_ld_g2l2.length =
+      std::accumulate(local_shape.begin(), local_shape.begin() + 4, 1,
+                      std::multiplies<int>{}) *
+      sizeof(int);
   fw_gdma_ld_g2l2.data_size = get_dynamic_compiler_tensor_datasize(
       BM168x::getDataType(op->getResult(0)));
   if (dynamic_ver) {

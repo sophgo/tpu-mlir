@@ -38,9 +38,8 @@ static Value isCastActive(Value in) {
 }
 
 template <typename MatMulTy>
-LogicalResult
-MatMulSliceMerge2<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
-                                             PatternRewriter &rewriter) const {
+LogicalResult MatMulSliceMerge2<MatMulTy>::matchAndRewriteImpl(
+    MatMulTy op, PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
   }
@@ -289,7 +288,8 @@ LogicalResult AttentionSliceMerge2<MatMulTy>::matchAndRewriteImpl(
 template LogicalResult AttentionSliceMerge2<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewriteImpl(
+template LogicalResult
+AttentionSliceMerge2<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
@@ -355,7 +355,8 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
         next_op = *next_op->user_begin();
       }
       createReshapeOp(rewriter, next_op, cur_out, cur_device);
-      muls0 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
+      muls0 =
+          std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
 
@@ -368,7 +369,8 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
         next_op = *next_op->user_begin();
       }
       createReshapeOp(rewriter, next_op, cur_out, cur_device);
-      muls1 = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
+      muls1 =
+          std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
     }
     pos_ids.push_back(cur_out);
     if (!isa<tpu::ConcatOp>(muls0[0]->getOperand(0).getDefiningOp())) {
@@ -430,8 +432,9 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     next_op = is_qwen_model ? op_branches[2] : op_branches[0];
     cur_out = attn_start_out;
     other_opds = {past_v_out};
-    next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  2, num_devices, cur_device, false, num_head)[0];
+    next_op =
+        cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs, 2,
+                            num_devices, cur_device, false, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
     // Query branch
@@ -506,7 +509,9 @@ void sliceAttentionMerge2Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
   module::removeUnusedOp();
 }
 
-LogicalResult FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op, PatternRewriter &rewriter) const {
+LogicalResult
+FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op,
+                                          PatternRewriter &rewriter) const {
   // TODO: only support quant input/output for now
   if (module::isOpInDevParallel(op) || !op->hasOneUse()) {
     return failure();
@@ -532,12 +537,12 @@ LogicalResult FAttentionSliceMerge::matchAndRewriteImpl(tpu::FAttentionOp op, Pa
   }
   std::vector<int64_t> end_methods{1, 3, 3};
   distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::FAttentionSliceMerge,
-             begin_methods, end_methods, num_head);
+             tpu::DevPattern::FAttentionSliceMerge, begin_methods, end_methods,
+             num_head);
   return success();
 }
 void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
-                               int64_t num_devices){
+                               int64_t num_devices) {
   std::vector<Operation *> users(op->user_begin(), op->user_end());
   Operation *residual = users[0];
   Operation *attn_ln = users[1];
@@ -556,11 +561,12 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
     // clone residual branch
     next_op = residual;
     cur_out = next_op->getOperand(0);
-    if (isa<tpu::AddOp>(next_op) && cur_out.getDefiningOp() != op.getOperation()){
+    if (isa<tpu::AddOp>(next_op) &&
+        cur_out.getDefiningOp() != op.getOperation()) {
       cur_out = next_op->getOperand(1);
     }
     if (!isa<tpu::MatMulOp>(next_op) && !isa<tpu::A16MatMulOp>(next_op)) {
-      createMulConstOp(rewriter, cur_out, cur_device, 1./num_devices);
+      createMulConstOp(rewriter, cur_out, cur_device, 1. / num_devices);
     }
     Value residual_out = cur_out;
 
@@ -577,7 +583,8 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
           next_op = *next_op->user_begin();
         }
         createReshapeOp(rewriter, next_op, cur_out, cur_device);
-        muls = std::vector<Operation *>(next_op->user_begin(), next_op->user_end());
+        muls = std::vector<Operation *>(next_op->user_begin(),
+                                        next_op->user_end());
       }
       pos_ids.push_back(cur_out);
     }
@@ -601,11 +608,10 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
     // clone attention branch + out_proj + residual_add
     next_op = attn_ln;
     cur_out = next_op->getOperand(0);
-    next_op = cloneFlashAttention(rewriter, next_op, cur_out,
-                                  pos_ids, past_kv, num_devices,
-                                  cur_device, q_head, kv_head)[0];
+    next_op = cloneFlashAttention(rewriter, next_op, cur_out, pos_ids, past_kv,
+                                  num_devices, cur_device, q_head, kv_head)[0];
     next_op = cloneRowParallelMatMul(rewriter, next_op, cur_out, num_devices,
-                                    cur_device, q_head);
+                                     cur_device, q_head);
     if (isa<tpu::AddOp>(residual)) {
       operands = {residual_out, cur_out};
       next_op = cloneMultiInsOp(rewriter, next_op, cur_out, operands, -1,
@@ -628,8 +634,9 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
   module::removeUnusedOp();
 }
 
-
-LogicalResult EmbeddingSliceMerge::matchAndRewriteImpl(tpu::GatherOp op, PatternRewriter &rewriter) const {
+LogicalResult
+EmbeddingSliceMerge::matchAndRewriteImpl(tpu::GatherOp op,
+                                         PatternRewriter &rewriter) const {
   if (module::isOpInDevParallel(op)) {
     return failure();
   }
@@ -638,48 +645,47 @@ LogicalResult EmbeddingSliceMerge::matchAndRewriteImpl(tpu::GatherOp op, Pattern
   std::vector<int64_t> begin_methods{1};
   std::vector<int64_t> end_methods{1};
 
-  distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::EmbeddingSliceMerge,
+  distribute(rewriter, begin_ops, end_ops, tpu::DevPattern::EmbeddingSliceMerge,
              begin_methods, end_methods, 0);
   return success();
 }
 
 void embeddingMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
-                         int64_t num_devices){
-    auto gather_op = *op->getResult(0).user_begin();
-    if (auto gather = dyn_cast<tpu::GatherOp>(gather_op)) {
-      gather.setIfNegIndex(false);
+                         int64_t num_devices) {
+  auto gather_op = *op->getResult(0).user_begin();
+  if (auto gather = dyn_cast<tpu::GatherOp>(gather_op)) {
+    gather.setIfNegIndex(false);
+  }
+  auto src_op = gather_op->getOperand(0).getDefiningOp();
+  auto weight_op = dyn_cast_or_null<top::WeightOp>(src_op);
+  auto vocab_size = module::getShape(weight_op.getOutput())[0];
+  auto length = ceiling_func(vocab_size, num_devices);
+
+  std::vector<Value> end_operands;
+  Operation *end_op = nullptr;
+  Operation *next_op;
+  Value cur_out;
+  for (int cur_device = 0; cur_device < num_devices; ++cur_device) {
+    next_op = gather_op;
+    cur_out = next_op->getOperand(1);
+    if (cur_device) {
+      float sub_val = cur_device * length;
+      createSubConstOp(rewriter, cur_out, cur_device, sub_val);
     }
-    auto src_op = gather_op->getOperand(0).getDefiningOp();
-    auto weight_op = dyn_cast_or_null<top::WeightOp>(src_op);
-    auto vocab_size = module::getShape(weight_op.getOutput())[0];
-    auto length = ceiling_func(vocab_size, num_devices);
-
-    std::vector<Value> end_operands;
-    Operation *end_op = nullptr;
-    Operation *next_op;
-    Value cur_out;
-    for (int cur_device = 0; cur_device < num_devices; ++cur_device) {
-      next_op = gather_op;
-      cur_out = next_op->getOperand(1);
-      if (cur_device) {
-        float sub_val = cur_device * length;
-        createSubConstOp(rewriter, cur_out, cur_device, sub_val);
-      }
-      next_op = cloneOpWithWeight(rewriter, next_op, cur_out, 0, num_devices, cur_device)[0];
-      end_operands.push_back(cur_out);
-      if (cur_device == 0) {
-        end_op = next_op;
-      } else {
-        assert(end_op == next_op);
-      }
-
+    next_op = cloneOpWithWeight(rewriter, next_op, cur_out, 0, num_devices,
+                                cur_device)[0];
+    end_operands.push_back(cur_out);
+    if (cur_device == 0) {
+      end_op = next_op;
+    } else {
+      assert(end_op == next_op);
     }
-    assert(isa<tpu::DevEndOp>(end_op));
-    std::vector<Value> unused(end_op->operand_begin(), end_op->operand_end());
-    end_op->setOperands(end_operands);
+  }
+  assert(isa<tpu::DevEndOp>(end_op));
+  std::vector<Value> unused(end_op->operand_begin(), end_op->operand_end());
+  end_op->setOperands(end_operands);
 
-    module::removeUnusedOp();
+  module::removeUnusedOp();
 }
 
 } // namespace tpu

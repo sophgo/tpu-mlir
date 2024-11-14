@@ -10,7 +10,6 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
 using namespace tpu_mlir::backend;
 
 void tpu::RMSNormOp::codegen_global_bm1684() {

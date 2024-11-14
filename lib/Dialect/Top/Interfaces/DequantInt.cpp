@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::DequantIntOp::getFLOPs() {
@@ -55,14 +54,16 @@ LogicalResult top::DequantIntOp::inference(InferenceParameter &p) {
   auto raw_shift = *shift;
   auto raw_multi = *multi;
   ASSERT_THIS(raw_multi.size() == raw_shift.size() &&
-         "zero point & multi & shift size missmatch");
+              "zero point & multi & shift size missmatch");
 
   if (qmode == "Normal") {
     if (raw_shift.size() == 1) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t idx = 0; idx < num_elem; idx++) {
         int32_t tmp = (int32_t)p.inputs[0][idx] - zero_point;
-        auto v = applyMultiplierAndRShift(tmp, raw_multi[0], -raw_shift[0], tpu::RequantMode::MultiplierShift, rmode);
+        auto v =
+            applyMultiplierAndRShift(tmp, raw_multi[0], -raw_shift[0],
+                                     tpu::RequantMode::MultiplierShift, rmode);
         p.outputs[0][idx] = v;
       }
     } else {
@@ -74,8 +75,9 @@ LogicalResult top::DequantIntOp::inference(InferenceParameter &p) {
           for (int i = 0; i < inner; ++i) {
             int offset = (n * shape[1] + c) * inner + i;
             int32_t tmp = (int32_t)p.inputs[0][offset] - zero_point;
-            p.outputs[0][offset] =
-                applyMultiplierAndRShift(tmp, multi_val, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
+            p.outputs[0][offset] = applyMultiplierAndRShift(
+                tmp, multi_val, -shift_val, tpu::RequantMode::MultiplierShift,
+                rmode);
           }
         }
       }
@@ -99,8 +101,9 @@ LogicalResult top::DequantIntOp::inference(InferenceParameter &p) {
         for (int n = 0; n < shape[0]; ++n) {
           for (int i = 0; i < inner; ++i) {
             int offset = (n * shape[1] + c) * inner + i;
-            int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point) * multi_val
-                          << lshift_val;
+            int64_t tmp =
+                ((int32_t)p.inputs[0][offset] - zero_point) * multi_val
+                << lshift_val;
             p.outputs[0][offset] =
                 MultiplyByQuantizedMultiplier(tmp, 1, -shift_val, rmode);
           }

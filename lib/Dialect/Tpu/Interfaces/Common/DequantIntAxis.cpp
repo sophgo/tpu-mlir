@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 LogicalResult tpu::DequantIntAxisOp::init(InferenceParameter &p) {
   return success();
@@ -37,8 +34,8 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           int32_t tmp = (int32_t)p.inputs[0][offset] - zero_point;
-          p.outputs[0][offset] =
-              applyMultiplierAndRShift(tmp, multi, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
+          p.outputs[0][offset] = applyMultiplierAndRShift(
+              tmp, multi, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
         }
       }
     }
@@ -54,8 +51,8 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
           int offset = (n * shape[1] + c) * inner + i;
           int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point) * multi
                         << lshift_val;
-          p.outputs[0][offset] =
-              MultiplyByQuantizedMultiplier(tmp, 1, -shift_val, (RoundingMode)rmode);
+          p.outputs[0][offset] = MultiplyByQuantizedMultiplier(
+              tmp, 1, -shift_val, (RoundingMode)rmode);
         }
       }
     }

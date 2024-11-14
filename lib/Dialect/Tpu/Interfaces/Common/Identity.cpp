@@ -10,13 +10,9 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
+LogicalResult tpu::IdentityOp::init(InferenceParameter &p) { return success(); }
 
-LogicalResult tpu::IdentityOp::init(InferenceParameter &p) {
-  return success();
-}
-
-void tpu::IdentityOp::deinit(InferenceParameter &p) {
-}
+void tpu::IdentityOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::IdentityOp::inference(InferenceParameter &p) {
   return success();

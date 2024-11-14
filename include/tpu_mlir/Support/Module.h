@@ -14,8 +14,8 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
-#include "tpu_mlir/Support/ModuleEnum.h.inc"
 #include "tpu_mlir/Support/Logger.h"
+#include "tpu_mlir/Support/ModuleEnum.h.inc"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -264,7 +264,8 @@ llvm::StringRef getWeightFileAttr();
 //-----------------------------------------------------------------
 // Helper Functions for apply pattern only once
 //-----------------------------------------------------------------
-template <typename T> void applyPatternOnce(ModuleOp m) {
+template <typename T>
+void applyPatternOnce(ModuleOp m) {
   auto ctx = m.getContext();
   RewritePatternSet patterns(ctx);
   auto config = GreedyRewriteConfig();
@@ -280,10 +281,12 @@ bool isCalibratedType(Type type);
 bool isCalibratedType(Value v);
 bool isUniformQuantized(Type type);
 bool isUniformQuantized(Value v);
-template <typename... Args> bool isCalibratedType(Value v, Args... args) {
+template <typename... Args>
+bool isCalibratedType(Value v, Args... args) {
   return isCalibratedType(v) && isCalibratedType(args...);
 }
-template <typename... Args> bool isUniformQuantized(Value v, Args... args) {
+template <typename... Args>
+bool isUniformQuantized(Value v, Args... args) {
   return isUniformQuantized(v) && isUniformQuantized(args...);
 }
 
@@ -337,14 +340,17 @@ std::vector<int64_t>
 commonShapeValInfer(mlir::Operation *op,
                     const std::vector<std::vector<int64_t>> &in_shapes_v,
                     const std::vector<int64_t> &out_shape);
-bool startsWith(const std::string& fullString, const std::string& startingSubstring);
-bool endsWith(const std::string& fullString, const std::string& suffix);
+bool startsWith(const std::string &fullString,
+                const std::string &startingSubstring);
+bool endsWith(const std::string &fullString, const std::string &suffix);
 } // namespace module
 
 #define ASSERT_OP(COND, OP)                                                    \
   module::assert_with_dump(COND, OP, #COND, __FILE__, __LINE__)
-#define ASSERT_THIS(COND) ASSERT_OP(COND, this->getOperation()) // in Op inner functions
-#define UNREACHABLE_OP(INFO, OP) module::unreachable(INFO, OP, __FILE__, __LINE__)
+#define ASSERT_THIS(COND)                                                      \
+  ASSERT_OP(COND, this->getOperation()) // in Op inner functions
+#define UNREACHABLE_OP(INFO, OP)                                               \
+  module::unreachable(INFO, OP, __FILE__, __LINE__)
 #define UNREACHABLE_THIS(INFO) UNREACHABLE_OP(INFO, this->getOperation())
 
 } // namespace tpu_mlir

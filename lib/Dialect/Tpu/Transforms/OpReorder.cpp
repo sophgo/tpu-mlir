@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
@@ -19,9 +19,9 @@ namespace tpu {
 // make sure operands is nearest to owner op
 struct OpReorderPattern : public OpRewriterPatternEx3 {
   OpReorderPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"OpReorderPattern",1) {}
+      : OpRewriterPatternEx3(context, "OpReorderPattern", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
     }
@@ -55,14 +55,14 @@ struct OpReorderPattern : public OpRewriterPatternEx3 {
     }
     return fixed ? success() : failure();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 struct AttentionReorderPattern : public OpRewriterPatternEx3 {
   AttentionReorderPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"AttentionReorderPattern",1) {}
+      : OpRewriterPatternEx3(context, "AttentionReorderPattern", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
     }
@@ -97,7 +97,8 @@ struct AttentionReorderPattern : public OpRewriterPatternEx3 {
         if (op_ == nullptr || isa<top::NoneOp>(op_)) {
           continue;
         } else if (!isa<top::WeightOp>(op_)) {
-          return failure(); // move activations may cause use before define problem
+          return failure(); // move activations may cause use before define
+                            // problem
         }
         mm_ops.push_back(op_);
       }
@@ -117,7 +118,7 @@ struct AttentionReorderPattern : public OpRewriterPatternEx3 {
 
     return fixed ? success() : failure();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 static bool isLgSupport(Operation *op) {
@@ -133,9 +134,9 @@ static bool isLgSupport(Operation *op) {
 
 struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
   GlobalOpReorderPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"GlobalOpReorderPattern",1) {}
+      : OpRewriterPatternEx3(context, "GlobalOpReorderPattern", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!isa<ReturnOp>(op)) {
       return failure();
     }
@@ -161,7 +162,7 @@ struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
     }
     return success();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 class OpReorderPass : public OpReorderBase<OpReorderPass> {
@@ -182,7 +183,8 @@ public:
         // special for attention
         patterns.clear();
 
-        // This pattern will lead to negative optimization, so disable it until an update in the future
+        // This pattern will lead to negative optimization, so disable it until
+        // an update in the future
         patterns.add<AttentionReorderPattern>(ctx);
         applyPatternsAndFoldGreedily(func, std::move(patterns));
 

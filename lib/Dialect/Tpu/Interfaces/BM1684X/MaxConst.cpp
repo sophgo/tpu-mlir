@@ -81,10 +81,10 @@ int64_t tpu::MaxConstOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.rshift_A = 0;
   param.spec.common.B_const_val = getConstVal().convertToDouble();
   param.spec.common.B_dtype =
-        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+      input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
   return BM168x::dynamic_spec_to_buffer(buffer, param);
-  }
+}
 
 int64_t tpu::MaxConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   // return 0;

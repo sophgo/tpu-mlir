@@ -16,8 +16,8 @@ void UpsampleLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
   lowering_common_f32<tpu::UpsampleOp>(rewriter, op);
 }
-void UpsampleLowering::LoweringINT4(PatternRewriter &rewriter, top::UpsampleOp op,
-                                   bool asymmetric) const {
+void UpsampleLowering::LoweringINT4(PatternRewriter &rewriter,
+                                    top::UpsampleOp op, bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void UpsampleLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -36,7 +36,7 @@ void UpsampleLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void UpsampleLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::UpsampleOp op) const {
+                                  top::UpsampleOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -12,32 +12,38 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void RequantFpLowering::LoweringF32(PatternRewriter &rewriter, top::RequantFpOp op) const {
+void RequantFpLowering::LoweringF32(PatternRewriter &rewriter,
+                                    top::RequantFpOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void RequantFpLowering::LoweringINT8(PatternRewriter &rewriter, top::RequantFpOp op,
-                               bool asymmetric) const {
+void RequantFpLowering::LoweringINT8(PatternRewriter &rewriter,
+                                     top::RequantFpOp op,
+                                     bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void RequantFpLowering::LoweringINT4(PatternRewriter &rewriter, top::RequantFpOp op,
-                                   bool asymmetric) const {
+void RequantFpLowering::LoweringINT4(PatternRewriter &rewriter,
+                                     top::RequantFpOp op,
+                                     bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void RequantFpLowering::LoweringBF16(PatternRewriter &rewriter, top::RequantFpOp op) const {
+void RequantFpLowering::LoweringBF16(PatternRewriter &rewriter,
+                                     top::RequantFpOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void RequantFpLowering::LoweringF16(PatternRewriter &rewriter, top::RequantFpOp op) const {
+void RequantFpLowering::LoweringF16(PatternRewriter &rewriter,
+                                    top::RequantFpOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void RequantFpLowering::LoweringF8(PatternRewriter &rewriter, top::RequantFpOp op) const {
+void RequantFpLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::RequantFpOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::RequantFpOp op) const {
+                                          top::RequantFpOp op) const {
   auto scale = module::getF64Array(op.getScale());
   auto offset = module::getF64Array(op.getOffset());
   auto requant_mode = op.getQuantModeAttr().str();
@@ -50,10 +56,10 @@ void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto name = module::getName(op.getOperation()).str();
 
   if (raw_scale.size() == 1) {
-    auto newValue =
-        do_requantFp(op.getInput(), raw_scale[0], raw_offset[0], op.getOutput().getType(),
-                     name, get_requant_mode(requant_mode), get_round_mode(round_mode),
-                     get_round_mode(first_round_mode));
+    auto newValue = do_requantFp(
+        op.getInput(), raw_scale[0], raw_offset[0], op.getOutput().getType(),
+        name, get_requant_mode(requant_mode), get_round_mode(round_mode),
+        get_round_mode(first_round_mode));
     rewriter.replaceOp(op, {newValue});
   } else {
     std::vector<int32_t> quant;
@@ -69,10 +75,10 @@ void RequantFpLowering::LoweringQuantized(PatternRewriter &rewriter,
 
     auto quant_type = RankedTensorType::get(quant_shape, rewriter.getF32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
-    auto newValue =
-        do_requantFp(op.getInput(), quantValue, op.getOutput().getType(), true,
-                     name, get_requant_mode(requant_mode), get_round_mode(round_mode),
-                     get_round_mode(first_round_mode));
+    auto newValue = do_requantFp(
+        op.getInput(), quantValue, op.getOutput().getType(), true, name,
+        get_requant_mode(requant_mode), get_round_mode(round_mode),
+        get_round_mode(first_round_mode));
     rewriter.replaceOp(op, {newValue});
   }
 }

@@ -6,19 +6,18 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 // all data is same
 struct WeightToConst : public OpRewriterPatternEx<top::WeightOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-   WeightToConst(mlir::MLIRContext *context)
+  WeightToConst(mlir::MLIRContext *context)
       : OpRewriterPatternEx<top::WeightOp>(context, "WeightToConst") {}
 
   LogicalResult matchAndRewriteImpl(top::WeightOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!op->hasOneUse()) {
       return failure();
     }

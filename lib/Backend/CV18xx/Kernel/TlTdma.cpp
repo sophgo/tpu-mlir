@@ -11,8 +11,6 @@
 
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "tl_tdma"
 
 namespace tpu_mlir {

@@ -879,9 +879,10 @@ FBWeightVector Model::cloneWeightMap(
 
         // need add to WeightMap when weight's name isn't equal, even if they
         // offset/size/md5 are equal
-        //auto &names = std::get<2>(std::get<1>(*iter));
+        // auto &names = std::get<2>(std::get<1>(*iter));
         auto &names = std::get<2>(iter->second);
-        auto name_iter = std::find(names.begin(), names.end(), w->name()->str());
+        auto name_iter =
+            std::find(names.begin(), names.end(), w->name()->str());
         if (name_iter == names.end()) {
           names.emplace_back(w->name()->str());
         } else {
@@ -890,7 +891,8 @@ FBWeightVector Model::cloneWeightMap(
       } else {
         std::vector<std::string> names;
         names.emplace_back(w->name()->str());
-        merged_weights[w_offset] = std::make_tuple(md5, w_size, std::move(names));
+        merged_weights[w_offset] =
+            std::make_tuple(md5, w_size, std::move(names));
         weight_data_map[w_offset].swap(weight_data);
       }
       std::vector<int64_t> dim;

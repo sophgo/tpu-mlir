@@ -57,14 +57,13 @@ LogicalResult top::RepeatOp::inference(InferenceParameter &p) {
 
 void top::RepeatOp::shape_inference() {
   std::vector<int64_t> repeats;
-  if (auto tile_w = dyn_cast<top::WeightOp>(getRepeats().getDefiningOp())){
-      auto tile_v = tile_w.read_as_float();
-      std::transform(tile_v->begin(), tile_v->end(),
-        std::back_inserter(repeats),
-        [](auto &v) { return static_cast<int64_t>(v); });
+  if (auto tile_w = dyn_cast<top::WeightOp>(getRepeats().getDefiningOp())) {
+    auto tile_v = tile_w.read_as_float();
+    std::transform(tile_v->begin(), tile_v->end(), std::back_inserter(repeats),
+                   [](auto &v) { return static_cast<int64_t>(v); });
   } else if (module::isShape(getRepeats())) {
-      repeats = module::getShapeTensorValue(getRepeats());
-  } else{
+    repeats = module::getShapeTensorValue(getRepeats());
+  } else {
     llvm_unreachable("repeats is illegal");
   }
   auto in_shape = module::getShape(getInput());
@@ -85,5 +84,4 @@ void top::RepeatOp::shape_inference() {
         module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);
   }
-
 }

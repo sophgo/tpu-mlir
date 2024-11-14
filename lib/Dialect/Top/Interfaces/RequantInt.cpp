@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::RequantIntOp::getFLOPs() {
@@ -58,7 +57,7 @@ LogicalResult top::RequantIntOp::inference(InferenceParameter &p) {
   auto raw_shift = *shift;
   auto raw_multi = *multi;
   ASSERT_THIS(raw_multi.size() == raw_shift.size() &&
-         "zero point & multi & shift size missmatch");
+              "zero point & multi & shift size missmatch");
 
   bool per_channel = raw_multi.size() != 1;
   if (qmode == "TFLite_LShift" || qmode == "TFLite") {
@@ -69,9 +68,10 @@ LogicalResult top::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v = zero_point + MultiplyByQuantizedMultiplier(
-                                    (int32_t)(p.inputs[0][offset]),
-                                    (int32_t)multi_val, (int32_t)shift_val, rmode);
+          auto v = zero_point +
+                   MultiplyByQuantizedMultiplier((int32_t)(p.inputs[0][offset]),
+                                                 (int32_t)multi_val,
+                                                 (int32_t)shift_val, rmode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -84,9 +84,10 @@ LogicalResult top::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v = zero_point +
-                  applyMultiplierAndRShift((p.inputs[0][offset] - zp_x), multi_val,
-                                            shift_val, tpu::RequantMode::MultiplierShift, rmode);
+          auto v = zero_point + applyMultiplierAndRShift(
+                                    (p.inputs[0][offset] - zp_x), multi_val,
+                                    shift_val,
+                                    tpu::RequantMode::MultiplierShift, rmode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -106,4 +107,3 @@ void top::RequantIntOp::shape_inference() {
     setRqAxis(axis);
   }
 }
-

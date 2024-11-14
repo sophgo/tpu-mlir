@@ -26,7 +26,7 @@ void tpu::MulShiftOp::codegen_global_bm1684() {
   sign[2] = module::isSign(getOutput());
   auto last_dim = in_shape[3];
   auto input_size = module::getShape(getInput()).size();
-  for(int i = 4; i< input_size;i++){
+  for (int i = 4; i < input_size; i++) {
     last_dim *= in_shape[i];
   }
   BM1684::instance().dl_nodechip_mulshift_fix8b_forward(

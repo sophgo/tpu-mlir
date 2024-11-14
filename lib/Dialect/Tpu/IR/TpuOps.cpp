@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::tpu;
 
 //===----------------------------------------------------------------------===//
@@ -134,8 +133,8 @@ void IfOp::getSuccessorRegions(std::optional<unsigned> index,
 }
 
 void LoopOp::getSuccessorRegions(std::optional<unsigned> index,
-                                ArrayRef<Attribute> operands,
-                                SmallVectorImpl<RegionSuccessor> &regions) {
+                                 ArrayRef<Attribute> operands,
+                                 SmallVectorImpl<RegionSuccessor> &regions) {
   // If the predecessor is the ForOp, branch into the body using the iterator
   // arguments.
   if (!index) {

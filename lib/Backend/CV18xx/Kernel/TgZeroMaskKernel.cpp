@@ -105,7 +105,7 @@ void TgZeroMaskKernel::compute_bf16() {
   p.layer_id = layer_id;
   CV18xx::tiu_copy(&p);
 
-cvk_tl_t tl_high = tl_buffer;
+  cvk_tl_t tl_high = tl_buffer;
   tl_high.start_address = tl_ofmap.start_address;
   CV18xx::tiu_zeros(layer_id, &tl_high);
 

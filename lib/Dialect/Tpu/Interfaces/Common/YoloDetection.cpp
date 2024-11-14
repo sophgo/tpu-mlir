@@ -7,9 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include <queue>
 #include <vector>
 
@@ -52,8 +52,8 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   if (process.empty()) {
     YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();
-  } else if ((process.starts_with("yolov5") || process.starts_with("yolov7"))  && param.inputs.size() == 1 &&
-      param.inputs[0].shape.size() == 3) {
+  } else if ((process.starts_with("yolov5") || process.starts_with("yolov7")) &&
+             param.inputs.size() == 1 && param.inputs[0].shape.size() == 3) {
     Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
   } else if (process.starts_with("yolov8") || process.starts_with("yolov11")) {

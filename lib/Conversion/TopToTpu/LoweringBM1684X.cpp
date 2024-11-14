@@ -13,10 +13,10 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 template <typename OpTy>
-struct  ShapeArithConvert : public OpRewriterPatternEx<OpTy> {
+struct ShapeArithConvert : public OpRewriterPatternEx<OpTy> {
 public:
-   ShapeArithConvert(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"ShapeArithConvert") {}
+  ShapeArithConvert(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context, "ShapeArithConvert") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
                                     PatternRewriter &rewriter) const override {
@@ -55,7 +55,7 @@ public:
                                                    op.getOperands(), attrs);
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,

@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Conversion/TopToTosa/OpLowering.h"
 #include "tpu_mlir/Conversion/Conversion.h"
+#include "tpu_mlir/Conversion/TopToTosa/OpLowering.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTOSA

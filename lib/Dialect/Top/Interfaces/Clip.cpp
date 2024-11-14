@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::ClipOp::getFLOPs() { return 2 * module::getNumElements(getOutput()); }
+int64_t top::ClipOp::getFLOPs() {
+  return 2 * module::getNumElements(getOutput());
+}
 
 LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }
 void top::ClipOp::deinit(InferenceParameter &p) {}
@@ -30,9 +32,10 @@ void top::ClipOp::shape_inference() {
   common_shape_inference(getOperation());
 
   auto out_shape = module::getShape(getOutput());
-  if (module::isShape(getInputs())){
+  if (module::isShape(getInputs())) {
     auto input_v = module::getShapeTensorValue(getInputs());
-    auto output_v = module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
+    auto output_v =
+        module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
     module::bindShapeTensorValue(getOutput(), output_v);
   }
 }

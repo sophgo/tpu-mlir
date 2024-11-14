@@ -1,13 +1,13 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include "utils.hpp"
+#include <assert.h>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <assert.h>
 using namespace tpu_mlir;
 namespace cvi_debug {
 class FieldBase {
@@ -18,7 +18,7 @@ public:
 };
 
 template <typename T>
-class Field: public FieldBase {
+class Field : public FieldBase {
 public:
   Field(T &val) : data(val), FieldBase(TypeID::get<Field<T>>()) {}
   static bool classof(const FieldBase *base) {
@@ -35,8 +35,8 @@ public:
   }
 
   template <typename T>
-  T& get(std::string name) {
-    //llvm::errs()<<"name:"<<name<<",value:"<<fields[name].get()<<"\n";
+  T &get(std::string name) {
+    // llvm::errs()<<"name:"<<name<<",value:"<<fields[name].get()<<"\n";
     auto f = dyn_cast<Field<T>>(fields[name].get());
     assert(f);
     return f->data;
@@ -57,8 +57,8 @@ struct io_mem_info {
   double qscale;
   uint64_t gaddr;
   std::vector<int64_t> g_shape;
-  uint32_t count; //num of elements
-  uint32_t size; //count * typesize
+  uint32_t count; // num of elements
+  uint32_t size;  // count * typesize
 };
 
 struct cpu_func_info {
@@ -70,9 +70,13 @@ struct cpu_func_info {
 
 void handleFuncArgs(const uint8_t *args, OpParam &param);
 
-void getCpuInput(std::vector<std::vector<float>> &inputs, uint8_t *vaddr, int64_t &offset, io_mem_info &info);
+void getCpuInput(std::vector<std::vector<float>> &inputs, uint8_t *vaddr,
+                 int64_t &offset, io_mem_info &info);
 
-void getAndSaveCpuOutput(std::vector<float> &output, std::vector<float> &save_data, uint8_t *vaddr, io_mem_info &info);
+void getAndSaveCpuOutput(std::vector<float> &output,
+                         std::vector<float> &save_data, uint8_t *vaddr,
+                         io_mem_info &info);
 
-void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, std::vector<std::vector<float>> &outputs);
-}
+void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs,
+            std::vector<std::vector<float>> &outputs);
+} // namespace cvi_debug

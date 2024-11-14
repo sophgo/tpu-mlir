@@ -26,6 +26,7 @@ public:
   void diff_bias_init(memory::dims &bias_shape);
   void diff_dst_init(memory::dims &dst_shape);
   void run_backw(void *dst_grd_input, void *weight_grd_output);
+
 private:
   void activation_init(float *input, conv_attr_t &attr);
   void backward_weights_setup();

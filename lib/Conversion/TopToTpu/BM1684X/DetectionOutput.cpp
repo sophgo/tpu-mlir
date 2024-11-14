@@ -12,10 +12,11 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringDetectionOutput(PatternRewriter &rewriter, top::DetectionOutputOp op, Type type) {
+static void LoweringDetectionOutput(PatternRewriter &rewriter,
+                                    top::DetectionOutputOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  for (auto&& in: op.getOperands())
+  for (auto &&in : op.getOperands())
     operands.emplace_back(in);
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
@@ -28,35 +29,37 @@ static void LoweringDetectionOutput(PatternRewriter &rewriter, top::DetectionOut
 }
 
 void DetectionOutputLowering::LoweringF32(PatternRewriter &rewriter,
-                               top::DetectionOutputOp op) const {
+                                          top::DetectionOutputOp op) const {
   LoweringDetectionOutput(rewriter, op, rewriter.getF32Type());
 }
-void DetectionOutputLowering::LoweringINT4(PatternRewriter &rewriter, top::DetectionOutputOp op,
-                                bool asymmetric) const {
+void DetectionOutputLowering::LoweringINT4(PatternRewriter &rewriter,
+                                           top::DetectionOutputOp op,
+                                           bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
-void DetectionOutputLowering::LoweringINT8(PatternRewriter &rewriter, top::DetectionOutputOp op,
-                                bool asymmetric) const {
+void DetectionOutputLowering::LoweringINT8(PatternRewriter &rewriter,
+                                           top::DetectionOutputOp op,
+                                           bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 
 void DetectionOutputLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::DetectionOutputOp op) const {
+                                           top::DetectionOutputOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void DetectionOutputLowering::LoweringF16(PatternRewriter &rewriter,
-                               top::DetectionOutputOp op) const {
+                                          top::DetectionOutputOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void DetectionOutputLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::DetectionOutputOp op) const {
+                                         top::DetectionOutputOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void DetectionOutputLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                     top::DetectionOutputOp op) const {
+void DetectionOutputLowering::LoweringQuantized(
+    PatternRewriter &rewriter, top::DetectionOutputOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

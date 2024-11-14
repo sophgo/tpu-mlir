@@ -17,12 +17,13 @@ LogicalResult tpu::MeanStdScaleOp::init(InferenceParameter &p) {
 
 void tpu::MeanStdScaleOp::deinit(InferenceParameter &p) {}
 
-mlir::Type tpu::MeanStdScaleOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::MeanStdScaleOp::type_verify(uint64_t opd_idx,
+                                            TypeCastMode &mode) {
   return do_nothing(mode);
 }
 
 int32_t RightShiftRound(int32_t src, int shift_num,
-                         tpu_mlir::RoundingMode round_mode) {
+                        tpu_mlir::RoundingMode round_mode) {
   if (shift_num == 0)
     return src;
   if (shift_num > 63)
@@ -64,7 +65,7 @@ int32_t RightShiftRound(int32_t src, int shift_num,
 }
 
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                  tpu_mlir::RoundingMode round_mode) {
+                                 tpu_mlir::RoundingMode round_mode) {
   return RightShiftRound(v * multiplier, (int)rshift, round_mode);
 }
 
@@ -84,7 +85,8 @@ int saturate(int data) {
 
 void do_requant_int(int32_t *inputs, std::vector<int64_t> input_shapes,
                     const int input_dims, int multi, int shift_val, int izp,
-                    int ozp, float *outputs,  tpu_mlir::RoundingMode round_mode) {
+                    int ozp, float *outputs,
+                    tpu_mlir::RoundingMode round_mode) {
   int64_t inner = 1;
   for (int i = 2; i < input_dims; ++i) {
     inner *= input_shapes[i];
@@ -104,32 +106,32 @@ void do_requant_int(int32_t *inputs, std::vector<int64_t> input_shapes,
   return;
 }
 
-float round_float_number(float number,  tpu_mlir::RoundingMode rounding_mode) {
+float round_float_number(float number, tpu_mlir::RoundingMode rounding_mode) {
   switch (rounding_mode) {
-    case ROUNDING_HALF_TO_EVEN:
-      return nearbyintf(number);
-    case ROUNDING_HALF_AWAY_FROM_ZERO:
-      return (number > 0.0f) ? floorf(number + 0.5f) : ceilf(number - 0.5f);
-    case ROUNDING_TOWARDS_ZERO:
-      return (number > 0.0f) ? floorf(number) : ceilf(number);
-    case ROUNDING_DOWN:
-      return floorf(number);
-    case ROUNDING_UP:
-      return ceilf(number);
-    case ROUNDING_HALF_UP:
-      return roundf(number);
-    case ROUNDING_HALF_DOWN: {
-      float intpart;
-      modff(number, &intpart);
-      float fracpart = number - intpart;
-      if (number > 0.0f) {
-        return (fracpart > 0.5f) ? intpart + 1.0f : intpart;
-      } else {
-        return (fracpart < -0.5f) ? intpart - 1.0f : intpart;
-      }
+  case ROUNDING_HALF_TO_EVEN:
+    return nearbyintf(number);
+  case ROUNDING_HALF_AWAY_FROM_ZERO:
+    return (number > 0.0f) ? floorf(number + 0.5f) : ceilf(number - 0.5f);
+  case ROUNDING_TOWARDS_ZERO:
+    return (number > 0.0f) ? floorf(number) : ceilf(number);
+  case ROUNDING_DOWN:
+    return floorf(number);
+  case ROUNDING_UP:
+    return ceilf(number);
+  case ROUNDING_HALF_UP:
+    return roundf(number);
+  case ROUNDING_HALF_DOWN: {
+    float intpart;
+    modff(number, &intpart);
+    float fracpart = number - intpart;
+    if (number > 0.0f) {
+      return (fracpart > 0.5f) ? intpart + 1.0f : intpart;
+    } else {
+      return (fracpart < -0.5f) ? intpart - 1.0f : intpart;
     }
-    default:
-      return number;
+  }
+  default:
+    return number;
   }
 }
 
@@ -139,7 +141,8 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
   auto scale = module::getF64Array(getScale());
   auto mean = module::getF64Array(getMean());
   auto zero_points = module::getF64Array(getZeroPoints());
-  auto round_mode = round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
+  auto round_mode =
+      round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
   auto rshift = module::getI64Array(getRshift());
   auto offset = module::getI64Array(getOffset());
   auto multi = module::getI64Array(getMulti());
@@ -160,10 +163,11 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
     elem_num *= in_shape[i];
   }
 
-  auto idtype =  module::getStorageType(getInput().getType());
-  auto odtype =  module::getStorageType(getResult().getType());
-  if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) && odtype.isSignedInteger(8)) {
-    for(int b = 0; b < batch_size; b++) {
+  auto idtype = module::getStorageType(getInput().getType());
+  auto odtype = module::getStorageType(getResult().getType());
+  if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) &&
+      odtype.isSignedInteger(8)) {
+    for (int b = 0; b < batch_size; b++) {
       for (int i = 0; i < inner_size * channels; i++) {
         int global_idx = b * inner_size * channels + i;
         int chn_idx = (i / inner_size) % channels;
@@ -172,9 +176,15 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
         int32_t res = 0;
         float tmp = 0.0;
         if (idtype.isUnsignedInteger(8)) {
-          tmp = (float)(((int32_t)((uint8_t)p.inputs[0][global_idx] * (int32_t)multi->at(chn_idx)) + _offset) / pow(2, _rshift));
+          tmp = (float)(((int32_t)((uint8_t)p.inputs[0][global_idx] *
+                                   (int32_t)multi->at(chn_idx)) +
+                         _offset) /
+                        pow(2, _rshift));
         } else {
-          tmp = (float)(((int32_t)((int8_t)p.inputs[0][global_idx] * (int32_t)multi->at(chn_idx)) + _offset) / pow(2, _rshift));
+          tmp = (float)(((int32_t)((int8_t)p.inputs[0][global_idx] *
+                                   (int32_t)multi->at(chn_idx)) +
+                         _offset) /
+                        pow(2, _rshift));
         }
 
         res = round_float_number(tmp, round_mode);
@@ -183,29 +193,32 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
         p.outputs[0][global_idx] = res;
       }
     }
-  }
-  else if (idtype.isF32() && odtype.isSignedInteger(8)) {
+  } else if (idtype.isF32() && odtype.isSignedInteger(8)) {
     std::vector<int32_t> res;
-    for(int b = 0; b < batch_size; b++) {
+    for (int b = 0; b < batch_size; b++) {
       for (int i = 0; i < inner_size * channels; i++) {
         int global_idx = b * inner_size * channels + i;
         int chn_idx = (i / inner_size) % channels;
         float mean_float = mean->at(chn_idx);
 
-        int32_t tmp = (int32_t)round_float_number((int32_t)(p.inputs[0][global_idx] - mean_float) * (1 / std->at(chn_idx)), round_mode);
+        int32_t tmp = (int32_t)round_float_number(
+            (int32_t)(p.inputs[0][global_idx] - mean_float) *
+                (1 / std->at(chn_idx)),
+            round_mode);
         res.push_back(tmp);
       }
     }
-    //do requant
-    do_requant_int(res.data(), in_shape, in_shape.size(), multi->at(0), rshift->at(0),
-                    in_zp, out_zp, p.outputs[0], round_mode);
+    // do requant
+    do_requant_int(res.data(), in_shape, in_shape.size(), multi->at(0),
+                   rshift->at(0), in_zp, out_zp, p.outputs[0], round_mode);
   } else {
-    //default
-    for(int b = 0; b < batch_size; b++) {
+    // default
+    for (int b = 0; b < batch_size; b++) {
       for (int i = 0; i < inner_size * channels; i++) {
         int global_idx = b * inner_size * channels + i;
         int chn_idx = i / inner_size;
-        p.outputs[0][global_idx] = (p.inputs[0][global_idx] - mean->at(chn_idx)) / std->at(chn_idx);
+        p.outputs[0][global_idx] =
+            (p.inputs[0][global_idx] - mean->at(chn_idx)) / std->at(chn_idx);
       }
     }
   }

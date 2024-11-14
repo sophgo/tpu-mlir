@@ -34,7 +34,7 @@ void AvgPoolLowering::LoweringINT4(PatternRewriter &rewriter, top::AvgPoolOp op,
 void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp,
                                    bool asymmetric) const {
-  if(poolOp.getIsAdaptive()){
+  if (poolOp.getIsAdaptive()) {
     LoweringF32(rewriter, poolOp);
     return;
   }
@@ -180,11 +180,12 @@ void AvgPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "round_mode") {
-      attrs.push_back(rewriter.getNamedAttr("round_mode",
+      attrs.push_back(rewriter.getNamedAttr(
+          "round_mode",
           tpu::RoundModeAttr::get(poolOp.getContext(), round_mode)));
-    } else if (attr.getName() == "first_round_mode")
-    {
-      attrs.push_back(rewriter.getNamedAttr("first_round_mode",
+    } else if (attr.getName() == "first_round_mode") {
+      attrs.push_back(rewriter.getNamedAttr(
+          "first_round_mode",
           tpu::RoundModeAttr::get(poolOp.getContext(), first_round_mode)));
     } else {
       attrs.push_back(attr);

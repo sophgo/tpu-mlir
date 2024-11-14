@@ -13,12 +13,13 @@
 
 namespace tpu_mlir {
 namespace backend {
-void cvi_backend_tl_scale_lut(uint32_t layer_id,
-                              laddr_t ifmap_laddr, laddr_t ofmap_laddr,
-                              laddr_t table_laddr, int input_n, int input_c,
-                              int input_h, int input_w) {
+void cvi_backend_tl_scale_lut(uint32_t layer_id, laddr_t ifmap_laddr,
+                              laddr_t ofmap_laddr, laddr_t table_laddr,
+                              int input_n, int input_c, int input_h,
+                              int input_w) {
 
-  cvk_tl_shape_t lshape = CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
+  cvk_tl_shape_t lshape =
+      CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
   cvk_tl_shape_t table_shape = CV18xx::tl_shape_t4(1, CV18xx::NPU_NUM, 16, 16);
 
   cvk_tl_t bottom = {0};

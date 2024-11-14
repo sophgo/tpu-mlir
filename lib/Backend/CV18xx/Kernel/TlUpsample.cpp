@@ -9,9 +9,6 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
-
-
-
 #define DEBUG_TYPE "tl_upsample"
 
 namespace tpu_mlir {
@@ -19,8 +16,8 @@ namespace backend {
 
 void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
                              laddr_t output_laddr, int input_n, int input_c,
-                             int input_h, int input_w, int scale_h,
-                             int scale_w, cvk_fmt_t fmt) {
+                             int input_h, int input_w, int scale_h, int scale_w,
+                             cvk_fmt_t fmt) {
   // input
   cvk_tl_shape_t tl_input_shape =
       CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
@@ -60,9 +57,10 @@ void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
   param.stride_h = 1;
   param.stride_w = 1;
   if (fmt == CVIKERNEL_FMT_E::CVK_FMT_BF16) {
-    param.avg_pooling_const = CV18xx::convert_fp32_to_bf16((float)(scale_h * scale_w));
+    param.avg_pooling_const =
+        CV18xx::convert_fp32_to_bf16((float)(scale_h * scale_w));
   } else {
-    //refer it from the result, don't know the reason.
+    // refer it from the result, don't know the reason.
     param.avg_pooling_const = 1;
   }
   param.rshift_bits = 0;

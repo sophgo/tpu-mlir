@@ -9,9 +9,9 @@
 
 #include "float.h"
 #include "omp.h"
-#include <vector>
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
+#include <vector>
 
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
@@ -65,7 +65,8 @@ void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
   scale = (int)std::round(scale_f * std::pow(2, shift));
 }
 
-template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len) {
+template <typename Dtype>
+float findMaxabs(const Dtype *pSrcData, int len) {
   float fmax = 0.0;
   float dataTmp;
   for (int i = 0; i < len; i++) {
@@ -118,13 +119,15 @@ int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits) {
   return m;
 }
 
-template <typename T> void func_abs(int n, T *src, T *dst) {
+template <typename T>
+void func_abs(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::abs(src[i]);
   }
 }
 
-template <typename T> void func_log(int n, T *src, T *dst) {
+template <typename T>
+void func_log(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::log(src[i]);
   }
@@ -161,7 +164,8 @@ float func_log2(double dataInput) {
   return result;
 }
 
-template <typename T> int64_t to_int(T v, RoundingMode round_mode) {
+template <typename T>
+int64_t to_int(T v, RoundingMode round_mode) {
   int64_t i64_val;
   if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
     i64_val = std::round(v);
@@ -1157,7 +1161,8 @@ void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
 template void tile(float *input, float *output,
                    llvm::ArrayRef<int64_t> in_shape, int axis, int times);
 
-template <typename T> static int remove_value(std::vector<T> &v, int value) {
+template <typename T>
+static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -1684,36 +1689,36 @@ void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
   }
 }
 
+void distribute_elements(const std::vector<int64_t> &elements,
+                         const std::vector<int64_t> &limits,
+                         std::vector<std::vector<int64_t>> &result,
+                         std::vector<int64_t> &current, int index) {
+  if (index == elements.size()) {
+    result.push_back(current);
+    return;
+  }
 
-void distribute_elements(const std::vector<int64_t>& elements,
-                         const std::vector<int64_t>& limits,
-                         std::vector<std::vector<int64_t>>& result,
-                         std::vector<int64_t>& current,
-                         int index ) {
-    if (index == elements.size()) {
-        result.push_back(current);
-        return;
+  for (size_t i = 0; i < limits.size(); ++i) {
+    // if ((current[i] == 0 && elements[index] <= limits[i]) || (current[i] != 0
+    // && current[i] * elements[index] <= limits[i])) {
+    if (current[i] * elements[index] <= limits[i]) {
+      int64_t old_value = current[i];
+      current[i] = old_value * elements[index];
+
+      distribute_elements(elements, limits, result, current, index + 1);
+
+      current[i] = old_value;
     }
-
-    for (size_t i = 0; i < limits.size(); ++i) {
-        // if ((current[i] == 0 && elements[index] <= limits[i]) || (current[i] != 0 && current[i] * elements[index] <= limits[i])) {
-        if (current[i] * elements[index] <= limits[i]) {
-            int64_t old_value = current[i];
-            current[i] = old_value * elements[index];
-
-            distribute_elements(elements, limits, result, current, index + 1);
-
-            current[i] = old_value;
-        }
-    }
+  }
 }
 
-std::vector<std::vector<int64_t>> find_distributions(const std::vector<int64_t>& elements,
-                                                     const std::vector<int64_t>& limits) {
-    std::vector<std::vector<int64_t>> result;
-    std::vector<int64_t> current(limits.size(), 1);
-    distribute_elements(elements, limits, result, current);
-    return result;
+std::vector<std::vector<int64_t>>
+find_distributions(const std::vector<int64_t> &elements,
+                   const std::vector<int64_t> &limits) {
+  std::vector<std::vector<int64_t>> result;
+  std::vector<int64_t> current(limits.size(), 1);
+  distribute_elements(elements, limits, result, current);
+  return result;
 }
 
 } // namespace tpu_mlir

@@ -7,18 +7,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <stdio.h>
-#include <fstream>
-#include <unistd.h>
-#include <iostream>
-#include <set>
-#include <string>
-#include <vector>
-#include <sys/stat.h>
-#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/util.h"
+#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Builder/BM168x/bmodel_fbs.h"
+#include <fstream>
+#include <iostream>
+#include <set>
+#include <stdio.h>
+#include <string>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
 
 using namespace bmodel;
 using namespace flatbuffers;
@@ -351,7 +351,8 @@ static void update_table(Table *table, const StructDef *struct_def,
       } else {
         auto next_pointer = table->GetPointer<void *>(fd->value.offset);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff, skip_cmd);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff,
+                     skip_cmd);
       }
       break;
     }
@@ -385,7 +386,8 @@ static void update_table(Table *table, const StructDef *struct_def,
       for (uint32_t next_id = 0; next_id < vector_pointer->size(); next_id++) {
         auto next_pointer = vector_pointer->GetMutableObject(next_id);
         auto next_table = reinterpret_cast<Table *>(next_pointer);
-        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff, skip_cmd);
+        update_table(next_table, next_def, model_gen, model_ctx, skip_coeff,
+                     skip_cmd);
       }
       break;
     }
@@ -429,7 +431,8 @@ static void update_net(ModelGen &model_gen, ModelCtx &model_ctx,
   auto sub_net_pointer = reinterpret_cast<Vector<Offset<void>> *>(sub_pointer)
                              ->GetMutableObject(sub_idx);
   auto sub_net_table = reinterpret_cast<Table *>(sub_net_pointer);
-  update_table(sub_net_table, sub_net_def, model_gen, model_ctx, skip_coeff, skip_cmd);
+  update_table(sub_net_table, sub_net_def, model_gen, model_ctx, skip_coeff,
+               skip_cmd);
 }
 
 // bmodel combine coeff
@@ -439,12 +442,13 @@ struct addr_update_t {
   int64_t offset;
 };
 
-uint64_t update_addr(const uint64_t coeff_limit, const int64_t ctx_offset, uint64_t origin_addr, std::vector<addr_update_t>& addr_v)
-{
+uint64_t update_addr(const uint64_t coeff_limit, const int64_t ctx_offset,
+                     uint64_t origin_addr, std::vector<addr_update_t> &addr_v) {
   if (origin_addr < coeff_limit) {
     // coeff addr
     for (int i = 0; i < addr_v.size(); ++i) {
-      if (origin_addr >= addr_v[i].addr && origin_addr < addr_v[i].addr + addr_v[i].size) {
+      if (origin_addr >= addr_v[i].addr &&
+          origin_addr < addr_v[i].addr + addr_v[i].size) {
         return origin_addr + addr_v[i].offset;
       }
     }
@@ -455,7 +459,9 @@ uint64_t update_addr(const uint64_t coeff_limit, const int64_t ctx_offset, uint6
   return origin_addr;
 }
 
-inline void update_addr_1684x(uint32_t *cmd, uint64_t coeff_limit, const int64_t ctx_offset, std::vector<addr_update_t>& addr_v) {
+inline void update_addr_1684x(uint32_t *cmd, uint64_t coeff_limit,
+                              const int64_t ctx_offset,
+                              std::vector<addr_update_t> &addr_v) {
   uint64_t addr = ((uint64_t)(cmd[1] & 0xff) << 32) | ((uint64_t)cmd[0]);
   uint64_t GLOBAL_MEM_START_ADDR = 0x100000000;
   if (addr >= GLOBAL_MEM_START_ADDR) {
@@ -467,10 +473,13 @@ inline void update_addr_1684x(uint32_t *cmd, uint64_t coeff_limit, const int64_t
   }
 }
 
-inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit, const int64_t ctx_offset, std::vector<addr_update_t>& addr_v) {
+inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit,
+                             const int64_t ctx_offset,
+                             std::vector<addr_update_t> &addr_v) {
   uint64_t addr = ((uint64_t)(cmd[1] & 0xff) << 32) | ((uint64_t)cmd[0]);
   if (((addr >> 39) & 0x1) && (((addr >> 36) & 0x7) == 0)) {
-    uint64_t fix_addr = update_addr(coeff_limit, ctx_offset, addr & ((1ull << 35) - 1), addr_v);
+    uint64_t fix_addr =
+        update_addr(coeff_limit, ctx_offset, addr & ((1ull << 35) - 1), addr_v);
     fix_addr |= (1ull << 39);
     if (fix_addr != addr) {
       cmd[0] = fix_addr & 0xffffffff;
@@ -479,30 +488,33 @@ inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit, const int64_t 
   }
 }
 
-void update_cmd(uint32_t* cmd, bool last_cmd, uint64_t coeff_limit, int64_t ctx_offset,
-                std::vector<addr_update_t>& addr_v, std::string arch) {
+void update_cmd(uint32_t *cmd, bool last_cmd, uint64_t coeff_limit,
+                int64_t ctx_offset, std::vector<addr_update_t> &addr_v,
+                std::string arch) {
   // cmd type: 0:DMA_tensor, 1:DMA_matrix, 2:DMA_masked_select, 3:DMA_general
   // 4:DMA_cw_trans, 5:DMA_nonzero, 6:DMA_sys, 7:DMA_gather, 8:DMA_scatter
   // 9:DMA_reverse 10:DMA_compress 11: DMA_decompress
   if ("BM1684X" == arch) {
     if (!last_cmd) {
-      update_addr_1684x(cmd+16, coeff_limit, ctx_offset, addr_v);
-      update_addr_1684x(cmd+18, coeff_limit, ctx_offset, addr_v);
+      update_addr_1684x(cmd + 16, coeff_limit, ctx_offset, addr_v);
+      update_addr_1684x(cmd + 18, coeff_limit, ctx_offset, addr_v);
       // fix index_tensor or mask_tensor addr
       int cmd_type = (cmd[1] & 0x0f);
       if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8) {
-        update_addr_1684x(cmd+20, coeff_limit, ctx_offset, addr_v);
+        update_addr_1684x(cmd + 20, coeff_limit, ctx_offset, addr_v);
       }
     }
   } else if ("BM1688" == arch) {
     if (!last_cmd) {
       int cmd_type = (cmd[1] & 0x0f);
-      if(cmd_type == 6) return;
-      update_addr_1688(cmd+16, coeff_limit, ctx_offset, addr_v);
-      update_addr_1688(cmd+18, coeff_limit, ctx_offset, addr_v);
+      if (cmd_type == 6)
+        return;
+      update_addr_1688(cmd + 16, coeff_limit, ctx_offset, addr_v);
+      update_addr_1688(cmd + 18, coeff_limit, ctx_offset, addr_v);
       // fix index_tensor or mask_tensor addr
-      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8 || cmd_type == 0xa || cmd_type == 0xb) {
-        update_addr_1688(cmd+20, coeff_limit, ctx_offset, addr_v);
+      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8 || cmd_type == 0xa ||
+          cmd_type == 0xb) {
+        update_addr_1688(cmd + 20, coeff_limit, ctx_offset, addr_v);
       }
     }
   } else {
@@ -510,11 +522,13 @@ void update_cmd(uint32_t* cmd, bool last_cmd, uint64_t coeff_limit, int64_t ctx_
   }
 }
 
-static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer, uint64_t start_offset,
-                                 bool last_cmd, std::string arch) {
+static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer,
+                                 uint64_t start_offset, bool last_cmd,
+                                 std::string arch) {
   uint32_t len = 96; // default: common gdma instrution size
 
-  if ("BM1688" == arch || "BM1690" == arch || "MARS3" == arch || "SG2380" == arch) {
+  if ("BM1688" == arch || "BM1690" == arch || "MARS3" == arch ||
+      "SG2380" == arch) {
     uint32_t cmd_head[2] = {0};
     memcpy(cmd_head, gdma_buffer + start_offset, sizeof(cmd_head));
     uint32_t tsk_type = cmd_head[1] & 0xf;
@@ -536,10 +550,11 @@ static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer, uint64_t start_offs
   return len;
 }
 
-void update_cmd_group(ModelGen &model_gen, ModelCtx* model_ctx,
-                      const std::vector<std::unique_ptr<bmodel::CmdGroupT>> &cmd_group,
-                      std::vector<addr_update_t>& addr_update_v, uint64_t coeff_limit,
-                      int64_t ctx_offset) {
+void update_cmd_group(
+    ModelGen &model_gen, ModelCtx *model_ctx,
+    const std::vector<std::unique_ptr<bmodel::CmdGroupT>> &cmd_group,
+    std::vector<addr_update_t> &addr_update_v, uint64_t coeff_limit,
+    int64_t ctx_offset) {
   uint32_t gdam_total_cmd_byte = 0;
   if (cmd_group.size() == 0) {
     return;
@@ -554,7 +569,8 @@ void update_cmd_group(ModelGen &model_gen, ModelCtx* model_ctx,
       if (cmd_group[group_idx]->bdc_num > 0) {
         uint8_t *data = new uint8_t[cmd_group[group_idx]->binary_bdc->size()];
         model_ctx->read_binary(cmd_group[group_idx]->binary_bdc.get(), data);
-        auto new_binary = model_gen.WriteBinary(cmd_group[group_idx]->binary_bdc->size(), data);
+        auto new_binary = model_gen.WriteBinary(
+            cmd_group[group_idx]->binary_bdc->size(), data);
         cmd_group[group_idx]->binary_bdc->mutate_start(new_binary.start());
         delete[] data;
       }
@@ -563,15 +579,21 @@ void update_cmd_group(ModelGen &model_gen, ModelCtx* model_ctx,
       }
       // update gdma command, include coeff & neuron addr
       Binary new_binary;
-      uint8_t *gdma_buffer = new uint8_t[cmd_group[group_idx]->binary_gdma->size()];
-      model_ctx->read_binary(cmd_group[group_idx]->binary_gdma.get(), gdma_buffer);
-      for (uint32_t cmd_idx = 0; cmd_idx < cmd_group[group_idx]->gdma_num - 1; cmd_idx++) {
-        uint32_t gdma_size = get_gdma_cmd_len(gdma_buffer, gdma_offset, false, model_ctx->model()->chip()->str());
-        update_cmd((uint32_t*)(gdma_buffer + gdma_offset), false, coeff_limit,
-                  ctx_offset, addr_update_v, model_ctx->model()->chip()->str());
+      uint8_t *gdma_buffer =
+          new uint8_t[cmd_group[group_idx]->binary_gdma->size()];
+      model_ctx->read_binary(cmd_group[group_idx]->binary_gdma.get(),
+                             gdma_buffer);
+      for (uint32_t cmd_idx = 0; cmd_idx < cmd_group[group_idx]->gdma_num - 1;
+           cmd_idx++) {
+        uint32_t gdma_size = get_gdma_cmd_len(
+            gdma_buffer, gdma_offset, false, model_ctx->model()->chip()->str());
+        update_cmd((uint32_t *)(gdma_buffer + gdma_offset), false, coeff_limit,
+                   ctx_offset, addr_update_v,
+                   model_ctx->model()->chip()->str());
         gdma_offset += gdma_size;
       }
-      new_binary = model_gen.WriteBinary(cmd_group[group_idx]->binary_gdma->size(), gdma_buffer);
+      new_binary = model_gen.WriteBinary(
+          cmd_group[group_idx]->binary_gdma->size(), gdma_buffer);
       cmd_group[group_idx]->binary_gdma->mutate_start(new_binary.start());
       cmd_group[group_idx]->binary_gdma->mutate_size(new_binary.size());
       delete[] gdma_buffer;
@@ -579,9 +601,10 @@ void update_cmd_group(ModelGen &model_gen, ModelCtx* model_ctx,
   }
 }
 
-void update_static_cmd(ModelGen &model_gen, ModelCtx* model_ctx, const NetParameterT* param,
-                       std::vector<addr_update_t>& addr_update_v, uint64_t coeff_limit,
-                       int64_t ctx_offset) {
+void update_static_cmd(ModelGen &model_gen, ModelCtx *model_ctx,
+                       const NetParameterT *param,
+                       std::vector<addr_update_t> &addr_update_v,
+                       uint64_t coeff_limit, int64_t ctx_offset) {
   const auto core_num = param->core_num != 0 ? param->core_num : 1;
   auto &cmd_group = param->cmd_group;
   if (param->sub_net.size() > 0) {
@@ -590,26 +613,28 @@ void update_static_cmd(ModelGen &model_gen, ModelCtx* model_ctx, const NetParame
       if (core_commands.size() > 0) {
         for (uint32_t core_idx = 0; core_idx < core_num; core_idx++) {
           auto &cmd_group = core_commands[core_idx]->gdma_tiu_commands;
-          update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+          update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v,
+                           coeff_limit, ctx_offset);
         }
       } else {
         auto &cmd_group = subnet->cmd_group;
-        update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+        update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v,
+                         coeff_limit, ctx_offset);
       }
     }
   }
-  update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit, ctx_offset);
+  update_cmd_group(model_gen, model_ctx, cmd_group, addr_update_v, coeff_limit,
+                   ctx_offset);
 }
 
-void update_tensor(const NetParameterT* param, const int64_t ctx_offset)
-{
+void update_tensor(const NetParameterT *param, const int64_t ctx_offset) {
   for (auto &tensor : param->input_tensor) {
     tensor->device_addr += ctx_offset;
   }
   for (auto &tensor : param->output_tensor) {
     tensor->device_addr += ctx_offset;
   }
-  for (auto &subnet: param->sub_net) {
+  for (auto &subnet : param->sub_net) {
     for (auto &tensor : subnet->input_tensor) {
       tensor->device_addr += ctx_offset;
     }
@@ -625,11 +650,12 @@ struct location_t {
   uint64_t size;
 };
 
-uint64_t coeff_combine(
-    uint8_t *base_buffer, uint64_t base_size, std::vector<location_t> *location_vector,
-    uint8_t *coeff_buffer, uint64_t coeff_size, const Vector<Offset<bmodel::Location>> *coeff_locations,
-    bool is_first, std::vector<addr_update_t> *addr_update_v)
-{
+uint64_t coeff_combine(uint8_t *base_buffer, uint64_t base_size,
+                       std::vector<location_t> *location_vector,
+                       uint8_t *coeff_buffer, uint64_t coeff_size,
+                       const Vector<Offset<bmodel::Location>> *coeff_locations,
+                       bool is_first,
+                       std::vector<addr_update_t> *addr_update_v) {
   uint64_t buffer_offset = 0;
   addr_update_v->clear();
   flatbuffers::FlatBufferBuilder fbb;
@@ -668,7 +694,8 @@ uint64_t coeff_combine(
       if (location_base.size != location->size()) {
         continue;
       }
-      if (memcmp(base_buffer + location_base.offset, coeff_buffer + location->offset(), location->size()) == 0) {
+      if (memcmp(base_buffer + location_base.offset,
+                 coeff_buffer + location->offset(), location->size()) == 0) {
         addr_update_t addr_update;
         addr_update.addr = location->offset();
         addr_update.size = location->size();
@@ -692,7 +719,8 @@ uint64_t coeff_combine(
     loc.offset = buffer_offset;
     loc.size = location->size();
     location_vector->push_back(loc);
-    memcpy(base_buffer + buffer_offset, coeff_buffer + location->offset(), location->size());
+    memcpy(base_buffer + buffer_offset, coeff_buffer + location->offset(),
+           location->size());
     buffer_offset += location->size();
   }
   return buffer_offset;
@@ -882,8 +910,9 @@ static void combine_bmodels(ModelGen &model_gen,
   }
 }
 
-static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_CTX_T>>& model_vec, bool is_dir = false)
-{
+static void combine_bmodels_coeff(ModelGen &model_gen,
+                                  vector<shared_ptr<MODEL_CTX_T>> &model_vec,
+                                  bool is_dir = false) {
   model_gen.AddChip(model_vec[0]->model_ctx->model()->chip()->str());
   auto &builder = model_gen.Builder();
   uint32_t device_num = 0;
@@ -900,7 +929,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     auto param = model->net()->Get(0)->parameter()->Get(0);
     coeff_addr = param->coeff_mem()->address();
     // check model is signal net, signal stage. or combined model
-    assert(model->net()->size() == 1 && model->net()->Get(0)->parameter()->size() == 1 ||
+    assert(model->net()->size() == 1 &&
+               model->net()->Get(0)->parameter()->size() == 1 ||
            model->bmodel_type() == 1);
 
     uint64_t start = param->coeff_mem()->binary_coeff()->start();
@@ -910,7 +940,7 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
       for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
         auto parameter = net->parameter()->Get(idx);
         if (model->bmodel_type() == 1) {
-        // use first net/stage to combine
+          // use first net/stage to combine
           assert(start == parameter->coeff_mem()->binary_coeff()->start());
           assert(size == parameter->coeff_mem()->binary_coeff()->size());
         }
@@ -925,18 +955,22 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     if (param->coeff_mem()->location() == NULL) {
       assert(0);
     }
-    base_size = coeff_combine(base_buffer.data(), base_size, &loc_v,
-                               new_buffer.get(), param->dynamic_combined_coeff_offset(),
-                               param->coeff_mem()->location(),
-                               model_idx == 0, &(addr_update_v[model_idx]));
+    base_size = coeff_combine(
+        base_buffer.data(), base_size, &loc_v, new_buffer.get(),
+        param->dynamic_combined_coeff_offset(), param->coeff_mem()->location(),
+        model_idx == 0, &(addr_update_v[model_idx]));
     // combine dynamic coeff
-    auto dynamic_coeff_size = coeff->size() - param->dynamic_combined_coeff_offset();
+    auto dynamic_coeff_size =
+        coeff->size() - param->dynamic_combined_coeff_offset();
     dynamic_buffer.resize(dynamic_base_size + dynamic_coeff_size);
-    memcpy(dynamic_buffer.data() + dynamic_base_size, new_buffer.get() + param->dynamic_combined_coeff_offset(), dynamic_coeff_size);
+    memcpy(dynamic_buffer.data() + dynamic_base_size,
+           new_buffer.get() + param->dynamic_combined_coeff_offset(),
+           dynamic_coeff_size);
     dynamic_base_size += dynamic_coeff_size;
   }
   base_buffer.resize(base_size + dynamic_base_size);
-  memcpy(base_buffer.data() + base_size, dynamic_buffer.data(), dynamic_base_size);
+  memcpy(base_buffer.data() + base_size, dynamic_buffer.data(),
+         dynamic_base_size);
   // dynamic coeff location
   for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
     auto &model_info = model_vec[model_idx];
@@ -949,7 +983,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
         continue;
       }
       loc.name.assign(location->name()->str());
-      loc.offset = location->offset() - param->dynamic_combined_coeff_offset() + base_size;
+      loc.offset = location->offset() - param->dynamic_combined_coeff_offset() +
+                   base_size;
       loc.size = location->size();
       loc_v.push_back(loc);
     }
@@ -965,7 +1000,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
     auto p = model->net()->Get(0)->parameter()->Get(0);
-    auto dynamic_size = p->coeff_mem()->binary_coeff()->size() - p->dynamic_combined_coeff_offset();
+    auto dynamic_size = p->coeff_mem()->binary_coeff()->size() -
+                        p->dynamic_combined_coeff_offset();
     auto dynamic_changed = dynamic_offset - p->dynamic_combined_coeff_offset();
     for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
       auto net = model->net()->Get(net_idx);
@@ -1005,10 +1041,13 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
           param->coeff_mem->location.push_back(std::move(loc));
         }
         param->coeff_mem->address = coeff_addr;
-        int64_t ctx_offset = coeff_addr + base_size - (param->io_size > 0 ? param->io_addr : param->ctx_addr);
+        int64_t ctx_offset =
+            coeff_addr + base_size -
+            (param->io_size > 0 ? param->io_addr : param->ctx_addr);
         ctx_offset = ctx_offset > 0 ? ctx_offset : 0;
         // update static cmd
-        uint64_t coeff_limit = param->io_size > 0 ? param->io_addr : param->ctx_addr;
+        uint64_t coeff_limit =
+            param->io_size > 0 ? param->io_addr : param->ctx_addr;
         update_static_cmd(model_gen, model_info->model_ctx.get(), param,
                           addr_update_v[model_idx], coeff_limit, ctx_offset);
         if (param->io_size > 0) {
@@ -1041,7 +1080,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     auto module_name = kernel_module->file_name()->str();
     std::unique_ptr<uint8_t[]> binary(new uint8_t[module_binary->size()]);
     model_vec[0]->model_ctx->read_binary(module_binary, binary.get());
-    auto module_tmp = model_gen.WriteBinary(module_binary->size(), binary.get());
+    auto module_tmp =
+        model_gen.WriteBinary(module_binary->size(), binary.get());
     model_gen.AddKernelModule(module_name, module_tmp);
   }
   auto cpuop_module = model_vec[0]->model_ctx->model()->cpuop_module();
@@ -1050,7 +1090,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen, vector<shared_ptr<MODEL_C
     auto module_name = cpuop_module->file_name()->str();
     std::unique_ptr<uint8_t[]> binary(new uint8_t[module_binary->size()]);
     model_vec[0]->model_ctx->read_binary(module_binary, binary.get());
-    auto module_tmp = model_gen.WriteBinary(module_binary->size(), binary.get());
+    auto module_tmp =
+        model_gen.WriteBinary(module_binary->size(), binary.get());
     model_gen.AddCpuModule(module_name, module_tmp);
   }
   model_gen.AddNumDevice(device_num);
@@ -1115,7 +1156,8 @@ static void prepare_output(string &path, bool is_dir = false) {
 }
 
 // combine bmodels
-void bm_combine_bmodels(int argc, char **argv, bool is_dir = false, bool combine_coeff = false) {
+void bm_combine_bmodels(int argc, char **argv, bool is_dir = false,
+                        bool combine_coeff = false) {
   vector<shared_ptr<MODEL_CTX_T>> model_vec;
 
   string ofile = "";

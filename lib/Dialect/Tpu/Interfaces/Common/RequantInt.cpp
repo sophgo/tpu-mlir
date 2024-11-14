@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) {
@@ -46,10 +45,10 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v = zero_point + MultiplyByQuantizedMultiplier(
-                                    (int32_t)(p.inputs[0][offset]),
-                                    (int32_t)multi, (int32_t)shift_val,
-                                    round_mode);
+          auto v =
+              zero_point + MultiplyByQuantizedMultiplier(
+                               (int32_t)(p.inputs[0][offset]), (int32_t)multi,
+                               (int32_t)shift_val, round_mode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -60,9 +59,10 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v = zero_point +
-                   applyMultiplierAndRShift((p.inputs[0][offset] - zp_x), multi,
-                                            -shift_val, tpu::RequantMode::MultiplierShift, round_mode);
+          auto v =
+              zero_point + applyMultiplierAndRShift(
+                               (p.inputs[0][offset] - zp_x), multi, -shift_val,
+                               tpu::RequantMode::MultiplierShift, round_mode);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -79,7 +79,8 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }
-    if ((stype.isF32() || stype.isF16() || stype.isBF16()) && module::isUniformQuantized(getOutput())) {
+    if ((stype.isF32() || stype.isF16() || stype.isBF16()) &&
+        module::isUniformQuantized(getOutput())) {
       mode = TypeCastMode::DO_QUANTIZE;
       return module::getStorageType(getOutput());
     }
@@ -92,7 +93,8 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
 
 ArrayAttr tpu::RequantIntOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

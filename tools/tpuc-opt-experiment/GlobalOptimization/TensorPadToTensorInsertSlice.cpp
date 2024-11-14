@@ -1,6 +1,5 @@
 #include "Passes.h"
-namespace mlir
-{
+namespace mlir {
 
 /// Pattern to convert a tensor.tensor operation into a fill +
 /// tensor.insert_slice. This is needed till tensor.pad op can be fused with its
@@ -49,7 +48,8 @@ private:
 };
 
 struct TensorPadToTensorInsertSlicePass
-    : public PassWrapper<TensorPadToTensorInsertSlicePass, OperationPass<ModuleOp>> {
+    : public PassWrapper<TensorPadToTensorInsertSlicePass,
+                         OperationPass<ModuleOp>> {
   TensorPadToTensorInsertSlicePass(bool skipSingleLinalgOpUses)
       : skipSingleLinalgOpUses(skipSingleLinalgOpUses) {}
   void getDependentDialects(DialectRegistry &registry) const override {
@@ -59,10 +59,12 @@ struct TensorPadToTensorInsertSlicePass
   }
 
   llvm::StringRef getArgument() const override {
-       return "tensor-pad-to-tensor-insert-slice"; }
+    return "tensor-pad-to-tensor-insert-slice";
+  }
 
   llvm::StringRef getDescription() const override {
-       return "Convert tensor.pad into linalg.fill + tensor.insert_slice"; }
+    return "Convert tensor.pad into linalg.fill + tensor.insert_slice";
+  }
 
   void runOnOperation() override {
     MLIRContext *context = &getContext();
@@ -83,5 +85,4 @@ createTensorPadToTensorInsertSlicePass(bool skipSingleLinalgOpUses) {
   return std::make_unique<TensorPadToTensorInsertSlicePass>(
       skipSingleLinalgOpUses);
 }
-} // namespace
-
+} // namespace mlir

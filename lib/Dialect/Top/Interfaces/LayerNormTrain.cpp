@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 int64_t top::LayerNormTrainOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 2;
 }
@@ -24,6 +23,4 @@ LogicalResult top::LayerNormTrainOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LayerNormTrainOp::shape_inference() {
-
-}
+void top::LayerNormTrainOp::shape_inference() {}

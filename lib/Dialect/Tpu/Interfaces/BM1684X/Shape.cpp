@@ -22,10 +22,6 @@ void tpu::ShapeOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ShapeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::ShapeOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
 
-int64_t tpu::ShapeOp::get_fw_type_bm1684x() {
-  return FW_BMNET_SHAPE_REF;
-}
+int64_t tpu::ShapeOp::get_fw_type_bm1684x() { return FW_BMNET_SHAPE_REF; }

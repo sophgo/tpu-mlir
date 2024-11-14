@@ -14,9 +14,9 @@ namespace tpu {
 
 LogicalResult
 LargePadConvPattern::matchAndRewriteImpl(tpu::Conv2DOp op,
-                                     PatternRewriter &rewriter) const {
-  if (!(module::isBM1684Family() || module::isBM1684XFamily()
-        || module::isBM1690Family())) {
+                                         PatternRewriter &rewriter) const {
+  if (!(module::isBM1684Family() || module::isBM1684XFamily() ||
+        module::isBM1690Family())) {
     return failure();
   }
 
@@ -159,7 +159,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
 // bert
 LogicalResult
 PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
-                                       PatternRewriter &rewriter) const {
+                                           PatternRewriter &rewriter) const {
 
   if (!op.getOutput().hasOneUse()) {
     return failure();
@@ -168,7 +168,6 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
   if (!nextOp->hasOneUse()) {
     return failure();
   }
-
 
   // NOTE: if remove this constrain, new_bi_out_shape should be dynamicly
   // calculated
@@ -249,8 +248,9 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
     secOp.erase();
     return success();
   } else if (isa<tpu::SoftmaxOp, tpu::CastOp, tpu::MulConstOp, tpu::AddConstOp,
-                 tpu::MulShiftOp, tpu::ReluOp, tpu::RequantIntOp,
-                 tpu::ActiveOp, tpu::BinaryShiftOp, tpu::BinaryConstShiftOp /** ex. tpu::SigmoidOp */
+                 tpu::MulShiftOp, tpu::ReluOp, tpu::RequantIntOp, tpu::ActiveOp,
+                 tpu::BinaryShiftOp,
+                 tpu::BinaryConstShiftOp /** ex. tpu::SigmoidOp */
                  >(nextOp)) {
     /**
      * unary operation
@@ -276,8 +276,9 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
 }
 
 // permute + pad -> pad + permute
-LogicalResult PermutePadSwap::matchAndRewriteImpl(tpu::PermuteOp op,
-                                              PatternRewriter &rewriter) const {
+LogicalResult
+PermutePadSwap::matchAndRewriteImpl(tpu::PermuteOp op,
+                                    PatternRewriter &rewriter) const {
   auto out = op.getOutput();
   if (out.hasOneUse() == false) {
     return failure();
@@ -327,7 +328,8 @@ LogicalResult PermutePadSwap::matchAndRewriteImpl(tpu::PermuteOp op,
   return success();
 }
 
-Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0) {
+Value createSplitQuantizedMLP(mlir::PatternRewriter &rewriter,
+                              mlir::Operation *op, Value arg0) {
   auto left1 = arg0;
   // split the pattern
   std::vector<Value> operands;
@@ -366,11 +368,13 @@ Value weight_split(Value weight, int split_num, int idx, int axis, Type to_type,
   }
 }
 
-Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation *op, Value arg0, int num_devices) {
+Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter,
+                               mlir::Operation *op, Value arg0,
+                               int num_devices) {
   std::vector<Value> operands;
   auto none_op = module::getNoneOp(op);
   std::vector<int64_t> m0_shape = module::getShape(op->getResult(0));
-  m0_shape[m0_shape.size()-1] /= num_devices;
+  m0_shape[m0_shape.size() - 1] /= num_devices;
   Value rq_out;
   for (int i = 0; i < num_devices; ++i) {
     auto cur_out = arg0;
@@ -378,13 +382,17 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
     auto suffix = "split_" + std::to_string(i);
     // matmul split weight col
     auto m0 = dyn_cast<tpu::MatMulOp>(op);
-    auto w0 = weight_split(m0.getRight(), num_devices, i, -1, module::getStorageType(m0.getRight()), "");
-    auto b0 = weight_split(m0.getBias(), num_devices, i, -1, module::getStorageType(m0.getBias()), "");
-    auto multi0 = weight_split(m0.getMulti(), num_devices, i, -1, module::getStorageType(m0.getMulti()), "");
+    auto w0 = weight_split(m0.getRight(), num_devices, i, -1,
+                           module::getStorageType(m0.getRight()), "");
+    auto b0 = weight_split(m0.getBias(), num_devices, i, -1,
+                           module::getStorageType(m0.getBias()), "");
+    auto multi0 = weight_split(m0.getMulti(), num_devices, i, -1,
+                               module::getStorageType(m0.getMulti()), "");
     auto new_loc = module::getLocLike(m0.getOutput(), suffix);
     auto m0_type = module::getTypeLike(m0.getOutput(), m0_shape);
     auto new_m0 = rewriter.create<tpu::MatMulOp>(
-        new_loc, m0_type, ValueRange{arg0, w0, b0, multi0, none_op}, op->getAttrs());
+        new_loc, m0_type, ValueRange{arg0, w0, b0, multi0, none_op},
+        op->getAttrs());
 
     next_op = *next_op->user_begin();
     auto new_common_op = rewriter.clone(*next_op);
@@ -395,7 +403,8 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
     next_op = *next_op->user_begin();
     // matmul split weight row
     auto m1 = dyn_cast<tpu::MatMulOp>(next_op);
-    auto w1 = weight_split(m1.getRight(), num_devices, i, -2, module::getStorageType(m1.getRight()), "");
+    auto w1 = weight_split(m1.getRight(), num_devices, i, -2,
+                           module::getStorageType(m1.getRight()), "");
     auto new1_loc = module::getLocLike(m1.getOutput(), suffix);
     auto out_shape = module::getShape(m1.getOutput());
     auto newType = RankedTensorType::get(out_shape, rewriter.getI32Type());
@@ -407,8 +416,8 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
     }
     operands_m1.push_back(none_op);
     operands_m1.push_back(none_op);
-    auto new_m1 = rewriter.create<tpu::MatMulOp>(new1_loc, newType,
-        operands_m1, op->getAttrs());
+    auto new_m1 = rewriter.create<tpu::MatMulOp>(new1_loc, newType, operands_m1,
+                                                 op->getAttrs());
     new_m1.setFuseRqAttr(rewriter.getBoolAttr(false));
 
     operands.push_back(new_m1.getOutput());
@@ -416,9 +425,12 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
       std::string suffix = std::string("add_") + std::to_string(i);
       auto loc = module::getLocLike(new_m1.getOutput(), suffix);
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
-      attrs.push_back(rewriter.getNamedAttr("mode",rewriter.getStringAttr("Add")));
-      auto add = rewriter.create<tpu::BinaryShiftOp>(loc, newType, operands, attrs);
+      attrs.push_back(
+          rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
+      attrs.push_back(
+          rewriter.getNamedAttr("mode", rewriter.getStringAttr("Add")));
+      auto add =
+          rewriter.create<tpu::BinaryShiftOp>(loc, newType, operands, attrs);
       operands.clear();
       operands.push_back(add);
     }
@@ -426,9 +438,12 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
       operands.push_back(m1.getMulti());
       std::vector<NamedAttribute> attrs;
       int32_t shift = module::getI64Array(m1.getRshifts())->at(0);
-      attrs.push_back(rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(-shift)));
-      attrs.push_back(rewriter.getNamedAttr("mode",rewriter.getStringAttr("Mul")));
-      rq_out = rewriter.create<tpu::BinaryShiftOp>(m1.getLoc(), m1.getOutput().getType(), operands, attrs);
+      attrs.push_back(
+          rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(-shift)));
+      attrs.push_back(
+          rewriter.getNamedAttr("mode", rewriter.getStringAttr("Mul")));
+      rq_out = rewriter.create<tpu::BinaryShiftOp>(
+          m1.getLoc(), m1.getOutput().getType(), operands, attrs);
     }
   }
   return rq_out;
@@ -436,7 +451,7 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter, mlir::Operation 
 
 // reshape (in == out)
 LogicalResult RemoveReshape::matchAndRewrite(tpu::ReshapeOp op,
-                                              PatternRewriter &rewriter) const {
+                                             PatternRewriter &rewriter) const {
   auto shape0 = module::getShape(op.getOutput());
   auto shape1 = module::getShape(op.getInput());
   if (shape0 != shape1) {

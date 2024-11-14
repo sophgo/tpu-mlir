@@ -71,5 +71,4 @@ void top::AdaptiveAvgPoolOp::shape_inference() {
       getLoc(), out.getType(), ArrayRef<Value>{getInput()}, attrs);
   out.replaceAllUsesWith(new_op.getOutput());
   new_op.shape_inference();
-
 }

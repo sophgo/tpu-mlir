@@ -112,7 +112,8 @@ void TgPermuteKernel::reshape(int channel) {
       continue;
     }
     int h_ = channel / c_;
-    auto size = CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(n, c_, h_, w), fmt, 1);
+    auto size =
+        CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(n, c_, h_, w), fmt, 1);
     if (lmem_need == 0 || size < lmem_need) {
       lmem_need = size;
       c = c_;
@@ -131,10 +132,10 @@ void TgPermuteKernel::reshape(int dim0, int dim1) {
       continue;
     }
     int h_ = dim0 / c_;
-    auto size0 =
-        CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(1, c_, h_, dim1), fmt, 1);
-    auto size1 =
-        CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(dim1, c_, h_, 1), fmt, 1);
+    auto size0 = CV18xx::lmem_tensor_to_size(
+        CV18xx::tl_shape_t4(1, c_, h_, dim1), fmt, 1);
+    auto size1 = CV18xx::lmem_tensor_to_size(
+        CV18xx::tl_shape_t4(dim1, c_, h_, 1), fmt, 1);
     if (lmem_need == 0 || size0 + size1 < lmem_need) {
       lmem_need = size0 + size1;
       n = 1;
@@ -150,10 +151,10 @@ void TgPermuteKernel::reshape(int dim0, int dim1) {
       continue;
     }
     int h_ = dim1 / c_;
-    auto size0 =
-        CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(dim0, c_, h_, 1), fmt, 1);
-    auto size1 =
-        CV18xx::lmem_tensor_to_size(CV18xx::tl_shape_t4(1, c_, h_, dim0), fmt, 1);
+    auto size0 = CV18xx::lmem_tensor_to_size(
+        CV18xx::tl_shape_t4(dim0, c_, h_, 1), fmt, 1);
+    auto size1 = CV18xx::lmem_tensor_to_size(
+        CV18xx::tl_shape_t4(1, c_, h_, dim0), fmt, 1);
     if (size0 + size1 < lmem_need) {
       lmem_need = size0 + size1;
       n = dim0;
@@ -215,9 +216,8 @@ void TgPermuteKernel::init(uint32_t layer_id, gaddr_t ga_input,
   CV18xx::set_layer_id(layer_id);
 }
 
-uint32_t
-TgPermuteKernel::tile_offset(const CV18xx::tiling_info_t &tile,
-                             bool is_src) const {
+uint32_t TgPermuteKernel::tile_offset(const CV18xx::tiling_info_t &tile,
+                                      bool is_src) const {
   const cvk_tg_stride_t &s = is_src ? src_stride : dst_stride_order;
   return tile.offset + tile.pos_n * s.n + tile.pos_c * s.c + tile.pos_h * s.h +
          tile.pos_w * s.w;
@@ -243,7 +243,7 @@ void TgPermuteKernel::selectTilePolicy() {
         for (step_c = max_c; step_c > 0;) {
           auto ishape = CV18xx::tl_shape_t4(step_n, step_c, step_h, step_w);
           auto oshape = CV18xx::tl_shape_t4(step[order[0]], step[order[1]],
-                                        step[order[2]], step[order[3]]);
+                                            step[order[2]], step[order[3]]);
           lmem_need = 2 * CV18xx::lmem_tensor_to_size(ishape, fmt, 1) +
                       2 * CV18xx::lmem_tensor_to_size(oshape, fmt, 1);
           if (lmem_need <= (uint32_t)CV18xx::LMEM_BYTES) {
@@ -295,13 +295,13 @@ void TgPermuteKernel::store(int step_idx) {
   auto &tile = tiles[step_idx];
   refresh(step_idx);
   CV18xx::tdma_store_stride(&tl_ofmap, ga_output + tile_offset(tile, false),
-                        dst_stride);
+                            dst_stride);
 }
 
 void TgPermuteKernel::allocLmem() {
   auto src_shape = CV18xx::tl_shape_t4(step[0], step[1], step[2], step[3]);
   auto dst_shape = CV18xx::tl_shape_t4(step[order[0]], step[order[1]],
-                                   step[order[2]], step[order[3]]);
+                                       step[order[2]], step[order[3]]);
   tl_mem[0] = CV18xx::lmem_alloc_tensor(src_shape, fmt, 1);
   tl_mem[1] = CV18xx::lmem_alloc_tensor(src_shape, fmt, 1);
   tl_mem[2] = CV18xx::lmem_alloc_tensor(dst_shape, fmt, 1);
@@ -346,8 +346,8 @@ void TgPermuteKernel::compute(int step_idx) {
 
 void TgPermuteKernel::permute_tdma() {
   auto shape = CV18xx::tg_shape_t4(n, c, h, w);
-  CV18xx::tdma_g2g_tensor_copy(ga_input, shape, src_stride, fmt, ga_output, shape,
-                           dst_stride_order, fmt);
+  CV18xx::tdma_g2g_tensor_copy(ga_input, shape, src_stride, fmt, ga_output,
+                               shape, dst_stride_order, fmt);
 }
 
 void TgPermuteKernel::schedule() {
@@ -374,8 +374,7 @@ void TgPermuteKernel::schedule() {
   deallocLmem();
 }
 
-void cvi_backend_tg_permute_kernel(
-                                   uint32_t layer_id, gaddr_t ga_input,
+void cvi_backend_tg_permute_kernel(uint32_t layer_id, gaddr_t ga_input,
                                    gaddr_t ga_output, int n, int c, int h,
                                    int w, int order_n, int order_c, int order_h,
                                    int order_w, cvk_fmt_t fmt) {
@@ -385,6 +384,5 @@ void cvi_backend_tg_permute_kernel(
   kernel.selectTilePolicy();
   kernel.schedule();
 }
-}
-}
-
+} // namespace backend
+} // namespace tpu_mlir

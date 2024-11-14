@@ -11,10 +11,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <valarray>
 
-
 using namespace tpu_mlir::backend;
 
-LogicalResult tpu::ShapeSliceOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeSliceOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ShapeSliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
@@ -35,8 +36,9 @@ LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
     if (offset_v->at(i) < 0) {
       offset_v->at(i) += in_shape[i];
     }
-    offset_v->at(i) = steps_v->at(i) > 0 ? std::clamp(offset_v->at(i), 0L, in_shape[i])
-                        : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
+    offset_v->at(i) = steps_v->at(i) > 0
+                          ? std::clamp(offset_v->at(i), 0L, in_shape[i])
+                          : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
   }
 
   // slice[range] -> (offset + stride)
@@ -66,7 +68,8 @@ LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::ShapeSliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::ShapeSliceOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
   if (opd_idx == 0) {
     return type_verify_case_same(getOperation(), 0, mode);
   }

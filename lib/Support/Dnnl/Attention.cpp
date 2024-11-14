@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Attention.h"
+#include "tpu_mlir/Support/Dnnl/Binary.h"
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Softmax.h"
-#include "tpu_mlir/Support/Dnnl/Binary.h"
 #include "tpu_mlir/Support/Float16.h"
 
 using namespace dnnl;
@@ -19,16 +19,17 @@ using dt = memory::data_type;
 
 namespace tpu_mlir {
 
-Attention::Attention() {
-}
+Attention::Attention() {}
 
 void Attention::setup(float *input, float *keys, float *values,
-                      float *queries_weight, float *queries_bias, float *keys_weight,
-                      float *keys_bias, float *values_weight, float *values_bias,
-                      float *out_weight, float *out_bias, float *musk, float *table,
-                      float *output, int64_t *quant_param,
-                      int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q, int64_t N_k,
-                      int64_t d, float scale, bool add_result, int dtype) {
+                      float *queries_weight, float *queries_bias,
+                      float *keys_weight, float *keys_bias,
+                      float *values_weight, float *values_bias,
+                      float *out_weight, float *out_bias, float *musk,
+                      float *table, float *output, int64_t *quant_param,
+                      int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q,
+                      int64_t N_k, int64_t d, float scale, bool add_result,
+                      int dtype) {
   // int64_t d = K / head;
   scale_ = scale;
   M_k_ = M_k;
@@ -66,27 +67,31 @@ void Attention::setup(float *input, float *keys, float *values,
   matmulq = new MatMul();
   q_data = std::make_shared<std::vector<float>>(batch * M_q * d);
   p_queries = q_data->data();
-  ((MatMul *)matmulq)->setup(input, queries_weight, queries_bias, p_queries, 1, 1,
-                             batch * M_q, N_q, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulq)
+      ->setup(input, queries_weight, queries_bias, p_queries, 1, 1, batch * M_q,
+              N_q, d, 0, -1, 0, 0, 0, 0, 0, 0);
   // keys
   matmulk = new MatMul();
   k_data = std::make_shared<std::vector<float>>(batch * M_k * d);
   p_keys = k_data->data();
-  ((MatMul *)matmulk)->setup(keys, keys_weight, keys_bias, p_keys, 1, 1,
-                             batch * M_k, N_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulk)
+      ->setup(keys, keys_weight, keys_bias, p_keys, 1, 1, batch * M_k, N_k, d,
+              0, -1, 0, 0, 0, 0, 0, 0);
   // values
   matmulv = new MatMul();
   v_data = std::make_shared<std::vector<float>>(batch * M_k * d);
   p_values = v_data->data();
-  ((MatMul *)matmulv)->setup(values, values_weight, values_bias, p_values, 1, 1,
-                             batch * M_k, N_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulv)
+      ->setup(values, values_weight, values_bias, p_values, 1, 1, batch * M_k,
+              N_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
   // matmul0
   num_elem = batch * M_q * M_k;
   matmul0 = new MatMul();
   data_0 = std::make_shared<std::vector<float>>(num_elem);
   p_mat0 = data_0->data();
-  ((MatMul *)matmul0)->setup(p_queries, p_keys, nullptr, p_mat0, batch, 1,
-                             M_q, d, M_k, 0, -1, 0, 0, 1, 0, 0, 0);
+  ((MatMul *)matmul0)
+      ->setup(p_queries, p_keys, nullptr, p_mat0, batch, 1, M_q, d, M_k, 0, -1,
+              0, 0, 1, 0, 0, 0);
   std::vector<int64_t> lshape = {batch, M_q, M_k};
   // binary
   if (musk != nullptr) {
@@ -117,8 +122,9 @@ void Attention::setup(float *input, float *keys, float *values,
   matmul1 = new MatMul();
   data_1 = std::make_shared<std::vector<float>>(batch * M_q * d);
   p_mat1 = data_1->data();
-  ((MatMul *)matmul1)->setup(p_softmax, p_values, nullptr, p_mat1, batch, 1,
-                             M_q, M_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmul1)
+      ->setup(p_softmax, p_values, nullptr, p_mat1, batch, 1, M_q, M_k, d, 0,
+              -1, 0, 0, 0, 0, 0, 0);
   if (add_result) {
     data_out = std::make_shared<std::vector<float>>(batch * M_q * d);
     p_mat1_out = data_out->data();
@@ -129,12 +135,13 @@ void Attention::setup(float *input, float *keys, float *values,
   p_output = output;
   // matmul out
   matmul_out = new MatMul();
-  ((MatMul *)matmul_out)->setup(p_mat1, out_weight, out_bias, p_mat1_out, 1, 1,
-                                batch * M_q, d, N_q, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmul_out)
+      ->setup(p_mat1, out_weight, out_bias, p_mat1_out, 1, 1, batch * M_q, d,
+              N_q, 0, -1, 0, 0, 0, 0, 0, 0);
 }
 
 // type = {0:fp32, 1:fp16, 2:bf16, 3:int8}
-void type_cast(float* data, int64_t num, int type) {
+void type_cast(float *data, int64_t num, int type) {
   if (type == 1) {
     F16(data, data, num);
   } else if (type == 2) {
@@ -144,12 +151,13 @@ void type_cast(float* data, int64_t num, int type) {
 }
 
 // type = {0:fp32, 1:fp16, 2:bf16, 3:int8}
-void requant(float* data, int64_t num,
-             int64_t mul=1, int rshift=0, int64_t zp=0, bool out_i16=false) {
+void requant(float *data, int64_t num, int64_t mul = 1, int rshift = 0,
+             int64_t zp = 0, bool out_i16 = false) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int64_t i = 0; i < num; ++i) {
     int64_t v = 0;
-    v = RightShiftRound((int64_t)data[i] * mul, rshift, ROUNDING_HALF_AWAY_FROM_ZERO);
+    v = RightShiftRound((int64_t)data[i] * mul, rshift,
+                        ROUNDING_HALF_AWAY_FROM_ZERO);
     if (out_i16) {
       data[i] = (v + zp);
     } else {
@@ -160,22 +168,22 @@ void requant(float* data, int64_t num,
 }
 
 const float MAX_VAL = 127;
-void softmax_with_musk(float* output, float* input, float* exp_table, float* musk,
-                       float scale, int zp, int n, int c, int w) {
+void softmax_with_musk(float *output, float *input, float *exp_table,
+                       float *musk, float scale, int zp, int n, int c, int w) {
   if (musk != nullptr) {
 #pragma omp parallel for schedule(static, omp_schedule(w))
     for (int i = 0; i < w; ++i) {
       musk[i] = (float)(musk[i] != 0) * 255.f;
     }
 #pragma omp parallel for schedule(static, omp_schedule(w))
-    for (int i = 0; i < n*c; ++i) {
+    for (int i = 0; i < n * c; ++i) {
       for (int j = 0; j < w; ++j) {
         input[i * w + j] = to_int8(input[i * w + j] - musk[j]);
       }
     }
   }
-#pragma omp parallel for schedule(static, omp_schedule(n*c))
-  for (int i = 0; i < n*c; ++i) {
+#pragma omp parallel for schedule(static, omp_schedule(n *c))
+  for (int i = 0; i < n * c; ++i) {
     int64_t out_offset = i * w;
     float sum = 0.f;
     for (int j = 0; j < w; ++j) {
@@ -231,7 +239,8 @@ void Attention::run() {
     requant(p_values, v_data->size(), v_mul, v_sft, v_zp);
     ((MatMul *)matmul0)->run();
     requant(p_mat0, data_0->size(), m0_mul, m0_sft, m0_zp);
-    softmax_with_musk(p_softmax, p_mat0, p_table, p_musk, scale_, s_zp, batch_, M_q_, M_k_);
+    softmax_with_musk(p_softmax, p_mat0, p_table, p_musk, scale_, s_zp, batch_,
+                      M_q_, M_k_);
     ((MatMul *)matmul1)->run();
     requant(p_mat1, data_1->size(), m1_mul, m1_sft, m1_zp);
     ((MatMul *)matmul_out)->run();
@@ -250,17 +259,19 @@ void Attention::deinit() {
   delete ((MatMul *)matmul_out);
 }
 
-ScaledDotProductAttention::ScaledDotProductAttention() {
-}
+ScaledDotProductAttention::ScaledDotProductAttention() {}
 
-void ScaledDotProductAttention::setup(float *query, float *keys, float *values, float *masks, float *output,
-             int64_t batch, int64_t head, int64_t query_len, int64_t seq_len, int64_t hidden_dim, int64_t value_dim,
-             float scale, bool is_causal, int dtype){
+void ScaledDotProductAttention::setup(float *query, float *keys, float *values,
+                                      float *masks, float *output,
+                                      int64_t batch, int64_t head,
+                                      int64_t query_len, int64_t seq_len,
+                                      int64_t hidden_dim, int64_t value_dim,
+                                      float scale, bool is_causal, int dtype) {
   // ignore dropout
   batch_ = batch;
   head_ = head == 0 ? 1 : head;
-  seq_len_  = seq_len;
-  query_len_= query_len;
+  seq_len_ = seq_len;
+  query_len_ = query_len;
   hidden_dim_ = hidden_dim;
   value_dim_ = value_dim;
   scale_ = scale;
@@ -270,16 +281,18 @@ void ScaledDotProductAttention::setup(float *query, float *keys, float *values, 
   values_ = values;
   masks_ = masks;
   output_ = output;
-  if(scale_ == 0.0f || std::isinf(scale_)){
+  if (scale_ == 0.0f || std::isinf(scale_)) {
     scale_ = 1.0f / sqrtf(hidden_dim_);
   }
   std::vector<int64_t> lshape = {batch_, head_, query_len_, seq_len};
   // handle dnnl
   matmulqk = new MatMul();
   qk = new float[head_ * head_ * query_len_ * seq_len];
-  ((MatMul *)matmulqk)->setup(query, keys, nullptr, qk, batch_, head_, query_len_, hidden_dim_, seq_len_, 0, -1, 0, 0, 1, 0, 0, 0);
+  ((MatMul *)matmulqk)
+      ->setup(query, keys, nullptr, qk, batch_, head_, query_len_, hidden_dim_,
+              seq_len_, 0, -1, 0, 0, 1, 0, 0, 0);
   binary = nullptr;
-  if(masks == nullptr && masks != reinterpret_cast<float *>(0x0)){
+  if (masks == nullptr && masks != reinterpret_cast<float *>(0x0)) {
     p_binary = new float[batch_ * head_ * query_len_ * seq_len_];
     binary = new Binary();
     (*(Binary *)binary)
@@ -293,7 +306,7 @@ void ScaledDotProductAttention::setup(float *query, float *keys, float *values, 
   }
   softmax = new Softmax();
   softmax_attr_t attr;
-  std::vector<int64_t> nshape = {batch_, head_*query_len_, seq_len_};
+  std::vector<int64_t> nshape = {batch_, head_ * query_len_, seq_len_};
   attr.src_shape = nshape;
   attr.dst_shape = nshape;
   attr.axis = 2;
@@ -301,14 +314,17 @@ void ScaledDotProductAttention::setup(float *query, float *keys, float *values, 
   qk_softmax = new float[batch_ * head_ * query_len_ * seq_len_];
   ((Softmax *)softmax)->setup(p_binary, qk_softmax, attr);
   matmulv = new MatMul();
-  ((MatMul *)matmulv)->setup(qk_softmax, values, nullptr, output, batch, head, query_len_, seq_len, value_dim, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulv)
+      ->setup(qk_softmax, values, nullptr, output, batch, head, query_len_,
+              seq_len, value_dim, 0, -1, 0, 0, 0, 0, 0, 0);
 }
 
 void ScaledDotProductAttention::run() {
   assert(dtype_ < 3);
   ((MatMul *)matmulqk)->run();
   // scale qk
-#pragma omp parallel for schedule(static, omp_schedule(batch_ * head_ * query_len_ * seq_len_))
+#pragma omp parallel for schedule(                                             \
+    static, omp_schedule(batch_ *head_ *query_len_ *seq_len_))
   for (int64_t i = 0; i < batch_ * head_ * query_len_ * seq_len_; i++) {
     qk[i] *= scale_;
   }
@@ -328,8 +344,8 @@ void ScaledDotProductAttention::deinit() {
     delete ((Binary *)binary);
   delete ((Softmax *)softmax);
   // relase memory
-  delete [] qk;
-  delete [] qk_softmax;
+  delete[] qk;
+  delete[] qk_softmax;
   if (masks_ != nullptr)
     delete[] p_binary;
 }

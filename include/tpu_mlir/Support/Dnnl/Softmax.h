@@ -21,12 +21,13 @@ typedef struct {
   memory::dims dst_shape;
 } softmax_attr_t;
 
-class Softmax{
+class Softmax {
 public:
   Softmax();
   void setup(float *input, float *output, softmax_attr_t &attr);
   void run();
   ~Softmax() = default;
+
 private:
   engine eng;
   stream eng_stream;
@@ -37,4 +38,4 @@ private:
   softmax_attr_t attr_;
 };
 
-}
+} // namespace tpu_mlir

@@ -177,7 +177,7 @@ void BasicTimeStep::gen_hold_coeff() {
       if (tensor_info.mode == TIMESTEP_LOAD) {
         if (auto src_op = dyn_cast_or_null<top::WeightOp>(v.getDefiningOp())) {
           bool allow_split = false;
-          if (src_op.getAllowSplitAttr() != nullptr){
+          if (src_op.getAllowSplitAttr() != nullptr) {
             allow_split = true;
           }
           if (allow_split == false) {

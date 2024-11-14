@@ -44,7 +44,6 @@ protected:
   void change_workspace_size(int32_t step_idx);
 
 protected:
-
   gaddr_t ga_input;
   gaddr_t ga_output;
 
@@ -70,5 +69,5 @@ protected:
   int32_t flip = 0;
   std::vector<CV18xx::tiling_info_t> tiles;
 };
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

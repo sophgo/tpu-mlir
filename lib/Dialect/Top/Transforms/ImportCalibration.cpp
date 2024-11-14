@@ -125,12 +125,12 @@ public:
             }
             calibration_map_fp8[name] = info;
           }
-        } else if (asym_op_meeted){
-            if (!(iss >> asym_op_name)) {
-              llvm::errs() << line;
-              llvm_unreachable("\n  => not match required format\n");
-            }
-            asym_op_names.push_back(asym_op_name);
+        } else if (asym_op_meeted) {
+          if (!(iss >> asym_op_name)) {
+            llvm::errs() << line;
+            llvm_unreachable("\n  => not match required format\n");
+          }
+          asym_op_names.push_back(asym_op_name);
         } else {
           llvm_unreachable("error th block type logic!\n");
         }
@@ -202,14 +202,16 @@ public:
           }
         }
 
-        if (isa<top::GELUOp>(op) || isa<top::SiLUOp>(op)){
-          if (std::find(asym_op_names.begin(), asym_op_names.end(), module::getName(op).str()) != asym_op_names.end()) {
+        if (isa<top::GELUOp>(op) || isa<top::SiLUOp>(op)) {
+          if (std::find(asym_op_names.begin(), asym_op_names.end(),
+                        module::getName(op).str()) != asym_op_names.end()) {
             op->setAttr("output_asym", builder.getBoolAttr(true));
           }
         }
 
-        if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)){
-          if (std::find(asym_op_names.begin(), asym_op_names.end(), module::getName(op).str()) != asym_op_names.end()) {
+        if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
+          if (std::find(asym_op_names.begin(), asym_op_names.end(),
+                        module::getName(op).str()) != asym_op_names.end()) {
             op->setAttr("input_asym", builder.getBoolAttr(true));
           }
         }
@@ -303,6 +305,7 @@ public:
       min = 0;
     }
   }
+
 private:
   std::vector<std::string> asym_op_names;
 };

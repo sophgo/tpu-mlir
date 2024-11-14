@@ -31,7 +31,7 @@ struct GenericOpInterchangePattern
   }
 };
 
-//interchange the outter reduce loop
+// interchange the outter reduce loop
 struct InterchangeGenericOpsPass
     : public PassWrapper<InterchangeGenericOpsPass, OperationPass<ModuleOp>> {
   void getDependentDialects(DialectRegistry &registry) const override {
@@ -51,4 +51,4 @@ struct InterchangeGenericOpsPass
 std::unique_ptr<OperationPass<ModuleOp>> createInterchangeGenericOpsPass() {
   return std::make_unique<InterchangeGenericOpsPass>();
 }
-}
+} // namespace mlir

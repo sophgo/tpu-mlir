@@ -40,8 +40,8 @@ void LutLowering::LoweringF8(PatternRewriter &rewriter, top::LutOp op) const {
 
 void LutLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LutOp op) const {
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),
-                                          ValueRange{op.getInput(), op.getTable()});
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+      op, op.getOutput().getType(), ValueRange{op.getInput(), op.getTable()});
 }
 
 } // namespace bm1684x

@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::ShapeReshapeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeReshapeOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ShapeReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeReshapeOp::inference(InferenceParameter &p) {

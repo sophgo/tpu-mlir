@@ -19,7 +19,7 @@ void ErfLowering::LoweringF32(PatternRewriter &rewriter, top::ErfOp op) const {
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void ErfLowering::LoweringINT4(PatternRewriter &rewriter, top::ErfOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
@@ -34,11 +34,10 @@ void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
 void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {
   if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
     auto op_ = op.getOperation();
-    op_->setAttr("mode",
-                 tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
+    op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+                                                  tpu::ActiveMode::ERF));
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
-  }
-  else{
+  } else {
     LoweringF32(rewriter, op);
   }
 }
@@ -46,11 +45,10 @@ void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {
 void ErfLowering::LoweringF16(PatternRewriter &rewriter, top::ErfOp op) const {
   if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
     auto op_ = op.getOperation();
-    op_->setAttr("mode",
-                 tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
+    op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+                                                  tpu::ActiveMode::ERF));
     lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
-  }
-  else{
+  } else {
     LoweringF32(rewriter, op);
   }
 }

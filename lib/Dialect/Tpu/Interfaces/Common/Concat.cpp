@@ -157,8 +157,8 @@ bool tpu::ConcatOp::supportInplace() {
   }
 
   auto shape = module::getShape(getOutput());
-  int outer_dim = std::accumulate(shape.begin(), shape.begin() + getAxis(),
-                                  1, std::multiplies<int64_t>());
+  int outer_dim = std::accumulate(shape.begin(), shape.begin() + getAxis(), 1,
+                                  std::multiplies<int64_t>());
   if (outer_dim != 1) {
     return false;
   }

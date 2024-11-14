@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <llvm/Support/Debug.h>
 
 namespace tpu_mlir {
 namespace backend {
@@ -47,7 +47,7 @@ public:
   void setStrides(std::vector<uint32_t> strides) { strides_ = strides; }
 
   std::vector<uint32_t> getStrides() {
-    if (strides_.size()){
+    if (strides_.size()) {
       return strides_;
     }
     return std::vector<uint32_t>();

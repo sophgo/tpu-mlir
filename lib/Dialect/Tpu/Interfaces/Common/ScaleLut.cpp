@@ -11,7 +11,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 LogicalResult tpu::ScaleLutOp::init(InferenceParameter &p) { return success(); }
 void tpu::ScaleLutOp::deinit(InferenceParameter &p) {}
 
@@ -50,4 +49,3 @@ LogicalResult tpu::ScaleLutOp::LocalGenSupport() {
 }
 
 bool tpu::ScaleLutOp::support_multi_core() { return false; }
-

@@ -9,11 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgTileKernel.hpp"
 
-
-
 #define DEBUG_TYPE "cvi_backend_tile_kernel"
-
-
 
 namespace tpu_mlir {
 namespace backend {
@@ -25,7 +21,7 @@ void TgTileKernel::g2g_tile_W() {
   auto dst_shape = src_shape;
   auto dst_stride = CV18xx::tg_default_stride(dst_shape, fmt);
   CV18xx::tdma_g2g_tensor_copy(ga_input, src_shape, src_stride, fmt, ga_output,
-                           dst_shape, dst_stride, fmt);
+                               dst_shape, dst_stride, fmt);
 }
 
 void TgTileKernel::g2g_tile_N() {
@@ -33,8 +29,8 @@ void TgTileKernel::g2g_tile_N() {
   auto src_stride = CV18xx::tg_default_stride(shape, fmt);
   auto dst_stride = src_stride;
   src_stride.n = 0;
-  CV18xx::tdma_g2g_tensor_copy(ga_input, shape, src_stride, fmt, ga_output, shape,
-                           dst_stride, fmt);
+  CV18xx::tdma_g2g_tensor_copy(ga_input, shape, src_stride, fmt, ga_output,
+                               shape, dst_stride, fmt);
 }
 
 void TgTileKernel::init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
@@ -145,7 +141,8 @@ void TgTileKernel::load(int32_t step_idx) {
 void TgTileKernel::store(int32_t step_idx) {
   auto &tile = tiles[step_idx];
   refresh(step_idx);
-  CV18xx::tdma_store(&tl_ofmap, ga_output + tile.pos_c * w * factor * fmt_bytes);
+  CV18xx::tdma_store(&tl_ofmap,
+                     ga_output + tile.pos_c * w * factor * fmt_bytes);
 }
 
 void TgTileKernel::compute(int32_t step_idx) {

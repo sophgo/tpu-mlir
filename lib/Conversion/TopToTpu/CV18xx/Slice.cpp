@@ -21,7 +21,8 @@ void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::SliceOp op) const {
   auto out = op.getOutput();
   if (module::isCalibratedType(out)) {
-    //For fuse_preprocess(crop image) and aligned use, it should be lowered to uint8.
+    // For fuse_preprocess(crop image) and aligned use, it should be lowered to
+    // uint8.
     auto qtype = module::getCalibratedType(out);
     auto max = qtype.getMax();
     auto min = qtype.getMin();

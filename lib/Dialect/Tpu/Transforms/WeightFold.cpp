@@ -132,33 +132,39 @@ static void WeightFolder(Operation *op) {
       std::transform(datas[i].begin(), datas[i].end(), (*castData).begin(),
                      [](float c) { return c; });
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
-    // } else if (auto quantType =
-    //                dtype.dyn_cast<mlir::quant::UniformQuantizedType>()) {
-    //   auto o_storageType_ = quantType.getStorageType();
-    //   if (o_storageType_.isUnsignedInteger(8)) {
-    //     auto castData = std::make_shared<std::vector<uint8_t>>(datas[i].size());
-    //     float scale = quantType.getScale();
-    //     int64_t zeroPoint = quantType.getZeroPoint();
-    //     std::transform(datas[i].begin(), datas[i].end(), castData->begin(),
-    //                    [scale, zeroPoint, o_storageType_](float value) {
-    //                      return static_cast<uint8_t>(saturate<float>(
-    //                          (float)(value / scale + zeroPoint), o_storageType_));
-    //                    });
-    //     new_op = top::WeightOp::create(op, "folder", *castData, out_type);
-    //   } else {
-    //       auto castData =
-    //           std::make_shared<std::vector<int8_t>>(datas[i].size());
-    //       float scale = quantType.getScale();
-    //       int64_t zeroPoint = quantType.getZeroPoint();
-    //       std::transform(datas[i].begin(), datas[i].end(), castData->begin(),
-    //                      [scale, zeroPoint, o_storageType_](float value) {
-    //                        return static_cast<int8_t>(saturate<float>(
-    //                            (float)(value / scale + zeroPoint), o_storageType_));
-    //                      });
-    //       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
-    //   }
+      // } else if (auto quantType =
+      //                dtype.dyn_cast<mlir::quant::UniformQuantizedType>()) {
+      //   auto o_storageType_ = quantType.getStorageType();
+      //   if (o_storageType_.isUnsignedInteger(8)) {
+      //     auto castData =
+      //     std::make_shared<std::vector<uint8_t>>(datas[i].size()); float
+      //     scale = quantType.getScale(); int64_t zeroPoint =
+      //     quantType.getZeroPoint(); std::transform(datas[i].begin(),
+      //     datas[i].end(), castData->begin(),
+      //                    [scale, zeroPoint, o_storageType_](float value) {
+      //                      return static_cast<uint8_t>(saturate<float>(
+      //                          (float)(value / scale + zeroPoint),
+      //                          o_storageType_));
+      //                    });
+      //     new_op = top::WeightOp::create(op, "folder", *castData, out_type);
+      //   } else {
+      //       auto castData =
+      //           std::make_shared<std::vector<int8_t>>(datas[i].size());
+      //       float scale = quantType.getScale();
+      //       int64_t zeroPoint = quantType.getZeroPoint();
+      //       std::transform(datas[i].begin(), datas[i].end(),
+      //       castData->begin(),
+      //                      [scale, zeroPoint, o_storageType_](float value) {
+      //                        return static_cast<int8_t>(saturate<float>(
+      //                            (float)(value / scale + zeroPoint),
+      //                            o_storageType_));
+      //                      });
+      //       new_op = top::WeightOp::create(op, "folder", *castData,
+      //       out_type);
+      //   }
     } else {
-      UNREACHABLE_OP("Not supported type for weight folding", out.getDefiningOp());
+      UNREACHABLE_OP("Not supported type for weight folding",
+                     out.getDefiningOp());
     }
 
     out.replaceAllUsesWith(new_op);

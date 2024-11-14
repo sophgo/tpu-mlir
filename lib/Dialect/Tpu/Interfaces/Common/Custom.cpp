@@ -7,11 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/CustomLayer.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include <dlfcn.h>
 #include "cpu_layer.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/CustomLayer.h"
+#include <dlfcn.h>
 
 LogicalResult tpu::CustomOp::init(InferenceParameter &p) { return success(); }
 void tpu::CustomOp::deinit(InferenceParameter &p) {}
@@ -86,7 +85,7 @@ LogicalResult tpu::CustomOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::CustomOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
-  return  type_verify_case_same(getOperation(), opd_idx, mode);
+  return type_verify_case_same(getOperation(), opd_idx, mode);
   // do_nothing(mode);
 }
 
@@ -99,15 +98,16 @@ LogicalResult tpu::CustomOp::LocalGenSupport() {
   std::string api_name = "local_gen_support_" + op_name;
   bool ret = false;
   BM168x::call_custom_plugin_func(
-    kCustomPluginTypes::PLUGIN_LOCALGENSUPPORT, &ret,
-    api_name.c_str(), values.data(),
-    values.size() * sizeof(custom_param_t),
-    nullptr);
-  if (ret) return success();
-  else return failure();
+      kCustomPluginTypes::PLUGIN_LOCALGENSUPPORT, &ret, api_name.c_str(),
+      values.data(), values.size() * sizeof(custom_param_t), nullptr);
+  if (ret)
+    return success();
+  else
+    return failure();
 }
 
-LogicalResult tpu::CustomOp::AllowDataSplit(int64_t axis, group_type_t group_type) {
+LogicalResult tpu::CustomOp::AllowDataSplit(int64_t axis,
+                                            group_type_t group_type) {
   auto params = getParams();
   vector<custom_param_t> values;
   values.push_back({0});
@@ -116,13 +116,13 @@ LogicalResult tpu::CustomOp::AllowDataSplit(int64_t axis, group_type_t group_typ
   std::string api_name = "allow_data_split_" + op_name;
   bool ret = false;
   int args[2] = {(int)axis, (int)group_type};
-  BM168x::call_custom_plugin_func(
-    kCustomPluginTypes::PLUGIN_ALLOWDATASPLIT, &ret,
-    api_name.c_str(), values.data(),
-    values.size() * sizeof(custom_param_t),
-    args);
-  if (ret) return success();
-  else return failure();
+  BM168x::call_custom_plugin_func(kCustomPluginTypes::PLUGIN_ALLOWDATASPLIT,
+                                  &ret, api_name.c_str(), values.data(),
+                                  values.size() * sizeof(custom_param_t), args);
+  if (ret)
+    return success();
+  else
+    return failure();
 }
 
 LogicalResult tpu::CustomOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
@@ -135,15 +135,15 @@ LogicalResult tpu::CustomOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   std::string api_name = "backward_h_" + op_name;
   bool ret = false;
   int args[4] = {-1, -1, (int)out_idx, (int)out_slice};
-  BM168x::call_custom_plugin_func(
-    kCustomPluginTypes::PLUGIN_BACKWARDH, &ret,
-    api_name.c_str(), values.data(),
-    values.size() * sizeof(custom_param_t),
-    args);
+  BM168x::call_custom_plugin_func(kCustomPluginTypes::PLUGIN_BACKWARDH, &ret,
+                                  api_name.c_str(), values.data(),
+                                  values.size() * sizeof(custom_param_t), args);
   in_idx = args[0];
   in_slice = args[1];
-  if (ret) return success();
-  else return failure();
+  if (ret)
+    return success();
+  else
+    return failure();
 }
 
 LogicalResult tpu::CustomOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
@@ -156,15 +156,15 @@ LogicalResult tpu::CustomOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   std::string api_name = "backward_w_" + op_name;
   bool ret = false;
   int args[4] = {-1, -1, (int)out_idx, (int)out_slice};
-  BM168x::call_custom_plugin_func(
-    kCustomPluginTypes::PLUGIN_BACKWARDW, &ret,
-    api_name.c_str(), values.data(),
-    values.size() * sizeof(custom_param_t),
-    args);
+  BM168x::call_custom_plugin_func(kCustomPluginTypes::PLUGIN_BACKWARDW, &ret,
+                                  api_name.c_str(), values.data(),
+                                  values.size() * sizeof(custom_param_t), args);
   in_idx = args[0];
   in_slice = args[1];
-  if (ret) return success();
-  else return failure();
+  if (ret)
+    return success();
+  else
+    return failure();
 }
 
 bool tpu::CustomOp::support_multi_core() { return false; }

@@ -95,3 +95,13 @@ function rebuild_atomic_exec_alone(){
     unset ATOMIC_EXEC_ALONE
 }
 
+# insert hooks to .git/hooks
+SOURCE_DIR="hooks"
+TARGET_DIR=".git/hooks"
+if [ -d "$TARGET_DIR" ]; then
+    echo "Install git hooks from $SOURCE_DIR to $TARGET_DIR"
+    cp -pu "$SOURCE_DIR/"* "$TARGET_DIR/"
+fi
+
+
+

@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Backend/Arch.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 
 using namespace tpu_mlir::backend;
 using namespace llvm;
@@ -29,7 +29,9 @@ public:
       // only one device
       num_device = 1;
     }
-    if (!(module::isBM1688() || module::isBM1690Family() || module::isSG2380()) || chip_ == "cv186x") {
+    if (!(module::isBM1688() || module::isBM1690Family() ||
+          module::isSG2380()) ||
+        chip_ == "cv186x") {
       // only one core
       num_core = 1;
     }

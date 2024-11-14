@@ -26,6 +26,4 @@ int64_t tpu::Weight2ActivationOp::dyn_codegen_global_bm1684x(void *buffer) {
   llvm_unreachable("Not supported now");
 }
 
-int64_t tpu::Weight2ActivationOp::get_fw_type_bm1684x() {
-  return -1;
-}
+int64_t tpu::Weight2ActivationOp::get_fw_type_bm1684x() { return -1; }

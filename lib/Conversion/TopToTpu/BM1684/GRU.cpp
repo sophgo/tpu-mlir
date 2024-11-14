@@ -41,8 +41,7 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
   for (auto out : op.getResults()) {
     new_types.push_back(out.getType());
   }
-  rewriter.replaceOpWithNewOp<tpu::GRUOp>(op, new_types, operands,
-                                          attrs);
+  rewriter.replaceOpWithNewOp<tpu::GRUOp>(op, new_types, operands, attrs);
   return;
 }
 

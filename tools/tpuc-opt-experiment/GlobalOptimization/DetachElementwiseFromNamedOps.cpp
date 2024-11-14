@@ -1,7 +1,6 @@
 #include "Passes.h"
 
-namespace  mlir
-{
+namespace mlir {
 struct DetachElementwisePattern
     : public OpInterfaceRewritePattern<linalg::LinalgOp> {
   using OpInterfaceRewritePattern::OpInterfaceRewritePattern;
@@ -174,4 +173,3 @@ std::unique_ptr<Pass> createDetachElementwiseFromNamedOpsPass() {
   return std::make_unique<DetachElementwiseFromNamedOpsPass>();
 }
 } // namespace  mlir
-

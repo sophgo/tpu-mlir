@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::backend;
 
 void tpu::SubOp::codegen_global_bm1684() {
@@ -24,8 +23,8 @@ void tpu::SubOp::codegen_global_bm1684() {
   auto a_dims = module::getShape(getInputs()[0]).size();
   auto b_dims = module::getShape(getInputs()[1]).size();
   auto out_dims = module::getShape(getOutput()).size();
-  module::getGlobalShape(getInputs()[0], a_shape,out_dims);
-  module::getGlobalShape(getInputs()[1], b_shape,out_dims);
+  module::getGlobalShape(getInputs()[0], a_shape, out_dims);
+  module::getGlobalShape(getInputs()[1], b_shape, out_dims);
   if (false == module::isUniformQuantized(getOutput())) {
     auto dtype = BM1684::getDataType(getOutput());
     int src_int32 = dtype == DTYPE_FP32 ? 0 : 1;
@@ -134,11 +133,11 @@ void tpu::SubOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     sign[2] = module::isSign(getOutput()) ? 1 : 0;
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_local(
         input_addrs[0], input_addrs[1], out_gi.out_addr, out_gi.buffer_addr,
-        b0_shape, b1_shape, 4,
-        module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
-        op_code, (int)multiplier_v->at(0), (int)multiplier_v->at(1),
-        (uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1), is_int8, sign,
-        getDoRelu(), BM1684::instance()->bdc_node);
+        b0_shape, b1_shape, 4, module::isWeight(getInputs()[0]),
+        module::isWeight(getInputs()[1]), op_code, (int)multiplier_v->at(0),
+        (int)multiplier_v->at(1), (uint8_t)rshift_v->at(0),
+        (uint8_t)rshift_v->at(1), is_int8, sign, getDoRelu(),
+        BM1684::instance()->bdc_node);
   } else {
     int b0_stride[4] = {0};
     int b1_stride[4] = {0};

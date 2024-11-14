@@ -30,8 +30,9 @@ void tpu::DivOp::codegen_global_bm1684x() {
   spec.rshift_B = 0;
   spec.f8_scale_A = 1.0;
   spec.f8_scale_B = 1.0;
-  BM168x::call_global_func("backend_api_eltbinary_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_eltbinary_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 // =========================================
 // LocalGenInterface

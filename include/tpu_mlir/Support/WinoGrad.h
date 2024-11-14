@@ -26,7 +26,7 @@ void tensor_1IC_to_4IC_transpose(int oc, int ic, int hw, char *src, char *dst) {
 /**currently only support int8*/
 
 template <typename T>
-void winograd_weight_transform_subfunc(T *old_weight,T *new_weight,
+void winograd_weight_transform_subfunc(T *old_weight, T *new_weight,
                                        int input_c, int output_c, int groups,
                                        int winograd_flag) {
   int NPU_NUM = 64;
@@ -128,11 +128,11 @@ void winograd_bias_transform_subfunc(T *old_bias, T *new_bias, int output_c,
       for (int o_c = 0; o_c < oc_per_npu; ++o_c) {
         if (o_c * occupy_npu_nm + npu_idx < output_c)
           new_bias[i_g * occupy_npu_nm * oc_per_npu + npu_idx * oc_per_npu +
-                     o_c] = old_bias[i_g * occupy_npu_nm * oc_per_npu +
-                                 o_c * occupy_npu_nm + npu_idx];
+                   o_c] = old_bias[i_g * occupy_npu_nm * oc_per_npu +
+                                   o_c * occupy_npu_nm + npu_idx];
         else
           new_bias[i_g * occupy_npu_nm * oc_per_npu + npu_idx * oc_per_npu +
-                     o_c] = 0;
+                   o_c] = 0;
       }
     }
   }

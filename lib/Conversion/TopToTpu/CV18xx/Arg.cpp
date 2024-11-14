@@ -85,7 +85,7 @@ static void LoweringArg(PatternRewriter &rewriter, top::ArgOp &op,
         module::getShape(op.getValues()), rewriter.getF32Type()));
     auto cpu_op = rewriter.create<tpu::GenericCpuOp>(
         op.getLoc(), cpu_result_types, operands, attrs);
-        rewriter.replaceAllUsesWith(op.getResults(), cpu_op.getOutputs());
+    rewriter.replaceAllUsesWith(op.getResults(), cpu_op.getOutputs());
   } else {
     auto cpu_op = rewriter.create<tpu::GenericCpuOp>(
         op.getIndices().getLoc(), cpu_result_types, operands, attrs);

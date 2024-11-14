@@ -11,12 +11,16 @@
 
 int64_t top::RandnLikeOp::getFLOPs() { return 0; }
 
-LogicalResult top::RandnLikeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::RandnLikeOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::RandnLikeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::RandnLikeOp::inference(InferenceParameter &p) {
- llvm_unreachable("Should be convert to other ops in it's canonicalize pass.");
+  llvm_unreachable("Should be convert to other ops in it's canonicalize pass.");
   return success();
 }
 
-void top::RandnLikeOp::shape_inference() { common_shape_inference(getOperation()); }
+void top::RandnLikeOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

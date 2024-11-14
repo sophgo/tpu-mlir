@@ -315,7 +315,7 @@ static void combine_coeff(int argc, char **argv, bool is_dir) {
   // if (isCv18xx(argv[2])) {
   //   cout << "cv18xx not supported!" << endl;
   // } else {
-    bm_combine_bmodels(argc, argv, is_dir, true);
+  bm_combine_bmodels(argc, argv, is_dir, true);
   // }
 }
 

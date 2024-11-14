@@ -64,7 +64,8 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewriteImpl(
   auto filter_int8 = filterOp.read<int8_t>();
   auto filter_type = filterOp.getType().cast<RankedTensorType>();
   if (!attr.is_dw) {
-    int new_size = attr.oc * attr.g * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+    int new_size =
+        attr.oc * attr.g * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
     std::vector<int64_t> new_shape = {
         1, attr.oc * attr.g, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
     auto new_type =
@@ -75,9 +76,9 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewriteImpl(
         for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
           int orig_offset = oc_idx * attr.ic * attr.kh * attr.kw +
                             ic_idx * attr.kh * attr.kw + k_idx;
-          int trans_offset = oc_idx * align_up(attr.ic, 4l) * attr.kw * attr.kh +
-                            ic_idx / 4 * attr.kh * attr.kw * 4 + k_idx * 4 +
-                            ic_idx % 4;
+          int trans_offset =
+              oc_idx * align_up(attr.ic, 4l) * attr.kw * attr.kh +
+              ic_idx / 4 * attr.kh * attr.kw * 4 + k_idx * 4 + ic_idx % 4;
           filter_new->at(trans_offset) = filter_int8->at(orig_offset);
         }
       }

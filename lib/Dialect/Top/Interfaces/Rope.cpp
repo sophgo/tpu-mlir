@@ -1,7 +1,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 int64_t top::RopeOp::getFLOPs() {
   return module::getNumElements(getInput1()) * 4;
 }
@@ -11,7 +10,7 @@ LogicalResult top::RopeOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   p.handle = (void *)binary;
   return success();
-  }
+}
 
 void top::RopeOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
@@ -49,31 +48,29 @@ LogicalResult top::RopeOp::inference(InferenceParameter &p) {
   float *weight1 = p.inputs[2];
   float *input = p.inputs[0];
 
-    (*binary)
-        .hs(temp_input, weight0, input_shape, weight_shape)
-        .dst(temp_result0, module::getShape(getOutput()))
-        .algorithem(algorithm::binary_mul)
-        .setup();
-    binary->run();
+  (*binary)
+      .hs(temp_input, weight0, input_shape, weight_shape)
+      .dst(temp_result0, module::getShape(getOutput()))
+      .algorithem(algorithm::binary_mul)
+      .setup();
+  binary->run();
 
-    (*binary)
-        .hs(input, weight1, input_shape, weight_shape)
-        .dst(temp_result1, module::getShape(getOutput()))
-        .algorithem(algorithm::binary_mul)
-        .setup();
-    binary->run();
+  (*binary)
+      .hs(input, weight1, input_shape, weight_shape)
+      .dst(temp_result1, module::getShape(getOutput()))
+      .algorithem(algorithm::binary_mul)
+      .setup();
+  binary->run();
 
-    for (int i = 0; i < num_element; i++) {
-        p.outputs[0][i] = temp_result0[i] + temp_result1[i];
-    }
+  for (int i = 0; i < num_element; i++) {
+    p.outputs[0][i] = temp_result0[i] + temp_result1[i];
+  }
 
-    delete[] temp_input;
-    delete[] temp_result0;
-    delete[] temp_result1;
+  delete[] temp_input;
+  delete[] temp_result0;
+  delete[] temp_result1;
 
-    return success();
+  return success();
 }
 
-void top::RopeOp::shape_inference() {
-  common_shape_inference(getOperation());
-}
+void top::RopeOp::shape_inference() { common_shape_inference(getOperation()); }

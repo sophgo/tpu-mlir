@@ -1,10 +1,9 @@
 #include "Passes.h"
-#include "mlir/Transforms/TopologicalSortUtils.h"
+#include "mlir/Dialect/Tensor/Transforms/Transforms.h"
 #include "mlir/IR/Dominance.h"
 #include "mlir/IR/Iterators.h"
-#include "mlir/Dialect/Tensor/Transforms/Transforms.h"
-namespace  mlir
-{
+#include "mlir/Transforms/TopologicalSortUtils.h"
+namespace mlir {
 
 #define DEBUG_TYPE "fusion-of-tensor-ops"
 /// Check if any of the use dominates all other uses of the operation.
@@ -260,15 +259,21 @@ struct FusionOfTensorOpsPass
                     linalg::LinalgDialect, math::MathDialect>();
   }
 
-  llvm::StringRef getArgument() const override { return "fusion-of-tensor-ops"; }
-  llvm::StringRef getDescription() const override { return "Fuse operations on tensors"; }
+  llvm::StringRef getArgument() const override {
+    return "fusion-of-tensor-ops";
+  }
+  llvm::StringRef getDescription() const override {
+    return "Fuse operations on tensors";
+  }
   llvm::StringRef getName() const override { return "FusionOfTensorOps"; }
   std::unique_ptr<::mlir::Pass> clonePass() const override {
-    return std::make_unique<FusionOfTensorOpsPass>(*static_cast<const FusionOfTensorOpsPass *>(this));
+    return std::make_unique<FusionOfTensorOpsPass>(
+        *static_cast<const FusionOfTensorOpsPass *>(this));
   }
 
   FusionOfTensorOpsPass(bool fuseMultiUse, unsigned multiUseFusionIteration)
-    : mlir::InterfacePass<mlir::FunctionOpInterface>(mlir::TypeID::get<mlir::FusionOfTensorOpsPass>()){
+      : mlir::InterfacePass<mlir::FunctionOpInterface>(
+            mlir::TypeID::get<mlir::FusionOfTensorOpsPass>()) {
     this->fuseMultiUse = fuseMultiUse;
     this->multiUseFusionIteration = multiUseFusionIteration;
   }
@@ -303,7 +308,7 @@ struct FusionOfTensorOpsPass
               return false;
 
             return areFusableOps(context, fusedOperand);
-      };
+          };
       linalg::populateElementwiseOpsFusionPatterns(fusionPatterns,
                                                    fuseElementwiseOpsControlFn);
 
@@ -327,8 +332,7 @@ struct FusionOfTensorOpsPass
         Operation *producer = fusedOperand->get().getDefiningOp();
         if (auto shapedType =
                 dyn_cast<ShapedType>(fusedOperand->get().getType())) {
-          if (shapedType.hasStaticShape() &&
-              shapedType.getNumElements() > 0) {
+          if (shapedType.hasStaticShape() && shapedType.getNumElements() > 0) {
             return false;
           }
         }
@@ -428,6 +432,7 @@ struct FusionOfTensorOpsPass
         break;
     }
   }
+
 private:
   bool fuseMultiUse;
   unsigned multiUseFusionIteration;
@@ -440,4 +445,3 @@ createFusionOfTensorOpsPass(bool fuseMultiUse,
                                                  multiUseFusionIteration);
 }
 } // namespace  mlir
-

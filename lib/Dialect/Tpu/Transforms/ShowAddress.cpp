@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 using namespace llvm;
 

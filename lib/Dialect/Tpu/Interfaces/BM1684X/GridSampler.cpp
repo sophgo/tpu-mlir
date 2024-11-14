@@ -86,8 +86,8 @@ void tpu::GridSamplerOp::codegen_global_bm1684x() {
 
   param.dtype = BM168x::getDataType(getInput());
   if (support_multi_core() && interp_mode == GridSampleBilinear) {
-    BM168x::call_global_func("backend_api_grid_sample_multi_core_global", &param,
-                            sizeof(grid_sample_global_param_t));
+    BM168x::call_global_func("backend_api_grid_sample_multi_core_global",
+                             &param, sizeof(grid_sample_global_param_t));
     return;
   }
   BM168x::call_global_func("backend_api_grid_sample_global", &param,
@@ -178,4 +178,5 @@ int64_t tpu::GridSamplerOp::dyn_codegen_global_bm1684x(void *buffer) {
 // ======================================
 
 int64_t tpu::GridSamplerOp::get_fw_type_bm1684x() {
-  return FW_LAYER_GRIDSAMPLER; }
+  return FW_LAYER_GRIDSAMPLER;
+}

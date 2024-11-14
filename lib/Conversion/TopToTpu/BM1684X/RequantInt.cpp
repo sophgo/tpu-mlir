@@ -66,7 +66,8 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
     std::vector<int32_t> quant;
     std::vector<int64_t> in_shape = module::getShape(op.getInput());
     std::vector<int64_t> quant_shape(in_shape.size(), 1l);
-    bool isBM1688 = module::isBM1688() || module::isSG2380() || module::isMARS3();
+    bool isBM1688 =
+        module::isBM1688() || module::isSG2380() || module::isMARS3();
     int numElementsPerChannel = isBM1688 ? 2 : 3;
     quant.resize(raw_multi.size() * numElementsPerChannel, 0);
     for (int i = 0; i < raw_multi.size(); ++i) {
@@ -99,7 +100,8 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto original_name = module::getName(op.getOperation()).str();
     auto newValue = do_requant_axis(
         op.getLoc(), op.getInput(), quantValue, op.getOutput().getType(), true,
-        get_requant_mode(requant_mode), get_round_mode(round_mode), rq_axis, fuse_rq);
+        get_requant_mode(requant_mode), get_round_mode(round_mode), rq_axis,
+        fuse_rq);
 
     rewriter.replaceOp(op, {newValue});
   }

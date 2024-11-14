@@ -29,7 +29,7 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [](double val) { return val >20 ? val : std::log(std::exp(val) + 1); });
+      [](double val) { return val > 20 ? val : std::log(std::exp(val) + 1); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
@@ -37,15 +37,14 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::SoftplusOp op) const {
-    if(module::isMARS3()){
-      auto op_ = op.getOperation();
-      op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+  if (module::isMARS3()) {
+    auto op_ = op.getOperation();
+    op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::SOFT_PLUS));
-      lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
-    } else {
-      LoweringF32(rewriter, op);
-    }
-
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  } else {
+    LoweringF32(rewriter, op);
+  }
 }
 
 void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
@@ -59,7 +58,7 @@ void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void SoftplusLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::SoftplusOp op) const {
+                                  top::SoftplusOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

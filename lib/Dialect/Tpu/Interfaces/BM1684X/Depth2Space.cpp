@@ -37,7 +37,8 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::Depth2SpaceOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(depth2space_global_spec_t);
+  if (!buffer)
+    return sizeof(depth2space_global_spec_t);
   depth2space_global_spec_t spec = {0};
   spec.common.block_sizes[0] = getBlockH();
   spec.common.block_sizes[1] = getBlockW();

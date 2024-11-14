@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/CastUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
@@ -31,7 +31,9 @@ static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
   }
 }
 
-LogicalResult tpu::DtypeCastOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::DtypeCastOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::DtypeCastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DtypeCastOp::inference(InferenceParameter &p) {
@@ -83,8 +85,8 @@ mlir::Type tpu::DtypeCastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 //   fw_param.dst_type = BM168x::getDataType(getOutput());
 //   fw_param.src_stmode = BM1684::getStoreMode(getInput());
 //   fw_param.dst_stmode = BM1684::getStoreMode(getOutput());
-//   fw_param.round_mode = ROUND_INF; // if support other round_mode, change here
-//   memcpy(param, &fw_param, sizeof(fw_dtype_convert_layer_param_t));
+//   fw_param.round_mode = ROUND_INF; // if support other round_mode, change
+//   here memcpy(param, &fw_param, sizeof(fw_dtype_convert_layer_param_t));
 // }
 
 ArrayAttr tpu::DtypeCastOp::getIndexingMaps() {
@@ -96,4 +98,3 @@ ArrayAttr tpu::DtypeCastOp::getIndexingMaps() {
 };
 
 bool tpu::DtypeCastOp::support_multi_core() { return false; }
-

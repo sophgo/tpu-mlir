@@ -13,12 +13,12 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 void ShapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ShapeOp op,
-                                bool asymmetric) const {
+                                 bool asymmetric) const {
   lowering_common_int8<tpu::ShapeOp>(rewriter, op, asymmetric);
 }
 
 void ShapeLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::ShapeOp op) const {
+                                 top::ShapeOp op) const {
   auto v = op.getResult();
   auto shape = module::getShape(v);
   auto ctx = v.getContext();

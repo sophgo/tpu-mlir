@@ -19,13 +19,13 @@ void tpu::TileOp::codegen_global_cv18xx(int64_t layer_id) {
   auto tile = module::getI64Array(getTile());
   int count = 0;
   int index = 0;
-  for(int i = 0; i < tile->size(); ++i){
-    if(tile->at(i) > 1){
+  for (int i = 0; i < tile->size(); ++i) {
+    if (tile->at(i) > 1) {
       count++;
       index = i;
     }
   }
-  if(count > 1){
+  if (count > 1) {
     llvm_unreachable("Only support tile one dimension");
   }
   gaddr_t ga_input = module::getAddress(getInput());
@@ -35,9 +35,8 @@ void tpu::TileOp::codegen_global_cv18xx(int64_t layer_id) {
       module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
   module::getNCHW(getInput(), n, c, h, w);
 
-  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w,
-                             index, tile->at(index), fmt);
-
+  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w, index,
+                             tile->at(index), fmt);
 }
 
 // =========================================
@@ -59,4 +58,3 @@ void tpu::TileOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                        int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
-

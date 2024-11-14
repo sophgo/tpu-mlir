@@ -22,8 +22,8 @@ void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN)));
-  auto log_op = rewriter.create<tpu::ActiveOp>(log_loc, type,
-                                               ValueRange{op.getInput()}, attrs);
+  auto log_op = rewriter.create<tpu::ActiveOp>(
+      log_loc, type, ValueRange{op.getInput()}, attrs);
   auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_mul"));
   attrs.clear();
   attrs.push_back(rewriter.getNamedAttr("const_val", op.getExponentAttr()));
@@ -43,9 +43,9 @@ void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
   double g_ex = 0;
   g_ex = op.getExponent().convertToDouble();
-  auto table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          [g_ex](double val) { return std::pow(val, g_ex); }, 32);
+  auto table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [g_ex](double val) { return std::pow(val, g_ex); }, 32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

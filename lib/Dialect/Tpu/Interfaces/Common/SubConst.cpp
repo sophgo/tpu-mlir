@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -30,7 +29,8 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
       double scale = getF8Scale().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; i++) {
-        p.outputs[0][i] = getConstVal().convertToDouble() - p.inputs[0][i]*scale;
+        p.outputs[0][i] =
+            getConstVal().convertToDouble() - p.inputs[0][i] * scale;
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -47,7 +47,8 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
       double scale = getF8Scale().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; i++) {
-        p.outputs[0][i] = p.inputs[0][i] * scale - getConstVal().convertToDouble();
+        p.outputs[0][i] =
+            p.inputs[0][i] * scale - getConstVal().convertToDouble();
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -111,7 +112,8 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
 
 ArrayAttr tpu::SubConstOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

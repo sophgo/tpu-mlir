@@ -125,7 +125,6 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(
       return 0;
     }
   }
-
 }
 
 void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,

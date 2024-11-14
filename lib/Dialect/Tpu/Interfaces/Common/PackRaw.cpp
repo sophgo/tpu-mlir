@@ -12,13 +12,11 @@
 LogicalResult tpu::PackRawOp::init(InferenceParameter &p) {
   auto in_type = module::getStorageType(getInput());
   // auto out_type = module::getStorageType(getOutput());
-  assert ( in_type.isInteger(8) );
+  assert(in_type.isInteger(8));
   return success();
 }
 
-void tpu::PackRawOp::deinit(InferenceParameter &p) {
-  return;
-}
+void tpu::PackRawOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::PackRawOp::inference(InferenceParameter &p) {
   // float white_level = getWhiteLevel().convertToDouble();

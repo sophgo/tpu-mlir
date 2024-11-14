@@ -12,7 +12,9 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 using namespace tpu_mlir::backend;
 
-LogicalResult tpu::LoadToL2MOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::LoadToL2MOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::LoadToL2MOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LoadToL2MOp::inference(InferenceParameter &p) {

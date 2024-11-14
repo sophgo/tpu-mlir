@@ -70,7 +70,7 @@ void WhereLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void WhereLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::WhereOp op) const {
+                               top::WhereOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

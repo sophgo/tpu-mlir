@@ -24,8 +24,8 @@ void tpu::TriluOp::codegen_global_bm1684x() {
   spec.is_upper = getUpper();
   spec.diagonal = getDiagonal();
   BM168x::call_global_func("backend_api_triangularize_global", &spec,
-                           sizeof(triangularize_common_spec_t), input_spec->data(),
-                           output_spec->data());
+                           sizeof(triangularize_common_spec_t),
+                           input_spec->data(), output_spec->data());
 }
 
 // =========================================
@@ -41,9 +41,10 @@ int64_t tpu::TriluOp::getBufferSize_bm1684x(
 }
 
 void tpu::TriluOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                        int64_t h_step, int64_t d_step,
-                                        int64_t w_step, group_type_t group_type,
-                                        local_sec_info_t &sec_info) {
+                                         int64_t h_step, int64_t d_step,
+                                         int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -51,8 +52,9 @@ void tpu::TriluOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   triangularize_common_spec_t spec = {0};
   spec.is_upper = getUpper();
   spec.diagonal = getDiagonal();
-  BM168x::call_local_func("backend_api_triangularize_local", &spec, sizeof(spec),
-                          &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_triangularize_local", &spec,
+                          sizeof(spec), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 // dynamic codegen

@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
 
 LogicalResult tpu::CopyOp::init(InferenceParameter &p) { return success(); }
 void tpu::CopyOp::deinit(InferenceParameter &p) {}
@@ -17,7 +15,7 @@ void tpu::CopyOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::CopyOp::inference(InferenceParameter &p) {
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
-  //parse param
+  // parse param
   auto shape = module::getI64Array(this->getShape());
   auto i_stride = module::getI64Array(this->getInputStride());
   auto o_stride = module::getI64Array(this->getOutputStride());
@@ -36,13 +34,15 @@ LogicalResult tpu::CopyOp::inference(InferenceParameter &p) {
     i_stride_4[idx] = i_stride->at(end);
     o_stride_4[idx] = o_stride->at(end);
   }
-  //calculate
-  for(int n = 0; n < shape_4[0]; n++) {
+  // calculate
+  for (int n = 0; n < shape_4[0]; n++) {
     for (int c = 0; c < shape_4[1]; c++) {
       for (int h = 0; h < shape_4[2]; h++) {
         for (int w = 0; w < shape_4[3]; w++) {
-          int in_index = n * i_stride_4[0] + c * i_stride_4[1] + h * i_stride_4[2] + w * i_stride_4[3];
-          int out_index = n * o_stride_4[0] + c * o_stride_4[1] + h * o_stride_4[2] + w * o_stride_4[3];
+          int in_index = n * i_stride_4[0] + c * i_stride_4[1] +
+                         h * i_stride_4[2] + w * i_stride_4[3];
+          int out_index = n * o_stride_4[0] + c * o_stride_4[1] +
+                          h * o_stride_4[2] + w * o_stride_4[3];
           output_data[out_index] = input_data[in_index];
         }
       }
@@ -52,4 +52,3 @@ LogicalResult tpu::CopyOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::CopyOp::support_multi_core() { return false; }
-

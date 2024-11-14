@@ -13,9 +13,7 @@ LogicalResult tpu::DepackRawOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::DepackRawOp::deinit(InferenceParameter &p) {
-  return;
-}
+void tpu::DepackRawOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::DepackRawOp::inference(InferenceParameter &p) {
   // std::vector<int64_t> in_shape = module::getShape(getInput());
@@ -45,4 +43,3 @@ mlir::Type tpu::DepackRawOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 bool tpu::DepackRawOp::support_multi_core() { return false; }
-

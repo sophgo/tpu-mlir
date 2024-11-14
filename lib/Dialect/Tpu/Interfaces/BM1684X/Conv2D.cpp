@@ -12,8 +12,8 @@
 
 using namespace tpu_mlir::backend;
 
-#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
-#define ALIGN(x, a) ((((x) + (a) - 1) / (a)) * (a))
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a)-1) / (b) + 1)
+#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
 
 static int64_t sd_gt_15_buffer(const conv_attr_t &p, double dtype_len,
                                int64_t in_cslice, int64_t in_hslice,

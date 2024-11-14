@@ -15,24 +15,29 @@ class Attention {
 public:
   Attention();
 
-  void setup(float *input, float *keys, float *values,
-             float *queries_weight, float *queries_bias, float *keys_weight,
-             float *keys_bias, float *values_weight, float *values_bias,
-             float *out_weight, float *out_bias, float *musk, float *table,
-             float *output, int64_t *quant_param,
-             int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q, int64_t N_k,
-             int64_t d, float scale, bool add_result, int dtype=0);
+  void setup(float *input, float *keys, float *values, float *queries_weight,
+             float *queries_bias, float *keys_weight, float *keys_bias,
+             float *values_weight, float *values_bias, float *out_weight,
+             float *out_bias, float *musk, float *table, float *output,
+             int64_t *quant_param, int64_t batch, int64_t M_q, int64_t M_k,
+             int64_t N_q, int64_t N_k, int64_t d, float scale, bool add_result,
+             int dtype = 0);
   void run();
   void deinit();
 
 private:
-  void *matmulq = nullptr, *matmulk = nullptr, *matmulv = nullptr, *matmul0 = nullptr;
-  void *binary = nullptr, *softmax = nullptr, *matmul1 = nullptr, *matmul_out = nullptr;
+  void *matmulq = nullptr, *matmulk = nullptr, *matmulv = nullptr,
+       *matmul0 = nullptr;
+  void *binary = nullptr, *softmax = nullptr, *matmul1 = nullptr,
+       *matmul_out = nullptr;
 
-  std::shared_ptr<std::vector<float>> q_data, k_data, v_data, data_0, data_binary, data_softmax, data_1, data_out;
-  float *p_queries, *p_keys, *p_values, *p_mat0, *p_binary, *p_softmax, *p_mat1, *p_mat1_out, *p_output, *p_table, *p_musk;
+  std::shared_ptr<std::vector<float>> q_data, k_data, v_data, data_0,
+      data_binary, data_softmax, data_1, data_out;
+  float *p_queries, *p_keys, *p_values, *p_mat0, *p_binary, *p_softmax, *p_mat1,
+      *p_mat1_out, *p_output, *p_table, *p_musk;
   int64_t num_elem, num_elem_out, dtype_, M_k_, M_q_, batch_;
-  int64_t q_mul, q_sft, q_zp, k_mul, k_sft, k_zp, v_mul, v_sft, v_zp, m0_mul, m0_sft, m0_zp, m1_mul, m1_sft, m1_zp, s_zp;
+  int64_t q_mul, q_sft, q_zp, k_mul, k_sft, k_zp, v_mul, v_sft, v_zp, m0_mul,
+      m0_sft, m0_zp, m1_mul, m1_sft, m1_zp, s_zp;
   float scale_;
   bool add_result_;
 };
@@ -41,11 +46,13 @@ class ScaledDotProductAttention {
 public:
   ScaledDotProductAttention();
 
-  void setup(float *query, float *keys, float *values, float *masks, float *output,
-             int64_t batch, int64_t head, int64_t query_len, int64_t seq_len, int64_t hidden_dim, int64_t value_dim,
-             float scale, bool is_causal, int dtype=0);
+  void setup(float *query, float *keys, float *values, float *masks,
+             float *output, int64_t batch, int64_t head, int64_t query_len,
+             int64_t seq_len, int64_t hidden_dim, int64_t value_dim,
+             float scale, bool is_causal, int dtype = 0);
   void run();
   void deinit();
+
 private:
   float *query_, *keys_, *values_, *masks_, *output_;
   void *matmulqk, *softmax, *binary, *matmulv;

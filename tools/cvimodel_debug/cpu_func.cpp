@@ -3,10 +3,11 @@
 using namespace tpu_mlir;
 namespace cvi_debug {
 
-void copyShape(std::vector<int64_t> &ori, std::vector<int64_t> &dst, int num = 4) {
+void copyShape(std::vector<int64_t> &ori, std::vector<int64_t> &dst,
+               int num = 4) {
   dst.resize(num);
   for (int i = 0; i < num; i++) {
-    //dst.push_back(ori[i]);
+    // dst.push_back(ori[i]);
     dst[i] = ori[i];
   }
 }
@@ -41,7 +42,7 @@ void handleFuncArgs(const uint8_t *args, OpParam &param) {
       auto &value = *_float_array->value();
       for (auto v : value) {
         vec.push_back(v);
-        llvm::errs()<<v<<" ";
+        llvm::errs() << v << " ";
       }
       param.put<std::vector<float>>(_float_array->key()->str(), vec);
     } else {
@@ -50,19 +51,24 @@ void handleFuncArgs(const uint8_t *args, OpParam &param) {
   }
 }
 
-void getCpuInput(std::vector<std::vector<float>> &inputs, uint8_t *vaddr, int64_t &offset, io_mem_info &info) {
+void getCpuInput(std::vector<std::vector<float>> &inputs, uint8_t *vaddr,
+                 int64_t &offset, io_mem_info &info) {
   std::vector<float> temp_data(info.count);
   if (info.type == "int8") {
-    ConvertInt8ToFp32NoScale((int8_t *)(vaddr + offset), temp_data.data(), info.count);
+    ConvertInt8ToFp32NoScale((int8_t *)(vaddr + offset), temp_data.data(),
+                             info.count);
   } else if (info.type == "uint16") {
-    ConvertUint16ToFp32((uint16_t *)(vaddr + offset), temp_data.data(), info.count);
+    ConvertUint16ToFp32((uint16_t *)(vaddr + offset), temp_data.data(),
+                        info.count);
   } else if (info.type == "bf16") {
-    ConvertBF16ToFp32((uint16_t *)(vaddr + offset), temp_data.data(), info.count);
+    ConvertBF16ToFp32((uint16_t *)(vaddr + offset), temp_data.data(),
+                      info.count);
   } else if (info.type == "int32") {
-    ConvertInt32ToFp32((int32_t *)(vaddr + offset), temp_data.data(), info.count);
-  }
-  else if (info.type == "fp32") {
-    memcpy(temp_data.data(),  (float *)(vaddr + offset), info.count * sizeof(float));
+    ConvertInt32ToFp32((int32_t *)(vaddr + offset), temp_data.data(),
+                       info.count);
+  } else if (info.type == "fp32") {
+    memcpy(temp_data.data(), (float *)(vaddr + offset),
+           info.count * sizeof(float));
   } else {
     std::string err_msg = info.type + " not support in cpu function input";
     llvm_unreachable(err_msg.c_str());
@@ -70,34 +76,40 @@ void getCpuInput(std::vector<std::vector<float>> &inputs, uint8_t *vaddr, int64_
   inputs.emplace_back(temp_data);
 }
 
-void getAndSaveCpuOutput(std::vector<float> &output, std::vector<float> &save_data, uint8_t *vaddr, io_mem_info &info) {
+void getAndSaveCpuOutput(std::vector<float> &output,
+                         std::vector<float> &save_data, uint8_t *vaddr,
+                         io_mem_info &info) {
   gaddr_t addr = info.gaddr;
   auto memTypeIndx = (addr >> 40) & 0x07;
   int64_t offset = addr - (memTypeIndx << 40);
   if (info.type == "int8") {
-    //map to cvimodel vaddr
-    ConvertFp32ToInt8NoScale(output.data(), (int8_t *)(vaddr + offset), info.count);
-    //save it
-    ConvertInt8ToFp32((int8_t *)(vaddr + offset), save_data.data(), info.count, info.qscale);
+    // map to cvimodel vaddr
+    ConvertFp32ToInt8NoScale(output.data(), (int8_t *)(vaddr + offset),
+                             info.count);
+    // save it
+    ConvertInt8ToFp32((int8_t *)(vaddr + offset), save_data.data(), info.count,
+                      info.qscale);
   } else if (info.type == "bf16") {
-    //map to cvimodel vaddr
+    // map to cvimodel vaddr
     ConvertFp32ToBF16(output.data(), (uint16_t *)(vaddr + offset), info.count);
-    //save it
+    // save it
     memcpy(save_data.data(), output.data(), info.count * sizeof(float));
   } else if (info.type == "uint16") {
-    //map to cvimodel vaddr
-    ConvertFp32ToUint16(output.data(), (uint16_t *)(vaddr + offset), info.count);
-    //save it
+    // map to cvimodel vaddr
+    ConvertFp32ToUint16(output.data(), (uint16_t *)(vaddr + offset),
+                        info.count);
+    // save it
     memcpy(save_data.data(), output.data(), info.count * sizeof(float));
   } else if (info.type == "int32") {
-    //map to cvimodel vaddr
+    // map to cvimodel vaddr
     ConvertFp32ToInt32(output.data(), (int32_t *)(vaddr + offset), info.count);
-    //save it
+    // save it
     memcpy(save_data.data(), output.data(), info.count * sizeof(float));
   } else if (info.type == "fp32") {
-    //map to cvimodel vaddr
-    memcpy((float *)(vaddr + offset), output.data(), info.count * sizeof(float));
-    //save it
+    // map to cvimodel vaddr
+    memcpy((float *)(vaddr + offset), output.data(),
+           info.count * sizeof(float));
+    // save it
     memcpy(save_data.data(), output.data(), info.count * sizeof(float));
   } else {
     std::string err_msg = info.type + " not support in cpu function output";
@@ -105,7 +117,8 @@ void getAndSaveCpuOutput(std::vector<float> &output, std::vector<float> &save_da
   }
 }
 
-void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, std::vector<std::vector<float>> &outputs) {
+void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs,
+            std::vector<std::vector<float>> &outputs) {
   std::string func_name = func_info.func_name;
   if (func_name == "quant") {
     assert(func_info.inputs.size() == 1);
@@ -128,27 +141,29 @@ void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, s
     interp_param.pad_end = param.get<int>("pad_end");
     interp_param.shrink_factor = param.get<int>("shrink_factor");
     interp_param.zoom_factor = param.get<int>("zoom_factor");
-    interp_param.coordinate_transformation_mode = param.get<std::string>("coordinate_transformation_mode");
+    interp_param.coordinate_transformation_mode =
+        param.get<std::string>("coordinate_transformation_mode");
     for (size_t i = 0; i < inputs.size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = inputs[i].data();
       tensor_list.size = func_info.inputs[i].count;
-      //tensor_list.shape = getPartShape(func_info.inputs[i].g_shape, 4);
+      // tensor_list.shape = getPartShape(func_info.inputs[i].g_shape, 4);
       copyShape(func_info.inputs[i].g_shape, tensor_list.shape);
       interp_param.inputs.emplace_back(std::move(tensor_list));
     }
     interp_param.output.ptr = outputs[0].data();
     interp_param.output.size = func_info.outputs[0].count;
     auto output_shape = func_info.outputs[0].g_shape;
-    interp_param.output.shape = {(int64_t)output_shape[0], (int64_t)output_shape[1],
-                                (int64_t)output_shape[2], (int64_t)output_shape[3]};
+    interp_param.output.shape = {
+        (int64_t)output_shape[0], (int64_t)output_shape[1],
+        (int64_t)output_shape[2], (int64_t)output_shape[3]};
     assert(interp_param.inputs[0].shape.size() == 4);
     assert(interp_param.output.shape.size() == 4);
     InterpFunc interp_func(interp_param);
     interp_func.invoke();
   } else if (func_name == "embedding") {
     EmbeddingParam embedding_param;
-    assert (inputs.size() == 2);
+    assert(inputs.size() == 2);
     tensor_list_t input0, input1, output;
     input0.ptr = inputs[0].data();
     input0.size = func_info.inputs[0].count;
@@ -156,19 +171,19 @@ void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, s
     input1.size = func_info.inputs[1].count;
     output.ptr = outputs[0].data();
     output.size = func_info.outputs[0].count;
-    //infer dim and set shape
+    // infer dim and set shape
     auto input_shape0 = func_info.inputs[0].g_shape;
     auto input_shape1 = func_info.inputs[1].g_shape;
     auto output_shape = func_info.outputs[0].g_shape;
-    assert(input_shape1[1] > 1); //embedding dim
+    assert(input_shape1[1] > 1); // embedding dim
     if (output_shape[3] == 1) {
-      //output real dim = 3
+      // output real dim = 3
       assert(output_shape[2] == input_shape1[1]);
       input0.shape = {input_shape0[0], input_shape0[1]};
       input1.shape = {input_shape1[0], input_shape1[1]};
       output.shape = {output_shape[0], output_shape[1], output_shape[2]};
     } else {
-      //output real dim = 4
+      // output real dim = 4
       assert(output_shape[3] == input_shape1[1]);
       input0.shape = {input_shape0[0], input_shape0[1], input_shape0[2]};
       input1.shape = {input_shape1[0], input_shape1[1]};
@@ -301,7 +316,8 @@ void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, s
     RetinaFaceDetectionParam retina_param;
     OpParam param = func_info.params;
     retina_param.keep_topk = param.get<int>("keep_topk");
-    retina_param.confidence_threshold = param.get<float>("confidence_threshold");
+    retina_param.confidence_threshold =
+        param.get<float>("confidence_threshold");
     retina_param.nms_threshold = param.get<float>("nms_threshold");
     RetinaFaceDetectionFunc func;
     std::vector<tensor_list_t> tensor_inputs;
@@ -418,8 +434,9 @@ void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, s
   } else if (func_name == "deform_gather") {
     llvm_unreachable("cv18xx not support deform_gather cpu function");
   } else {
-    const std::string error_info = func_name + "generic cpu func not supported!\n";
+    const std::string error_info =
+        func_name + "generic cpu func not supported!\n";
     llvm_unreachable(error_info.c_str());
   }
 }
-}
+} // namespace cvi_debug

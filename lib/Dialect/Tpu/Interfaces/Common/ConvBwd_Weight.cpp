@@ -50,77 +50,80 @@ LogicalResult tpu::ConvBwdWeightOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::ConvBwdWeightOp::deinit(InferenceParameter &p) {
-
-}
+void tpu::ConvBwdWeightOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ConvBwdWeightOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::ConvBwdWeightOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+LogicalResult tpu::ConvBwdWeightOp::BackwardH(int64_t &in_idx,
+                                              int64_t &in_slice,
+                                              int64_t out_idx,
+                                              int64_t out_slice) {
 
   return success();
 }
 
-LogicalResult tpu::ConvBwdWeightOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+LogicalResult tpu::ConvBwdWeightOp::BackwardW(int64_t &in_idx,
+                                              int64_t &in_slice,
+                                              int64_t out_idx,
+                                              int64_t out_slice) {
 
   return success();
 }
 
 void tpu::ConvBwdWeightOp::assign_sec_info(int64_t n_step, int64_t c_step,
-                                    int64_t h_step, int64_t d_step,
-                                    int64_t w_step, group_type_t group_type,
-                                    local_sec_info_t &sec_info) {
+                                           int64_t h_step, int64_t d_step,
+                                           int64_t w_step,
+                                           group_type_t group_type,
+                                           local_sec_info_t &sec_info) {}
 
-}
-
-mlir::Type tpu::ConvBwdWeightOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::ConvBwdWeightOp::type_verify(uint64_t opd_idx,
+                                             TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }
 
-LogicalResult tpu::ConvBwdWeightOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                          int64_t out_idx, int64_t out_slice) {
+LogicalResult tpu::ConvBwdWeightOp::DynBackwardH(int64_t &in_idx,
+                                                 int64_t &in_slice,
+                                                 int64_t out_idx,
+                                                 int64_t out_slice) {
 
   return success();
 }
 
-LogicalResult tpu::ConvBwdWeightOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
+LogicalResult tpu::ConvBwdWeightOp::DynBackwardKh(int64_t &in_kh,
+                                                  int64_t out_kh) {
 
   return success();
 }
 
 LogicalResult tpu::ConvBwdWeightOp::DynBackwardStrideH(int64_t &in_stride_h,
-                                                int64_t out_stride_h) {
+                                                       int64_t out_stride_h) {
 
   return success();
 }
 
 LogicalResult tpu::ConvBwdWeightOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
-                                               int64_t out_up_pad_h) {
+                                                      int64_t out_up_pad_h) {
 
   return success();
 }
 
-LogicalResult tpu::ConvBwdWeightOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
-                                                 int64_t out_down_pad_h) {
+LogicalResult
+tpu::ConvBwdWeightOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                          int64_t out_down_pad_h) {
 
   return success();
 }
 
 LogicalResult tpu::ConvBwdWeightOp::LocalGenSupport() {
-  if (!module::isBM1690Family()){
+  if (!module::isBM1690Family()) {
     return failure();
   }
   return success();
 }
 
-int64_t tpu::ConvBwdWeightOp::DynForwardHeight(int64_t in_height) {
-
-  return -1;
-}
+int64_t tpu::ConvBwdWeightOp::DynForwardHeight(int64_t in_height) { return -1; }
 
 ArrayAttr tpu::ConvBwdWeightOp::getIndexingMaps() {
   MLIRContext *context = getContext();
@@ -138,4 +141,3 @@ ArrayAttr tpu::ConvBwdWeightOp::getIndexingMaps() {
 }
 
 bool tpu::ConvBwdWeightOp::support_multi_core() { return false; }
-

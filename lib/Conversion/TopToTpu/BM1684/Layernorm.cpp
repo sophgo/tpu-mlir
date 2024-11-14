@@ -48,15 +48,15 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
   Value last_op_value = op.getOutput();
   // replace LayerNorm use GroupNorm
   if (axis != 3) {
-    attrs.push_back(
-        rewriter.getNamedAttr("num_groups", rewriter.getI64IntegerAttr(group_num)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "num_groups", rewriter.getI64IntegerAttr(group_num)));
     attrs.push_back(rewriter.getNamedAttr("eps", op.getEpsAttr()));
     auto group_norm_loc = (has_weight || has_bias)
                               ? NameLoc::get(rewriter.getStringAttr(
                                     name.str() + "_convert_to_group_norm"))
                               : op.getLoc();
-    auto group_norm_op =
-        rewriter.create<tpu::GroupNormOp>(group_norm_loc, new_type, opds, attrs);
+    auto group_norm_op = rewriter.create<tpu::GroupNormOp>(
+        group_norm_loc, new_type, opds, attrs);
 
     last_op_value = group_norm_op.getOutput();
   } else {
@@ -64,29 +64,32 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
     SmallVector<Value, 2> opds_1;
     opds_1.push_back(op.getOperand(0));
     opds_1.push_back(module::getNoneOp(op));
-    std::vector<int64_t> shape_1 = {input_shape[0], group_num, 1, input_shape[3]};
+    std::vector<int64_t> shape_1 = {input_shape[0], group_num, 1,
+                                    input_shape[3]};
     auto type_1 = RankedTensorType::get(shape_1, rewriter.getF32Type());
-    auto reshape_1_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape_1"));
+    auto reshape_1_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape_1"));
     auto reshape_1_op =
         rewriter.create<tpu::ReshapeOp>(reshape_1_loc, type_1, opds_1);
 
     opds[0] = reshape_1_op.getResult();
     auto group_norm_type = reshape_1_op.getOutput().getType();
-    attrs.push_back(
-        rewriter.getNamedAttr("num_groups", rewriter.getI64IntegerAttr(group_num)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "num_groups", rewriter.getI64IntegerAttr(group_num)));
     attrs.push_back(rewriter.getNamedAttr("eps", op.getEpsAttr()));
-    auto group_norm_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_convert_to_group_norm"));
-    auto group_norm_op =
-        rewriter.create<tpu::GroupNormOp>(group_norm_loc, group_norm_type, opds, attrs);
+    auto group_norm_loc = NameLoc::get(
+        rewriter.getStringAttr(name.str() + "_convert_to_group_norm"));
+    auto group_norm_op = rewriter.create<tpu::GroupNormOp>(
+        group_norm_loc, group_norm_type, opds, attrs);
 
     SmallVector<Value, 2> opds_2;
     opds_2.push_back(group_norm_op.getOutput());
     opds_2.push_back(module::getNoneOp(op));
     auto type_2 = RankedTensorType::get(input_shape, rewriter.getF32Type());
-    auto reshape_2_loc = (has_weight || has_bias)
-                              ? NameLoc::get(rewriter.getStringAttr(
-                                    name.str() + "_reshape_2"))
-                              : op.getLoc();
+    auto reshape_2_loc =
+        (has_weight || has_bias)
+            ? NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape_2"))
+            : op.getLoc();
     auto reshape_2_op =
         rewriter.create<tpu::ReshapeOp>(reshape_2_loc, type_2, opds_2);
 

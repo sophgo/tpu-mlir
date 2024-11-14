@@ -6,9 +6,9 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -19,9 +19,8 @@ struct MatMulWithBias : public OpRewriterPatternEx<MatMulOp> {
   MatMulWithBias(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "MatMulWithBias") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
       return failure();
@@ -80,9 +79,8 @@ struct OptMatMulSmallCdim : public OpRewriterPatternEx<MatMulOp> {
   OptMatMulSmallCdim(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "OptMatMulSmallCdim") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto left = op.getInput();
     auto right = op.getRight();
     auto out = op.getResult();
@@ -151,9 +149,8 @@ struct NoKeepDimsAddReshape : public OpRewriterPatternEx<MatMulOp> {
   NoKeepDimsAddReshape(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "NoKeepDimsAddReshape") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getKeepDims()) {
       return failure();
@@ -194,12 +191,10 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   MatmulWithPermuteAndSplit(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<MatMulOp>(context, "MatmulWithPermuteAndSplit") {
-  }
+      : OpRewriterPatternEx<MatMulOp>(context, "MatmulWithPermuteAndSplit") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
 
     // check topo
     auto nextOp = *op->user_begin();
@@ -464,9 +459,8 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
   MatMulWithSlice(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "MatMulWithSlice") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
       return failure();
@@ -530,9 +524,8 @@ struct PermuteMatMulPermute : public OpRewriterPatternEx<MatMulOp> {
   PermuteMatMulPermute(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "PermuteMatMulPermute") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in0 = op.getInput();
     auto in1 = op.getRight();
     if (!module::isWeight(in0) || module::isWeight(in1)) {
@@ -607,9 +600,8 @@ struct SplitMatMulEva2 : public OpRewriterPatternEx<MatMulOp> {
   SplitMatMulEva2(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MatMulOp>(context, "SplitMatMulEva2") {}
 
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     if (!op.getOutput().hasOneUse())
       return failure();
     ReshapeOp reshape_op = NULL;
@@ -777,11 +769,10 @@ struct SplitMatMulEva2 : public OpRewriterPatternEx<MatMulOp> {
 // test case: [5, 128]x[7, 128, 64] => [7, 5, 64]
 struct MatMulReverse : public OpRewriterPatternEx<MatMulOp> {
   MatMulReverse(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewriterPatternEx<MatMulOp>(context, "MatMulReverse",benefit) {}
+      : OpRewriterPatternEx<MatMulOp>(context, "MatMulReverse", benefit) {}
   using OpRewriterPatternEx::OpRewriterPatternEx;
-  LogicalResult
-  matchAndRewriteImpl(MatMulOp op,
-                             PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
     auto in0 = op.getInput();
     auto in1 = op.getRight();
     auto out = op.getOutput();

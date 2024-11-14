@@ -39,12 +39,14 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
     int idx = v.cast<OpResult>().getResultNumber();
     gi.out_addr = vec_move_dest_addr[idx];
-    llvm::errs() <<"StoreOp codegen, idx:"<<idx<<", vec_move_dest_addr:"<<gi.out_addr<<"\n";
+    llvm::errs() << "StoreOp codegen, idx:" << idx
+                 << ", vec_move_dest_addr:" << gi.out_addr << "\n";
   }
   int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice, real_cslice;
 
-  //set nnvlc param
-  bool do_compress = this->getCompressInfo().has_value() && this->getCompressInfo()->getDoCompress();
+  // set nnvlc param
+  bool do_compress = this->getCompressInfo().has_value() &&
+                     this->getCompressInfo()->getDoCompress();
   uint8_t bias0, bias1;
   int32_t is_signed, zero_guard;
   if (do_compress) {
@@ -102,17 +104,16 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto out_value = getOutput();
   int64_t g_addr = -1;
 
-
   auto parent = op->getParentOp();
   assert(isa_and_nonnull<tpu::GroupOp>(parent));
   auto group_next_op = *(parent->getResult(0).getUsers().begin());
-  bool have_more_groupOp = isa<SliceMergeOp>(group_next_op)?true:false;
+  bool have_more_groupOp = isa<SliceMergeOp>(group_next_op) ? true : false;
   auto input_gmem = op->getOperand(1);
   if (!isa<top::NoneOp>(input_gmem.getDefiningOp())) {
     g_addr = module::getAddress(input_gmem);
     // llvm::errs() <<"get input_gmem addr: " << g_addr<<"\n";
   } else {
-    for (auto user: out_value.getUsers()) {
+    for (auto user : out_value.getUsers()) {
       if (isa<SliceMergeOp>(user)) {
         auto res = user->getResult(0);
         if (have_more_groupOp) {
@@ -126,7 +127,7 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
             }
           }
           assert(opd_idx >= 0);
-          llvm::errs() <<"opd_idx:"<<opd_idx<<"\n";
+          llvm::errs() << "opd_idx:" << opd_idx << "\n";
           group_next_op = *(parent->getResult(opd_idx).getUsers().begin());
           res = group_next_op->getResult(0);
         }
@@ -144,7 +145,8 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           assert(opd_idx >= 0);
           group_next_op = *(parent->getResult(opd_idx).getUsers().begin());
           g_addr = module::getAddress(group_next_op->getResult(0));
-          llvm::errs() <<"have_more_groupOp, opd_idx:"<<opd_idx<<" g_addr:"<<g_addr<<"\n";
+          llvm::errs() << "have_more_groupOp, opd_idx:" << opd_idx
+                       << " g_addr:" << g_addr << "\n";
           break;
         }
       }
@@ -183,25 +185,26 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           auto nnvlc_dtype = module::getStorageType(getOutput());
           int max_meta_bytes = tpu_compress_RACU_max_meta_bytes(nnvlc_shape);
           shape_t meta_stride = tpu_compress_RACU_meta_stride(nnvlc_shape);
-          shape_t racu_stride = tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
+          shape_t racu_stride =
+              tpu_compress_RACU_racu_stride(nnvlc_shape, nnvlc_dtype);
 
-          int64_t racu_cur_global_offset = gi.n_idx * racu_stride.n +
-                                           div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
-                                           gi.h_idx * racu_stride.h +
-                                           gi.w_idx * racu_stride.w ;
-          int64_t meta_cur_global_offset = (gi.n_idx * meta_stride.n +
-                                            div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
-                                            gi.h_idx * meta_stride.h +
-                                            gi.w_idx * meta_stride.w) * 4;
+          int64_t racu_cur_global_offset =
+              gi.n_idx * racu_stride.n +
+              div_up(gi.c_idx, Arch::NPU_NUM) * racu_stride.c +
+              gi.h_idx * racu_stride.h + gi.w_idx * racu_stride.w;
+          int64_t meta_cur_global_offset =
+              (gi.n_idx * meta_stride.n +
+               div_up(gi.c_idx, Arch::NPU_NUM) * meta_stride.c +
+               gi.h_idx * meta_stride.h + gi.w_idx * meta_stride.w) *
+              4;
           BM168x::instance()->dl_tensor_racu_compress_gen_cmd(
               gi.out_addr + cur_local_offset,
-              g_addr + racu_cur_global_offset + align_up(max_meta_bytes, Arch::EU_BYTES),
-              g_addr + meta_cur_global_offset,
-              gi.n_slice, cur_cslice, real_hslice, real_wslice,
-              c_num_local * c_stride, c_stride, real_wslice,
-              racu_stride.n, racu_stride.c, racu_stride.h,
-              meta_stride.n, meta_stride.c,
-              bias0, bias1, is_signed, zero_guard,
+              g_addr + racu_cur_global_offset +
+                  align_up(max_meta_bytes, Arch::EU_BYTES),
+              g_addr + meta_cur_global_offset, gi.n_slice, cur_cslice,
+              real_hslice, real_wslice, c_num_local * c_stride, c_stride,
+              real_wslice, racu_stride.n, racu_stride.c, racu_stride.h,
+              meta_stride.n, meta_stride.c, bias0, bias1, is_signed, zero_guard,
               gdma_format, pid_node);
         } else {
           int64_t dst_offset_c =

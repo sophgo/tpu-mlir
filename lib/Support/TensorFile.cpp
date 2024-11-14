@@ -11,13 +11,15 @@
 
 namespace mlir {
 
-template <typename T> static std::string int_to_hex(T i) {
+template <typename T>
+static std::string int_to_hex(T i) {
   std::stringstream stream;
   stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
   return stream.str();
 }
 
-template <typename T> static bool check_type(Type eltType) {
+template <typename T>
+static bool check_type(Type eltType) {
   if (eltType.isa<quant::UniformQuantizedPerAxisType>()) {
     eltType =
         eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
@@ -266,8 +268,8 @@ TensorFile::readTensor<unsigned char>(llvm::StringRef name,
                                       uint32_t store_mode, bool do_compress);
 template std::unique_ptr<std::vector<signed char>>
 TensorFile::readTensor<signed char>(llvm::StringRef name,
-                                    RankedTensorType &type,
-                                    uint32_t store_mode, bool do_compress);
+                                    RankedTensorType &type, uint32_t store_mode,
+                                    bool do_compress);
 template std::unique_ptr<std::vector<unsigned short>>
 TensorFile::readTensor<unsigned short>(llvm::StringRef name,
                                        RankedTensorType &type,
@@ -277,7 +279,8 @@ TensorFile::readTensor<unsigned short>(llvm::StringRef name,
 /// type is provided for checking, return failure() if type does not match
 template <typename T>
 LogicalResult TensorFile::readTensor(llvm::StringRef name, T *data,
-                                     size_t count, bool isINT4, bool do_compress) {
+                                     size_t count, bool isINT4,
+                                     bool do_compress) {
   auto it = map.find(name.str());
   if (it == map.end()) {
     llvm::errs() << "failed to find tensor " << name.str() << " to read\n";
@@ -304,9 +307,9 @@ LogicalResult TensorFile::readTensor(llvm::StringRef name, T *data,
 }
 
 template <typename T>
-std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
-                                                       RankedTensorType &type,
-                                                       uint32_t store_mode, bool do_compress) {
+std::unique_ptr<std::vector<T>>
+TensorFile::readTensor(llvm::StringRef name, RankedTensorType &type,
+                       uint32_t store_mode, bool do_compress) {
   /// {STORE_MODE_T, align_num}
   std::map<uint32_t, int64_t> stmode_map = {
       {0 /*STORE_MODE_1N*/, 1l},
@@ -316,11 +319,11 @@ std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
   size_t count = 1;
   bool isINT4 = false;
   auto s = type.getShape();
-  if (s.size() > 0 ) {
+  if (s.size() > 0) {
     auto n = type.getShape()[0];
     auto others = type.getNumElements() / n;
     count = (n + stmode_map.at(store_mode) - 1) / stmode_map.at(store_mode) *
-                stmode_map.at(store_mode) * others;
+            stmode_map.at(store_mode) * others;
     assert(check_type<T>(type.getElementType()) == true);
     isINT4 = type.getElementType().isInteger(4);
     if (isINT4) {
@@ -339,7 +342,8 @@ std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
   }
 
   auto data = std::make_unique<std::vector<T>>(count);
-  auto ret = readTensor(name, (T *)data.get()->data(), count, isINT4, do_compress);
+  auto ret =
+      readTensor(name, (T *)data.get()->data(), count, isINT4, do_compress);
   assert(succeeded(ret));
   return data;
 }

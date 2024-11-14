@@ -10,13 +10,13 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
 using namespace tpu_mlir::backend;
-//using namespace tpu_mlir::bm1684x;
+// using namespace tpu_mlir::bm1684x;
 
 // ======================================
 // GlobalGenInterface
 // ======================================
 
-void tpu::DeformGatherOp::codegen_global_bm1684x() { 
+void tpu::DeformGatherOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -35,11 +35,12 @@ void tpu::DeformGatherOp::codegen_global_bm1684x() {
   spec.pad_w = attr.pwl;
   spec.pad_w_after = attr.pwr;
   spec.modulated = attr.use_mask == true;
-  spec.mode = 2; //torchvision
+  spec.mode = 2; // torchvision
   spec.offset_interleave = 1;
   spec.buffer_addr = module::getAddress(getBuffer());
-  BM168x::call_global_func("backend_api_deform_gather_global", &spec, sizeof(spec),
-                           input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_deform_gather_global", &spec,
+                           sizeof(spec), input_spec->data(),
+                           output_spec->data());
 }
 
 // ======================================
@@ -66,12 +67,12 @@ int64_t tpu::DeformGatherOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.pad_w = attr.pwl;
   spec.pad_w_after = attr.pwr;
   spec.modulated = attr.use_mask == true;
-  spec.mode = 2; //torchvision
+  spec.mode = 2; // torchvision
   spec.offset_interleave = 1;
   spec.buffer_addr = module::getAddress(getBuffer());
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::DeformGatherOp::get_fw_type_bm1684x() { 
-  return FW_BMNET_DEFORM_GATHER; 
+int64_t tpu::DeformGatherOp::get_fw_type_bm1684x() {
+  return FW_BMNET_DEFORM_GATHER;
 }

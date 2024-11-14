@@ -29,8 +29,8 @@ public:
 
   template <typename T>
   inline PRelu &weights(T *weights, llvm::ArrayRef<int64_t> weights_shape) {
-    auto mds =
-        memory::desc(weights_shape, data_traits<T>::data_type, get_tag(weights_shape));
+    auto mds = memory::desc(weights_shape, data_traits<T>::data_type,
+                            get_tag(weights_shape));
     weights_mem = memory(mds, eng, weights);
     return *this;
   };
@@ -44,6 +44,7 @@ public:
   };
   void setup();
   void run();
+
 private:
   engine eng;
   stream eng_stream;

@@ -15,12 +15,7 @@
 namespace tpu_mlir {
 namespace tpu {
 
-enum class NnvlcMode {
-    NONE = 0,
-    WEIGHT = 1,
-    ACTIVATION = 2,
-    ALL = 3
-};
+enum class NnvlcMode { NONE = 0, WEIGHT = 1, ACTIVATION = 2, ALL = 3 };
 
 typedef struct {
   bool dyn_compile;
@@ -32,7 +27,7 @@ typedef struct {
 
 // struct node_info;
 struct LgPassIR {
-  LgPassIR(){returnOp = nullptr;};
+  LgPassIR() { returnOp = nullptr; };
   ~LgPassIR() { clear(); };
 
   /**
@@ -79,8 +74,8 @@ struct LgPassIR {
   std::vector<Value> subnet_return_opds;
   bool branch_parallel;
   std::vector<std::shared_ptr<ilp_LgInfo>> tmp_base_groups;
-  std::map<Operation*, std::vector<Operation*>> map_parallel_op_subnet;
-  Operation* returnOp;
+  std::map<Operation *, std::vector<Operation *>> map_parallel_op_subnet;
+  Operation *returnOp;
   std::shared_ptr<dot_graph> dot_graph_log_subnet;
   FuncOp func;
 };

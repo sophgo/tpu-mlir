@@ -50,7 +50,7 @@ void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
   }
 }
 void TileLowering::LoweringINT4(PatternRewriter &rewriter, top::TileOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -71,8 +71,7 @@ void TileLowering::LoweringF16(PatternRewriter &rewriter,
   }
 }
 
-void TileLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::TileOp op) const {
+void TileLowering::LoweringF8(PatternRewriter &rewriter, top::TileOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 

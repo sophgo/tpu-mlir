@@ -289,8 +289,8 @@ private:
       out_shape.push_back(in_shape[order[i]]);
     }
 
-    type = RankedTensorType::get(out_shape,
-                                 module::getUniformQuantizedType(opd));
+    type =
+        RankedTensorType::get(out_shape, module::getUniformQuantizedType(opd));
     auto newOp = rewriter.create<tpu::PermuteOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
     return newOp.getOutput();

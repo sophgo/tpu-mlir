@@ -7,9 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-
+#include "tpu_mlir/Support/Float8.h"
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -57,7 +56,7 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   if (module::isWeight(op.getFilter()) == false) {
-    if(module::isMARS3())
+    if (module::isMARS3())
       LoweringBF16(rewriter, op);
     else
       LoweringF32(rewriter, op);
@@ -71,7 +70,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool input_asymmetric = op->hasAttr("input_asym");
-  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, input_asymmetric);
+  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp,
+                               input_asymmetric);
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
@@ -104,9 +104,17 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     bias_int32 = std::make_shared<std::vector<int32_t>>(p.oc, 0);
   }
 
-  if (in_scale <= 1e-5) {  // if the input is all zero, in th would be 1e-5 in calibration, and the bias may be overflow in quant. if no bias or bias too small, follow filter. occur in sam model from xm.
-    in_scale = bias_max <= 1e-5? std::max(std::abs(fmax),std::abs(fmin))/127.0:bias_max/127.0;
-    llvm::errs() << module::getName(op.getOperation()).str() << " : found input too small in conv lowering int8, scale change to " << in_scale  << " bias is: " << bias_max << "\n";
+  if (in_scale <=
+      1e-5) { // if the input is all zero, in th would be 1e-5 in calibration,
+              // and the bias may be overflow in quant. if no bias or bias too
+              // small, follow filter. occur in sam model from xm.
+    in_scale = bias_max <= 1e-5
+                   ? std::max(std::abs(fmax), std::abs(fmin)) / 127.0
+                   : bias_max / 127.0;
+    llvm::errs()
+        << module::getName(op.getOperation()).str()
+        << " : found input too small in conv lowering int8, scale change to "
+        << in_scale << " bias is: " << bias_max << "\n";
   }
 
   std::vector<int64_t> rshift_v;
@@ -637,7 +645,8 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   auto bias_value = op.getBias();
   bool with_bias = !module::isNone(bias_value);
   if (with_bias && !module::isTrain())
-    ASSERT_OP(module::getStorageType(bias_value).isF32() && "bias has to be f32", op);
+    ASSERT_OP(
+        module::getStorageType(bias_value).isF32() && "bias has to be f32", op);
   operands.push_back(bias_value);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -651,10 +660,9 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   rewriter.replaceOp(op, {newValue});
 }
 
-void ConvLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::ConvOp op) const {
+void ConvLowering::LoweringF8(PatternRewriter &rewriter, top::ConvOp op) const {
   auto p = op.parseParam();
-  double in_scale=1.0, out_scale=1.0;
+  double in_scale = 1.0, out_scale = 1.0;
   auto in = op.getInput();
   auto out = op.getOutput();
 
@@ -693,8 +701,9 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
     if (!w_op.getScale().has_value())
       llvm_unreachable("weight should has scale now");
     weight_scale_v = module::getF64Array(w_op.getScale().value());
-    quant_scale_v = std::make_shared<std::vector<double>>(weight_scale_v.get()->size());
-    for (int i=0; i<weight_scale_v.get()->size(); i++) {
+    quant_scale_v =
+        std::make_shared<std::vector<double>>(weight_scale_v.get()->size());
+    for (int i = 0; i < weight_scale_v.get()->size(); i++) {
       quant_scale_v.get()->at(i) = in_scale * weight_scale_v.get()->at(i);
     }
   } else {
@@ -702,11 +711,11 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
     weight_scale_v = std::make_shared<std::vector<double>>(1, 1.0);
   }
 
-
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
-                              tpu::RequantMode::OnlyScale)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(op->getContext(),
+                                              tpu::RequantMode::OnlyScale)));
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
@@ -715,21 +724,23 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
   if (with_bias && module::getMode() == module::Mode::F8E4M3) {
     auto b_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
     auto b_value = b_op.read<float>();
-    for (int i=0;i<b_value->size();i++)
-      b_value->at(i) = b_value->at(i)/(in_scale*weight_scale_v.get()->at(i));
+    for (int i = 0; i < b_value->size(); i++)
+      b_value->at(i) =
+          b_value->at(i) / (in_scale * weight_scale_v.get()->at(i));
     b_op.update(*b_value, b_value.get()->size());
   }
   if (module::getMode() == module::Mode::F8E4M3) {
-    for (int i=0; i<weight_scale_v.get()->size(); i++) {
-      quant_scale_v.get()->at(i) = quant_scale_v.get()->at(i)/out_scale;
+    for (int i = 0; i < weight_scale_v.get()->size(); i++) {
+      quant_scale_v.get()->at(i) = quant_scale_v.get()->at(i) / out_scale;
     }
   }
 
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   if (module::getMode() == module::Mode::F8E4M3) {
-    attrs.push_back(
-        rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(ArrayRef<double>{*quant_scale_v})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "out_f8_scales",
+        rewriter.getF64ArrayAttr(ArrayRef<double>{*quant_scale_v})));
     auto newType = getQuantF8E4M3Type(op.getOutput());
     auto newValue =
         CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
@@ -830,8 +841,8 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   if (out_i32) {
-    auto newValue =
-      CreateConvOp(rewriter, p.dims, op->getLoc(), op.getOutput().getType(), operands, attrs);
+    auto newValue = CreateConvOp(rewriter, p.dims, op->getLoc(),
+                                 op.getOutput().getType(), operands, attrs);
     rewriter.replaceOp(op, {newValue});
     return;
   }

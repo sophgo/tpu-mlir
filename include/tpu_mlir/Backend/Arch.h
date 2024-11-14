@@ -35,20 +35,26 @@ public:
   static bool ALIGN_4N;
   static module::Chip chip;
   static uint64_t FREQ;
-  static uint64_t get_frequance() {return Arch::FREQ;}
+  static uint64_t get_frequance() { return Arch::FREQ; }
   // dbytes is 0.5 for INT4
   static int64_t eu_num(double dbytes);
   static int64_t get_n_align(int64_t dtype_bytes) {
     return ALIGN_4N ? (4 / dtype_bytes) : 1;
   }
   static size_t get_gmem_bytes(Value v);
-  static int64_t get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, int64_t h,
-                                       int64_t w, bool eu_align = true);
-  static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c, int64_t slice_d, int64_t slice_h,
-                                       int64_t slice_w, group_type_t group_type, bool eu_align = true);
-  static int64_t get_weight_lmem_bytes(Value v, group_type_t group_type, bool eu_align = true);
+  static int64_t get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d,
+                                       int64_t h, int64_t w,
+                                       bool eu_align = true);
+  static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n,
+                                       int64_t slice_c, int64_t slice_d,
+                                       int64_t slice_h, int64_t slice_w,
+                                       group_type_t group_type,
+                                       bool eu_align = true);
+  static int64_t get_weight_lmem_bytes(Value v, group_type_t group_type,
+                                       bool eu_align = true);
 
-  template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy CastToFPtr(const char *symbolName) {
     assert(DL.isValid());
     auto fPtr = DL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
@@ -58,11 +64,12 @@ public:
     return reinterpret_cast<FPtrTy>(fPtr);
   }
 
-  template <typename FPtrTy> FPtrTy PplCastToFPtr(const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy PplCastToFPtr(const char *symbolName) {
     if (!PPL_DL.isValid()) {
       load_ppl();
     }
-    if(!PPL_DL.isValid()) {
+    if (!PPL_DL.isValid()) {
       llvm::errs() << "ppl can't be loaded!!\n";
       llvm_unreachable(symbolName);
     }
@@ -75,9 +82,11 @@ public:
   }
 
   // the cast function only for dq custom op
-  template <typename FPtrTy> FPtrTy CastToDQFPtr(const char *libName, const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy CastToDQFPtr(const char *libName, const char *symbolName) {
     std::string Err;
-    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(libName, &Err);
+    auto custom_dl =
+        llvm::sys::DynamicLibrary::getPermanentLibrary(libName, &Err);
     if (!custom_dl.isValid()) {
       llvm::errs() << "[FATAL] lib name: " << libName << " is not valid\n";
       llvm_unreachable(libName);
@@ -91,12 +100,15 @@ public:
   }
 
   // the cast function only for custom op
-  template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName, bool fatal=true) {
+  template <typename FPtrTy>
+  FPtrTy CastToCustomFPtr(const char *symbolName, bool fatal = true) {
     llvm::StringRef custom_lib_name = "libbackend_custom.so";
     std::string Err;
-    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
+        custom_lib_name.data(), &Err);
     if (!custom_dl.isValid()) {
-      llvm::errs() << "[FATAL] lib name: " << custom_lib_name.str() << " is not valid\n";
+      llvm::errs() << "[FATAL] lib name: " << custom_lib_name.str()
+                   << " is not valid\n";
       llvm_unreachable("");
     }
     auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
@@ -108,10 +120,12 @@ public:
   }
 
   // the cast function only for custom op
-  template <typename FPtrTy> FPtrTy CastToCustomPluginPtr(const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy CastToCustomPluginPtr(const char *symbolName) {
     llvm::StringRef custom_lib_name = "libplugin_custom.so";
     std::string Err;
-    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
+        custom_lib_name.data(), &Err);
     assert(custom_dl.isValid());
     auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
     return reinterpret_cast<FPtrTy>(fPtr);

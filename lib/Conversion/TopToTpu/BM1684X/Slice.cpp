@@ -30,14 +30,15 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
     return;
 
   std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs())  {
+  for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   auto v = op.getResult();
   auto shape = module::getShape(v);
   auto ctx = v.getContext();
   Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapeSliceOp>(op, new_type, op.getOperands(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapeSliceOp>(op, new_type, op.getOperands(),
+                                                 attrs);
 }
 
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
@@ -46,21 +47,20 @@ void SliceLowering::LoweringF32(PatternRewriter &rewriter,
   auto input = op.getOperand(0);
   auto stype = module::getStorageType(input);
 
-  if (stype.isInteger(32)){
+  if (stype.isInteger(32)) {
     std::vector<NamedAttribute> attrs;
-    for (auto &attr : op->getAttrs())  {
+    for (auto &attr : op->getAttrs()) {
       attrs.push_back(attr);
-      }
+    }
     std::vector<Value> operands;
-    for (auto opd : op->getOperands()){
+    for (auto opd : op->getOperands()) {
       operands.push_back(opd);
     }
     auto noneOp = module::getNoneOp(op);
-    operands.push_back(noneOp); //buffer
+    operands.push_back(noneOp); // buffer
     rewriter.replaceOpWithNewOp<tpu::SliceOp>(op, stype, operands, attrs);
     return;
   }
-
 
   lowering_common_f32<tpu::SliceOp>(rewriter, op, 5);
 }
@@ -88,7 +88,7 @@ void SliceLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void SliceLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::SliceOp op) const {
+                               top::SliceOp op) const {
   _try_insert_device2host(op);
   bool isE4 = module::getMode() == module::Mode::F8E4M3;
   lowering_common_f8<tpu::SliceOp>(rewriter, op, isE4, 5);

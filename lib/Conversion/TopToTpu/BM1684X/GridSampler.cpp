@@ -89,7 +89,7 @@ void GridSamplerLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void GridSamplerLowering::LoweringF8(PatternRewriter &rewriter,
-                                      top::GridSamplerOp op) const {
+                                     top::GridSamplerOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

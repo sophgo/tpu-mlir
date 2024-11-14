@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 using namespace llvm;
 

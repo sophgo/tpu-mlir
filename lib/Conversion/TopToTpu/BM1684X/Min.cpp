@@ -16,7 +16,7 @@ void MinLowering::LoweringF32(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_f32<tpu::MinOp>(rewriter, op);
 }
 void MinLowering::LoweringINT4(PatternRewriter &rewriter, top::MinOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MinLowering::LoweringINT8(PatternRewriter &rewriter, top::MinOp op,

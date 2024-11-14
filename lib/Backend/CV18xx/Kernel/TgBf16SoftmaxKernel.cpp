@@ -10,10 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Support/LutFunc.h"
 
-
-
-
-
 #define DEBUG_TYPE "cvi_backend_softmax_kernel"
 
 #define ASSERT(x) assert(x)
@@ -907,7 +903,7 @@ int TgSoftmaxKernel::doSplitHeightBf16softmax4D() {
       break;
     }
   }
-  //ASSERT(step_h && "Can't fit the constraint!");
+  // ASSERT(step_h && "Can't fit the constraint!");
   return step_h;
 }
 
@@ -937,7 +933,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_4d() {
   int step_h = doSplitHeightBf16softmax4D();
   int step_w = w;
   if (step_h == 0) {
-    //should split width
+    // should split width
     step_h = 1;
     step_w = doSplitWidthBf16softmax4D();
   }
@@ -950,8 +946,8 @@ void TgSoftmaxKernel::bf16_softmax_kernel_4d() {
     int pos_h = step_i * step_h;
     for (int step_j = 0; step_j < num_step_w; step_j++) {
       int pos_w = step_j * step_w;
-      //if only tile height, std::min(w - pos_w, step_w) = w
-      //if need tile width, std::min(h - pos_h, step_h) = 1
+      // if only tile height, std::min(w - pos_w, step_w) = w
+      // if need tile width, std::min(h - pos_h, step_h) = 1
       int tile_hw = std::min(h - pos_h, step_h) * std::min(w - pos_w, step_w);
 
       auto shape0 = CV18xx::tl_shape_t4(c, tile_hw, 1, 1);
@@ -975,7 +971,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_4d() {
       ASSERT(tl_working);
 
       for (int n_idx = 0; n_idx < n; n_idx++) {
-        //int goffset = (n_idx * c * h + pos_h) * w * gstride.w;
+        // int goffset = (n_idx * c * h + pos_h) * w * gstride.w;
         int goffset = (n_idx * c * h * w + pos_h * w + pos_w) * gstride.w;
         CV18xx::tdma_load_stride(tl_origin, ga_input + goffset, gstride);
 

@@ -11,8 +11,8 @@
 
 #include "stdint.h"
 #include <iostream>
-#include <vector>
 #include <math.h>
+#include <vector>
 
 namespace tpu_mlir {
 namespace backend {

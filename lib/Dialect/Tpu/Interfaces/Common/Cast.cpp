@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/CastUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
@@ -134,7 +134,6 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   return success();
 }
 
-
 class SimplifyRedundantCast : public OpRewriterPatternEx<tpu::CastOp> {
 public:
   SimplifyRedundantCast(mlir::MLIRContext *context)
@@ -203,7 +202,7 @@ public:
     llvm::errs() << "Warning: two cast can merge to one !!!\n";
     return failure();
   }
-  bool shouldPrint(tpu::CastOp op) const override { return false;}
+  bool shouldPrint(tpu::CastOp op) const override { return false; }
 };
 
 void tpu::CastOp::getCanonicalizationPatterns(RewritePatternSet &results,

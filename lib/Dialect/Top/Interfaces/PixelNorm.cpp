@@ -76,8 +76,10 @@ void top::PixelNormOp::shape_inference() {
   std::vector<int64_t> wb_shape(input_shape.size(), 1);
   wb_shape[1] = input_shape[1];
   RankedTensorType newType;
-  if (auto weight_op = dyn_cast_or_null<WeightOp>(getWeight().getDefiningOp())) {
-    newType = RankedTensorType::get(wb_shape, module::getElementType(weight_op));
+  if (auto weight_op =
+          dyn_cast_or_null<WeightOp>(getWeight().getDefiningOp())) {
+    newType =
+        RankedTensorType::get(wb_shape, module::getElementType(weight_op));
     getWeight().setType(newType);
   }
   if (auto bias_op = dyn_cast_or_null<WeightOp>(getBias().getDefiningOp())) {

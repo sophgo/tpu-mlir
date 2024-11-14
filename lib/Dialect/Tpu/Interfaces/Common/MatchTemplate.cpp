@@ -45,7 +45,7 @@ LogicalResult tpu::MatchTemplateOp::inference(InferenceParameter &p) {
     tmean = BF16(BF16(tmean) / match_size);
   }
 
-// #pragma omp parallel for schedule(static, omp_schedule(outer_size))
+  // #pragma omp parallel for schedule(static, omp_schedule(outer_size))
   for (int i = 0; i < outer_size; i++) {
     uint32_t ioffset = i / c * stride + i % c;
     auto input = input_v + ioffset;

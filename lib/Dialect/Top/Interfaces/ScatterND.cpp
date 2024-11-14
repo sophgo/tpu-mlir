@@ -49,4 +49,6 @@ LogicalResult top::ScatterNDOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ScatterNDOp::shape_inference() { common_shape_inference(getOperation()); }
+void top::ScatterNDOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

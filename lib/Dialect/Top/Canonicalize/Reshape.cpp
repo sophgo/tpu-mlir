@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Patterns.h"
 
 using namespace tpu_mlir::top;
@@ -96,8 +96,7 @@ struct ReshapeInstanceNormPattern : public OpRewriterPatternEx<ReshapeOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ReshapeInstanceNormPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<ReshapeOp>(context,
-                                          "ReshapeInstanceNormPattern") {}
+      : OpRewriterPatternEx<ReshapeOp>(context, "ReshapeInstanceNormPattern") {}
 
   LogicalResult matchAndRewriteImpl(ReshapeOp op,
                                     PatternRewriter &rewriter) const override {
@@ -359,8 +358,7 @@ struct InValidReshapeMergePattern : public OpRewriterPatternEx<ReshapeOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   InValidReshapeMergePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<ReshapeOp>(context,
-                                          "InValidReshapeMergePattern") {}
+      : OpRewriterPatternEx<ReshapeOp>(context, "InValidReshapeMergePattern") {}
 
   LogicalResult matchAndRewriteImpl(ReshapeOp op,
                                     PatternRewriter &rewriter) const override {
@@ -576,10 +574,11 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
 
     Reshape:  input like: 1,8,8,7,7,96
               output like: 64,49,96
-  This is a Reshape-Permute-Reshape => Depth2Space+Reshape Structure. Not in this pattern.
+  This is a Reshape-Permute-Reshape => Depth2Space+Reshape Structure. Not in
+  this pattern.
   */
   LogicalResult matchAndRewriteImpl(ReshapeOp op,
-                                PatternRewriter &rewriter) const override{
+                                    PatternRewriter &rewriter) const override {
     // check output and next op
     auto output = op.getOutput();
     if (!output.hasOneUse())
@@ -598,85 +597,85 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
     }
     // check permute order
     auto order = module::getI64Array(permute_op.getOrder());
-    std::vector<int64_t> valid_permute_order1 = {0,1,3,4,2,5};
+    std::vector<int64_t> valid_permute_order1 = {0, 1, 3, 4, 2, 5};
     if (order->size() != valid_permute_order1.size() ||
-        !std::equal(order->begin(), order->end(), valid_permute_order1.begin())){
-        return failure();
+        !std::equal(order->begin(), order->end(),
+                    valid_permute_order1.begin())) {
+      return failure();
     }
 
     // check the input of previous permute op and the previous reshape op
     auto permute_op_in = permute_op.getInput();
     auto pre_reshape_op = dyn_cast<ReshapeOp>(permute_op_in.getDefiningOp());
-    if(!pre_reshape_op){
+    if (!pre_reshape_op) {
       return failure();
     }
-    // if the input of permute_op has other used, then those ops cannot be fused into depth2space
-    if (!permute_op_in.hasOneUse()){
+    // if the input of permute_op has other used, then those ops cannot be fused
+    // into depth2space
+    if (!permute_op_in.hasOneUse()) {
       return failure();
     }
     auto permute_op_in_shape = module::getShape(permute_op_in);
 
     // define the new output shape for the first reshape
     std::vector<int64_t> new_out_shape_pre_reshape = {
-    permute_op_in_shape[0],
-    permute_op_in_shape[1] * permute_op_in_shape[2],
-    permute_op_in_shape[3] * permute_op_in_shape[4],
-    permute_op_in_shape[5]
-    };
+        permute_op_in_shape[0], permute_op_in_shape[1] * permute_op_in_shape[2],
+        permute_op_in_shape[3] * permute_op_in_shape[4],
+        permute_op_in_shape[5]};
 
     // check the input shape of previous reshape
-    // shape of the input of pre reshape, usually like [1,3196,96], or [1,56,56,96]
+    // shape of the input of pre reshape, usually like [1,3196,96], or
+    // [1,56,56,96]
     auto input_shape_pre = module::getShape(pre_reshape_op.getInput());
-    // shape of the output of pre reshape, usually like [1, 28, 2, 28, 2, 96]; and final output will be [1,28,28,96*4]
+    // shape of the output of pre reshape, usually like [1, 28, 2, 28, 2, 96];
+    // and final output will be [1,28,28,96*4]
     auto output_shape_pre = module::getShape(pre_reshape_op.getOutput());
 
     int64_t block_h = output_shape_pre[2];
     int64_t block_w = output_shape_pre[4];
 
     // if the output channel is input channel * bh * bw
-    if (input_shape_pre[input_shape_pre.size() - 1] * block_h * block_w != output_shape[output_shape.size() - 1]) {
-        return failure();
+    if (input_shape_pre[input_shape_pre.size() - 1] * block_h * block_w !=
+        output_shape[output_shape.size() - 1]) {
+      return failure();
     }
 
     // setup attributes for Depth2SpaceOp
     std::vector<NamedAttribute> attrs;
-    // First Reshape ouput, like 1*28*2*28*2*96. Permute to 1*28*28*2*2*96. Thus CRD
+    // First Reshape ouput, like 1*28*2*28*2*96. Permute to 1*28*28*2*2*96. Thus
+    // CRD
     attrs.push_back(
-      rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(false)));
+        rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(false)));
     attrs.push_back(
-      rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
+        rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
     attrs.push_back(
-      rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(false)));
+        rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(false)));
     attrs.push_back(
-      rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(false)));
-    attrs.push_back(rewriter.getNamedAttr(
-      "block_h", rewriter.getI64IntegerAttr(block_h)));
-    attrs.push_back(rewriter.getNamedAttr(
-      "block_w", rewriter.getI64IntegerAttr(block_w)));
+        rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(block_h)));
+    attrs.push_back(
+        rewriter.getNamedAttr("block_w", rewriter.getI64IntegerAttr(block_w)));
     // if swap_cr is false, npz comparison can not pass.
     attrs.push_back(
         rewriter.getNamedAttr("swap_cr", rewriter.getBoolAttr(true)));
     auto depth2space_output_type = op.getResult().getType();
 
     // if the input of previous reshape is [1, 3196, 96]
-    if (input_shape_pre.size() +1 == output_shape.size()){
+    if (input_shape_pre.size() + 1 == output_shape.size()) {
       // update the output shape of first reshape
       module::setShape(pre_reshape_op->getResult(0), new_out_shape_pre_reshape);
       rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
-          op,
-          depth2space_output_type,
-          ValueRange{pre_reshape_op.getOutput()},
+          op, depth2space_output_type, ValueRange{pre_reshape_op.getOutput()},
           attrs);
       rewriter.eraseOp(permute_op);
 
       return success();
     }
     // if the input is [1,56,56,96]
-    else if (input_shape_pre.size() == output_shape.size()){
+    else if (input_shape_pre.size() == output_shape.size()) {
       rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
-          op,
-          depth2space_output_type,
-          ValueRange{pre_reshape_op.getInput()},
+          op, depth2space_output_type, ValueRange{pre_reshape_op.getInput()},
           attrs);
       rewriter.eraseOp(permute_op);
       rewriter.eraseOp(pre_reshape_op);
@@ -690,7 +689,8 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
 
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<Reshape4Depth2SpacePattern, patterns::FuseRepeatPattern<top::ReshapeOp>, TopFuseReshape2,
+  results.insert<Reshape4Depth2SpacePattern,
+                 patterns::FuseRepeatPattern<top::ReshapeOp>, TopFuseReshape2,
                  TopFuseReshape3, ReshapeInstanceNormPattern, MergeGeluPattern,
                  ReshapeMovePattern, InValidReshapeMergePattern,
                  TopAddReshapeSwap, TopReshapeFuse, TopReshapeFuse2>(context);

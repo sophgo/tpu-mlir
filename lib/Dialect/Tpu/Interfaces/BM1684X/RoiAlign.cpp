@@ -37,6 +37,4 @@ int64_t tpu::RoiAlignOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::RoiAlignOp::get_fw_type_bm1684x() {
-  return FW_BMNET_ROI_ALIGN;
-}
+int64_t tpu::RoiAlignOp::get_fw_type_bm1684x() { return FW_BMNET_ROI_ALIGN; }

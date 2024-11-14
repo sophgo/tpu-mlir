@@ -16,8 +16,9 @@ void MaxUnpoolLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::MaxUnpoolOp op) const {
   lowering_common_f32<tpu::MaxUnpoolOp>(rewriter, op);
 }
-void MaxUnpoolLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxUnpoolOp op,
-                                   bool asymmetric) const {
+void MaxUnpoolLowering::LoweringINT4(PatternRewriter &rewriter,
+                                     top::MaxUnpoolOp op,
+                                     bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MaxUnpoolLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -37,7 +38,7 @@ void MaxUnpoolLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MaxUnpoolLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::MaxUnpoolOp op) const {
+                                   top::MaxUnpoolOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

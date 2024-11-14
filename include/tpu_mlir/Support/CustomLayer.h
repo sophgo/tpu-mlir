@@ -1,6 +1,6 @@
 #include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/DialectImplementation.h"
+#include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 
 typedef union {
@@ -13,11 +13,12 @@ typedef union {
 
 #define CUSTOM_LAYER_NAME_LEN 20
 typedef struct {
-  char     name[CUSTOM_LAYER_NAME_LEN + 1];
-  int      param_size;
+  char name[CUSTOM_LAYER_NAME_LEN + 1];
+  int param_size;
 } tpu_param_t;
 
-static void customOpProcessParam(const mlir::ArrayAttr &params, std::vector<custom_param_t> &values) {
+static void customOpProcessParam(const mlir::ArrayAttr &params,
+                                 std::vector<custom_param_t> &values) {
   for (auto param : params) {
     auto dict = param.dyn_cast<mlir::DictionaryAttr>();
     for (auto element : dict) {
@@ -34,7 +35,8 @@ static void customOpProcessParam(const mlir::ArrayAttr &params, std::vector<cust
         for (int i = 0; i < num; i++) {
           if (auto tmp_value = array_attr[i].dyn_cast<mlir::IntegerAttr>()) {
             value.int_arr_t[i] = tmp_value.getInt();
-          } else if (auto tmp_value = array_attr[i].dyn_cast<mlir::FloatAttr>()) {
+          } else if (auto tmp_value =
+                         array_attr[i].dyn_cast<mlir::FloatAttr>()) {
             value.float_arr_t[i] = tmp_value.getValueAsDouble();
           } else {
             llvm_unreachable("Only int and float vector supported now");

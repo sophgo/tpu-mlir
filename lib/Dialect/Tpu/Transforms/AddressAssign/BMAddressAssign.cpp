@@ -9,8 +9,8 @@
 
 #include "BMAddressAssign.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Backend/BM168x/MARS3.h"
+#include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
 #include "llvm/Support/Debug.h"
@@ -105,9 +105,8 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
     auto op = (Operation *)value.op;
     if (isa<top::InputOp, FuncOp, top::WeightOp, func::CallOp>(op))
       continue;
-    if (buffer_must_in_l2(op)
-          && live.tensor_size > l2memSize)
-    llvm_unreachable("BufferOp with L2 and size > l2memSize");
+    if (buffer_must_in_l2(op) && live.tensor_size > l2memSize)
+      llvm_unreachable("BufferOp with L2 and size > l2memSize");
 
     auto result = op->getResult(value.index);
     if (valueIsRetrun(result))
@@ -146,7 +145,8 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
         ValueInfo vMin;
         for (auto &[k, v] : valueIntensive) {
           auto op = (Operation *)k.op;
-          if(buffer_must_in_l2(op)) continue;
+          if (buffer_must_in_l2(op))
+            continue;
           if (minTraffic == 0 || minTraffic > v.size * v.hot) {
             vMin = k;
             minTraffic = v.size * v.hot;
@@ -160,7 +160,7 @@ L2MemAssign(std::map<ValueInfo, TensorLive> &liveRange, bool reuse_addr) {
   for (auto &[value, live] : liveRange) {
     auto op = (Operation *)value.op;
     if (buffer_must_in_l2(op) && L2MemMap.count(value) == 0)
-    llvm_unreachable("BufferOp with MUST_L2 and not in L2MemMap");
+      llvm_unreachable("BufferOp with MUST_L2 and not in L2MemMap");
   }
 
   LLVM_DEBUG(llvm::dbgs() << "L2Memory usage: " << l2memUsed / 1024 << " KB\n");
@@ -330,9 +330,9 @@ static void fix_addr_for_io_alone(mlir::ModuleOp &m, int64_t start,
 
 static void sort_ios(std::vector<Value> &ios) {
   std::sort(ios.begin(), ios.end(),
-            [](const mlir::Value& a, const mlir::Value& b) {
-    return module::getBytes(a) > module::getBytes(b);
-  });
+            [](const mlir::Value &a, const mlir::Value &b) {
+              return module::getBytes(a) > module::getBytes(b);
+            });
 }
 
 void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
@@ -357,8 +357,7 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
       for (io_index = 0; io_index < tag_max; io_index++) {
         module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
       }
-    }
-    else {
+    } else {
       for (auto &io : ios) {
         module::setAddress(io, BM168x::IO_ADDR[io_index++]);
       }
@@ -469,7 +468,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     if (mode == RunMode::TPU_STATIC) {
       continue;
     }
-    func.walk([&](top::WeightOp op) {   // dynamic
+    func.walk([&](top::WeightOp op) { // dynamic
       const auto out_value = op.getOutput();
       auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
       /// consider 4N/2N storage mode
@@ -669,8 +668,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       if (axis != 4) {
         auto _offset = p.offset_4[axis] < 0 ? p.offset_4[axis] + p.is_4[axis]
                                             : p.offset_4[axis];
-        offset_bytes =
-            _offset * module::getDtypeSize(sliceOp.getOutput());
+        offset_bytes = _offset * module::getDtypeSize(sliceOp.getOutput());
         for (int i = axis + 1; i < 4; ++i) {
           offset_bytes *= p.is_4[i];
         }
@@ -750,12 +748,13 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                      llvm::zip(yieldOp->getOperands(),
                                parallelOp->getResultTypes())) {
                   joinOpValue.setType(returnType);
-                  if(!isa<tpu::JoinOp>(joinOpValue.getDefiningOp())) continue;
+                  if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
+                    continue;
                   int64_t address = module::getAddress(joinOpValue);
                   for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
-                  if (v.getType().isa<NoneType>()) {
-                    continue;
-                  }
+                    if (v.getType().isa<NoneType>()) {
+                      continue;
+                    }
                     module::setAddress(v, address);
                     address += module::getBytes(v);
                   }
@@ -1029,11 +1028,13 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     }
     return true;
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-    if (run_mode == tpu::RunMode::TPU_DYNAMIC) return false;
+    if (run_mode == tpu::RunMode::TPU_DYNAMIC)
+      return false;
     auto p = sliceOp.parseParam();
     return p.fusible;
   } else if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
-    if (run_mode == tpu::RunMode::TPU_DYNAMIC) return false;
+    if (run_mode == tpu::RunMode::TPU_DYNAMIC)
+      return false;
     return concatOp.getOnlyMerge();
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
@@ -1091,7 +1092,8 @@ uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
     }
     auto storeop = dyn_cast<tpu::StoreOp>(pre_op);
     if (storeop->hasAttr("compress_info")) {
-      auto cinfo_pre = storeop->getAttr("compress_info").cast<tpu::CompressAttr>();
+      auto cinfo_pre =
+          storeop->getAttr("compress_info").cast<tpu::CompressAttr>();
       do_compress = cinfo_pre.getDoCompress();
     }
   } else if (op != nullptr && op->hasAttr("compress_info")) {
@@ -1101,10 +1103,12 @@ uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
   if (do_compress) {
     std::vector<int64_t> shape = module::getShape(op->getResult(index));
     auto stype = module::getStorageType(op->getResult(index));
-    shape_t ishape = {(int)shape[0], (int)shape[1], (int)shape[2], (int)shape[3]};
+    shape_t ishape = {(int)shape[0], (int)shape[1], (int)shape[2],
+                      (int)shape[3]};
     size_t max_meta_bytes = tpu_compress_RACU_max_meta_bytes(ishape);
     size_t max_racu_bytes = tpu_compress_RACU_max_racu_bytes(ishape, stype);
-    size = std::max((size_t)size, align_up(max_meta_bytes, Arch::EU_BYTES) + align_up(max_racu_bytes, Arch::EU_BYTES));
+    size = std::max((size_t)size, align_up(max_meta_bytes, Arch::EU_BYTES) +
+                                      align_up(max_racu_bytes, Arch::EU_BYTES));
   }
 
   // pad to aligment_

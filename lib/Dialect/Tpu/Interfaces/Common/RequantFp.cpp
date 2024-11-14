@@ -7,11 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float8.h"
-
-
+#include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
   return success();
@@ -50,13 +47,14 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   case RequantMode::MultiplierShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
-      int32_t v = to_int((float)(p.inputs[0][i]) * scale_v + offset_v, round_mode);
+      int32_t v =
+          to_int((float)(p.inputs[0][i]) * scale_v + offset_v, round_mode);
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
   case RequantMode::OnlyScale:
     if (o_sType.isFloat8E4M3FN())
-      F8E4M3(p.inputs[0], p.outputs[0], length, 1/scale_v, true);
+      F8E4M3(p.inputs[0], p.outputs[0], length, 1 / scale_v, true);
     else if (o_sType.isFloat8E5M2())
       F8E5M2(p.inputs[0], p.outputs[0], length, 1.0, true);
     else
@@ -85,7 +83,8 @@ mlir::Type tpu::RequantFpOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 
 ArrayAttr tpu::RequantFpOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

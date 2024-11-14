@@ -56,8 +56,8 @@ public:
   };
 
   template <typename T>
-  inline Binary &hs(T* lhs, T *rhs, llvm::ArrayRef<int64_t> lhs_shape,
-                     llvm::ArrayRef<int64_t> rhs_shape) {
+  inline Binary &hs(T *lhs, T *rhs, llvm::ArrayRef<int64_t> lhs_shape,
+                    llvm::ArrayRef<int64_t> rhs_shape) {
     auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
     auto l_shape = shape_expand_dim(lhs_shape, max_ndim);
     auto r_shape = shape_expand_dim(rhs_shape, max_ndim);

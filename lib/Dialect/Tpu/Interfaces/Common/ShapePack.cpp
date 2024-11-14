@@ -8,9 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Dnnl/Concat.h"
-
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 using namespace tpu_mlir::backend;
 

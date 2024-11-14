@@ -7,31 +7,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 LogicalResult tpu::WeightReorderOp::init(InferenceParameter &p) {
 
   return success();
 }
 
-void tpu::WeightReorderOp::deinit(InferenceParameter &p) {
-
-}
+void tpu::WeightReorderOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::WeightReorderOp::inference(InferenceParameter &p) {
 
   return success();
 }
 
-uint32_t tpu::WeightReorderOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::WeightReorderOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-
-int64_t tpu::WeightReorderOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::WeightReorderOp::get_fw_type_bm1684() { return -1; }
 
 bool tpu::WeightReorderOp::support_multi_core() { return false; }

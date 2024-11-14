@@ -12,8 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormTrainOp op,
-                              Type type) {
+static void LoweringLayerNorm(PatternRewriter &rewriter,
+                              top::LayerNormTrainOp op, Type type) {
   printf("xxxx6\n");
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
@@ -54,17 +54,18 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormTrainOp o
   }
 
   printf("xxxx6, len:%d\n", (int)opds.size());
-  rewriter.replaceOpWithNewOp<tpu::LayerNormTrainOp>(op, new_types, opds, attrs);
+  rewriter.replaceOpWithNewOp<tpu::LayerNormTrainOp>(op, new_types, opds,
+                                                     attrs);
   return;
 }
 
 void LayerNormTrainLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::LayerNormTrainOp op) const {
+                                         top::LayerNormTrainOp op) const {
   LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void LayerNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::LayerNormTrainOp op) const {
+                                          top::LayerNormTrainOp op) const {
   if (module::isBM1688() || module::isSG2380()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
   } else {
@@ -73,25 +74,28 @@ void LayerNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
 }
 
 void LayerNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::LayerNormTrainOp op) const {
+                                         top::LayerNormTrainOp op) const {
   LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
 }
 
 void LayerNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::LayerNormTrainOp op) const {
+                                        top::LayerNormTrainOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void LayerNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormTrainOp op,
-                          bool asymmetric) const {
+void LayerNormTrainLowering::LoweringINT8(PatternRewriter &rewriter,
+                                          top::LayerNormTrainOp op,
+                                          bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void LayerNormTrainLowering::LoweringINT4(PatternRewriter &rewriter, top::LayerNormTrainOp op,
-                          bool asymmetric) const {
+void LayerNormTrainLowering::LoweringINT4(PatternRewriter &rewriter,
+                                          top::LayerNormTrainOp op,
+                                          bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void LayerNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter, top::LayerNormTrainOp op) const {
+void LayerNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                               top::LayerNormTrainOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -17,13 +17,13 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace tpu {
 
-class MatMulDDRInterleave  : public OpRewriterPatternEx<MatMulOp> {
-  public:
+class MatMulDDRInterleave : public OpRewriterPatternEx<MatMulOp> {
+public:
   MatMulDDRInterleave(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<MatMulOp>(context,"MatMulDDRInterleave") {}
+      : OpRewriterPatternEx<MatMulOp>(context, "MatMulDDRInterleave") {}
 
   LogicalResult matchAndRewriteImpl(MatMulOp Op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     for (auto user : Op->getUsers())
       if (user->hasTrait<OpTrait::IsTerminator>())
@@ -54,7 +54,7 @@ class MatMulDDRInterleave  : public OpRewriterPatternEx<MatMulOp> {
     }
     return success();
   };
-  bool shouldPrint(MatMulOp Op) const override { return false;}
+  bool shouldPrint(MatMulOp Op) const override { return false; }
 };
 
 class DDRInterleavePass : public DDRInterleaveBase<DDRInterleavePass> {

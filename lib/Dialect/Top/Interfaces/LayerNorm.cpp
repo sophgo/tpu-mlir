@@ -105,5 +105,4 @@ void top::LayerNormOp::shape_inference() {
   if (module::isWeight(getBias())) {
     broadcast_tensor_reshape(getOutput(), getBias());
   }
-
 }

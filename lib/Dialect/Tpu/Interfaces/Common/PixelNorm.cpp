@@ -7,12 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/LutFunc.h"
 
 static void normlize_f32(const float *input_data, float *output_data,
                          const float *weight_data, const float *bias_data,
-                         const int inner_dim, const int channel, const float eps_) {
+                         const int inner_dim, const int channel,
+                         const float eps_) {
   float mean_data = 0;
   float rstd_data = 0;
   for (int j = 0; j < channel; ++j) {
@@ -42,7 +42,8 @@ static void normlize_f32(const float *input_data, float *output_data,
 static void normlize_bf16(const float *input_data, float *output_data,
                           const float *weight_data, const float *bias_data,
                           float *table, float *mantissa_table,
-                          const int inner_dim, const int channel, const float eps_) {
+                          const int inner_dim, const int channel,
+                          const float eps_) {
   float mean = 0;
   float rstd = 0;
   float avg_const = BF16(1.0f / channel);
@@ -56,8 +57,7 @@ static void normlize_bf16(const float *input_data, float *output_data,
   }
   rstd = BF16(BF16(rstd) + BF16(eps_));
   if (module::isCV18xx()) {
-    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table,
-                      "mantissa");
+    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table, "mantissa");
   } else {
     rstd = std::sqrt(rstd);
     rstd = 1. / rstd;
@@ -67,20 +67,20 @@ static void normlize_bf16(const float *input_data, float *output_data,
     output_data[j * inner_dim] = BF16(input_data[j * inner_dim] - mean);
     output_data[j * inner_dim] = BF16(output_data[j * inner_dim] * rstd);
     if (weight_data) {
-      output_data[j * inner_dim] = BF16(output_data[j * inner_dim] * weight_data[j]);
+      output_data[j * inner_dim] =
+          BF16(output_data[j * inner_dim] * weight_data[j]);
     }
     if (bias_data) {
-      output_data[j * inner_dim] = BF16(output_data[j * inner_dim] + bias_data[j]);
+      output_data[j * inner_dim] =
+          BF16(output_data[j * inner_dim] + bias_data[j]);
     }
   }
 }
 
 template <typename T>
-T sadd(T a, T b)
-{
-  static_assert(
-    std::is_integral<T>::value,
-    "sadd is not defined for non-integral types");
+T sadd(T a, T b) {
+  static_assert(std::is_integral<T>::value,
+                "sadd is not defined for non-integral types");
   const T max_val = std::numeric_limits<T>::max();
   const T min_val = std::numeric_limits<T>::min();
   if (a > 0) {
@@ -95,12 +95,9 @@ T sadd(T a, T b)
   return a + b;
 }
 
-static void normlize_i8(
-    const float *input, float *output,
-    const float *weight, const float *bias,
-    int inner_dim, int channel,
-    float eps, float scale, bool is_signed)
-{
+static void normlize_i8(const float *input, float *output, const float *weight,
+                        const float *bias, int inner_dim, int channel,
+                        float eps, float scale, bool is_signed) {
   const float avg_const = F16(1.0f / channel);
   const float eps_f16 = F16(eps);
   const float scale_f16 = F16(scale);
@@ -169,28 +166,26 @@ LogicalResult tpu::PixelNormOp::inference(InferenceParameter &p) {
   for (int i = 0; i < num_iter; ++i) {
     const int p = i / inner_dim;
     const int q = i % inner_dim;
-    const float* input_i = input_data + p * channel * inner_dim + q;
-    float* output_i = output_data + p * channel * inner_dim + q;
+    const float *input_i = input_data + p * channel * inner_dim + q;
+    float *output_i = output_data + p * channel * inner_dim + q;
     if (!module::isUniformQuantized(getInput())) {
       if (is_bf16) {
-        normlize_bf16(input_i, output_i, weight_data, bias_data, table,
-                      mtable, inner_dim, channel, eps_);
+        normlize_bf16(input_i, output_i, weight_data, bias_data, table, mtable,
+                      inner_dim, channel, eps_);
       } else {
         normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim,
                      channel, eps_);
       }
     } else {
       const auto qtype = module::getUniformQuantizedType(getInput());
-      normlize_i8(input_i, output_i, weight_data, bias_data, inner_dim,
-                  channel, eps_, qtype.getScale(), qtype.isSigned());
+      normlize_i8(input_i, output_i, weight_data, bias_data, inner_dim, channel,
+                  eps_, qtype.getScale(), qtype.isSigned());
     }
   }
   return success();
 }
 
-LogicalResult tpu::PixelNormOp::LocalGenSupport() {
-  return success();
-}
+LogicalResult tpu::PixelNormOp::LocalGenSupport() { return success(); }
 
 mlir::Type tpu::PixelNormOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();

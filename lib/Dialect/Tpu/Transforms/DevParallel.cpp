@@ -124,12 +124,9 @@ void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
 
   for (size_t i = 0; i < ops_end.size(); ++i) {
     inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
-      return ( use.getOwner() != end &&
-              !isa<tpu::ConcatOp,
-               tpu::MatMulOp,
-               tpu::PermuteOp,
-               tpu::UnsqueezeOp,
-               tpu::FAttentionOp>(use.getOwner()));
+      return (use.getOwner() != end &&
+              !isa<tpu::ConcatOp, tpu::MatMulOp, tpu::PermuteOp,
+                   tpu::UnsqueezeOp, tpu::FAttentionOp>(use.getOwner()));
     });
   }
 }
@@ -253,15 +250,15 @@ void eraseForward(PatternRewriter &rewriter, Operation *op) {
 // ===================================
 // distribute all ops to multi device
 // ===================================
-class DoDistributePattern  : public OpRewriterPatternEx<tpu::DevBeginOp> {
-  public:
+class DoDistributePattern : public OpRewriterPatternEx<tpu::DevBeginOp> {
+public:
   DoDistributePattern(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::DevBeginOp>(context) {
-        num_devices = module::getDeviceNum();
-      }
+    num_devices = module::getDeviceNum();
+  }
 
   LogicalResult matchAndRewriteImpl(tpu::DevBeginOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getDone()) {
       return failure();
@@ -334,7 +331,7 @@ class DoDistributePattern  : public OpRewriterPatternEx<tpu::DevBeginOp> {
     return success();
   }
 
-  bool shouldPrint(tpu::DevBeginOp op) const override { return false;}
+  bool shouldPrint(tpu::DevBeginOp op) const override { return false; }
 
 private:
   int64_t num_devices;

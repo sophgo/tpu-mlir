@@ -109,7 +109,7 @@ void PReluLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void PReluLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::PReluOp op) const {
+                               top::PReluOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

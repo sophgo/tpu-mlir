@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::LoopOp::getFLOPs() { return 0; }
 
@@ -21,14 +21,14 @@ LogicalResult top::LoopOp::inference(InferenceParameter &p) {
 
 Operation::result_range top::LoopOp::v_final() {
   auto results = getResults();
-  return llvm::make_range(
-      results.begin(), results.begin() + getVInitial().size());
+  return llvm::make_range(results.begin(),
+                          results.begin() + getVInitial().size());
 }
 
 Operation::result_range top::LoopOp::scan_outputs() {
   auto results = getResults();
-  return llvm::make_range(
-      results.begin() + getVInitial().size(), results.end());
+  return llvm::make_range(results.begin() + getVInitial().size(),
+                          results.end());
 }
 
 static inline bool containSubgraph(Operation &op) {
@@ -36,28 +36,29 @@ static inline bool containSubgraph(Operation &op) {
 }
 
 static inline bool isUsedByReturnOp(Operation &op) {
-  return std::any_of(op.getUsers().begin(), op.getUsers().end(),
-          [](Operation *user) { return isa<func::ReturnOp, top::YieldOp>(user); });
+  return std::any_of(
+      op.getUsers().begin(), op.getUsers().end(),
+      [](Operation *user) { return isa<func::ReturnOp, top::YieldOp>(user); });
 }
 
 static inline bool returnsDynamicOrUnknownShape(Operation &op) {
-  return std::any_of(op.getResultTypes().begin(),
-                     op.getResultTypes().end(),
-                     [](Type result_type) {
-                        if (result_type.isa<RankedTensorType>())
-                          return std::any_of(result_type.dyn_cast<RankedTensorType>().getShape().begin(),
-                                          result_type.dyn_cast<RankedTensorType>().getShape().end(),
-                                          [](int64_t dim) { return dim < 0; });
-                        else
-                          return !result_type.isa<NoneType>();});
+  return std::any_of(
+      op.getResultTypes().begin(), op.getResultTypes().end(),
+      [](Type result_type) {
+        if (result_type.isa<RankedTensorType>())
+          return std::any_of(
+              result_type.dyn_cast<RankedTensorType>().getShape().begin(),
+              result_type.dyn_cast<RankedTensorType>().getShape().end(),
+              [](int64_t dim) { return dim < 0; });
+        else
+          return !result_type.isa<NoneType>();
+      });
 }
 
 static inline LogicalResult runShapeInferenceOnRegion(Region &r) {
   for (Operation &op : r.getOps()) {
-    if (!isa<top::InputOp>(op)
-        && !containSubgraph(op)
-        && !isUsedByReturnOp(op)
-        && !returnsDynamicOrUnknownShape(op))
+    if (!isa<top::InputOp>(op) && !containSubgraph(op) &&
+        !isUsedByReturnOp(op) && !returnsDynamicOrUnknownShape(op))
       continue;
     if (auto shape_op = llvm::dyn_cast<ShapeInterface>(op)) {
       std::optional<RegisteredOperationName> registeredInfo =
@@ -77,12 +78,12 @@ static inline LogicalResult runShapeInferenceOnRegion(Region &r) {
   return success();
 }
 
-static inline void updateType(Value val, ArrayRef<int64_t> shape, Type elementType,
-    Attribute encoding) {
+static inline void updateType(Value val, ArrayRef<int64_t> shape,
+                              Type elementType, Attribute encoding) {
   SmallVector<int64_t, 4> inferredShape;
   for (size_t i = 0; i < shape.size(); ++i)
-    inferredShape.emplace_back(
-        shape[i] != -1 ? shape[i] : ShapedType::kDynamic);
+    inferredShape.emplace_back(shape[i] != -1 ? shape[i]
+                                              : ShapedType::kDynamic);
 
   if (!elementType)
     elementType = mlir::getElementTypeOrSelf(val.getType());
@@ -103,7 +104,7 @@ static inline void updateType(Value val, ArrayRef<int64_t> shape, Type elementTy
 void top::LoopOp::shape_inference() {
   auto &loopBody = getRegion();
   ASSERT_THIS(loopBody.getNumArguments() >= 2 &&
-         "Loop body must take at least 2 inputs.");
+              "Loop body must take at least 2 inputs.");
   loopBody.getArgument(0).setType(getM().getType());
   loopBody.getArgument(1).setType(getCond().getType());
 
@@ -135,9 +136,9 @@ void top::LoopOp::shape_inference() {
         std::get<1>(vScanOutputValToTy).cast<RankedTensorType>();
     auto shape = rankedScanTy.getShape();
     SmallVector<int64_t, 4> unsqueezedShape(shape.begin(), shape.end());
-    //unsqueezedShape.insert(unsqueezedShape.begin(), ShapedType::kDynamic);
+    // unsqueezedShape.insert(unsqueezedShape.begin(), ShapedType::kDynamic);
     updateType(std::get<0>(vScanOutputValToTy), unsqueezedShape,
-        rankedScanTy.getElementType(), nullptr);
+               rankedScanTy.getElementType(), nullptr);
   }
 
   return;

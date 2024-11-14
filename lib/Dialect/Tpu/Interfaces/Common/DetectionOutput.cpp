@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-LogicalResult tpu::DetectionOutputOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::DetectionOutputOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::DetectionOutputOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DetectionOutputOp::inference(InferenceParameter &p) {
@@ -23,7 +25,7 @@ LogicalResult tpu::DetectionOutputOp::inference(InferenceParameter &p) {
   param.background_label_id = this->getBackgroundLabelId();
   param.loc_shape = module::getShape(this->getInputs()[0]);
   param.conf_shape = module::getShape(this->getInputs()[1]);
-   //onnx ssd just have loc、conf
+  // onnx ssd just have loc、conf
   if (this->getInputs().size() >= 3) {
     param.prior_shape = module::getShape(this->getInputs()[2]);
     param.onnx_nms = 0;
@@ -43,7 +45,7 @@ LogicalResult tpu::DetectionOutputOp::inference(InferenceParameter &p) {
   }
   param.loc_data = p.inputs[0];
   param.conf_data = p.inputs[1];
-  param.prior_data = param.onnx_nms ? nullptr :p.inputs[2];
+  param.prior_data = param.onnx_nms ? nullptr : p.inputs[2];
   param.output_data = p.outputs[0];
 
   DetectionOutputFunc det_func(param);
@@ -53,4 +55,3 @@ LogicalResult tpu::DetectionOutputOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::DetectionOutputOp::support_multi_core() { return false; }
-

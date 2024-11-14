@@ -9,12 +9,13 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-inline static unsigned start_index(unsigned oidx, unsigned olen, unsigned ilen){
-    return oidx * ilen / olen;
+inline static unsigned start_index(unsigned oidx, unsigned olen,
+                                   unsigned ilen) {
+  return oidx * ilen / olen;
 }
 
-inline static unsigned end_index(unsigned oidx, unsigned olen, unsigned ilen){
-    return ((oidx + 1) * ilen + olen - 1) / olen;
+inline static unsigned end_index(unsigned oidx, unsigned olen, unsigned ilen) {
+  return ((oidx + 1) * ilen + olen - 1) / olen;
 }
 int64_t top::AvgPoolOp::getFLOPs() {
   auto attr = parseParam();
@@ -110,8 +111,9 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  if(getIsAdaptive()){
-    // Only consider adaptive_avgpool2d here, if encounter with other case, please fix it
+  if (getIsAdaptive()) {
+    // Only consider adaptive_avgpool2d here, if encounter with other case,
+    // please fix it
     auto input_shape = module::getShape(getInput());
     auto output_shape = module::getShape(getOutput());
     int input_dim = input_shape.size();
@@ -126,38 +128,40 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
     // treat batch size and channels as one dimension
     // notice : 4D maybe (N, C, H, W)(pool2d) or (C, D, H, W)(pool3d)
     ASSERT_THIS(ndim == 3 || ndim == 4);
-    int64_t channels = ndim == 3 ? input_shape[0] : input_shape[0] * input_shape[1];
-    int64_t input_height = input_shape[input_dim -2];
+    int64_t channels =
+        ndim == 3 ? input_shape[0] : input_shape[0] * input_shape[1];
+    int64_t input_height = input_shape[input_dim - 2];
     int64_t input_width = input_shape[input_dim - 1];
-    int64_t output_height = output_shape[output_dim -2];
-    int64_t output_width = output_shape[output_dim -1];
+    int64_t output_height = output_shape[output_dim - 2];
+    int64_t output_width = output_shape[output_dim - 1];
 
-    // parallel on dim of N, C
-    #pragma omp parallel for schedule(static, omp_schedule(channels))
-      for (int c_idx = 0; c_idx < channels; c_idx++) {
-        int64_t input_idx =  c_idx * input_height * input_width;
-        int64_t output_idx = c_idx * output_height * output_width;
+// parallel on dim of N, C
+#pragma omp parallel for schedule(static, omp_schedule(channels))
+    for (int c_idx = 0; c_idx < channels; c_idx++) {
+      int64_t input_idx = c_idx * input_height * input_width;
+      int64_t output_idx = c_idx * output_height * output_width;
 
-        for (int oh_idx = 0; oh_idx < output_height; oh_idx++) {
-          int64_t ih0 = start_index(oh_idx, output_height, input_height);
-          int64_t ih1 = end_index(oh_idx, output_height, input_height);
-          int64_t kh = ih1 - ih0;
+      for (int oh_idx = 0; oh_idx < output_height; oh_idx++) {
+        int64_t ih0 = start_index(oh_idx, output_height, input_height);
+        int64_t ih1 = end_index(oh_idx, output_height, input_height);
+        int64_t kh = ih1 - ih0;
 
-          for (int ow_idx = 0; ow_idx < output_width; ow_idx++) {
-            int64_t iw0 = start_index(ow_idx, output_width, input_width);
-            int64_t iw1 = end_index(ow_idx, output_width, input_width);
-            int64_t kw = iw1 - iw0;
+        for (int ow_idx = 0; ow_idx < output_width; ow_idx++) {
+          int64_t iw0 = start_index(ow_idx, output_width, input_width);
+          int64_t iw1 = end_index(ow_idx, output_width, input_width);
+          int64_t kw = iw1 - iw0;
 
-            // compute local average
-            float sum = 0.f;
-            for(int ih_idx = ih0 ; ih_idx < ih1; ih_idx++)
-              for(int iw_idx = iw0 ; iw_idx < iw1; iw_idx++){
-                sum += input_data[input_idx + ih_idx * input_width + iw_idx];
-              }
-            output_data[output_idx + oh_idx * output_width + ow_idx] = (sum / kh / kw);
-          }
+          // compute local average
+          float sum = 0.f;
+          for (int ih_idx = ih0; ih_idx < ih1; ih_idx++)
+            for (int iw_idx = iw0; iw_idx < iw1; iw_idx++) {
+              sum += input_data[input_idx + ih_idx * input_width + iw_idx];
+            }
+          output_data[output_idx + oh_idx * output_width + ow_idx] =
+              (sum / kh / kw);
         }
       }
+    }
   } else {
     auto pooling = (Pooling *)p.handle;
     pooling->run();

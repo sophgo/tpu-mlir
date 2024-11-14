@@ -14,4 +14,3 @@ using namespace tpu_mlir::backend;
 void tpu::ShapeClipOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
-

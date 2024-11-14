@@ -12,8 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringInstanceNorm(PatternRewriter &rewriter, top::InstanceNormOp op,
-                              Type type) {
+static void LoweringInstanceNorm(PatternRewriter &rewriter,
+                                 top::InstanceNormOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -53,42 +53,42 @@ static void LoweringInstanceNorm(PatternRewriter &rewriter, top::InstanceNormOp 
 }
 
 void InstanceNormLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::InstanceNormOp op) const {
+                                       top::InstanceNormOp op) const {
   LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringINT8(PatternRewriter &rewriter,
-                                     top::InstanceNormOp op,
-                                     bool asymmetric) const {
-  if(module::isMARS3())
+                                        top::InstanceNormOp op,
+                                        bool asymmetric) const {
+  if (module::isMARS3())
     LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
   else
     LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringINT4(PatternRewriter &rewriter,
-                                     top::InstanceNormOp op,
-                                     bool asymmetric) const {
+                                        top::InstanceNormOp op,
+                                        bool asymmetric) const {
   LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::InstanceNormOp op) const {
+                                        top::InstanceNormOp op) const {
   LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
 }
 
 void InstanceNormLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::InstanceNormOp op) const {
+                                       top::InstanceNormOp op) const {
   LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::InstanceNormOp op) const {
+                                      top::InstanceNormOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void InstanceNormLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                          top::InstanceNormOp op) const {
+                                             top::InstanceNormOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -83,7 +83,7 @@ void CompareLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void CompareLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::CompareOp compareOp) const {
+                                 top::CompareOp compareOp) const {
   llvm_unreachable("FIXME: not implement");
 }
 

@@ -9,9 +9,7 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::LutOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::LutOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::LutOp::init(InferenceParameter &p) { return success(); }
 void top::LutOp::deinit(InferenceParameter &p) {}
@@ -30,6 +28,4 @@ LogicalResult top::LutOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LutOp::shape_inference() {
-  common_shape_inference(getOperation());
-}
+void top::LutOp::shape_inference() { common_shape_inference(getOperation()); }

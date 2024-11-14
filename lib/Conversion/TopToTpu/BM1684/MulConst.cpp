@@ -48,5 +48,5 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::MulConstOp>(op, newType, operands, attrs);
 }
 
-} // namespace bm1684x
+} // namespace bm1684
 } // namespace tpu_mlir

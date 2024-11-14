@@ -13,12 +13,13 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void CustomLowering::LoweringINT8(PatternRewriter &rewriter, top::CustomOp op,
-                               bool asymmetric) const {
+                                  bool asymmetric) const {
 
   LoweringF32(rewriter, op);
 }
 
-void CustomLowering::LoweringF32(PatternRewriter &rewriter, top::CustomOp op) const {
+void CustomLowering::LoweringF32(PatternRewriter &rewriter,
+                                 top::CustomOp op) const {
   lowering_common_f32<tpu::CustomOp>(rewriter, op, 3);
 }
 

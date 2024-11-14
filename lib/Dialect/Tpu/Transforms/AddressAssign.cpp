@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 #include "AddressAssign/BMAddressAssign.h"
 #include "AddressAssign/CVAddressAssign.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
@@ -19,31 +19,29 @@ namespace tpu {
 
 extern void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns);
 
-
-class ConcatFusePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
-  public:
+class ConcatFusePattern : public OpRewriterPatternEx<tpu::ConcatOp> {
+public:
   ConcatFusePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ConcatOp>(context,"ConcatFusePattern") {}
+      : OpRewriterPatternEx<tpu::ConcatOp>(context, "ConcatFusePattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
-                                PatternRewriter &rewriter) const override {
-    if (!op.supportInplace()){
+                                    PatternRewriter &rewriter) const override {
+    if (!op.supportInplace()) {
       return failure();
     }
     op.setOnlyMerge(true);
     return success();
   }
-  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
+  bool shouldPrint(tpu::ConcatOp op) const override { return false; }
 };
 
-
-class ConcatMergePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
-  public:
+class ConcatMergePattern : public OpRewriterPatternEx<tpu::ConcatOp> {
+public:
   ConcatMergePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ConcatOp>(context,"ConcatMergePattern") {}
+      : OpRewriterPatternEx<tpu::ConcatOp>(context, "ConcatMergePattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1684XFamily()) {
       return failure();
     }
@@ -64,7 +62,7 @@ class ConcatMergePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
         }
         cat_ops.push_back(in.getDefiningOp());
         fix = true;
-        if (concat_in.getAxis()!= op.getAxis()) {
+        if (concat_in.getAxis() != op.getAxis()) {
           fix = false;
           break;
         }
@@ -81,25 +79,26 @@ class ConcatMergePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
     }
     return success();
   }
-  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
+  bool shouldPrint(tpu::ConcatOp op) const override { return false; }
 };
 
-class Concat_SlicePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
-  public:
+class Concat_SlicePattern : public OpRewriterPatternEx<tpu::ConcatOp> {
+public:
   Concat_SlicePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ConcatOp>(context,"Concat_SlicePattern") {}
+      : OpRewriterPatternEx<tpu::ConcatOp>(context, "Concat_SlicePattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!op.getOnlyMerge()) {
       return failure();
     }
     for (auto in : op.getInputs()) {
       auto in_op = in.getDefiningOp();
       auto reshape = dyn_cast_or_null<tpu::ReshapeOp>(in_op);
-      if (reshape){
+      if (reshape) {
         auto reshapeOp = dyn_cast<tpu::ReshapeOp>(in_op);
-        if (auto sliceOp = dyn_cast<tpu::SliceOp>(reshapeOp.getInput().getDefiningOp())) {
+        if (auto sliceOp =
+                dyn_cast<tpu::SliceOp>(reshapeOp.getInput().getDefiningOp())) {
           auto p = sliceOp.parseParam();
           if (p.fusible) {
             op.setOnlyMerge(false);
@@ -109,7 +108,7 @@ class Concat_SlicePattern  : public OpRewriterPatternEx<tpu::ConcatOp> {
     }
     return success();
   }
-  bool shouldPrint(tpu::ConcatOp op) const override { return false;}
+  bool shouldPrint(tpu::ConcatOp op) const override { return false; }
 };
 
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {

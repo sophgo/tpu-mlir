@@ -9,15 +9,15 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-int64_t top::PriorBoxOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::PriorBoxOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
 LogicalResult top::PriorBoxOp::init(InferenceParameter &p) { return success(); }
 void top::PriorBoxOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
-  #if 0
+#if 0
   auto input_image_shape = module::getShape(this->getInputs()[1]);
   ASSERT_THIS(input_image_shape.size() == 4 && input_shape.size() == 4);
 
@@ -115,10 +115,9 @@ LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
       }
     }
   }
-  #endif
+#endif
   return success();
 }
-
 
 void top::PriorBoxOp::shape_inference() {
   int64_t num_priors = getNumPriors();

@@ -51,7 +51,7 @@ void tpu::PadOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
-  if (!module::isNone(getPaddingsT())){
+  if (!module::isNone(getPaddingsT())) {
     std::vector<int64_t> in_shape = module::getShape(getInput());
     int pad_dim = in_shape.size() * 2;
     std::vector<int64_t> pads(pad_dim, 0);
@@ -63,7 +63,7 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
       dump();
       UNREACHABLE_THIS("Not Implemented");
     }
-  }  
+  }
   std::vector<int> pads(p_info->pads_4.begin(), p_info->pads_4.end());
   int64_t in = p_info->shape_4[0];
   int64_t ic = p_info->shape_4[1];
@@ -303,8 +303,7 @@ void tpu::PadOp::assign_fw_param(void *param) {
   memcpy(param, &fw_pad_layer_param, sizeof(fw_pad_layer_param_t));
 }
 
-mlir::Type tpu::PadOp::type_verify(uint64_t opd_idx,
-                                              TypeCastMode &mode) {
+mlir::Type tpu::PadOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
   if (opd_idx == 1) {
     // indices

@@ -21,12 +21,13 @@ typedef struct {
   uint64_t num_src;
 } concat_attr_t;
 
-class Concat{
+class Concat {
 public:
   Concat();
   void setup(std::vector<float *> inputs, float *output, concat_attr_t &attr);
   void run();
   ~Concat() = default;
+
 private:
   engine eng;
   stream eng_stream;
@@ -38,4 +39,3 @@ private:
 };
 
 } // namespace tpu_mlir
-

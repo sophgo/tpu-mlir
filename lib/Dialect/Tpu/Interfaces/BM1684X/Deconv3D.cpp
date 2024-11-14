@@ -21,8 +21,10 @@ void tpu::Deconv3DOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   if (getKernelShape().size() == 1) {
-    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.id, attr.ih, attr.iw});
-    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.od, attr.oh, attr.ow});
+    BM168x::fix_shape(input_spec->at(0),
+                      {attr.n, attr.ic, attr.id, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0),
+                      {attr.n, attr.oc, attr.od, attr.oh, attr.ow});
   }
   deconv3d_global_param_t param = {0};
   param.input_global_addr = module::getAddress(getInput());
@@ -74,7 +76,8 @@ void tpu::Deconv3DOp::codegen_global_bm1684x() {
     param.insert_val = in_qtype.getZeroPoint();
     param.kzp_dtype = param.input_dtype;
   }
-  BM168x::call_global_func("backend_api_deconv3d_global", &param, sizeof(param));
+  BM168x::call_global_func("backend_api_deconv3d_global", &param,
+                           sizeof(param));
 }
 
 // ======================================

@@ -12,12 +12,12 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringDepackRaw(PatternRewriter &rewriter,
-                              top::DepackRawOp op) {
+static void LoweringDepackRaw(PatternRewriter &rewriter, top::DepackRawOp op) {
   std::vector<Value> operands;
   operands.emplace_back(op.getOperand());
   mlir::Type new_type = op.getOutput().getType();
-  rewriter.replaceOpWithNewOp<tpu::DepackRawOp>(op, new_type, operands, op.getOperation()->getAttrs());
+  rewriter.replaceOpWithNewOp<tpu::DepackRawOp>(op, new_type, operands,
+                                                op.getOperation()->getAttrs());
   return;
 }
 
@@ -49,7 +49,7 @@ void DepackRawLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void DepackRawLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::DepackRawOp op) const {
+                                   top::DepackRawOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 

@@ -33,4 +33,6 @@ int64_t tpu::ShapeTransposeOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::ShapeTransposeOp::get_fw_type_bm1684x() { return FW_BMNET_SHAPE_TRANSPOSE; }
+int64_t tpu::ShapeTransposeOp::get_fw_type_bm1684x() {
+  return FW_BMNET_SHAPE_TRANSPOSE;
+}

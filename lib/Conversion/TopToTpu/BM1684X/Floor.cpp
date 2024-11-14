@@ -49,7 +49,7 @@ void FloorLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void FloorLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::FloorOp op) const {
+                               top::FloorOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

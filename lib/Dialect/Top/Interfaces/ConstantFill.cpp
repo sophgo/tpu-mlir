@@ -11,7 +11,9 @@
 
 int64_t top::ConstantFillOp::getFLOPs() { return 0; }
 
-LogicalResult top::ConstantFillOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::ConstantFillOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::ConstantFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ConstantFillOp::inference(InferenceParameter &p) {
@@ -30,8 +32,8 @@ void top::ConstantFillOp::shape_inference() {
     const auto shape = weight.read<float>();
     std::vector<int64_t> shape_(shape->begin(), shape->end());
     int idx = 0;
-    for(auto a : shape_) {
-      if(a == -1)
+    for (auto a : shape_) {
+      if (a == -1)
         shape_[idx] = (int64_t)1;
       idx += 1;
     }
@@ -42,7 +44,8 @@ void top::ConstantFillOp::shape_inference() {
     if (out_shape.size() == 1 || out_shape.size() == 0) {
       std::vector<std::vector<int64_t>> input_shapes_v;
       input_shapes_v.push_back(out_shape);
-      auto output_shape_v = module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+      auto output_shape_v = module::commonShapeValInfer(
+          getOperation(), input_shapes_v, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     }
   } else {

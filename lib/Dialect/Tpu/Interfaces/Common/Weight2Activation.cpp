@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::Weight2ActivationOp::init(InferenceParameter &p) {

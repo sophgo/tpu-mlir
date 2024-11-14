@@ -434,13 +434,11 @@ bool TgFcKernel::try_optimize() {
       int compressedSize = requiredSize;
 
       if (is_bf16) {
-        compressBf16Data(plainData.data(), stepSize,
-                               compressedData.data(), &compressedSize,
-                               &cmdInfo);
+        compressBf16Data(plainData.data(), stepSize, compressedData.data(),
+                         &compressedSize, &cmdInfo);
       } else {
-        compressInt8Data(plainData.data(), stepSize,
-                               compressedData.data(), &compressedSize,
-                               &cmdInfo);
+        compressInt8Data(plainData.data(), stepSize, compressedData.data(),
+                         &compressedSize, &cmdInfo);
       }
 
       if ((dstOffset + compressedSize) > filterSize) {
@@ -476,25 +474,25 @@ void TgFcKernel::selectTilePolicy() {
 
 void TgFcKernel::update_tl_matrix(int32_t step_idx) {
   auto &tile = tiles[step_idx];
-  CV18xx::lmem_init_matrix(&tl_L, CV18xx::ml_default_shape(tile.m, tile.k, fmt), fmt,
-                       1);
+  CV18xx::lmem_init_matrix(&tl_L, CV18xx::ml_default_shape(tile.m, tile.k, fmt),
+                           fmt, 1);
   tl_L.start_address = L_laddr[tile.L_idx];
-  CV18xx::lmem_init_matrix(&tl_R, CV18xx::ml_default_shape(tile.k, tile.n, fmt), fmt,
-                       1);
+  CV18xx::lmem_init_matrix(&tl_R, CV18xx::ml_default_shape(tile.k, tile.n, fmt),
+                           fmt, 1);
   tl_R.start_address = R_laddr[tile.RB_idx];
   if (do_bias) {
-    CV18xx::lmem_init_matrix(&tl_B, CV18xx::ml_default_shape(4 / fmt_size, tile.n, fmt),
-                         fmt, 1);
+    CV18xx::lmem_init_matrix(
+        &tl_B, CV18xx::ml_default_shape(4 / fmt_size, tile.n, fmt), fmt, 1);
     tl_B.start_address = B_laddr[tile.RB_idx];
   }
-  CV18xx::lmem_init_matrix(&tl_Y, CV18xx::ml_default_shape(tile.m, tile.n, fmt), fmt,
-                       1);
+  CV18xx::lmem_init_matrix(&tl_Y, CV18xx::ml_default_shape(tile.m, tile.n, fmt),
+                           fmt, 1);
   tl_Y.start_address = Y_laddr[tile.Y_idx];
   if (do_quant_bf16) {
-    CV18xx::lmem_init_matrix(&tl_scale, CV18xx::ml_default_shape(1, tile.n, fmt), fmt,
-                         1);
-    CV18xx::lmem_init_matrix(&tl_zeropoint, CV18xx::ml_default_shape(1, tile.n, fmt),
-                         fmt, 1);
+    CV18xx::lmem_init_matrix(&tl_scale,
+                             CV18xx::ml_default_shape(1, tile.n, fmt), fmt, 1);
+    CV18xx::lmem_init_matrix(&tl_zeropoint,
+                             CV18xx::ml_default_shape(1, tile.n, fmt), fmt, 1);
     tl_scale.start_address = Q_laddr[tile.RB_idx];
     tl_zeropoint.start_address = Q_laddr[2 + tile.RB_idx];
   }
@@ -693,7 +691,8 @@ void TgFcKernel::load_B(int32_t step_idx) {
   if (is_last_k(step_idx) == false) {
     return;
   }
-  CV18xx::tdma_load_stride(&tl_B, ga_bias + tile.pos_n * fmt_size, {N * fmt_size});
+  CV18xx::tdma_load_stride(&tl_B, ga_bias + tile.pos_n * fmt_size,
+                           {N * fmt_size});
   if (slice_n() == 1 && mode != FC_GROUP_PARALLEL) {
     bias_loaded = true;
   }
@@ -708,9 +707,9 @@ void TgFcKernel::load_Q(int32_t step_idx) {
     return;
   }
   CV18xx::tdma_load_stride(&tl_scale, ga_scale + tile.pos_n * fmt_size,
-                       {N * fmt_size});
+                           {N * fmt_size});
   CV18xx::tdma_load_stride(&tl_zeropoint, ga_zeropoint + tile.pos_n * fmt_size,
-                       {N * fmt_size});
+                           {N * fmt_size});
   if (slice_n() == 1) {
     quant_loaded = true;
   }
@@ -735,9 +734,9 @@ void TgFcKernel::store(int32_t step_idx) {
   auto &tile = tiles[step_idx];
   update_tl_matrix(step_idx);
   CV18xx::tdma_store_stride(&tl_Y,
-                        ga_output + tile.pos_m * output_gstride.row +
-                            tile.pos_n * fmt_size,
-                        output_gstride);
+                            ga_output + tile.pos_m * output_gstride.row +
+                                tile.pos_n * fmt_size,
+                            output_gstride);
 }
 
 void TgFcKernel::update_batch_info(int high_idx, int low_idx) {
@@ -839,12 +838,11 @@ void TgFcKernel::schedule() {
 }
 
 void cvi_backend_tg_fixed_fc_kernel(
-     uint32_t layer_id, gaddr_t ga_input,
-    gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
-    bool do_bias, bool do_relu, std::vector<int> rshift_width,
-    std::vector<int> multiplier, const std::vector<uint8_t> *old_filter,
-    std::vector<uint8_t> *new_filter, int batch_high, int batch_low,
-    bool lstride, bool rstride, bool ostride) {
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_weight, gaddr_t ga_bias,
+    gaddr_t ga_output, int M, int K, int N, bool do_bias, bool do_relu,
+    std::vector<int> rshift_width, std::vector<int> multiplier,
+    const std::vector<uint8_t> *old_filter, std::vector<uint8_t> *new_filter,
+    int batch_high, int batch_low, bool lstride, bool rstride, bool ostride) {
   TgFcKernel kernel;
   kernel.init(layer_id, ga_input, ga_weight, ga_bias, ga_output, M, K, N,
               do_bias, do_relu, &rshift_width, &multiplier, old_filter,
@@ -855,12 +853,11 @@ void cvi_backend_tg_fixed_fc_kernel(
 }
 
 void cvi_backend_tg_bf16_fc_kernel(
-     uint32_t layer_id, gaddr_t ga_input,
-    gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
-    bool do_bias, bool do_relu, const std::vector<uint8_t> *old_filter,
-    std::vector<uint8_t> *new_filter, int batch_high, int batch_low,
-    bool lstride, bool rstride, bool ostride, bool do_quant_bf16,
-    gaddr_t ga_scale, gaddr_t ga_zeropoint) {
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_weight, gaddr_t ga_bias,
+    gaddr_t ga_output, int M, int K, int N, bool do_bias, bool do_relu,
+    const std::vector<uint8_t> *old_filter, std::vector<uint8_t> *new_filter,
+    int batch_high, int batch_low, bool lstride, bool rstride, bool ostride,
+    bool do_quant_bf16, gaddr_t ga_scale, gaddr_t ga_zeropoint) {
   TgFcKernel kernel;
   kernel.init(layer_id, ga_input, ga_weight, ga_bias, ga_output, M, K, N,
               do_bias, do_relu, nullptr, nullptr, old_filter, new_filter,
@@ -871,4 +868,3 @@ void cvi_backend_tg_bf16_fc_kernel(
 }
 } // namespace backend
 } // namespace tpu_mlir
-

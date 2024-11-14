@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::MaskedFillOp::init(InferenceParameter &p) {
@@ -70,4 +69,3 @@ LogicalResult tpu::MaskedFillOp::canonicalize(tpu::MaskedFillOp op,
 }
 
 bool tpu::MaskedFillOp::support_multi_core() { return false; }
-

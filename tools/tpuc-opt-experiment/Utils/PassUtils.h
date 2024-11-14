@@ -53,4 +53,4 @@ private:
   OpPassManager &parentPm;
   std::array<OpPassManager *, sizeof...(OpTys)> nestedPassManagers;
 };
-}
+} // namespace mlir

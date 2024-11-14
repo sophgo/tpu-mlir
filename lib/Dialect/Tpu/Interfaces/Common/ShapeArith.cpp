@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include <queue>
 #include <vector>
 
@@ -21,18 +21,18 @@ LogicalResult tpu::ShapeArithOp::init(InferenceParameter &p) {
   auto rhs_shape = module::getShape(getInputs()[1]);
   algorithm alg;
   std::map<std::string, algorithm> map_mode = {
-    {"Add",            algorithm::binary_add},
-    {"Sub",            algorithm::binary_sub},
-    {"Mul",            algorithm::binary_mul},
-    {"Div",            algorithm::binary_div},
-    {"Less",           algorithm::binary_lt},
-    {"Greater",        algorithm::binary_gt},
-    {"LessOrEqual",    algorithm::binary_le},
-    {"GreaterOrEqual", algorithm::binary_ge},
-    {"Min",            algorithm::binary_min},
-    {"Max",            algorithm::binary_max},
-    {"Equal",          algorithm::binary_eq},
-    {"NotEqual",       algorithm::binary_ne}};
+      {"Add", algorithm::binary_add},
+      {"Sub", algorithm::binary_sub},
+      {"Mul", algorithm::binary_mul},
+      {"Div", algorithm::binary_div},
+      {"Less", algorithm::binary_lt},
+      {"Greater", algorithm::binary_gt},
+      {"LessOrEqual", algorithm::binary_le},
+      {"GreaterOrEqual", algorithm::binary_ge},
+      {"Min", algorithm::binary_min},
+      {"Max", algorithm::binary_max},
+      {"Equal", algorithm::binary_eq},
+      {"NotEqual", algorithm::binary_ne}};
   auto iter = map_mode.find(getType().str());
   if (iter != map_mode.end()) {
     alg = iter->second;
@@ -61,10 +61,10 @@ LogicalResult tpu::ShapeArithOp::inference(InferenceParameter &p) {
   binary->run();
 
   std::string op_type = getType().str();
-  if (op_type == "Div"){
-    auto ops=getOperands();
-    if (backend::BM168x::getDataType(ops[0])==DTYPE_INT32
-    && backend::BM168x::getDataType(ops[1])==DTYPE_INT32 ){
+  if (op_type == "Div") {
+    auto ops = getOperands();
+    if (backend::BM168x::getDataType(ops[0]) == DTYPE_INT32 &&
+        backend::BM168x::getDataType(ops[1]) == DTYPE_INT32) {
       auto num_elem = module::getNumElements(getOutput());
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

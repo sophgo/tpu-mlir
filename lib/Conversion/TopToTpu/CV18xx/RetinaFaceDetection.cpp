@@ -13,7 +13,8 @@
 #define DEBUG_TYPE "lowering-retinaface-detection"
 namespace tpu_mlir {
 namespace cv18xx {
-void loweringRetinaFaceDetection(PatternRewriter &rewriter, top::RetinaFaceDetectionOp op) {
+void loweringRetinaFaceDetection(PatternRewriter &rewriter,
+                                 top::RetinaFaceDetectionOp op) {
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;
@@ -35,13 +36,13 @@ void loweringRetinaFaceDetection(PatternRewriter &rewriter, top::RetinaFaceDetec
 }
 
 void RetinaFaceDetectionLowering::LoweringINT8(PatternRewriter &rewriter,
-                                         top::RetinaFaceDetectionOp op,
-                                         bool asymmetric) const {
+                                               top::RetinaFaceDetectionOp op,
+                                               bool asymmetric) const {
   loweringRetinaFaceDetection(rewriter, op);
 }
 
-void RetinaFaceDetectionLowering::LoweringBF16(PatternRewriter &rewriter,
-                                         top::RetinaFaceDetectionOp op) const {
+void RetinaFaceDetectionLowering::LoweringBF16(
+    PatternRewriter &rewriter, top::RetinaFaceDetectionOp op) const {
   loweringRetinaFaceDetection(rewriter, op);
 }
 } // namespace cv18xx

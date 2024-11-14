@@ -18,7 +18,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void MulConstTryLowering::Lowering(PatternRewriter &rewriter, top::MulConstOp op) const {
+void MulConstTryLowering::Lowering(PatternRewriter &rewriter,
+                                   top::MulConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -27,15 +28,13 @@ void MulConstTryLowering::Lowering(PatternRewriter &rewriter, top::MulConstOp op
   attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Mul")));
   auto constF32 = std::make_shared<std::vector<float>>(1, 0);
   constF32->data()[0] = op.getConstVal().convertToDouble();
-  auto weight_type =
-      RankedTensorType::get({1}, rewriter.getF32Type());
+  auto weight_type = RankedTensorType::get({1}, rewriter.getF32Type());
   auto weight_op = top::WeightOp::create(op, "f32", *constF32, weight_type);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   operands.push_back(weight_op);
-  Type new_type =
-      RankedTensorType::get(module::getShape(op.getOutput()),
-                            rewriter.getF32Type());
+  Type new_type = RankedTensorType::get(module::getShape(op.getOutput()),
+                                        rewriter.getF32Type());
   rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
 }
 
@@ -43,8 +42,8 @@ void MulConstLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
   lowering_common_f32<tpu::MulConstOp>(rewriter, op);
 }
-void MulConstLowering::LoweringINT4(PatternRewriter &rewriter, top::MulConstOp op,
-                                   bool asymmetric) const {
+void MulConstLowering::LoweringINT4(PatternRewriter &rewriter,
+                                    top::MulConstOp op, bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -66,8 +65,8 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::MulShiftOp>(op, newType,
-                                               ValueRange{op.getInput()}, attrs);
+  rewriter.replaceOpWithNewOp<tpu::MulShiftOp>(
+      op, newType, ValueRange{op.getInput()}, attrs);
 }
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -89,7 +88,7 @@ void MulConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MulConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::MulConstOp op) const {
+                                  top::MulConstOp op) const {
   std::vector<NamedAttribute> attrs;
   double const_v = op.getConstVal().convertToDouble();
   auto qtype_in = module::getCalibratedType(op.getInput());
@@ -103,7 +102,8 @@ void MulConstLowering::LoweringF8(PatternRewriter &rewriter,
   }
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "const_val") {
-      attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_v)));
+      attrs.push_back(rewriter.getNamedAttr("const_val",
+                                            rewriter.getF64FloatAttr(const_v)));
     } else {
       attrs.push_back(attr);
     }
@@ -111,12 +111,12 @@ void MulConstLowering::LoweringF8(PatternRewriter &rewriter,
 
   if (isE4) {
     auto newType = getQuantF8E4M3Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::MulConstOp>(op, newType,
-                                               ValueRange{op.getInput()}, attrs);
+    rewriter.replaceOpWithNewOp<tpu::MulConstOp>(
+        op, newType, ValueRange{op.getInput()}, attrs);
   } else {
     auto newType = getQuantF8E5M2Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::MulConstOp>(op, newType,
-                                               ValueRange{op.getInput()}, attrs);
+    rewriter.replaceOpWithNewOp<tpu::MulConstOp>(
+        op, newType, ValueRange{op.getInput()}, attrs);
   }
 }
 

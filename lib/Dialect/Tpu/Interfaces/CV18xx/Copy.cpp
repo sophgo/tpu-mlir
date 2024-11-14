@@ -10,9 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 // =========================================
 // GlobalGenInterface
@@ -22,7 +19,7 @@ void tpu::CopyOp::codegen_global_cv18xx(int64_t layer_id) {
 
   gaddr_t input_gaddr = module::getAddress(this->getInput());
   gaddr_t output_gaddr = module::getAddress(this->getOutput());
-  //parseparam
+  // parseparam
   auto shape = module::getI64Array(this->getShape());
   auto i_stride = module::getI64Array(this->getInputStride());
   auto o_stride = module::getI64Array(this->getOutputStride());
@@ -42,10 +39,10 @@ void tpu::CopyOp::codegen_global_cv18xx(int64_t layer_id) {
     o_stride_4[idx] = o_stride->at(end);
   }
   if (module::isUniformQuantized(getOutput())) {
-    cvi_backend_tg_copy_kernel(input_gaddr, output_gaddr, shape_4,
-                              i_stride_4, o_stride_4, CVK_FMT_I8);
+    cvi_backend_tg_copy_kernel(input_gaddr, output_gaddr, shape_4, i_stride_4,
+                               o_stride_4, CVK_FMT_I8);
   } else {
-    cvi_backend_tg_copy_kernel(input_gaddr, output_gaddr, shape_4,
-                              i_stride_4, o_stride_4, CVK_FMT_BF16);
+    cvi_backend_tg_copy_kernel(input_gaddr, output_gaddr, shape_4, i_stride_4,
+                               o_stride_4, CVK_FMT_BF16);
   }
 }

@@ -63,20 +63,22 @@ struct Conv3dTo2d : public OpRewriterPatternEx<ConvOp> {
     if (op.getKernelShape().size() != 3 || p.id != p.kd || p.od != 1) {
       return failure();
     }
-    static int callCount  = 0;
+    static int callCount = 0;
     auto in = op.getInput();
     auto out = op.getOutput();
     // in reshape to 4dim
     std::vector<int64_t> in_shape = {p.n, p.ic * p.id, p.ih, p.iw};
     auto newType = RankedTensorType::get(in_shape, module::getElementType(in));
-    std::string in_name = module::getName(in).str() + "_To4Dim" + std::to_string(callCount);
+    std::string in_name =
+        module::getName(in).str() + "_To4Dim" + std::to_string(callCount);
     auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
     rewriter.setInsertionPoint(op);
     auto rs1_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{in});
     op.setOperand(0, rs1_op.getOutput());
     // out reshape to 5dim
     auto outType = out.getType();
-    std::string out_name = module::getName(in).str() + "_To5Dim" + std::to_string(callCount);
+    std::string out_name =
+        module::getName(in).str() + "_To5Dim" + std::to_string(callCount);
     loc = NameLoc::get(rewriter.getStringAttr(out_name));
     rewriter.setInsertionPointAfter(op);
     auto rs2_op = rewriter.create<ReshapeOp>(loc, outType, ValueRange{out});
@@ -104,7 +106,7 @@ struct Conv3dTranspose : public OpRewriterPatternEx<ConvOp> {
       : OpRewriterPatternEx<ConvOp>(context, "Conv3dTranspose") {}
 
   LogicalResult matchAndRewriteImpl(ConvOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     /* make sure it is a Conv3dOp and id == kd and ic == filter ic */
     auto p = op.parseParam();
     auto filter = op.getFilter();
@@ -147,12 +149,12 @@ struct Conv3dTranspose : public OpRewriterPatternEx<ConvOp> {
     /* create a new weight for the transposed filter */
     rewriter.setInsertionPointAfter(op);
     auto weight = WeightOp::create_float(op, "transposed_weight", *filter_tp,
-                                            f_shape_tp, storage_type);
+                                         f_shape_tp, storage_type);
     /* change the attr of conv3d op */
     op.setOperand(
         1,
         weight); // op.setOperand vs op->setOperand: in this case both OK. This
-                // replaces op.getFilter() with the transposed filter $weight.
+                 // replaces op.getFilter() with the transposed filter $weight.
     rewriter.eraseOp(filter_op); // remove unused WeightOp manually, optional
     op.setKernelShapeAttr(rewriter.getI64ArrayAttr({p.ic, p.kh, p.kw}));
     return success();
@@ -166,7 +168,7 @@ struct Conv1x1Convkxk2dMerge : public OpRewriterPatternEx<ConvOp> {
       : OpRewriterPatternEx<ConvOp>(context, "Conv1x1Convkxk2dMerge") {}
 
   LogicalResult matchAndRewriteImpl(ConvOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (module::isUniformQuantized(op.getOutput())) {
       return failure();
     }
@@ -299,8 +301,8 @@ struct Conv1x1Convkxk2dMerge : public OpRewriterPatternEx<ConvOp> {
       op.getFilter().setType(mnew_type);
 
       // setup merige_filter_weight
-      auto mnew_op = WeightOp::create_float(op, "merge_filter_weight", *filter_merge,
-                                            mfilterShape, storage_type);
+      auto mnew_op = WeightOp::create_float(
+          op, "merge_filter_weight", *filter_merge, mfilterShape, storage_type);
       op->setOperand(1, mnew_op);
 
       // setup merige_bias_weight

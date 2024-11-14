@@ -29,8 +29,7 @@ void tpu::D2DOp::codegen_global_bm1684x() {
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
-  param.common.B_dtype =
-        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
   BM168x::call_global_func("backend_api_constbinary_global", &param,
                            sizeof(param), input_spec->data(),
@@ -50,8 +49,7 @@ int64_t tpu::D2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
-  param.common.B_dtype =
-        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

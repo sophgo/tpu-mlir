@@ -7,9 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -43,14 +42,12 @@ protected:
   }
 };
 
-
-
 struct RemoveMulConst : public OpRewriterPatternEx<MulConstOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   RemoveMulConst(MLIRContext *context)
-      : OpRewriterPatternEx<MulConstOp>(context,"RemoveMulConst") {}
+      : OpRewriterPatternEx<MulConstOp>(context, "RemoveMulConst") {}
   LogicalResult matchAndRewriteImpl(MulConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     // placeholder
     double const_val = op.getConstVal().convertToDouble();
     if (const_val != 1.0) {
@@ -61,13 +58,12 @@ struct RemoveMulConst : public OpRewriterPatternEx<MulConstOp> {
   }
 };
 
-
 struct MulConstantFill : public OpRewriterPatternEx<MulConstOp> {
-  public:
+public:
   MulConstantFill(MLIRContext *context)
-      : OpRewriterPatternEx<MulConstOp>(context,"MulConstantFill") {}
+      : OpRewriterPatternEx<MulConstOp>(context, "MulConstantFill") {}
   LogicalResult matchAndRewriteImpl(MulConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     double const_val = op.getConstVal().convertToDouble();
     auto input = op.getInput();
     auto constant_op = dyn_cast<top::ConstantFillOp>(input.getDefiningOp());
@@ -88,11 +84,11 @@ struct MulConstantFill : public OpRewriterPatternEx<MulConstOp> {
 
 // merge into conv or matmul
 struct MergeMulConst : public OpRewriterPatternEx<MulConstOp> {
-  public:
+public:
   MergeMulConst(MLIRContext *context)
-      : OpRewriterPatternEx<MulConstOp>(context,"MergeMulConst") {}
+      : OpRewriterPatternEx<MulConstOp>(context, "MergeMulConst") {}
   LogicalResult matchAndRewriteImpl(MulConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     double const_val = op.getConstVal().convertToDouble();
     bool do_relu = op.getDoRelu();
     auto formerOp = op.getInput().getDefiningOp();
@@ -167,11 +163,11 @@ struct MergeMulConst : public OpRewriterPatternEx<MulConstOp> {
 
 // mul to large, to 10k
 struct MulTooLarge : public OpRewriterPatternEx<MulConstOp> {
-  public:
-     MulTooLarge(MLIRContext *context)
-      : OpRewriterPatternEx<MulConstOp>(context,"MulTooLarge") {}
+public:
+  MulTooLarge(MLIRContext *context)
+      : OpRewriterPatternEx<MulConstOp>(context, "MulTooLarge") {}
   LogicalResult matchAndRewriteImpl(MulConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     // placeholder
     double const_val = op.getConstVal().convertToDouble();
     if (const_val >= 1e10) {

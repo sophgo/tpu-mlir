@@ -53,7 +53,7 @@ void top::PadOp::deinit(InferenceParameter &p) {
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
   auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
-  if (!module::isNone(getPaddingsT())){
+  if (!module::isNone(getPaddingsT())) {
     std::vector<int64_t> in_shape = module::getShape(getInput());
     int pad_dim = in_shape.size() * 2;
     std::vector<int64_t> pads(pad_dim, 0);
@@ -65,7 +65,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
       dump();
       UNREACHABLE_THIS("Not Implemented");
     }
-  }  
+  }
   std::vector<int> pads(p_info->pads_4.begin(), p_info->pads_4.end());
   int64_t in = p_info->shape_4[0];
   int64_t ic = p_info->shape_4[1];
@@ -115,7 +115,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
     }
   } else {
     ASSERT_THIS(pads[0] == pads[4] && pads[1] == pads[5] && pads[0] == 0 &&
-           pads[1] == 0 && "only support hw pad");
+                pads[1] == 0 && "only support hw pad");
 
     // comes from https://github.com/BVLC/caffe/pull/6506/files
     for (int n = 0; n < in; ++n) {
@@ -234,11 +234,11 @@ void top::PadOp::shape_inference() {
     Builder builder(getContext());
     setPaddingsAttr(builder.getI64ArrayAttr(pads));
   } else {
-    if (module::isShape(getPaddingsT())){
+    if (module::isShape(getPaddingsT())) {
       pads = module::getShapeTensorValue(getPaddingsT());
-    } else {    
-    ASSERT_THIS(pads_origin->size() == dim * 2);
-    pads = *pads_origin;
+    } else {
+      ASSERT_THIS(pads_origin->size() == dim * 2);
+      pads = *pads_origin;
     }
   }
   std::vector<int64_t> out_shape(input_shape);

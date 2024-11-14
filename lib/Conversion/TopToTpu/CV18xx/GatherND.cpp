@@ -13,13 +13,13 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-void GatherNDLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherNDOp op,
-                                  bool asymmetric) const {
+void GatherNDLowering::LoweringINT8(PatternRewriter &rewriter,
+                                    top::GatherNDOp op, bool asymmetric) const {
   LoweringBF16(rewriter, op);
 }
 
 void GatherNDLowering::LoweringBF16(PatternRewriter &rewriter,
-                                  top::GatherNDOp op) const {
+                                    top::GatherNDOp op) const {
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> cpu_param;
   attrs.emplace_back(rewriter.getNamedAttr(
@@ -28,8 +28,8 @@ void GatherNDLowering::LoweringBF16(PatternRewriter &rewriter,
     cpu_param.push_back(attr);
   }
   auto indice_shape = module::getShape(op.getIndices());
-  /*indice_dim is important in inference, but in cvimodel all tensors will be 4D data,
-  thus need to record it.*/
+  /*indice_dim is important in inference, but in cvimodel all tensors will be 4D
+  data, thus need to record it.*/
   cpu_param.emplace_back(rewriter.getNamedAttr(
       "indice_dims", rewriter.getI64IntegerAttr(indice_shape.size())));
   attrs.emplace_back(
@@ -59,5 +59,5 @@ void GatherNDLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
                                                  operands, attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

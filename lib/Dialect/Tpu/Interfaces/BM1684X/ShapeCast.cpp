@@ -28,9 +28,7 @@ int64_t tpu::ShapeCastOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::ShapeCastOp::get_fw_type_bm1684x() {
-  return FW_BMNET_SHAPE_CAST;
-}
+int64_t tpu::ShapeCastOp::get_fw_type_bm1684x() { return FW_BMNET_SHAPE_CAST; }
 
 mlir::Type tpu::ShapeCastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);

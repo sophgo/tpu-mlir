@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -92,12 +92,12 @@ static std::set<int> get_slice_dims(stridedslice_param_t_t param) {
   return slice_dims;
 }
 
-struct StridedSliceMergePattern
-    : public OpRewriterPatternEx<StridedSliceOp> {
+struct StridedSliceMergePattern : public OpRewriterPatternEx<StridedSliceOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   StridedSliceMergePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<StridedSliceOp>(context, "StridedSliceMergePattern") {}
+      : OpRewriterPatternEx<StridedSliceOp>(context,
+                                            "StridedSliceMergePattern") {}
 
   LogicalResult matchAndRewriteImpl(StridedSliceOp op,
                                     PatternRewriter &rewriter) const override {

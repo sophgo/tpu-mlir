@@ -13,8 +13,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/Location.h"
 #include "mlir/Pass/Pass.h"
@@ -34,16 +34,14 @@
 using namespace llvm;
 
 namespace tpu_mlir {
-enum TableMode {
-  Slope,
-  Mantissa
-};
+enum TableMode { Slope, Mantissa };
 // create lookup table
 using activate_f = std::function<double(double)>;
 
-Value create_lookup_table(Value in, Value out, bool asymmetric,
-                          activate_f &&func, int bit_width = 8,
-                          RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO, bool output_asym = false);
+Value create_lookup_table(
+    Value in, Value out, bool asymmetric, activate_f &&func, int bit_width = 8,
+    RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO,
+    bool output_asym = false);
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 Value create_lookup_table(Operation *owner, const std::vector<int> &table);
@@ -58,13 +56,14 @@ void bf16_lut_slope(float *input, float *output, int size, float *base_table,
                     float *slope_table, float range_start, float range_end);
 
 void bf16_gen_exponent_mantissa_table(const std::string &name, float *exp_table,
-                                      float *mantissa_table, float param0, float param1);
+                                      float *mantissa_table, float param0,
+                                      float param1);
 
 void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
                        float *mantissa_table, const std::string &method);
 
-void createBf16LutOp(Operation *op, const std::string &type_name, TableMode mode,
-                     float param0, float param1,
+void createBf16LutOp(Operation *op, const std::string &type_name,
+                     TableMode mode, float param0, float param1,
                      float range_start, float range_end, activate_f &&func,
                      Value &v_table, Value &v_mantissa);
 } // namespace tpu_mlir

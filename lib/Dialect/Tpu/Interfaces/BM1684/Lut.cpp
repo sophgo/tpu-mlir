@@ -13,7 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace tpu_mlir::backend;
 
 void tpu::LutOp::codegen_global_bm1684() {
@@ -44,8 +43,7 @@ int64_t tpu::LutOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   shape[0] = ceiling_func(shape[0], 4);
   int cnum = (shape[1] + BM1684::NPU_NUM - 1) / BM1684::NPU_NUM;
   int cstride =
-      align_up(shape[2] * shape[3], (int)BM1684::eu_num(sizeof(std::float_t))
-      );
+      align_up(shape[2] * shape[3], (int)BM1684::eu_num(sizeof(std::float_t)));
   buffer_size = n * cnum * cstride * 4;
   return buffer_size * 2;
 }
@@ -63,8 +61,8 @@ void tpu::LutOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                   (int)in_g_info.h_slice, (int)w};
   BM1684::instance().dl_nodechip_lut_local_v2(
       in_g_info.out_addr, tb_g_info.out_addr, out_g_info.buffer_addr,
-      out_g_info.out_addr, b0_shape, 4, 0,
-      out_dtype, 1, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
+      out_g_info.out_addr, b0_shape, 4, 0, out_dtype, 1,
+      (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
 uint32_t tpu::LutOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

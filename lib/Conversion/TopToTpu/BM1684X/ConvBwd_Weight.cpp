@@ -11,8 +11,8 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
-static void LoweringConvBwdWeight(PatternRewriter &rewriter, top::ConvBwdWeightOp op,
-                              Type type) {
+static void LoweringConvBwdWeight(PatternRewriter &rewriter,
+                                  top::ConvBwdWeightOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -54,36 +54,42 @@ static void LoweringConvBwdWeight(PatternRewriter &rewriter, top::ConvBwdWeightO
   return;
 }
 
-void ConvBwdWeightLowering::LoweringF32(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
+void ConvBwdWeightLowering::LoweringF32(PatternRewriter &rewriter,
+                                        top::ConvBwdWeightOp op) const {
   // lowering_common_f32<tpu::ConvBwdWeightOp>(rewriter, op);
-  LoweringConvBwdWeight(rewriter,op,rewriter.getF32Type());
+  LoweringConvBwdWeight(rewriter, op, rewriter.getF32Type());
 }
-void ConvBwdWeightLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvBwdWeightOp op,
-                                   bool asymmetric) const {
+void ConvBwdWeightLowering::LoweringINT4(PatternRewriter &rewriter,
+                                         top::ConvBwdWeightOp op,
+                                         bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
   UNREACHABLE_OP("Not Implemented", op);
 }
-void ConvBwdWeightLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvBwdWeightOp op,
-                               bool asymmetric) const {
+void ConvBwdWeightLowering::LoweringINT8(PatternRewriter &rewriter,
+                                         top::ConvBwdWeightOp op,
+                                         bool asymmetric) const {
   // lowering_common_int8<tpu::ConvBwdWeightOp>(rewriter, op, asymmetric);
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void ConvBwdWeightLowering::LoweringBF16(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
+void ConvBwdWeightLowering::LoweringBF16(PatternRewriter &rewriter,
+                                         top::ConvBwdWeightOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void ConvBwdWeightLowering::LoweringF16(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
+void ConvBwdWeightLowering::LoweringF16(PatternRewriter &rewriter,
+                                        top::ConvBwdWeightOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void ConvBwdWeightLowering::LoweringF8(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
+void ConvBwdWeightLowering::LoweringF8(PatternRewriter &rewriter,
+                                       top::ConvBwdWeightOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 
 void ConvBwdWeightLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::ConvBwdWeightOp op) const {
-    UNREACHABLE_OP("Not Implemented", op);
+                                              top::ConvBwdWeightOp op) const {
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

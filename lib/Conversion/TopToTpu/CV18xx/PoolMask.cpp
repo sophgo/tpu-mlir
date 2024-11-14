@@ -27,25 +27,24 @@ static mlir::Type createQuantInt8Type(mlir::Type &t) {
 }
 
 void PoolMaskLowering::LoweringINT8(PatternRewriter &rewriter,
-                                     top::PoolMaskOp op,
-                                     bool asymmetric) const {
+                                    top::PoolMaskOp op, bool asymmetric) const {
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
   }
   auto mask_shape = module::getShape(op.getOutput());
   auto output_type = op.getOutput().getType().cast<RankedTensorType>();
-  auto quant_type =
-      quant::CalibratedQuantizedType::get(output_type.getElementType(), -127, 127);
+  auto quant_type = quant::CalibratedQuantizedType::get(
+      output_type.getElementType(), -127, 127);
   auto new_type = RankedTensorType::get(mask_shape, quant_type);
   auto pool_mask_type = createQuantInt8Type(new_type);
 
-  rewriter.replaceOpWithNewOp<tpu::PoolMaskOp>(op, pool_mask_type,
-                                               ValueRange{op.getInput()}, attrs);
+  rewriter.replaceOpWithNewOp<tpu::PoolMaskOp>(
+      op, pool_mask_type, ValueRange{op.getInput()}, attrs);
 }
 
 void PoolMaskLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::PoolMaskOp op) const {
+                                    top::PoolMaskOp op) const {
   lowering_common_bf16<tpu::PoolMaskOp>(rewriter, op);
 }
 

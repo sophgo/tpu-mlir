@@ -13,12 +13,14 @@
 using namespace tpu_mlir::backend;
 
 void tpu::AutoIncreaseOp::codegen_global_bm1684() {
-  //Todo
+  // Todo
 }
 
 uint32_t tpu::AutoIncreaseOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  //Todo
+  // Todo
   return 0;
 }
 
-int64_t tpu::AutoIncreaseOp::get_fw_type_bm1684() { return FW_BMNET_CONST_BINARY; }
+int64_t tpu::AutoIncreaseOp::get_fw_type_bm1684() {
+  return FW_BMNET_CONST_BINARY;
+}

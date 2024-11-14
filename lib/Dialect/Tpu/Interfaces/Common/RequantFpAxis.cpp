@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 LogicalResult tpu::RequantFpAxisOp::init(InferenceParameter &p) {
   return success();
@@ -38,7 +35,8 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int index = (n * shape[1] + c) * inner + i;
-          int32_t v = to_int(p.inputs[0][index] * scale, round_mode) + zero_point;
+          int32_t v =
+              to_int(p.inputs[0][index] * scale, round_mode) + zero_point;
           p.outputs[0][index] = saturate(v, o_sType);
         }
       }
@@ -52,7 +50,8 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int index = (n * shape[1] + c) * inner + i;
-          int32_t v = to_int((float)(p.inputs[0][index]) * scale + offset, round_mode);
+          int32_t v =
+              to_int((float)(p.inputs[0][index]) * scale + offset, round_mode);
           p.outputs[0][index] = saturate(v, o_sType);
         }
       }

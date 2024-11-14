@@ -13,16 +13,16 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void ShuffleChannelLowering::LoweringF32(PatternRewriter &rewriter,
-                                      top::ShuffleChannelOp op) const {
+                                         top::ShuffleChannelOp op) const {
   lowering_common_f32<tpu::ShuffleChannelOp>(rewriter, op);
 }
 
 void ShuffleChannelLowering::LoweringINT8(PatternRewriter &rewriter,
-                                       top::ShuffleChannelOp op,
-                                       bool asymmetric) const {
+                                          top::ShuffleChannelOp op,
+                                          bool asymmetric) const {
   lowering_common_int8<tpu::ShuffleChannelOp>(rewriter, op.getOperation(),
-                                           asymmetric);
+                                              asymmetric);
 }
 
-} // namespace bm1684x
+} // namespace bm1684
 } // namespace tpu_mlir

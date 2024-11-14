@@ -22,8 +22,8 @@ void tpu::ConstantFillOp::codegen_global_bm1684x() {
 
   constantfill_common_spec_t spec = {0};
   float value = getValue().convertToDouble();
-  spec.filled_value = *(uint32_t*)&value;
-  spec.dtype        = DTYPE_FP32;
+  spec.filled_value = *(uint32_t *)&value;
+  spec.dtype = DTYPE_FP32;
   BM168x::call_global_func("backend_api_constant_fill_global", &spec,
                            sizeof(spec), input_spec->data(),
                            output_spec->data());
@@ -34,10 +34,11 @@ void tpu::ConstantFillOp::codegen_global_bm1684x() {
 // ======================================
 
 int64_t tpu::ConstantFillOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(constantfill_common_spec_t);
+  if (!buffer)
+    return sizeof(constantfill_common_spec_t);
   constantfill_common_spec_t spec = {0};
   float value = getValue().convertToDouble();
-  spec.filled_value = *(uint32_t*)&value;
+  spec.filled_value = *(uint32_t *)&value;
   spec.dtype = DTYPE_FP32;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

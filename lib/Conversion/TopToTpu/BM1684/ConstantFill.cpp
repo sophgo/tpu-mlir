@@ -15,11 +15,12 @@ namespace bm1684 {
 void ConstantFillTryLowering::Lowering(PatternRewriter &rewriter,
                                        top::ConstantFillOp op) const {
   std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs())  {
+  for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   Type new_type = getQuantFloatType<Float32Type>(op->getResult(0));
-  rewriter.replaceOpWithNewOp<tpu::ConstantFillOp>(op, new_type, op.getInput(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ConstantFillOp>(op, new_type, op.getInput(),
+                                                   attrs);
 }
 
 } // namespace bm1684

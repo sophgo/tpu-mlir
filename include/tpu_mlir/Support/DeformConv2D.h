@@ -24,8 +24,9 @@ void parseGatherParam(const deform_conv2d_attr_t &attr,
 void parseConvParam(const deform_conv2d_attr_t &attr, conv_attr_t &cattr);
 
 void processDeformGather(InferenceParameter &p,
-                         const deform_gather_attr_t &attr, float *data_out, bool top_flag);
+                         const deform_gather_attr_t &attr, float *data_out,
+                         bool top_flag);
 
 void processDeformConv2D(InferenceParameter &p,
-                                const deform_conv2d_attr_t &attr);
+                         const deform_conv2d_attr_t &attr);
 } // namespace tpu_mlir

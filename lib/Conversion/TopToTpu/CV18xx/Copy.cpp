@@ -13,15 +13,16 @@
 namespace tpu_mlir {
 namespace cv18xx {
 void CopyLowering::LoweringINT8(PatternRewriter &rewriter, top::CopyOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   lowering_common_int8<tpu::CopyOp>(rewriter, op, asymmetric);
 }
 
 void CopyLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::CopyOp op) const {
+                                top::CopyOp op) const {
   auto out = op.getOutput();
   if (module::isCalibratedType(out)) {
-    //For align-input(CscOp sometimes maybe convert to CopyOp) use, it should be lowered to uint8.
+    // For align-input(CscOp sometimes maybe convert to CopyOp) use, it should
+    // be lowered to uint8.
     auto qtype = module::getCalibratedType(out);
     auto max = qtype.getMax();
     auto min = qtype.getMin();

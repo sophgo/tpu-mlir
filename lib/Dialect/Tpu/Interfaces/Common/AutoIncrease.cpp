@@ -7,15 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::AutoIncreaseOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::AutoIncreaseOp::deinit(InferenceParameter &p) {
-}
+void tpu::AutoIncreaseOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::AutoIncreaseOp::inference(InferenceParameter &p) {
   // assistanted op, don;t need to implement it

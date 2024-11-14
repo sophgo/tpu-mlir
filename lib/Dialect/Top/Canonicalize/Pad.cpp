@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -15,10 +15,10 @@ struct TopFusePad : public OpRewriterPatternEx<PadOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopFusePad(mlir::MLIRContext *context)
-    : OpRewriterPatternEx<PadOp>(context, "TopFusePad") {}
+      : OpRewriterPatternEx<PadOp>(context, "TopFusePad") {}
 
   LogicalResult matchAndRewriteImpl(PadOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getInput().getType().dyn_cast<TensorType>().getShape().size() < 3)
       return failure();
@@ -40,8 +40,8 @@ struct TopFusePad : public OpRewriterPatternEx<PadOp> {
 
     // check next op, pad_value and pad algo
     double pad_value = op->getAttr("val").cast<FloatAttr>().getValueAsDouble();
-    for (auto nextOp_iter = op->user_begin();
-         nextOp_iter != op->user_end(); nextOp_iter++) {
+    for (auto nextOp_iter = op->user_begin(); nextOp_iter != op->user_end();
+         nextOp_iter++) {
       auto nextOp = *nextOp_iter;
       if (isa<ConvOp>(nextOp)) {
         if (pad_value != 0)
@@ -68,8 +68,8 @@ struct TopFusePad : public OpRewriterPatternEx<PadOp> {
     }
 
     // check tensor dims and paddings after merged
-    for (auto nextOp_iter = op->user_begin();
-         nextOp_iter != op->user_end(); nextOp_iter++) {
+    for (auto nextOp_iter = op->user_begin(); nextOp_iter != op->user_end();
+         nextOp_iter++) {
       auto nextOp = *nextOp_iter;
       auto kernel_shape = nextOp->getAttr("kernel_shape").dyn_cast<ArrayAttr>();
       if (kernel_shape.size() != pad_dim)
@@ -84,8 +84,8 @@ struct TopFusePad : public OpRewriterPatternEx<PadOp> {
     }
 
     // merge paddings
-    for (auto nextOp_iter = op->user_begin();
-         nextOp_iter != op->user_end(); nextOp_iter++) {
+    for (auto nextOp_iter = op->user_begin(); nextOp_iter != op->user_end();
+         nextOp_iter++) {
       std::vector<int64_t> new_paddings(pad_dim * 2, 0);
       auto nextOp = *nextOp_iter;
       auto next_paddings =

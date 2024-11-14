@@ -9,14 +9,14 @@
 
 #pragma once
 
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <llvm/Support/Debug.h>
 
 namespace tpu_mlir {
 namespace backend {
 class TgScaleLutKernel {
 public:
-  TgScaleLutKernel()  {}
+  TgScaleLutKernel() {}
 
   void init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
             gaddr_t table_gaddr, int n, int c, int h, int w, cvk_fmt_t fmt);
@@ -50,5 +50,5 @@ protected:
   std::vector<cvk_tl_t *> tl_lut;
   std::vector<CV18xx::tiling_info_t> tiles;
 };
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

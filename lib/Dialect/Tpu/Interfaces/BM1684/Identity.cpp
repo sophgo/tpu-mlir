@@ -12,17 +12,11 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::IdentityOp::codegen_global_bm1684() {
-}
+void tpu::IdentityOp::codegen_global_bm1684() {}
 
-uint32_t tpu::IdentityOp::dyn_codegen_global_bm1684(void *buffer) {
-  return 0;
-}
+uint32_t tpu::IdentityOp::dyn_codegen_global_bm1684(void *buffer) { return 0; }
 
-int64_t tpu::IdentityOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::IdentityOp::get_fw_type_bm1684() { return -1; }

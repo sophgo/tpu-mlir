@@ -5,10 +5,7 @@
  * Description:
  */
 
-
-
 #include <llvm/Support/Debug.h>
-
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
@@ -16,7 +13,6 @@
 
 #define ASSERT(x) assert(x)
 // #define ENABLE_DEBUG_MSG
-
 
 namespace tpu_mlir {
 namespace backend {
@@ -203,7 +199,7 @@ static void pooling_forward_slice(uint32_t layer_id, const pooling_t *all,
     pad_bot = s->pad_bot + s->extra_pad_b;
   }
 
-  if ((out_h > 1 &&  s->stride_h > 15) || (out_w > 1 && s->stride_w > 15)) {
+  if ((out_h > 1 && s->stride_h > 15) || (out_w > 1 && s->stride_w > 15)) {
     // not support stride > 15
     llvm_unreachable("Not support now.");
   }

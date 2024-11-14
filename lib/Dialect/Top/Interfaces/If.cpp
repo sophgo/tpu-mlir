@@ -16,9 +16,9 @@ void top::IfOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::IfOp::inference(InferenceParameter &p) {
   if (p.inputs[0][0] > 0)
-    return success(); //then_branch
+    return success(); // then_branch
   else
-    return failure(); //else_branch
+    return failure(); // else_branch
 }
 
 void top::IfOp::shape_inference() {
@@ -32,14 +32,16 @@ void top::IfOp::shape_inference() {
   for (uint32_t i = 1; i < getNumRegions(); i++) {
     yield_op = getRegion(i).back().getTerminator();
     auto nof_inputs = yield_op->getNumOperands();
-    ASSERT_THIS(nof_inputs == shapes.size() && "Regions have different num of output, fix me.");
+    ASSERT_THIS(nof_inputs == shapes.size() &&
+                "Regions have different num of output, fix me.");
     for (uint32_t j = 0; j < nof_inputs; j++) {
       auto _shape = module::getShape(yield_op->getOperand(j)).vec();
-      ASSERT_THIS((shapes[j] == _shape) && "Regions have different output shape, fix me.");
+      ASSERT_THIS((shapes[j] == _shape) &&
+                  "Regions have different output shape, fix me.");
     }
   }
   // set shape
-  for (auto res_shape: llvm::zip(getResults(), shapes)) {
+  for (auto res_shape : llvm::zip(getResults(), shapes)) {
     auto res = std::get<0>(res_shape);
     auto shape = std::get<1>(res_shape);
     module::setShapeOrVerify(res, shape);
@@ -47,14 +49,18 @@ void top::IfOp::shape_inference() {
   return;
 }
 
-static inline bool areCompatibleIfTypes(Type ifResultType, Type branchResultType) {
+static inline bool areCompatibleIfTypes(Type ifResultType,
+                                        Type branchResultType) {
   if (ShapedType ifShapedType = ifResultType.dyn_cast<ShapedType>()) {
     if (ShapedType branchShapedType = branchResultType.dyn_cast<ShapedType>()) {
-      //if quantizedType, just check branch result type if it is also quantizedType
+      // if quantizedType, just check branch result type if it is also
+      // quantizedType
       if (ifShapedType.getElementType().isa<mlir::quant::QuantizedType>())
-        return branchShapedType.getElementType().isa<mlir::quant::QuantizedType>();
+        return branchShapedType.getElementType()
+            .isa<mlir::quant::QuantizedType>();
       else
-        return ifShapedType.getElementType() == branchShapedType.getElementType();
+        return ifShapedType.getElementType() ==
+               branchShapedType.getElementType();
     } else {
       return false;
     }

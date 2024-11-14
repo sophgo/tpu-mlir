@@ -11,7 +11,6 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -21,7 +20,8 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
-  if(module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3()){
+  if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
+      module::isMARS3()) {
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
@@ -42,35 +42,33 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     llvm_unreachable("Unsupport coord mode.");
   if (getMode() == tpu::ResizeMode::nearest) {
     auto platform = module::getPlatform();
-    switch (platform)
-    {
+    switch (platform) {
     case module::Platform::ONNX:
-        common.platform_sp = ONNX_NEAREST;
-        break;
+      common.platform_sp = ONNX_NEAREST;
+      break;
     case module::Platform::TORCH:
-        common.platform_sp = PYTORCH_NEAREST;
-        break;
+      common.platform_sp = PYTORCH_NEAREST;
+      break;
     default:
-        common.platform_sp = ONNX_NEAREST;
-        break;
+      common.platform_sp = ONNX_NEAREST;
+      break;
     }
     common.align_corners = true;
     common.half_pixel_centers = false;
     if (coord == 3)
-        common.align_corners = false;
+      common.align_corners = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
     auto platform = module::getPlatform();
-    switch (platform)
-    {
+    switch (platform) {
     case module::Platform::TORCH:
-        common.platform_sp = PYTORCH_SUPPORT;
-        break;
+      common.platform_sp = PYTORCH_SUPPORT;
+      break;
     case module::Platform::CAFFE:
-        common.platform_sp = CAFFE_SUPPORT;
-        break;
+      common.platform_sp = CAFFE_SUPPORT;
+      break;
     default:
-        common.platform_sp = PYTORCH_SUPPORT;
-        break;
+      common.platform_sp = PYTORCH_SUPPORT;
+      break;
     }
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
@@ -142,10 +140,11 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(interp_global_param_t);
+  if (!buffer)
+    return sizeof(interp_global_param_t);
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
-  if(module::isBM1684XFamily()){
+  if (module::isBM1684XFamily()) {
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
@@ -178,7 +177,7 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (module::isNone(getShapeT())) {
     auto out_shape = module::getShape(getOutput());
     param.spec.dims = out_shape.size();
-    for (int i=0; i < param.spec.dims; i++)
+    for (int i = 0; i < param.spec.dims; i++)
       param.spec.shape[i] = out_shape[i];
     param.spec.shape_is_fixed = true;
   } else {
@@ -187,6 +186,4 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::InterpOp::get_fw_type_bm1684x() {
-  return FW_BMNET_INTERP;
-}
+int64_t tpu::InterpOp::get_fw_type_bm1684x() { return FW_BMNET_INTERP; }

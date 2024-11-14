@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Deconv.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
 using namespace tpu_mlir;
@@ -30,11 +30,14 @@ void Deconv::pad_init(float *input, deconv_attr_t &attr, int izp) {
     src_shape = {
         attr.n, attr.ic,
         (attr.id - 1) * attr.sd + 1 +
-            attr.dd * (2 * attr.kd - 2 - attr.pad_d - attr.pad_d_after) + attr.output_pad_d,
+            attr.dd * (2 * attr.kd - 2 - attr.pad_d - attr.pad_d_after) +
+            attr.output_pad_d,
         (attr.ih - 1) * attr.sh + 1 +
-            attr.dh * (2 * attr.kh - 2 - attr.pad_h - attr.pad_h_after) + attr.output_pad_h,
+            attr.dh * (2 * attr.kh - 2 - attr.pad_h - attr.pad_h_after) +
+            attr.output_pad_h,
         (attr.iw - 1) * attr.sw + 1 +
-            attr.dw * (2 * attr.kw - 2 - attr.pad_w - attr.pad_w_after) + attr.output_pad_w} ;
+            attr.dw * (2 * attr.kw - 2 - attr.pad_w - attr.pad_w_after) +
+            attr.output_pad_w};
     int input_padded_size = src_shape[0] * src_shape[1] * src_shape[2] *
                             src_shape[3] * src_shape[4];
     input_after_pad = std::make_shared<std::vector<float>>(input_padded_size);

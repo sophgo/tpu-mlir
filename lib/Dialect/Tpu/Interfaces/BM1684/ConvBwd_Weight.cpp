@@ -17,8 +17,8 @@
 using namespace tpu_mlir::backend;
 
 // static int inline get_tensor_local_size(const int *shape, int type_len,
-//                                         STORE_MODE_T store_mode, int npu_num, int eu_num,
-//                                         bool is_aligned = true) {
+//                                         STORE_MODE_T store_mode, int npu_num,
+//                                         int eu_num, bool is_aligned = true) {
 //   int n = shape[0];
 //   if (store_mode == STORE_MODE_4N && type_len == 1) {
 //     n = align_up(n, 4);
@@ -57,15 +57,16 @@ void tpu::ConvBwdWeightOp::codegen_global_bm1684() {
   //   auto out_sign = module::isSign(getOutput());
   //   if (attr.is_dw) {
   //     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
-  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
-  //         attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl, attr.pwr,
-  //         attr.sh, attr.sw, attr.ins_h, attr.ins_w, shift,
+  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
+  //         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
+  //         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w, shift,
   //         attr.has_bias ? 1 : 0, /*shift_sign*/ 0, in_sign, filter_sign,
   //         bias_sign, out_sign, attr.do_relu ? 1 : 0, attr.relu_limit,
   //         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   //   } else {
   //     if (attr.use_winograd == 2) {
-  //       // /workspace/nntoolchain/net_compiler/bmcompiler/src/cmd_gen/bm1684_global_layer_ctrl.cpp
+  //       //
+  //       /workspace/nntoolchain/net_compiler/bmcompiler/src/cmd_gen/bm1684_global_layer_ctrl.cpp
   //       // dl_nodechip_winograd_forward_parallel_with_data_split
   //       int64_t bias_global_offset =
   //           filter_addr + ceiling_func(attr.oc / attr.groups, 64) *
@@ -76,9 +77,9 @@ void tpu::ConvBwdWeightOp::codegen_global_bm1684() {
   //               in_addr, out_addr, filter_addr, bias_global_offset, attr.n,
   //               attr.ic, attr.ih, attr.iw, attr.groups, attr.oc, attr.pht,
   //               attr.phb, attr.pwl, attr.pwr, 2, attr.do_relu ? 1 : 0,
-  //               attr.relu_limit, 2, 0, 0, shift_v->at(1), in_sign, filter_sign,
-  //               bias_sign, 3, 0, 0, 0, 0,
-  //               (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+  //               attr.relu_limit, 2, 0, 0, shift_v->at(1), in_sign,
+  //               filter_sign, bias_sign, 3, 0, 0, 0, 0, (CMD_ID_NODE
+  //               *)BM1684::instance()->cmdid_node);
   //     } else {
   //       // int bottom_height = attr.ih;
   //       // if (getUse_3icOptimize())
@@ -89,8 +90,8 @@ void tpu::ConvBwdWeightOp::codegen_global_bm1684() {
   //               attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw,
   //               attr.dh, attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr,
   //               attr.sh, attr.sw, attr.has_bias ? 1 : 0, 0,
-  //               attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift, in_sign, filter_sign,
-  //               bias_sign, 3, 0, 0, 0, 0, getUse_3icOptimize(),
+  //               attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift, in_sign,
+  //               filter_sign, bias_sign, 3, 0, 0, 0, 0, getUse_3icOptimize(),
   //               (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   //     }
   //   }
@@ -98,16 +99,16 @@ void tpu::ConvBwdWeightOp::codegen_global_bm1684() {
   //   // F32
   //   if (attr.is_dw) {
   //     BM1684::instance().dl_nodechip_depthwise_forward_parallel(
-  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
-  //         attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl, attr.pwr,
-  //         attr.sh, attr.sw, attr.dh, attr.dw, attr.has_bias ? 1 : 0,
-  //         attr.do_relu ? 1 : 0, attr.relu_limit,
-  //         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
+  //         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
+  //         attr.pwr, attr.sh, attr.sw, attr.dh, attr.dw, attr.has_bias ? 1 :
+  //         0, attr.do_relu ? 1 : 0, attr.relu_limit, (CMD_ID_NODE
+  //         *)BM1684::instance()->cmdid_node);
   //   } else {
   //     BM1684::instance().dl_nodechip_conv_forward_parallel_with_data_split(
-  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
-  //         attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh, attr.dw,
-  //         attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
+  //         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
+  //         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
+  //         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
   //         attr.has_bias ? 1 : 0, 0 /* result_add*/, attr.do_relu ? 1 : 0,
   //         attr.relu_limit, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   //   }
@@ -137,17 +138,21 @@ int64_t tpu::ConvBwdWeightOp::getBufferSize_bm1684(
   //     int h_pad = in_hslice + p.pht + p.phb;
   //     int w_pad = p.iw + p.pwl + p.pwr;
   //     int real_h =
-  //         ((h_pad > 2047 ? 2047 : h_pad) - ((p.kh - 1) * p.dh + 1)) / p.sh + 1;
+  //         ((h_pad > 2047 ? 2047 : h_pad) - ((p.kh - 1) * p.dh + 1)) / p.sh +
+  //         1;
   //     int real_w =
-  //         ((w_pad > 2047 ? 2047 : w_pad) - ((p.kw - 1) * p.dw + 1)) / p.sw + 1;
+  //         ((w_pad > 2047 ? 2047 : w_pad) - ((p.kw - 1) * p.dw + 1)) / p.sw +
+  //         1;
   //     // split_shape[0][0] = n_slice;
   //     int new_shape[4] = {(int)in_nslice, (int)p.oc, real_h, real_w};
-  //     buffer_size = get_tensor_local_size(new_shape, 4, STORE_MODE_1N,  (int)NPU_NUM, (int)EU_NUM, true);
+  //     buffer_size = get_tensor_local_size(new_shape, 4, STORE_MODE_1N,
+  //     (int)NPU_NUM, (int)EU_NUM, true);
   //   }
   //   return buffer_size;
   // } else {
   //   if (dtype_i == DTYPE_INT16 || dtype_i == DTYPE_UINT16) {
-  //     buffer_size = ceiling_func(in_nslice, 4) * ceiling_func(p.ic, NPU_NUM) *
+  //     buffer_size = ceiling_func(in_nslice, 4) * ceiling_func(p.ic, NPU_NUM)
+  //     *
   //                   align_up((in_hslice + p.pht + p.phb) * p.iw, EU_NUM) *
   //                   sizeof(int);
   //     int kh_ext = p.dh * (p.kh - 1) + 1;
@@ -157,14 +162,16 @@ int64_t tpu::ConvBwdWeightOp::getBufferSize_bm1684(
   //                    align_up(1 * 32, EU_NUM) * 2 * sizeof(int);
   //     return buffer_size;
   //   }
-  //   // workd/nntoolchain/net_compiler/bmcompiler/src/layers/bm1684/bm1684_conv.cpp
-  //   // ##todo int8/uint8 datatype only when merged mulshift into conv need buffer;
+  //   //
+  //   workd/nntoolchain/net_compiler/bmcompiler/src/layers/bm1684/bm1684_conv.cpp
+  //   // ##todo int8/uint8 datatype only when merged mulshift into conv need
+  //   buffer;
   // }
   return 0;
 }
 
 void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
-                                         local_sec_info_t &sec_info) {
+                                                local_sec_info_t &sec_info) {
   // auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   // auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
   // auto b_gi = LocalGenInterface::getGroupInfo(getBias());
@@ -176,7 +183,8 @@ void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   // auto pad_h_t = (in_gi.h_idx == 0 ? p.pht : 0);
   // auto pad_h_b = (in_gi.h_idx + in_gi.h_slice == p.ih ? p.phb : 0);
 
-  // int unused_ht_for_input = 0, unused_hb_for_input = 0, unused_wl_for_input = 0,
+  // int unused_ht_for_input = 0, unused_hb_for_input = 0, unused_wl_for_input =
+  // 0,
   //     unused_wr_for_input = 0;
   // int64_t N, C, H, W;
   // module::getNCHW(getInput(), N, C, H, W);
@@ -222,17 +230,15 @@ void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   //         in_gi.out_addr, f_gi.out_addr, bias_local_addr, gi.out_addr,
   //         gi.buffer_addr, bottom_dim, top_dim, p.groups, pad_h_t, pad_h_b,
   //         p.pwl, p.pwr, 2 /* use_bias*/, 0, p.do_relu, p.relu_limit, 2,
-  //         /*unused_ht*/ 0, 0, 0, 0, winorshift, in_sign, filter_sign, bias_sign,
-  //         3,
+  //         /*unused_ht*/ 0, 0, 0, 0, winorshift, in_sign, filter_sign,
+  //         bias_sign, 3,
   //         /*mulshift*/ 0, 0, 0, 0, BM1684::instance()->bdc_node);
   //   } else if (p.is_dw) {
   //     BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
-  //         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
-  //         top_dim, p.kh, p.kw, pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw,
-  //         p.ins_h, p.ins_w,
-  //         2, // is depthwise conv
-  //         0, shift, p.has_bias,
-  //         1, // shift type, useless param, but must be set...
+  //         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
+  //         bottom_dim, top_dim, p.kh, p.kw, pad_h_t, pad_h_b, p.pwl, p.pwr,
+  //         p.sh, p.sw, p.ins_h, p.ins_w, 2, // is depthwise conv 0, shift,
+  //         p.has_bias, 1, // shift type, useless param, but must be set...
   //         in_sign, filter_sign, bias_sign, out_sign, p.do_relu,
   //         BM1684::instance()->bdc_node);
   //   } else {
@@ -244,10 +250,11 @@ void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   //     BM1684::instance().dl_nodechip_conv_forward_local_fix8b(
   //         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
   //         gi.buffer_addr, bottom_dim, top_dim, p.groups,
-  //         getUse_3icOptimize() ? 1 : p.kh, p.kw, p.dh, p.dw, pad_h_t, pad_h_b,
-  //         p.pwl, p.pwr, getUse_3icOptimize() ? 1 : p.sh, p.sw, p.has_bias, 0,
-  //         p.do_relu, p.relu_limit, /*unused_ht*/ unused_ht_for_input,
-  //         unused_hb_for_input, unused_wl_for_input, unused_wr_for_input,
+  //         getUse_3icOptimize() ? 1 : p.kh, p.kw, p.dh, p.dw, pad_h_t,
+  //         pad_h_b, p.pwl, p.pwr, getUse_3icOptimize() ? 1 : p.sh, p.sw,
+  //         p.has_bias, 0, p.do_relu, p.relu_limit, /*unused_ht*/
+  //         unused_ht_for_input, unused_hb_for_input, unused_wl_for_input,
+  //         unused_wr_for_input,
   //         /* insert h*/ p.ins_h, p.ins_w, shift, in_sign, filter_sign,
   //         bias_sign, true, /*mulshift*/ 0, 0, 0, 0,
   //         BM1684::instance()->bdc_node);
@@ -255,11 +262,11 @@ void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   // } else {
   //   BM1684::instance().dl_nodechip_conv_forward_local(
   //       in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
-  //       gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
-  //       pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
-  //       /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, unused_ht_for_input,
-  //       unused_hb_for_input, unused_wl_for_input, unused_wr_for_input,
-  //       BM1684::instance()->bdc_node);
+  //       gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh,
+  //       p.dw, pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
+  //       /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit,
+  //       unused_ht_for_input, unused_hb_for_input, unused_wl_for_input,
+  //       unused_wr_for_input, BM1684::instance()->bdc_node);
   // }
 }
 
@@ -268,7 +275,7 @@ void tpu::ConvBwdWeightOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 // ======================================
 
 uint32_t tpu::ConvBwdWeightOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-    return -1;
+  return -1;
 
   // uint32_t fw_ir_length = 0;
   // ir_layer_info_t *conv_layer_info = (ir_layer_info_t *)ir_layer_info;
@@ -280,8 +287,8 @@ uint32_t tpu::ConvBwdWeightOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   // fw_conv_layer_param_t fw_conv_layer_param = {0};
   // assign_fw_param((void *)&fw_conv_layer_param);
 
-  // conv_layer_info->fw_layer_param_u.fw_conv_layer_param = fw_conv_layer_param;
-  // fw_ir_length += sizeof(fw_conv_layer_param_t);
+  // conv_layer_info->fw_layer_param_u.fw_conv_layer_param =
+  // fw_conv_layer_param; fw_ir_length += sizeof(fw_conv_layer_param_t);
 
   // return fw_ir_length;
 }
@@ -320,13 +327,14 @@ int32_t tpu::ConvBwdWeightOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   // fw_conv_layer_param.weight_global_offset = weight_global_addr;
   // fw_conv_layer_param.double_buffer_local_offset = 0;
 
-  // conv_layer_info->fw_layer_param_u.fw_conv_layer_param = fw_conv_layer_param;
-  // fw_ir_length += sizeof(fw_conv_layer_param_t);
+  // conv_layer_info->fw_layer_param_u.fw_conv_layer_param =
+  // fw_conv_layer_param; fw_ir_length += sizeof(fw_conv_layer_param_t);
 
   // // get layer input and output
   // conv_layer_info->ir_tensor_info_v.clear();
   // // input tensor
-  // dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v, getInput());
+  // dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,
+  // getInput());
 
   // // weight
   // dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,

@@ -60,7 +60,7 @@ void GroupNormLowering::LoweringF32(PatternRewriter &rewriter,
 void GroupNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::GroupNormOp op,
                                      bool asymmetric) const {
-  if(module::isMARS3())
+  if (module::isMARS3())
     LoweringGroupNorm(rewriter, op, rewriter.getBF16Type());
   else
     LoweringGroupNorm(rewriter, op, rewriter.getF32Type());
@@ -74,7 +74,7 @@ void GroupNormLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void GroupNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::GroupNormOp op) const {
-  if(module::isMARS3())
+  if (module::isMARS3())
     LoweringGroupNorm(rewriter, op, rewriter.getBF16Type());
   else
     LoweringGroupNorm(rewriter, op, rewriter.getF32Type());
@@ -86,7 +86,7 @@ void GroupNormLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void GroupNormLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::GroupNormOp op) const {
+                                   top::GroupNormOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -29,9 +29,9 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   double in_scale;
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (!module::isNone(op.getPaddingsT())){
+  if (!module::isNone(op.getPaddingsT())) {
     operands.push_back(op.getPaddingsT());
-  }else{
+  } else {
     operands.push_back(module::getNoneOp(op));
   }
   operands.push_back(module::getNoneOp(op));
@@ -44,7 +44,8 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   val = std::round(val / in_scale + in_zp);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  auto m = tpu::symbolizePaddingMode(op.getMode()).value_or(tpu::PaddingMode::constant);
+  auto m = tpu::symbolizePaddingMode(op.getMode())
+               .value_or(tpu::PaddingMode::constant);
   attrs.push_back(rewriter.getNamedAttr(
       "mode", tpu::PaddingModeAttr::get(op->getContext(), m)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

@@ -19,8 +19,9 @@ public:
       : OpRewriterPatternEx<top::AddConstOp>(context, "ConvertAddConstOp") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::AddConstOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::AddConstOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     std::vector<Value> operands;
     std::vector<float> weight_data;
     std::string weight_name =
@@ -314,11 +315,11 @@ protected:
   }
 };
 
-
 class ConvertConvPading : public OpRewriterPatternEx<top::ConvOp> {
 public:
-  ConvertConvPading(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConvPading",benifit) {}
+  ConvertConvPading(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConvPading",
+                                         benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::ConvOp op,
@@ -400,11 +401,12 @@ protected:
         input_shape[2] += attr.pht;
       }
       if (attr.phb > 15) {
-        // conv1d convert to conv2d in pre common pass, but input and output shape is still conv1d mannaer
-        // pads = [25, 0, 25, 0]
-        // (tensor<1x256x1592xf32>, tensor<256x256x11x1xf32>, tensor<256xf32>) -> tensor<1x256x1592xf32>
-        assert(attr.phb == pad_v[pad_v.size()/2]);
-        pad_v[pad_v.size()/2] = 0;
+        // conv1d convert to conv2d in pre common pass, but input and output
+        // shape is still conv1d mannaer pads = [25, 0, 25, 0]
+        // (tensor<1x256x1592xf32>, tensor<256x256x11x1xf32>, tensor<256xf32>)
+        // -> tensor<1x256x1592xf32>
+        assert(attr.phb == pad_v[pad_v.size() / 2]);
+        pad_v[pad_v.size() / 2] = 0;
         new_pad_v[5] = attr.phb;
         input_shape[2] += attr.phb;
       }
@@ -438,7 +440,8 @@ protected:
 class ConvertConv2dToMatMul : public OpRewriterPatternEx<top::ConvOp> {
 public:
   ConvertConv2dToMatMul(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConv2dToMatMul",benifit) {}
+      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConv2dToMatMul",
+                                         benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::ConvOp op,
@@ -574,8 +577,9 @@ protected:
 
 class ConvertGatherOp : public OpRewriterPatternEx<top::GatherOp> {
 public:
-  ConvertGatherOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::GatherOp>(context, "ConvertGatherOp",benifit) {}
+  ConvertGatherOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::GatherOp>(context, "ConvertGatherOp",
+                                           benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::GatherOp op,
@@ -711,8 +715,9 @@ protected:
 
 class ConvertInterpOp : public OpRewriterPatternEx<top::InterpOp> {
 public:
-  ConvertInterpOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::InterpOp>(context, "ConvertInterpOp",benifit) {}
+  ConvertInterpOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::InterpOp>(context, "ConvertInterpOp",
+                                           benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::InterpOp op,
@@ -743,8 +748,9 @@ protected:
 
 class ConvertMaskedFillOp : public OpRewriterPatternEx<top::MaskedFillOp> {
 public:
-  ConvertMaskedFillOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::MaskedFillOp>(context, "ConvertMaskedFillOp",benifit) {}
+  ConvertMaskedFillOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::MaskedFillOp>(context, "ConvertMaskedFillOp",
+                                               benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::MaskedFillOp op,
@@ -917,10 +923,12 @@ protected:
   }
 };
 
-class ConvertMatMulWithRightTranspose : public OpRewriterPatternEx<top::MatMulOp> {
+class ConvertMatMulWithRightTranspose
+    : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  ConvertMatMulWithRightTranspose(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMulWithRightTranspose",benifit) {}
+  ConvertMatMulWithRightTranspose(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::MatMulOp>(
+            context, "ConvertMatMulWithRightTranspose", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
@@ -1020,8 +1028,9 @@ protected:
 
 class convertMaxPool3D : public OpRewriterPatternEx<top::MaxPoolOp> {
 public:
-  convertMaxPool3D(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::MaxPoolOp>(context, "convertMaxPool3D",benifit) {}
+  convertMaxPool3D(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::MaxPoolOp>(context, "convertMaxPool3D",
+                                            benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::MaxPoolOp op,
@@ -1119,8 +1128,9 @@ protected:
 class ConvertMaxPoolWithMaskOp
     : public OpRewriterPatternEx<top::MaxPoolWithMaskOp> {
 public:
-  ConvertMaxPoolWithMaskOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::MaxPoolWithMaskOp>(context, "ConvertMaxPoolWithMaskOp",benifit) {}
+  ConvertMaxPoolWithMaskOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::MaxPoolWithMaskOp>(
+            context, "ConvertMaxPoolWithMaskOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::MaxPoolWithMaskOp op,
@@ -1163,7 +1173,8 @@ protected:
 class ConvertMaxUnpoolOp : public OpRewriterPatternEx<top::MaxUnpoolOp> {
 public:
   ConvertMaxUnpoolOp(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<top::MaxUnpoolOp>(context, "ConvertMaxUnpoolOp",benifit) {}
+      : OpRewriterPatternEx<top::MaxUnpoolOp>(context, "ConvertMaxUnpoolOp",
+                                              benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::MaxUnpoolOp op,
@@ -1241,8 +1252,9 @@ protected:
 
 class ConvertPixelNormOp : public OpRewriterPatternEx<top::PixelNormOp> {
 public:
-  ConvertPixelNormOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::PixelNormOp>(context, "ConvertPixelNormOp",benifit) {}
+  ConvertPixelNormOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::PixelNormOp>(context, "ConvertPixelNormOp",
+                                              benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::PixelNormOp op,
@@ -1334,8 +1346,8 @@ class ConvertDivOp : public OpRewriterPatternEx<top::DivOp> {
 public:
   static std::map<std::string, Operation *> reciprocal_name_ops;
 
-  ConvertDivOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::DivOp>(context, "ConvertDivOp",benifit) {}
+  ConvertDivOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::DivOp>(context, "ConvertDivOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::DivOp op,
@@ -1395,8 +1407,8 @@ std::map<std::string, Operation *> ConvertDivOp::reciprocal_name_ops;
 
 class ConvertSqrtOp : public OpRewriterPatternEx<top::SqrtOp> {
 public:
-  ConvertSqrtOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::SqrtOp>(context, "ConvertSqrtOp",benifit) {}
+  ConvertSqrtOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::SqrtOp>(context, "ConvertSqrtOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::SqrtOp op,
@@ -1443,8 +1455,8 @@ static int is_bcast(top::SubOp op) {
 
 class ConvertSubOp : public OpRewriterPatternEx<top::SubOp> {
 public:
-  ConvertSubOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::SubOp>(context, "ConvertSubOp",benifit) {}
+  ConvertSubOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::SubOp>(context, "ConvertSubOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::SubOp op,
@@ -1504,8 +1516,9 @@ protected:
 
 class ConvertUpsampleOp : public OpRewriterPatternEx<top::UpsampleOp> {
 public:
-  ConvertUpsampleOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::UpsampleOp>(context, "ConvertUpsampleOp",benifit) {}
+  ConvertUpsampleOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::UpsampleOp>(context, "ConvertUpsampleOp",
+                                             benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::UpsampleOp op,
@@ -1691,8 +1704,8 @@ public:
     }
   }
 
-  ConvertWhereOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::WhereOp>(context, "ConvertWhereOp",benifit) {}
+  ConvertWhereOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::WhereOp>(context, "ConvertWhereOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::WhereOp op,
@@ -1766,8 +1779,8 @@ protected:
 
 class ConvertClipOp : public OpRewriterPatternEx<top::ClipOp> {
 public:
-  ConvertClipOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::ClipOp>(context, "ConvertClipOp",benifit) {}
+  ConvertClipOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::ClipOp>(context, "ConvertClipOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::ClipOp op,
@@ -1800,8 +1813,8 @@ protected:
 
 class SplitReduceOp : public OpRewriterPatternEx<top::ReduceOp> {
 public:
-  SplitReduceOp(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::ReduceOp>(context, "SplitReduceOp",benifit) {}
+  SplitReduceOp(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::ReduceOp>(context, "SplitReduceOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::ReduceOp op,
@@ -1858,7 +1871,7 @@ protected:
 class ReshapeArgOp : public OpRewriterPatternEx<top::ArgOp> {
 public:
   ReshapeArgOp(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<top::ArgOp>(context, "ReshapeArgOp",benifit) {}
+      : OpRewriterPatternEx<top::ArgOp>(context, "ReshapeArgOp", benifit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(top::ArgOp op,
@@ -1878,7 +1891,6 @@ protected:
   }
 };
 
-
 template <typename OpTy>
 struct ConvertPoolOp : public OpRewriterPatternEx<OpTy> {
 public:
@@ -1886,8 +1898,8 @@ public:
       : OpRewriterPatternEx<OpTy>(context, "ConvertPoolOp", benifit) {}
 
 protected:
-  mlir::LogicalResult matchAndRewriteImpl(OpTy op,
-                                          mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy op, mlir::PatternRewriter &rewriter) const override {
     if (!op.getDoRelu()) {
       return failure();
     }
@@ -1914,8 +1926,9 @@ protected:
 
 class RemoveUnuseOutput : public OpRewriterPatternEx<top::TopKOp> {
 public:
-  RemoveUnuseOutput(mlir::MLIRContext *context,int benifit)
-      : OpRewriterPatternEx<top::TopKOp>(context, "RemoveUnuseOutput",benifit) {}
+  RemoveUnuseOutput(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<top::TopKOp>(context, "RemoveUnuseOutput",
+                                         benifit) {}
 
   LogicalResult matchAndRewriteImpl(top::TopKOp op,
                                     PatternRewriter &rewriter) const override {
@@ -1974,18 +1987,17 @@ using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(),
                                  /*PatternBenefit*/ 9);
-  patterns
-      ->add<ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading,
-            ConvertConvDilation, ConvertConv2dToMatMul, ConvertAddConstOp,
-            ConvertDivOp, ConvertGatherOp, convertScale5dOp,
-            ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp, ConvertMaxUnpoolOp,
-            ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
-            ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
-            convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
-            ConvertPoolOp<top::AvgPoolOp>, ConvertPoolOp<top::MaxPoolOp>, ConvertPoolOp<top::MulConstOp>,
-            patterns::SqueezeToReshapePattern,
-            patterns::UnsqueezeToReshapePattern,
-            ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
+  patterns->add<
+      ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading, ConvertConvDilation,
+      ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp, ConvertGatherOp,
+      convertScale5dOp, ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp,
+      ConvertMaxUnpoolOp, ConvertScaleOp, ConvertSubOp, ConvertInterpOp,
+      ConvertUpsampleOp, ConvertWhereOp, ConvertMatMulWithRightTranspose,
+      ConvertPixelNormOp, convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp,
+      SplitReduceOp, ConvertPoolOp<top::AvgPoolOp>,
+      ConvertPoolOp<top::MaxPoolOp>, ConvertPoolOp<top::MulConstOp>,
+      patterns::SqueezeToReshapePattern, patterns::UnsqueezeToReshapePattern,
+      ConvertClipOp, RemoveUnuseOutput>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

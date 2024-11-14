@@ -33,10 +33,12 @@ void top::FlattenOp::shape_inference() {
   }
   std::vector<int64_t> shape;
   if (module::isPlatform(module::Platform::ONNX)) {
-    auto outer_dims = std::accumulate(input_shape.begin(), input_shape.begin() + start_dim,
-                                      1, std::multiplies<int64_t>());
-    auto inner_dims = std::accumulate(input_shape.begin() + start_dim, input_shape.end(), 1,
-                                      std::multiplies<int64_t>());
+    auto outer_dims =
+        std::accumulate(input_shape.begin(), input_shape.begin() + start_dim, 1,
+                        std::multiplies<int64_t>());
+    auto inner_dims =
+        std::accumulate(input_shape.begin() + start_dim, input_shape.end(), 1,
+                        std::multiplies<int64_t>());
     shape = {outer_dims, inner_dims};
   } else {
     int64_t flatten_dim = 1;

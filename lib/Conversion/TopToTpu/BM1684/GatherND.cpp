@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 static void GatherND_lowering_common(PatternRewriter &rewriter,
-                                    top::GatherNDOp op) {
+                                     top::GatherNDOp op) {
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> cpu_param;
   attrs.emplace_back(rewriter.getNamedAttr(

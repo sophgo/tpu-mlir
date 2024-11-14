@@ -10,7 +10,9 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-int64_t top::DivConstOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::DivConstOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
 LogicalResult top::DivConstOp::init(InferenceParameter &p) { return success(); }
 void top::DivConstOp::deinit(InferenceParameter &p) {}
@@ -21,13 +23,13 @@ LogicalResult top::DivConstOp::inference(InferenceParameter &p) {
   const bool is_reverse_ = getIsReverse();
   if (is_reverse_) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i =0; i < num_elem; i++){
-      p.outputs[0][i]=std::floor(const_val_/p.inputs[0][i]);
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = std::floor(const_val_ / p.inputs[0][i]);
     }
-  }else{
+  } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i =0; i < num_elem; i++){
-      p.outputs[0][i]=std::floor(p.inputs[0][i]/const_val_);
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = std::floor(p.inputs[0][i] / const_val_);
     }
   }
   if (getDoRelu()) {

@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 void tpu::MulShiftOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   BM168x::getBetterNCHW(getInput(), n, c, h, w);
@@ -77,13 +76,16 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                            int64_t h_step, int64_t d_step,
+                                            int64_t w_step,
                                             group_type_t group_type,
                                             local_sec_info_t &sec_info) {
   int64_t n, c, d, h, w;
   module::getNCDHW(getInput(), n, c, d, h, w, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
 
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
@@ -134,8 +136,11 @@ int64_t tpu::MulShiftOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto out_qtype = module::getUniformQuantizedType(getOutput());
   auto in_zp = in_qtype.getZeroPoint();
   auto out_zp = out_qtype.getZeroPoint();
-  auto status = module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
-  if (!buffer) return (status ? sizeof(dyn_requant_int_local_param_t) : sizeof(dyn_mulshift_local_param_t));
+  auto status =
+      module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
+  if (!buffer)
+    return (status ? sizeof(dyn_requant_int_local_param_t)
+                   : sizeof(dyn_mulshift_local_param_t));
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
   if (module::isUniformQuantized(getInput())) {
     if (in_zp != 0 || out_zp != 0) {
@@ -158,7 +163,8 @@ int64_t tpu::MulShiftOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.buffer_addr = gi.buffer_addr;
   param.common.scale_val = getMultiplier();
   param.common.rshift_num = getRshift();
-  param.common.scale_dtype = param.common.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
+  param.common.scale_dtype =
+      param.common.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.common.output_dtype = BM168x::getDataType(getOutput());
   param.common.round_mode = ROUND_UP;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
@@ -172,8 +178,11 @@ int64_t tpu::MulShiftOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto out_qtype = module::getUniformQuantizedType(getOutput());
   auto in_zp = in_qtype.getZeroPoint();
   auto out_zp = out_qtype.getZeroPoint();
-  auto status = module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
-  if (!buffer) return (status ? sizeof(dyn_requant_int_global_param_t) : sizeof(dyn_mulshift_global_param_t));
+  auto status =
+      module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
+  if (!buffer)
+    return (status ? sizeof(dyn_requant_int_global_param_t)
+                   : sizeof(dyn_mulshift_global_param_t));
   if (module::isUniformQuantized(getInput())) {
     if (in_zp != 0 || out_zp != 0) {
       dyn_requant_int_global_param_t param = {0};
@@ -192,7 +201,8 @@ int64_t tpu::MulShiftOp::dyn_codegen_global_bm1684x(void *buffer) {
   dyn_mulshift_global_param_t param = {0};
   param.common.scale_val = getMultiplier();
   param.common.rshift_num = getRshift();
-  param.common.scale_dtype = param.common.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
+  param.common.scale_dtype =
+      param.common.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.common.output_dtype = BM168x::getDataType(getOutput());
   param.common.round_mode = ROUND_UP;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
@@ -203,6 +213,7 @@ int64_t tpu::MulShiftOp::get_fw_type_bm1684x() {
   auto out_qtype = module::getUniformQuantizedType(getOutput());
   auto in_zp = in_qtype.getZeroPoint();
   auto out_zp = out_qtype.getZeroPoint();
-  auto status = module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
+  auto status =
+      module::isUniformQuantized(getInput()) && (in_zp != 0 || out_zp != 0);
   return (status ? FW_BMNET_REQUANT_INT : FW_BMNET_MULSHIFT);
 }

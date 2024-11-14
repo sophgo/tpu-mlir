@@ -24,7 +24,7 @@ FAttention::FAttention() {}
 void FAttention::setup(float *queries, float *keys, float *values, float *mask,
                        float *output, int64_t batch, int64_t M_q, int64_t M_k,
                        int64_t head, int64_t d, float scale, int dtype) {
-                        #if 0
+#if 0
   // int64_t d = K / head;
   scale_ = scale;
   M_k_ = M_k;
@@ -74,7 +74,7 @@ void FAttention::setup(float *queries, float *keys, float *values, float *mask,
       ->setup(p_softmax, values, nullptr, output, batch, head, M_q, M_k, d, 0,
               -1, 0, 0, 1, 0, 1, 1);
   p_output = output;
-  #endif
+#endif
 }
 
 // type = {0:fp32, 1:fp16, 2:bf16, 3:int8}
@@ -89,7 +89,7 @@ static void type_cast(float *data, int64_t num, int type) {
 
 void FAttention::run() {
   assert(0);
-  #if 0
+#if 0
   int mode = dtype_;
   if (dtype_ < 3) {
     ((MatMul *)matmul0)->run();
@@ -107,7 +107,7 @@ void FAttention::run() {
   } else {
     llvm_unreachable("not supported\n");
   }
-  #endif
+#endif
 }
 
 void FAttention::deinit() {

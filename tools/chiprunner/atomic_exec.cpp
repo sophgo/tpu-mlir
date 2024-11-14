@@ -11,9 +11,9 @@
 #include "tpu_kernel.h"
 #include <cassert>
 #include <iostream>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 #ifndef WIN32
 #define WITH_PLATFORM(x) __attribute__((packed)) x
@@ -84,16 +84,19 @@ public:
   }
 
   int init_reserved_memory() {
-    auto ret_device =
-        bm_malloc_device_byte_heap_mask(bm_handle, &device_mem, 7, (unsigned int)3435900000);
-    auto ret_local = bm_malloc_device_byte_heap_mask(bm_handle, &device_loc_mem, 7, 16 * 1024 * 1024);
+    auto ret_device = bm_malloc_device_byte_heap_mask(bm_handle, &device_mem, 7,
+                                                      (unsigned int)3435900000);
+    auto ret_local = bm_malloc_device_byte_heap_mask(bm_handle, &device_loc_mem,
+                                                     7, 16 * 1024 * 1024);
     u64 res_addr = bm_mem_get_device_addr(device_mem);
     u64 loc_addr = bm_mem_get_device_addr(device_loc_mem);
     set_reserved_mem(res_addr);
     set_loc_mem(loc_addr);
 
-    auto ret_tiu = bm_malloc_device_byte_heap_mask(bm_handle, &tiu_mem, 7, 16 * 1024 * 1024);
-    auto ret_dma = bm_malloc_device_byte_heap_mask(bm_handle, &dma_mem, 7, 16 * 1024 * 1024);
+    auto ret_tiu = bm_malloc_device_byte_heap_mask(bm_handle, &tiu_mem, 7,
+                                                   16 * 1024 * 1024);
+    auto ret_dma = bm_malloc_device_byte_heap_mask(bm_handle, &dma_mem, 7,
+                                                   16 * 1024 * 1024);
     u64 tiu_addr = bm_mem_get_device_addr(tiu_mem);
     u64 dma_addr = bm_mem_get_device_addr(dma_mem);
     set_tiu_mem(tiu_addr);

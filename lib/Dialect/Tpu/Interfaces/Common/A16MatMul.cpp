@@ -334,8 +334,10 @@ LogicalResult tpu::A16MatMulOp::canonicalize(A16MatMulOp op,
     llvm_unreachable("input of A16MatMul has to be F16 or BF16");
   }
   bool use_dq2 = false;
-  if(module::isMARS3()) {
-    use_dq2 = (module::getQuantGroupSize() >= 32) && (module::getQuantGroupSize() % 32 == 0) && (op.getWeightBits() == 4);
+  if (module::isMARS3()) {
+    use_dq2 = (module::getQuantGroupSize() >= 32) &&
+              (module::getQuantGroupSize() % 32 == 0) &&
+              (op.getWeightBits() == 4);
     if (use_dq2) {
       assert(ele_type.isBF16());
     }
@@ -470,7 +472,7 @@ ArrayAttr tpu::A16MatMulOp::getIndexingMaps() {
   auto num_dims = outShape.size();
   // TODO(pengchao.hu): Only Weight slice
   auto out_nums = module::getNumElements(getOutput());
-  if (out_nums != outShape[num_dims-1]) {
+  if (out_nums != outShape[num_dims - 1]) {
     return Builder(ctx).getAffineMapArrayAttr({});
   }
   AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, ctx);

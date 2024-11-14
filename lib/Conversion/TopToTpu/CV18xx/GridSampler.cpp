@@ -13,13 +13,14 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-void GridSamplerLowering::LoweringINT8(PatternRewriter &rewriter, top::GridSamplerOp op,
-                                  bool asymmetric) const {
+void GridSamplerLowering::LoweringINT8(PatternRewriter &rewriter,
+                                       top::GridSamplerOp op,
+                                       bool asymmetric) const {
   LoweringBF16(rewriter, op);
 }
 
 void GridSamplerLowering::LoweringBF16(PatternRewriter &rewriter,
-                                  top::GridSamplerOp op) const {
+                                       top::GridSamplerOp op) const {
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> cpu_param;
   attrs.emplace_back(rewriter.getNamedAttr(
@@ -32,5 +33,5 @@ void GridSamplerLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
                                                  op.getOperands(), attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

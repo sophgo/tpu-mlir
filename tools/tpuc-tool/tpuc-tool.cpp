@@ -11,12 +11,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/InitAll.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
+#include "tpu_mlir/InitAll.h"
 using namespace mlir;
 
 std::vector<std::string> pluginPostPass = {
-  "--mlir-print-debuginfo", // keep locations in mlir
+    "--mlir-print-debuginfo", // keep locations in mlir
 };
 
 int main(int argc, char **argv) {

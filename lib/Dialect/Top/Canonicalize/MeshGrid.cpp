@@ -7,19 +7,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
 struct MeshGrid2Mul : public OpRewriterPatternEx<MeshGridOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-   MeshGrid2Mul(mlir::MLIRContext *context)
+  MeshGrid2Mul(mlir::MLIRContext *context)
       : OpRewriterPatternEx<MeshGridOp>(context, "MeshGrid2Mul") {}
 
   LogicalResult matchAndRewriteImpl(MeshGridOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     rewriter.setInsertionPointAfter(op);
 
@@ -41,13 +41,13 @@ struct MeshGrid2Mul : public OpRewriterPatternEx<MeshGridOp> {
       r_shape[idx] = shape.size();
       auto type_r = RankedTensorType::get(r_shape, stype);
       std::vector<NamedAttribute> attrs_reshape;
-      attrs_reshape.push_back(rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(r_shape)));
+      attrs_reshape.push_back(
+          rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(r_shape)));
       std::string out_name = module::getName(op.getOutputs()[idx]).data();
       std::string name_r = out_name + "_reshape_" + std::to_string(i);
       auto name_loc_r = NameLoc::get(rewriter.getStringAttr(name_r));
-      auto reshape =
-            rewriter.create<ReshapeOp>(name_loc_r, type_r,
-                                       ValueRange{input}, attrs_reshape);
+      auto reshape = rewriter.create<ReshapeOp>(
+          name_loc_r, type_r, ValueRange{input}, attrs_reshape);
       auto name_loc = NameLoc::get(rewriter.getStringAttr(out_name));
       auto mul = rewriter.create<MulOp>(name_loc, op.getOutputs().getType(),
                                         ValueRange{reshape}, attrs);

@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
-#include "tpu_mlir/Interfaces/IndexingMapsInterface.cpp.inc"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.cpp.inc"
 
 using namespace mlir;
 
@@ -31,16 +31,19 @@ mlir::ArrayAttr getBinaryIndexingMaps(mlir::Operation *op) {
 
   for (int i = 0; i < out_shape.size(); ++i) {
     if (i >= in0_dim_diff) {
-      in0_index.push_back(out_shape[i] != in0_shape[i - in0_dim_diff] ? c1 : out_index[i]);
+      in0_index.push_back(
+          out_shape[i] != in0_shape[i - in0_dim_diff] ? c1 : out_index[i]);
     }
     if (i >= in1_dim_diff) {
-      in1_index.push_back(out_shape[i] != in1_shape[i - in1_dim_diff] ? c1 : out_index[i]);
+      in1_index.push_back(
+          out_shape[i] != in1_shape[i - in1_dim_diff] ? c1 : out_index[i]);
     }
   }
 
   AffineMap in0_map = AffineMap::get(out_shape.size(), 0, in0_index, ctx);
   AffineMap in1_map = AffineMap::get(out_shape.size(), 0, in1_index, ctx);
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(out_shape.size(), ctx);
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(out_shape.size(), ctx);
   SmallVector<AffineMap> indexingMaps{in0_map, in1_map, identity_map};
   return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 };

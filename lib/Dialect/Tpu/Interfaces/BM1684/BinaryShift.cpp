@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -20,11 +18,9 @@ void tpu::BinaryShiftOp::codegen_global_bm1684() {
   UNREACHABLE_THIS("Not Implemented");
 }
 
-int64_t tpu::BinaryShiftOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                                 int64_t out_lmem_bytes,
-                                                 int64_t in_nslice, int64_t in_hslice,
-                                                 int64_t out_nslice,
-                                                 int64_t out_hslice) {
+int64_t tpu::BinaryShiftOp::getBufferSize_bm1684(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   llvm_unreachable("Not supported now");
   return 0;
 }

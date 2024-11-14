@@ -9,6 +9,4 @@
 
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
 
-
-
 #include "tpu_mlir/Interfaces/InferenceInterface.cpp.inc"

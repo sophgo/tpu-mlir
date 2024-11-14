@@ -56,7 +56,7 @@ void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
   if (options.opt != 3) {
     pm->add_pass(CreateGroupDataMoveOverlapPass());
   }
-                                             }
+}
 
 } // namespace tpu
 } // namespace tpu_mlir

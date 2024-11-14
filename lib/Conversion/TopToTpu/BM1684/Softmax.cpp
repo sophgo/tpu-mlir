@@ -19,7 +19,7 @@ void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
-  //only input need scale
+  // only input need scale
   lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 

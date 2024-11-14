@@ -66,7 +66,7 @@ void GRULowering::LoweringINT8(PatternRewriter &rewriter, top::GRUOp op,
   LoweringGRU(rewriter, op, rewriter.getF32Type());
 }
 void GRULowering::LoweringINT4(PatternRewriter &rewriter, top::GRUOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {

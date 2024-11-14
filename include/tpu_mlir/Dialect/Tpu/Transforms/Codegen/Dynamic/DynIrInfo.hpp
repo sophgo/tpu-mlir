@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include <vector>
 #include "string.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp"
+#include <vector>
 namespace tpu_mlir {
 namespace tpu {
 using std::vector;
@@ -143,7 +143,8 @@ typedef struct ir_layer_info {
     fw_yolo_layer_param_t fw_yolo_layer_param;
     fw_yolov3_detect_out_layer_param_t fw_yolov3_detect_out_layer_param;
     fw_yolov5_detect_out_layer_param_t fw_yolov5_detect_out_layer_param;
-    fw_yolov5_decode_detect_out_layer_param_t fw_yolov5_detect_decode_out_layer_param;
+    fw_yolov5_decode_detect_out_layer_param_t
+        fw_yolov5_detect_decode_out_layer_param;
     fw_yolov8_detect_out_layer_param_t fw_yolov8_detect_out_layer_param;
     fw_reorg_layer_param_t fw_reorg_layer_param;
     fw_ssd_detect_out_layer_param_t fw_ssd_detect_out_layer_param;

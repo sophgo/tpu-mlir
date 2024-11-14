@@ -30,8 +30,9 @@ void tpu::BinaryShiftOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::call_global_func("backend_api_binary_shift_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_binary_shift_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 // =========================================
@@ -47,7 +48,8 @@ int64_t tpu::BinaryShiftOp::getBufferSize_bm1684x(
   auto in1_type = module::getStorageType(getInput2());
   auto out_type = module::getStorageType(getOutput());
   int buffer_dsize;
-  bool in_signed = in0_type.isSignedInteger() || in1_type.isSignedInteger() || getMode() == "Sub";
+  bool in_signed = in0_type.isSignedInteger() || in1_type.isSignedInteger() ||
+                   getMode() == "Sub";
   if (in_signed && out_type.isUnsignedInteger()) {
     buffer_dsize = out_type.isInteger(8) ? 2 : 4;
   } else if (!in_signed && out_type.isSignedInteger()) {
@@ -57,15 +59,16 @@ int64_t tpu::BinaryShiftOp::getBufferSize_bm1684x(
   }
   auto eu_num = BM168x::eu_num(buffer_dsize);
   int64_t buffer_size = ceiling_func(out_cslice, BM168x::NPU_NUM) *
-      align_up(out_hslice * out_dslice * out_wslice, eu_num) * buffer_dsize;
+                        align_up(out_hslice * out_dslice * out_wslice, eu_num) *
+                        buffer_dsize;
   return buffer_size;
 }
 
 void tpu::BinaryShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                           int64_t h_step, int64_t d_step,
-                                           int64_t w_step,
-                                           group_type_t group_type,
-                                           local_sec_info_t &sec_info) {
+                                               int64_t h_step, int64_t d_step,
+                                               int64_t w_step,
+                                               group_type_t group_type,
+                                               local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
@@ -82,8 +85,9 @@ void tpu::BinaryShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.spec.buffer = gi.buffer_addr;
   param.a_is_coeff = false;
   param.b_is_coeff = false;
-  BM168x::call_local_func("backend_api_binary_shift_local", &param, sizeof(param),
-                          &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_binary_shift_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 // dynamic codegen

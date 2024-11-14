@@ -15,7 +15,8 @@ using namespace tpu_mlir::trait;
 
 struct TopBatchNormToScale : public OpRewriterPatternEx<BatchNormOp> {
   TopBatchNormToScale(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewriterPatternEx<BatchNormOp>(context, "TopBatchNormToScale", benefit) {}
+      : OpRewriterPatternEx<BatchNormOp>(context, "TopBatchNormToScale",
+                                         benefit) {}
 
 protected:
   LogicalResult matchAndRewriteImpl(BatchNormOp op,
@@ -52,15 +53,18 @@ protected:
     }
     auto storage_type = module::getStorageType(op.getOutput());
 
-    auto scale_op = WeightOp::create_float(op, "scale", scale, {channel}, storage_type);
-    auto bias_op = WeightOp::create_float(op, "bias", bias, {channel}, storage_type);
+    auto scale_op =
+        WeightOp::create_float(op, "scale", scale, {channel}, storage_type);
+    auto bias_op =
+        WeightOp::create_float(op, "bias", bias, {channel}, storage_type);
 
     // replace the BatchNorm Op
-    rewriter.replaceOpWithNewOp<ScaleOp>(op, op.getOutput().getType(), ValueRange{op.getInput(), scale_op, bias_op});
+    rewriter.replaceOpWithNewOp<ScaleOp>(
+        op, op.getOutput().getType(),
+        ValueRange{op.getInput(), scale_op, bias_op});
     return success();
   }
 };
-
 
 void BatchNormOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {

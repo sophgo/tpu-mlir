@@ -61,8 +61,7 @@ void tpu::Pool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     int top_sign = module::isSign(getOutput()) ? 1 : 0;
     BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
         in_gi.out_addr, /*weight*/ 0, /*bias*/ 0, out_gi.out_addr, bottom_dim,
-        top_dim, p.kh, p.kw, pad_h_t, pad_h_b, pad_w_l, pad_w_r,
-        p.sh, p.sw,
+        top_dim, p.kh, p.kw, pad_h_t, pad_h_b, pad_w_l, pad_w_r, p.sh, p.sw,
         /*ins_h*/ 0, /*ins_w*/ 0, is_avg_pooling ? 1 : 0,
         p.count_include_pad ? 0 : 1, // avg_pooling_mode should be always 0,
                                      // BM1684 fixpoint not support
@@ -71,8 +70,8 @@ void tpu::Pool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   } else {
     BM1684::instance().dl_nodechip_pooling_forward_local(
         in_gi.out_addr, out_gi.out_addr, bottom_dim, top_dim, p.kh, p.kw,
-        pad_h_t, pad_h_b, pad_w_l, pad_w_r, p.sh, p.sw,
-        is_avg_pooling ? 1 : 0, p.count_include_pad ? 0 : 1,
+        pad_h_t, pad_h_b, pad_w_l, pad_w_r, p.sh, p.sw, is_avg_pooling ? 1 : 0,
+        p.count_include_pad ? 0 : 1,
         (CMD_ID_NODE *)BM1684::instance()->bdc_node, p.do_relu);
   }
 }

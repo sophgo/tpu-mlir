@@ -238,9 +238,9 @@ typedef struct {
   int64_t oc;
   int64_t oh;
   int64_t ow;
-  int64_t kh,kw;
-  int64_t sh,sw;
-  int64_t dh,dw;
+  int64_t kh, kw;
+  int64_t sh, sw;
+  int64_t dh, dw;
   int64_t pht, phb;
   int64_t pwl, pwr;
   int64_t groups;
@@ -255,12 +255,12 @@ typedef struct {
   int64_t oc;
   int64_t oh;
   int64_t ow;
-  int64_t kh,kw;
-  int64_t sh,sw;
-  int64_t dh,dw;
+  int64_t kh, kw;
+  int64_t sh, sw;
+  int64_t dh, dw;
   int64_t pht, phb;
   int64_t pwl, pwr;
   int64_t groups;
-  int64_t insh,insw;
+  int64_t insh, insw;
 } convbwd_attr_t;
 } // namespace tpu_mlir

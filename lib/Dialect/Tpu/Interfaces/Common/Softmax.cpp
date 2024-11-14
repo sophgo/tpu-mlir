@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/LutFunc.h"
 
 LogicalResult tpu::SoftmaxOp::init(InferenceParameter &p) { return success(); }
@@ -68,7 +67,8 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         // e^x
         std::vector<float> ex_arr(channel * inner_dim);
         bf16_lut_slope(sub_arr.data(), ex_arr.data(), sub_arr.size(),
-                       p.inputs[1], p.inputs[2], -EXP_BF16_LUT_RANGE, EXP_BF16_LUT_RANGE);
+                       p.inputs[1], p.inputs[2], -EXP_BF16_LUT_RANGE,
+                       EXP_BF16_LUT_RANGE);
         // sum of (e^x)
         float const_val = BF16(BF16(1.0 * channel) / channel);
         memset(sum_arr.data(), 0, inner_dim * sizeof(float));

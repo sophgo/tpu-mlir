@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/LutFunc.h"
 
-
 lstm_attr_t tpu::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
   auto in_shape = module::getShape(getInput());
@@ -203,7 +202,8 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
           go[i] = sigmoid_(xo[i] + cont * ho[i], p);
           gf[i] = sigmoid_(xf[i] + cont * hf[i], p);
           gc[i] = tanh_(xc[i] + cont * hc[i], p);
-          cell_state[i] = BF16(BF16(cont * gf[i] * cell_state[i]) + BF16(gi[i] * gc[i]));
+          cell_state[i] =
+              BF16(BF16(cont * gf[i] * cell_state[i]) + BF16(gi[i] * gc[i]));
           hidden_state[i] = BF16(go[i] * tanh_(cell_state[i], p));
         } else {
           gi[i] = sigmoid_(xi[i] + cont * hi[i]);

@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace tpu_mlir::backend;
 
 // void get_param(tpu::AttentionOp op, attention_common_spec_t spec) {
@@ -38,15 +38,16 @@ void tpu::AttentionOp::codegen_global_bm1684x() {
   common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
-  common.input_num = module::isNone(getKeys()) ? 1 :
-                     (module::isNone(getValues()) ? 2 : 3);
+  common.input_num =
+      module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
   auto quant_param = module::getI64Array(getQuantParam());
   for (int i = 0; i < quant_param->size(); ++i) {
     common.quant_param[i] = quant_param->at(i);
   }
 
-  BM168x::call_global_func("backend_api_attention_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_attention_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 // ======================================
@@ -68,7 +69,8 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
   int64_t batch, M_q, N_q, W;
   module::getNCHW(getInput(), batch, M_q, N_q, W, group_type);
   M_q = in_cslice;
-  int64_t M_k = module::isNone(getKeys()) ? M_q : module::getShape(getKeys())[1];
+  int64_t M_k =
+      module::isNone(getKeys()) ? M_q : module::getShape(getKeys())[1];
   int64_t d = getDim();
   int64_t M_v = M_k;
   auto out_type = module::getStorageType(getOutput());
@@ -84,15 +86,23 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
     int64_t v_buffer_size = d_size * ceiling_func(M_v, BM168x::NPU_NUM);
     int64_t mat0_size = c_per_npu * align_up(M_k, eu_num_i8) * sizeof(int8_t);
     int64_t mat1_size = c_per_npu * d_size;
-    int64_t softmax_buffer_size = c_per_npu * sizeof(int32_t) *
-                                  (align_up(1, eu_num_i32) + align_up(M_k, eu_num_i32));
+    int64_t softmax_buffer_size =
+        c_per_npu * sizeof(int32_t) *
+        (align_up(1, eu_num_i32) + align_up(M_k, eu_num_i32));
     int64_t max_m = std::max(M_q, M_k);
-    int64_t mat_buffer_size0 = ceiling_func(max_m, BM168x::NPU_NUM) * align_up(d, eu_num_i32);
-    int64_t mat_buffer_size1 = ceiling_func(M_q, BM168x::NPU_NUM) * align_up(M_k, eu_num_i32);
+    int64_t mat_buffer_size0 =
+        ceiling_func(max_m, BM168x::NPU_NUM) * align_up(d, eu_num_i32);
+    int64_t mat_buffer_size1 =
+        ceiling_func(M_q, BM168x::NPU_NUM) * align_up(M_k, eu_num_i32);
     int64_t mat_buffer_size = std::max(mat_buffer_size0, mat_buffer_size1);
-    int64_t const_size = align_up(mat0_size + mat1_size + k_buffer_size + v_buffer_size, BM168x::LMEM_BANK_BYTES);
-    int64_t imm_buffer_size = align_up(std::max(mat_buffer_size, softmax_buffer_size), BM168x::LMEM_BANK_BYTES);
-    return std::min(imm_buffer_size + const_size, BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 3));
+    int64_t const_size =
+        align_up(mat0_size + mat1_size + k_buffer_size + v_buffer_size,
+                 BM168x::LMEM_BANK_BYTES);
+    int64_t imm_buffer_size =
+        align_up(std::max(mat_buffer_size, softmax_buffer_size),
+                 BM168x::LMEM_BANK_BYTES);
+    return std::min(imm_buffer_size + const_size,
+                    BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 3));
   }
   auto eu_num_f32 = BM168x::eu_num(sizeof(float));
   auto eu_num_f16 = BM168x::eu_num(sizeof(short));
@@ -100,7 +110,8 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
   // 32 coeff and 192 table
   softmax_buffer_size += align_up((int64_t)32, eu_num_f32) * sizeof(float);
   softmax_buffer_size += align_up((int64_t)192, eu_num_f32) * sizeof(float);
-  softmax_buffer_size += c_per_npu * align_up(M_k, eu_num_f32) * sizeof(float) * 4;
+  softmax_buffer_size +=
+      c_per_npu * align_up(M_k, eu_num_f32) * sizeof(float) * 4;
 
   int64_t d_size = 0;
   if (out_type.isBF16() || out_type.isF16()) {
@@ -108,18 +119,20 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
   } else {
     d_size = align_up(d, eu_num_f32) * sizeof(float);
   }
-  int64_t buffer_in_size = d_size * (ceiling_func(M_v, BM168x::NPU_NUM) + ceiling_func(M_k, BM168x::NPU_NUM));
+  int64_t buffer_in_size = d_size * (ceiling_func(M_v, BM168x::NPU_NUM) +
+                                     ceiling_func(M_k, BM168x::NPU_NUM));
 
-  buffer_size = std::min(softmax_buffer_size + buffer_in_size, BM168x::LMEM_BYTES / 3);
+  buffer_size =
+      std::min(softmax_buffer_size + buffer_in_size, BM168x::LMEM_BYTES / 3);
 
   return buffer_size;
 }
 
 void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                            int64_t h_step, int64_t d_step,
-                                            int64_t w_step,
-                                            group_type_t group_type,
-                                            local_sec_info_t &sec_info) {
+                                             int64_t h_step, int64_t d_step,
+                                             int64_t w_step,
+                                             group_type_t group_type,
+                                             local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
@@ -135,8 +148,8 @@ void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
-  common.input_num = module::isNone(getKeys()) ? 1 :
-                     (module::isNone(getValues()) ? 2 : 3);
+  common.input_num =
+      module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
   auto quant_param = module::getI64Array(getQuantParam());
   for (int i = 0; i < quant_param->size(); ++i) {
     common.quant_param[i] = quant_param->at(i);
@@ -151,6 +164,4 @@ int64_t tpu::AttentionOp::dyn_codegen_local_bm1684x(void *buffer) {
   return 0;
 }
 
-int64_t tpu::AttentionOp::get_fw_type_bm1684x() {
-  return -1;
-}
+int64_t tpu::AttentionOp::get_fw_type_bm1684x() { return -1; }

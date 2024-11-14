@@ -38,8 +38,6 @@ int64_t tpu::MinConstOp::getBufferSize_bm1684x(
   return 0;
 }
 
-
-
 void tpu::MinConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                             int64_t h_step, int64_t d_step,
                                             int64_t w_step,
@@ -78,10 +76,10 @@ int64_t tpu::MinConstOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.rshift_A = 0;
   param.spec.common.B_const_val = getConstVal().convertToDouble();
   param.spec.common.B_dtype =
-        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+      input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
 
   return BM168x::dynamic_spec_to_buffer(buffer, param);
-  }
+}
 
 int64_t tpu::MinConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   // return 0;

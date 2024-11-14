@@ -75,7 +75,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
   if (a_s[0] == b_s[0] && b_dims > 2 && p.dims_merge_2_M) {
     p.batch = b_s[0];
     int a_temp = 1;
-    for(int i = a_dims - 3; i > a_dims - 3 - p.dims_merge_2_M; i--) {
+    for (int i = a_dims - 3; i > a_dims - 3 - p.dims_merge_2_M; i--) {
       a_temp *= a_s[i];
     }
     p.M = a_s[o_dims - 2] * a_temp;
@@ -132,7 +132,7 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
 // case 4: [4, 5, 6] * [6, 7] = [4, 5, 7]
 // case 5: [4, 5, 6] * [6] = [4, 5]
 // case 6: keep_dims == false, [4, 5, 6] * [6, 7] = [20, 7]
-//case 7: [3] * [3, 256] = [1,256]
+// case 7: [3] * [3, 256] = [1,256]
 void top::MatMulOp::shape_inference() {
   std::vector<int64_t> in0_shape = module::getShape(getInput());
   int in0_dims = in0_shape.size();
@@ -149,17 +149,16 @@ void top::MatMulOp::shape_inference() {
     out_shape = in0_shape;
   } else if (in0_dims == in1_dims) {
     out_shape = in0_shape;
-    for (int i = out_shape.size() - 3; i >= 0 ; i--) {
+    for (int i = out_shape.size() - 3; i >= 0; i--) {
       out_shape[i] = std::max(in0_shape[i], in1_shape[i]);
     }
   } else {
     out_shape = in1_shape;
     for (int i = 1; i <= 2; i++) {
       out_shape[out_shape.size() - i] = in0_shape[in0_dims - i];
-      if(i > in0_dims){
+      if (i > in0_dims) {
         out_shape[out_shape.size() - i] = 1;
       }
-
     }
   }
   if (in1_dims == 1) {
@@ -171,8 +170,8 @@ void top::MatMulOp::shape_inference() {
       // shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
       // shape case:[8, 1, 1, 4832] * [4832, 136] = [8, 136]
       for (int i = 1; i < out_shape.size(); i++) {
-        if(out_shape[i] == 1){
-          out_shape.erase(out_shape.begin()+i);
+        if (out_shape[i] == 1) {
+          out_shape.erase(out_shape.begin() + i);
           i--;
         }
       }

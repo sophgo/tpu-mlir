@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
                                bool asymmetric) const {
-  
+
   LoweringF32(rewriter, op);
 }
 

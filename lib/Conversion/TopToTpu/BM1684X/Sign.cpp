@@ -28,7 +28,7 @@ void SignLowering::LoweringINT4(PatternRewriter &rewriter, top::SignOp op,
 /**
  * Not support lowering to int8 directly for now since "Sign" tensor
  *     can't be considered as normal tensor
-*/
+ */
 void SignLowering::LoweringINT8(PatternRewriter &rewriter, top::SignOp op,
                                 bool asymmetric) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
@@ -62,23 +62,22 @@ void SignLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
-void SignLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::SignOp op) const {
+void SignLowering::LoweringF8(PatternRewriter &rewriter, top::SignOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void SignLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SignOp op) const {
-  Value table = create_lookup_table(op.getInput(), op.getOutput(), true,
-                                    [](double val) {
-                                      if (val < 0) {
-                                        return -1;
-                                      } else if (val > 0) {
-                                        return 1;
-                                      } else {
-                                        return 0;
-                                      }
-                                    });
+  Value table =
+      create_lookup_table(op.getInput(), op.getOutput(), true, [](double val) {
+        if (val < 0) {
+          return -1;
+        } else if (val > 0) {
+          return 1;
+        } else {
+          return 0;
+        }
+      });
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),
                                           ValueRange{op.getInput(), table});
 }

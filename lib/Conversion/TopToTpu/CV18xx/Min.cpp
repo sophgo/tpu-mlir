@@ -55,12 +55,13 @@ void MinLowering::LoweringINT8(PatternRewriter &rewriter, top::MinOp op,
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
   auto newType = getQuantInt8Type(op.getOutput(), false);
-  rewriter.replaceOpWithNewOp<tpu::MinOp>(op.getOperation(), newType, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::MinOp>(op.getOperation(), newType, operands,
+                                          attrs);
   return;
 }
 
 void MinLowering::LoweringBF16(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_bf16<tpu::MinOp>(rewriter, op);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

@@ -10,28 +10,27 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 typedef struct ssd_detect_out_spec {
-  int   num_classes;
-  int   share_location;
-  int   background_label_id;
-  int   code_type;
-  int   variance_encoded_in_target;
-  int   keep_top_k;
+  int num_classes;
+  int share_location;
+  int background_label_id;
+  int code_type;
+  int variance_encoded_in_target;
+  int keep_top_k;
   float confidence_threshold;
   float nms_threshold;
   float eta;
-  int   top_k;
-  int  onnx_nms;// 1: onnx_nms
+  int top_k;
+  int onnx_nms; // 1: onnx_nms
 } ssd_detect_out_spec_t;
 
 typedef struct ssd_detect_out_dyn_param {
-    ssd_detect_out_spec_t spec;
-    unsigned long long buffer_addr;
-    int detected_box_num;
+  ssd_detect_out_spec_t spec;
+  unsigned long long buffer_addr;
+  int detected_box_num;
 } ssd_detect_out_dyn_param_t;
 #ifdef __cplusplus
 }
@@ -47,7 +46,8 @@ void tpu::DetectionOutputOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::DetectionOutputOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(ssd_detect_out_dyn_param_t);
+  if (!buffer)
+    return sizeof(ssd_detect_out_dyn_param_t);
   ssd_detect_out_dyn_param_t param = {0};
   param.spec.num_classes = getNumClasses();
   param.spec.share_location = getShareLocation();
@@ -62,7 +62,8 @@ int64_t tpu::DetectionOutputOp::dyn_codegen_global_bm1684x(void *buffer) {
   } else {
     llvm_unreachable("code type wrong");
   }
-  param.spec.variance_encoded_in_target = getVarianceEncodedInTarget().convertToDouble();
+  param.spec.variance_encoded_in_target =
+      getVarianceEncodedInTarget().convertToDouble();
   param.spec.keep_top_k = getKeepTopK();
   param.spec.confidence_threshold = getConfidenceThreshold().convertToDouble();
   param.spec.nms_threshold = getNmsThreshold().convertToDouble();

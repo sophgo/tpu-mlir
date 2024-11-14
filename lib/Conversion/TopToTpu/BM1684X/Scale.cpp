@@ -43,7 +43,7 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
                                             op->getAttrs());
 }
 void ScaleLowering::LoweringINT4(PatternRewriter &rewriter, top::ScaleOp op,
-                                   bool asymmetric) const {
+                                 bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
@@ -148,8 +148,8 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
 
 void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::ScaleOp op) const {
-  //lowering_common_bf16<tpu::ScaleOp>(rewriter, op);
-    auto ctx = op->getContext();
+  // lowering_common_bf16<tpu::ScaleOp>(rewriter, op);
+  auto ctx = op->getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
@@ -175,7 +175,7 @@ void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::ScaleOp op) const {
-  //lowering_common_f16<tpu::ScaleOp>(rewriter, op);
+  // lowering_common_f16<tpu::ScaleOp>(rewriter, op);
   auto ctx = op->getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
@@ -201,7 +201,7 @@ void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void ScaleLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::ScaleOp op) const {
+                               top::ScaleOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

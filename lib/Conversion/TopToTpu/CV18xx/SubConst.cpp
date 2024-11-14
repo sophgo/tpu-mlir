@@ -21,8 +21,8 @@ void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
     }
     return val - const_val;
   };
-  Value table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric, active_subconst);
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
+                                    active_subconst);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
@@ -55,7 +55,8 @@ void SubConstLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
 }
 } // namespace cv18xx

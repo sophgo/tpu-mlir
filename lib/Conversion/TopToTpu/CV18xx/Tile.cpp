@@ -13,8 +13,8 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 static void LoweringTile(PatternRewriter &rewriter, top::TileOp &op,
-                        bool quant_i8){
-  if(op.getTileT()){
+                         bool quant_i8) {
+  if (op.getTileT()) {
     llvm_unreachable("Not support dynamic Tile.");
   }
 
@@ -46,27 +46,29 @@ static void LoweringTile(PatternRewriter &rewriter, top::TileOp &op,
   for (uint32_t i = 1; i <= output_dims; i++) {
     if (input_shape[output_dims - i] == output_shape[output_dims - i])
       continue;
-    weight_tile[output_dims - i] = output_shape[output_dims - i] / out_shape[output_dims - i];
+    weight_tile[output_dims - i] =
+        output_shape[output_dims - i] / out_shape[output_dims - i];
     out_shape[output_dims - i] = output_shape[output_dims - i];
     attrs.push_back(
         rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
     auto result_type = RankedTensorType::get(
-      out_shape, eltType.cast<RankedTensorType>().getElementType());
+        out_shape, eltType.cast<RankedTensorType>().getElementType());
     NameLoc loc;
-    if(count == 1){
+    if (count == 1) {
       loc = NameLoc::get(rewriter.getStringAttr(op_name));
     } else {
-      loc = NameLoc::get(
-            rewriter.getStringAttr(op_name + std::to_string(count)));
+      loc =
+          NameLoc::get(rewriter.getStringAttr(op_name + std::to_string(count)));
     }
-    auto newTile = rewriter.create<tpu::TileOp>(loc, result_type, operands, attrs);
+    auto newTile =
+        rewriter.create<tpu::TileOp>(loc, result_type, operands, attrs);
     weight_tile[output_dims - i] = 1;
     attrs.clear();
     count--;
     operands.clear();
     operands.push_back(newTile.getOutput());
     operands.push_back(noneOp);
-    if(count == 0){
+    if (count == 0) {
       rewriter.replaceAllUsesWith(op.getOutput(), newTile.getOutput());
       rewriter.eraseOp(op);
       return;
@@ -77,12 +79,12 @@ static void LoweringTile(PatternRewriter &rewriter, top::TileOp &op,
 // todo num_dims > 4, do loop tile
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
                                 bool asymmetric) const {
-return LoweringTile(rewriter, op, true);
+  return LoweringTile(rewriter, op, true);
 }
 
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TileOp op) const {
-return LoweringTile(rewriter, op, false);
+  return LoweringTile(rewriter, op, false);
 }
 
 } // namespace cv18xx

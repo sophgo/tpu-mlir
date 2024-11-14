@@ -13,37 +13,40 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void BatchNormBwdLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::BatchNormBwdOp op) const {
+                                       top::BatchNormBwdOp op) const {
   rewriter.replaceOpWithNewOp<tpu::BatchNormBwdOp>(
       op, op->getResultTypes(), op->getOperands(), op->getAttrs());
 }
 
 void BatchNormBwdLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::BatchNormBwdOp op) const {
+                                        top::BatchNormBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void BatchNormBwdLowering::LoweringF16(PatternRewriter &rewriter,
-                                  top::BatchNormBwdOp op) const {
+                                       top::BatchNormBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void BatchNormBwdLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::BatchNormBwdOp op) const {
+                                      top::BatchNormBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::BatchNormBwdOp op,
-                          bool asymmetric) const {
+void BatchNormBwdLowering::LoweringINT8(PatternRewriter &rewriter,
+                                        top::BatchNormBwdOp op,
+                                        bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::BatchNormBwdOp op,
-                          bool asymmetric) const {
+void BatchNormBwdLowering::LoweringINT4(PatternRewriter &rewriter,
+                                        top::BatchNormBwdOp op,
+                                        bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void BatchNormBwdLowering::LoweringQuantized(PatternRewriter &rewriter, top::BatchNormBwdOp op) const {
+void BatchNormBwdLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                             top::BatchNormBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

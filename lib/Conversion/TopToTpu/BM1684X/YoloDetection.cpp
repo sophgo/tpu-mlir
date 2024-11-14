@@ -16,12 +16,13 @@ void YoloDetectionLowering::LoweringF32(PatternRewriter &rewriter,
                                         top::YoloDetectionOp op) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  for (auto&& in: op.getOperands())
+  for (auto &&in : op.getOperands())
     operands.emplace_back(in);
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(op, new_type, operands, op.getOperation()->getAttrs());
+  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(
+      op, new_type, operands, op.getOperation()->getAttrs());
   return;
 }
 
@@ -48,7 +49,7 @@ void YoloDetectionLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void YoloDetectionLowering::LoweringF8(PatternRewriter &rewriter,
-                                        top::YoloDetectionOp op) const {
+                                       top::YoloDetectionOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

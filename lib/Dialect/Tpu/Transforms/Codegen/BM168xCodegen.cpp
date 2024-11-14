@@ -12,8 +12,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
-#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
+#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/MemoryBuffer.h>
@@ -67,7 +67,8 @@ void setupMultiCoreCodegen() {
   }
 }
 
-void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only) {
+void BMCodegen::init(ModuleOp m, const std::string &filename,
+                     bool bmodel_only) {
   this->filename = filename;
   llvm::raw_null_ostream os;
   AsmState state(m, OpPrintingFlags(), &opToLineCol);
@@ -83,7 +84,8 @@ void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only) 
   // add chip name
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
-  if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() || module::isMARS3()) {
+  if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() ||
+      module::isMARS3()) {
     std::string kernel_name;
     if (module::isBM1684X())
       kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
@@ -285,17 +287,17 @@ void BMCodegen::store() {
   if (module::isSG2380()) {
     const char *filename = "libbmodel_cmd.so";
     char command[1024];
-    snprintf(command, sizeof(command),
-             "riscv64-unknown-linux-gnu-clang \
+    snprintf(command, sizeof(command), "riscv64-unknown-linux-gnu-clang \
               -march=rv64imafdcv_zicsr_zifencei_zfh_zba_zbb_zvfh_xsfvfnrclipxfqf_xsfvfwmaccqqq_xsfvqmaccqoq_xsfvcp_xsgmat \
-              -mabi=lp64d -Wno-implicit-function-declaration -g -shared -fPIC riscv_code.c -o %s", filename);
+              -mabi=lp64d -Wno-implicit-function-declaration -g -shared -fPIC riscv_code.c -o %s",
+             filename);
     if (system(command) == 0) {
-      bmodel::Binary lib_backend = CreateBinaryFromFile(&(*model_gen), filename);
+      bmodel::Binary lib_backend =
+          CreateBinaryFromFile(&(*model_gen), filename);
       model_gen->AddLibBackend(lib_backend);
     } else {
       llvm::errs() << "compile auto-generated riscv code error!\n";
     }
-
   }
   model_gen->Finish();
   model_gen->Save(filename);
@@ -889,8 +891,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
-
-void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_codegen) {
+void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
+                                   bool l2mop_codegen) {
   auto group_type = static_cast<group_type_t>(gOp.getGroupType());
   local_sec_info_t sec_info;
   bool have_more_groupOp =
@@ -901,15 +903,15 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
       (run_core_id.size() > 1 || have_more_groupOp) && multi_core;
 
   std::map<int, std::vector<std::vector<int>>> map_core_slice_ncdhw;
-  for(auto id: run_core_id) {
+  for (auto id : run_core_id) {
     map_core_slice_ncdhw[id] = std::vector<std::vector<int>>();
   }
 
   auto core_slice_ncdhw = *module::getI64Array(gOp.getCoreSliceNcdhw());
-  assert(core_slice_ncdhw.size() % (6*run_core_id.size()) == 0);
-  int slice_num_per_core = core_slice_ncdhw.size() / (6*run_core_id.size());
+  assert(core_slice_ncdhw.size() % (6 * run_core_id.size()) == 0);
+  int slice_num_per_core = core_slice_ncdhw.size() / (6 * run_core_id.size());
   int offset = 0;
-  for(auto id: run_core_id) {
+  for (auto id : run_core_id) {
     for (int j = 0; j < slice_num_per_core; j++) {
       std::vector<int> nchwd_idx;
       for (int k = 0; k < 5; k++) {
@@ -922,17 +924,17 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
 
   bool first_core = true;
   int tmp_syncall_num = 0;
-  for (auto id: run_core_id) {
-    llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
+  for (auto id : run_core_id) {
+    llvm::errs() << " codegen for run_core_id:" << id << "\n";
     bool async_status = false;
     int timestep_idx_his = -1;
     if (useMuliCore) {
       multi_core->useCore(id);
-      llvm::errs() <<"useCore:"<<id<<"\n";
+      llvm::errs() << "useCore:" << id << "\n";
       multi_core->syncAll();
-      llvm::errs() <<"first syncAll\n";
+      llvm::errs() << "first syncAll\n";
     }
-    std::vector<Operation*> vec_loadToL2mOp;
+    std::vector<Operation *> vec_loadToL2mOp;
     for (Operation &op : gOp.getBody().front().getOperations()) {
       if (isa<YieldOp, SliceMergeOp>(op)) {
         continue;
@@ -940,7 +942,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
       auto output = *op.getResults().begin();
       std::string name = module::getName(output).str();
 
-      std::vector<int> ncdhw_steps = {0,0,0,0,0};
+      std::vector<int> ncdhw_steps = {0, 0, 0, 0, 0};
       int timestep_idx = -1, slice_idx = -1;
       bool can_merge = false;
       if (isa<MoveOp>(op)) {
@@ -950,7 +952,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
       } else {
         assert(op.hasAttr(LocalGenInterface::kLayerGroupAttrName));
         auto g_param = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                          .cast<tpu::LayerGroupAttr>();
+                           .cast<tpu::LayerGroupAttr>();
         timestep_idx = g_param.getId();
         slice_idx = g_param.getSliceIdx();
         ncdhw_steps = map_core_slice_ncdhw[id][slice_idx];
@@ -961,12 +963,12 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
       if (timestep_idx != timestep_idx_his) {
         if (async_status && !can_merge) {
           bm168x->merge_sync_id();
-          llvm::errs() <<"merge_sync_id\n";
+          llvm::errs() << "merge_sync_id\n";
         }
         if (timestep_idx_his != -1) {
           if (first_core) {
             if (l2mop_codegen) {
-              for (auto it2:vec_loadToL2mOp) {
+              for (auto it2 : vec_loadToL2mOp) {
                 auto castOp = dyn_cast<tpu::LoadToL2MOp>(*it2);
                 castOp.codegen_only_for_LoadToL2MOp();
               }
@@ -977,20 +979,20 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
           }
           if (vec_loadToL2mOp.size()) {
             multi_core->syncAll();
-            llvm::errs() <<"syncAll\n";
+            llvm::errs() << "syncAll\n";
             vec_loadToL2mOp.clear();
           }
         }
         if (!can_merge) {
           bm168x->divide_sync_id();
-          llvm::errs() <<"divide_sync_id\n";
+          llvm::errs() << "divide_sync_id\n";
         }
 
         timestep_idx_his = timestep_idx;
         async_status = true;
       }
 
-      llvm::errs() <<" codegen, for op:"<<name<<"\n";
+      llvm::errs() << " codegen, for op:" << name << "\n";
       if (isa<LoadToL2MOp>(op)) {
         vec_loadToL2mOp.push_back(&op);
         continue;
@@ -1005,9 +1007,9 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
                                                gen_op_id(&op).c_str());
       if (!isa<MoveOp>(op)) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1],
-                              ncdhw_steps[3], ncdhw_steps[2],
-                              ncdhw_steps[4], group_type, sec_info);
+        lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1], ncdhw_steps[3],
+                             ncdhw_steps[2], ncdhw_steps[4], group_type,
+                             sec_info);
       }
       // profile_ctx.log_local_layer(&op, ncdhw_steps[0], ncdhw_steps[3]);
       if (isa<MoveOp>(op)) {
@@ -1020,23 +1022,23 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, bool l2mop_cod
       } else {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         lgOp.codegen_local_bm168x(ncdhw_steps[0], ncdhw_steps[1],
-                              ncdhw_steps[3], ncdhw_steps[2],
-                              ncdhw_steps[4], group_type, sec_info);
+                                  ncdhw_steps[3], ncdhw_steps[2],
+                                  ncdhw_steps[4], group_type, sec_info);
       }
     }
     if (syncall_num > 0) {
       for (int i = 0; i < syncall_num - tmp_syncall_num; i++) {
         multi_core->syncAll();
-        llvm::errs() <<"extra syncAll, for core:"<<id<<"\n";
+        llvm::errs() << "extra syncAll, for core:" << id << "\n";
       }
     } else {
       syncall_num = tmp_syncall_num;
     }
     bm168x->merge_sync_id();
-    llvm::errs() <<"merge_sync_id\n";
+    llvm::errs() << "merge_sync_id\n";
     if (useMuliCore) {
       multi_core->syncAll();
-      llvm::errs() <<"last syncAll\n";
+      llvm::errs() << "last syncAll\n";
     }
     first_core = false;
   }
@@ -1144,7 +1146,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
 
   funcOp.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (auto sliceMergeOp = dyn_cast<tpu::SliceMergeOp>(op)) {
-      llvm::errs() <<"meet multi groupOp\n";
+      llvm::errs() << "meet multi groupOp\n";
       std::vector<int64_t> core_ids;
       for (auto opd : sliceMergeOp->getOperands()) {
         if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
@@ -1158,29 +1160,32 @@ void BMCodegen::codegen(FuncOp funcOp) {
       auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
       if (multi_core) {
         if (multi_core->getCoreNum() != core_num) {
-          assert(multi_core->getCoreNum() == 1 &&
-                "The core_num should be set only once, and can not be changed.");
+          assert(
+              multi_core->getCoreNum() == 1 &&
+              "The core_num should be set only once, and can not be changed.");
           multi_core->setupMultiCoreContext(0, core_num, 0);
           multi_core->setCoreNum(core_num);
-          llvm::errs() <<"setCoreNum:"<<core_num<<"\n";
+          llvm::errs() << "setCoreNum:" << core_num << "\n";
         }
       }
       int max_syncall_num = 0, max_syncall_idx = 0;
       int idx = 0;
       for (auto opd : sliceMergeOp->getOperands()) {
         if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
-          std::map<int,int> map_id_to_l2mOp_count;
+          std::map<int, int> map_id_to_l2mOp_count;
           for (Operation &op : castOp.getBody().front().getOperations()) {
             if (isa<LoadToL2MOp>(op)) {
               int ts_id = op.getAttr("id").cast<IntegerAttr>().getInt();
-              if (map_id_to_l2mOp_count.find(ts_id) == map_id_to_l2mOp_count.end()) {
+              if (map_id_to_l2mOp_count.find(ts_id) ==
+                  map_id_to_l2mOp_count.end()) {
                 map_id_to_l2mOp_count[ts_id] = 1;
               }
               map_id_to_l2mOp_count[ts_id] += 1;
             }
           }
           int sync_count = map_id_to_l2mOp_count.size();
-          llvm::errs() <<"find sync_count:"<<sync_count<<" for in"<<idx<<"\n";
+          llvm::errs() << "find sync_count:" << sync_count << " for in" << idx
+                       << "\n";
           if (sync_count > max_syncall_num) {
             max_syncall_num = sync_count;
             max_syncall_idx = idx;
@@ -1188,11 +1193,12 @@ void BMCodegen::codegen(FuncOp funcOp) {
           idx++;
         }
       }
-      llvm::errs() <<"max_syncall_idx:"<<max_syncall_idx<<" max_syncall_num:"<<max_syncall_num<<"\n";
+      llvm::errs() << "max_syncall_idx:" << max_syncall_idx
+                   << " max_syncall_num:" << max_syncall_num << "\n";
       idx = 0;
       for (auto opd : sliceMergeOp->getOperands()) {
         if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
-          bool l2mop_codegen = idx++ == max_syncall_idx?true:false;
+          bool l2mop_codegen = idx++ == max_syncall_idx ? true : false;
           codegen_for_group2(castOp, max_syncall_num, l2mop_codegen);
         }
       }
@@ -1200,7 +1206,8 @@ void BMCodegen::codegen(FuncOp funcOp) {
         for (int core_id = used_core_num; core_id < core_num; core_id++) {
           multi_core->useCore(core_id);
           multi_core->syncAll();
-          llvm::errs() <<"unused, useCore:"<<core_id<<", max_syncall_num:"<<max_syncall_num<<"\n";
+          llvm::errs() << "unused, useCore:" << core_id
+                       << ", max_syncall_num:" << max_syncall_num << "\n";
           for (int i = 0; i < max_syncall_num; i++) {
             multi_core->syncAll();
           }
@@ -1236,7 +1243,8 @@ void BMCodegen::codegen(FuncOp funcOp) {
           if (used_core_num > 1) {
             if (multi_core) {
               if (multi_core->getCoreNum() != core_num) {
-                llvm::errs() <<"meet single groupOp, setCoreNum:"<<core_num<<"\n";
+                llvm::errs()
+                    << "meet single groupOp, setCoreNum:" << core_num << "\n";
                 multi_core->setupMultiCoreContext(0, core_num, 0);
                 multi_core->setCoreNum(core_num);
               }
@@ -1251,7 +1259,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
               for (int i = 0; i < syncall_num; i++) {
                 multi_core->syncAll();
               }
-              llvm::errs() <<"unused, useCore:"<<core_id<<"\n";
+              llvm::errs() << "unused, useCore:" << core_id << "\n";
               multi_core->syncAll();
             }
             // multi_core->syncAll();

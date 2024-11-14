@@ -93,12 +93,12 @@ void top::AddOp::shape_inference() {
   auto inputs = getInputs();
   // shape value inference can only support shape and weight
   bool need_shape_val_infer =
-      std::all_of(inputs.begin(), inputs.end(), [](auto in_op) {
-        return module::isWeight(in_op) || module::isShape(in_op);
-      }) &&
-      std::any_of(inputs.begin(), inputs.end(), [](auto in_op) {
-        return module::isShape(in_op);
-      });
+      std::all_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) {
+                    return module::isWeight(in_op) || module::isShape(in_op);
+                  }) &&
+      std::any_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) { return module::isShape(in_op); });
   need_shape_val_infer &=
       std::any_of(inputs.begin(), inputs.end(),
                   [](auto in_op) { return module::isShape(in_op); });
@@ -124,13 +124,14 @@ void top::AddOp::shape_inference() {
     auto output_shape_v =
         module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
     module::bindShapeTensorValue(getOutput(), output_shape_v);
-    if(out_shape.size() == 1 || out_shape.size() == 0){
-      auto output_shape_v =
-          module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    if (out_shape.size() == 1 || out_shape.size() == 0) {
+      auto output_shape_v = module::commonShapeValInfer(
+          getOperation(), input_shapes_v, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
       dump();
-      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor "
+                      "dimension > 1\n";
     }
   }
 }

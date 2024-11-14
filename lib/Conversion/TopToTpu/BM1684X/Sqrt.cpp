@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static inline Operation* set_mode(top::SqrtOp op) {
+static inline Operation *set_mode(top::SqrtOp op) {
   auto op_ = op.getOperation();
   op_->setAttr(
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SQRT));
@@ -28,7 +28,7 @@ void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void SqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::SqrtOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
@@ -58,8 +58,7 @@ void SqrtLowering::LoweringF16(PatternRewriter &rewriter,
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
-void SqrtLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::SqrtOp op) const {
+void SqrtLowering::LoweringF8(PatternRewriter &rewriter, top::SqrtOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

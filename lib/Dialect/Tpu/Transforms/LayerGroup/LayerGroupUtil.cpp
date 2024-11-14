@@ -22,24 +22,23 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-std::string show_op_info(Operation* op) {
+std::string show_op_info(Operation *op) {
   auto name = module::getName(op).str();
   return llvm::formatv("op:{0}, type:{1}", name, op->getName()).str();
 }
 
-void show_group(const LgInfo *sub_group)
-{
+void show_group(const LgInfo *sub_group) {
   if (!module::isDebugCmdEnable("detail_info_show")) {
     return;
   }
 
-  if(sub_group->group_ops.size() == 0)
+  if (sub_group->group_ops.size() == 0)
     return;
 
-  llvm::errs() <<"group_ops, size:"<<sub_group->group_ops.size()<<"\n";
+  llvm::errs() << "group_ops, size:" << sub_group->group_ops.size() << "\n";
   for (auto op : sub_group->group_ops) {
     auto name = module::getName(op).str();
-    llvm::errs() << show_op_info(op)<< "\n";
+    llvm::errs() << show_op_info(op) << "\n";
   }
   for (auto out : sub_group->group_outs) {
     llvm::errs() << "    out:" << module::getName(out).str() << "\n";
@@ -60,10 +59,11 @@ bool isLgSupport(Operation *op) {
   return res;
 }
 
-std::vector<Operation*>
-sortOpsByOtherOpsOrder(const std::vector<Operation*>& exp_ops, const std::vector<Operation*>& ops) {
-  std::vector<Operation*> tmp_ops;
-  for (auto op: exp_ops) {
+std::vector<Operation *>
+sortOpsByOtherOpsOrder(const std::vector<Operation *> &exp_ops,
+                       const std::vector<Operation *> &ops) {
+  std::vector<Operation *> tmp_ops;
+  for (auto op : exp_ops) {
     if (std::find(ops.begin(), ops.end(), op) != ops.end()) {
       tmp_ops.push_back(op);
     }
@@ -71,7 +71,7 @@ sortOpsByOtherOpsOrder(const std::vector<Operation*>& exp_ops, const std::vector
   return std::move(tmp_ops);
 }
 
-inline bool opIsInGrpOps(Operation* op, std::vector<Operation*> grp_ops) {
+inline bool opIsInGrpOps(Operation *op, std::vector<Operation *> grp_ops) {
   if (std::find(grp_ops.begin(), grp_ops.end(), op) != grp_ops.end()) {
     return true;
   }
@@ -79,23 +79,26 @@ inline bool opIsInGrpOps(Operation* op, std::vector<Operation*> grp_ops) {
 }
 
 static void find_op_tree_by_root2(Operation *op,
-                                 std::vector<Operation*>& op_tree,
-                                 const std::vector<Operation*>& ops,
-                                 const std::vector<Operation*>& exclude_ops,
-                                 const std::vector<Operation*>& break_ops) {
+                                  std::vector<Operation *> &op_tree,
+                                  const std::vector<Operation *> &ops,
+                                  const std::vector<Operation *> &exclude_ops,
+                                  const std::vector<Operation *> &break_ops) {
   op_tree.push_back(op);
   for (auto user : op->getUsers()) {
-    if (!isa<ReturnOp>(user) && std::find(ops.begin(), ops.end(), user) != ops.end() &&
-        std::find(exclude_ops.begin(), exclude_ops.end(), user) == exclude_ops.end() &&
+    if (!isa<ReturnOp>(user) &&
+        std::find(ops.begin(), ops.end(), user) != ops.end() &&
+        std::find(exclude_ops.begin(), exclude_ops.end(), user) ==
+            exclude_ops.end() &&
         std::find(op_tree.begin(), op_tree.end(), user) == op_tree.end() &&
-        std::find(break_ops.begin(), break_ops.end(), user) == break_ops.end()) {
+        std::find(break_ops.begin(), break_ops.end(), user) ==
+            break_ops.end()) {
       find_op_tree_by_root2(user, op_tree, ops, exclude_ops, break_ops);
     }
   }
 }
 
-static std::vector<std::vector<Operation*>>
-process_in_value_have_mulit_user(const std::vector<Operation*>& ops) {
+static std::vector<std::vector<Operation *>>
+process_in_value_have_mulit_user(const std::vector<Operation *> &ops) {
   LgInfo lgInfo;
   lgInfo.group_ops.assign(ops.begin(), ops.end());
   lgInfo.update_group_io(LgPass::OPTIONS.opt);
@@ -106,24 +109,28 @@ process_in_value_have_mulit_user(const std::vector<Operation*>& ops) {
     }
   }
 
-  std::vector<std::vector<Operation*>> new_grps;
+  std::vector<std::vector<Operation *>> new_grps;
   if (multi_user_values.size() > 0) {
-    std::vector<Operation*> accessed_ops, left_ops, break_ops;
+    std::vector<Operation *> accessed_ops, left_ops, break_ops;
     for (auto it = ops.rbegin(); it != ops.rend(); ++it) {
       auto op = *it;
       for (auto opd : op->getOperands()) {
-        if (std::find(multi_user_values.begin(), multi_user_values.end(), opd) != multi_user_values.end()) {
-          std::vector<Operation*> op_tree;
+        if (std::find(multi_user_values.begin(), multi_user_values.end(),
+                      opd) != multi_user_values.end()) {
+          std::vector<Operation *> op_tree;
           find_op_tree_by_root2(op, op_tree, ops, accessed_ops, break_ops);
           if (op_tree.size() > 1) {
             new_grps.push_back(op_tree);
           }
-          accessed_ops.insert(accessed_ops.end(), op_tree.begin(), op_tree.end());
+          accessed_ops.insert(accessed_ops.end(), op_tree.begin(),
+                              op_tree.end());
         }
       }
     }
-    for (auto op: ops) {
-      if (!isa<ReturnOp>(op) && std::find(accessed_ops.begin(), accessed_ops.end(), op) == accessed_ops.end()) {
+    for (auto op : ops) {
+      if (!isa<ReturnOp>(op) &&
+          std::find(accessed_ops.begin(), accessed_ops.end(), op) ==
+              accessed_ops.end()) {
         left_ops.push_back(op);
       }
     }
@@ -136,36 +143,45 @@ process_in_value_have_mulit_user(const std::vector<Operation*>& ops) {
   return std::move(new_grps);
 }
 
-std::vector<std::vector<Operation*>>
-seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops, const std::vector<Operation*>& break_ops,
-                         std::map<Operation*, bool>* break_op_reside) {
-  std::vector<std::vector<Operation*>> new_grps, new_grps2;
-  std::vector<Operation*> accessed_ops, left_ops;
+std::vector<std::vector<Operation *>>
+seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
+                         const std::vector<Operation *> &break_ops,
+                         std::map<Operation *, bool> *break_op_reside) {
+  std::vector<std::vector<Operation *>> new_grps, new_grps2;
+  std::vector<Operation *> accessed_ops, left_ops;
   for (auto it = grp_ops.rbegin(); it != grp_ops.rend(); ++it) {
     auto op = *it;
     if (std::find(break_ops.begin(), break_ops.end(), op) != break_ops.end()) {
-      if (break_op_reside && (*break_op_reside).find(op) != (*break_op_reside).end() && (*break_op_reside)[op]) {
-        std::vector<Operation*> op_tree;
+      if (break_op_reside &&
+          (*break_op_reside).find(op) != (*break_op_reside).end() &&
+          (*break_op_reside)[op]) {
+        std::vector<Operation *> op_tree;
         find_op_tree_by_root2(op, op_tree, grp_ops, accessed_ops, break_ops);
         new_grps.push_back(op_tree);
         accessed_ops.insert(accessed_ops.end(), op_tree.begin(), op_tree.end());
       } else {
-        for (auto user: op->getUsers()) {
-          if (!isa<ReturnOp>(user)
-              && std::find(grp_ops.begin(), grp_ops.end(), user) != grp_ops.end()
-              && std::find(break_ops.begin(), break_ops.end(), user) == break_ops.end()) {
-            std::vector<Operation*> op_tree;
-            find_op_tree_by_root2(user, op_tree, grp_ops, accessed_ops, break_ops);
+        for (auto user : op->getUsers()) {
+          if (!isa<ReturnOp>(user) &&
+              std::find(grp_ops.begin(), grp_ops.end(), user) !=
+                  grp_ops.end() &&
+              std::find(break_ops.begin(), break_ops.end(), user) ==
+                  break_ops.end()) {
+            std::vector<Operation *> op_tree;
+            find_op_tree_by_root2(user, op_tree, grp_ops, accessed_ops,
+                                  break_ops);
             new_grps.push_back(op_tree);
-            accessed_ops.insert(accessed_ops.end(), op_tree.begin(), op_tree.end());
+            accessed_ops.insert(accessed_ops.end(), op_tree.begin(),
+                                op_tree.end());
           }
         }
       }
     }
   }
-  for (auto op: grp_ops) {
-    if (!isa<ReturnOp>(op) && std::find(accessed_ops.begin(), accessed_ops.end(), op) == accessed_ops.end()
-     && std::find(break_ops.begin(), break_ops.end(), op) == break_ops.end()) {
+  for (auto op : grp_ops) {
+    if (!isa<ReturnOp>(op) &&
+        std::find(accessed_ops.begin(), accessed_ops.end(), op) ==
+            accessed_ops.end() &&
+        std::find(break_ops.begin(), break_ops.end(), op) == break_ops.end()) {
       left_ops.push_back(op);
     }
   }
@@ -173,9 +189,9 @@ seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops, const std::vect
     new_grps.insert(new_grps.begin(), left_ops);
   }
 
-  for (auto grp: new_grps) {
+  for (auto grp : new_grps) {
     if (grp.size() > 1) {
-      for (auto grp2: process_in_value_have_mulit_user(grp)) {
+      for (auto grp2 : process_in_value_have_mulit_user(grp)) {
         if (grp2.size() > 1) {
           new_grps2.push_back(grp2);
         }
@@ -185,7 +201,8 @@ seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops, const std::vect
   return std::move(new_grps2);
 }
 
-void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops, std::vector<Operation*>* grp_ops) {
+void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops,
+                      std::vector<Operation *> *grp_ops) {
   if (grp_ops && !opIsInGrpOps(op, *grp_ops)) {
     return;
   }
@@ -212,8 +229,8 @@ void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops, s
   }
 }
 
-void find_all_next_ops(Operation *op,
-                       std::vector<Operation *> &glayer_next_ops, std::vector<Operation*>* grp_ops) {
+void find_all_next_ops(Operation *op, std::vector<Operation *> &glayer_next_ops,
+                       std::vector<Operation *> *grp_ops) {
   if (grp_ops && !opIsInGrpOps(op, *grp_ops)) {
     return;
   }
@@ -235,7 +252,9 @@ void find_all_next_ops(Operation *op,
   }
 }
 
-std::shared_ptr<ilp_LgInfo> CreateIlpLgInfo(std::vector<Operation*> ops, solver_strategy_type_t cur_strategy) {
+std::shared_ptr<ilp_LgInfo>
+CreateIlpLgInfo(std::vector<Operation *> ops,
+                solver_strategy_type_t cur_strategy) {
   auto ilp_lgInfo = std::make_shared<ilp_LgInfo>();
   ilp_lgInfo->_cur_strategy = cur_strategy;
   ilp_lgInfo->_lgInfo.group_ops.assign(ops.begin(), ops.end());
@@ -244,14 +263,15 @@ std::shared_ptr<ilp_LgInfo> CreateIlpLgInfo(std::vector<Operation*> ops, solver_
   return ilp_lgInfo;
 }
 
-void GetAllParallelNodes(const std::vector<Operation*>& ops,
-                            std::map<Operation*, std::vector<Operation*>>& map_parallel_node,
-                            std::vector<Operation*>* grp_ops) {
-  for (auto op: ops) {
-    std::vector<Operation*> dep_ops, tmp_ops;
+void GetAllParallelNodes(
+    const std::vector<Operation *> &ops,
+    std::map<Operation *, std::vector<Operation *>> &map_parallel_node,
+    std::vector<Operation *> *grp_ops) {
+  for (auto op : ops) {
+    std::vector<Operation *> dep_ops, tmp_ops;
     find_all_pre_ops(op, dep_ops, grp_ops);
     find_all_next_ops(op, dep_ops, grp_ops);
-    for (auto itr: ops) {
+    for (auto itr : ops) {
       if (std::find(dep_ops.begin(), dep_ops.end(), itr) == dep_ops.end()) {
         tmp_ops.push_back(itr);
       }
@@ -260,7 +280,8 @@ void GetAllParallelNodes(const std::vector<Operation*>& ops,
   }
 }
 
-bool opHasMultiGroupUser(Operation *op, const std::vector<Operation*>& grp_ops) {
+bool opHasMultiGroupUser(Operation *op,
+                         const std::vector<Operation *> &grp_ops) {
   int count = 0;
   for (auto user : op->getUsers()) {
     if (isa<ReturnOp>(user)) {
@@ -271,10 +292,11 @@ bool opHasMultiGroupUser(Operation *op, const std::vector<Operation*>& grp_ops) 
       count++;
     }
   }
-  return count > 1? true:false;
+  return count > 1 ? true : false;
 }
 
-bool valueHasMultiGroupUser(Value value, const std::vector<Operation*>& grp_ops) {
+bool valueHasMultiGroupUser(Value value,
+                            const std::vector<Operation *> &grp_ops) {
   int count = 0;
   for (auto user : value.getUsers()) {
     if (isa<ReturnOp>(user)) {
@@ -285,7 +307,7 @@ bool valueHasMultiGroupUser(Value value, const std::vector<Operation*>& grp_ops)
       count++;
     }
   }
-  return count > 1? true:false;
+  return count > 1 ? true : false;
 }
 
 std::string replaceChars_for_dot(std::string str) {
@@ -379,7 +401,7 @@ get_group_max_secs(const LgInfo &lg_info,
       if (succeeded(lgOp.AllowDataSplit(2 + (lg_info.type == GROUP_3D ? 1 : 0),
                                         lg_info.type))) {
         max_hsecs = std::min(max_hsecs, h);
-        vec_op_hwsecs.push_back(std::make_pair(op, h*w));
+        vec_op_hwsecs.push_back(std::make_pair(op, h * w));
       } else {
         max_hsecs = 1;
       }
@@ -516,9 +538,9 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
   return true;
 }
 
-
 bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size, std::shared_ptr<dot_graph> dot_graph_log) {
+                           std::vector<std::pair<Value, int64_t>> &value_size,
+                           std::shared_ptr<dot_graph> dot_graph_log) {
   shape_secs = {1, 1, 1, 1, 1};
   if (lg_info.group_ops.size() == 1 &&
       false == LgPass::OPTIONS.group_by_cores) {
@@ -547,7 +569,8 @@ bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
     int64_t non_weight_lmem_bytes = Arch::LMEM_BYTES;
     for (size_t i = 1; i < ins.size(); ++i) {
       if ((module::isTrain() &&
-        !isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp, tpu::MaxOp, tpu::ConcatOp>(op)) ||
+           !isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
+                tpu::MaxOp, tpu::ConcatOp>(op)) ||
           module::isWeight(ins[i])) {
         bool eu_align = is_eu_align(ins[i]);
         if (module::isTrain()) {
@@ -572,9 +595,11 @@ bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
     }
 
     // Need consider different backends
-    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES); //假设权重也切分了，实际上权重不能切分
-    //total_size分子变小，分母也变小，结果怎么变?
-    llvm::errs() << "total_size:"<<total_size<< " non_weight_lmem_bytes:"<<non_weight_lmem_bytes<<"\n";
+    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
+    // //假设权重也切分了，实际上权重不能切分
+    // total_size分子变小，分母也变小，结果怎么变?
+    llvm::errs() << "total_size:" << total_size
+                 << " non_weight_lmem_bytes:" << non_weight_lmem_bytes << "\n";
     int64_t total_secs = ceiling_func(total_size, non_weight_lmem_bytes);
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
@@ -595,11 +620,13 @@ bool init_group_data_secs2(const LgInfo &lg_info, shape_secs_t &shape_secs,
     total_secs = ceiling_func(total_secs, shape_secs.dsecs);
     shape_secs.hsecs = std::max(total_secs, shape_secs.hsecs);
     auto name = module::getName(op).str();
-    dot_graph_log->add_node_label(name + "_ori", "hsecs: " + std::to_string(total_secs));
+    dot_graph_log->add_node_label(name + "_ori",
+                                  "hsecs: " + std::to_string(total_secs));
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
       shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
       if (shape_secs.wsecs > max_shape_secs.wsecs) {
-        llvm::errs() << "init_group_data_secs2 fail at op:"<<module::getName(op).str()<<"\n";
+        llvm::errs() << "init_group_data_secs2 fail at op:"
+                     << module::getName(op).str() << "\n";
         return false;
       }
       shape_secs.hsecs = max_shape_secs.hsecs;
@@ -1000,13 +1027,15 @@ bool is_attention_not_input_tensor(Operation *op, Value v) {
   return res;
 }
 
-void slice_distributor(std::vector<slice_pair_t> &slice_pairs, int64_t vec_length, int64_t secs){
+void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
+                       int64_t vec_length, int64_t secs) {
   int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
   int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
 
   int64_t start_idx = 0; // 当前分片的起始索引
   for (int64_t i = 0; i < secs; ++i) {
-    int64_t current_slice = per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
+    int64_t current_slice =
+        per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
     slice_pairs.emplace_back(slice_pair_t(start_idx, current_slice));
     start_idx += current_slice; // 更新下一个分片的起始索引
   }
@@ -1039,7 +1068,8 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
     // 计算每一步的步长和索引
     bool extra = c_per_npu_mod_secs > i;
     int64_t step = (c_per_npu_div_secs + extra) * Arch::NPU_NUM;
-    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * Arch::NPU_NUM;
+    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) *
+                  Arch::NPU_NUM;
 
     // 计算切片大小
     int64_t slice = std::min(step, c - idx);
@@ -1048,7 +1078,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   }
   // h slice_info
   slice_distributor(slice_info.h, h, shape_secs.hsecs);
-   // d slice_info
+  // d slice_info
   slice_distributor(slice_info.d, d, shape_secs.dsecs);
   // w slice_info
   slice_distributor(slice_info.w, w, shape_secs.wsecs);
@@ -1153,12 +1183,14 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   if (shape_secs.hsecs == 1) {
     in_si.h.emplace_back(slice_pair_t(0, h));
   } else {
-    // llvm::errs()  << "BackwardH at op:" << module::getName(op).str() <<", type:"<<op->getName()<< "\n";
+    // llvm::errs()  << "BackwardH at op:" << module::getName(op).str() <<",
+    // type:"<<op->getName()<< "\n";
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
       // llvm::errs()  <<"  i:"<<i<< ", out_idx:"<<s.first<< ", out_slice:"
-      //               <<s.second<< " >>> in_idx:"<<idx<< ", in_slice:"<<slice << "\n";
+      //               <<s.second<< " >>> in_idx:"<<idx<< ", in_slice:"<<slice
+      //               << "\n";
       if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
         idx = 0;
         slice = 1;
@@ -1218,12 +1250,11 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   return true;
 }
 
-
 bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
-                             Operation *op, Value in,
-                             const shape_secs_t &shape_secs,
-                             group_type_t group_type, bool &hold_in_lmem,
-                             bool is_group_in) {
+                              Operation *op, Value in,
+                              const shape_secs_t &shape_secs,
+                              group_type_t group_type, bool &hold_in_lmem,
+                              bool is_group_in) {
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
@@ -1242,8 +1273,8 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
         slice = 1;
       } else {
         if (failed(ret) || slice == 0) {
-          llvm::errs() << "BackwardN fail, at op:"
-                                  << module::getName(op).str() << "\n";
+          llvm::errs() << "BackwardN fail, at op:" << module::getName(op).str()
+                       << "\n";
           return false;
         }
       }
@@ -1276,8 +1307,8 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
         in_si.c.emplace_back(slice_pair_t(idx, slice));
       } else {
         if (failed(ret) || slice == 0) {
-          llvm::errs() << "BackwardC fail, at op:"
-                                  << module::getName(op).str() << "\n";
+          llvm::errs() << "BackwardC fail, at op:" << module::getName(op).str()
+                       << "\n";
           return false;
         }
       }
@@ -1301,8 +1332,8 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardD fail, at op:"
                                   << module::getName(op).str() << "\n";);
-          llvm::errs() << "BackwardD fail, at op:"
-                                  << module::getName(op).str() << "\n";
+          llvm::errs() << "BackwardD fail, at op:" << module::getName(op).str()
+                       << "\n";
           return false;
         }
       }
@@ -1316,12 +1347,14 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
   if (shape_secs.hsecs == 1) {
     in_si.h.emplace_back(slice_pair_t(0, h));
   } else {
-    // llvm::errs()  << "BackwardH at op:" << module::getName(op).str() <<", type:"<<op->getName()<< "\n";
+    // llvm::errs()  << "BackwardH at op:" << module::getName(op).str() <<",
+    // type:"<<op->getName()<< "\n";
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
       // llvm::errs()  <<"  i:"<<i<< ", out_idx:"<<s.first<< ", out_slice:"
-      //               <<s.second<< " >>> in_idx:"<<idx<< ", in_slice:"<<slice << "\n";
+      //               <<s.second<< " >>> in_idx:"<<idx<< ", in_slice:"<<slice
+      //               << "\n";
       if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
         idx = 0;
         slice = 1;
@@ -1329,13 +1362,13 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
         if (failed(ret) || slice == 0) {
           LLVM_DEBUG(llvm::dbgs()
                          << "BackwardH fail, ret:"
-                         << (failed(ret) ? "failed" : "success")<< ", i:" << i
+                         << (failed(ret) ? "failed" : "success") << ", i:" << i
                          << ", idx:" << idx << ", slice:" << slice
                          << " at op:" << module::getName(op).str() << "\n";);
-          llvm::errs()  << "BackwardH fail, ret:"
-                         << (failed(ret) ? "failed" : "success")<< ", i:" << i
-                         << ", idx:" << idx << ", slice:" << slice
-                         << " at op:" << module::getName(op).str() << "\n";
+          llvm::errs() << "BackwardH fail, ret:"
+                       << (failed(ret) ? "failed" : "success") << ", i:" << i
+                       << ", idx:" << idx << ", slice:" << slice
+                       << " at op:" << module::getName(op).str() << "\n";
           // for debug
           // llvm::dbgs()
           //       << "BackwardH fail, ret:"
@@ -1371,8 +1404,8 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardW fail, at op:"
                                   << module::getName(op).str() << "\n";);
-          llvm::errs() << "BackwardW fail, at op:"
-                                  << module::getName(op).str() << "\n";
+          llvm::errs() << "BackwardW fail, at op:" << module::getName(op).str()
+                       << "\n";
           return false;
         }
       }
@@ -1480,7 +1513,10 @@ static bool backward_update_slice(
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  (isa<tpu::Conv2DOp>(user) || ((isa<tpu::CastOp>(user) || isa<tpu::LutOp>(user)) && module::getCoreNum() == 1)) && module::isUniformQuantized(in)) ||
+                  (isa<tpu::Conv2DOp>(user) ||
+                   ((isa<tpu::CastOp>(user) || isa<tpu::LutOp>(user)) &&
+                    module::getCoreNum() == 1)) &&
+                  module::isUniformQuantized(in)) ||
                 lg_info.group_outs.size() != 1) {
               return false;
             }
@@ -1528,17 +1564,21 @@ static bool backward_update_slice(
           }
           tensor_infos[in] = tensor_info_t(si_both);
 
-          if (isa<tpu::LutOp>(op) || isa<tpu::CastOp>(op) )  {
+          if (isa<tpu::LutOp>(op) || isa<tpu::CastOp>(op)) {
             auto val = op->getResult(0);
-            for (int i = 0; i < shape_secs.hsecs; i++){
-              tensor_infos[val].slice_info.h[i].first = tensor_infos[in].slice_info.h[i].first;
-              tensor_infos[val].slice_info.h[i].second = tensor_infos[in].slice_info.h[i].second;
+            for (int i = 0; i < shape_secs.hsecs; i++) {
+              tensor_infos[val].slice_info.h[i].first =
+                  tensor_infos[in].slice_info.h[i].first;
+              tensor_infos[val].slice_info.h[i].second =
+                  tensor_infos[in].slice_info.h[i].second;
             }
 
-            for (int i = 0; i < shape_secs.wsecs; i++){
-              tensor_infos[val].slice_info.w[i].first = tensor_infos[in].slice_info.w[i].first;
-              tensor_infos[val].slice_info.w[i].second = tensor_infos[in].slice_info.w[i].second;
-           }
+            for (int i = 0; i < shape_secs.wsecs; i++) {
+              tensor_infos[val].slice_info.w[i].first =
+                  tensor_infos[in].slice_info.w[i].first;
+              tensor_infos[val].slice_info.w[i].second =
+                  tensor_infos[in].slice_info.w[i].second;
+            }
           }
 
           tensor_infos[in].hold_in_lmem = hold_in_lmem;
@@ -1614,8 +1654,9 @@ backward_update_slice2(const LgInfo &lg_info, const shape_secs_t &shape_secs,
     bool hold_in_lmem = false;
     bool is_group_in =
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
-    auto ret = get_backward_slice_info2(si, out_si, op, in, shape_secs,
-                                       lg_info.type, hold_in_lmem, is_group_in);
+    auto ret =
+        get_backward_slice_info2(si, out_si, op, in, shape_secs, lg_info.type,
+                                 hold_in_lmem, is_group_in);
     if (ret == false) {
       return false;
     }
@@ -1843,7 +1884,6 @@ int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
         align_64(getTensorLmemBytes(outs[i], info, ncdhw_idx, lg_info.type));
     out_lmem_bytes += tmp;
     LLVM_DEBUG(llvm::dbgs() << "out" << i << ", size:" << tmp << "\n";);
-
   }
 
   auto lg_op = cast<LocalGenInterface>(op);
@@ -1995,7 +2035,9 @@ bool stripe_mine_idx_slice2(const LgInfo &lg_info,
                                tensor_infos, op_set, out_tensor_set);
     if (!ret) {
       fail_op = out_tensor.first.getDefiningOp();
-      llvm::outs() << module::getName(fail_op).str() << " backward_update_slice2 fail"<<"\n";
+      llvm::outs() << module::getName(fail_op).str()
+                   << " backward_update_slice2 fail"
+                   << "\n";
       return false;
     }
   }
@@ -2008,14 +2050,15 @@ void backward_gen_ilp_var2(
     TensorInfo &tensor_infos,
     std::shared_ptr<CycleCalculator> cycle_calculator_,
     ILPTimeStep &ilp_timeStep, const std::vector<int64_t> &ncdhw_idx,
-    int slice_idx, std::vector<op_var_pos_info> &op_var_bound, Operation *&failOp,
-    std::map<std::string, std::string>& node_labels,
+    int slice_idx, std::vector<op_var_pos_info> &op_var_bound,
+    Operation *&failOp, std::map<std::string, std::string> &node_labels,
     bool l2m_en, bool last_slice, int max_ahead_or_delay_ts) {
   std::string tmpStr;
   auto ops = lg_info.group_ops;
   assert(ops.size() > 1);
-  std::string slice_name = llvm::formatv("slice_{0}_{1}_{2}_{3}_{4}", ncdhw_idx[0],
-                          ncdhw_idx[1], ncdhw_idx[2], ncdhw_idx[3], ncdhw_idx[4]);
+  std::string slice_name =
+      llvm::formatv("slice_{0}_{1}_{2}_{3}_{4}", ncdhw_idx[0], ncdhw_idx[1],
+                    ncdhw_idx[2], ncdhw_idx[3], ncdhw_idx[4]);
   for (int cur_op_idx = ops.size() - 1; cur_op_idx >= 0; cur_op_idx--) {
     auto op = ops[cur_op_idx];
     auto op_name = replaceChars_for_dot(module::getName(op).str());
@@ -2023,16 +2066,20 @@ void backward_gen_ilp_var2(
         findVarBound(op_var_bound, std::make_pair(slice_idx, cur_op_idx));
     auto slice_pos_info =
         findVarBound(op_var_bound, std::make_pair(slice_idx, 0));
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "-------------------cur_op_idx: " << cur_op_idx
-                            << ", op: " << op_name << " ----\n";});
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::errs() << "-------------------cur_op_idx: " << cur_op_idx
+                   << ", op: " << op_name << " ----\n";
+    });
     int buffer_size = 0;
-    int64_t mem_size_for_load = getOpLmemBytes(op, tensor_infos, ncdhw_idx, lg_info, buffer_size);
+    int64_t mem_size_for_load =
+        getOpLmemBytes(op, tensor_infos, ncdhw_idx, lg_info, buffer_size);
     int bdc_cycle = cycle_calculator_->getLocalLayerCycle(
-        op, tensor_infos, lg_info.type, true); // todo ?��?��1��?����?slice0��?��|???��?Y����?������
-    tmpStr = "mem_size_for_load: " + std::to_string(mem_size_for_load)
-                + ", buffer_size: " + std::to_string(buffer_size)
-                + ", slice_idx:" + std::to_string(slice_idx);
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << tmpStr << "\n";});
+        op, tensor_infos, lg_info.type,
+        true); // todo ?��?��1��?����?slice0��?��|???��?Y����?������
+    tmpStr = "mem_size_for_load: " + std::to_string(mem_size_for_load) +
+             ", buffer_size: " + std::to_string(buffer_size) +
+             ", slice_idx:" + std::to_string(slice_idx);
+    LAYER_GROUP_LOG_DEBUG_BLOCK({ llvm::errs() << tmpStr << "\n"; });
     node_labels[op_name] = tmpStr;
     ilp_timeStep.addOpInfo(var_pos_info.ts_id, op, buffer_size,
                            mem_size_for_load, bdc_cycle);
@@ -2055,7 +2102,9 @@ void backward_gen_ilp_var2(
         is_weight = true;
       }
       std::string value_name = module::getName(in).str();
-      auto itr = std::find(ops.begin(), ops.end(), inOp); //?�̨�����??D������?��?��??�騪?������?��?data��?��?value��??����?op?anull��?��?????��??����??��
+      auto itr = std::find(
+          ops.begin(), ops.end(),
+          inOp); //?�̨�����??D������?��?��??�騪?������?��?data��?��?value��??����?op?anull��?��?????��??����??��
       if (itr == ops.end()) { // D����a�䨮group��a??load��??��???������??
         tensor_info_t info;
         if (!is_weight) {
@@ -2069,7 +2118,8 @@ void backward_gen_ilp_var2(
         ilp_timeStep.addTensorSize(in, slice_idx, lmem_bytes);
         int dma_cycle = 0;
         if (l2m_en && is_weight) {
-          dma_cycle = cycle_calculator_->getGdmaCycle(in, info, lg_info.type) / 4;
+          dma_cycle =
+              cycle_calculator_->getGdmaCycle(in, info, lg_info.type) / 4;
         } else {
           dma_cycle = cycle_calculator_->getGdmaCycle(in, info, lg_info.type);
         }
@@ -2082,21 +2132,25 @@ void backward_gen_ilp_var2(
           }
           std::string var_name;
           if (is_weight) {
-            var_name =
-                llvm::formatv(
-                    "x_weight_{0}_use_by_{1}_at_pos{2}_load_{3}bytes_{4}cycle_at_ts{5}_{6}",
-                    value_name.c_str(), op_name.c_str(), var_pos_info.ts_id,
-                    lmem_bytes, dma_cycle, ts_idx, slice_name.c_str())
-                    .str();
+            var_name = llvm::formatv("x_weight_{0}_use_by_{1}_at_pos{2}_load_{"
+                                     "3}bytes_{4}cycle_at_ts{5}_{6}",
+                                     value_name.c_str(), op_name.c_str(),
+                                     var_pos_info.ts_id, lmem_bytes, dma_cycle,
+                                     ts_idx, slice_name.c_str())
+                           .str();
           } else {
-            var_name =
-                llvm::formatv("x_grp_input_{0}_use_by_{1}_at_pos{2}_load_{3}bytes_{4}cycle_at_ts{5}_{6}",
-                              value_name.c_str(), op_name.c_str(), var_pos_info.ts_id,
-                              lmem_bytes, dma_cycle, ts_idx, slice_name.c_str())
-                    .str();
+            var_name = llvm::formatv("x_grp_input_{0}_use_by_{1}_at_pos{2}_"
+                                     "load_{3}bytes_{4}cycle_at_ts{5}_{6}",
+                                     value_name.c_str(), op_name.c_str(),
+                                     var_pos_info.ts_id, lmem_bytes, dma_cycle,
+                                     ts_idx, slice_name.c_str())
+                           .str();
           }
-          auto op3 = (ts_idx < slice_pos_info.ts_id)?ops[0]:ops[ts_idx - slice_pos_info.ts_id];
-          node_labels[module::getName(op3).str()] = "LoadVarDefine: " + var_name;
+          auto op3 = (ts_idx < slice_pos_info.ts_id)
+                         ? ops[0]
+                         : ops[ts_idx - slice_pos_info.ts_id];
+          node_labels[module::getName(op3).str()] =
+              "LoadVarDefine: " + var_name;
           ilp_timeStep.addBinaryVar(ts_idx, slice_idx, -1, var_name, in, info,
                                     lmem_bytes);
           var_names.push_back(var_name);
@@ -2105,9 +2159,11 @@ void backward_gen_ilp_var2(
         }
 
         if (is_weight) {
-          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, in, var_names, false, true);
+          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, in, var_names,
+                                        false, true);
         } else {
-          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, in, var_names, false, false);
+          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, in, var_names,
+                                        false, false);
         }
       }
     }
@@ -2119,12 +2175,14 @@ void backward_gen_ilp_var2(
       tensor_info_t &info = tensor_infos[res];
       std::string name = module::getName(res).str();
       std::string op_name = module::getName(op).str();
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "process res name:" << name << "\n";});
-      int64_t lmem_bytes = getTensorLmemBytes(res, slice_info, ncdhw_idx, lg_info.type);
+      LAYER_GROUP_LOG_DEBUG_BLOCK(
+          { llvm::errs() << "process res name:" << name << "\n"; });
+      int64_t lmem_bytes =
+          getTensorLmemBytes(res, slice_info, ncdhw_idx, lg_info.type);
       assert(lmem_bytes > 0);
       llvm::errs() << "res lmem_bytes:" << lmem_bytes << "\n";
       ilp_timeStep.addTensorSize(res, slice_idx, lmem_bytes);
-      std::map<int, Operation*> map_user_pos;
+      std::map<int, Operation *> map_user_pos;
       bool have_grp_out = false;
       for (auto user : res.getUsers()) {
         auto itr = std::find(ops.begin(), ops.end(), user);
@@ -2137,29 +2195,35 @@ void backward_gen_ilp_var2(
         }
       }
 
-      int full_slice_bytes = getTensorLmemBytes(res, slice_info, ncdhw_idx, lg_info.type);
+      int full_slice_bytes =
+          getTensorLmemBytes(res, slice_info, ncdhw_idx, lg_info.type);
       int pre_user_pos = var_pos_info.ts_id, dma_cycle;
       std::vector<std::string> all_store_varnames;
       std::string ada_var_name;
       int idx = 0;
       bool first_user = true;
-      if (map_user_pos.size() > 0) { //没有组内user时，不进入本分支，到后面去处理store;
-        // std::map<MPVariable *, std::vector<std::pair<int, MPVariable *>>> map_x_var_items;
-        Operation* pre_user = nullptr;
+      if (map_user_pos.size() >
+          0) { //没有组内user时，不进入本分支，到后面去处理store;
+        // std::map<MPVariable *, std::vector<std::pair<int, MPVariable *>>>
+        // map_x_var_items;
+        Operation *pre_user = nullptr;
         for (auto it : map_user_pos) { //最普通情形会有1个user
           auto user_pos = it.first;
           auto user = it.second;
-          llvm::errs() << "process " << idx << "th user, user_pos:"<<user_pos<<" "<<show_op_info(user)
-                       << ", pre_user_pos:"<<pre_user_pos<<"\n";
+          llvm::errs() << "process " << idx << "th user, user_pos:" << user_pos
+                       << " " << show_op_info(user)
+                       << ", pre_user_pos:" << pre_user_pos << "\n";
           auto user_name = module::getName(user).str();
           MPVariable *reside_x = nullptr;
           //?����??����|���訢?��?��?
           if (user_pos - pre_user_pos >= 2) {
-            ada_var_name = llvm::formatv("ada_var_for_{0}_gen_by_{1}_at_pos{2}_use_by_{3}_at_pos{4}",
-                                        name.c_str(), op_name, var_pos_info.ts_id, user_name, user_pos);
-            llvm::errs() << "define: "<<ada_var_name<<"\n";
+            ada_var_name = llvm::formatv(
+                "ada_var_for_{0}_gen_by_{1}_at_pos{2}_use_by_{3}_at_pos{4}",
+                name.c_str(), op_name, var_pos_info.ts_id, user_name, user_pos);
+            llvm::errs() << "define: " << ada_var_name << "\n";
             reside_x = ilp_timeStep.solver->MakeIntVar(0, 1, ada_var_name);
-            // map_x_var_items[reside_x] = std::vector<std::pair<int, MPVariable *>>();
+            // map_x_var_items[reside_x] = std::vector<std::pair<int, MPVariable
+            // *>>();
             ilp_var_info var_info;
             var_info.ts_idx = pre_user_pos + 1;
             var_info.slice_idx = slice_idx;
@@ -2167,37 +2231,47 @@ void backward_gen_ilp_var2(
             ilp_timeStep.mapILPVarInfo[ada_var_name] = var_info;
             //凡是不被op自身固有以及变量控制的张量内存占用都要明确设置mem_contrains;ada_var不需设置cycle_contrains
             for (int ts_idx = pre_user_pos + 1; ts_idx < user_pos; ts_idx++) {
-              ilp_timeStep.mem_contrains[ts_idx].push_back(std::make_pair(full_slice_bytes, ada_var_name));
-              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id]).str()] = "add " + ada_var_name + " to mem_contrains";
+              ilp_timeStep.mem_contrains[ts_idx].push_back(
+                  std::make_pair(full_slice_bytes, ada_var_name));
+              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id])
+                              .str()] =
+                  "add " + ada_var_name + " to mem_contrains";
             }
           }
           // op??��D1????����?��?user?��resnet2D2?��??����??��??��D2??������2??op�ꡧopo��?����|user??op2??������2??op��?2???��?????��??t
           if (user_pos - pre_user_pos >= 4) {
             //?����?store��?��?
             info.mode2 = TIMESTEP2_STORE_AND_LOAD;
-            dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type); // nullptr, 0
+            dma_cycle = cycle_calculator_->getGdmaCycle(
+                res, info, lg_info.type); // nullptr, 0
             ilp_timeStep.addTensorCycle(res, slice_idx, dma_cycle);
             llvm::errs() << "full_slice_bytes:" << full_slice_bytes
-                          << ", dma_cycle:" << dma_cycle << "\n";
+                         << ", dma_cycle:" << dma_cycle << "\n";
             std::vector<std::string> var_names;
             std::vector<std::pair<std::string, int>> store_var_names;
-            llvm::errs()<< "define store_var, ts_idx from "
-                        << pre_user_pos + 1 << " to " << user_pos << "\n";
+            llvm::errs() << "define store_var, ts_idx from " << pre_user_pos + 1
+                         << " to " << user_pos << "\n";
             for (int ts_idx = pre_user_pos + 1; ts_idx < user_pos; ts_idx++) {
-              std::string var_name =
-                  llvm::formatv("x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_use_by_{5}_at_pos{6}_{7}",
-                  name.c_str(), var_pos_info.ts_id, full_slice_bytes, dma_cycle, ts_idx, user_name, user_pos, slice_name.c_str());
+              std::string var_name = llvm::formatv(
+                  "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_"
+                  "use_by_{5}_at_pos{6}_{7}",
+                  name.c_str(), var_pos_info.ts_id, full_slice_bytes, dma_cycle,
+                  ts_idx, user_name, user_pos, slice_name.c_str());
               var_names.push_back(var_name);
               if (var_names.size() >= max_ahead_or_delay_ts) {
                 break;
               }
             }
-            for (int ts_idx = pre_user_pos + 1, offset = 0; ts_idx < user_pos; ts_idx++) {
-              std::string var_name =
-                  llvm::formatv("x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_use_by_{5}_at_pos{6}_{7}",
-                  name.c_str(), var_pos_info.ts_id, full_slice_bytes, dma_cycle, ts_idx, user_name, user_pos, slice_name.c_str());
-              llvm::errs() << "  AdaLoadDefine: "<<var_name<<"\n";
-              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id]).str()] = "AdaStoreDefine: " + var_name;
+            for (int ts_idx = pre_user_pos + 1, offset = 0; ts_idx < user_pos;
+                 ts_idx++) {
+              std::string var_name = llvm::formatv(
+                  "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_"
+                  "use_by_{5}_at_pos{6}_{7}",
+                  name.c_str(), var_pos_info.ts_id, full_slice_bytes, dma_cycle,
+                  ts_idx, user_name, user_pos, slice_name.c_str());
+              llvm::errs() << "  AdaLoadDefine: " << var_name << "\n";
+              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id])
+                              .str()] = "AdaStoreDefine: " + var_name;
               ilp_timeStep.addBinaryVar(ts_idx, slice_idx, 0, var_name, res,
                                         info, full_slice_bytes);
               ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
@@ -2209,8 +2283,10 @@ void backward_gen_ilp_var2(
               all_store_varnames.push_back(var_name);
               ilp_timeStep.addTimestepMemUse(ts_idx, lmem_bytes, var_names2);
               // if (!first_user) {
-              //   for (auto itr = map_x_var_items.begin(); itr != map_x_var_items.end(); ++itr) {
-              //     itr->second.push_back(std::make_pair(1, ilp_timeStep.getMPVarByName(var_name)));
+              //   for (auto itr = map_x_var_items.begin(); itr !=
+              //   map_x_var_items.end(); ++itr) {
+              //     itr->second.push_back(std::make_pair(1,
+              //     ilp_timeStep.getMPVarByName(var_name)));
               //   }
               // }
               if (offset >= max_ahead_or_delay_ts) {
@@ -2219,25 +2295,32 @@ void backward_gen_ilp_var2(
             }
 
             //?����?load��?��?
-            dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type, user, 1);
+            dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type,
+                                                        user, 1);
             var_names.clear();
             std::vector<std::pair<std::string, int>> load_var_names;
-            llvm::errs()<< "define load_var, ts_idx from " << pre_user_pos + 1 << " to " << user_pos << "\n";
+            llvm::errs() << "define load_var, ts_idx from " << pre_user_pos + 1
+                         << " to " << user_pos << "\n";
             for (int ts_idx = pre_user_pos + 1; ts_idx < user_pos; ts_idx++) {
               if (user_pos - ts_idx > max_ahead_or_delay_ts) {
                 continue;
               }
-              std::string var_name =
-                  llvm::formatv("x_tensor_{0}_gen_by_{1}_at_pos{2}_load_{3}bytes_{4}cycle_at_ts{5}_use_by_{6}_at_pos{7}_{8}",
-                  name.c_str(), op_name, var_pos_info.ts_id, full_slice_bytes, dma_cycle, ts_idx, user_name.c_str(),
-                  user_pos, slice_name.c_str());
-              llvm::errs() << "  define: "<<var_name<<"\n";
-              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id]).str()] = "AdaLoadDefine: " + var_name;
-              ilp_timeStep.addBinaryVar(ts_idx, slice_idx, 1, var_name, res, info, full_slice_bytes);
+              std::string var_name = llvm::formatv(
+                  "x_tensor_{0}_gen_by_{1}_at_pos{2}_load_{3}bytes_{4}cycle_at_"
+                  "ts{5}_use_by_{6}_at_pos{7}_{8}",
+                  name.c_str(), op_name, var_pos_info.ts_id, full_slice_bytes,
+                  dma_cycle, ts_idx, user_name.c_str(), user_pos,
+                  slice_name.c_str());
+              llvm::errs() << "  define: " << var_name << "\n";
+              node_labels[module::getName(ops[ts_idx - slice_pos_info.ts_id])
+                              .str()] = "AdaLoadDefine: " + var_name;
+              ilp_timeStep.addBinaryVar(ts_idx, slice_idx, 1, var_name, res,
+                                        info, full_slice_bytes);
               var_names.push_back(var_name);
               load_var_names.push_back(std::make_pair(var_name, ts_idx));
               ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
-              ilp_timeStep.addTimestepMemUse(ts_idx, full_slice_bytes, var_names);
+              ilp_timeStep.addTimestepMemUse(ts_idx, full_slice_bytes,
+                                             var_names);
             }
 
             //?����?���訢?��?��?o��?��??store/load��?��?1??��
@@ -2250,9 +2333,11 @@ void backward_gen_ilp_var2(
               coeff_var_items.push_back(std::make_pair(
                   -1, ilp_timeStep.getMPVarByName(load_var.first)));
             }
-            ilp_timeStep.addConstraint( 0, 0, coeff_var_items); //定义sum(store_var) == sum(load_var)
+            ilp_timeStep.addConstraint(
+                0, 0, coeff_var_items); //定义sum(store_var) == sum(load_var)
 
-            // for (auto itr = map_x_var_items.begin(); itr != map_x_var_items.end(); ++itr) {
+            // for (auto itr = map_x_var_items.begin(); itr !=
+            // map_x_var_items.end(); ++itr) {
             //   itr->second.push_back(std::make_pair(-1, itr->first));
             //   ilp_timeStep.addConstraint(0, 0, itr->second);
             // }
@@ -2263,25 +2348,30 @@ void backward_gen_ilp_var2(
                   1, ilp_timeStep.getMPVarByName(load_var.first)));
             }
             coeff_var_items.push_back(std::make_pair(1, reside_x));
-            ilp_timeStep.addConstraint(1, 1, coeff_var_items); //定义sum(load_var) + ada_var = 1
+            ilp_timeStep.addConstraint(
+                1, 1, coeff_var_items); //定义sum(load_var) + ada_var = 1
 
             coeff_var_items.clear();
             for (auto load_var : load_var_names) {
-              coeff_var_items.push_back(std::make_pair(load_var.second,
+              coeff_var_items.push_back(
+                  std::make_pair(load_var.second,
                                  ilp_timeStep.getMPVarByName(load_var.first)));
             }
             for (auto store_var : store_var_names) {
-              coeff_var_items.push_back(std::make_pair(-1 * store_var.second,
+              coeff_var_items.push_back(
+                  std::make_pair(-1 * store_var.second,
                                  ilp_timeStep.getMPVarByName(store_var.first)));
             }
             coeff_var_items.push_back(std::make_pair(2, reside_x));
             //定义2*ada_var + sum(pos*load_var) - sum(pos*store_var) >= 2
-            ilp_timeStep.addConstraint(2, MPSolver::infinity(), coeff_var_items);
+            ilp_timeStep.addConstraint(2, MPSolver::infinity(),
+                                       coeff_var_items);
           } else {
             if (reside_x) {
               coeff_var_items.clear();
               coeff_var_items.push_back(std::make_pair(1, reside_x));
-              ilp_timeStep.addConstraint(1, 1, coeff_var_items); //设置ada_var = 1
+              ilp_timeStep.addConstraint(1, 1,
+                                         coeff_var_items); //设置ada_var = 1
             }
             if (pre_user) {
               assert(idx != 0);
@@ -2294,7 +2384,8 @@ void backward_gen_ilp_var2(
           first_user = false;
         }
 
-        if (all_store_varnames.size() > 0) { // ��Dstore��?��?��??3��?��|����3?��?store grp out
+        if (all_store_varnames.size() >
+            0) { // ��Dstore��?��?��??3��?��|����3?��?store grp out
           if (have_grp_out) { // 3?��?��Dstore grp
                               // out��?����???������1??store��?��??a1��?��?o��????��???3?��?store
                               // grp out��|����
@@ -2324,10 +2415,12 @@ void backward_gen_ilp_var2(
         int ts_idx2 = ts_idx;
         for (; ts_idx < var_pos_info.end_ts + 1; ts_idx++) {
           std::string var_name = llvm::formatv(
-              "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}", name.c_str(),
-              var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx, slice_name.c_str());
-          auto op3 = (ts_idx - slice_pos_info.ts_id > ops.size() - 1)?
-                      ops[ops.size() - 1]:ops[ts_idx - slice_pos_info.ts_id];
+              "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}",
+              name.c_str(), var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx,
+              slice_name.c_str());
+          auto op3 = (ts_idx - slice_pos_info.ts_id > ops.size() - 1)
+                         ? ops[ops.size() - 1]
+                         : ops[ts_idx - slice_pos_info.ts_id];
           node_labels[module::getName(op3).str()] = "StoreDefine: " + var_name;
           var_names.push_back(var_name);
           if (var_names.size() >= max_ahead_or_delay_ts) {
@@ -2337,9 +2430,11 @@ void backward_gen_ilp_var2(
         ts_idx = ts_idx2;
         for (int offset = 0; ts_idx < var_pos_info.end_ts + 1; ts_idx++) {
           std::string var_name = llvm::formatv(
-              "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}", name.c_str(),
-              var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx, slice_name.c_str());
-          ilp_timeStep.addBinaryVar(ts_idx, slice_idx, -1, var_name, res, info, lmem_bytes);
+              "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}",
+              name.c_str(), var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx,
+              slice_name.c_str());
+          ilp_timeStep.addBinaryVar(ts_idx, slice_idx, -1, var_name, res, info,
+                                    lmem_bytes);
           ilp_timeStep.addTimestepGdmaCycle(ts_idx, dma_cycle, var_name);
           std::vector<std::string> var_names2;
           for (int n = offset++; n < var_names.size(); n++) {
@@ -2351,7 +2446,8 @@ void backward_gen_ilp_var2(
           }
         }
         if (var_names.size() > 0) {
-          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, res, var_names, true, false);
+          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, res, var_names,
+                                        true, false);
         }
       }
     }
@@ -2683,7 +2779,8 @@ bool is_eu_align_bm168x(Value opd) {
       }
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
-    } else if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3()) {
+    } else if (module::isBM1688() || module::isBM1690Family() ||
+               module::isSG2380() || module::isMARS3()) {
       if (isa<tpu::RequantIntAxisOp>(op)) {
         if ((opd == op->getOperand(1))) {
           return false;
@@ -2722,7 +2819,8 @@ bool is_value_weight(Value opd) {
     if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return true;
     }
-  } else if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3()) {
+  } else if (module::isBM1688() || module::isBM1690Family() ||
+             module::isSG2380() || module::isMARS3()) {
     if (isa<tpu::RequantIntAxisOp>(op)) {
       if ((opd == op->getOperand(1))) {
         return true;
@@ -2761,7 +2859,7 @@ int64_t use_3ic(Value opd) {
   return 0;
 }
 
-int get_user_count_in_group(Value opd, const std::vector<Operation*>& ops) {
+int get_user_count_in_group(Value opd, const std::vector<Operation *> &ops) {
   int count = 0;
   for (auto user : opd.getUsers()) {
     if (isa<ReturnOp>(user)) {

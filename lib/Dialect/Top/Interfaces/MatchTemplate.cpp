@@ -65,7 +65,7 @@ LogicalResult top::MatchTemplateOp::inference(InferenceParameter &p) {
   auto match_size = h * w;
   // auto scale = 1. / (h * w * 100);
   float_t tmean = 0.;
-  if(mode == "TM_CCOEFF_NORMED") {
+  if (mode == "TM_CCOEFF_NORMED") {
     for (int i = 0; i < match_size; i++) {
       tmean += template_v[i];
     }
@@ -76,7 +76,7 @@ LogicalResult top::MatchTemplateOp::inference(InferenceParameter &p) {
   for (int i = 0; i < outer_size; i++) {
     uint32_t ioffset = i / c * stride + i % c;
     auto input = input_v + ioffset;
-    if(mode == "TM_CCOEFF_NORMED") {
+    if (mode == "TM_CCOEFF_NORMED") {
       double_t dividend = 0;
       double_t wndSum2 = 0;
       double_t templSum2 = 0;
@@ -86,7 +86,7 @@ LogicalResult top::MatchTemplateOp::inference(InferenceParameter &p) {
         imean += input[offset];
       }
       imean /= match_size;
-      for (int32_t i = 0; i < match_size; i++){
+      for (int32_t i = 0; i < match_size; i++) {
         uint32_t offset = i / w * stride + i % w;
         auto inp = input[offset] - imean;
         auto tpl = template_v[i] - tmean;
@@ -95,10 +95,9 @@ LogicalResult top::MatchTemplateOp::inference(InferenceParameter &p) {
         templSum2 += std::pow(tpl, 2);
       }
       output_v[i] = dividend * std::pow(wndSum2 * templSum2, -0.5);
-    }
-    else if(mode == "TM_SQDIFF") {
+    } else if (mode == "TM_SQDIFF") {
       double sum = 0;
-      for (int32_t i = 0; i < match_size; i++){
+      for (int32_t i = 0; i < match_size; i++) {
         uint32_t offset = i / w * stride + i % w;
         sum += std::pow(input[offset] - template_v[i], 2);
       }

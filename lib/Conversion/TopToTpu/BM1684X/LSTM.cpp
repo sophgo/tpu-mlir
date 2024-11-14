@@ -65,7 +65,7 @@ void LSTMLowering::LoweringF32(PatternRewriter &rewriter,
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
 void LSTMLowering::LoweringINT4(PatternRewriter &rewriter, top::LSTMOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
@@ -85,8 +85,7 @@ void LSTMLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
 
-void LSTMLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::LSTMOp op) const {
+void LSTMLowering::LoweringF8(PatternRewriter &rewriter, top::LSTMOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -6,16 +6,16 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace patterns {
 
 // if 2 op is same, fuse it.
 LogicalResult FuseSameOp::matchAndRewriteImpl(Operation *op,
-                                          PatternRewriter &rewriter) const {
+                                              PatternRewriter &rewriter) const {
   if (isa_and_nonnull<top::NoneOp, top::WeightOp>(op)) {
     return failure();
   }

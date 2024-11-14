@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
-void MishLowering::LoweringF32(PatternRewriter &rewriter, top::MishOp op) const {
+void MishLowering::LoweringF32(PatternRewriter &rewriter,
+                               top::MishOp op) const {
   auto op_ = op.getOperation();
   op_->setAttr(
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::MISH));
@@ -22,8 +23,7 @@ void MishLowering::LoweringF32(PatternRewriter &rewriter, top::MishOp op) const 
 void MishLowering::LoweringINT8(PatternRewriter &rewriter, top::MishOp op,
                                 bool asymmetric) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                                    activate_f(my_mish_activate),
-                                    32);
+                                    activate_f(my_mish_activate), 32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

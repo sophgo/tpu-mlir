@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void LoweringPixelNorm_FP(PatternRewriter &rewriter, top::PixelNormOp op,
-                              Type type) {
+                                 Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -52,8 +52,8 @@ static void LoweringPixelNorm_FP(PatternRewriter &rewriter, top::PixelNormOp op,
   return;
 }
 
-static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp op,
-                                  Type type) {
+static void LoweringPixelNorm_INT8(PatternRewriter &rewriter,
+                                   top::PixelNormOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -61,7 +61,7 @@ static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp o
   auto none = module::getNoneOp(op);
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (opd.getDefiningOp() ==none) {
+    if (opd.getDefiningOp() == none) {
       opds.push_back(none);
     } else if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
@@ -134,16 +134,16 @@ void PixelNormLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void PixelNormLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::PixelNormOp op) const {
+                                   top::PixelNormOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::PixelNormOp op,
                                      bool asymmetric) const {
-  if(module::isMARS3()){
+  if (module::isMARS3()) {
     LoweringPixelNorm_INT8(rewriter, op, rewriter.getBF16Type());
-  }else{
+  } else {
     LoweringPixelNorm_INT8(rewriter, op, rewriter.getF16Type());
   }
 }

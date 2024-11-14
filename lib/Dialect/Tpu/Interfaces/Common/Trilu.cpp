@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::TriluOp::init(InferenceParameter &p) { return success(); }
 void tpu::TriluOp::deinit(InferenceParameter &p) {}
@@ -17,8 +17,8 @@ LogicalResult tpu::TriluOp::inference(InferenceParameter &p) {
   auto upper = getUpper();
   auto diagonal = getDiagonal();
   auto in_shape = module::getShape(getInput());
-  float* in = p.inputs[0];
-  float* out = p.outputs[0];
+  float *in = p.inputs[0];
+  float *out = p.outputs[0];
   auto dims = in_shape.size();
   int64_t H = in_shape[dims - 2];
   int64_t W = in_shape[dims - 1];
@@ -30,13 +30,15 @@ LogicalResult tpu::TriluOp::inference(InferenceParameter &p) {
   }
 #pragma omp parallel for schedule(static, omp_schedule(N))
   for (int64_t nidx = 0; nidx < N; ++nidx) {
-    float* in_n = in + nidx * W * H;
-    float* out_n = out + nidx * W * H;
+    float *in_n = in + nidx * W * H;
+    float *out_n = out + nidx * W * H;
 #pragma omp parallel for schedule(static, omp_schedule(H))
     for (int64_t y = 0; y < H; ++y) {
 #pragma omp parallel for schedule(static, omp_schedule(W))
       for (int64_t x = 0; x < W; ++x) {
-        out_n[y * W + x] = (upper ? (x - y >= diagonal) : (x - y <= diagonal)) ? in_n[y * W + x] : 0;
+        out_n[y * W + x] = (upper ? (x - y >= diagonal) : (x - y <= diagonal))
+                               ? in_n[y * W + x]
+                               : 0;
       }
     }
   }

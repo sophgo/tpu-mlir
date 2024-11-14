@@ -14,7 +14,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void SubConstTryLowering::Lowering(PatternRewriter &rewriter,
-                                 top::SubConstOp op) const {
+                                   top::SubConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -58,7 +58,8 @@ void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
 
   double const_b = op.getConstVal().convertToDouble();
   if (asymmetric) {
-    const_b = (static_cast<int>(round(const_b / out_scale)) << rshift) + in_zp * multiplier;
+    const_b = (static_cast<int>(round(const_b / out_scale)) << rshift) +
+              in_zp * multiplier;
   } else {
     const_b = static_cast<int>(round(const_b / out_scale)) << rshift;
   }
@@ -73,11 +74,10 @@ void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
     }
   }
 
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
-    rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(multiplier)));
-  attrs.push_back(
-    rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
-
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
 
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::SubConstOp>(op, newType, op.getInput(),
@@ -100,7 +100,7 @@ void SubConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void SubConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::SubConstOp op) const {
+                                  top::SubConstOp op) const {
   std::vector<NamedAttribute> attrs;
   double const_v = op.getConstVal().convertToDouble();
   auto qtype_in = module::getCalibratedType(op.getInput());
@@ -116,22 +116,24 @@ void SubConstLowering::LoweringF8(PatternRewriter &rewriter,
   }
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "const_val") {
-      attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_v)));
+      attrs.push_back(rewriter.getNamedAttr("const_val",
+                                            rewriter.getF64FloatAttr(const_v)));
     } else {
       attrs.push_back(attr);
     }
   }
 
-  attrs.push_back(rewriter.getNamedAttr("f8_scale", rewriter.getF64FloatAttr(scale)));
+  attrs.push_back(
+      rewriter.getNamedAttr("f8_scale", rewriter.getF64FloatAttr(scale)));
 
   if (isE4) {
     auto newType = getQuantF8E4M3Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::SubConstOp>(op, newType,
-                                               op.getInput(), attrs);
+    rewriter.replaceOpWithNewOp<tpu::SubConstOp>(op, newType, op.getInput(),
+                                                 attrs);
   } else {
     auto newType = getQuantF8E5M2Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::SubConstOp>(op, newType,
-                                               op.getInput(), attrs);
+    rewriter.replaceOpWithNewOp<tpu::SubConstOp>(op, newType, op.getInput(),
+                                                 attrs);
   }
 }
 

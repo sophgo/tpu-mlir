@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 int64_t top::FrcnDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

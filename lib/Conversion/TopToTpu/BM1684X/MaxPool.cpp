@@ -43,7 +43,6 @@ void MaxPoolLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxPoolOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 
-
 void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::MaxPoolOp op) const {
   op->setAttr("pool_mode",
@@ -92,16 +91,19 @@ void MaxPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto first_round_mode = get_round_mode(op.getFirstRoundModeAttr().str());
   Operation *newOp;
   if (op.getKernelShape().size() == 3) {
-    newOp = lowering_common<tpu::Pool3DOp>(rewriter, op, op.getOutput().getType(), 2);
+    newOp = lowering_common<tpu::Pool3DOp>(rewriter, op,
+                                           op.getOutput().getType(), 2);
   } else if (op.getKernelShape().size() == 2) {
-    newOp = lowering_common<tpu::Pool2DOp>(rewriter, op, op.getOutput().getType());
+    newOp =
+        lowering_common<tpu::Pool2DOp>(rewriter, op, op.getOutput().getType());
   } else {
-    newOp = lowering_common<tpu::Pool1DOp>(rewriter, op, op.getOutput().getType());
+    newOp =
+        lowering_common<tpu::Pool1DOp>(rewriter, op, op.getOutput().getType());
   }
   newOp->setAttr("round_mode",
-      tpu::RoundModeAttr::get(op.getContext(), round_mode));
+                 tpu::RoundModeAttr::get(op.getContext(), round_mode));
   newOp->setAttr("first_round_mode",
-      tpu::RoundModeAttr::get(op.getContext(), first_round_mode));
+                 tpu::RoundModeAttr::get(op.getContext(), first_round_mode));
 }
 
 } // namespace bm1684x

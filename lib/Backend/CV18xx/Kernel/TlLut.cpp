@@ -11,8 +11,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "tl_lut"
 
 #define METHOD_MANTISSA 0
@@ -229,9 +227,9 @@ void cvi_backend_bf16_tl_lut(uint32_t layer_id, laddr_t la_input,
         layer_id, la_input, la_output, la_working, la_exponential_table,
         la_mantissa_lut, n, c, h, w, true);
   } else if (method == METHOD_SLOPE) {
-    cvi_backend_bf16_tl_lut_slope_method(layer_id, la_input, la_output,
-                                         la_working, la_y_table, la_slope_table,
-                                         thresh_min, thresh_max, n, c, h, w, true);
+    cvi_backend_bf16_tl_lut_slope_method(
+        layer_id, la_input, la_output, la_working, la_y_table, la_slope_table,
+        thresh_min, thresh_max, n, c, h, w, true);
   }
 }
 

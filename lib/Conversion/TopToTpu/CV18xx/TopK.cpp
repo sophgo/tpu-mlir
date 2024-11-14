@@ -31,13 +31,12 @@ void TopKLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<NamedAttribute> cpu_op_param;
   cpu_op_param.emplace_back(
       rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(op.getAxis())));
-  cpu_op_param.emplace_back(rewriter.getNamedAttr(
-      "K", rewriter.getI32IntegerAttr(op.getK())));
+  cpu_op_param.emplace_back(
+      rewriter.getNamedAttr("K", rewriter.getI32IntegerAttr(op.getK())));
   cpu_op_param.emplace_back(
       rewriter.getNamedAttr("sorted", rewriter.getBoolAttr(op.getSorted())));
-  cpu_op_param.emplace_back(rewriter.getNamedAttr(
-      "largest", rewriter.getBoolAttr(op.getLargest())));
-
+  cpu_op_param.emplace_back(
+      rewriter.getNamedAttr("largest", rewriter.getBoolAttr(op.getLargest())));
 
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_op_param)));
@@ -45,8 +44,8 @@ void TopKLowering::LoweringBF16(PatternRewriter &rewriter,
   // auto newType = getQuantBF16Type(op.getOutput());
   std::vector<Type> types;
   types.push_back(op.getValues().getType());
-  auto topk_op =
-      rewriter.create<tpu::GenericCpuOp>(op.getValues().getLoc(), types, op->getOperands(), attrs);
+  auto topk_op = rewriter.create<tpu::GenericCpuOp>(
+      op.getValues().getLoc(), types, op->getOperands(), attrs);
   rewriter.replaceAllUsesWith(op.getValues(), topk_op.getOutputs());
   rewriter.eraseOp(op);
 }

@@ -27,8 +27,7 @@ void tpu::DepackRawOp::codegen_global_bm1684x() {
   auto channel_order = module::getI64Array(getChannelOrder());
   param.start_point[0] = 0;
   param.start_point[1] = 0;
-  for (int i=0; i<4; i++)
-  {
+  for (int i = 0; i < 4; i++) {
     param.channel_order[i] = channel_order->at(i);
   }
   BM168x::call_global_func("backend_api_depack_raw_global", &param,

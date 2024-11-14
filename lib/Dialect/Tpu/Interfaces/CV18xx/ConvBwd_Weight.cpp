@@ -31,7 +31,8 @@ void tpu::ConvBwdWeightOp::codegen_global_cv18xx(int64_t layer_id) {
 
   // auto filterOp = getFilter().getDefiningOp<top::WeightOp>();
   // bool do_compress =
-  //     filterOp.getDoCompress().has_value() && filterOp.getDoCompress().value();
+  //     filterOp.getDoCompress().has_value() &&
+  //     filterOp.getDoCompress().value();
   // do_compress = attr.groups > 1 ? false : do_compress;
   // WeightCompresser weight_opt(this->getOperation(), do_compress);
   // if (module::isUniformQuantized(getOutput())) {
@@ -51,9 +52,9 @@ void tpu::ConvBwdWeightOp::codegen_global_cv18xx(int64_t layer_id) {
   //         static_cast<float>(getNegSlope().value().convertToDouble());
   //     fused_leakyrelu_pos_rshift = static_cast<int>(getRshiftPos().value());
   //     fused_leakyrelu_neg_rshift = static_cast<int>(getRshiftNeg().value());
-  //     fused_leakyrelu_pos_m_i8 = static_cast<int>(getMultiplierPos().value());
-  //     fused_leakyrelu_neg_m_i8 = static_cast<int>(getMultiplierNeg().value());
-  //     do_relu = true;
+  //     fused_leakyrelu_pos_m_i8 =
+  //     static_cast<int>(getMultiplierPos().value()); fused_leakyrelu_neg_m_i8
+  //     = static_cast<int>(getMultiplierNeg().value()); do_relu = true;
   //   }
 
   //   cvi_backend_tg_fixed_conv_kernel(
@@ -93,16 +94,16 @@ void tpu::ConvBwdWeightOp::codegen_global_cv18xx(int64_t layer_id) {
   //                                   ga_pc_info, // bias_data_gaddr,
   //                                   attr.n, attr.ic, attr.ih, attr.iw,
   //                                   attr.groups, // group
-  //                                   attr.oc, attr.kh, attr.kw, attr.dh, attr.dw,
-  //                                   attr.pht, attr.phb, attr.pwl,
-  //                                   attr.pwr,               // pad (t, b, l, r)
-  //                                   attr.ins_h, attr.ins_w, // ins_h, ins_w
-  //                                   attr.sh, attr.sw,
-  //                                   attr.has_bias,        // bias_term,
-  //                                   attr.do_relu ? 1 : 0, // do_activation,
-  //                                   false,                // fp32_output
-  //                                   &weight_opt.old_data, &weight_opt.new_data,
-  //                                   do_quant, ga_scale, ga_zeropoint); // TODO
+  //                                   attr.oc, attr.kh, attr.kw, attr.dh,
+  //                                   attr.dw, attr.pht, attr.phb, attr.pwl,
+  //                                   attr.pwr,               // pad (t, b, l,
+  //                                   r) attr.ins_h, attr.ins_w, // ins_h,
+  //                                   ins_w attr.sh, attr.sw, attr.has_bias, //
+  //                                   bias_term, attr.do_relu ? 1 : 0, //
+  //                                   do_activation, false,                //
+  //                                   fp32_output &weight_opt.old_data,
+  //                                   &weight_opt.new_data, do_quant, ga_scale,
+  //                                   ga_zeropoint); // TODO
   // }
 }
 
@@ -126,10 +127,10 @@ int64_t tpu::ConvBwdWeightOp::getBufferSize_cv18xx(
 }
 
 void tpu::ConvBwdWeightOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
-                                         int64_t d_step, int64_t w_step,
-                                         group_type_t group_type,
-                                         local_sec_info_t &sec_info,
-                                         int64_t layer_id) {
+                                                int64_t d_step, int64_t w_step,
+                                                group_type_t group_type,
+                                                local_sec_info_t &sec_info,
+                                                int64_t layer_id) {
   // auto attr = parseParam();
   // auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   // auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
@@ -150,7 +151,8 @@ void tpu::ConvBwdWeightOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   // int oh = sec_info.out_h_slice;
 
   // uint32_t pht = (sec_info.h_idx == 0 ? attr.pht : 0);
-  // uint32_t phb = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
+  // uint32_t phb = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb :
+  // 0);
 
   // if (module::isUniformQuantized(getOutput())) {
   //   float neg_slope = 0.0f;
@@ -159,20 +161,20 @@ void tpu::ConvBwdWeightOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   //   auto do_leaky_relu = getDoLeakyRelu();
   //   if (do_leaky_relu.has_value() && do_leaky_relu.value()) {
-  //     neg_slope = static_cast<float>(getNegSlope().value().convertToDouble());
-  //     pos_rshift = static_cast<int8_t>(getRshiftPos().value());
-  //     neg_rshift = static_cast<int8_t>(getRshiftNeg().value());
-  //     pos_m_i8 = static_cast<int8_t>(getMultiplierPos().value());
-  //     neg_m_i8 = static_cast<int8_t>(getMultiplierNeg().value());
+  //     neg_slope =
+  //     static_cast<float>(getNegSlope().value().convertToDouble()); pos_rshift
+  //     = static_cast<int8_t>(getRshiftPos().value()); neg_rshift =
+  //     static_cast<int8_t>(getRshiftNeg().value()); pos_m_i8 =
+  //     static_cast<int8_t>(getMultiplierPos().value()); neg_m_i8 =
+  //     static_cast<int8_t>(getMultiplierNeg().value());
   //   }
   //   cvi_backend_tl_conv(layer_id, la_input, la_output, la_weight, la_working,
-  //                       la_bias, n, attr.ic, ih, attr.iw, attr.groups, attr.oc,
-  //                       oh, attr.ow, attr.kh, attr.kw, attr.dh, attr.dw, pht,
-  //                       phb, attr.pwl, attr.pwr, attr.sh, attr.sw, attr.ins_h,
-  //                       attr.ins_w, 0, /*result_add*/
-  //                       0,             /*crtl*/
-  //                       attr.has_bias, attr.do_relu, neg_slope, 0, /*rshift*/
-  //                       attr.oc,    /*rshift_shift_len*/
+  //                       la_bias, n, attr.ic, ih, attr.iw, attr.groups,
+  //                       attr.oc, oh, attr.ow, attr.kh, attr.kw, attr.dh,
+  //                       attr.dw, pht, phb, attr.pwl, attr.pwr, attr.sh,
+  //                       attr.sw, attr.ins_h, attr.ins_w, 0, /*result_add*/ 0,
+  //                       /*crtl*/ attr.has_bias, attr.do_relu, neg_slope, 0,
+  //                       /*rshift*/ attr.oc,    /*rshift_shift_len*/
   //                       pos_rshift, /*rshift_pos*/
   //                       neg_rshift, /*rshift8_neg*/
   //                       pos_m_i8,   /*m_i8_pos*/

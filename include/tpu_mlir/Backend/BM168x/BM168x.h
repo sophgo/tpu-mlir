@@ -295,7 +295,8 @@ public:
   bmcpu_reshape dl_bmcpu_reshape;
   bmcpu_dtype dl_bmcpu_dtype;
 
-  template <typename FPtrTy> FPtrTy CpuCastToFPtr(const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy CpuCastToFPtr(const char *symbolName) {
     assert(cpuopDL.isValid());
     auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
@@ -374,7 +375,7 @@ public:
   virtual unsigned int get_inst_size(const char *engine_name) = 0;
 
 protected:
-  BM168x(TypeID typeID) : typeID(typeID) {};
+  BM168x(TypeID typeID) : typeID(typeID){};
   virtual ~BM168x() = 0;
   virtual void load_functions();
   virtual void start_env();

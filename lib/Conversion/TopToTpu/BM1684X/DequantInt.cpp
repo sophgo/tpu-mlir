@@ -12,32 +12,38 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void DequantIntLowering::LoweringF32(PatternRewriter &rewriter, top::DequantIntOp op) const {
+void DequantIntLowering::LoweringF32(PatternRewriter &rewriter,
+                                     top::DequantIntOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void DequantIntLowering::LoweringINT8(PatternRewriter &rewriter, top::DequantIntOp op,
-                               bool asymmetric) const {
+void DequantIntLowering::LoweringINT8(PatternRewriter &rewriter,
+                                      top::DequantIntOp op,
+                                      bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void DequantIntLowering::LoweringINT4(PatternRewriter &rewriter, top::DequantIntOp op,
-                                   bool asymmetric) const {
+void DequantIntLowering::LoweringINT4(PatternRewriter &rewriter,
+                                      top::DequantIntOp op,
+                                      bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void DequantIntLowering::LoweringBF16(PatternRewriter &rewriter, top::DequantIntOp op) const {
+void DequantIntLowering::LoweringBF16(PatternRewriter &rewriter,
+                                      top::DequantIntOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void DequantIntLowering::LoweringF16(PatternRewriter &rewriter, top::DequantIntOp op) const {
+void DequantIntLowering::LoweringF16(PatternRewriter &rewriter,
+                                     top::DequantIntOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void DequantIntLowering::LoweringF8(PatternRewriter &rewriter, top::DequantIntOp op) const {
+void DequantIntLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::DequantIntOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::DequantIntOp op) const {
+                                           top::DequantIntOp op) const {
   // lowering_common<tpu::DequantIntOp>(rewriter, op.getOperation(),
   //                             op.getOutput().getType());
   auto shift = module::getI64Array(op.getShift());
@@ -79,10 +85,11 @@ void DequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
     //   }
     //   quant_shape.back() = 3;
     // }
-    // auto quant_type = RankedTensorType::get(quant_shape, rewriter.getI32Type());
-    // auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
-    // auto newValue =
-    //     do_dequant(op->getLoc(), op.getInput(), quantValue, op.getOutput().getType(),
+    // auto quant_type = RankedTensorType::get(quant_shape,
+    // rewriter.getI32Type()); auto quantValue = top::WeightOp::create(op,
+    // "quant", quant, quant_type); auto newValue =
+    //     do_dequant(op->getLoc(), op.getInput(), quantValue,
+    //     op.getOutput().getType(),
     //                true, tpu::DequantMode::TFLite_LShift);
     // rewriter.replaceOp(op, {newValue});
   }

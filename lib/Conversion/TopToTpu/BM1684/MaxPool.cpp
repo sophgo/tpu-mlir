@@ -31,7 +31,7 @@ void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
   auto k = p.kd * p.kh * p.kw;
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
-  if (k <= 225){
+  if (k <= 225) {
     if (op.getKernelShape().size() == 3) {
       lowering_common_int8<tpu::Pool3DOp>(rewriter, op, false, 2);
     } else if (op.getKernelShape().size() == 2) {

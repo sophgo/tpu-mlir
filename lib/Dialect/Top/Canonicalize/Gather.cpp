@@ -17,10 +17,10 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopGatherToSlice(MLIRContext *context)
-      : OpRewriterPatternEx<GatherOp>(context,"TopGatherToSlice") {}
+      : OpRewriterPatternEx<GatherOp>(context, "TopGatherToSlice") {}
 
   LogicalResult matchAndRewriteImpl(GatherOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     std::shared_ptr<std::vector<float>> inds_f32;
 
     if (auto inds = dyn_cast<WeightOp>(op.getIndices().getDefiningOp()))
@@ -39,10 +39,12 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       int64_t index = (int64_t)inds_f32->at(0);
 
       std::vector<int64_t> offsets(input_shape.size(), 0);
-      std::vector<int64_t> ends(input_shape.size(), std::numeric_limits<int64_t>::max());
+      std::vector<int64_t> ends(input_shape.size(),
+                                std::numeric_limits<int64_t>::max());
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = index;
-      ends[ax] = (offsets[ax] == -1) ? std::numeric_limits<int64_t>::max() :  offsets[ax] + 1;
+      ends[ax] = (offsets[ax] == -1) ? std::numeric_limits<int64_t>::max()
+                                     : offsets[ax] + 1;
 
       NamedAttrList attrs;
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
@@ -64,9 +66,11 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       if (slice_shape.size() != 1) {
         std::vector<int64_t> axes(1, ax);
         std::vector<NamedAttribute> squeeze_attrs;
-        squeeze_attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axes)));
+        squeeze_attrs.push_back(
+            rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axes)));
         auto squeeze_op = rewriter.create<SqueezeOp>(
-            op.getLoc(), op.getType(), ValueRange{slice_op.getOutput()}, squeeze_attrs);
+            op.getLoc(), op.getType(), ValueRange{slice_op.getOutput()},
+            squeeze_attrs);
         rewriter.replaceOp(op, {squeeze_op.getOutput()});
       } else {
         rewriter.replaceOp(op, {slice_op.getOutput()});
@@ -115,10 +119,10 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
 struct TopGatherMulConst : public OpRewriterPatternEx<GatherOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   TopGatherMulConst(MLIRContext *context)
-      : OpRewriterPatternEx<GatherOp>(context,"TopGatherMulConst") {}
+      : OpRewriterPatternEx<GatherOp>(context, "TopGatherMulConst") {}
 
   LogicalResult matchAndRewriteImpl(GatherOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!op->hasOneUse() || !module::isWeight(op.getInput())) {
       return failure();
     }
@@ -139,8 +143,8 @@ struct TopGatherMulConst : public OpRewriterPatternEx<GatherOp> {
                      return d * mulconst_op.getConstVal().convertToDouble();
                    });
     auto w_shape = module::getShape(op.getInput());
-    auto new_weight =
-        WeightOp::create_float(op, "merge_mulconst", *data_new, w_shape, storage_type);
+    auto new_weight = WeightOp::create_float(op, "merge_mulconst", *data_new,
+                                             w_shape, storage_type);
     op.setOperand(0, new_weight);
     op->setLoc(mulconst_op->getLoc());
     rewriter.replaceOp(mulconst_op, op);

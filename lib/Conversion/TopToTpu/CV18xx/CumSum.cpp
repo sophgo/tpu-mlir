@@ -21,14 +21,17 @@ void CumSumLowering::LoweringINT8(PatternRewriter &rewriter, top::CumSumOp op,
 void CumSumLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::CumSumOp op) const {
   std::vector<NamedAttribute> attrs;
-  attrs.emplace_back(rewriter.getNamedAttr(
-      "cpu_op_name", rewriter.getStringAttr("cumsum")));
+  attrs.emplace_back(
+      rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("cumsum")));
   std::vector<NamedAttribute> cpu_op_param;
-  cpu_op_param.emplace_back(rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(op.getAxis())));
-  attrs.emplace_back(rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_op_param)));
+  cpu_op_param.emplace_back(
+      rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(op.getAxis())));
+  attrs.emplace_back(
+      rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_op_param)));
   std::vector<Value> operands(op.getOperands().begin(), op.getOperands().end());
   // auto newType = getQuantBF16Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(), operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
+                                                 operands, attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

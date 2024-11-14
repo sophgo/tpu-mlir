@@ -32,13 +32,15 @@ void MinConstLowering::LoweringINT8(PatternRewriter &rewriter,
   auto b0_rshift =
       calRightShiftNumUseCblas(coeff_v, b0_scale, o_scale, BITS_INT8);
   auto const_scale = std::pow(2.0, float(b0_rshift)) / o_scale;
-  float overflow_ratio = quantizeToInt16(&b1_value, &b1_value_fixed, 1, const_scale);
+  float overflow_ratio =
+      quantizeToInt16(&b1_value, &b1_value_fixed, 1, const_scale);
   int count = 5;
   while (overflow_ratio > 0.03 && count > 0) {
     b0_rshift -= 1;
     count -= 1;
     const_scale = std::pow(2.0, float(b0_rshift)) / o_scale;
-    overflow_ratio = quantizeToInt16(&b1_value, &b1_value_fixed, 1, const_scale);
+    overflow_ratio =
+        quantizeToInt16(&b1_value, &b1_value_fixed, 1, const_scale);
   }
   if (b0_rshift <= 0) {
     lowering_common_f32<tpu::MinConstOp>(rewriter, op);

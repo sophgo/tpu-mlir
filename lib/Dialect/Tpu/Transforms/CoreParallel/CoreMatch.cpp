@@ -7,13 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/Transforms/TopologicalSortUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CoreParallel/CoreParallel.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include <llvm/ADT/DenseSet.h>
 #include <unordered_set>
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -165,7 +165,8 @@ bool isReachable(Operation *a, Operation *b) {
                       [b](Operation *op) { return isReachable(op, b); });
 }
 
-bool isReachable_for_training(Operation *a, Operation *b, std::unordered_set<Operation *> &visited) {
+bool isReachable_for_training(Operation *a, Operation *b,
+                              std::unordered_set<Operation *> &visited) {
   if (a && a == b)
     return true;
   if (b->getNumOperands() == 0)
@@ -179,10 +180,10 @@ bool isReachable_for_training(Operation *a, Operation *b, std::unordered_set<Ope
   }
   if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
     return isReachable_for_training(a->getParentOp(), b, visited);
-  return llvm::any_of(a->getUsers(),
-                      [b, &visited](Operation *op) { return isReachable_for_training(op, b, visited); });
+  return llvm::any_of(a->getUsers(), [b, &visited](Operation *op) {
+    return isReachable_for_training(op, b, visited);
+  });
 }
-
 
 bool isCircularDependency(std::vector<Operation *> &beginOps,
                           std::vector<Operation *> &endOps) {
@@ -217,7 +218,7 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
     usedByOutside.erase(v);
     definedInOutside.erase(v);
   }
-  if (module::isTrain()){
+  if (module::isTrain()) {
     std::unordered_set<Operation *> visited;
     // check dataFlow form usedByOutside to definedInOutside.
     for (auto uOp : usedByOutside) {
@@ -227,8 +228,7 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
         }
       }
     }
-  }
-  else{
+  } else {
     for (auto uOp : usedByOutside) {
       for (auto dOp : definedInOutside) {
         if (isReachable(uOp, dOp)) {
@@ -357,8 +357,8 @@ static void common_match(PatternRewriter &rewriter,
 
   DEBUG_WITH_TYPE("group-parallel", {
     llvm::dbgs() << "; action = group-parallel"
-                << "; stage = do_group_distribute"
-                << "\n";
+                 << "; stage = do_group_distribute"
+                 << "\n";
   });
   group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
 }
@@ -385,10 +385,9 @@ struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
     };
 
     DEBUG_WITH_TYPE("group-parallel", {
-      llvm::dbgs() << "; action = group-parallel" <<
-                    "; func = " << module::getName(func) <<
-                    "; num_core = " << num_core <<
-      "\n";
+      llvm::dbgs() << "; action = group-parallel"
+                   << "; func = " << module::getName(func)
+                   << "; num_core = " << num_core << "\n";
     });
 
     std::vector<std::vector<Operation *>> same_ops;
@@ -399,39 +398,41 @@ struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
         // inPlace op
         DEBUG_WITH_TYPE("group-parallel", {
           llvm::dbgs() << "; action = group-parallel"
-                      << "; stage = prepareSameOps"
-                      << "; step = check_op"
-                      << "; op = " << module::getName(left_op)
-                      << "\n";
+                       << "; stage = prepareSameOps"
+                       << "; step = check_op"
+                       << "; op = " << module::getName(left_op) << "\n";
         });
         if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(
                 left_op)) {
           DEBUG_WITH_TYPE("group-parallel", {
             llvm::dbgs() << "; action = group-parallel"
-                          << "; stage = prepareSameOps"
-                        << "; step = continue"
-                        << "; op = " << module::getName(left_op)
-                        << "; reason = meetInvalidOp" << "\n";
+                         << "; stage = prepareSameOps"
+                         << "; step = continue"
+                         << "; op = " << module::getName(left_op)
+                         << "; reason = meetInvalidOp"
+                         << "\n";
           });
           continue;
         }
         if (module::isOpInBlock(left_op)) {
           DEBUG_WITH_TYPE("group-parallel", {
             llvm::dbgs() << "; action = group-parallel"
-                        << "; stage = prepareSameOps"
-                        << "; step = continue"
-                        << "; op = " << module::getName(left_op)
-                        << "; reason = OpInBlock" << "\n";
+                         << "; stage = prepareSameOps"
+                         << "; step = continue"
+                         << "; op = " << module::getName(left_op)
+                         << "; reason = OpInBlock"
+                         << "\n";
           });
           continue;
         }
         if (find_f(same_ops, left_op)) {
           DEBUG_WITH_TYPE("group-parallel", {
             llvm::dbgs() << "; action = group-parallel"
-                        << "; stage = prepareSameOps"
-                        << "; step = continue"
-                        << "; op = " << module::getName(left_op)
-                        << "; reason = sameOp" << "\n";
+                         << "; stage = prepareSameOps"
+                         << "; step = continue"
+                         << "; op = " << module::getName(left_op)
+                         << "; reason = sameOp"
+                         << "\n";
           });
           continue;
         }
@@ -460,9 +461,10 @@ struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
       if (same_ops.empty()) {
         DEBUG_WITH_TYPE("group-parallel", {
           llvm::dbgs() << "; action = group-parallel"
-                      << "; stage = prepareSameOps"
-                      << "; step = failure"
-                      << "; reason = noSameOp" << "\n";
+                       << "; stage = prepareSameOps"
+                       << "; step = failure"
+                       << "; reason = noSameOp"
+                       << "\n";
           arg.dump();
         });
         return failure();
@@ -471,16 +473,18 @@ struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
         if (checkDataDependencies(ops) || checkForReturnOpUser(ops)) {
           DEBUG_WITH_TYPE("group-parallel", {
             llvm::dbgs() << "; action = group-parallel"
-                        << "; stage = prepareSameOps"
-                        << "; step = failure"
-                        << "; reason = hasDependency" << "\n";
+                         << "; stage = prepareSameOps"
+                         << "; step = failure"
+                         << "; reason = hasDependency"
+                         << "\n";
           });
           return failure();
         }
       }
       DEBUG_WITH_TYPE("group-parallel", {
         llvm::dbgs() << "; action = group-parallel"
-                     << "; stage = " << "do_common_match"
+                     << "; stage = "
+                     << "do_common_match"
                      << "\n";
         arg.dump();
       });
@@ -512,9 +516,9 @@ struct FuncInputMatch : public OpRewriterPatternEx<FuncOp> {
 // if operations are the same, then run in multi cores
 struct CommonMatch : public OpRewriterPatternEx3 {
   CommonMatch(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"CommonMatch",1) {}
+      : OpRewriterPatternEx3(context, "CommonMatch", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto num_core = module::getCoreNum();
 
     if (!isa<FuncOp>(op->getParentOp())) {
@@ -547,7 +551,8 @@ struct CommonMatch : public OpRewriterPatternEx3 {
       for (auto left = users.begin(); left != users.end(); left++) {
         auto left_op = *left;
         // inPlace op
-        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(left_op)) {
+        if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(
+                left_op)) {
           continue;
         }
         if (module::isOpInBlock(left_op)) {
@@ -592,16 +597,16 @@ struct CommonMatch : public OpRewriterPatternEx3 {
     }
     return success();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
-class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
-  public:
+class A16MatMulMatch : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+public:
   A16MatMulMatch(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::A16MatMulOp>(context,"A16MatMulMatch") {}
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context, "A16MatMulMatch") {}
 
   LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto num_cores = module::getCoreNum();
     if (supportMultiCore(op)) {
       return failure();
@@ -665,7 +670,7 @@ class A16MatMulMatch  : public OpRewriterPatternEx<tpu::A16MatMulOp> {
     group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
     return success();
   }
-  bool shouldPrint(tpu::A16MatMulOp op) const override { return false;}
+  bool shouldPrint(tpu::A16MatMulOp op) const override { return false; }
 };
 
 #if 0

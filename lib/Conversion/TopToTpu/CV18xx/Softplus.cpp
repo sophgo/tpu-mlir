@@ -11,7 +11,9 @@
 #define DEBUG_TYPE "lowering-Softplus"
 namespace tpu_mlir {
 namespace cv18xx {
-static double active_softplus(double val) { return std::log(std::exp(val) + 1); }
+static double active_softplus(double val) {
+  return std::log(std::exp(val) + 1);
+}
 void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
   Value table = create_lookup_table(
@@ -23,7 +25,7 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
 }
 
 void SoftplusLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::SoftplusOp op) const {
+                                    top::SoftplusOp op) const {
   Value table_weight, slope_weight;
   float range_start = -8, range_end = 8;
   createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
@@ -41,9 +43,9 @@ void SoftplusLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
-
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

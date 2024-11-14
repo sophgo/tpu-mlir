@@ -10,11 +10,10 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
-
 
 // ======================================
 // GlobalGenInterface
@@ -59,25 +58,17 @@ void tpu::ConvbwdOp::codegen_global_bm1684x() {
   spec.grad_input_enable = getGradInputEnable();
   spec.grad_weight_enable = getGradWeightEnable();
   spec.grad_bias_enable = getGradBiasEnable();
-  BM168x::call_global_func("backend_api_conv_bwd_global", &spec,
-                           sizeof(spec), input_spec->data(),
-                           output_spec->data());
+  BM168x::call_global_func("backend_api_conv_bwd_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }
 
-void tpu::ConvbwdOp::codegen_global_bm1684() {
+void tpu::ConvbwdOp::codegen_global_bm1684() {}
 
-}
-
-void tpu::ConvbwdOp::codegen_global_cv18xx(int64_t layer_id) {
-
-}
-
+void tpu::ConvbwdOp::codegen_global_cv18xx(int64_t layer_id) {}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ConvbwdOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::ConvbwdOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
 
 int64_t tpu::ConvbwdOp::get_fw_type_bm1684x() { return 0; }

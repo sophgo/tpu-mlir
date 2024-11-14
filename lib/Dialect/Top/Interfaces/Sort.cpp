@@ -18,18 +18,15 @@ LogicalResult top::SortOp::init(InferenceParameter &p) { return success(); }
 void top::SortOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SortOp::inference(InferenceParameter &p) {
-  sort_param_t param = {
-    .axis = (int)getAxis(),
-    .descending = getDescending()
-  };
+  sort_param_t param = {.axis = (int)getAxis(), .descending = getDescending()};
   auto shape = module::getShape(getInput());
   int dims = shape.size();
   std::vector<int> shape_v(dims);
   for (int i = 0; i < dims; ++i) {
     shape_v[i] = shape[i];
   }
-  sort_per_dim(param, shape_v.data(), dims,
-               p.inputs[0], p.outputs[0], p.outputs[1]);
+  sort_per_dim(param, shape_v.data(), dims, p.inputs[0], p.outputs[0],
+               p.outputs[1]);
   return success();
 }
 

@@ -36,7 +36,6 @@ typedef uint64_t gaddr_t;
 #define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
 #define ALIGN(x, a) __ALIGN_MASK(x, (__typeof__(x))(a)-1)
 
-
 // cvicontex
 /*
  * Type Definition

@@ -1,7 +1,7 @@
 #include "Passes.h"
 
 namespace mlir {
-//convert some linalg named op to linalg genericOp for later tile + fuse
+// convert some linalg named op to linalg genericOp for later tile + fuse
 struct GeneralizeLinalgNamedOpsPass
     : public GeneralizeLinalgNamedOpsBase<GeneralizeLinalgNamedOpsPass> {
 
@@ -11,11 +11,10 @@ struct GeneralizeLinalgNamedOpsPass
     funcOp.walk([&](linalg::LinalgOp linalgOp) {
       if (isa_and_nonnull<linalg::AbsOp, linalg::AddOp, linalg::BroadcastOp,
                           linalg::CeilOp, linalg::CopyOp, linalg::DivOp,
-                          linalg::ElemwiseBinaryOp,
-                          linalg::ElemwiseUnaryOp, linalg::ExpOp, linalg::FloorOp,
-                          linalg::LogOp, linalg::MapOp, linalg::MaxOp,
-                          linalg::MulOp, linalg::ReduceOp,
-                          linalg::SubOp, linalg::TransposeOp>(
+                          linalg::ElemwiseBinaryOp, linalg::ElemwiseUnaryOp,
+                          linalg::ExpOp, linalg::FloorOp, linalg::LogOp,
+                          linalg::MapOp, linalg::MaxOp, linalg::MulOp,
+                          linalg::ReduceOp, linalg::SubOp, linalg::TransposeOp>(
               linalgOp.getOperation())) {
         namedOpCandidates.push_back(linalgOp);
       }
@@ -38,4 +37,4 @@ std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
 createGeneralizeLinalgNamedOpsPass() {
   return std::make_unique<GeneralizeLinalgNamedOpsPass>();
 }
-}
+} // namespace mlir

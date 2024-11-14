@@ -20,20 +20,22 @@ static inline int align_up(int x, int n) {
 
 static void resetCaliType(PatternRewriter &rewriter, top::CscOp op) {
   auto shape = module::getShape(op.getResult());
-  quant::CalibratedQuantizedType qtype = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), 0, 255);
+  quant::CalibratedQuantizedType qtype =
+      quant::CalibratedQuantizedType::get(rewriter.getF32Type(), 0, 255);
   RankedTensorType newType = RankedTensorType::get(shape, qtype);
   op.getResult().setType(newType);
 }
 
 void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
-                                bool asymmetric) const {
-  //lowering_common_int8<tpu::CscOp>(rewriter, op, asymmetric);
-  // auto stype = module::getStorageType(op.getOutput());
-  // assert (stype.isInteger(8) || stype.isUnsignedInteger(8));
+                               bool asymmetric) const {
+  // lowering_common_int8<tpu::CscOp>(rewriter, op, asymmetric);
+  //  auto stype = module::getStorageType(op.getOutput());
+  //  assert (stype.isInteger(8) || stype.isUnsignedInteger(8));
   std::vector<Value> operands;
   Value input_val = op.getInput();
   if (module::isUniformQuantized(input_val)) {
-    //fuse preprocess has done before.all_int_process() changes the threshold, should reset.
+    // fuse preprocess has done before.all_int_process() changes the threshold,
+    // should reset.
     resetCaliType(rewriter, op);
   }
   operands.emplace_back(input_val);
@@ -57,9 +59,12 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
   if (yuv_type > 0) {
     attrs.emplace_back(rewriter.getNamedAttr("y_align", op.getYAlignAttr()));
     attrs.emplace_back(rewriter.getNamedAttr("w_align", op.getWAlignAttr()));
-    attrs.emplace_back(rewriter.getNamedAttr("channel_align", op.getChannelAlignAttr()));
-    attrs.emplace_back(rewriter.getNamedAttr("pixel_format", op.getPixelFormatAttr()));
-    attrs.emplace_back(rewriter.getNamedAttr("pixel_type", rewriter.getI64IntegerAttr(yuv_type)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("channel_align", op.getChannelAlignAttr()));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("pixel_format", op.getPixelFormatAttr()));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "pixel_type", rewriter.getI64IntegerAttr(yuv_type)));
     auto newType = getQuantInt8Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::CscOp>(op, newType, operands, attrs);
   } else if (need_stride_copy) {
@@ -85,9 +90,12 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
     copy_shape[2] = oh;
     copy_shape[1] = oc;
     copy_shape[0] = on;
-    attrs.emplace_back(rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(copy_shape)));
-    attrs.emplace_back(rewriter.getNamedAttr("input_stride", rewriter.getI64ArrayAttr(i_stride)));
-    attrs.emplace_back(rewriter.getNamedAttr("output_stride", rewriter.getI64ArrayAttr(o_stride)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(copy_shape)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "input_stride", rewriter.getI64ArrayAttr(i_stride)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "output_stride", rewriter.getI64ArrayAttr(o_stride)));
     auto caliType = module::getCalibratedType(op.getOutput());
     auto newType = RankedTensorType::get({on, oc, oh, ow}, caliType);
     rewriter.replaceOpWithNewOp<top::CopyOp>(op, newType, operands, attrs);
@@ -105,27 +113,31 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
     std::vector<int64_t> slice_ends{-1, -1, -1, -1};
     auto caliType = module::getCalibratedType(op.getOutput());
     auto slice_type = RankedTensorType::get({n, c, h, unaligned_w}, caliType);
-    attrs.emplace_back(rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(slice_offset)));
-    attrs.emplace_back(rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_stpes)));
-    attrs.emplace_back(rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(slice_ends)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "offset", rewriter.getI64ArrayAttr(slice_offset)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_stpes)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(slice_ends)));
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_slice"));
     auto noneOp = module::getNoneOp(op);
     for (int i = 0; i < 3; i++) {
       operands.emplace_back(noneOp);
     }
-    auto slice_op = rewriter.create<top::SliceOp>(loc, slice_type, operands, attrs);
+    auto slice_op =
+        rewriter.create<top::SliceOp>(loc, slice_type, operands, attrs);
     auto slice_out = slice_op.getOutput();
     attrs.clear();
     std::vector<Value> reshape_operands;
     reshape_operands.emplace_back(slice_out);
     auto reshape_type = RankedTensorType::get({on, oc, oh, ow}, caliType);
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, reshape_type, reshape_operands, attrs);
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, reshape_type,
+                                                reshape_operands, attrs);
   }
 }
 
-void CscLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::CscOp op) const {
+void CscLowering::LoweringBF16(PatternRewriter &rewriter, top::CscOp op) const {
   LoweringINT8(rewriter, op, false);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

@@ -23,8 +23,7 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
   auto attr = op.parseParam();
   auto filter_type = module::getStorageType(op.getFilter());
 
-  if(module::isTrain() && !module::isWeight(op.getOperand(1)))
-  {
+  if (module::isTrain() && !module::isWeight(op.getOperand(1))) {
     const int IC_PARALLEL = BM168x::ic_num(2);
     int64_t oc_new = 1;
     int64_t ic_new = attr.oc;
@@ -32,14 +31,18 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
     int64_t kh_new = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
     int64_t kw_new = IC_PARALLEL;
     std::vector<int64_t> filter_shape = {oc_new, ic_new, kh_new, kw_new};
-    llvm::errs()<<" attr.oc "<<attr.oc<<" attr.ic "<<attr.ic<<" attr.kh "<<attr.kh<<" attr.kw "<<attr.kw<<"\n";
-    llvm::errs()<<" oc_new: "<<oc_new<<" ic_new: "<<ic_new<<" kh_new: "<<kh_new<<" kw_new: "<<kw_new<<"\n";
+    llvm::errs() << " attr.oc " << attr.oc << " attr.ic " << attr.ic
+                 << " attr.kh " << attr.kh << " attr.kw " << attr.kw << "\n";
+    llvm::errs() << " oc_new: " << oc_new << " ic_new: " << ic_new
+                 << " kh_new: " << kh_new << " kw_new: " << kw_new << "\n";
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
 
     rewriter.setInsertionPointAfterValue(op.getOperand(1));
     auto name = module::getName(op.getOutput());
-    auto reshape_loc =NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
-    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
+    auto reshape_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
+    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+        reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
     new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(false));
     op.setOperand(1, new_reshape_op);
 
@@ -80,8 +83,8 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
     auto newBiasOp =
         top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
     op->setOperand(2, newBiasOp);
-  }
-  else if (attr.has_bias && dyn_cast<top::InputOp>(op.getBias().getDefiningOp())){
+  } else if (attr.has_bias &&
+             dyn_cast<top::InputOp>(op.getBias().getDefiningOp())) {
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
     op.getBias().setType(new_bias_type);
@@ -89,7 +92,8 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
   return success();
 }
 
-static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, Type filter_stype) {
+static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
+                                  Type filter_stype) {
   auto attr = op.parseParam();
   int input_c = attr.ic;
   int output_c = attr.oc;
@@ -153,11 +157,11 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   // Note that input tensor should be broadcast loaded per ic,
-  //  so one should satisfy the load instruction limit: dst_C + dst_local_idx <= NPU_NUM
+  //  so one should satisfy the load instruction limit: dst_C + dst_local_idx <=
+  //  NPU_NUM
   const int64_t limit = std::min(IC_PARALLEL, Arch::NPU_NUM);
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= limit && attr.kh > 1 &&
-      attr.kw > 1) {
+  if (attr.ic * attr.kh * attr.kw <= limit && attr.kh > 1 && attr.kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
   } else if (attr.ic * attr.kw <= limit && attr.kw > 1 &&
              (attr.kh < attr.kw || attr.ic * attr.kh > limit)) {
@@ -171,11 +175,11 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
   auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
 
-//  auto pre_op = op.getInput().getDefiningOp();
-//  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
-//    // broadcast input using BDC rather than GDMA
-//    use_3ic_optimize |= 0x10;
-//  }
+  //  auto pre_op = op.getInput().getDefiningOp();
+  //  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
+  //    // broadcast input using BDC rather than GDMA
+  //    use_3ic_optimize |= 0x10;
+  //  }
   if (use_3ic_optimize && !op.getInput().hasOneUse()) {
     // broadcast input using BDC to a buffer
     use_3ic_optimize |= 0x30;
@@ -248,7 +252,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   std::shared_ptr<std::vector<float>> bias_new_fp8;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
   int64_t bias_w_bytes = 0;
-  if (attr.has_bias && !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
+  if (attr.has_bias &&
+      !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
     tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false,
@@ -256,7 +261,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
-  if (attr.has_bias && (filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
+  if (attr.has_bias &&
+      (filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new_fp8 = biasOp.read<float>();
     tpu::reshape_coeff_for_broadcast_channel(bias_new_fp8, bias_shape, false,
@@ -270,7 +276,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   std::vector<int64_t> quant_shape;
   std::shared_ptr<std::vector<int32_t>> quant_data = nullptr;
   std::shared_ptr<std::vector<float>> quant_data_fp8 = nullptr;
-  if (merge_with_requant && !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
+  if (merge_with_requant &&
+      !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto qtype = module::getUniformQuantizedType(op.getOutput());
     int32_t out_zp = qtype.getZeroPoint();
     quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
@@ -278,7 +285,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
     auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3()) {
+    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
+        module::isMARS3()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -343,7 +351,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
-    if (!module::isBM1688() && !module::isBM1690Family() && !module::isSG2380() && !module::isMARS3()) {
+    if (!module::isBM1688() && !module::isBM1690Family() &&
+        !module::isSG2380() && !module::isMARS3()) {
       filter_align = 1;
     }
   }
@@ -422,23 +431,25 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   op->setAttr("coeff_merged", rewriter.getBoolAttr(merge));
   if (filter_stype.isFloat8E4M3FN()) {
     std::string new_name = module::getName(op.getOperation()).str() + "_merge";
-    auto new_type = RankedTensorType::get(coeff_shape,rewriter.getFloat8E4M3FNType());
-    auto ret =
-        module::weightFile().addTensor(new_name, (uint8_t*)new_coeff->data(), new_type);
+    auto new_type =
+        RankedTensorType::get(coeff_shape, rewriter.getFloat8E4M3FNType());
+    auto ret = module::weightFile().addTensor(
+        new_name, (uint8_t *)new_coeff->data(), new_type);
     assert(succeeded(ret));
     auto nameAttr = rewriter.getStringAttr(new_name);
-    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                              ValueRange{});
+    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr),
+                                                   new_type, ValueRange{});
     op->setOperand(1, coeff_op);
   } else if (filter_stype.isFloat8E5M2()) {
     std::string new_name = module::getName(op.getOperation()).str() + "_merge";
-    auto new_type = RankedTensorType::get(coeff_shape,rewriter.getFloat8E5M2Type());
-    auto ret =
-        module::weightFile().addTensor(new_name, (uint8_t*)new_coeff->data(), new_type);
+    auto new_type =
+        RankedTensorType::get(coeff_shape, rewriter.getFloat8E5M2Type());
+    auto ret = module::weightFile().addTensor(
+        new_name, (uint8_t *)new_coeff->data(), new_type);
     assert(succeeded(ret));
     auto nameAttr = rewriter.getStringAttr(new_name);
-    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                              ValueRange{});
+    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr),
+                                                   new_type, ValueRange{});
     op->setOperand(1, coeff_op);
   } else {
     auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
@@ -463,7 +474,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewriteImpl(
 }
 
 template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewriteImpl(
+LogicalResult
+WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isFloat8E4M3FN() ||
       op.getCoeffMerged())

@@ -59,8 +59,7 @@ void CVAddressAssign::checkIfFileGood(std::string &fileName,
   }
 }
 
-void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &m,
-                                         bool merge_weight,
+void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &m, bool merge_weight,
                                          bool compress_weight,
                                          std::string &weight_map_file) {
   if (merge_weight) {
@@ -163,7 +162,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
-      if ((module::isTpuOp(op) && !module::isOpInGroup(op)) || isa<top::InputOp, ReturnOp>(op)) {
+      if ((module::isTpuOp(op) && !module::isOpInGroup(op)) ||
+          isa<top::InputOp, ReturnOp>(op)) {
         ops.emplace_back(op);
       }
     });
@@ -219,7 +219,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
 
   for (auto &targetOuts : shared_outs_regions) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
-    //FitFirstAssign should make sure op's start liverange ascendingly
+    // FitFirstAssign should make sure op's start liverange ascendingly
     GmemAllocator::sortOpByLiveStart(targetOuts.second, liveRange);
     auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange,
                                           reuse_addr, sharedGmemOffset);
@@ -233,7 +233,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
   // 2. Assign gaddr for ops in private region.
   if (!private_outs.empty()) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
-    //FitFirstAssign should make sure op's start liverange ascendingly
+    // FitFirstAssign should make sure op's start liverange ascendingly
     GmemAllocator::sortOpByLiveStart(private_outs, liveRange);
     privateGmemSize =
         allocator.assignGaddr(private_outs, liveRange, reuse_addr, baseGaddr);

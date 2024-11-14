@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::ScaleOp::init(InferenceParameter &p) { return success(); }
@@ -48,9 +47,11 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
           if (module::isBM1684Family()) {
-            //sature to INT16/UINT16
-            if (res_sign) res = to_int16(res);
-            else res = to_uint16(res);
+            // sature to INT16/UINT16
+            if (res_sign)
+              res = to_int16(res);
+            else
+              res = to_uint16(res);
           }
           res = RightShiftRound(res, rshift_val, ROUNDING_DOWN);
           if (getDoRelu() && res < 0) {

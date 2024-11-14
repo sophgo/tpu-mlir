@@ -10,7 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::backend;
 
 LogicalResult tpu::SqueezeOp::init(InferenceParameter &p) { return success(); }
@@ -29,7 +28,8 @@ LogicalResult tpu::SqueezeOp::LocalGenSupport() {
     return failure();
   }
   auto runmode = getRunMode(getOperation());
-  if (runmode == RunMode::TPU_DYNAMIC) return failure();
+  if (runmode == RunMode::TPU_DYNAMIC)
+    return failure();
 
   auto ishape = module::getShape(getInput());
   auto oshape = module::getShape(getOutput());

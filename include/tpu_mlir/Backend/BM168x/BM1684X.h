@@ -15,7 +15,8 @@ typedef void (*load_lookup_tables)();
 typedef void (*store_cmd_end)();
 typedef void (*set_cmd_len_ptr)(void *gdma_cmd_len_ptr, void *bdc_cmd_len_ptr);
 typedef void (*enable_active_mode)(bool enable);
-typedef void (*set_ts_fe_cmd_id_ptr)(void *gdma_cmdid_node, void *bdc_cmdid_node);
+typedef void (*set_ts_fe_cmd_id_ptr)(void *gdma_cmdid_node,
+                                     void *bdc_cmdid_node);
 // tpu-kernel
 typedef void (*tpu_set_id_node)(void *node);
 typedef void (*tpu_get_id_node)(void *node);

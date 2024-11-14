@@ -61,12 +61,11 @@ NdSlice getNdSlice(LayerGroupAttr inAttr) {
   return ndSlice;
 }
 
-
 template <typename OpTy>
-class  CoreParallel : public OpRewriterPatternEx<OpTy> {
+class CoreParallel : public OpRewriterPatternEx<OpTy> {
 public:
   CoreParallel(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"CoreParallel") {}
+      : OpRewriterPatternEx<OpTy>(context, "CoreParallel") {}
 
   LogicalResult matchAndRewriteImpl(OpTy gOp,
                                     PatternRewriter &rewriter) const override {
@@ -95,7 +94,7 @@ public:
 
     return failure();
   }
-  bool shouldPrint(OpTy gOp) const override { return false;}
+  bool shouldPrint(OpTy gOp) const override { return false; }
 };
 
 void doSpecificPattern(ModuleOp m) {

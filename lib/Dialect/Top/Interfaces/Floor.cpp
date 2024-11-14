@@ -27,8 +27,8 @@ LogicalResult top::FloorOp::inference(InferenceParameter &p) {
 void top::FloorOp::shape_inference() {
   common_shape_inference(getOperation());
 
-  if(module::isShape(getInput())) {
-    std::cout<<"floor is_shape True\n";
+  if (module::isShape(getInput())) {
+    std::cout << "floor is_shape True\n";
     std::vector<std::vector<int64_t>> input_shapes_v;
     auto input_shape_v = module::getShapeTensorValue(getInput());
     input_shapes_v.push_back(input_shape_v);

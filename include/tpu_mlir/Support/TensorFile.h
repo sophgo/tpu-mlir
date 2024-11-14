@@ -76,7 +76,8 @@ public:
                            bool isINT4, bool do_compress);
   template <typename T>
   std::unique_ptr<std::vector<T>>
-  readTensor(llvm::StringRef name, RankedTensorType &type, uint32_t store_mode, bool do_compress = false);
+  readTensor(llvm::StringRef name, RankedTensorType &type, uint32_t store_mode,
+             bool do_compress = false);
 
   /// delete a tensor from file
   /// if the name is not found, return failure()

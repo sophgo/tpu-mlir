@@ -14,73 +14,103 @@
 using namespace llvm;
 
 namespace tpu_mlir {
-template <typename T> inline std::string getTypeName() { return "Unknown"; }
+template <typename T>
+inline std::string getTypeName() {
+  return "Unknown";
+}
 
-template <> inline std::string getTypeName<int8_t>() { return "int8"; }
+template <>
+inline std::string getTypeName<int8_t>() {
+  return "int8";
+}
 
-template <> inline std::string getTypeName<Float32Type>() { return "float32"; }
+template <>
+inline std::string getTypeName<Float32Type>() {
+  return "float32";
+}
 
-template <> inline std::string getTypeName<Float16Type>() { return " FP16"; }
+template <>
+inline std::string getTypeName<Float16Type>() {
+  return " FP16";
+}
 
-template <> inline std::string getTypeName<BFloat16Type>() { return " BF16"; }
+template <>
+inline std::string getTypeName<BFloat16Type>() {
+  return " BF16";
+}
 
-template <> inline std::string getTypeName<tpu::LSTMOp>() {
+template <>
+inline std::string getTypeName<tpu::LSTMOp>() {
   return "tpu::LSTMOp";
 }
 
-template <> inline std::string getTypeName<tpu::A16MatMulOp>() {
+template <>
+inline std::string getTypeName<tpu::A16MatMulOp>() {
   return "tpu::A16MatMulOp";
 }
 
-template <> inline std::string getTypeName<tpu::AttentionOp>() {
+template <>
+inline std::string getTypeName<tpu::AttentionOp>() {
   return "tpu::AttentionOp";
 }
 
-template <> inline std::string getTypeName<tpu::Conv2DOp>() {
+template <>
+inline std::string getTypeName<tpu::Conv2DOp>() {
   return "tpu::Conv2DOp";
 }
 
-template <> inline std::string getTypeName<tpu::Conv3DOp>() {
+template <>
+inline std::string getTypeName<tpu::Conv3DOp>() {
   return "tpu::Conv3DOp";
 }
 
-template <> inline std::string getTypeName<tpu::DeconvOp>() {
+template <>
+inline std::string getTypeName<tpu::DeconvOp>() {
   return "tpu::DeconvOp";
 }
 
-template <> inline std::string getTypeName<tpu::GRUOp>() {
+template <>
+inline std::string getTypeName<tpu::GRUOp>() {
   return "tpu::GRUOp";
 }
 
-template <> inline std::string getTypeName<tpu::MatMulOp>() {
+template <>
+inline std::string getTypeName<tpu::MatMulOp>() {
   return "tpu::MatMulOp";
 }
 // 84
-template <> inline std::string getTypeName<tpu::AddOp>() {
+template <>
+inline std::string getTypeName<tpu::AddOp>() {
   return "tpu::AddOp";
 }
 
-template <> inline std::string getTypeName<tpu::Deconv3DOp>() {
+template <>
+inline std::string getTypeName<tpu::Deconv3DOp>() {
   return "tpu::Deconv3DOp";
 }
 
-template <> inline std::string getTypeName<tpu::GroupNormOp>() {
+template <>
+inline std::string getTypeName<tpu::GroupNormOp>() {
   return "tpu::GroupNormOp";
 }
 
-template <> inline std::string getTypeName<tpu::MulOp>() {
+template <>
+inline std::string getTypeName<tpu::MulOp>() {
   return "tpu::MulOp";
 }
 
-template <> inline std::string getTypeName<tpu::PReluOp>() {
+template <>
+inline std::string getTypeName<tpu::PReluOp>() {
   return "tpu::PReluOp";
 }
 
-template <> inline std::string getTypeName<tpu::ScaleOp>() {
+template <>
+inline std::string getTypeName<tpu::ScaleOp>() {
   return "tpu::ScaleOp";
 }
 
-template <> inline std::string getTypeName<tpu::SubOp>() {
+template <>
+inline std::string getTypeName<tpu::SubOp>() {
   return "tpu::SubOp";
 }
 

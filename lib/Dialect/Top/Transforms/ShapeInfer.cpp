@@ -6,10 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include <llvm/Support/Debug.h>
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
+#include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "shape_infer"
 
 using namespace llvm;
@@ -17,13 +17,13 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace top {
 
-class UnTupleFusePattern  : public OpRewriterPatternEx<UnTupleOp> {
-  public:
+class UnTupleFusePattern : public OpRewriterPatternEx<UnTupleOp> {
+public:
   UnTupleFusePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<UnTupleOp>(context,"UnTupleFusePattern") {}
+      : OpRewriterPatternEx<UnTupleOp>(context, "UnTupleFusePattern") {}
 
   LogicalResult matchAndRewriteImpl(UnTupleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto outs = op.getOutputs();
     auto ins = op.getInputs();
     if (outs.size() != ins.size()) {
@@ -39,16 +39,16 @@ class UnTupleFusePattern  : public OpRewriterPatternEx<UnTupleOp> {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(UnTupleOp op) const override { return false;}
+  bool shouldPrint(UnTupleOp op) const override { return false; }
 };
 
-class TupleFusePattern  : public OpRewriterPatternEx<TupleOp> {
-  public:
+class TupleFusePattern : public OpRewriterPatternEx<TupleOp> {
+public:
   TupleFusePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<TupleOp>(context,"TupleFusePattern") {}
+      : OpRewriterPatternEx<TupleOp>(context, "TupleFusePattern") {}
 
   LogicalResult matchAndRewriteImpl(TupleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto out = op.getOutput();
     for (auto user : op->getUsers()) {
       std::vector<Value> operands;
@@ -66,13 +66,13 @@ class TupleFusePattern  : public OpRewriterPatternEx<TupleOp> {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(TupleOp op) const override { return false;}
+  bool shouldPrint(TupleOp op) const override { return false; }
 };
 
-class CopyMultiUseWeight  : public OpRewriterPatternEx<WeightOp> {
-  public:
+class CopyMultiUseWeight : public OpRewriterPatternEx<WeightOp> {
+public:
   CopyMultiUseWeight(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<WeightOp>(context,"CopyMultiUseWeight") {}
+      : OpRewriterPatternEx<WeightOp>(context, "CopyMultiUseWeight") {}
 
   int getOperandIndex(Operation *op, Value operand) const {
     int n = op->getNumOperands();
@@ -86,7 +86,7 @@ class CopyMultiUseWeight  : public OpRewriterPatternEx<WeightOp> {
   }
 
   LogicalResult matchAndRewriteImpl(WeightOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     std::vector<Operation *> users(op->user_begin(), op->user_end());
     if (users.size() <= 1) {
       return failure();
@@ -101,7 +101,7 @@ class CopyMultiUseWeight  : public OpRewriterPatternEx<WeightOp> {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(WeightOp op) const override { return false;}
+  bool shouldPrint(WeightOp op) const override { return false; }
 };
 
 // if all inputs is weight, convert to weight op
@@ -179,20 +179,19 @@ void WeightFolder(Operation *op) {
 
     // cast data
     auto ele_type = out_type.getElementType();
-    if (ele_type.isF16()){
+    if (ele_type.isF16()) {
       std::vector<uint16_t> datas_uint16;
       for (float value : datas[i]) {
         datas_uint16.push_back(static_cast<uint16_t>(value));
       }
       auto new_op = top::WeightOp::create(op, "folder", datas_uint16, out_type);
       out.replaceAllUsesWith(new_op);
-    }
-    else{
+    } else {
       auto new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
       out.replaceAllUsesWith(new_op);
     }
-    }
   }
+}
 
 class ShapeInferPass : public ShapeInferBase<ShapeInferPass> {
 public:

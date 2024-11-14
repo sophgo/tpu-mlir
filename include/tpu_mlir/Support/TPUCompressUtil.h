@@ -15,8 +15,10 @@
 
 // // TPU DMA engine supports compression and decompression during data transfer
 // // between global memory and local memory.
-// // Compiler compresses the tiled weight and update the weight file in advanced.
-// // The backend generates the DMA command which transfers the compressed weight.
+// // Compiler compresses the tiled weight and update the weight file in
+// advanced.
+// // The backend generates the DMA command which transfers the compressed
+// weight.
 // // The DMA engine decompresses the weight before writing to the local memory.
 
 namespace tpu_mlir {
@@ -35,24 +37,21 @@ struct CompressCommandInfo {
 //    1: 16bit
 int getCompressedDataSize(int unCompressedDatasize, int dataType);
 
-void getCompressParameter(
-    const uint8_t *ibuf, size_t isz, uint8_t signedness, uint8_t isBfloat16,
-    CompressCommandInfo *cmd_info);
+void getCompressParameter(const uint8_t *ibuf, size_t isz, uint8_t signedness,
+                          uint8_t isBfloat16, CompressCommandInfo *cmd_info);
 
-void compressInt8Data(
-    const uint8_t *ibuf, int isz, uint8_t *obuf, int *osz,
-    CompressCommandInfo *cmd_info);
+void compressInt8Data(const uint8_t *ibuf, int isz, uint8_t *obuf, int *osz,
+                      CompressCommandInfo *cmd_info);
 
-void compressBf16Data(
-    const uint8_t *ibuf, int isz, uint8_t *obuf, int *osz,
-    CompressCommandInfo *cmd_info);
+void compressBf16Data(const uint8_t *ibuf, int isz, uint8_t *obuf, int *osz,
+                      CompressCommandInfo *cmd_info);
 
 // unit test
 void testCompress(void);
 
 class WeightCompresser {
 public:
-  WeightCompresser(Operation* op, bool do_compress);
+  WeightCompresser(Operation *op, bool do_compress);
   ~WeightCompresser();
 
 public:
@@ -61,7 +60,7 @@ public:
   std::vector<uint8_t> new_data;
 
 protected:
-  Operation* op;
+  Operation *op;
   RankedTensorType rtype;
 };
 } // namespace tpu_mlir

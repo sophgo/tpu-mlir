@@ -7,15 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::D2DOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult tpu::D2DOp::init(InferenceParameter &p) { return success(); }
 
-void tpu::D2DOp::deinit(InferenceParameter &p) {
-}
+void tpu::D2DOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::D2DOp::inference(InferenceParameter &p) {
   // assistanted op, don;t need to implement it
@@ -23,4 +19,3 @@ LogicalResult tpu::D2DOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::D2DOp::support_multi_core() { return false; }
-

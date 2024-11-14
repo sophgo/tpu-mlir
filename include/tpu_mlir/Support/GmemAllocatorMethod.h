@@ -12,9 +12,9 @@
 #include <list>
 #include <set>
 
+#include "Module.h"
 #include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "Module.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -36,7 +36,7 @@ struct ValueInfo {
 };
 
 struct GmemBlock {
-  GmemBlock() {};
+  GmemBlock(){};
   int64_t start;
   uint64_t size;
   ValueInfo v_info;

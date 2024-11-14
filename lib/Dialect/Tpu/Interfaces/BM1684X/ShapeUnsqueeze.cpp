@@ -28,11 +28,11 @@ int64_t tpu::ShapeUnsqueezeOp::dyn_codegen_global_bm1684x(void *buffer) {
   const auto axes = module::getI64Array(getAxes());
   param.axis_num = axes->size();
   for (int i = 0; i < param.axis_num; i++) {
-    param.axis_list[i] =  axes->at(i);
+    param.axis_list[i] = axes->at(i);
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::ShapeUnsqueezeOp::get_fw_type_bm1684x() {
-    return FW_BMNET_SHAPE_UNSQUEEZE;
+  return FW_BMNET_SHAPE_UNSQUEEZE;
 }

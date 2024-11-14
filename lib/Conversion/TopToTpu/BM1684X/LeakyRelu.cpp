@@ -53,7 +53,7 @@ void LeakyReluLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void LeakyReluLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::LeakyReluOp op) const {
+                                   top::LeakyReluOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
@@ -69,7 +69,8 @@ void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
   auto round_mode = op.getRoundModeAttr().str();
-  attrs.push_back(rewriter.getNamedAttr("round_mode",
+  attrs.push_back(rewriter.getNamedAttr(
+      "round_mode",
       tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode))));
 
   rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, op.getOutput().getType(),

@@ -26,7 +26,8 @@ void PermuteTryLowering::Lowering(PatternRewriter &rewriter,
   auto shape = module::getShape(v);
   auto ctx = v.getContext();
   Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapeTransposeOp>(op, new_type, op.getOperand(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapeTransposeOp>(op, new_type,
+                                                     op.getOperand(), attrs);
 }
 
 void PermuteLowering::LoweringF32(PatternRewriter &rewriter,
@@ -53,7 +54,7 @@ void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void PermuteLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::PermuteOp op) const {
+                                 top::PermuteOp op) const {
   bool isE4 = module::getMode() == module::Mode::F8E4M3;
   lowering_common_f8<tpu::PermuteOp>(rewriter, op, isE4);
 }

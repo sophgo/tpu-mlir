@@ -18,7 +18,7 @@ permute_attr_t top::PermuteOp::parseParam() {
   if (in_order->size() == 0) {
     // default revert it, eg: shape (2, 3, 4)->(4, 3, 2), per=[2, 1, 0]
     std::vector<int64_t> order;
-    for(uint32_t i = in_shape.size() - 1; i >= 0; i--) {
+    for (uint32_t i = in_shape.size() - 1; i >= 0; i--) {
       order.push_back(i);
     }
     auto builder = OpBuilder(getContext());
@@ -78,11 +78,12 @@ void top::PermuteOp::shape_inference() {
     out_shape.push_back(in_shape[(*in_order)[i]]);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
-  if (module::isShape(getInput())){
+  if (module::isShape(getInput())) {
     auto shape_v = module::getShapeTensorValue(getInput());
     std::vector<std::vector<int64_t>> input_shape_v;
     input_shape_v.push_back(shape_v);
-    auto out_shape_v = module::commonShapeValInfer(getOperation(), input_shape_v, out_shape);
+    auto out_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shape_v, out_shape);
     module::bindShapeTensorValue(getOutput(), out_shape_v);
   }
 }

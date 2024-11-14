@@ -87,8 +87,8 @@ static inline void deform_process_v1(
 }
 
 void processDeformGather(InferenceParameter &p,
-                                         const deform_gather_attr_t &attr,
-                                         float *data_out, bool top_flag) {
+                         const deform_gather_attr_t &attr, float *data_out,
+                         bool top_flag) {
   // data: [N, C, H, W]
   // offset: [N, num_deform_group*kh*kw*2, conved_H, conved_W]
   // mask: [N, num_deform_group*kh*kw, conved_H, conved_W]
@@ -105,18 +105,21 @@ void processDeformGather(InferenceParameter &p,
   const int channel_per_deform_group = C / attr.deform_groups;
   int offset_offset = attr.ofc * attr.ofh * attr.ofw / attr.deform_groups;
 
-  const float *data_img = (float*)p.inputs[0];
+  const float *data_img = (float *)p.inputs[0];
   const float *data_offset = nullptr;
   if (top_flag)
-    data_offset = (float*)p.inputs[2];
-  else data_offset = (float*)p.inputs[1];
+    data_offset = (float *)p.inputs[2];
+  else
+    data_offset = (float *)p.inputs[1];
 
   float *data_mask = nullptr;
   int mask_offset = 0;
   if (attr.use_mask) {
     mask_offset = attr.mkc * attr.mkh * attr.mkw / attr.deform_groups;
-    if (top_flag) data_mask = p.inputs[3];
-    else data_mask = p.inputs[2];
+    if (top_flag)
+      data_mask = p.inputs[3];
+    else
+      data_mask = p.inputs[2];
   }
 
   for (int n = 0; n < N; ++n) {
@@ -135,7 +138,8 @@ void processDeformGather(InferenceParameter &p,
   }
 }
 
-void parseGatherParam(const deform_conv2d_attr_t& attr, deform_gather_attr_t& gattr) {
+void parseGatherParam(const deform_conv2d_attr_t &attr,
+                      deform_gather_attr_t &gattr) {
   gattr.n = attr.n;
   gattr.ic = attr.ic;
   gattr.ih = attr.ih;
@@ -178,14 +182,18 @@ void parseConvParam(const deform_conv2d_attr_t &attr, conv_attr_t &cattr) {
 }
 
 void processDeformConv2D(InferenceParameter &p,
-                                const deform_conv2d_attr_t &attr) {
+                         const deform_conv2d_attr_t &attr) {
   // p.inputs: input weight offset mask bias
   // p.outputs: output
 
   const int conved_H =
-      ((attr.ih - (attr.dh * (attr.kh - 1) + 1) + attr.pht + attr.phb) / attr.sh + 1);
+      ((attr.ih - (attr.dh * (attr.kh - 1) + 1) + attr.pht + attr.phb) /
+           attr.sh +
+       1);
   const int conved_W =
-      ((attr.iw - (attr.dw * (attr.kw - 1) + 1) + attr.pwl + attr.pwr) / attr.sw + 1);
+      ((attr.iw - (attr.dw * (attr.kw - 1) + 1) + attr.pwl + attr.pwr) /
+           attr.sw +
+       1);
 
   int buffer_size = attr.n * attr.ic * attr.kh * attr.kw * conved_H * conved_W;
   float *buffer = new float[buffer_size];

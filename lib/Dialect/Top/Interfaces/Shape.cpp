@@ -38,7 +38,7 @@ void top::ShapeOp::shape_inference() {
   if (getEnd().has_value()) {
     removeEndAttr();
   }
-  if(start < 0 && end - start == 1){
+  if (start < 0 && end - start == 1) {
     start = start + input_dims;
     end = start + 1;
   }

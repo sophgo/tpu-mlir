@@ -9,7 +9,6 @@
 
 #include "../WeightReorder.h"
 
-
 namespace tpu_mlir {
 namespace tpu {
 using namespace bm1684x;

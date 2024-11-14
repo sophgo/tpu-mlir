@@ -11,17 +11,15 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
 // GlobalGenInterface
 // =========================================
-template<typename T>
-static int remove_value(std::vector<T> & v, T value) {
+template <typename T>
+static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
-  for(auto iter = v.begin(); iter != v.end(); iter++, idx++) {
+  for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
       v.erase(iter);
       return idx;
@@ -31,19 +29,21 @@ static int remove_value(std::vector<T> & v, T value) {
 }
 
 static void refresh(std::vector<int64_t> &order, int64_t idx) {
-  for(auto &v:order) {
+  for (auto &v : order) {
     if (v > idx) {
       v--;
     }
   }
 }
 
-void parsePermuteParam(std::vector<int64_t> input_shape, std::vector<int64_t> order,
-                        std::vector<int64_t> &shape_4, std::vector<int> &order_4) {
+void parsePermuteParam(std::vector<int64_t> input_shape,
+                       std::vector<int64_t> order,
+                       std::vector<int64_t> &shape_4,
+                       std::vector<int> &order_4) {
   int num_dims = order.size();
   if (num_dims > 4) {
     // remove dims = 1
-    while(num_dims > 4) {
+    while (num_dims > 4) {
       int idx = remove_value<int64_t>(input_shape, 1);
       if (idx < 0) {
         break;
@@ -53,12 +53,12 @@ void parsePermuteParam(std::vector<int64_t> input_shape, std::vector<int64_t> or
       num_dims--;
     }
     // remove continous order
-    while(num_dims > 4) {
+    while (num_dims > 4) {
       bool done = false;
-      for (int i = 0; i < num_dims-1; i++) {
-        if (order[i] +1 == order[i+1]) {
+      for (int i = 0; i < num_dims - 1; i++) {
+        if (order[i] + 1 == order[i + 1]) {
           int idx = order[i];
-          input_shape[idx] *= input_shape[idx+1];
+          input_shape[idx] *= input_shape[idx + 1];
           input_shape.erase(input_shape.begin() + idx + 1);
           order.erase(order.begin() + i + 1);
           refresh(order, idx + 1);
@@ -82,7 +82,7 @@ void parsePermuteParam(std::vector<int64_t> input_shape, std::vector<int64_t> or
     order_4[idx] = order[end] + idx - end;
   }
 }
-void tpu::PermuteOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::PermuteOp::codegen_global_cv18xx(int64_t layer_id) {
 
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
@@ -92,12 +92,13 @@ void tpu::PermuteOp::codegen_global_cv18xx( int64_t layer_id) {
   std::vector<int> order_4;
   parsePermuteParam(input_shape, *order, shape_4, order_4);
   if (module::isUniformQuantized(getOutput())) {
-    cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
-          shape_4[0], shape_4[1], shape_4[2], shape_4[3],
-          order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_I8);
+    cvi_backend_tg_permute_kernel(
+        layer_id, ga_input, ga_output, shape_4[0], shape_4[1], shape_4[2],
+        shape_4[3], order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_I8);
   } else {
-    cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
-          shape_4[0], shape_4[1], shape_4[2], shape_4[3],
-          order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_BF16);
+    cvi_backend_tg_permute_kernel(layer_id, ga_input, ga_output, shape_4[0],
+                                  shape_4[1], shape_4[2], shape_4[3],
+                                  order_4[0], order_4[1], order_4[2],
+                                  order_4[3], CVK_FMT_BF16);
   }
 }

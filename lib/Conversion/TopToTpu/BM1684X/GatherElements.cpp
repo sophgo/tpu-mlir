@@ -54,10 +54,10 @@ void GatherElementsLowering::LoweringF32(PatternRewriter &rewriter,
 void GatherElementsLowering::LoweringINT8(PatternRewriter &rewriter,
                                           top::GatherElementsOp op,
                                           bool asymmetric) const {
-   if(module::isMARS3())
-      LoweringBF16(rewriter, op);
-   else
-      LoweringF16(rewriter, op);
+  if (module::isMARS3())
+    LoweringBF16(rewriter, op);
+  else
+    LoweringF16(rewriter, op);
 }
 
 void GatherElementsLowering::LoweringINT4(PatternRewriter &rewriter,
@@ -79,7 +79,7 @@ void GatherElementsLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void GatherElementsLowering::LoweringF8(PatternRewriter &rewriter,
-                                         top::GatherElementsOp op) const {
+                                        top::GatherElementsOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 void GatherElementsLowering::LoweringQuantized(PatternRewriter &rewriter,

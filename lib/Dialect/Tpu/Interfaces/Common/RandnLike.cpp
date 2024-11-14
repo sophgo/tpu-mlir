@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::RandnLikeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::RandnLikeOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::RandnLikeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RandnLikeOp::inference(InferenceParameter &p) {

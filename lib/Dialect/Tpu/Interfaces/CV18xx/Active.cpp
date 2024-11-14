@@ -43,7 +43,8 @@ void tpu::ActiveOp::codegen_global_cv18xx(int64_t layer_id) {
           CVK_FMT_BF16);
     }
   } break;
-    default: break;
+  default:
+    break;
   }
 }
 

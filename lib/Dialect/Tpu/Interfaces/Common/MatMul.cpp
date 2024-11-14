@@ -212,8 +212,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     } else {
       auto o_qtype = module::getUniformQuantizedType(getOutput());
       auto output_shape = module::getShape(getOutput());
-      int N = output_shape[output_shape.size()-1];
-      int shift_num = getFuseRq()?N:1;
+      int N = output_shape[output_shape.size() - 1];
+      int shift_num = getFuseRq() ? N : 1;
       auto rshift_v = module::getI64Array(getRshifts(), shift_num, 0);
       auto multiplier_v = module::getI64Array(getMultipliers(), shift_num, 1);
       auto num_output = module::getNumElements(getOutput());
@@ -224,9 +224,9 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
           // rft);
           auto v = MultiplyByQuantizedMultiplier((int32_t)(p.outputs[0][i]),
-                                                (int32_t)multiplier_v->at(0),
-                                                -(int32_t)rshift_v->at(0)) +
-                  o_qtype.getZeroPoint();
+                                                 (int32_t)multiplier_v->at(0),
+                                                 -(int32_t)rshift_v->at(0)) +
+                   o_qtype.getZeroPoint();
           p.outputs[0][i] = saturate(v, out_type);
         }
       } else if (qmode == tpu::RequantMode::MultiplierShift) {
@@ -234,16 +234,17 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
           for (int i = 0; i < num_output; ++i) {
             auto v = applyMultiplierAndRShift(
-                        p.outputs[0][i], p.inputs[3][i%N], rshift_v->at(0)) +
-                    o_qtype.getZeroPoint();
+                         p.outputs[0][i], p.inputs[3][i % N], rshift_v->at(0)) +
+                     o_qtype.getZeroPoint();
             p.outputs[0][i] = saturate(v, out_type);
           }
         } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
           for (int i = 0; i < num_output; ++i) {
-            auto v = applyMultiplierAndRShift(
-                        p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0)) +
-                    o_qtype.getZeroPoint();
+            auto v =
+                applyMultiplierAndRShift(p.outputs[0][i], multiplier_v->at(0),
+                                         rshift_v->at(0)) +
+                o_qtype.getZeroPoint();
             p.outputs[0][i] = saturate(v, out_type);
           }
         }
@@ -265,7 +266,8 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   if (!out_stype.isa<FloatType>()) {
     return failure();
   }
-  if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) && !out_stype.isF32()) {
+  if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) &&
+      !out_stype.isF32()) {
     // only f32 support
     return failure();
   }
@@ -311,9 +313,10 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
   auto Rshape = module::getShape(ins[1]);
   int left_num_dims = module::getShape(ins[0]).size();
   int right_num_dims = module::getShape(ins[1]).size();
-  bool right_trans  =getRightTranspose();
-  if (left_num_dims == 4 && right_num_dims == 4 && !right_trans && Lshape[0] == Rshape[0] &&
-       Lshape[1] != Rshape[1] && Lshape[2] == Rshape[2] && Lshape[3] == Rshape[3])
+  bool right_trans = getRightTranspose();
+  if (left_num_dims == 4 && right_num_dims == 4 && !right_trans &&
+      Lshape[0] == Rshape[0] && Lshape[1] != Rshape[1] &&
+      Lshape[2] == Rshape[2] && Lshape[3] == Rshape[3])
     return failure();
   if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
        (left_num_dims == 5 && Lshape[1] < Lshape[3])) &&
@@ -487,7 +490,8 @@ bool tpu::MatMulOp::support_multi_core() {
         return false;
       }
       uint64_t mm_cycle = p.M * align_up(p.N, 32) * 2u * p.K;
-      uint64_t mm2_cycle = (uint64_t)align_up(p.M, 32) * align_up(p.N, 4) * align_up(p.K, 16);
+      uint64_t mm2_cycle =
+          (uint64_t)align_up(p.M, 32) * align_up(p.N, 4) * align_up(p.K, 16);
       if (mm_cycle <= mm2_cycle) {
         return true;
       }

@@ -54,8 +54,7 @@ void SinhLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
-void SinhLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::SinhOp op) const {
+void SinhLowering::LoweringF8(PatternRewriter &rewriter, top::SinhOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

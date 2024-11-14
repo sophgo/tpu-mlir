@@ -43,7 +43,8 @@ LogicalResult WeightReorder<tpu::ScaleOp, int8_t>::matchAndRewriteImpl(
     // convert 1N to 4N
     auto lshiftOp = cast<top::WeightOp>(op.getLshift().getDefiningOp());
     auto lshift_ptr = lshiftOp.read<int8_t>();
-    auto lshift_new = BM1684::instance().Convert1NTo4N(op.getLshift(), lshift_ptr);
+    auto lshift_new =
+        BM1684::instance().Convert1NTo4N(op.getLshift(), lshift_ptr);
     auto lshift_type = op.getLshift().getType().cast<RankedTensorType>();
     auto new_lshift = top::WeightOp::create(lshiftOp, "reorderd", *lshift_new,
                                             lshift_type, STORE_MODE_4N);

@@ -1,6 +1,5 @@
 #include "Passes.h"
-namespace mlir
-{
+namespace mlir {
 
 static bool hasContiguousDims(AffineMap map, ArrayRef<unsigned> dims) {
   if (!map.isProjectedPermutation())
@@ -25,14 +24,13 @@ static bool hasContiguousDims(AffineMap map, ArrayRef<unsigned> dims) {
   return true;
 }
 
-struct CollapseDimsPass : public PassWrapper<CollapseDimsPass, OperationPass<ModuleOp>> {
+struct CollapseDimsPass
+    : public PassWrapper<CollapseDimsPass, OperationPass<ModuleOp>> {
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<linalg::LinalgDialect>();
   }
 
-  StringRef getArgument() const override {
-    return "collapse-dims";
-  }
+  StringRef getArgument() const override { return "collapse-dims"; }
 
   StringRef getDescription() const override {
     return "Collapse reduction dimensions when possible";
@@ -41,8 +39,8 @@ struct CollapseDimsPass : public PassWrapper<CollapseDimsPass, OperationPass<Mod
   void runOnOperation() override {
     RewritePatternSet patterns(&getContext());
 
-    linalg::GetCollapsableDimensionsFn collapseFn
-       = [&] (linalg::GenericOp op) -> SmallVector<ReassociationIndices> {
+    linalg::GetCollapsableDimensionsFn collapseFn =
+        [&](linalg::GenericOp op) -> SmallVector<ReassociationIndices> {
       SmallVector<ReassociationIndices> collapseIndices;
       SmallVector<unsigned> reductionDims;
       op.getReductionDims(reductionDims);
@@ -72,4 +70,4 @@ struct CollapseDimsPass : public PassWrapper<CollapseDimsPass, OperationPass<Mod
 std::unique_ptr<OperationPass<ModuleOp>> createCollapseDimsPass() {
   return std::make_unique<CollapseDimsPass>();
 }
-}
+} // namespace mlir

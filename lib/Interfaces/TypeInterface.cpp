@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Interfaces/TypeInterface.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Interfaces/TypeInterface.cpp.inc"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 namespace tpu_mlir {
 
@@ -94,8 +94,7 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
       mode = TypeCastMode::DO_QUANTIZE;
     else
       mode = TypeCastMode::DO_CAST;
-  }
-  else if (from_stype.isFloat8E4M3FN() || from_stype.isFloat8E5M2()) {
+  } else if (from_stype.isFloat8E4M3FN() || from_stype.isFloat8E5M2()) {
     if (to_stype.isF32() || to_stype.isF16())
       mode = TypeCastMode::DO_DEQUANTIZE;
     else
@@ -126,9 +125,11 @@ mlir::Type type_verify_case_type(mlir::Operation *op, uint64_t opd_idx,
     llvm_unreachable("opd_idx is illegal.");
   }
   auto in = op->getOperand(opd_idx);
-  if (module::getStorageType(in).isIntOrIndex() && module::getStorageType(type).isIntOrIndex()) {
+  if (module::getStorageType(in).isIntOrIndex() &&
+      module::getStorageType(type).isIntOrIndex()) {
     if (isa<tpu::AddOp, tpu::AddConstOp, tpu::SubOp, tpu::SubConstOp,
-            tpu::MulOp, tpu::MulConstOp, tpu::BinaryShiftOp, tpu::BinaryConstShiftOp>(op))
+            tpu::MulOp, tpu::MulConstOp, tpu::BinaryShiftOp,
+            tpu::BinaryConstShiftOp>(op))
       return do_nothing(mode);
   }
   return verifyCompatibleType(in, type, mode);
@@ -153,7 +154,7 @@ mlir::Type type_verify_case_i32(mlir::Operation *op, uint64_t opd_idx,
 
 // this is for matmul in f8 mode, that output is fp32 and input needed is fp8
 mlir::Type type_verify_case_f32(mlir::Operation *op, uint64_t opd_idx,
-                                TypeCastMode &mode, bool isE4=true) {
+                                TypeCastMode &mode, bool isE4 = true) {
   auto in = op->getOperand(opd_idx);
   auto out = op->getResult(0);
   assert(module::getStorageType(out).isF32());

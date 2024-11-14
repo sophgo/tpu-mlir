@@ -170,7 +170,8 @@ void top::MaxPoolOp::shape_inference() {
   for (int i = 0; i < spacial_rank; i++) {
     auto out_dim = (input_spacial_shape[i] + pads->at(i) +
                     pads->at(i + spacial_rank) - kernel_shape->at(i)) /
-                       strides->at(i) + 1;
+                       strides->at(i) +
+                   1;
     out_shape.push_back(out_dim);
   }
   module::setShapeOrVerify(getOutput(), out_shape);

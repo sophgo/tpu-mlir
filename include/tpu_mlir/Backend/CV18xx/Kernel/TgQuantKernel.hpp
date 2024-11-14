@@ -38,7 +38,6 @@ protected:
                                  int eu_align) const;
 
 protected:
-
   gaddr_t ga_input;
   gaddr_t ga_output;
 

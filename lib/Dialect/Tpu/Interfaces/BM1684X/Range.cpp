@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -21,10 +20,6 @@ void tpu::RangeOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::RangeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::RangeOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
 
-int64_t tpu::RangeOp::get_fw_type_bm1684x() {
-  return FW_BMNET_RANGE;
-}
+int64_t tpu::RangeOp::get_fw_type_bm1684x() { return FW_BMNET_RANGE; }

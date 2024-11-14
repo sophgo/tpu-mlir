@@ -20,7 +20,7 @@ LogicalResult top::MeanStdScaleOp::init(InferenceParameter &p) {
 void top::MeanStdScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MeanStdScaleOp::inference(InferenceParameter &p) {
-  //top meanstdscale op do not need inference.
+  // top meanstdscale op do not need inference.
   UNREACHABLE_THIS("Not Implemented");
   return failure();
 }

@@ -1836,9 +1836,7 @@ void YoloDetectionFunc_v2::invoke() {
   }
 }
 
-Yolov5DetectionFunc::Yolov5DetectionFunc(YoloDetParam &param)
-    : param_(param) {
-}
+Yolov5DetectionFunc::Yolov5DetectionFunc(YoloDetParam &param) : param_(param) {}
 
 void Yolov5DetectionFunc::invoke() {
   auto top_data = param_.output.ptr;
@@ -1921,38 +1919,38 @@ void Yolov5DetectionFunc::invoke() {
     top_data[i * 7 + 6] = total_preds[i].h;
   }
 }
-Yolov8DetectionFunc::Yolov8DetectionFunc(YoloDetParam &param)
-    : param_(param) {
-}
+Yolov8DetectionFunc::Yolov8DetectionFunc(YoloDetParam &param) : param_(param) {}
 
 void Yolov8DetectionFunc::invoke() {
 
   auto top_data = param_.output.ptr;
   memset(top_data, 0, param_.output.size);
   int batch_num = param_.inputs[0].shape[0];
-  int box_len = param_.inputs[0].shape[1];    //84   (x y w h + 80 class_score)
-  int box_num = param_.inputs[0].shape[2];    //8400 box
+  int box_len = param_.inputs[0].shape[1]; // 84   (x y w h + 80 class_score)
+  int box_num = param_.inputs[0].shape[2]; // 8400 box
   int agnostic_nms = param_.agnostic_nms;
 
   std::vector<PredictionResult> total_preds;
 
-  for(int b = 0; b < batch_num; b++){
+  for (int b = 0; b < batch_num; b++) {
     std::vector<PredictionResult> preds;
     //================================
     // box decode
     //================================
-    for(int j = 0; j < box_num; j++){
-    const float *input_data =
-    param_.inputs[0].ptr + b * box_num * box_len + j; // TODO:transpose input_data [1,84,box_num]->[1,box_num,84] when canonicalizing may faster
+    for (int j = 0; j < box_num; j++) {
+      const float *input_data =
+          param_.inputs[0].ptr + b * box_num * box_len +
+          j; // TODO:transpose input_data [1,84,box_num]->[1,box_num,84] when
+             // canonicalizing may faster
       float max_value = -10000;
       int max_idx = 0;
-      for (int l = 4; l < box_len; l++){
+      for (int l = 4; l < box_len; l++) {
         const float *input_element = input_data + l * box_num;
-        if (*input_element > max_value){
+        if (*input_element > max_value) {
           max_value = *input_element;
-          max_idx = l-4;
+          max_idx = l - 4;
         }
-         if (max_value >= param_.obj_threshold) {
+        if (max_value >= param_.obj_threshold) {
           PredictionResult pred;
           pred.classType = max_idx;
           pred.confidence = max_value;
@@ -1962,10 +1960,9 @@ void Yolov8DetectionFunc::invoke() {
           pred.w = *(input_data + 2 * box_num);
           pred.h = *(input_data + 3 * box_num);
           preds.push_back(pred);
+        }
       }
     }
-  }
-
 
     //================================
     // NMS for each image
@@ -2066,7 +2063,7 @@ int NmsFunc::invoke() {
     float score;
     int begin_index;
   };
-  //align with tpu algorithm
+  // align with tpu algorithm
   auto cmp = [](const Candidate i, const Candidate j) {
     if (i.score != j.score)
       return i.score < j.score;
@@ -2150,7 +2147,8 @@ void BMCpuOp::get_topk_param() {
   cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
   cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
   cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
-  cpu_param.values_used_only = paramDic.get("values_used_only").cast<BoolAttr>().getValue();
+  cpu_param.values_used_only =
+      paramDic.get("values_used_only").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_topk_param_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
@@ -2182,8 +2180,7 @@ void BMCpuOp::get_gather_nd_tf_param() {
 void BMCpuOp::get_gatherelements_pt_param() {
   cpu_gather_t cpu_param{};
   mlir::DictionaryAttr paramDic = op_.getParam().value();
-  cpu_param.axis =
-      paramDic.get("axis").cast<IntegerAttr>().getInt();
+  cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
   this->param_size = sizeof(cpu_gather_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
@@ -2219,7 +2216,8 @@ void BMCpuOp::get_deform_gather_param() {
   mlir::DictionaryAttr paramDic = op_.getParam().value();
   cpu_param.mode = DEFORM_TORCHVISION_MODE;
   cpu_param.modulated = paramDic.get("use_mask").cast<BoolAttr>().getValue();
-  cpu_param.deform_groups = paramDic.get("deform_group").cast<IntegerAttr>().getInt();
+  cpu_param.deform_groups =
+      paramDic.get("deform_group").cast<IntegerAttr>().getInt();
   cpu_param.kh = paramDic.get("kh").cast<IntegerAttr>().getInt();
   cpu_param.kw = paramDic.get("kw").cast<IntegerAttr>().getInt();
   cpu_param.pad_t = paramDic.get("pad_t").cast<IntegerAttr>().getInt();
@@ -2228,8 +2226,10 @@ void BMCpuOp::get_deform_gather_param() {
   cpu_param.pad_r = paramDic.get("pad_r").cast<IntegerAttr>().getInt();
   cpu_param.stride_h = paramDic.get("stride_h").cast<IntegerAttr>().getInt();
   cpu_param.stride_w = paramDic.get("stride_w").cast<IntegerAttr>().getInt();
-  cpu_param.dilation_h = paramDic.get("dilation_h").cast<IntegerAttr>().getInt();
-  cpu_param.dilation_w = paramDic.get("dilation_w").cast<IntegerAttr>().getInt();
+  cpu_param.dilation_h =
+      paramDic.get("dilation_h").cast<IntegerAttr>().getInt();
+  cpu_param.dilation_w =
+      paramDic.get("dilation_w").cast<IntegerAttr>().getInt();
   this->param_size = sizeof(cpu_deform_gather_param_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
@@ -2238,10 +2238,14 @@ void BMCpuOp::get_deform_gather_param() {
 void BMCpuOp::get_roi_align_param() {
   cpu_pytorch_roi_align_param_t cpu_param{};
   mlir::DictionaryAttr paramDic = op_.getParam().value();
-  cpu_param.pooled_height = paramDic.get("output_height").cast<IntegerAttr>().getInt();
-  cpu_param.pooled_width = paramDic.get("output_width").cast<IntegerAttr>().getInt();
-  cpu_param.spatial_scale = paramDic.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
-  cpu_param.sampling_ratio = paramDic.get("sampling_ratio").cast<IntegerAttr>().getInt();
+  cpu_param.pooled_height =
+      paramDic.get("output_height").cast<IntegerAttr>().getInt();
+  cpu_param.pooled_width =
+      paramDic.get("output_width").cast<IntegerAttr>().getInt();
+  cpu_param.spatial_scale =
+      paramDic.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+  cpu_param.sampling_ratio =
+      paramDic.get("sampling_ratio").cast<IntegerAttr>().getInt();
   cpu_param.align = paramDic.get("align_corners").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_pytorch_roi_align_param_t);
   this->param = (void *)malloc(this->param_size);
@@ -2897,153 +2901,154 @@ void GatherndFunc::invoke() {
   }
 }
 
-//tianjia
-GatherElementsFunc::GatherElementsFunc(GatherElementsParam &param) : param_(param) {}
+// tianjia
+GatherElementsFunc::GatherElementsFunc(GatherElementsParam &param)
+    : param_(param) {}
 
-static inline void gather_dim1_0(
-    float *dst, const float *src,  const int *idx, int64_t *shape, int64_t *org_shape) {
-    for (int i = 0; i < shape[0]; ++i) {
-        *dst = src[*idx];
+static inline void gather_dim1_0(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  for (int i = 0; i < shape[0]; ++i) {
+    *dst = src[*idx];
+    ++dst;
+    ++idx;
+  }
+}
+static inline void gather_dim2_0(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  for (int i = 0; i < shape[0]; ++i) {
+    for (int j = 0; j < shape[1]; ++j) {
+      *dst = src[*idx * org_shape[1] + j];
+      ++dst;
+      ++idx;
+    }
+  }
+}
+static inline void gather_dim2_1(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * org_shape[1];
+    for (int j = 0; j < shape[1]; ++j) {
+      *dst = src[idx_i + *idx];
+      ++dst;
+      ++idx;
+    }
+  }
+}
+static inline void gather_dim3_0(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2 = org_shape[1] * org_shape[2];
+  for (int i = 0; i < shape[0]; ++i) {
+    for (int j = 0; j < shape[1]; ++j) {
+      int idx_j = j * org_shape[2];
+      for (int k = 0; k < shape[2]; ++k) {
+        *dst = src[*idx * shape_1_2 + idx_j + k];
         ++dst;
         ++idx;
+      }
     }
+  }
 }
-static inline void gather_dim2_0(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++j) {
-            *dst = src[*idx * org_shape[1] + j];
-            ++dst;
-            ++idx;
-        }
+static inline void gather_dim3_1(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2 = org_shape[1] * org_shape[2];
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * shape_1_2;
+    for (int j = 0; j < shape[1]; ++j) {
+      for (int k = 0; k < shape[2]; ++k) {
+        *dst = src[idx_i + *idx * org_shape[2] + k];
+        ++dst;
+        ++idx;
+      }
     }
+  }
 }
-static inline void gather_dim2_1(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * org_shape[1];
-        for (int j = 0; j < shape[1]; ++j) {
-            *dst = src[idx_i + *idx];
-            ++dst;
-            ++idx;
-        }
+static inline void gather_dim3_2(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2 = org_shape[1] * org_shape[2];
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * shape_1_2;
+    for (int j = 0; j < shape[1]; ++j) {
+      int idx_j = idx_i + j * org_shape[2];
+      for (int k = 0; k < shape[2]; ++k) {
+        *dst = src[idx_j + *idx];
+        ++dst;
+        ++idx;
+      }
     }
+  }
 }
-static inline void gather_dim3_0(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2 = org_shape[1] * org_shape[2];
-    for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++j) {
-            int idx_j = j * org_shape[2];
-            for (int k = 0; k < shape[2]; ++k) {
-                *dst = src[*idx * shape_1_2 + idx_j + k];
-                ++dst;
-                ++idx;
-            }
+static inline void gather_dim4_0(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+  int shape_2_3 = org_shape[2] * org_shape[3];
+  for (int i = 0; i < shape[0]; ++i) {
+    for (int j = 0; j < shape[1]; ++j) {
+      int idx_j = j * shape_2_3;
+      for (int k = 0; k < shape[2]; ++k) {
+        int idx_k = idx_j + k * org_shape[3];
+        for (int g = 0; g < shape[3]; ++g) {
+          *dst = src[*idx * shape_1_2_3 + idx_k + g];
+          ++dst;
+          ++idx;
         }
+      }
     }
+  }
 }
-static inline void gather_dim3_1(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2 = org_shape[1] * org_shape[2];
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * shape_1_2;
-        for (int j = 0; j < shape[1]; ++j) {
-            for (int k = 0; k < shape[2]; ++k) {
-                *dst = src[idx_i + *idx * org_shape[2] + k];
-                ++dst;
-                ++idx;
-            }
+static inline void gather_dim4_1(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+  int shape_2_3 = org_shape[2] * org_shape[3];
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * shape_1_2_3;
+    for (int j = 0; j < shape[1]; ++j) {
+      for (int k = 0; k < shape[2]; ++k) {
+        int idx_k = k * org_shape[3];
+        for (int g = 0; g < shape[3]; ++g) {
+          *dst = src[idx_i + *idx * shape_2_3 + idx_k + g];
+          ++dst;
+          ++idx;
         }
+      }
     }
+  }
 }
-static inline void gather_dim3_2(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2 = org_shape[1] * org_shape[2];
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * shape_1_2;
-        for (int j = 0; j < shape[1]; ++j) {
-            int idx_j = idx_i + j * org_shape[2];
-            for (int k = 0; k < shape[2]; ++k) {
-                *dst = src[idx_j + *idx];
-                ++dst;
-                ++idx;
-            }
+static inline void gather_dim4_2(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+  int shape_2_3 = org_shape[2] * org_shape[3];
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * shape_1_2_3;
+    for (int j = 0; j < shape[1]; ++j) {
+      int idx_j = idx_i + j * shape_2_3;
+      for (int k = 0; k < shape[2]; ++k) {
+        for (int g = 0; g < shape[3]; ++g) {
+          *dst = src[idx_j + *idx * org_shape[3] + g];
+          ++dst;
+          ++idx;
         }
+      }
     }
+  }
 }
-static inline void gather_dim4_0(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
-    int shape_2_3 = org_shape[2] * org_shape[3];
-    for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++j) {
-            int idx_j = j * shape_2_3;
-            for (int k = 0; k < shape[2]; ++k) {
-                int idx_k = idx_j + k * org_shape[3];
-                for (int g = 0; g < shape[3]; ++g) {
-                    *dst = src[*idx * shape_1_2_3 + idx_k + g];
-                    ++dst;
-                    ++idx;
-                }
-            }
+static inline void gather_dim4_3(float *dst, const float *src, const int *idx,
+                                 int64_t *shape, int64_t *org_shape) {
+  int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+  int shape_2_3 = org_shape[2] * org_shape[3];
+  for (int i = 0; i < shape[0]; ++i) {
+    int idx_i = i * shape_1_2_3;
+    for (int j = 0; j < shape[1]; ++j) {
+      int idx_j = idx_i + j * shape_2_3;
+      for (int k = 0; k < shape[2]; ++k) {
+        int idx_k = idx_j + k * org_shape[3];
+        for (int g = 0; g < shape[3]; ++g) {
+          *dst = src[idx_k + *idx];
+          ++dst;
+          ++idx;
         }
+      }
     }
-}
-static inline void gather_dim4_1(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
-    int shape_2_3 = org_shape[2] * org_shape[3];
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * shape_1_2_3;
-        for (int j = 0; j < shape[1]; ++j) {
-            for (int k = 0; k < shape[2]; ++k) {
-                int idx_k = k * org_shape[3];
-                for (int g = 0; g < shape[3]; ++g) {
-                    *dst = src[idx_i + *idx * shape_2_3 + idx_k + g];
-                    ++dst;
-                    ++idx;
-                }
-            }
-        }
-    }
-}
-static inline void gather_dim4_2(
-    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
-    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
-    int shape_2_3 = org_shape[2] * org_shape[3];
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * shape_1_2_3;
-        for (int j = 0; j < shape[1]; ++j) {
-            int idx_j = idx_i + j * shape_2_3;
-            for (int k = 0; k < shape[2]; ++k) {
-                for (int g = 0; g < shape[3]; ++g) {
-                    *dst = src[idx_j + *idx * org_shape[3] + g];
-                    ++dst;
-                    ++idx;
-                }
-            }
-        }
-    }
-}
-static inline void gather_dim4_3(
-    float *dst, const float *src, const int *idx, int64_t  *shape, int64_t *org_shape) {
-    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
-    int shape_2_3 = org_shape[2] * org_shape[3];
-    for (int i = 0; i < shape[0]; ++i) {
-        int idx_i = i * shape_1_2_3;
-        for (int j = 0; j < shape[1]; ++j) {
-            int idx_j = idx_i + j * shape_2_3;
-            for (int k = 0; k < shape[2]; ++k) {
-                int idx_k = idx_j + k * org_shape[3];
-                for (int g = 0; g < shape[3]; ++g) {
-                    *dst = src[idx_k + *idx];
-                    ++dst;
-                    ++idx;
-                }
-            }
-        }
-    }
+  }
 }
 void GatherElementsFunc::invoke() {
   auto axis = param_.axis;
@@ -3062,42 +3067,51 @@ void GatherElementsFunc::invoke() {
   float *output = output_info.ptr;
   // float *output = param_.output.ptr;
   switch (input_shape.size()) {
-    case 1:
-        gather_dim1_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        break;
-    case 2:
-        if (axis == 0)
-            gather_dim2_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 1)
-            gather_dim2_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        break;
-    case 3:
-        if (axis == 0)
-            gather_dim3_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 1)
-            gather_dim3_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 2)
-            gather_dim3_2(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        break;
-    case 4:
-        if (axis == 0)
-            gather_dim4_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 1)
-            gather_dim4_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 2)
-            gather_dim4_2(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        else if (axis == 3)
-            gather_dim4_3(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
-        break;
-    default:
-        printf("error: %s: %d: invalid input dimension: %d. \n",
-               __FILE__, __LINE__, static_cast<int>(input_shape.size()));
-        exit(-1);
-    }
-    output_shape = indices_shape;
-    return;
+  case 1:
+    gather_dim1_0(output, input, indices_v.data(), indices_shape.data(),
+                  input_shape.data());
+    break;
+  case 2:
+    if (axis == 0)
+      gather_dim2_0(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 1)
+      gather_dim2_1(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    break;
+  case 3:
+    if (axis == 0)
+      gather_dim3_0(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 1)
+      gather_dim3_1(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 2)
+      gather_dim3_2(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    break;
+  case 4:
+    if (axis == 0)
+      gather_dim4_0(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 1)
+      gather_dim4_1(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 2)
+      gather_dim4_2(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    else if (axis == 3)
+      gather_dim4_3(output, input, indices_v.data(), indices_shape.data(),
+                    input_shape.data());
+    break;
+  default:
+    printf("error: %s: %d: invalid input dimension: %d. \n", __FILE__, __LINE__,
+           static_cast<int>(input_shape.size()));
+    exit(-1);
+  }
+  output_shape = indices_shape;
+  return;
 }
-
 
 ScatterNDFunc::ScatterNDFunc(ScatterNDParam &param) : param_(param) {}
 
@@ -3184,7 +3198,7 @@ void ScatterNDFunc::invoke() {
       if ((int)index_data[i] < 0) {
         real_index_data += input_shape[i];
       }
-      out_offset +=real_index_data * outer_stride[i];
+      out_offset += real_index_data * outer_stride[i];
     }
     auto out_ = out + out_offset;
     auto updates_data = updates + idx * outer_stride.back();
@@ -3295,7 +3309,8 @@ void GridSamplerFunc::invoke() {
             float dy = fy - y;
             float tx = 1.f - dx;
             float ty = 1.f - dy;
-            float txty = tx * ty, dxty = dx * ty, txdy = tx * dy, dxdy = dx * dy;
+            float txty = tx * ty, dxty = dx * ty, txdy = tx * dy,
+                  dxdy = dx * dy;
             bool yBound_0 = y >= 0 && y < IH;
             bool yBound_1 = y + 1 >= 0 && y + 1 < IH;
             bool xBound_0 = x >= 0 && x < IW;
@@ -3373,8 +3388,10 @@ void GridSamplerFunc::invoke() {
               float tx = 1.f - dx;
               float ty = 1.f - dy;
               float tz = 1.f - dz;
-              float txtytz = tx * ty * tz, txtydz = tx * ty * dz, dxtytz = dx * ty * tz, dxtydz = dx * ty * dz;
-              float txdytz = tx * dy * tz, txdydz = tx * dy * dz, dxdytz = dx * dy * tz, dxdydz = dx * dy * dz;
+              float txtytz = tx * ty * tz, txtydz = tx * ty * dz,
+                    dxtytz = dx * ty * tz, dxtydz = dx * ty * dz;
+              float txdytz = tx * dy * tz, txdydz = tx * dy * dz,
+                    dxdytz = dx * dy * tz, dxdydz = dx * dy * dz;
               bool zBound_0 = z >= 0 && z < ID;
               bool zBound_1 = z + 1 >= 0 && z + 1 < ID;
               bool yBound_0 = y >= 0 && y < IH;
@@ -3424,7 +3441,10 @@ void GridSamplerFunc::invoke() {
               const float *iiter = input + z * IH * IW + y * IW + x;
               float *oiter = output;
               for (int c = 0; c < C; ++c) {
-                *oiter = z >= 0 && z < ID && y >= 0 && y < IH && x >= 0 && x < IW ? *iiter : 0.f;
+                *oiter =
+                    z >= 0 && z < ID && y >= 0 && y < IH && x >= 0 && x < IW
+                        ? *iiter
+                        : 0.f;
                 iiter += ID * IH * IW;
                 oiter += OD * OH * OW;
               }
@@ -3462,9 +3482,13 @@ void DeformGatherFunc::invoke() {
   attr.dh = param_.dilation_h;
   attr.dw = param_.dilation_w;
   const int conved_H =
-      ((attr.ih - (attr.dh * (attr.kh - 1) + 1) + attr.pht + attr.phb) / attr.sh + 1);
+      ((attr.ih - (attr.dh * (attr.kh - 1) + 1) + attr.pht + attr.phb) /
+           attr.sh +
+       1);
   const int conved_W =
-      ((attr.iw - (attr.dw * (attr.kw - 1) + 1) + attr.pwl + attr.pwr) / attr.sw + 1);
+      ((attr.iw - (attr.dw * (attr.kw - 1) + 1) + attr.pwl + attr.pwr) /
+           attr.sw +
+       1);
   attr.oc = attr.ic * attr.kh * attr.kw;
   attr.oh = conved_H;
   attr.ow = conved_W;
@@ -3500,9 +3524,9 @@ void CumSumFunc::invoke() {
       for (int64_t s = 0; s < stride; s++) {
         if (l == 0) {
           param_.output.ptr[start + s] = param_.inputs[0].ptr[start + s];
-        }
-        else {
-          param_.output.ptr[start + s] = param_.inputs[0].ptr[start + s] + param_.output.ptr[start + s - stride];
+        } else {
+          param_.output.ptr[start + s] = param_.inputs[0].ptr[start + s] +
+                                         param_.output.ptr[start + s - stride];
         }
       }
     }

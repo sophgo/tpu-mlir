@@ -542,7 +542,7 @@ Value insert_host2device(Value v, Type to, Operation *user) {
   OpBuilder builder(ctx);
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
-  if(user && !isa<ReturnOp>(user)) {
+  if (user && !isa<ReturnOp>(user)) {
     name += "_" + module::getName(user).str();
   }
   name += "_host2device";
@@ -588,29 +588,34 @@ void try_insert_device2host(Operation *op, uint32_t idx) {
 }
 
 bool isa_shape_subnet_op(Operation *op) {
-  // Caution: for now, Ops with attribute-Tensors CANNOT be passed into this function !!!
+  // Caution: for now, Ops with attribute-Tensors CANNOT be passed into this
+  // function !!!
   const auto opds = op->getOperands();
   assert(opds.size() > 0);
   int opds_num = 0;
   for (auto opd : opds) {
-    if (!module::isNone(opd)) opds_num ++;
+    if (!module::isNone(opd))
+      opds_num++;
   }
 
-  bool with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd){
+  bool with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd) {
     auto prev_op = opd.getDefiningOp();
     return prev_op->hasTrait<trait::ShapeProducer>() ||
-          (isa<top::InputOp>(prev_op) && dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
+           (isa<top::InputOp>(prev_op) &&
+            dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
   });
-  if (!with_shape)  return false;
+  if (!with_shape)
+    return false;
   if (opds_num < 2 || isa<top::ConcatOp>(op))
     return with_shape;
 
   // for Arith Op with NUM(Operands)>1.  Such Ops may bave a non-scalar weight.
-  bool all_special_opds = std::all_of(opds.begin(), opds.end(), [](Value opd){
+  bool all_special_opds = std::all_of(opds.begin(), opds.end(), [](Value opd) {
     auto prev_op = opd.getDefiningOp();
     return prev_op->hasTrait<trait::ShapeProducer>() ||
            isa<top::WeightOp>(prev_op) ||
-           (isa<top::InputOp>(prev_op) && dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
+           (isa<top::InputOp>(prev_op) &&
+            dyn_cast<top::InputOp>(prev_op).getShapeTensor().has_value());
   });
   return all_special_opds;
 }

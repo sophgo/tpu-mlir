@@ -63,9 +63,7 @@ inline uint32_t MD5::G(uint32_t x, uint32_t y, uint32_t z) {
   return (x & z) | (y & (~z));
 }
 
-inline uint32_t MD5::H(uint32_t x, uint32_t y, uint32_t z) {
-  return x ^ y ^ z;
-}
+inline uint32_t MD5::H(uint32_t x, uint32_t y, uint32_t z) { return x ^ y ^ z; }
 
 inline uint32_t MD5::I(uint32_t x, uint32_t y, uint32_t z) {
   return y ^ (x | ~z);
@@ -119,11 +117,13 @@ MD5::MD5() {
 
 //////////////////////////////
 
-// decodes input (uint8_t) into output (uint32_t). Assumes len is a multiple of 4.
+// decodes input (uint8_t) into output (uint32_t). Assumes len is a multiple
+// of 4.
 void MD5::decode(uint32_t output[], const uint8_t input[], uint32_t len) {
   for (unsigned int i = 0, j = 0; j < len; i++, j += 4)
     output[i] = ((uint32_t)input[j]) | (((uint32_t)input[j + 1]) << 8) |
-                (((uint32_t)input[j + 2]) << 16) | (((uint32_t)input[j + 3]) << 24);
+                (((uint32_t)input[j + 2]) << 16) |
+                (((uint32_t)input[j + 3]) << 24);
 }
 
 //////////////////////////////
@@ -266,10 +266,10 @@ void MD5::update(const uint8_t input[], uint32_t length) {
 // MD5 finalization. Ends an MD5 message-digest operation, writing the
 // the message digest and zeroizing the context.
 MD5 &MD5::finalize() {
-  static uint8_t padding[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  static uint8_t padding[64] = {
+      0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   if (!finalized) {
     // Save number of bits

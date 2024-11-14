@@ -602,8 +602,8 @@ void TgLstmKernel::init(uint32_t layer_id, gaddr_t ga_input,
                         int seq_length, int num_dir, int batch_size,
                         int hidden_size, bool do_bias, bool with_initial_h,
                         bool with_initial_c, bool with_cont, bool bidirectional,
-                        bool with_final_h, bool with_final_c,
-                        bool with_final_y, bool is_torch) {
+                        bool with_final_h, bool with_final_c, bool with_final_y,
+                        bool is_torch) {
   this->layer_id = layer_id;
   this->ga_input = ga_input;
   this->ga_recurrence = ga_recurrence;

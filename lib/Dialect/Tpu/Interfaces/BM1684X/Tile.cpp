@@ -30,7 +30,8 @@ void tpu::TileOp::codegen_global_bm1684x() {
   }
   tile_global_spec_t spec = {0};
   for (int i = 0; i < out.dims; ++i) {
-    spec.common.tile_coeff[i] = out.shape[i] / in.shape[i];;
+    spec.common.tile_coeff[i] = out.shape[i] / in.shape[i];
+    ;
   }
   spec.buffer_addr = module::getAddress(getBuffer());
   spec.common.type = 0;
@@ -66,7 +67,8 @@ void tpu::TileOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   // spec.common.type = 0;
 
   // BM168x::call_local_func("backend_api_tile_local", &spec, sizeof(spec),
-  //                         &sec_info, input_spec->data(), output_spec->data());
+  //                         &sec_info, input_spec->data(),
+  //                         output_spec->data());
   llvm_unreachable("Not supported now");
 }
 
@@ -103,11 +105,11 @@ int64_t tpu::TileOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto input_spec = BM168x::get_input_spec(op);
 
   auto input_num = (*input_spec).size();
-  if(input_num == 1 || (input_num == 2 && !module::isNone(getBuffer()))) {
+  if (input_num == 1 || (input_num == 2 && !module::isNone(getBuffer()))) {
     param.coeff_is_fixed = true;
     auto tile_vec = *module::getI64Array(getTile());
     auto tile_vec_size = tile_vec.size();
-    for(int i = 0; i < tile_vec_size; ++i){
+    for (int i = 0; i < tile_vec_size; ++i) {
       param.spec.common.tile_coeff[i] = tile_vec[i];
     }
     for (int i = tile_vec_size; i < MAX_SHAPE_DIMS; ++i) {

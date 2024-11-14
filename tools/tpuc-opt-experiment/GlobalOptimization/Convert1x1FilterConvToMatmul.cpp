@@ -163,4 +163,4 @@ struct Convert1X1FilterConv2DToMatmulPass
 std::unique_ptr<Pass> createConvert1X1FilterConv2DToMatmulPass() {
   return std::make_unique<Convert1X1FilterConv2DToMatmulPass>();
 }
-}
+} // namespace mlir

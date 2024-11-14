@@ -37,14 +37,18 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   auto none_op = module::getNoneOp(op);
   std::string out_name = module::getName(op.getOutput()).data();
   // attention for each head
-  auto weight_q = get_weight(op.getQueriesWeight(), head, index, -1,
-                             module::getStorageType(op.getQueriesWeight()), "weight");
-  auto weight_k = get_weight(op.getKeysWeight(), head, index, -1,
-                             module::getStorageType(op.getKeysWeight()), "weight");
-  auto weight_v = get_weight(op.getValuesWeight(), head, index, -1,
-                             module::getStorageType(op.getValuesWeight()), "weight");
-  auto weight_o = get_weight(op.getOutWeight(), head, index, -2,
-                             module::getStorageType(op.getOutWeight()), "weight");
+  auto weight_q =
+      get_weight(op.getQueriesWeight(), head, index, -1,
+                 module::getStorageType(op.getQueriesWeight()), "weight");
+  auto weight_k =
+      get_weight(op.getKeysWeight(), head, index, -1,
+                 module::getStorageType(op.getKeysWeight()), "weight");
+  auto weight_v =
+      get_weight(op.getValuesWeight(), head, index, -1,
+                 module::getStorageType(op.getValuesWeight()), "weight");
+  auto weight_o =
+      get_weight(op.getOutWeight(), head, index, -2,
+                 module::getStorageType(op.getOutWeight()), "weight");
   auto bias_q = get_weight(op.getQueriesBias(), head, index, -1,
                            module::getStorageType(op.getQueriesBias()), "bias");
   auto bias_k = get_weight(op.getKeysBias(), head, index, -1,
@@ -356,7 +360,7 @@ void AttentionLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void AttentionLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::AttentionOp op) const {
+                                   top::AttentionOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 

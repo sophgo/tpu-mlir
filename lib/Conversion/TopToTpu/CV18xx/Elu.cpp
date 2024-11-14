@@ -14,24 +14,25 @@ namespace cv18xx {
 static inline double elu(double x, double alpha) {
   return x > 0 ? x : alpha * (std::exp(x) - 1);
 }
-void EluLowering::LoweringINT8(PatternRewriter &rewriter,
-                                    top::EluOp op, bool asymmetric) const {
+void EluLowering::LoweringINT8(PatternRewriter &rewriter, top::EluOp op,
+                               bool asymmetric) const {
   const double alpha_ = op.getAlpha().convertToDouble();
-  Value table = create_lookup_table(
-      op.getInput(), op.getOutput(), asymmetric,
-      [alpha_](double val) { return elu(val, alpha_); });
+  Value table =
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
+                          [alpha_](double val) { return elu(val, alpha_); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }
 
-void EluLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::EluOp op) const {
+void EluLowering::LoweringBF16(PatternRewriter &rewriter, top::EluOp op) const {
   Value table_weight, slope_weight;
   float range_start = -12, range_end = 12;
   const double alpha_ = op.getAlpha().convertToDouble();
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
-                  range_end, [alpha_](double val) { return elu(val, alpha_); }, table_weight, slope_weight);
+  createBf16LutOp(
+      op, "slope", TableMode::Slope, 0.0, 0.0, range_start, range_end,
+      [alpha_](double val) { return elu(val, alpha_); }, table_weight,
+      slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -45,9 +46,9 @@ void EluLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
-
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

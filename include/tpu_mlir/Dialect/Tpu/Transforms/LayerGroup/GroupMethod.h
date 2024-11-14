@@ -13,13 +13,13 @@
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include <list>
-#include <map>
-#include <set>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
+#include <list>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <map>
+#include <set>
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
@@ -43,7 +43,8 @@ public:
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const llvm::SetVector<Operation *> &subnet_ops);
   void dynamic_programming_layer_group_with_cluster(
-      std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops);
+      std::vector<LgInfo> &lg_infos,
+      const llvm::SetVector<Operation *> &subnet_ops);
 
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
@@ -64,7 +65,6 @@ public:
   bool group_valid_pre_check(const LgInfo &lg_info);
 
   bool dynamic_group_valid_check(const LgInfo &lg_info);
-
 
   int64_t cost_add(int64_t cost0, int64_t cost1);
 
@@ -88,20 +88,28 @@ public:
   void show_cut_results();
 
   void dump_lg_results(std::vector<LgInfo> &lg_infos);
-  void load_lg_results(std::vector<LgInfo> &lg_infos, const llvm::SetVector<Operation *> &subnet_ops);
+  void load_lg_results(std::vector<LgInfo> &lg_infos,
+                       const llvm::SetVector<Operation *> &subnet_ops);
   bool is_lg_results_exists();
 
   void ilp_layer_group(LgPassIR *pass_ir);
-  void get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                       const llvm::SetVector<Operation *> &subnet_ops, const std::vector<Value>& subnet_return_opds);
-  void get_base_dfs_topo_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
-  void cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR *pass_ir,
-                                std::vector<std::shared_ptr<ilp_LgInfo>>& base_groups);
-  void try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
-  void init_ilp_base_groups(LgPassIR* pass_ir);
+  void
+  get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+                         const llvm::SetVector<Operation *> &subnet_ops,
+                         const std::vector<Value> &subnet_return_opds);
+  void get_base_dfs_topo_groups(
+      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+  void cut_this_group_is_better(
+      ilp_LgInfo &original_group, LgPassIR *pass_ir,
+      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+  void
+  try_cut_some_group(LgPassIR *pass_ir,
+                     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+  void init_ilp_base_groups(LgPassIR *pass_ir);
   void get_layer_group(LgInfo &lg_info,
-                            const std::vector<Operation *> &base_group,
-                            int64_t left, int64_t right);
+                       const std::vector<Operation *> &base_group, int64_t left,
+                       int64_t right);
+
 protected:
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;

@@ -32,8 +32,7 @@ void SortLowering::LoweringF32(PatternRewriter &rewriter,
   loweringSort(rewriter, op);
 }
 
-void SortLowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::SortOp op,
+void SortLowering::LoweringINT8(PatternRewriter &rewriter, top::SortOp op,
                                 bool asymmetric) const {
   loweringSort(rewriter, op);
 }
@@ -51,8 +50,7 @@ void SortLowering::LoweringF16(PatternRewriter &rewriter,
   loweringSort(rewriter, op);
 }
 
-void SortLowering::LoweringF8(PatternRewriter &rewriter,
-                              top::SortOp op) const {
+void SortLowering::LoweringF8(PatternRewriter &rewriter, top::SortOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

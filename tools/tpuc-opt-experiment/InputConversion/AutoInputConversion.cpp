@@ -1,8 +1,8 @@
-#include "include/Utils.h"
 #include "Passes.h"
+#include "include/Utils.h"
 namespace mlir {
 
-//Todo: conversion stablehlo(from tensorflow), tosa(from tflite) etc to linalg
+// Todo: conversion stablehlo(from tensorflow), tosa(from tflite) etc to linalg
 struct AutoInputConversionPipelinePass final
     : AutoInputConversionPipelineBase<AutoInputConversionPipelinePass> {
   void runOnOperation() override;
@@ -98,7 +98,7 @@ void AutoInputConversionPipelinePass::runOnOperation() {
   OpPassManager pm(ModuleOp::getOperationName(),
                    OpPassManager::Nesting::Explicit);
 #ifdef HAVE_STABLEHLO_INPUT
-  //Todo:
+  // Todo:
   if (features.hasStableHLO) {
     stablehlo::StableHloOptions options;
     options.demoteI64ToI32 = demoteI64ToI32;
@@ -151,7 +151,7 @@ void AutoInputConversionPipelinePass::getDependentDialects(
         OpPassManager pm;
         buildFn(pm);
         pm.getDependentDialects(registry);
-  };
+      };
   appendPipelineDialects(buildTOSAInputConversionPassPipeline);
 #endif
 }
@@ -161,4 +161,3 @@ createAutoInputConversionPipelinePass() {
   return std::make_unique<AutoInputConversionPipelinePass>();
 }
 } // namespace  mlir
-

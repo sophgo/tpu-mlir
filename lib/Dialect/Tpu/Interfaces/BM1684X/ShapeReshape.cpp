@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -22,7 +21,8 @@ void tpu::ShapeReshapeOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ShapeReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(shape_reshape_param_t);
+  if (!buffer)
+    return sizeof(shape_reshape_param_t);
   shape_reshape_param_t param = {0};
   auto shape = module::getI64Array(getShape());
   param.dims = shape->size();

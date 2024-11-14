@@ -19,7 +19,7 @@ void ExpLowering::LoweringF32(PatternRewriter &rewriter, top::ExpOp op) const {
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 void ExpLowering::LoweringINT4(PatternRewriter &rewriter, top::ExpOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,

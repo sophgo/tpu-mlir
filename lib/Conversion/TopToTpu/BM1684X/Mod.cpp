@@ -19,22 +19,26 @@ void ModLowering::LoweringF32(PatternRewriter &rewriter, top::ModOp op) const {
   rewriter.setInsertionPointAfter(op);
 
   std::vector<NamedAttribute> attrs;
-  //div
+  // div
   auto div_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_div"));
-  auto div_op = rewriter.create<tpu::DivOp>(div_loc, type, ValueRange{op.getInputs()}, attrs);
+  auto div_op = rewriter.create<tpu::DivOp>(div_loc, type,
+                                            ValueRange{op.getInputs()}, attrs);
 
-  //floor
+  // floor
   auto floor_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_floor"));
-  attrs.push_back(rewriter.getNamedAttr("mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::FLOOR)));
-  auto floor_op = rewriter.create<tpu::ActiveOp>(floor_loc, type, ValueRange(div_op.getOutput()), attrs);
+  attrs.push_back(rewriter.getNamedAttr(
+      "mode",
+      tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::FLOOR)));
+  auto floor_op = rewriter.create<tpu::ActiveOp>(
+      floor_loc, type, ValueRange(div_op.getOutput()), attrs);
   attrs.clear();
 
-  //mul
+  // mul
   auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_mul"));
   std::vector<Value> mul_inputs = {op->getOperand(1), floor_op.getOutput()};
   auto mul_op = rewriter.create<tpu::MulOp>(mul_loc, type, mul_inputs, attrs);
 
-  //sub
+  // sub
   auto sub_loc = op.getLoc();
   std::vector<Value> sub_inputs = {op->getOperand(0), mul_op.getOutput()};
   auto sub_op = rewriter.create<tpu::SubOp>(sub_loc, type, sub_inputs, attrs);
@@ -43,7 +47,7 @@ void ModLowering::LoweringF32(PatternRewriter &rewriter, top::ModOp op) const {
   rewriter.eraseOp(op);
 }
 
-void ModLowering::LoweringF16(PatternRewriter& rewriter, top::ModOp op) const {
+void ModLowering::LoweringF16(PatternRewriter &rewriter, top::ModOp op) const {
   LoweringF32(rewriter, op);
 }
 
@@ -61,7 +65,8 @@ void ModLowering::LoweringINT4(PatternRewriter &rewriter, top::ModOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 
-void ModLowering::LoweringQuantized(PatternRewriter &rewriter, top::ModOp op) const {
+void ModLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                    top::ModOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
@@ -71,4 +76,3 @@ void ModLowering::LoweringF8(PatternRewriter &rewriter, top::ModOp op) const {
 
 } // namespace bm1684x
 } // namespace tpu_mlir
-

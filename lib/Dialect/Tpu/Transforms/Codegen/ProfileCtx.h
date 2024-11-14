@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
+#include "mlir/IR/AsmState.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/IR/AsmState.h"
 
 using namespace llvm;
 
@@ -22,7 +22,8 @@ public:
   ProfileCtx(){};
   ProfileCtx(AsmState::LocationMap *location, bool enable_profile);
   void log_str(const char *fmt, ...);
-  void log_tensor(Value value, bool is_in, int64_t n_step=0, int64_t h_step=0);
+  void log_tensor(Value value, bool is_in, int64_t n_step = 0,
+                  int64_t h_step = 0);
   void log_local_layer(Operation *op, int64_t n_step, int64_t h_step);
   void log_global_layer(Operation *op);
 

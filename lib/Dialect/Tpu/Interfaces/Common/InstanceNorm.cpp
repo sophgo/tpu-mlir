@@ -19,20 +19,20 @@ static void normlize_f32(const float *input_data, float *output_data,
   float rstd_data = 0;
   float rstd_data_odd = 0;
   float rstd_data_even = 0;
-  float scale = 1.0/inner_dim;
+  float scale = 1.0 / inner_dim;
   for (int j = 0; j < inner_dim; ++j) {
-    if(j % 2 == 0){
+    if (j % 2 == 0) {
       mean_data_even += input_data[j] * scale;
-    }else{
+    } else {
       mean_data_odd += input_data[j] * scale;
     }
   }
   mean_data = mean_data_odd + mean_data_even;
   for (int j = 0; j < inner_dim; ++j) {
     const float dij = input_data[j] - mean_data;
-    if(j % 2 == 0){
+    if (j % 2 == 0) {
       rstd_data_even += dij * dij * scale;
-    }else{
+    } else {
       rstd_data_odd += dij * dij * scale;
     }
   }
@@ -63,8 +63,7 @@ static void normlize_bf16(const float *input_data, float *output_data,
   }
   rstd = BF16(BF16(rstd) + BF16(eps_));
   if (module::isCV18xx()) {
-    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table,
-                      "mantissa");
+    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table, "mantissa");
   } else {
     rstd = std::sqrt(rstd);
     rstd = 1. / rstd;
@@ -109,14 +108,13 @@ LogicalResult tpu::InstanceNormOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
-    const float* input_i = input_data + i * inner_dim;
-    float* output_i = output_data + i * inner_dim;
+    const float *input_i = input_data + i * inner_dim;
+    float *output_i = output_data + i * inner_dim;
     if (is_bf16) {
-      normlize_bf16(input_i, output_i, weight_data, bias_data, table,
-                    mtable, inner_dim, eps_);
+      normlize_bf16(input_i, output_i, weight_data, bias_data, table, mtable,
+                    inner_dim, eps_);
     } else {
-      normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim,
-                   eps_);
+      normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim, eps_);
     }
   }
   const int num_iter = module::getNumElements(getInput()) / channel;
@@ -128,14 +126,16 @@ LogicalResult tpu::InstanceNormOp::inference(InferenceParameter &p) {
     for (int j = 0; j < channel; ++j) {
       if (have_weight) {
         if (is_bf16) {
-          output_i[j * inner_dim] = BF16(output_i[j * inner_dim] * weight_data[j]);
+          output_i[j * inner_dim] =
+              BF16(output_i[j * inner_dim] * weight_data[j]);
         } else {
           output_i[j * inner_dim] *= weight_data[j];
         }
       }
       if (have_bias) {
         if (is_bf16) {
-          output_i[j * inner_dim] = BF16(output_i[j * inner_dim] + bias_data[j]);
+          output_i[j * inner_dim] =
+              BF16(output_i[j * inner_dim] + bias_data[j]);
         } else {
           output_i[j * inner_dim] += bias_data[j];
         }
@@ -145,12 +145,10 @@ LogicalResult tpu::InstanceNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::InstanceNormOp::LocalGenSupport() {
-  return success();
-}
+LogicalResult tpu::InstanceNormOp::LocalGenSupport() { return success(); }
 
 LogicalResult tpu::InstanceNormOp::AllowDataSplit(int64_t axis,
-                                               group_type_t group_type) {
+                                                  group_type_t group_type) {
   return axis < 1 ? success() : failure();
 }
 

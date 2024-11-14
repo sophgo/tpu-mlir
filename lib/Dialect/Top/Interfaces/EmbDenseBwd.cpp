@@ -23,6 +23,4 @@ LogicalResult top::EmbDenseBwdOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::EmbDenseBwdOp::shape_inference() {
-
-}
+void top::EmbDenseBwdOp::shape_inference() {}

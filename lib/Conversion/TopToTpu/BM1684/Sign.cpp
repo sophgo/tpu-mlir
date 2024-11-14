@@ -20,11 +20,10 @@ void SignLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
-
 /**
  * Not support lowering to int8 directly for now since "Sign" tensor
  *     can't be considered as normal tensor
-*/
+ */
 void SignLowering::LoweringINT8(PatternRewriter &rewriter, top::SignOp op,
                                 bool asymmetric) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,

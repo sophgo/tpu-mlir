@@ -9,9 +9,7 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-LogicalResult tpu::GatherNDOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult tpu::GatherNDOp::init(InferenceParameter &p) { return success(); }
 void tpu::GatherNDOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::GatherNDOp::inference(InferenceParameter &p) {

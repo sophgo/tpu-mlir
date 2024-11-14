@@ -57,35 +57,38 @@ static void LoweringBatchNorm(PatternRewriter &rewriter, top::LayerNormBwdOp op,
 }
 
 void LayerNormBwdLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::LayerNormBwdOp op) const {
+                                       top::LayerNormBwdOp op) const {
   LoweringBatchNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void LayerNormBwdLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::LayerNormBwdOp op) const {
+                                        top::LayerNormBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void LayerNormBwdLowering::LoweringF16(PatternRewriter &rewriter,
-                                  top::LayerNormBwdOp op) const {
+                                       top::LayerNormBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void LayerNormBwdLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::LayerNormBwdOp op) const {
+                                      top::LayerNormBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void LayerNormBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormBwdOp op,
-                          bool asymmetric) const {
+void LayerNormBwdLowering::LoweringINT8(PatternRewriter &rewriter,
+                                        top::LayerNormBwdOp op,
+                                        bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void LayerNormBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::LayerNormBwdOp op,
-                          bool asymmetric) const {
+void LayerNormBwdLowering::LoweringINT4(PatternRewriter &rewriter,
+                                        top::LayerNormBwdOp op,
+                                        bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void LayerNormBwdLowering::LoweringQuantized(PatternRewriter &rewriter, top::LayerNormBwdOp op) const {
+void LayerNormBwdLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                             top::LayerNormBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -55,8 +54,8 @@ void tpu::DtypeCastOp::codegen_global_bm1684() {
 
 // int64_t tpu::DtypeCastOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 //                                           int64_t out_lmem_bytes,
-//                                           int64_t in_nslice, int64_t in_hslice,
-//                                           int64_t out_nslice,
+//                                           int64_t in_nslice, int64_t
+//                                           in_hslice, int64_t out_nslice,
 //                                           int64_t out_hslice) {
 //   int64_t local_buffer_size = 0;
 //   auto input_dtype = BM1684::getDataType(getInput());
@@ -70,7 +69,8 @@ void tpu::DtypeCastOp::codegen_global_bm1684() {
 //     int dsize = sizeof(float);
 //     local_buffer_size = ceiling_func(in_nslice, (int64_t)4) *
 //                         ceiling_func(c, BM1684::NPU_NUM) *
-//                         align_up(in_hslice * w, BM1684::eu_num(dsize)) * dsize;
+//                         align_up(in_hslice * w, BM1684::eu_num(dsize)) *
+//                         dsize;
 //   } else {
 //     llvm_unreachable("DtypeCastOp buffer type error");
 //   }
@@ -87,23 +87,24 @@ void tpu::DtypeCastOp::codegen_global_bm1684() {
 //   int64_t n, c, h, w;
 //   module::getNCHW(getInput(), n, c, h, w);
 //   uint32_t input_shape[4] = {(uint32_t)input_group_info.n_slice, (uint32_t)c,
-//                              (uint32_t)input_group_info.h_slice, (uint32_t)w};
+//                              (uint32_t)input_group_info.h_slice,
+//                              (uint32_t)w};
 //   if (output_dtype == DTYPE_FP32 &&
 //       (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8)) {
 //     // fix8b => fp32
 //     BM1684::instance().dl_tensor_int8_to_float_local_v2(
 //         input_group_info.out_addr, output_group_info.out_addr,
 //         output_group_info.buffer_addr, input_shape[0], input_shape[1],
-//         input_shape[2], input_shape[3], true, input_dtype == DTYPE_INT8 ? 1 : 0,
-//         STORAGE_MODE_4N_INT8, BM1684::instance()->bdc_node);
+//         input_shape[2], input_shape[3], true, input_dtype == DTYPE_INT8 ? 1 :
+//         0, STORAGE_MODE_4N_INT8, BM1684::instance()->bdc_node);
 //   } else if (input_dtype == DTYPE_FP32 &&
 //              (output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8)) {
 //     // fp32 => fix8b
 //     BM1684::instance().dl_nodechip_float2int8_local_keep_input(
 //         input_group_info.out_addr, output_group_info.out_addr,
 //         output_group_info.buffer_addr, input_shape[0], input_shape[1],
-//         input_shape[2], input_shape[3], output_dtype == DTYPE_INT8 ? 1 : 0, 0,
-//         ROUND_INF, BM1684::instance()->bdc_node);
+//         input_shape[2], input_shape[3], output_dtype == DTYPE_INT8 ? 1 : 0,
+//         0, ROUND_INF, BM1684::instance()->bdc_node);
 //   } else if (input_dtype == DTYPE_FP32 && output_dtype == DTYPE_INT32) {
 //     // fp32 => int32
 //     BM1684::instance().dl_nodechip_float_to_int32_local(
@@ -127,12 +128,15 @@ uint32_t tpu::DtypeCastOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   // cast_layer_info->data_size =
   //     get_dynamic_compiler_tensor_datasize(getOutput());
   // assign_fw_param(
-  //     (void *)&cast_layer_info->fw_layer_param_u.fw_dtype_convert_layer_param);
+  //     (void
+  //     *)&cast_layer_info->fw_layer_param_u.fw_dtype_convert_layer_param);
   // fw_ir_length += sizeof(fw_dtype_convert_layer_param_t);
   return fw_ir_length;
 }
 
-int64_t tpu::DtypeCastOp::get_fw_type_bm1684() { return FW_BMNET_DTYPE_CONVERT; }
+int64_t tpu::DtypeCastOp::get_fw_type_bm1684() {
+  return FW_BMNET_DTYPE_CONVERT;
+}
 
 // ======================================
 // Dynamic LocalGenInterface
@@ -145,11 +149,13 @@ int64_t tpu::DtypeCastOp::get_fw_type_bm1684() { return FW_BMNET_DTYPE_CONVERT; 
 //   cast_layer_info->data_size =
 //       get_dynamic_compiler_tensor_datasize(getOutput());
 //   assign_fw_param(
-//       (void *)&cast_layer_info->fw_layer_param_u.fw_dtype_convert_layer_param);
+//       (void
+//       *)&cast_layer_info->fw_layer_param_u.fw_dtype_convert_layer_param);
 //   fw_ir_length += sizeof(fw_dtype_convert_layer_param_t);
 
 //   // input tensor
-//   dynamic_push_back_local_tensor(cast_layer_info->ir_tensor_info_v, getInput());
+//   dynamic_push_back_local_tensor(cast_layer_info->ir_tensor_info_v,
+//   getInput());
 
 //   // output
 //   dynamic_push_back_local_tensor(cast_layer_info->ir_tensor_info_v,

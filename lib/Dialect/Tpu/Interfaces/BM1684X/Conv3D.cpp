@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
-
-
 
 void tpu::Conv3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();

@@ -12,36 +12,38 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void MaskRCNNRPNGetBboxesLowering::LoweringF32(PatternRewriter &rewriter,
-                                     top::MaskRCNNRPNGetBboxesOp op) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringF32(
+    PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op) const {
   lowering_common_f32<tpu::MaskRCNNRPNGetBboxesOp>(rewriter, op, 42);
 }
 
-void MaskRCNNRPNGetBboxesLowering::LoweringINT8(PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op,
-                                      bool asymmetric) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringINT8(PatternRewriter &rewriter,
+                                                top::MaskRCNNRPNGetBboxesOp op,
+                                                bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
-void MaskRCNNRPNGetBboxesLowering::LoweringINT4(PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op,
-                                   bool asymmetric) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringINT4(PatternRewriter &rewriter,
+                                                top::MaskRCNNRPNGetBboxesOp op,
+                                                bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
-void MaskRCNNRPNGetBboxesLowering::LoweringBF16(PatternRewriter &rewriter,
-                                      top::MaskRCNNRPNGetBboxesOp op) const {
-  llvm_unreachable("Not Implemented");
-}
-
-void MaskRCNNRPNGetBboxesLowering::LoweringF16(PatternRewriter &rewriter,
-                                     top::MaskRCNNRPNGetBboxesOp op) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringBF16(
+    PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
-void MaskRCNNRPNGetBboxesLowering::LoweringF8(PatternRewriter &rewriter,
-                                     top::MaskRCNNRPNGetBboxesOp op) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringF16(
+    PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
-void MaskRCNNRPNGetBboxesLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                           top::MaskRCNNRPNGetBboxesOp op) const {
+void MaskRCNNRPNGetBboxesLowering::LoweringF8(
+    PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
+void MaskRCNNRPNGetBboxesLowering::LoweringQuantized(
+    PatternRewriter &rewriter, top::MaskRCNNRPNGetBboxesOp op) const {
   llvm_unreachable("Not Implemented");
 }
 

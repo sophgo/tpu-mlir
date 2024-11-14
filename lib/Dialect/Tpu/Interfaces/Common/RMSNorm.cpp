@@ -103,7 +103,7 @@ LogicalResult tpu::RMSNormOp::LocalGenSupport() {
 }
 
 LogicalResult tpu::RMSNormOp::AllowDataSplit(int64_t axis,
-                                               group_type_t group_type) {
+                                             group_type_t group_type) {
   int64_t ax = module::getShape(getInput()).size() - 1;
   if (group_type == GROUP_SMALL_C) {
     ax = 2;

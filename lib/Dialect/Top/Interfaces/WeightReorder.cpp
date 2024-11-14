@@ -23,6 +23,4 @@ LogicalResult top::WeightReorderOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::WeightReorderOp::shape_inference() {
-
-}
+void top::WeightReorderOp::shape_inference() {}

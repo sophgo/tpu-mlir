@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
@@ -107,7 +107,8 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       float sum = p.outputs[0][i];
-      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode) + o_qtype.getZeroPoint();
+      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode) +
+            o_qtype.getZeroPoint();
       p.outputs[0][i] = saturate(sum, out_type);
     }
   }

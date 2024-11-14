@@ -10,7 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgReluKernel.hpp"
 #define DEBUG_TYPE "cvi_backend_relu_kernel"
 
-
 namespace tpu_mlir {
 namespace backend {
 void TgReluKernel::init(uint32_t layer_id, int32_t n, int32_t c, int32_t h,
@@ -44,11 +43,11 @@ void TgReluKernel::selectTilePolicy() {
   if (mode == PRELU) {
     auto slope_size = CV18xx::lmem_tensor_to_size(1, c, 1, 1, fmt, 1);
     CV18xx::tiling_packing(tiles, n, c, h, w, fmt, blob_num, slope_size,
-                       CV18xx::TilingNHW);
+                           CV18xx::TilingNHW);
 
   } else {
     CV18xx::tiling_packing(tiles, n, c, h, w, fmt, blob_num, 0,
-                       CV18xx::TilingAll);
+                           CV18xx::TilingAll);
   }
 }
 
@@ -96,12 +95,14 @@ cvk_tl_t TgReluKernel::get_output(int32_t step_idx, int32_t flip) {
 
 void TgReluKernel::change_workspace_size(int32_t step_idx) {
   auto &tile = tiles[step_idx];
-  for(size_t i = 0; i < 2; i++){
+  for (size_t i = 0; i < 2; i++) {
     tl_working[i]->shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
-    tl_working[i]->stride = CV18xx::tl_default_stride(tl_working[i]->shape, fmt, 1);
+    tl_working[i]->stride =
+        CV18xx::tl_default_stride(tl_working[i]->shape, fmt, 1);
   }
   tl_pos_neg_map->shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
-  tl_pos_neg_map->stride = CV18xx::tl_default_stride(tl_pos_neg_map->shape, fmt, 1);
+  tl_pos_neg_map->stride =
+      CV18xx::tl_default_stride(tl_pos_neg_map->shape, fmt, 1);
 }
 
 void TgReluKernel::load(int32_t step_idx, int32_t flip) {
@@ -153,7 +154,8 @@ void TgReluKernel::compute_relu(int32_t step_idx, int32_t flip) {
 
   output = ((Qx+offset)) * multiplier) >> rshift
 */
-void TgReluKernel::compute_leaky_relu_fixed_sym(int32_t step_idx, int32_t flip) {
+void TgReluKernel::compute_leaky_relu_fixed_sym(int32_t step_idx,
+                                                int32_t flip) {
   auto tl_ifmap = get_input(step_idx, flip);
   auto tl_ofmap = get_output(step_idx, flip);
 
@@ -342,7 +344,7 @@ void TgReluKernel::compute_prelu_fixed(int32_t step_idx, int32_t flip) {
   p4.rshift_bits = LE_rshift;
   p4.relu_enable = 0;
   p4.layer_id = layer_id;
-  p4.ins_val = 0;                            // symmetric quantization
+  p4.ins_val = 0;                                // symmetric quantization
   p4.ins_fp = CV18xx::convert_fp32_to_bf16(0.0); // symmetric quantization
   CV18xx::tiu_pt_depthwise_convolution(&p4);
 
@@ -388,7 +390,7 @@ void TgReluKernel::compute_prelu_bf16(int32_t step_idx, int32_t flip) {
   p2.rshift_bits = 0;
   p2.relu_enable = 0;
   p2.layer_id = layer_id;
-  p2.ins_val = 0;                            // symmetric quantization
+  p2.ins_val = 0;                                // symmetric quantization
   p2.ins_fp = CV18xx::convert_fp32_to_bf16(0.0); // symmetric quantization
   CV18xx::tiu_pt_depthwise_convolution(&p2);
 
@@ -472,9 +474,9 @@ void TgReluKernel::schedule() {
 }
 
 // i8/bf16 relu
-void cvi_backend_tg_relu_kernel( uint32_t layer_id,
-                                uint64_t ga_input, uint64_t ga_output, int n,
-                                int c, int h, int w, cvk_fmt_t fmt) {
+void cvi_backend_tg_relu_kernel(uint32_t layer_id, uint64_t ga_input,
+                                uint64_t ga_output, int n, int c, int h, int w,
+                                cvk_fmt_t fmt) {
   TgReluKernel kernel;
   kernel.init(layer_id, n, c, h, w, ga_input, ga_output, 0, 0, 0, 0, 0, 0, fmt,
               TgReluKernel::RELU);
@@ -483,8 +485,7 @@ void cvi_backend_tg_relu_kernel( uint32_t layer_id,
 }
 
 // i8 leakyrelu
-void cvi_backend_tg_fixed_leakyrelu_kernel(
-                                           uint32_t layer_id, uint64_t ga_input,
+void cvi_backend_tg_fixed_leakyrelu_kernel(uint32_t layer_id, uint64_t ga_input,
                                            uint64_t ga_output, int n, int c,
                                            int h, int w, int GT_rshift,
                                            int LE_rshift, int GT_scale,
@@ -498,8 +499,7 @@ void cvi_backend_tg_fixed_leakyrelu_kernel(
 }
 
 // bf16 leakyrelu
-void cvi_backend_tg_bf16_leakyrelu_kernel(
-                                          uint32_t layer_id, gaddr_t ga_input,
+void cvi_backend_tg_bf16_leakyrelu_kernel(uint32_t layer_id, gaddr_t ga_input,
                                           gaddr_t ga_output,
                                           float negative_slope, int n, int c,
                                           int h, int w) {
@@ -511,8 +511,7 @@ void cvi_backend_tg_bf16_leakyrelu_kernel(
 }
 
 // i8 prelu
-void cvi_backend_tg_fixed_prelu_kernel(
-                                       uint32_t layer_id, uint64_t ga_input,
+void cvi_backend_tg_fixed_prelu_kernel(uint32_t layer_id, uint64_t ga_input,
                                        uint64_t ga_output,
                                        uint64_t negative_scope_gaddr, int n,
                                        int c, int h, int w, int GT_rshift,
@@ -525,8 +524,7 @@ void cvi_backend_tg_fixed_prelu_kernel(
   kernel.schedule();
 }
 
-void cvi_backend_tg_bf16_prelu_kernel(
-                                      uint32_t layer_id, gaddr_t ga_input,
+void cvi_backend_tg_bf16_prelu_kernel(uint32_t layer_id, gaddr_t ga_input,
                                       gaddr_t ga_output, gaddr_t ga_slope,
                                       int n, int c, int h, int w) {
   TgReluKernel kernel;
@@ -535,5 +533,5 @@ void cvi_backend_tg_bf16_prelu_kernel(
   kernel.selectTilePolicy();
   kernel.schedule();
 }
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

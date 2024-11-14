@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Backend/Arch.h"
+#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
 using namespace tpu_mlir::backend;
 
@@ -266,8 +266,8 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
           rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(1)));
     } else if (attr.getName() == "round_mode") {
       auto round_mode = get_round_mode(op.getRoundModeAttr().str());
-      attrs.push_back(rewriter.getNamedAttr("round_mode",
-          tpu::RoundModeAttr::get(op.getContext(), round_mode)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "round_mode", tpu::RoundModeAttr::get(op.getContext(), round_mode)));
     } else
       attrs.push_back(attr);
   }

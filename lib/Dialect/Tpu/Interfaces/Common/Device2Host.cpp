@@ -7,10 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::Device2HostOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::Device2HostOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::Device2HostOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::Device2HostOp::inference(InferenceParameter &p) {
@@ -19,7 +20,8 @@ LogicalResult tpu::Device2HostOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::Device2HostOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::Device2HostOp::type_verify(uint64_t opd_idx,
+                                           TypeCastMode &mode) {
   auto op = getOperation();
   return type_verify_case_same(op, 0, mode);
 }

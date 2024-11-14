@@ -12,18 +12,13 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::IndexPutOp::codegen_global_bm1684() {
+void tpu::IndexPutOp::codegen_global_bm1684() {}
 
-}
-
-uint32_t tpu::IndexPutOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::IndexPutOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
-int64_t tpu::IndexPutOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::IndexPutOp::get_fw_type_bm1684() { return -1; }

@@ -74,15 +74,13 @@ void tpu::MaxConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 }
 
-uint32_t tpu::MaxConstOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::MaxConstOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   GLOBAL_IR_COMMON(const_binary);
 }
 
-int64_t tpu::MaxConstOp::get_fw_type_bm1684() {
-  return FW_BMNET_CONST_BINARY;
-}
+int64_t tpu::MaxConstOp::get_fw_type_bm1684() { return FW_BMNET_CONST_BINARY; }
 
-int32_t tpu::MaxConstOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::MaxConstOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   int fw_ir_length = 0;
   IR_PARAM_COMMON(const_binary);
   // input tensor

@@ -23,10 +23,10 @@ void LRNLowering::LoweringINT4(PatternRewriter &rewriter, top::LRNOp op,
 
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp LRNOp,
                                bool asymmetric) const {
-  if (module::isMARS3()){
+  if (module::isMARS3()) {
     // lowering_common_int8<tpu::LRNOp>(rewriter, LRNOp, asymmetric, 3);
     LoweringBF16(rewriter, LRNOp);
-  }else
+  } else
     LoweringF32(rewriter, LRNOp);
 }
 

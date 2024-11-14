@@ -7,11 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace top {
@@ -19,7 +18,8 @@ extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
-class ProcessorOptimizePass : public ProcessorOptimizeBase<ProcessorOptimizePass> {
+class ProcessorOptimizePass
+    : public ProcessorOptimizeBase<ProcessorOptimizePass> {
 public:
   ProcessorOptimizePass() {}
   void runOnOperation() override {

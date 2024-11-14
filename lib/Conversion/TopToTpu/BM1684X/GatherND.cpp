@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void GatherND_lowering_common(PatternRewriter &rewriter, top::GatherNDOp op) {
+static void GatherND_lowering_common(PatternRewriter &rewriter,
+                                     top::GatherNDOp op) {
 
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -40,9 +41,9 @@ static void GatherND_lowering_common(PatternRewriter &rewriter, top::GatherNDOp 
   auto batch_dims = op.getBatchDims();
   if (batch_dims == 0) {
     rewriter.replaceOpWithNewOp<tpu::GatherNDOp>(op, op.getOutput().getType(),
-                                                operands, op->getAttrs());
+                                                 operands, op->getAttrs());
   } else {
-    //TODO implement batch_dims backend
+    // TODO implement batch_dims backend
     std::vector<NamedAttribute> attrs;
     std::vector<NamedAttribute> cpu_param;
     attrs.emplace_back(rewriter.getNamedAttr(
@@ -54,7 +55,7 @@ static void GatherND_lowering_common(PatternRewriter &rewriter, top::GatherNDOp 
         rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
 
     rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
-                                                  operands, attrs);
+                                                   operands, attrs);
   }
 }
 
@@ -70,7 +71,7 @@ void GatherNDLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void GatherNDLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::GatherNDOp op, bool asymmetric) const {
-  if(module::isWeight(op.getInput())){
+  if (module::isWeight(op.getInput())) {
     LoweringF32(rewriter, op);
     return;
   }
@@ -88,7 +89,7 @@ void GatherNDLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void GatherNDLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::GatherNDOp op) const {
+                                  top::GatherNDOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

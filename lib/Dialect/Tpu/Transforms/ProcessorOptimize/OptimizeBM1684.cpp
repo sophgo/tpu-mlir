@@ -46,11 +46,13 @@ namespace bm1684 {
 class CastWithoutScalePattern : public OpRewriterPatternEx<tpu::CastOp> {
 public:
   CastWithoutScalePattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::CastOp>(context, "CastWithoutScalePattern", benifit) {}
+      : OpRewriterPatternEx<tpu::CastOp>(context, "CastWithoutScalePattern",
+                                         benifit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(tpu::CastOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(tpu::CastOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     if (!module::isBM1684Family()) {
       return failure();
     }
@@ -120,11 +122,13 @@ protected:
 class LargeDilationConvPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
   LargeDilationConvPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "LargeDilationConvPattern", benifit) {}
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "LargeDilationConvPattern",
+                                           benifit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(tpu::Conv2DOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     if (!module::isBM1684Family()) {
       return failure();
     }
@@ -257,11 +261,13 @@ protected:
 class Use3icPadConvPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
   Use3icPadConvPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "Use3icPadConvPattern",benifit) {}
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "Use3icPadConvPattern",
+                                           benifit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(tpu::Conv2DOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto prevOp = op->getOperand(0).getDefiningOp();
     auto prevInputOp = prevOp;
     if (!isa<top::InputOp>(prevOp)) {
@@ -346,8 +352,8 @@ void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns->add<CastWithoutScalePattern, LargeDilationConvPattern,
-                PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern, RemoveReshape>(
-      ctx, 8);
+                PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern,
+                RemoveReshape>(ctx, 8);
 };
 } // namespace tpu
 

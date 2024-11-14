@@ -585,7 +585,6 @@ struct GatherNDParam {
   int batch_dims;
 };
 
-
 class GatherndFunc {
 public:
   GatherndFunc(GatherNDParam &param);
@@ -611,7 +610,6 @@ public:
 private:
   GatherElementsParam param_;
 };
-
 
 struct GridSamplerParam {
   std::vector<tensor_list_t> inputs;

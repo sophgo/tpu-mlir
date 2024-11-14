@@ -96,7 +96,7 @@ void top::SliceAxisOp::shape_inference() {
   }
   auto dims = in_shape.size();
   std::vector<int64_t> out_shape(in_shape);
-  for (size_t i=0; i<axes.size(); ++i) {
+  for (size_t i = 0; i < axes.size(); ++i) {
     int axis = axes[i];
     if (axis < 0) {
       axis += dims;
@@ -107,8 +107,10 @@ void top::SliceAxisOp::shape_inference() {
     if (ends[i] < 0) {
       ends[i] += in_shape[axis];
     }
-    starts[i] = steps[i] > 0 ? std::clamp(starts[i], 0L, in_shape[axis]) : std::clamp(starts[i], 0L, in_shape[axis] - 1);
-    ends[i] = steps[i] > 0 ? std::clamp(ends[i], 0L, in_shape[axis]) : std::clamp(ends[i], -1L, in_shape[axis] - 1);
+    starts[i] = steps[i] > 0 ? std::clamp(starts[i], 0L, in_shape[axis])
+                             : std::clamp(starts[i], 0L, in_shape[axis] - 1);
+    ends[i] = steps[i] > 0 ? std::clamp(ends[i], 0L, in_shape[axis])
+                           : std::clamp(ends[i], -1L, in_shape[axis] - 1);
     out_shape[axis] = abs_ceiling_func(ends[i] - starts[i], steps[i]);
   }
   module::setShapeOrVerify(getOutput(), out_shape);

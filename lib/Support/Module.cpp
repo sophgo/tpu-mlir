@@ -6,10 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include <fstream>
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
+#include <fstream>
 
 static uint64_t core_addr[8] = {
     // according to TPU1686/sgdnn_tmp/src/sgdnn_api_common.cpp
@@ -51,7 +51,8 @@ struct Attr {
   static constexpr llvm::StringRef ADDR_MODE = "module.addr_mode";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
   static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
-  static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET = "module.dynamic_coeff_offset";
+  static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
+      "module.dynamic_coeff_offset";
 };
 
 static ModuleOp m = nullptr;
@@ -86,17 +87,11 @@ void init(ModuleOp module) {
 }
 
 // int32_t cur_log_level = 0;
-void init_loglevel(int32_t log_level) {
-    SetLogFlag(log_level);
-}
+void init_loglevel(int32_t log_level) { SetLogFlag(log_level); }
 
-void setWeightInMemFlag(bool enable) {
-  b_weight_in_mem = enable;
-}
+void setWeightInMemFlag(bool enable) { b_weight_in_mem = enable; }
 
-bool getWeightInMemFlag() {
-  return b_weight_in_mem;
-}
+bool getWeightInMemFlag() { return b_weight_in_mem; }
 
 top::NoneOp getNoneOp(Operation *op) {
   assert(op != nullptr);
@@ -1249,7 +1244,8 @@ void removeAttr(mlir::Operation *op, std::string attr_name) {
 bool isState(State state) { return state == getState(); }
 
 bool isSubnetDividedState() {
-  return isState(module::State::TPU_DIVIDED) || isState(module::State::TPU_ADDRESSED);
+  return isState(module::State::TPU_DIVIDED) ||
+         isState(module::State::TPU_ADDRESSED);
 }
 
 bool isTpuOp(Operation *op) {
@@ -1284,9 +1280,7 @@ bool isBM1684XFamily() {
 }
 bool isBM1690Family() { return (chip == Chip::BM1690); }
 bool isSG2380() { return (chip == Chip::SG2380); }
-bool isBM1688() {
-  return (chip == Chip::BM1688 || chip == Chip::CV186X);
-}
+bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isMARS3() { return (chip == Chip::MARS3); }
 
@@ -1437,10 +1431,11 @@ StringRef getName(Operation *op, int index) {
 }
 
 StringRef getName(Value v) {
-  if (isa<NoneType>(v.getType())){
+  if (isa<NoneType>(v.getType())) {
     return "none";
   }
-  return getLoc(v).getName().strref(); }
+  return getLoc(v).getName().strref();
+}
 
 void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
                       std::vector<Value> &outputs) {
@@ -1964,8 +1959,8 @@ void unreachable(const char *info, Operation *op, const char *file,
   if (op != nullptr) {
     auto inputs = op->getOperands();
     if (!inputs.empty()) {
-        for (auto input : inputs)
-          input.dump();
+      for (auto input : inputs)
+        input.dump();
     }
     std::cerr << "-> ";
     op->dump();
@@ -1977,16 +1972,18 @@ void unreachable(const char *info, Operation *op, const char *file,
   exit(-1);
 }
 
-bool startsWith(const std::string& fullString, const std::string& startingSubstring) {
-    if (fullString.length() >= startingSubstring.length()) {
-        return (0 == fullString.compare(0, startingSubstring.length(), startingSubstring));
-    } else {
-        return false;
-    }
+bool startsWith(const std::string &fullString,
+                const std::string &startingSubstring) {
+  if (fullString.length() >= startingSubstring.length()) {
+    return (0 == fullString.compare(0, startingSubstring.length(),
+                                    startingSubstring));
+  } else {
+    return false;
+  }
 }
 
-bool endsWith(const std::string& fullString, const std::string& suffix) {
-    return fullString.rfind(suffix) == fullString.length() - suffix.length();
+bool endsWith(const std::string &fullString, const std::string &suffix) {
+  return fullString.rfind(suffix) == fullString.length() - suffix.length();
 }
 } // namespace module
 } // namespace tpu_mlir

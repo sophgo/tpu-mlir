@@ -12,7 +12,6 @@
 #include "tpu_mlir/Support/Dnnl/common.h"
 #include "llvm/ADT/ArrayRef.h"
 
-
 using namespace dnnl;
 namespace tpu_mlir {
 

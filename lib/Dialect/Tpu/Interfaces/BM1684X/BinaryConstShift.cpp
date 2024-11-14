@@ -57,15 +57,14 @@ int64_t tpu::BinaryConstShiftOp::getBufferSize_bm1684x(
   }
   auto eu_num = BM168x::eu_num(buffer_dsize);
   int64_t buffer_size = ceiling_func(out_cslice, BM168x::NPU_NUM) *
-      align_up(out_hslice * out_dslice * out_wslice, eu_num) * buffer_dsize;
+                        align_up(out_hslice * out_dslice * out_wslice, eu_num) *
+                        buffer_dsize;
   return buffer_size;
 }
 
-void tpu::BinaryConstShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                                int64_t h_step, int64_t d_step,
-                                                int64_t w_step,
-                                                group_type_t group_type,
-                                                local_sec_info_t &sec_info) {
+void tpu::BinaryConstShiftOp::codegen_local_bm1684x(
+    int64_t n_step, int64_t c_step, int64_t h_step, int64_t d_step,
+    int64_t w_step, group_type_t group_type, local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
@@ -84,8 +83,9 @@ void tpu::BinaryConstShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_st
   param.a_is_coeff = false;
   param.b_is_coeff = false;
 
-  BM168x::call_local_func("backend_api_binary_shift_local", &param, sizeof(param),
-                          &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_binary_shift_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 // dynamic codegen

@@ -17,11 +17,9 @@ void tpu::CustomOp::codegen_global_bm1684() {
   llvm_unreachable("Not supported now");
 }
 
-int64_t tpu::CustomOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                            int64_t out_lmem_bytes,
-                                            int64_t in_nslice, int64_t in_hslice,
-                                            int64_t out_nslice,
-                                            int64_t out_hslice) {
+int64_t tpu::CustomOp::getBufferSize_bm1684(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   llvm_unreachable("Not supported now");
   return 0;
 }
@@ -40,6 +38,5 @@ int32_t tpu::CustomOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
-
 
 int64_t tpu::CustomOp::get_fw_type_bm1684() { return -1; }

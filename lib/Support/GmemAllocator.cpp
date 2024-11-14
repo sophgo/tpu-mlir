@@ -9,10 +9,7 @@
 
 #include "tpu_mlir/Support/GmemAllocator.h"
 
-
-
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace tpu {
@@ -65,7 +62,8 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
                                    std::map<ValueInfo, TensorLive> &liveRange,
                                    bool neuronMemoryReuse, int64_t baseGaddr) {
   if (ops.empty()) {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "Warning input ops is empty!\n";});
+    LAYER_GROUP_LOG_DEBUG_BLOCK(
+        { llvm::outs() << "Warning input ops is empty!\n"; });
     return 0;
   }
   // for special op, remove ops which not in liveRange, addr is assigned later
@@ -108,16 +106,19 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
       idx = i;
     }
   }
-  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "GmemAllocator use " << alloc_methods[idx]->getName() << "\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "GmemAllocator use " << alloc_methods[idx]->getName()
+                 << "\n";
+  });
   gaddrMap_.swap(alloc_methods[idx]->gaddrMap_);
   return min_gmem_size;
 }
 
 int part(std::vector<ValueInfo> &ops, int low, int high,
-                              std::map<ValueInfo, TensorLive> &liveRange) {
+         std::map<ValueInfo, TensorLive> &liveRange) {
   int i = low, j = high;
   uint32_t pivot = liveRange[ops[low]].start;
-  while (i < j ) {
+  while (i < j) {
     while (i < j && liveRange[ops[j]].start > pivot) {
       j--;
     }
@@ -135,7 +136,7 @@ int part(std::vector<ValueInfo> &ops, int low, int high,
 }
 
 void quickSort(std::vector<ValueInfo> &ops, int low, int high,
-                                std::map<ValueInfo, TensorLive> &liveRange) {
+               std::map<ValueInfo, TensorLive> &liveRange) {
   int mid;
   if (low < high) {
     mid = part(ops, low, high, liveRange);
@@ -144,9 +145,9 @@ void quickSort(std::vector<ValueInfo> &ops, int low, int high,
   }
 }
 
-void GmemAllocator::sortOpByLiveStart(std::vector<ValueInfo> &ops,
-                                std::map<ValueInfo, TensorLive> &liveRange) {
-  //use quicksort algorithm
+void GmemAllocator::sortOpByLiveStart(
+    std::vector<ValueInfo> &ops, std::map<ValueInfo, TensorLive> &liveRange) {
+  // use quicksort algorithm
   quickSort(ops, 0, ops.size() - 1, liveRange);
 }
 } // namespace tpu

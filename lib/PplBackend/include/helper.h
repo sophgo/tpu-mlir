@@ -45,8 +45,8 @@ static inline T abs_ceiling_func(T numerator, T denominator) {
 }
 
 template <typename U, typename V>
-static inline auto
-ceiling_func(U numerator, V denominator) -> decltype(numerator + denominator) {
+static inline auto ceiling_func(U numerator, V denominator)
+    -> decltype(numerator + denominator) {
   return (numerator + denominator - 1) / denominator;
 }
 

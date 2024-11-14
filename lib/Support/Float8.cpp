@@ -2,13 +2,14 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 namespace tpu_mlir {
 
-static long long Right_Shift_Round(long long src, int shift_num, RoundingMode round_mode)
-{
-  if (shift_num == 0) return src;
-  if (shift_num > 63) shift_num = 63;
+static long long Right_Shift_Round(long long src, int shift_num,
+                                   RoundingMode round_mode) {
+  if (shift_num == 0)
+    return src;
+  if (shift_num > 63)
+    shift_num = 63;
   long long val, res;
   val = src >> shift_num;
   res = val;
@@ -28,20 +29,24 @@ static long long Right_Shift_Round(long long src, int shift_num, RoundingMode ro
       res = val + 1;
     }
   } else if (round_mode == ROUNDING_TOWARDS_ZERO) {
-    if (src < 0) res = val + (mant != 0);
+    if (src < 0)
+      res = val + (mant != 0);
   } else if (round_mode == ROUNDING_DOWN) {
     res = val;
   } else if (round_mode == ROUNDING_UP) {
     res = val + (mant != 0);
   } else if (round_mode == ROUNDING_HALF_UP) {
-    if (mant >= mant_0d5) res = val + 1;
+    if (mant >= mant_0d5)
+      res = val + 1;
   } else if (round_mode == ROUNDING_HALF_DOWN) {
-    if (mant > mant_0d5) res = val + 1;
+    if (mant > mant_0d5)
+      res = val + 1;
   }
   return res;
 }
 
-static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, RoundingMode rd_mode) {
+static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate,
+                           RoundingMode rd_mode) {
   uint8_t res = 0;
 
   uint32_t FP8_EXP_BIAS = 0;
@@ -67,7 +72,7 @@ static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, Round
   }
 
   if (single.format.exp > (127 - FP8_EXP_BIAS) && single.format.exp < 0xff) {
-   const uint32_t mantissa = single.format.frac;
+    const uint32_t mantissa = single.format.frac;
     const int32_t shift_num = 24 - FP8_SIGNIFICAND_BITS;
     uint32_t tmp = Right_Shift_Round(single.bits, shift_num, rd_mode);
     if (rd_mode == ROUNDING_DOWN && single.format.sign == 1) {
@@ -128,7 +133,7 @@ uint8_t f32_to_f8e4m3(float src, bool satu) {
 
 uint8_t f32_to_f8e5m2(float src, bool satu) {
   fp32 tmp = {.fval = src};
-  //return fp32_to_fp8(tmp, true, satu, ROUNDING_HALF_TO_EVEN);
+  // return fp32_to_fp8(tmp, true, satu, ROUNDING_HALF_TO_EVEN);
   return fp32_to_fp8(tmp, true, false, ROUNDING_HALF_TO_EVEN);
 }
 
@@ -243,42 +248,34 @@ uint16_t f8e5m2_to_f16(uint8_t src) {
   return tmp.bits;
 }
 
-float get_f8e4m3_max() {
-  return float(448.0);
-}
+float get_f8e4m3_max() { return float(448.0); }
 
-float get_f8e4m3_min() {
-  return float(1.9531250E-03);
-}
+float get_f8e4m3_min() { return float(1.9531250E-03); }
 
-float get_f8e5m2_max() {
-  return float(57344.0);
-}
+float get_f8e5m2_max() { return float(57344.0); }
 
-float get_f8e5m2_min() {
-  return float(1.5258789E-05);
-}
+float get_f8e5m2_min() { return float(1.5258789E-05); }
 
 float F8E4M3(float src, float step, bool satu) {
-  return f8e4m3_to_f32(f32_to_f8e4m3(src/step, satu));
+  return f8e4m3_to_f32(f32_to_f8e4m3(src / step, satu));
 }
 
 float F8E5M2(float src, float step, bool satu) {
-  return f8e5m2_to_f32(f32_to_f8e5m2(src/step, satu));
+  return f8e5m2_to_f32(f32_to_f8e5m2(src / step, satu));
 }
 
 void F8E4M3(const float *p_src, float *p_dst, int num, float step, bool satu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
-  for (int i=0;i<num;i++) {
+  for (int i = 0; i < num; i++) {
     p_dst[i] = F8E4M3(p_src[i], step, satu);
   }
 }
 
 void F8E5M2(const float *p_src, float *p_dst, int num, float step, bool satu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
-  for (int i=0;i<num;i++) {
+  for (int i = 0; i < num; i++) {
     p_dst[i] = F8E5M2(p_src[i], step, satu);
   }
 }
 
-}
+} // namespace tpu_mlir

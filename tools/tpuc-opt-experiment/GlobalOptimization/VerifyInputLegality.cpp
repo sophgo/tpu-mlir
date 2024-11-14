@@ -1,22 +1,21 @@
 #include "Passes.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/FormatVariadic.h"
-namespace  mlir
-{
-// make sure the tosa/stablehlo dialect have lowered to linalg-on-tensor before subgraph split pipeline
+namespace mlir {
+// make sure the tosa/stablehlo dialect have lowered to linalg-on-tensor before
+// subgraph split pipeline
 class VerifyInputLegalityPass
     : public PassWrapper<VerifyInputLegalityPass, OperationPass<ModuleOp>> {
 public:
-  StringRef getArgument() const override {
-    return "verify-input-legality";
-  }
+  StringRef getArgument() const override { return "verify-input-legality"; }
 
   StringRef getDescription() const override {
-    return "Checks the legality of the IR at the start of subgraph split transformation pipeline";
+    return "Checks the legality of the IR at the start of subgraph split "
+           "transformation pipeline";
   }
 
   static void emitLegalizationErrors(Location loc,
-                                   const DenseSet<Operation *> &illegalOps) {
+                                     const DenseSet<Operation *> &illegalOps) {
     // Print op errors for each of the illegal ops that still remain.
     llvm::MapVector<StringRef, int> opNameCounts;
     for (Operation *illegalOp : illegalOps) {
@@ -32,14 +31,14 @@ public:
           llvm::formatv("\t{0} (count: {1})", opInfo.first, opInfo.second));
     }
     emitError(loc) << "The following illegal operations still remain: \n"
-                 << llvm::join(errorMessages, "\n") << "\n";
+                   << llvm::join(errorMessages, "\n") << "\n";
   }
 
   LogicalResult verifyAllOperationsAreLegal(Operation *op,
-                                          const ConversionTarget &target) {
-    // We don't just use applyPartialConversion with no patterns because this pass
-    // shouldn't alter the IR at all (including via folding or canonicalizations
-    // that dialect conversion does automatically).
+                                            const ConversionTarget &target) {
+    // We don't just use applyPartialConversion with no patterns because this
+    // pass shouldn't alter the IR at all (including via folding or
+    // canonicalizations that dialect conversion does automatically).
     DenseSet<Operation *> illegalOps;
     op->walk([&](Operation *op) {
       if (!target.isLegal(op)) {
@@ -63,15 +62,13 @@ public:
     target.addIllegalDialect("stablehlo");
     target.addIllegalOp<UnrealizedConversionCastOp>();
 
-    if (failed(verifyAllOperationsAreLegal(getOperation(),
-                                                          target))) {
+    if (failed(verifyAllOperationsAreLegal(getOperation(), target))) {
       return signalPassFailure();
     }
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>>
-createVerifyInputLegalityPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createVerifyInputLegalityPass() {
   return std::make_unique<VerifyInputLegalityPass>();
 }
 
@@ -79,4 +76,3 @@ static PassRegistration<VerifyInputLegalityPass> pass([] {
   return std::make_unique<VerifyInputLegalityPass>();
 });
 } // namespace  mlir
-

@@ -68,6 +68,6 @@ void top::DetectionOutputOp::shape_inference() {
   out_shape.push_back(1);
   out_shape.push_back(keep_topk);
   out_shape.push_back(7);
-    //(num, label, indices, xmin, ymin, xmax, ymax)
+  //(num, label, indices, xmin, ymin, xmax, ymax)
   module::setShapeOrVerify(getOutput(), out_shape);
 }

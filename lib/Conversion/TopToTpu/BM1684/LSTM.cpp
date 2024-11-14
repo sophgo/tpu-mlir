@@ -19,7 +19,7 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
     if (module::isWeight(opd)) {
-        operands.push_back(opd);
+      operands.push_back(opd);
     } else {
       operands.push_back(opd);
     }
@@ -41,18 +41,19 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
   }
   std::vector<Type> new_types;
   for (auto out : op.getResults()) {
-      new_types.push_back(out.getType());
+    new_types.push_back(out.getType());
   }
   rewriter.replaceOpWithNewOp<tpu::LSTMOp>(op, new_types, operands, attrs);
   return;
 }
 
 void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
-                               bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
 
-void LSTMLowering::LoweringF32(PatternRewriter &rewriter, top::LSTMOp op) const {
+void LSTMLowering::LoweringF32(PatternRewriter &rewriter,
+                               top::LSTMOp op) const {
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
 

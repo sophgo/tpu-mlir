@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgYuv420Kernel.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #define DEBUG_TYPE "cvi_backend_tgYuv420Kernel_kernel"
 // yuv_type 1--yuv420_planar  2--yuv_nv12  3--yuv_nv21
@@ -20,8 +20,9 @@
 //     y y y y y y y y
 //     u u u u
 //     v v v v
-// 183x y aligned by 64 bytes, w aligned by 32 bytes, channel aligned by 4K bytes
-// 182x y aligned by 128 bytes, w aligned by 64 bytes, channel aligned by 64 bytes
+// 183x y aligned by 64 bytes, w aligned by 32 bytes, channel aligned by 4K
+// bytes 182x y aligned by 128 bytes, w aligned by 64 bytes, channel aligned by
+// 64 bytes
 
 // YUV => RGB :
 //     R = 1.164(Y - 16) + 1.596(V - 128)
@@ -48,8 +49,9 @@
 //     y y y y y y y y
 //     y y y y y y y y
 //     u v u v u v u v
-// 183x y aligned by 32 bytes, w aligned by 32 bytes, channel aligned by 4K bytes
-// 182x y aligned by 64 bytes, w aligned by 64 bytes, channel aligned by 64 bytes
+// 183x y aligned by 32 bytes, w aligned by 32 bytes, channel aligned by 4K
+// bytes 182x y aligned by 64 bytes, w aligned by 64 bytes, channel aligned by
+// 64 bytes
 
 // YUV => RGB :
 //     R = 1.164(Y - 16) + 1.596(V - 128)
@@ -76,8 +78,9 @@
 //     y y y y y y y y
 //     y y y y y y y y
 //     v u v u v u v u
-// 183x y aligned by 32 bytes, w aligned by 32 bytes, channel aligned by 4K bytes
-// 182x y aligned by 64 bytes, w aligned by 64 bytes, channel aligned by 64 bytes
+// 183x y aligned by 32 bytes, w aligned by 32 bytes, channel aligned by 4K
+// bytes 182x y aligned by 64 bytes, w aligned by 64 bytes, channel aligned by
+// 64 bytes
 
 // YUV => RGB :
 //     R = 1.164(Y - 16) + 1.596(V - 128)
@@ -113,7 +116,7 @@ void TgYuv420Kernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->c = c;
   this->h = h;
   this->w = w;
-  this->yuv_type = pixel_type;  // 1--i420  2--nv12  3--nv21
+  this->yuv_type = pixel_type; // 1--i420  2--nv12  3--nv21
   if (order.empty()) {
     this->order.push_back(0);
     this->order.push_back(1);
@@ -164,7 +167,6 @@ void TgYuv420Kernel::init(uint32_t layer_id, gaddr_t ga_input,
   // tiling step
   step_c = CV18xx::NPU_NUM;
   step_h = 2;
-
 }
 
 void TgYuv420Kernel::allocLmem() {
@@ -206,7 +208,8 @@ void TgYuv420Kernel::deallocLmem() {
 
 void TgYuv420Kernel::selectTilePolicy() {
   uint32_t lmem_size =
-      (uint32_t)CV18xx::LMEM_BYTES - CV18xx::lmem_tensor_to_size(kernel_shape, CVK_FMT_BF16, 1);
+      (uint32_t)CV18xx::LMEM_BYTES -
+      CV18xx::lmem_tensor_to_size(kernel_shape, CVK_FMT_BF16, 1);
   uint32_t lmem_required = 0;
   int max_w = std::min(w, MAX_WIDTH);
   for (step_w = max_w; step_w > 0; step_w -= 2) {
@@ -226,7 +229,8 @@ void TgYuv420Kernel::selectTilePolicy() {
         uv_need = 2 * CV18xx::lmem_tensor_to_size(uv_shape, CVK_FMT_BF16, 1);
       }
       // 4u,4v, (y,r,g,b * 2)
-      uint32_t y_need = 10 * CV18xx::lmem_tensor_to_size(y_shape, CVK_FMT_BF16, 1);
+      uint32_t y_need =
+          10 * CV18xx::lmem_tensor_to_size(y_shape, CVK_FMT_BF16, 1);
       lmem_required = uv_need + y_need;
       if (lmem_required <= lmem_size) {
         goto after_loop;
@@ -287,7 +291,8 @@ void TgYuv420Kernel::refresh(int32_t step_idx) {
   tl_kernel = *tl_mem_kernel;
   if (tile.c != CV18xx::NPU_NUM) {
     tl_kernel.shape.c = tile.c;
-    tl_kernel.stride = CV18xx::tl_default_stride(tl_kernel.shape, tl_kernel.fmt, 1);
+    tl_kernel.stride =
+        CV18xx::tl_default_stride(tl_kernel.shape, tl_kernel.fmt, 1);
   }
 }
 
@@ -295,7 +300,8 @@ void TgYuv420Kernel::load_u8_to_bf16(cvk_tl_t *dst, uint64_t src_gaddr,
                                      cvk_tg_stride_t stride) {
   cvk_tg_t src;
   src.start_address = src_gaddr;
-  src.base_reg_index = CV18xx::getTdmaBaseSelectIndexFromGaddr(src.start_address);
+  src.base_reg_index =
+      CV18xx::getTdmaBaseSelectIndexFromGaddr(src.start_address);
   src.int8_rnd_mode = 0;
   src.fmt = fmt; // CVK_FMT_U8
   src.shape = {dst->shape.n, dst->shape.c, dst->shape.h, dst->shape.w};
@@ -313,7 +319,8 @@ void TgYuv420Kernel::store_bf16_to_u8(cvk_tl_t *src, uint64_t dst_gaddr,
 
   cvk_tg_t dst = {0};
   dst.start_address = dst_gaddr;
-  dst.base_reg_index = CV18xx::getTdmaBaseSelectIndexFromGaddr(dst.start_address);
+  dst.base_reg_index =
+      CV18xx::getTdmaBaseSelectIndexFromGaddr(dst.start_address);
   dst.int8_rnd_mode = 0;
   dst.fmt = fmt; // CVK_FMT_U8
   dst.shape = {src->shape.n, src->shape.c, src->shape.h, src->shape.w};
@@ -342,8 +349,8 @@ void TgYuv420Kernel::load(int32_t step_idx) {
   } else {
     uint64_t y_gaddr = ga_y + tile.pos_n * n_stride +
                        tile.pos_c * 2 * y_w_aligned + tile.pos_w;
-    uint64_t uv_gaddr = ga_u + tile.pos_n * n_stride +
-                       tile.pos_c * uv_w_aligned + tile.pos_w;
+    uint64_t uv_gaddr =
+        ga_u + tile.pos_n * n_stride + tile.pos_c * uv_w_aligned + tile.pos_w;
     load_u8_to_bf16(&tl_y, y_gaddr, y_gstride);
     load_u8_to_bf16(&tl_uv, uv_gaddr, uv_gstride);
   }
@@ -470,7 +477,7 @@ void TgYuv420Kernel::compute(int32_t step_idx) {
   p3.dilation_w = 1;
   p3.relu_enable = 0;
   p3.layer_id = layer_id;
-  p3.ins_val = 0;                            // symmetric quantization
+  p3.ins_val = 0;                                // symmetric quantization
   p3.ins_fp = CV18xx::convert_fp32_to_bf16(0.0); // symmetric quantization
   CV18xx::tiu_pt_depthwise_convolution(&p3);
 
@@ -493,7 +500,7 @@ void TgYuv420Kernel::compute(int32_t step_idx) {
   p4.dilation_w = 1;
   p4.relu_enable = 0;
   p4.layer_id = layer_id;
-  p4.ins_val = 0;                            // symmetric quantization
+  p4.ins_val = 0;                                // symmetric quantization
   p4.ins_fp = CV18xx::convert_fp32_to_bf16(0.0); // symmetric quantization
   CV18xx::tiu_pt_depthwise_convolution(&p4);
 
@@ -613,12 +620,12 @@ void TgYuv420Kernel::schedule() {
   deallocLmem();
 }
 
-void cvi_backend_tg_yuv420_csc_kernel(
-                                      uint32_t layer_id, gaddr_t ga_input,
+void cvi_backend_tg_yuv420_csc_kernel(uint32_t layer_id, gaddr_t ga_input,
                                       gaddr_t ga_output, int n, int c, int h,
                                       int w, const std::vector<int> &order,
-                                      cvk_fmt_t fmt, int32_t pixel_type, int32_t y_align,
-                                      int32_t w_align, int32_t channel_align) {
+                                      cvk_fmt_t fmt, int32_t pixel_type,
+                                      int32_t y_align, int32_t w_align,
+                                      int32_t channel_align) {
   TgYuv420Kernel kernel;
   // yuv channel align is 4KB, w_align is 32B
   kernel.init(layer_id, ga_input, ga_output, n, c, h, w, order, pixel_type,
@@ -626,5 +633,5 @@ void cvi_backend_tg_yuv420_csc_kernel(
   kernel.selectTilePolicy();
   kernel.schedule();
 }
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

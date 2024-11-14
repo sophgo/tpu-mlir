@@ -18,7 +18,7 @@ LgOptions LgPass::OPTIONS = {
     /*opt*/ 0,
     /*group_by_cores*/ false,
     /*nnvlc_mode*/ NnvlcMode::NONE,
-    };
+};
 
 void LgPassIR::clear() {
   lg_infos.clear();
@@ -39,9 +39,9 @@ void LgPassManager::add_pass(std::unique_ptr<LgPass> pass) {
     llvm::outs() << "==---------------------------==\n";                       \
   });                                                                          \
   if (!pass->run(pass_ir)) {                                                   \
-    LAYER_GROUP_LOG_DEBUG_BLOCK(llvm::outs()                                    \
-                                << pass->name().c_str() << " pass failed."     \
-                                << "\n";);                                     \
+    LAYER_GROUP_LOG_DEBUG_BLOCK(llvm::outs()                                   \
+                                    << pass->name().c_str() << " pass failed." \
+                                    << "\n";);                                 \
   }
 
 void LgPassManager::run(LgPassIR *pass_ir) {

@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 #include "../WeightReorder.h"
 
-
 namespace tpu_mlir {
 namespace tpu {
 

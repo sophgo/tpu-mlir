@@ -65,14 +65,14 @@ int64_t top::DeformConv2DOp::getFLOPs() {
 
 LogicalResult top::DeformConv2DOp::init(InferenceParameter &p) {
   auto num = module::getNumElements(getOutput());
-  float* buffer = new float[num];
+  float *buffer = new float[num];
   p.handle = (void *)buffer;
   return success();
 }
 
 void top::DeformConv2DOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
-    float* buffer = (float*) p.handle;
+    float *buffer = (float *)p.handle;
     delete[] buffer;
     p.handle = nullptr;
   }
@@ -93,8 +93,8 @@ void top::DeformConv2DOp::shape_inference() {
   auto offset_shape = module::getShape(getOffset());
   ASSERT_THIS(input_shape.size() == filter_shape.size());
   if (getUseMask()) {
-   auto mask_shape = module::getShape(getMask());
-   ASSERT_THIS(offset_shape.size() == mask_shape.size());
+    auto mask_shape = module::getShape(getMask());
+    ASSERT_THIS(offset_shape.size() == mask_shape.size());
   }
   ASSERT_THIS(input_shape.size() == offset_shape.size());
   ASSERT_THIS(input_shape.size() > 2);

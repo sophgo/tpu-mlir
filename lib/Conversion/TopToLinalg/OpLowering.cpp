@@ -48,7 +48,8 @@ void populateTopToLinalgConversionPatterns(RewritePatternSet *patterns) {
 //===------------------------------------------------------------===//
 // InputLowering
 //===------------------------------------------------------------===//
-void InputLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::InputOp op) const {
+void InputLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                     top::InputOp op) const {
   rewriter.replaceOp(op, op->getOperand(0));
 }
 
@@ -69,11 +70,11 @@ Value createInitTensor(OpBuilder &b, Location loc, ValueRange sizes,
   return b.create<linalg::FillOp>(loc, initElem, initTensor).getResult(0);
 }
 
-
 //===------------------------------------------------------------===//
 // VarianceLoweringToLinalg
 //===------------------------------------------------------------===//
-void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::VarianceOp op) const {
+void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                        top::VarianceOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
   auto input = op->getOperand(0);
@@ -81,7 +82,7 @@ void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Variance
 
   llvm::DenseSet<int64_t> dimSet = {};
   bool keepDim = op.getKeepDims();
-  for (auto dim: *module::getI64Array(op.getReduceList())) {
+  for (auto dim : *module::getI64Array(op.getReduceList())) {
     dim = toPositiveDim(dim, inputType.getRank());
     // Drop invalid dimensions
     if (isValidDim(dim, inputType.getRank()))
@@ -91,11 +92,13 @@ void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Variance
 
   auto reductionBodyBuilder = [&](OpBuilder &builder, Location loc,
                                   ValueRange payloadArgs) {
-    Value result = rewriter.create<arith::AddFOp>(loc, payloadArgs[0], payloadArgs[1]);
+    Value result =
+        rewriter.create<arith::AddFOp>(loc, payloadArgs[0], payloadArgs[1]);
     builder.create<linalg::YieldOp>(loc, result);
   };
 
-  Value initElem = rewriter.create<arith::ConstantOp>(loc, rewriter.getZeroAttr(outElemType));
+  Value initElem = rewriter.create<arith::ConstantOp>(
+      loc, rewriter.getZeroAttr(outElemType));
 
   auto c1 = rewriter.create<arith::ConstantIndexOp>(loc, /*value=*/1);
   SmallVector<Value> resultShape;
@@ -113,8 +116,7 @@ void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Variance
   SmallVector<AffineExpr> exprs;
   SmallVector<utils::IteratorType> iteratorTypes;
   SmallVector<AffineExpr> resultExprs;
-  for (auto size :
-      llvm::enumerate(inputType.getShape())) {
+  for (auto size : llvm::enumerate(inputType.getShape())) {
     exprs.push_back(rewriter.getAffineDimExpr(size.index()));
 
     if (dimSet.contains(size.index())) {
@@ -130,19 +132,19 @@ void VarianceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Variance
   }
 
   auto indexingMaps = AffineMap::inferFromExprList({exprs, resultExprs});
-  Value accumulator =
-      createInitTensor(rewriter, loc, resultShape, initElem.getType(), initElem);
+  Value accumulator = createInitTensor(rewriter, loc, resultShape,
+                                       initElem.getType(), initElem);
 
   Value reduceOp = rewriter
-      .create<linalg::GenericOp>(
-          loc, /*resultTensorTypes=*/accumulator.getType(),
-          /*inputs=*/input,
-          /*outputs=*/accumulator, indexingMaps, iteratorTypes, reductionBodyBuilder)
-      .getResult(0);
+                       .create<linalg::GenericOp>(
+                           loc, /*resultTensorTypes=*/accumulator.getType(),
+                           /*inputs=*/input,
+                           /*outputs=*/accumulator, indexingMaps, iteratorTypes,
+                           reductionBodyBuilder)
+                       .getResult(0);
 
   rewriter.replaceOp(op, reduceOp);
 }
-
 
 Value createZeroInitTensor(OpBuilder &b, Location loc, ValueRange sizes,
                            Type elemTy) {
@@ -157,10 +159,12 @@ Value createZeroInitTensor(OpBuilder &b, Location loc, ValueRange sizes,
 //===------------------------------------------------------------===//
 // ArgLoweringToLinalg
 //===------------------------------------------------------------===//
-void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) const {
+void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::ArgOp op) const {
   Location loc = op->getLoc();
   Value input = op->getOperand(0);
-  RankedTensorType idxResultType = op->getResult(1).getType().cast<RankedTensorType>();
+  RankedTensorType idxResultType =
+      op->getResult(1).getType().cast<RankedTensorType>();
   RankedTensorType inputType = input.getType().cast<RankedTensorType>();
   Type idxElementType = idxResultType.getElementType();
 
@@ -178,7 +182,8 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
   auto inputShape = inputType.getShape();
   for (int64_t i = 0; i < inputType.getRank(); i++) {
     if (dim != i) {
-      auto currentDimSize = rewriter.create<arith::ConstantIndexOp>(loc, inputShape[i]);
+      auto currentDimSize =
+          rewriter.create<arith::ConstantIndexOp>(loc, inputShape[i]);
       resultShape.push_back(currentDimSize);
     } else if (keepDim)
       resultShape.push_back(c1);
@@ -192,7 +197,7 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
       loc, getAsOpFoldResult(resultShape), inElementType);
 
   Value fillValueMax = rewriter.create<arith::ConstantOp>(
-        loc, rewriter.getFloatAttr(inElementType, 0.0));
+      loc, rewriter.getFloatAttr(inElementType, 0.0));
 
   Value filledTensorMax =
       rewriter.create<linalg::FillOp>(loc, fillValueMax, initTensorMax)
@@ -204,8 +209,7 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
   SmallVector<AffineExpr> exprs;
   SmallVector<utils::IteratorType> iteratorTypes;
   SmallVector<AffineExpr> resultExprs;
-  for (auto size :
-        llvm::enumerate(inputType.getShape())) {
+  for (auto size : llvm::enumerate(inputType.getShape())) {
     exprs.push_back(rewriter.getAffineDimExpr(size.index()));
 
     if (unsigned(dim) == size.index()) {
@@ -225,8 +229,7 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
       ArrayRef<Type>({filledTensorMax.getType(), filledTensorIdx.getType()}),
       input, ValueRange({filledTensorMax, filledTensorIdx}), maps,
       iteratorTypes,
-      [&](OpBuilder &nestedBuilder, Location nestedLoc,
-          ValueRange blockArgs) {
+      [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange blockArgs) {
         Value newValue = blockArgs[0];
         Value oldValue = blockArgs[1];
         Value oldIndex = blockArgs[2];
@@ -234,41 +237,46 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
         Value newIndex = rewriter.create<arith::IndexCastOp>(
             nestedLoc, rewriter.getI32Type(),
             rewriter.create<linalg::IndexOp>(loc, dim));
-        Value newIndex2 = rewriter.create<arith::SIToFPOp>(nestedLoc, rewriter.getF32Type(), newIndex);
+        Value newIndex2 = rewriter.create<arith::SIToFPOp>(
+            nestedLoc, rewriter.getF32Type(), newIndex);
 
-        Value resultMax = rewriter.create<arith::MaxFOp>(nestedLoc, newValue,
-                                                        oldValue);
+        Value resultMax =
+            rewriter.create<arith::MaxFOp>(nestedLoc, newValue, oldValue);
         Value predicate = rewriter.create<arith::CmpFOp>(
             nestedLoc, arith::CmpFPredicate::OGT, newValue, oldValue);
 
         auto resultIndex = rewriter.create<arith::SelectOp>(
             nestedLoc, predicate, newIndex2, oldIndex);
-        Value resultIndex2 = rewriter.create<arith::SIToFPOp>(nestedLoc, rewriter.getF32Type(), resultIndex);
+        Value resultIndex2 = rewriter.create<arith::SIToFPOp>(
+            nestedLoc, rewriter.getF32Type(), resultIndex);
         nestedBuilder.create<linalg::YieldOp>(
             nestedLoc, ValueRange({resultMax, resultIndex2}));
       });
 
   rewriter.replaceOp(op, linalgOp);
-
 }
-
 
 // //===------------------------------------------------------------===//
 // // BroadcastLoweringToLinalg
 // //===------------------------------------------------------------===//
-// void BroadcastLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::BroadcastOp op) const {
+// void BroadcastLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+// top::BroadcastOp op) const {
 //   Location loc = op->getLoc();
 //   auto outType = op->getResult(0).getType();
-//   auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-//   Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+//   auto transpShape =
+//   SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape()); Value
+//   empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape,
+//   outType.cast<RankedTensorType>().getElementType());
 
-//   auto t0 = SmallVector<int64_t>(op->getOperand(0).getType().cast<RankedTensorType>().getShape());
+//   auto t0 =
+//   SmallVector<int64_t>(op->getOperand(0).getType().cast<RankedTensorType>().getShape());
 //   for (auto i: t0) {
 //     llvm::errs() <<"BroadcastOp getShape:"<<i<<"\n";
 //   }
 
 //   auto new_ops =
-//       rewriter.create<linalg::BroadcastOp>(loc, op->getOperand(0), empty_bst, llvm::ArrayRef<int64_t>{static_cast<long>(op.getDim())}).getResult();
+//       rewriter.create<linalg::BroadcastOp>(loc, op->getOperand(0), empty_bst,
+//       llvm::ArrayRef<int64_t>{static_cast<long>(op.getDim())}).getResult();
 //   for (auto new_op: new_ops) {
 //       new_op.dump();
 //       rewriter.replaceOp(op, new_op);
@@ -279,69 +287,77 @@ void ArgLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ArgOp op) con
 //===------------------------------------------------------------===//
 // AddConstLoweringToLinalg
 //===------------------------------------------------------------===//
-void AddConstLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::AddConstOp op) const {
+void AddConstLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                        top::AddConstOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
 
   auto constI32 = std::make_shared<std::vector<float>>(1, 0);
-  constI32->data()[0] =
-      op.getConstVal().convertToDouble();
-  auto weight_type =
-      RankedTensorType::get({1}, rewriter.getF32Type());
+  constI32->data()[0] = op.getConstVal().convertToDouble();
+  auto weight_type = RankedTensorType::get({1}, rewriter.getF32Type());
   auto c0 = top::WeightOp::create(op, "f32", *constI32, weight_type);
 
   // Value c0 = rewriter.create<arith::ConstantOp>(
-  //     loc, FloatAttr::get(rewriter.getF32Type(), op.getConstVal().convertToDouble()));
+  //     loc, FloatAttr::get(rewriter.getF32Type(),
+  //     op.getConstVal().convertToDouble()));
 
-  Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  Value empty_bst = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
   auto seq = llvm::to_vector<4>(llvm::seq<int64_t>(1, transpShape.size()));
   auto new_ops =
       rewriter.create<linalg::BroadcastOp>(loc, c0, empty_bst, seq).getResult();
-  for (auto new_op: new_ops) {
-    rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{op->getOperand(0), new_op}, empty));
+  for (auto new_op : new_ops) {
+    rewriter.replaceOp(op,
+                       rewriter.create<linalg::AddOp>(
+                           loc, ValueRange{op->getOperand(0), new_op}, empty));
     break;
   }
 }
-
 
 //===------------------------------------------------------------===//
 // MulConstLoweringToLinalg
 //===------------------------------------------------------------===//
-void MulConstLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::MulConstOp op) const {
+void MulConstLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                        top::MulConstOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
 
   auto constI32 = std::make_shared<std::vector<float>>(1, 0);
-  constI32->data()[0] =
-      op.getConstVal().convertToDouble();
-  auto weight_type =
-      RankedTensorType::get({1}, rewriter.getF32Type());
+  constI32->data()[0] = op.getConstVal().convertToDouble();
+  auto weight_type = RankedTensorType::get({1}, rewriter.getF32Type());
   auto c0 = top::WeightOp::create(op, "f32", *constI32, weight_type);
 
   // Value c0 = rewriter.create<arith::ConstantOp>(
-  //     loc, FloatAttr::get(rewriter.getF32Type(), op.getConstVal().convertToDouble()));
+  //     loc, FloatAttr::get(rewriter.getF32Type(),
+  //     op.getConstVal().convertToDouble()));
 
-  Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  Value empty_bst = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
   auto seq = llvm::to_vector<4>(llvm::seq<int64_t>(1, transpShape.size()));
   auto new_ops =
       rewriter.create<linalg::BroadcastOp>(loc, c0, empty_bst, seq).getResult();
-  for (auto new_op: new_ops) {
-    rewriter.replaceOp(op, rewriter.create<linalg::MulOp>(loc, ValueRange{op->getOperand(0), new_op}, empty));
+  for (auto new_op : new_ops) {
+    rewriter.replaceOp(op,
+                       rewriter.create<linalg::MulOp>(
+                           loc, ValueRange{op->getOperand(0), new_op}, empty));
     break;
   }
 }
-
 
 bool sameShape(SmallVector<int64_t> shapes1, SmallVector<int64_t> shapes2) {
   if (shapes1.size() != shapes2.size()) {
     return false;
   }
 
-  for (int i = 0, sz = shapes1.size();i < sz; i++) {
+  for (int i = 0, sz = shapes1.size(); i < sz; i++) {
     if (shapes1[i] != shapes2[i]) {
       return false;
     }
@@ -353,21 +369,29 @@ bool sameShape(SmallVector<int64_t> shapes1, SmallVector<int64_t> shapes2) {
 //===------------------------------------------------------------===//
 // DivLoweringToLinalg
 //===------------------------------------------------------------===//
-void DivLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::DivOp op) const {
+void DivLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::DivOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto outShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, outShape, outType.cast<RankedTensorType>().getElementType());
+  auto outShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, outShape, outType.cast<RankedTensorType>().getElementType());
 
   SmallVector<Value, 2> ins;
-  for (int i = 0, sz = op->getOperands().size();i < sz; i++) {
+  for (int i = 0, sz = op->getOperands().size(); i < sz; i++) {
     auto in = op->getOperand(i);
-    llvm::errs() <<"wxc333333-"<<in.getType().cast<RankedTensorType>().getRank()<<"---"<<outType.cast<RankedTensorType>().getRank()<<"\n";
-    if (!sameShape(SmallVector<int64_t>(in.getType().cast<RankedTensorType>().getShape()), outShape)) {
+    llvm::errs() << "wxc333333-"
+                 << in.getType().cast<RankedTensorType>().getRank() << "---"
+                 << outType.cast<RankedTensorType>().getRank() << "\n";
+    if (!sameShape(SmallVector<int64_t>(
+                       in.getType().cast<RankedTensorType>().getShape()),
+                   outShape)) {
       SmallVector<Value> shapes;
       std::vector<int64_t> shapes2;
       for (int j = 0; j < outShape.size() - 1; j++) {
-        shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, outShape[j]));
+        shapes.push_back(
+            rewriter.create<arith::ConstantIndexOp>(loc, outShape[j]));
         shapes2.push_back(outShape[j]);
       }
       // shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, 1));
@@ -376,16 +400,22 @@ void DivLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::DivOp op) con
       auto toConcatIndexShape =
           rewriter.create<tensor::FromElementsOp>(loc, shapes);
 
-      auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2}, rewriter.getF32Type());
-      auto reshapeOp =
-          rewriter.create<tensor::ReshapeOp>(loc, reshapeOp_type, in, toConcatIndexShape);
+      auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2},
+                                                  rewriter.getF32Type());
+      auto reshapeOp = rewriter.create<tensor::ReshapeOp>(
+          loc, reshapeOp_type, in, toConcatIndexShape);
 
-      Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, outShape, outType.cast<RankedTensorType>().getElementType());
-      auto BroadcastOps =
-          rewriter.create<linalg::BroadcastOp>(loc, reshapeOp, empty_bst, llvm::ArrayRef<int64_t>{static_cast<long>(outShape.size() - 1)}).getResult();
-      for (auto BroadcastOp: BroadcastOps) {
-          ins.push_back(BroadcastOp);
-          break;
+      Value empty_bst = rewriter.create<tensor::EmptyOp>(
+          loc, outShape, outType.cast<RankedTensorType>().getElementType());
+      auto BroadcastOps = rewriter
+                              .create<linalg::BroadcastOp>(
+                                  loc, reshapeOp, empty_bst,
+                                  llvm::ArrayRef<int64_t>{
+                                      static_cast<long>(outShape.size() - 1)})
+                              .getResult();
+      for (auto BroadcastOp : BroadcastOps) {
+        ins.push_back(BroadcastOp);
+        break;
       }
     } else {
       ins.push_back(in);
@@ -398,56 +428,62 @@ void DivLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::DivOp op) con
 //===------------------------------------------------------------===//
 // RsqrtLoweringToLinalg
 //===------------------------------------------------------------===//
-void RsqrtLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::RsqrtOp op) const {
+void RsqrtLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                     top::RsqrtOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
   int inputRank = outType.cast<RankedTensorType>().getRank();
   auto input = op->getOperand(0);
   SmallVector<AffineMap> indexingMaps = {
       rewriter.getMultiDimIdentityMap(inputRank),
-      rewriter.getMultiDimIdentityMap(inputRank)
-  };
-  SmallVector<utils::IteratorType> iteratorTypes(
-      inputRank, utils::IteratorType::parallel);
-  Value rsqrt =
-      rewriter
-          .create<linalg::GenericOp>(
-              loc, input.getType(),
-              ValueRange{input}, input,
-              /*indexingMaps=*/indexingMaps,
-              /*iteratorTypes=*/iteratorTypes,
-              [&](OpBuilder &b, Location loc, ValueRange args) {
-                Value input = args[0];
-                Value result =b.create<math::SqrtOp>(loc, input);
-                b.create<linalg::YieldOp>(loc, result);
-              })
-          .getResult(0);
+      rewriter.getMultiDimIdentityMap(inputRank)};
+  SmallVector<utils::IteratorType> iteratorTypes(inputRank,
+                                                 utils::IteratorType::parallel);
+  Value rsqrt = rewriter
+                    .create<linalg::GenericOp>(
+                        loc, input.getType(), ValueRange{input}, input,
+                        /*indexingMaps=*/indexingMaps,
+                        /*iteratorTypes=*/iteratorTypes,
+                        [&](OpBuilder &b, Location loc, ValueRange args) {
+                          Value input = args[0];
+                          Value result = b.create<math::SqrtOp>(loc, input);
+                          b.create<linalg::YieldOp>(loc, result);
+                        })
+                    .getResult(0);
   rewriter.replaceOp(op, rsqrt);
 }
 
 //===------------------------------------------------------------===//
 // SubLoweringToLinalg
 //===------------------------------------------------------------===//
-void SubLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SubOp op) const {
+void SubLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::SubOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
 
-  auto op1_shape = op->getOperand(0).getType().cast<RankedTensorType>().getShape();
-  auto op2_shape = op->getOperand(1).getType().cast<RankedTensorType>().getShape();
+  auto op1_shape =
+      op->getOperand(0).getType().cast<RankedTensorType>().getShape();
+  auto op2_shape =
+      op->getOperand(1).getType().cast<RankedTensorType>().getShape();
   if (op1_shape.size() != op2_shape.size()) {
     // auto is_op0_bst = op2_shape.size() > op1_shape.size();
     // auto op_bst = is_op0_bst?op->getOperand(0):op->getOperand(1);
-    // Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-    // auto new_ops =
-    //     rewriter.create<linalg::BroadcastOp>(loc, op_bst, empty_bst, llvm::ArrayRef<int64_t>{0}).getResult();
+    // Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape,
+    // outType.cast<RankedTensorType>().getElementType()); auto new_ops =
+    //     rewriter.create<linalg::BroadcastOp>(loc, op_bst, empty_bst,
+    //     llvm::ArrayRef<int64_t>{0}).getResult();
     // for (auto new_op: new_ops) {
     //   if (is_op0_bst) {
-    //     rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{new_op, op->getOperand(1)}, empty));
+    //     rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc,
+    //     ValueRange{new_op, op->getOperand(1)}, empty));
     //   }
     //   else {
-    //     rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{op->getOperand(0), new_op}, empty));
+    //     rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc,
+    //     ValueRange{op->getOperand(0), new_op}, empty));
     //   }
     //   break;
     // }
@@ -464,23 +500,31 @@ void SubLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SubOp op) con
     SmallVector<Value> shapes;
     std::vector<int64_t> shapes2;
     for (int i = 0; i < op2_shape.size() - 1; i++) {
-      shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, op2_shape[i]));
+      shapes.push_back(
+          rewriter.create<arith::ConstantIndexOp>(loc, op2_shape[i]));
       shapes2.push_back(op2_shape[i]);
     }
     auto toConcatIndexShape =
         rewriter.create<tensor::FromElementsOp>(loc, shapes);
 
-    auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2}, rewriter.getF32Type());
-    auto reshapeOp =
-        rewriter.create<tensor::ReshapeOp>(loc, reshapeOp_type, op->getOperand(1), toConcatIndexShape);
+    auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2},
+                                                rewriter.getF32Type());
+    auto reshapeOp = rewriter.create<tensor::ReshapeOp>(
+        loc, reshapeOp_type, op->getOperand(1), toConcatIndexShape);
 
-
-    Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-    auto BroadcastOps =
-        rewriter.create<linalg::BroadcastOp>(loc, reshapeOp, empty_bst, llvm::ArrayRef<int64_t>{static_cast<long>(op2_shape.size() - 1)}).getResult();
-    for (auto BroadcastOp: BroadcastOps) {
-        rewriter.replaceOp(op, rewriter.create<linalg::SubOp>(loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
-        break;
+    Value empty_bst = rewriter.create<tensor::EmptyOp>(
+        loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+    auto BroadcastOps = rewriter
+                            .create<linalg::BroadcastOp>(
+                                loc, reshapeOp, empty_bst,
+                                llvm::ArrayRef<int64_t>{
+                                    static_cast<long>(op2_shape.size() - 1)})
+                            .getResult();
+    for (auto BroadcastOp : BroadcastOps) {
+      rewriter.replaceOp(
+          op, rewriter.create<linalg::SubOp>(
+                  loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
+      break;
     }
   }
 }
@@ -488,21 +532,32 @@ void SubLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SubOp op) con
 //===------------------------------------------------------------===//
 // MulLoweringToLinalg
 //===------------------------------------------------------------===//
-void MulLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::MulOp op) const {
+void MulLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::MulOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
 
-  auto op1_shape = op->getOperand(0).getType().cast<RankedTensorType>().getShape();
-  auto op2_shape = op->getOperand(1).getType().cast<RankedTensorType>().getShape();
+  auto op1_shape =
+      op->getOperand(0).getType().cast<RankedTensorType>().getShape();
+  auto op2_shape =
+      op->getOperand(1).getType().cast<RankedTensorType>().getShape();
   if (op1_shape.size() != op2_shape.size()) {
-    Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+    Value empty_bst = rewriter.create<tensor::EmptyOp>(
+        loc, transpShape, outType.cast<RankedTensorType>().getElementType());
     auto BroadcastOps =
-        rewriter.create<linalg::BroadcastOp>(loc, op->getOperand(1), empty_bst, llvm::ArrayRef<int64_t>{0,1}).getResult();
-    for (auto BroadcastOp: BroadcastOps) {
-        rewriter.replaceOp(op, rewriter.create<linalg::MulOp>(loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
-        break;
+        rewriter
+            .create<linalg::BroadcastOp>(loc, op->getOperand(1), empty_bst,
+                                         llvm::ArrayRef<int64_t>{0, 1})
+            .getResult();
+    for (auto BroadcastOp : BroadcastOps) {
+      rewriter.replaceOp(
+          op, rewriter.create<linalg::MulOp>(
+                  loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
+      break;
     }
   } else {
     // int i = 0;
@@ -517,23 +572,31 @@ void MulLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::MulOp op) con
     SmallVector<Value> shapes;
     std::vector<int64_t> shapes2;
     for (int i = 0; i < op2_shape.size() - 1; i++) {
-      shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, op2_shape[i]));
+      shapes.push_back(
+          rewriter.create<arith::ConstantIndexOp>(loc, op2_shape[i]));
       shapes2.push_back(op2_shape[i]);
     }
     auto toConcatIndexShape =
         rewriter.create<tensor::FromElementsOp>(loc, shapes);
 
-    auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2}, rewriter.getF32Type());
-    auto reshapeOp =
-        rewriter.create<tensor::ReshapeOp>(loc, reshapeOp_type, op->getOperand(1), toConcatIndexShape);
+    auto reshapeOp_type = RankedTensorType::get(ArrayRef<int64_t>{shapes2},
+                                                rewriter.getF32Type());
+    auto reshapeOp = rewriter.create<tensor::ReshapeOp>(
+        loc, reshapeOp_type, op->getOperand(1), toConcatIndexShape);
 
-
-    Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-    auto BroadcastOps =
-        rewriter.create<linalg::BroadcastOp>(loc, reshapeOp, empty_bst, llvm::ArrayRef<int64_t>{static_cast<long>(op2_shape.size() - 1)}).getResult();
-    for (auto BroadcastOp: BroadcastOps) {
-        rewriter.replaceOp(op, rewriter.create<linalg::MulOp>(loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
-        break;
+    Value empty_bst = rewriter.create<tensor::EmptyOp>(
+        loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+    auto BroadcastOps = rewriter
+                            .create<linalg::BroadcastOp>(
+                                loc, reshapeOp, empty_bst,
+                                llvm::ArrayRef<int64_t>{
+                                    static_cast<long>(op2_shape.size() - 1)})
+                            .getResult();
+    for (auto BroadcastOp : BroadcastOps) {
+      rewriter.replaceOp(
+          op, rewriter.create<linalg::MulOp>(
+                  loc, ValueRange{op->getOperand(0), BroadcastOp}, empty));
+      break;
     }
   }
 }
@@ -541,54 +604,72 @@ void MulLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::MulOp op) con
 //===------------------------------------------------------------===//
 // ExpLoweringToLinalg
 //===------------------------------------------------------------===//
-void ExpLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ExpOp op) const {
+void ExpLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::ExpOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-  rewriter.replaceOp(op, rewriter.create<linalg::ExpOp>(loc, ValueRange{op->getOperand(0)}, empty));
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  rewriter.replaceOp(op, rewriter.create<linalg::ExpOp>(
+                             loc, ValueRange{op->getOperand(0)}, empty));
 }
 
 //===------------------------------------------------------------===//
 // AddLoweringToLinalg
 //===------------------------------------------------------------===//
-void AddLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::AddOp op) const {
+void AddLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                   top::AddOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  auto op1_shape = op->getOperand(0).getType().cast<RankedTensorType>().getShape();
-  auto op2_shape = op->getOperand(1).getType().cast<RankedTensorType>().getShape();
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto op1_shape =
+      op->getOperand(0).getType().cast<RankedTensorType>().getShape();
+  auto op2_shape =
+      op->getOperand(1).getType().cast<RankedTensorType>().getShape();
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
   if (op1_shape.size() != op2_shape.size()) {
     // auto max_dim = max(op1_shape.size() ,op2_shape.size());
     // for (int i = 0; i < max_dim; i++) {
 
     // }
     auto is_op0_bst = op2_shape.size() > op1_shape.size();
-    int si = is_op0_bst?op2_shape.size() - op1_shape.size():op1_shape.size() - op2_shape.size();
+    int si = is_op0_bst ? op2_shape.size() - op1_shape.size()
+                        : op1_shape.size() - op2_shape.size();
     auto seq = llvm::to_vector<4>(llvm::seq<int64_t>(0, si));
-    auto op_bst = is_op0_bst?op->getOperand(0):op->getOperand(1);
-    Value empty_bst = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+    auto op_bst = is_op0_bst ? op->getOperand(0) : op->getOperand(1);
+    Value empty_bst = rewriter.create<tensor::EmptyOp>(
+        loc, transpShape, outType.cast<RankedTensorType>().getElementType());
     auto new_ops =
-        rewriter.create<linalg::BroadcastOp>(loc, op_bst, empty_bst, seq).getResult();
-    for (auto new_op: new_ops) {
+        rewriter.create<linalg::BroadcastOp>(loc, op_bst, empty_bst, seq)
+            .getResult();
+    for (auto new_op : new_ops) {
       if (is_op0_bst) {
-        rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{new_op, op->getOperand(1)}, empty));
-      }
-      else {
-        rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{op->getOperand(0), new_op}, empty));
+        rewriter.replaceOp(
+            op, rewriter.create<linalg::AddOp>(
+                    loc, ValueRange{new_op, op->getOperand(1)}, empty));
+      } else {
+        rewriter.replaceOp(
+            op, rewriter.create<linalg::AddOp>(
+                    loc, ValueRange{op->getOperand(0), new_op}, empty));
       }
       break;
     }
   } else {
-    rewriter.replaceOp(op, rewriter.create<linalg::AddOp>(loc, ValueRange{op->getOperand(0), op->getOperand(1)}, empty));
+    rewriter.replaceOp(
+        op, rewriter.create<linalg::AddOp>(
+                loc, ValueRange{op->getOperand(0), op->getOperand(1)}, empty));
   }
 }
 
 //===------------------------------------------------------------===//
 // ReshapeLoweringToLinalg
 //===------------------------------------------------------------===//
-void ReshapeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ReshapeOp op) const {
+void ReshapeLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                       top::ReshapeOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
   auto shape = outType.cast<RankedTensorType>().getShape();
@@ -601,65 +682,73 @@ void ReshapeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ReshapeOp
   }
   auto toConcatIndexShape =
       rewriter.create<tensor::FromElementsOp>(loc, shapes);
-  auto new_op =
-      rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0), toConcatIndexShape);
+  auto new_op = rewriter.create<tensor::ReshapeOp>(
+      loc, outType, op->getOperand(0), toConcatIndexShape);
   rewriter.replaceOp(op, new_op);
 }
 
 //===------------------------------------------------------------===//
 // SqueezeLoweringToLinalg
 //===------------------------------------------------------------===//
-void SqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SqueezeOp op) const {
-//   Location loc = op->getLoc();
-//   auto outType = op->getResult(0).getType();
-//   auto shape = outType.cast<RankedTensorType>().getShape();
-//   if (op.getShape().has_value()) {
-//     auto shape = module::getI64Array(op.getShape().value());
-//   }
-//   auto axes = op.getAxes();
-//   SmallVector<Value> shapes;
-//   for (int i = 0; i < shape.size(); i++) {
-//     shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, shape[i]));
-//   }
-//   auto toConcatIndexShape =
-//       rewriter.create<tensor::FromElementsOp>(loc, shapes);
-//   auto new_op =
-//       rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0), toConcatIndexShape);
-//   rewriter.replaceOp(op, new_op);
+void SqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                       top::SqueezeOp op) const {
+  //   Location loc = op->getLoc();
+  //   auto outType = op->getResult(0).getType();
+  //   auto shape = outType.cast<RankedTensorType>().getShape();
+  //   if (op.getShape().has_value()) {
+  //     auto shape = module::getI64Array(op.getShape().value());
+  //   }
+  //   auto axes = op.getAxes();
+  //   SmallVector<Value> shapes;
+  //   for (int i = 0; i < shape.size(); i++) {
+  //     shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc,
+  //     shape[i]));
+  //   }
+  //   auto toConcatIndexShape =
+  //       rewriter.create<tensor::FromElementsOp>(loc, shapes);
+  //   auto new_op =
+  //       rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0),
+  //       toConcatIndexShape);
+  //   rewriter.replaceOp(op, new_op);
 }
 
 // DenseSet<int64_t> dimensionsToReduce;
 //===------------------------------------------------------------===//
 // UnsqueezeLoweringToLinalg
 //===------------------------------------------------------------===//
-void UnsqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::UnsqueezeOp op) const {
+void UnsqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                         top::UnsqueezeOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto inShape = SmallVector<int64_t>(op->getOperand(0).getType().cast<RankedTensorType>().getShape());
+  auto inShape = SmallVector<int64_t>(
+      op->getOperand(0).getType().cast<RankedTensorType>().getShape());
   auto axes = op.getAxes().getAsValueRange<IntegerAttr>();
   SmallVector<Value> shapes;
   for (int i = 0, j = 0; i < op.getAxes().size() + inShape.size(); i++) {
     if (!llvm::count(axes, i))
-      shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, inShape[j++]));
+      shapes.push_back(
+          rewriter.create<arith::ConstantIndexOp>(loc, inShape[j++]));
     else
       shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, 1));
   }
-  auto target_shape =
-      rewriter.create<tensor::FromElementsOp>(loc, shapes);
-  auto new_op =
-      rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0), target_shape);
+  auto target_shape = rewriter.create<tensor::FromElementsOp>(loc, shapes);
+  auto new_op = rewriter.create<tensor::ReshapeOp>(
+      loc, outType, op->getOperand(0), target_shape);
   rewriter.replaceOp(op, new_op);
 }
 
-// void UnsqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::UnsqueezeOp op) const {
+// void UnsqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+// top::UnsqueezeOp op) const {
 //   Location loc = op->getLoc();
 //   auto outType = op->getResult(0).getType();
-//   auto inShape = SmallVector<int64_t>(op->getOperand(0).getType().cast<RankedTensorType>().getShape());
+//   auto inShape =
+//   SmallVector<int64_t>(op->getOperand(0).getType().cast<RankedTensorType>().getShape());
 //   auto axes = *module::getI64Array(op.getAxes());
 //   SmallVector<Value> shapes;
 //   for (int i = 0, j = 0; i < axes.size() + inShape.size(); i++) {
 //     if (!std::count(axes.begin(), axes.end(), i)) {
-//       shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, inShape[j++]));
+//       shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc,
+//       inShape[j++]));
 //     }
 //     else
 //       shapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, 1));
@@ -667,27 +756,33 @@ void UnsqueezeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Unsquee
 //   auto toConcatIndexShape =
 //       rewriter.create<tensor::FromElementsOp>(loc, shapes);
 //   auto new_op =
-//       rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0), toConcatIndexShape);
+//       rewriter.create<tensor::ReshapeOp>(loc, outType, op->getOperand(0),
+//       toConcatIndexShape);
 //   rewriter.replaceOp(op, new_op);
 // }
 
 //===------------------------------------------------------------===//
 // SoftmaxLoweringToLinalg
 //===------------------------------------------------------------===//
-void SoftmaxLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SoftmaxOp op) const {
+void SoftmaxLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                       top::SoftmaxOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-  auto new_op =
-      rewriter.create<linalg::SoftmaxOp>(loc, outType, op->getOperand(0), empty, IntegerAttr::get(rewriter.getI64Type(), op.getAxis()));
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto new_op = rewriter.create<linalg::SoftmaxOp>(
+      loc, outType, op->getOperand(0), empty,
+      IntegerAttr::get(rewriter.getI64Type(), op.getAxis()));
   rewriter.replaceOp(op, new_op);
 }
 
 //===------------------------------------------------------------===//
 // SplitLoweringToLinalg
 //===------------------------------------------------------------===//
-void SplitLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SplitOp op) const {
+void SplitLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                     top::SplitOp op) const {
   Location loc = op->getLoc();
   auto input = op->getOperand(0);
   RankedTensorType inputType =
@@ -697,7 +792,8 @@ void SplitLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SplitOp op)
   assert(inputType.getShape()[axis] % num == 0);
 
   auto outType = op->getResult(0).getType();
-  auto resultShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto resultShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
   auto slice_len = resultShape[axis];
 
   SmallVector<Value> offsets;
@@ -708,23 +804,25 @@ void SplitLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SplitOp op)
   offsets.resize(inputType.getRank(), zero);
   SmallVector<Value> resultShapes;
   for (int i = 0; i < resultShape.size(); i++) {
-    resultShapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, resultShape[i]));
+    resultShapes.push_back(
+        rewriter.create<arith::ConstantIndexOp>(loc, resultShape[i]));
   }
 
   SmallVector<Value> results;
   for (int i = 0; i < num; i++) {
-    offsets[axis] = rewriter.create<arith::ConstantIndexOp>(loc, i*slice_len);
-    Value result = rewriter.create<tensor::ExtractSliceOp>(loc, input, offsets, resultShapes, strides);
+    offsets[axis] = rewriter.create<arith::ConstantIndexOp>(loc, i * slice_len);
+    Value result = rewriter.create<tensor::ExtractSliceOp>(
+        loc, input, offsets, resultShapes, strides);
     results.push_back(result);
   }
   rewriter.replaceOp(op, results);
 }
 
-
 //===------------------------------------------------------------===//
 // SliceLoweringToLinalg
 //===------------------------------------------------------------===//
-void SliceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SliceOp op) const {
+void SliceLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                     top::SliceOp op) const {
   Location loc = op->getLoc();
   auto input = op->getOperand(0);
   RankedTensorType inputType =
@@ -733,7 +831,8 @@ void SliceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SliceOp op)
   auto inShape = inputType.getShape();
 
   auto outType = op->getResult(0).getType();
-  auto resultShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto resultShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
 
   SmallVector<Value> offsets;
   SmallVector<Value> ends;
@@ -745,60 +844,69 @@ void SliceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::SliceOp op)
   ends.resize(inputType.getRank(), zero);
   SmallVector<Value> resultShapes;
   for (int i = 0; i < resultShape.size(); i++) {
-    resultShapes.push_back(rewriter.create<arith::ConstantIndexOp>(loc, resultShape[i]));
+    resultShapes.push_back(
+        rewriter.create<arith::ConstantIndexOp>(loc, resultShape[i]));
   }
 
   for (const auto &en : llvm::enumerate(op.getOffset())) {
-    int tmp = en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
+    int tmp =
+        en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
     if (tmp != 0)
       offsets[en.index()] = rewriter.create<arith::ConstantIndexOp>(loc, tmp);
   }
 
   for (const auto &en : llvm::enumerate(op.getSteps())) {
-    int tmp = en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
+    int tmp =
+        en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
     if (tmp != 1)
       steps[en.index()] = rewriter.create<arith::ConstantIndexOp>(loc, tmp);
   }
 
   for (const auto &en : llvm::enumerate(op.getEnds())) {
-    int tmp = en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
+    int tmp =
+        en.value().dyn_cast<mlir::IntegerAttr>().getValue().getZExtValue();
     if (tmp < 0)
       tmp += inShape[en.index()];
     ends[en.index()] = rewriter.create<arith::ConstantIndexOp>(loc, tmp);
   }
 
-  Value result = rewriter.create<tensor::ExtractSliceOp>(loc, input, offsets, resultShapes, steps);
+  Value result = rewriter.create<tensor::ExtractSliceOp>(loc, input, offsets,
+                                                         resultShapes, steps);
   rewriter.replaceOp(op, result);
 }
 
 //===------------------------------------------------------------===//
 // ConvLoweringToLinalg
 //===------------------------------------------------------------===//
-void ConvLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ConvOp op) const {
+void ConvLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                    top::ConvOp op) const {
   auto strides = module::getI64Array(op.getStrides());
   auto dilations = module::getI64Array(op.getDilations(), 2, 1);
   Location loc = op->getLoc();
   auto input = op->getOperand(0);
   auto filter = op->getOperand(1);
   auto outType = op->getResult(0).getType();
-  auto outShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto outShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
 
-  Value initTensor = rewriter.create<tensor::EmptyOp>(
-      loc, outShape, rewriter.getF32Type());
+  Value initTensor =
+      rewriter.create<tensor::EmptyOp>(loc, outShape, rewriter.getF32Type());
   Value c0 = rewriter.create<arith::ConstantOp>(
       loc, FloatAttr::get(rewriter.getF32Type(), 0.0));
   Value zeroFill =
       rewriter.create<linalg::FillOp>(loc, c0, initTensor).getResult(0);
   Value conv2d = rewriter
-                      .create<linalg::Conv2DNchwFchwOp>(loc, zeroFill.getType(),
-                                                ValueRange{input, filter}, zeroFill, rewriter.getDenseI64ArrayAttr(*strides), rewriter.getDenseI64ArrayAttr(*dilations))
-                      .getResult(0);
+                     .create<linalg::Conv2DNchwFchwOp>(
+                         loc, zeroFill.getType(), ValueRange{input, filter},
+                         zeroFill, rewriter.getDenseI64ArrayAttr(*strides),
+                         rewriter.getDenseI64ArrayAttr(*dilations))
+                     .getResult(0);
   rewriter.replaceOp(op, conv2d);
 }
 
 /// Inverted STD: rSTD = 1 / sqrt(var + eps).
 Value calculateRSTD(OpBuilder &b, Location loc, Type elemTy, Value eps,
-                           Value var) {
+                    Value var) {
   // The eps is always f64.
   Value truncatedEps = b.create<arith::TruncFOp>(loc, elemTy, eps);
   Value varPlusEps = b.create<arith::AddFOp>(loc, var, truncatedEps);
@@ -830,7 +938,8 @@ Value createLinalgPayloadCalculationForNormOpsWithVar(
 //===------------------------------------------------------------===//
 // BatchNormTrainLoweringToLinalg
 //===------------------------------------------------------------===//
-void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::BatchNormTrainOp op) const {
+void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                              top::BatchNormTrainOp op) const {
   Location loc = op->getLoc();
   MLIRContext *context = op->getContext();
   auto input = op.getInput();
@@ -844,7 +953,8 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Ba
   auto runningMeanType = runningMean.getType().cast<RankedTensorType>();
   auto runningVarType = runningVar.getType().cast<RankedTensorType>();
   Value eps = rewriter.create<arith::ConstantOp>(
-      loc, FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
+      loc,
+      FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
 
   auto inputRank = inputType.getRank();
   if (inputRank < 2)
@@ -852,7 +962,8 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Ba
 
   if (weightType.getRank() != 1 || biasType.getRank() != 1 ||
       runningMeanType.getRank() != 1 || runningVarType.getRank() != 1) {
-    llvm_unreachable("expect weight, bias, running_mean and running_var to be rank 1");
+    llvm_unreachable(
+        "expect weight, bias, running_mean and running_var to be rank 1");
   }
 
   auto indexingMap = AffineMap::get(
@@ -866,8 +977,8 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Ba
       indexingMap,                                // runningVar
       rewriter.getMultiDimIdentityMap(inputRank), // output
   };
-  SmallVector<utils::IteratorType> iteratorTypes(
-      inputRank, utils::IteratorType::parallel);
+  SmallVector<utils::IteratorType> iteratorTypes(inputRank,
+                                                 utils::IteratorType::parallel);
   Value batchNorm =
       rewriter
           .create<linalg::GenericOp>(
@@ -878,21 +989,19 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Ba
               [&](OpBuilder &b, Location loc, ValueRange args) {
                 Value input = args[0], weight = args[1], bias = args[2],
                       mean = args[3], var = args[4];
-                Value result =
-                    createLinalgPayloadCalculationForNormOpsWithVar(
-                        b, loc, var.getType(), input, mean, var, eps, weight,
-                        bias);
+                Value result = createLinalgPayloadCalculationForNormOpsWithVar(
+                    b, loc, var.getType(), input, mean, var, eps, weight, bias);
                 b.create<linalg::YieldOp>(loc, result);
               })
           .getResult(0);
   rewriter.replaceOp(op, {batchNorm, runningMean, runningVar});
 }
 
-
 //===------------------------------------------------------------===//
 // LayerNormTrainLoweringToLinalg
 //===------------------------------------------------------------===//
-void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::LayerNormTrainOp op) const {
+void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                              top::LayerNormTrainOp op) const {
   // Location loc = op->getLoc();
   // MLIRContext *context = op->getContext();
   // auto input = op.getInput();
@@ -906,7 +1015,8 @@ void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::La
   // auto runningMeanType = runningMean.getType().cast<RankedTensorType>();
   // auto runningVarType = runningVar.getType().cast<RankedTensorType>();
   // Value eps = rewriter.create<arith::ConstantOp>(
-  //     loc, FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
+  //     loc, FloatAttr::get(rewriter.getF32Type(),
+  //     op.getEpsilon().convertToDouble()));
 
   // auto inputRank = inputType.getRank();
   // if (inputRank < 2)
@@ -914,7 +1024,8 @@ void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::La
 
   // if (weightType.getRank() != 1 || biasType.getRank() != 1 ||
   //     runningMeanType.getRank() != 1 || runningVarType.getRank() != 1) {
-  //   llvm_unreachable("expect weight, bias, running_mean and running_var to be rank 1");
+  //   llvm_unreachable("expect weight, bias, running_mean and running_var to be
+  //   rank 1");
   // }
 
   // auto indexingMap = AffineMap::get(
@@ -934,7 +1045,8 @@ void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::La
   //     rewriter
   //         .create<linalg::GenericOp>(
   //             loc, input.getType(),
-  //             ValueRange{input, weight, bias, runningMean, runningVar}, input,
+  //             ValueRange{input, weight, bias, runningMean, runningVar},
+  //             input,
   //             /*indexingMaps=*/indexingMaps,
   //             /*iteratorTypes=*/iteratorTypes,
   //             [&](OpBuilder &b, Location loc, ValueRange args) {
@@ -954,8 +1066,7 @@ void LayerNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::La
 // AvgPoolLoweringToLinalg
 //===------------------------------------------------------------===//
 void AvgPoolLoweringToLinalg::Lowering(PatternRewriter &rewriter,
-                               top::AvgPoolOp op) const {
-}
+                                       top::AvgPoolOp op) const {}
 
 Value castIndexToInt64(OpBuilder &b, Location loc, Value idx) {
   assert(idx.getType().isa<IndexType>() && "must be called with integer type");
@@ -973,8 +1084,7 @@ SmallVector<Value> getAsConstantIndexValues(OpBuilder &b, Location loc,
 // initElem.
 Value createInitTensor(OpBuilder &b, Location loc, SmallVector<int64_t> sizes,
                        Type elemTy, Value initElem) {
-  Value initTensor =
-      b.create<tensor::EmptyOp>(loc, sizes, elemTy);
+  Value initTensor = b.create<tensor::EmptyOp>(loc, sizes, elemTy);
   return b.create<linalg::FillOp>(loc, initElem, initTensor).getResult(0);
 }
 
@@ -985,10 +1095,9 @@ getIndexIntsAsOpFoldResult(OpBuilder &b, SmallVectorImpl<int64_t> &ints) {
 }
 
 // Helper function to get the padding tensor given the padding int values.
-Value getPaddedTensor(
-    Operation *op, OpBuilder &b, Value &input,
-    SmallVectorImpl<int64_t> &lowPaddingInts,
-    SmallVectorImpl<int64_t> &highPaddingInts, Value pad) {
+Value getPaddedTensor(Operation *op, OpBuilder &b, Value &input,
+                      SmallVectorImpl<int64_t> &lowPaddingInts,
+                      SmallVectorImpl<int64_t> &highPaddingInts, Value pad) {
   Location loc = op->getLoc();
   Type rankedTensorType =
       tensor::PadOp::inferResultType(input.getType().cast<RankedTensorType>(),
@@ -1006,18 +1115,19 @@ Value getPaddedTensor(
 //===------------------------------------------------------------===//
 // MaxPoolWithMaskLoweringToLinalg
 //===------------------------------------------------------------===//
-void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
-                               top::MaxPoolWithMaskOp op) const {
+void MaxPoolWithMaskLoweringToLinalg::Lowering(
+    PatternRewriter &rewriter, top::MaxPoolWithMaskOp op) const {
   auto strideInts = module::getI64Array(op.getStrides());
   auto paddingInts = module::getI64Array(op.getPads());
   auto dilationInts = std::make_shared<std::vector<int64_t>>(2, 1);
   Location loc = op->getLoc();
   auto input = op->getOperand(0);
   auto outType = op->getResult(0).getType();
-  auto outShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto outShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
 
-  Value initTensor = rewriter.create<tensor::EmptyOp>(
-      loc, outShape, rewriter.getF32Type());
+  Value initTensor =
+      rewriter.create<tensor::EmptyOp>(loc, outShape, rewriter.getF32Type());
   Value c0 = rewriter.create<arith::ConstantOp>(
       loc, FloatAttr::get(rewriter.getF32Type(), 0.0));
   Value zeroFill =
@@ -1027,32 +1137,27 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
 
   SmallVector<int64_t> tmp0;
   auto t0 = module::getI64Array(op.getKernelShape());
-  llvm::errs() <<"tmp0:"<<op.getKernelShape()<<", "<<t0->at(0)<<"\n";
-  for (auto i: *t0) {
+  llvm::errs() << "tmp0:" << op.getKernelShape() << ", " << t0->at(0) << "\n";
+  for (auto i : *t0) {
     tmp0.push_back(i);
-    llvm::errs() <<"tmp0:"<<i<<"\n";
+    llvm::errs() << "tmp0:" << i << "\n";
   }
 
-  Value windowTensor = rewriter.create<tensor::EmptyOp>(
-      loc, tmp0, elementType);
+  Value windowTensor = rewriter.create<tensor::EmptyOp>(loc, tmp0, elementType);
 
-
-  SmallVector<int64_t> tmp,tmp2,tmp3;
-  for (auto i: *paddingInts) {
+  SmallVector<int64_t> tmp, tmp2, tmp3;
+  for (auto i : *paddingInts) {
     tmp.push_back(i);
   }
-  for (auto i: *dilationInts) {
+  for (auto i : *dilationInts) {
     tmp2.push_back(i);
   }
-  for (auto i: *strideInts) {
+  for (auto i : *strideInts) {
     tmp3.push_back(i);
   }
-  SmallVector<Value> padding =
-      getAsConstantIndexValues(rewriter, loc, tmp);
-  SmallVector<Value> dilation =
-      getAsConstantIndexValues(rewriter, loc, tmp2);
-  SmallVector<Value> stride =
-      getAsConstantIndexValues(rewriter, loc, tmp3);
+  SmallVector<Value> padding = getAsConstantIndexValues(rewriter, loc, tmp);
+  SmallVector<Value> dilation = getAsConstantIndexValues(rewriter, loc, tmp2);
+  SmallVector<Value> stride = getAsConstantIndexValues(rewriter, loc, tmp3);
 
   SmallVector<int64_t> lowPaddingIncludingNC = {0, 0};
   lowPaddingIncludingNC.append(tmp);
@@ -1070,23 +1175,26 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
       APFloat::getInf(elementType.cast<mlir::FloatType>().getFloatSemantics(),
                       /*Negative=*/true));
 
-  Value initValue = rewriter.create<arith::ConstantOp>(loc, cast<TypedAttr>(initValueAttr));
-  Value paddedInput = getPaddedTensor(
-      op.getOperation(), rewriter, input, lowPaddingIncludingNC, highPaddingIncludingNC,
-      initValue);
+  Value initValue =
+      rewriter.create<arith::ConstantOp>(loc, cast<TypedAttr>(initValueAttr));
+  Value paddedInput =
+      getPaddedTensor(op.getOperation(), rewriter, input, lowPaddingIncludingNC,
+                      highPaddingIncludingNC, initValue);
 
-  Value MaxPool = rewriter
-                      .create<linalg::PoolingNchwMaxOp>(loc, zeroFill.getType(),
-                                                ValueRange{paddedInput, windowTensor}, zeroFill, rewriter.getDenseI64ArrayAttr(*strideInts), rewriter.getDenseI64ArrayAttr(*dilationInts))
-                      .getResult(0);
+  Value MaxPool =
+      rewriter
+          .create<linalg::PoolingNchwMaxOp>(
+              loc, zeroFill.getType(), ValueRange{paddedInput, windowTensor},
+              zeroFill, rewriter.getDenseI64ArrayAttr(*strideInts),
+              rewriter.getDenseI64ArrayAttr(*dilationInts))
+          .getResult(0);
 
   Value cstMinusOne =
       rewriter.create<arith::ConstantOp>(loc, rewriter.getI64IntegerAttr(-1));
-  auto indiceselementType = op->getResult(1).getType().cast<RankedTensorType>().getElementType();
-  Value indicesTensor =
-      createInitTensor(rewriter, loc, outShape,
-                        indiceselementType, cstMinusOne);
-
+  auto indiceselementType =
+      op->getResult(1).getType().cast<RankedTensorType>().getElementType();
+  Value indicesTensor = createInitTensor(rewriter, loc, outShape,
+                                         indiceselementType, cstMinusOne);
 
   SmallVector<AffineExpr> inputExprs, outputExprs, kernelExprs;
   for (unsigned i = 0; i < 4; i++) {
@@ -1100,8 +1208,8 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
   // and kW, respectively, as described in the algorithm above.
   SmallVector<AffineMap> indexingMaps =
       AffineMap::inferFromExprList({inputExprs, kernelExprs, outputExprs});
-  SmallVector<utils::IteratorType> iteratorTypes(
-      4, utils::IteratorType::parallel);
+  SmallVector<utils::IteratorType> iteratorTypes(4,
+                                                 utils::IteratorType::parallel);
   iteratorTypes.push_back(utils::IteratorType::reduction);
   iteratorTypes.push_back(utils::IteratorType::reduction);
 
@@ -1128,18 +1236,16 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
                 Value p = b.create<linalg::IndexOp>(loc, 4);
                 Value r = b.create<linalg::IndexOp>(loc, 5);
 
-                Value mTimesStride =
-                    b.create<arith::MulIOp>(loc, m, stride[0]);
+                Value mTimesStride = b.create<arith::MulIOp>(loc, m, stride[0]);
                 Value pTimesDilation =
                     b.create<arith::MulIOp>(loc, p, dilation[0]);
-                Value indexH = b.create<arith::AddIOp>(loc, mTimesStride,
-                                                        pTimesDilation);
-                Value nTimesStride =
-                    b.create<arith::MulIOp>(loc, n, stride[1]);
+                Value indexH =
+                    b.create<arith::AddIOp>(loc, mTimesStride, pTimesDilation);
+                Value nTimesStride = b.create<arith::MulIOp>(loc, n, stride[1]);
                 Value rTimesDilation =
                     b.create<arith::MulIOp>(loc, r, dilation[1]);
-                Value indexW = b.create<arith::AddIOp>(loc, nTimesStride,
-                                                        rTimesDilation);
+                Value indexW =
+                    b.create<arith::AddIOp>(loc, nTimesStride, rTimesDilation);
                 Value input = b.create<tensor::ExtractOp>(
                     loc, paddedInput, ValueRange{i, j, indexH, indexW});
                 Value pred = b.create<arith::CmpFOp>(
@@ -1151,8 +1257,8 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
                     b.create<arith::SubIOp>(loc, indexW, padding[1]);
                 Value outIndex = b.create<arith::MulIOp>(
                     loc, indexHMinusPadding, inputShapeW);
-                outIndex = b.create<arith::AddIOp>(loc, outIndex,
-                                                    indexWMinusPadding);
+                outIndex =
+                    b.create<arith::AddIOp>(loc, outIndex, indexWMinusPadding);
                 Value result = b.create<arith::SelectOp>(
                     loc, pred, castIndexToInt64(b, loc, outIndex), res);
 
@@ -1171,10 +1277,12 @@ void MaxPoolWithMaskLoweringToLinalg::Lowering(PatternRewriter &rewriter,
 //===------------------------------------------------------------===//
 // TransposeLoweringToLinalg
 //===------------------------------------------------------------===//
-void TransposeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::TransposeOp op) const {
+void TransposeLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                         top::TransposeOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
   auto shape_size = transpShape.size();
   auto dim0_ = op.getDim0();
   if (dim0_ < 0)
@@ -1183,42 +1291,48 @@ void TransposeLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::Transpo
   if (dim1_ < 0)
     dim1_ += shape_size;
   SmallVector<int64_t> perm(shape_size);
-  for (int i = 0; i < shape_size;i++) {
+  for (int i = 0; i < shape_size; i++) {
     perm[i] = i;
   }
   int tmp = perm[dim0_];
   perm[dim0_] = perm[dim1_];
   perm[dim1_] = tmp;
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-  auto ts_op =
-      rewriter.create<linalg::TransposeOp>(loc, op->getOperand(0), empty, rewriter.getDenseI64ArrayAttr(perm));
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto ts_op = rewriter.create<linalg::TransposeOp>(
+      loc, op->getOperand(0), empty, rewriter.getDenseI64ArrayAttr(perm));
   rewriter.replaceOp(op, ts_op);
 }
 
 //===------------------------------------------------------------===//
 // PermuteLoweringToLinalg
 //===------------------------------------------------------------===//
-void PermuteLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::PermuteOp op) const {
+void PermuteLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                       top::PermuteOp op) const {
   Location loc = op->getLoc();
   auto outType = op->getResult(0).getType();
-  auto transpShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, transpShape, outType.cast<RankedTensorType>().getElementType());
-  auto ts_op =
-      rewriter.create<linalg::TransposeOp>(loc, op->getOperand(0), empty, rewriter.getDenseI64ArrayAttr(*module::getI64Array(op.getOrder())));
+  auto transpShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, transpShape, outType.cast<RankedTensorType>().getElementType());
+  auto ts_op = rewriter.create<linalg::TransposeOp>(
+      loc, op->getOperand(0), empty,
+      rewriter.getDenseI64ArrayAttr(*module::getI64Array(op.getOrder())));
   rewriter.replaceOp(op, ts_op);
 }
 
 //===------------------------------------------------------------===//
 // ReduceLoweringToLinalg
 //===------------------------------------------------------------===//
-void ReduceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ReduceOp op) const {
+void ReduceLoweringToLinalg::Lowering(PatternRewriter &rewriter,
+                                      top::ReduceOp op) const {
   Location loc = op->getLoc();
   auto inType = op->getOperand(0).getType();
   auto inShape = inType.cast<RankedTensorType>().getShape();
 
   auto axes = module::getI64Array(op.getAxes());
   std::vector<int64_t> shapes2;
-  for (auto i: *axes) {
+  for (auto i : *axes) {
     if (i < 0) {
       i += inShape.size();
     }
@@ -1232,14 +1346,15 @@ void ReduceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ReduceOp o
       reducedInputDims.push_back(en.value());
   }
 
-  Value empty = rewriter.create<tensor::EmptyOp>(loc, reducedInputDims, inType.cast<RankedTensorType>().getElementType());
-  auto tmp_op =
-      rewriter.create<linalg::ReduceOp>(loc, ValueRange{op->getOperand(0)}, ValueRange{empty}, shapes2,
-                    [&](OpBuilder &b, Location loc, ValueRange args) {
-                        Value in = args[0], init = args[1];
-                        Value res = b.create<arith::AddFOp>(loc, init, in);
-                        b.create<linalg::YieldOp>(loc, res);
-              });
+  Value empty = rewriter.create<tensor::EmptyOp>(
+      loc, reducedInputDims, inType.cast<RankedTensorType>().getElementType());
+  auto tmp_op = rewriter.create<linalg::ReduceOp>(
+      loc, ValueRange{op->getOperand(0)}, ValueRange{empty}, shapes2,
+      [&](OpBuilder &b, Location loc, ValueRange args) {
+        Value in = args[0], init = args[1];
+        Value res = b.create<arith::AddFOp>(loc, init, in);
+        b.create<linalg::YieldOp>(loc, res);
+      });
   tmp_op.dump();
   rewriter.replaceOp(op, tmp_op);
 }
@@ -1248,7 +1363,7 @@ void ReduceLoweringToLinalg::Lowering(PatternRewriter &rewriter, top::ReduceOp o
 // MatMulLowering
 //===------------------------------------------------------------===//
 void MatMulLoweringToLinalg::Lowering(PatternRewriter &rewriter,
-                               top::MatMulOp op) const{
+                                      top::MatMulOp op) const {
   Location loc = op->getLoc();
   auto lhs = op->getOperand(0);
   auto rhs = op->getOperand(1);
@@ -1257,10 +1372,11 @@ void MatMulLoweringToLinalg::Lowering(PatternRewriter &rewriter,
   auto lhs_rank = lhs_type.getRank();
   auto rhs_rank = rhs_type.getRank();
   auto outType = op->getResult(0).getType();
-  auto outShape = SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
+  auto outShape =
+      SmallVector<int64_t>(outType.cast<RankedTensorType>().getShape());
   if (lhs_rank == 2 && rhs_rank == 2) {
-    Value initTensor = rewriter.create<tensor::EmptyOp>(
-        loc, outShape, rewriter.getF32Type());
+    Value initTensor =
+        rewriter.create<tensor::EmptyOp>(loc, outShape, rewriter.getF32Type());
     Value c0 = rewriter.create<arith::ConstantOp>(
         loc, FloatAttr::get(rewriter.getF32Type(), 0.0));
     Value zeroFill =
@@ -1271,19 +1387,19 @@ void MatMulLoweringToLinalg::Lowering(PatternRewriter &rewriter,
                        .getResult(0);
     rewriter.replaceOp(op, matmul);
   } else if (lhs_rank == 3 && rhs_rank == 3) {
-    Value initTensor = rewriter.create<tensor::EmptyOp>(
-        loc, outShape, rewriter.getF32Type());
+    Value initTensor =
+        rewriter.create<tensor::EmptyOp>(loc, outShape, rewriter.getF32Type());
     Value c0 = rewriter.create<arith::ConstantOp>(
         loc, FloatAttr::get(rewriter.getF32Type(), 0.0));
     Value zeroFill =
         rewriter.create<linalg::FillOp>(loc, c0, initTensor).getResult(0);
-    Value matmul = rewriter
-                       .create<linalg::BatchMatmulOp>(loc, zeroFill.getType(),
-                                                 ValueRange{lhs, rhs}, zeroFill)
-                       .getResult(0);
+    Value matmul =
+        rewriter
+            .create<linalg::BatchMatmulOp>(loc, zeroFill.getType(),
+                                           ValueRange{lhs, rhs}, zeroFill)
+            .getResult(0);
     rewriter.replaceOp(op, matmul);
   } else {
-
   }
 }
 

@@ -66,8 +66,8 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   auto newType = getQuantInt8Type(op.getOutput());
   // todo  if prod(shape0) < prod(shape1) result mul -1 here
   attrs.push_back(rewriter.getNamedAttr("is_reverse", op.getIsReverseAttr()));
-  rewriter.replaceOpWithNewOp<tpu::SubOp>(op.getOperation(), newType,
-                                          operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::SubOp>(op.getOperation(), newType, operands,
+                                          attrs);
   return;
 }
 

@@ -253,8 +253,7 @@ int32_t Int16VlcEncoder::encode(uint8_t *ibuf, int32_t isz, uint8_t *obuf) {
     }
   }
 
-  int32_t blk_bs_size = div_up(((payload_strm.pos() + 7) >> 3), 16)
-                        << 4;
+  int32_t blk_bs_size = div_up(((payload_strm.pos() + 7) >> 3), 16) << 4;
   return blk_bs_size;
 }
 
@@ -274,7 +273,8 @@ int32_t Float16VlcEncoder::encode(uint8_t *ibuf, int32_t isz, uint8_t *obuf) {
     auto ptr = (uint16_t *)(ibuf + pos);
     for (int32_t i = 0; i < 16; i++) {
       exp[i] = i < in_num ? (uint8_t)((ptr[i] >> 7) & 0xFF) : 0;
-      frac[i] = i < in_num ? (uint8_t)(((ptr[i] >> 15) << 7) | (ptr[i] & 0x7F)) : 0;
+      frac[i] =
+          i < in_num ? (uint8_t)(((ptr[i] >> 15) << 7) | (ptr[i] & 0x7F)) : 0;
       if (is_fp16 && zero_guard) {
         exp[i] = (exp[i] >> 3) == 0 ? 0 : exp[i];
       }
@@ -292,8 +292,7 @@ int32_t Float16VlcEncoder::encode(uint8_t *ibuf, int32_t isz, uint8_t *obuf) {
       }
     }
   }
-  int32_t blk_bs_size = div_up(((payload_strm.pos() + 7) >> 3), 16)
-                        << 4;
+  int32_t blk_bs_size = div_up(((payload_strm.pos() + 7) >> 3), 16) << 4;
   return blk_bs_size;
 }
 
@@ -312,9 +311,10 @@ GREncoder *create_encoder(mlir::Type dtype, uint8_t bias0, uint8_t bias1,
   }
 }
 
-std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz, mlir::Type dtype, uint8_t bias0,
-                      uint8_t bias1, bool is_signed, bool zero_guard,
-                      int32_t &osz) {
+std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz,
+                                         mlir::Type dtype, uint8_t bias0,
+                                         uint8_t bias1, bool is_signed,
+                                         bool zero_guard, int32_t &osz) {
   auto encoder = create_encoder(dtype, bias0, bias1, is_signed, zero_guard);
   int32_t max_buf_sz = encoder->max_enc_size(isz, encoder->blk_len);
   max_buf_sz += sizeof(EncodeHeader);
@@ -322,8 +322,7 @@ std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz, mlir::Type 
   memset(obuf, 0, max_buf_sz);
   assert(obuf);
 
-  int32_t enc_sz =
-      encoder->encode(ibuf, isz, obuf + sizeof(EncodeHeader));
+  int32_t enc_sz = encoder->encode(ibuf, isz, obuf + sizeof(EncodeHeader));
   auto blk_num = div_up(isz, encoder->blk_len);
   auto kmap_size = div_up(blk_num, 16) << 4;
   delete encoder;
@@ -334,7 +333,7 @@ std::tuple<bool, uint8_t *> nnvlc_encode(uint8_t *ibuf, int32_t isz, mlir::Type 
 
   osz = sizeof(header) + enc_sz + kmap_size;
   bool do_compress = true;
-  if (osz*1.0/isz > 1){
+  if (osz * 1.0 / isz > 1) {
     do_compress = false;
   }
   return std::make_tuple(do_compress, obuf);
@@ -352,46 +351,48 @@ int get_bytesize(mlir::Type dtype) {
 }
 
 int tpu_compress_normal_max_bytes(shape_t shape, mlir::Type dtype) {
-    int size = shape.n * shape.c * shape.h * shape.w * get_bytesize(dtype);
-    int blk_len = (dtype.isInteger(16) || dtype.isF16() || dtype.isBF16()) ? 32 : 16;
-    int blk_num = (size + blk_len-1) / blk_len;
-    int kmap_sz = ((blk_num + 15) / 16) << 4;
-    return kmap_sz + (blk_num * blk_len);
+  int size = shape.n * shape.c * shape.h * shape.w * get_bytesize(dtype);
+  int blk_len =
+      (dtype.isInteger(16) || dtype.isF16() || dtype.isBF16()) ? 32 : 16;
+  int blk_num = (size + blk_len - 1) / blk_len;
+  int kmap_sz = ((blk_num + 15) / 16) << 4;
+  return kmap_sz + (blk_num * blk_len);
 }
 
-int tpu_compress_RACU_max_meta_bytes(shape_t shape){
-    int lane_num = div_up(shape.c, Arch::NPU_NUM);
-    return shape.n*lane_num*shape.h*4;
+int tpu_compress_RACU_max_meta_bytes(shape_t shape) {
+  int lane_num = div_up(shape.c, Arch::NPU_NUM);
+  return shape.n * lane_num * shape.h * 4;
 }
 
-int tpu_compress_RACU_max_racu_bytes(shape_t shape, mlir::Type dtype){
-    int lane_num = div_up(shape.c, Arch::NPU_NUM);
-    shape_t gcw_shape = {1, (int32_t)Arch::NPU_NUM, 1, shape.w};
-    int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
-    return shape.n*lane_num*shape.h*gcw;
+int tpu_compress_RACU_max_racu_bytes(shape_t shape, mlir::Type dtype) {
+  int lane_num = div_up(shape.c, Arch::NPU_NUM);
+  shape_t gcw_shape = {1, (int32_t)Arch::NPU_NUM, 1, shape.w};
+  int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
+  return shape.n * lane_num * shape.h * gcw;
 }
 
-shape_t tpu_compress_RACU_racu_stride(shape_t shape, mlir::Type dtype){
-    int lane_num = div_up(shape.c, Arch::NPU_NUM);
-    shape_t gcw_shape = {1, std::min((int32_t)Arch::NPU_NUM, shape.c), 1, shape.w};
-    int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
-    //[n,lane_num,h,gcw]
-    shape_t stride;
-    stride.w = 1;
-    stride.h = gcw;
-    stride.c = shape.h * stride.h;
-    stride.n = lane_num * stride.c;
-    return stride;
+shape_t tpu_compress_RACU_racu_stride(shape_t shape, mlir::Type dtype) {
+  int lane_num = div_up(shape.c, Arch::NPU_NUM);
+  shape_t gcw_shape = {1, std::min((int32_t)Arch::NPU_NUM, shape.c), 1,
+                       shape.w};
+  int gcw = tpu_compress_normal_max_bytes(gcw_shape, dtype);
+  //[n,lane_num,h,gcw]
+  shape_t stride;
+  stride.w = 1;
+  stride.h = gcw;
+  stride.c = shape.h * stride.h;
+  stride.n = lane_num * stride.c;
+  return stride;
 }
 
-shape_t tpu_compress_RACU_meta_stride(shape_t shape){
-    int lane_num = div_up(shape.c, Arch::NPU_NUM);
-    //[n,lane_num,h,1]
-    shape_t stride;
-    stride.h = 1;
-    stride.w = 1;
-    stride.c = shape.h;
-    stride.n = lane_num*shape.h;
-    return stride;
+shape_t tpu_compress_RACU_meta_stride(shape_t shape) {
+  int lane_num = div_up(shape.c, Arch::NPU_NUM);
+  //[n,lane_num,h,1]
+  shape_t stride;
+  stride.h = 1;
+  stride.w = 1;
+  stride.c = shape.h;
+  stride.n = lane_num * shape.h;
+  return stride;
 }
 } // namespace tpu_mlir

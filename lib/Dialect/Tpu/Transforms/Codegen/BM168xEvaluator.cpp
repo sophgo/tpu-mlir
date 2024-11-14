@@ -1,10 +1,10 @@
-#include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/BM168xEvaluator.h"
 #include "progressbar.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #define DEBUG_TYPE "tpu_evaluator"
 
@@ -19,11 +19,11 @@ BM168xEvaluator::BM168xEvaluator(ModuleOp m) : module(m) {
   backend::Arch::init(0);
   bm168x = BM168x::instance();
   auto _input_names = *module::getInputs();
-  for (auto name: _input_names) {
+  for (auto name : _input_names) {
     input_names.push_back(name.str());
   }
   auto _output_names = *module::getOutputs();
-  for (auto name: _output_names) {
+  for (auto name : _output_names) {
     output_names.push_back(name.str());
   }
   module = module::getAllModules()->at(0);
@@ -87,7 +87,7 @@ void BM168xEvaluator::allocate_resources() {
           auto name = module::getName(v).str();
           all_weight_names.push_back(name);
           const auto data = wOp.read_as_byte();
-          void* ptr = bm168x->get_system_mem_ptr(addr);
+          void *ptr = bm168x->get_system_mem_ptr(addr);
           memcpy(ptr, data->data(), data->size());
           return WalkResult::advance();
         }
@@ -144,13 +144,13 @@ void BM168xEvaluator::allocate_resources() {
   module::detachWeightFile(); // free weight mem
 }
 
-static inline void set_4bit(void* ptr, int i, uint8_t byte) {
+static inline void set_4bit(void *ptr, int i, uint8_t byte) {
   uint8_t bit4 = (byte & 0xf);
   if (i % 2) {
-    ((uint8_t*)ptr)[i / 2] &= 0xf;
-    ((uint8_t*)ptr)[i / 2] |= (bit4 << 4);
+    ((uint8_t *)ptr)[i / 2] &= 0xf;
+    ((uint8_t *)ptr)[i / 2] |= (bit4 << 4);
   } else {
-    ((uint8_t*)ptr)[i / 2] = bit4;
+    ((uint8_t *)ptr)[i / 2] = bit4;
   }
 }
 
@@ -164,14 +164,15 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
   auto value = it->second;
   const auto addr = module::getAddress(value);
   size_t count = module::getNumElements(value);
-  void* mem_ptr = bm168x->get_system_mem_ptr(addr);
+  void *mem_ptr = bm168x->get_system_mem_ptr(addr);
   if (!is_integer) {
     float *p = (float *)data;
     if (module::isUniformQuantized(value)) {
       auto qtype = module::getUniformQuantizedType(value);
       for (auto i = 0; i < count; i++) {
-        float d = p[i] * (float)(1 / qtype.getScale()) + (float)qtype.getZeroPoint();
-        ((uint8_t*)mem_ptr)[i] = qtype.isSigned() ? to_int8(d) : to_uint8(d);
+        float d =
+            p[i] * (float)(1 / qtype.getScale()) + (float)qtype.getZeroPoint();
+        ((uint8_t *)mem_ptr)[i] = qtype.isSigned() ? to_int8(d) : to_uint8(d);
       }
     } else if (module::isCalibratedType(value)) {
       auto type = module::getStorageType(value);
@@ -179,20 +180,21 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
         memcpy(mem_ptr, p, count * sizeof(float));
       } else if (type.isF16()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint16_t*)mem_ptr)[i] = f32_to_f16(p[i]);
+          ((uint16_t *)mem_ptr)[i] = f32_to_f16(p[i]);
         }
       } else if (type.isBF16()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint16_t*)mem_ptr)[i] = f32_to_bf16(p[i]);
+          ((uint16_t *)mem_ptr)[i] = f32_to_bf16(p[i]);
         }
       } else if (type.isFloat8E4M3FN()) {
-        double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
+        double scale =
+            module::getCalibratedType(value).getMax() / get_f8e4m3_max();
         for (auto i = 0; i < count; ++i) {
-          ((uint8_t*)mem_ptr)[i] = f32_to_f8e4m3(p[i] / scale, true);
+          ((uint8_t *)mem_ptr)[i] = f32_to_f8e4m3(p[i] / scale, true);
         }
       } else if (type.isFloat8E5M2()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint8_t*)mem_ptr)[i] = f32_to_f8e4m3(p[i], true);
+          ((uint8_t *)mem_ptr)[i] = f32_to_f8e4m3(p[i], true);
         }
       } else {
         llvm_unreachable("Unknown type");
@@ -204,15 +206,15 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
         memcpy(mem_ptr, data, count * type_size);
       } else if (type.isInteger(32)) {
         for (auto i = 0; i < count; ++i) {
-          ((uint32_t*)mem_ptr)[i] = p[i];
+          ((uint32_t *)mem_ptr)[i] = p[i];
         }
       } else if (type.isInteger(16)) {
         for (auto i = 0; i < count; ++i) {
-          ((uint16_t*)mem_ptr)[i] = p[i];
+          ((uint16_t *)mem_ptr)[i] = p[i];
         }
       } else if (type.isInteger(8)) {
         for (auto i = 0; i < count; ++i) {
-          ((uint8_t*)mem_ptr)[i] = p[i];
+          ((uint8_t *)mem_ptr)[i] = p[i];
         }
       } else if (type.isInteger(4)) {
         for (auto i = 0; i < count; ++i) {
@@ -220,20 +222,21 @@ void BM168xEvaluator::setTensor(const std::string &name, const void *data,
         }
       } else if (type.isF16()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint16_t*)mem_ptr)[i] = f32_to_f16(p[i]);
+          ((uint16_t *)mem_ptr)[i] = f32_to_f16(p[i]);
         }
       } else if (type.isBF16()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint16_t*)mem_ptr)[i] = f32_to_bf16(p[i]);
+          ((uint16_t *)mem_ptr)[i] = f32_to_bf16(p[i]);
         }
       } else if (type.isFloat8E4M3FN()) {
-        double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
+        double scale =
+            module::getCalibratedType(value).getMax() / get_f8e4m3_max();
         for (auto i = 0; i < count; ++i) {
-          ((uint8_t*)mem_ptr)[i] = f32_to_f8e4m3(p[i] / scale, true);
+          ((uint8_t *)mem_ptr)[i] = f32_to_f8e4m3(p[i] / scale, true);
         }
       } else if (type.isFloat8E5M2()) {
         for (auto i = 0; i < count; ++i) {
-          ((uint8_t*)mem_ptr)[i] = f32_to_f8e4m3(p[i], true);
+          ((uint8_t *)mem_ptr)[i] = f32_to_f8e4m3(p[i], true);
         }
       } else {
         llvm_unreachable("Unknown type");
@@ -260,74 +263,76 @@ BM168xEvaluator::getTensor(const std::string &name) {
     assert(module::getStorageType(value).isInteger(8));
     if (qtype.isSigned()) {
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) =
-            ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+        data_fp32->at(i) = ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                           (float)qtype.getScale();
       }
     } else {
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) =
-            ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+        data_fp32->at(i) = ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                           (float)qtype.getScale();
       }
     }
     return std::move(data_fp32);
   } else if (module::isCalibratedType(value)) {
     auto type = module::getStorageType(value);
-    void* mem_ptr = mem->data();
+    void *mem_ptr = mem->data();
     if (type.isF32()) {
-        memcpy(data_fp32->data(), mem_ptr, count * sizeof(float));
+      memcpy(data_fp32->data(), mem_ptr, count * sizeof(float));
     } else if (type.isF16()) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = f16_to_f32(((uint16_t*)mem_ptr)[i]);
+        data_fp32->at(i) = f16_to_f32(((uint16_t *)mem_ptr)[i]);
       }
     } else if (type.isBF16()) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = bf16_to_f32(((uint16_t*)mem_ptr)[i]);
+        data_fp32->at(i) = bf16_to_f32(((uint16_t *)mem_ptr)[i]);
       }
     } else if (type.isFloat8E4M3FN()) {
-      double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
+      double scale =
+          module::getCalibratedType(value).getMax() / get_f8e4m3_max();
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = f8e4m3_to_f32(((uint8_t*)mem_ptr)[i]) * scale;
+        data_fp32->at(i) = f8e4m3_to_f32(((uint8_t *)mem_ptr)[i]) * scale;
       }
     } else if (type.isFloat8E5M2()) {
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = f8e5m2_to_f32(((uint8_t*)mem_ptr)[i]);
+        data_fp32->at(i) = f8e5m2_to_f32(((uint8_t *)mem_ptr)[i]);
       }
     } else {
       llvm_unreachable("Unknown type");
     }
   } else {
     auto type = module::getStorageType(value);
-    void* mem_ptr = mem->data();
+    void *mem_ptr = mem->data();
     if (type.isF32()) {
       memcpy(data_fp32->data(), mem_ptr, count * sizeof(float));
     } else if (type.isInteger(32)) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = ((uint32_t*)mem_ptr)[i];
+        data_fp32->at(i) = ((uint32_t *)mem_ptr)[i];
       }
     } else if (type.isInteger(16)) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = ((uint16_t*)mem_ptr)[i];
+        data_fp32->at(i) = ((uint16_t *)mem_ptr)[i];
       }
     } else if (type.isInteger(8) || type.isInteger(4)) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = ((uint8_t*)mem_ptr)[i];
+        data_fp32->at(i) = ((uint8_t *)mem_ptr)[i];
       }
     } else if (type.isF16()) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = f16_to_f32(((uint16_t*)mem_ptr)[i]);
+        data_fp32->at(i) = f16_to_f32(((uint16_t *)mem_ptr)[i]);
       }
     } else if (type.isBF16()) {
       for (auto i = 0; i < count; ++i) {
-        data_fp32->at(i) = bf16_to_f32(((uint16_t*)mem_ptr)[i]);
+        data_fp32->at(i) = bf16_to_f32(((uint16_t *)mem_ptr)[i]);
       }
     } else if (type.isFloat8E4M3FN()) {
-      double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
+      double scale =
+          module::getCalibratedType(value).getMax() / get_f8e4m3_max();
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = f8e4m3_to_f32(((uint8_t*)mem_ptr)[i]) * scale;
+        data_fp32->at(i) = f8e4m3_to_f32(((uint8_t *)mem_ptr)[i]) * scale;
       }
     } else if (type.isFloat8E5M2()) {
       for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = f8e5m2_to_f32(((uint8_t*)mem_ptr)[i]);
+        data_fp32->at(i) = f8e5m2_to_f32(((uint8_t *)mem_ptr)[i]);
       }
     } else {
       llvm_unreachable("Unknown type");
@@ -363,19 +368,19 @@ void BM168xEvaluator::invoke() {
   bm168x->exit_runtime();
 }
 
-static inline uint8_t get_4bit(void* ptr, int i) {
-  uint8_t byte = ((uint8_t*)ptr)[i / 2];
+static inline uint8_t get_4bit(void *ptr, int i) {
+  uint8_t byte = ((uint8_t *)ptr)[i / 2];
   return (i % 2) ? (byte >> 4) : (byte & 0xf);
 }
 
-void BM168xEvaluator::staging_results(GlobalGenInterface& op) {
+void BM168xEvaluator::staging_results(GlobalGenInterface &op) {
   for (auto v : op.getOperation()->getResults()) {
     if (v.getType().isa<NoneType>())
       continue;
     auto addr = module::getAddress(v);
     auto name = module::getName(v).str();
     auto mem = mem_map[name];
-    void* ptr = bm168x->get_system_mem_ptr(addr);
+    void *ptr = bm168x->get_system_mem_ptr(addr);
     if (!module::getStorageType(v).isInteger(4)) {
       std::memcpy(mem->data(), ptr, mem->size());
     } else {
@@ -387,7 +392,8 @@ void BM168xEvaluator::staging_results(GlobalGenInterface& op) {
   }
 }
 
-void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t sec_info) {
+void BM168xEvaluator::staging_results(LocalGenInterface &op,
+                                      local_sec_info_t sec_info) {
   assert(op.getOperation()->getNumResults() == 1);
   if (isa<tpu::LoadOp, tpu::StoreOp, tpu::YieldOp>(op))
     return;
@@ -395,8 +401,8 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   const auto type = module::getStorageType(v);
   const int type_size = module::getDtypeSize(v);
   assert(!type.isInteger(4));
-  auto ginfo = op.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
-                               (int64_t)0, (int64_t)0);
+  auto ginfo = op.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0,
+                               (int64_t)0);
   auto addr = ginfo.out_addr;
   auto name = module::getName(v).str();
   auto mem = mem_map[name];
@@ -433,23 +439,29 @@ void BM168xEvaluator::staging_results(LocalGenInterface& op, local_sec_info_t se
   for (int n = 0; n < nslice; ++n) {
     for (int d = 0; d < dslice; ++d) {
       for (int c = 0; c < cslice; ++c) {
-        int offset = ((((n + nidx) * C + (c + cidx)) * D + (d + didx)) * H + hidx) * W;
+        int offset =
+            ((((n + nidx) * C + (c + cidx)) * D + (d + didx)) * H + hidx) * W;
         int loc_offset = (d * nslice + n) * nstride + (c / npu_num) * cstride;
         if (wslice == W && !type.isInteger(4)) {
-          void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset * type_size);
+          void *ptr = bm168x->get_local_mem_ptr(c % npu_num,
+                                                addr + loc_offset * type_size);
           assert((offset + hslice * wslice) * type_size <= mem->size());
-          std::memcpy(mem->data() + offset * type_size, ptr, hslice * wslice * type_size);
+          std::memcpy(mem->data() + offset * type_size, ptr,
+                      hslice * wslice * type_size);
         } else {
           for (int h = 0; h < hslice; ++h) {
             int offset_h = offset + h * W + widx;
             int loc_offset_h = loc_offset + h * hstride;
             if (!type.isInteger(4)) {
-              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset_h * type_size);
+              void *ptr = bm168x->get_local_mem_ptr(
+                  c % npu_num, addr + loc_offset_h * type_size);
               assert((offset_h + wslice) * type_size <= mem->size());
-              std::memcpy(mem->data() + offset_h * type_size, ptr, wslice * type_size);
+              std::memcpy(mem->data() + offset_h * type_size, ptr,
+                          wslice * type_size);
             } else {
-              void* ptr = bm168x->get_local_mem_ptr(c % npu_num, addr + loc_offset_h / 2);
-              int8_t* data_ptr = mem->data() + offset_h;
+              void *ptr = bm168x->get_local_mem_ptr(c % npu_num,
+                                                    addr + loc_offset_h / 2);
+              int8_t *data_ptr = mem->data() + offset_h;
               auto count = module::getNumElements(v);
               for (auto i = 0; i < count; ++i) {
                 data_ptr[i] = get_4bit(ptr, i);
@@ -492,7 +504,7 @@ void BM168xEvaluator::visit_static_subnet(FuncOp funcOp, int subnet_id) {
 }
 
 void BM168xEvaluator::visit_group_body(GroupOp gOp, Operation *prev_op,
-                                        Operation *next_op) {
+                                       Operation *next_op) {
 
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
@@ -647,8 +659,8 @@ void BM168xEvaluator::visit_group_body(GroupOp gOp, Operation *prev_op,
       // process overlap ops
       bool first_compute_loop = stage_idx == 1;
       bool last_compute_loop = (draining_period && draining_idx == 1);
-      handle_group_overlap(cur_other_downs, cur_other_ups, prev_op, next_op,
-                              ts, first_compute_loop, last_compute_loop);
+      handle_group_overlap(cur_other_downs, cur_other_ups, prev_op, next_op, ts,
+                           first_compute_loop, last_compute_loop);
 
       bm168x->merge_sync_id();
     } // timestep

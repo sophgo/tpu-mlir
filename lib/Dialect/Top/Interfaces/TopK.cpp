@@ -69,7 +69,7 @@ void top::TopKOp::shape_inference() {
   axis = axis < 0 ? axis + rank : axis;
   setAxis(axis);
   std::vector<int64_t> output_shape(input_shape.size());
-  for (int i =0; i < input_shape.size(); i++) {
+  for (int i = 0; i < input_shape.size(); i++) {
     if (i == axis) {
       output_shape[i] = K;
     } else {
@@ -79,5 +79,3 @@ void top::TopKOp::shape_inference() {
   module::setShapeOrVerify(getValues(), output_shape);
   module::setShapeOrVerify(getIndices(), output_shape);
 }
-
-

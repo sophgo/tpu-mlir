@@ -20,16 +20,17 @@ static void LoweringReshapeToShapeAssign(PatternRewriter &rewriter,
     attrs.push_back(attr);
   }
 
-  rewriter.replaceOpWithNewOp<tpu::ShapeAssignOp>(op, type, op.getOperands(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapeAssignOp>(op, type, op.getOperands(),
+                                                  attrs);
 }
 
 static bool check_unlowering(mlir::Operation *op) {
   if (!(module::isBM1688() || module::isSG2380() || module::isMARS3()))
     return false;
 
-  for (auto &use: cast<top::ReshapeOp>(op).getOutput().getUses()) {
-    if (isa<top::MatMulOp, tpu::MatMulOp>(use.getOwner())
-        && use.getOperandNumber() == 2) {
+  for (auto &use : cast<top::ReshapeOp>(op).getOutput().getUses()) {
+    if (isa<top::MatMulOp, tpu::MatMulOp>(use.getOwner()) &&
+        use.getOperandNumber() == 2) {
       return true;
     }
   }
@@ -50,7 +51,8 @@ void ReshapeTryLowering::Lowering(PatternRewriter &rewriter,
   auto shape = module::getShape(v);
   auto ctx = v.getContext();
   Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapeReshapeOp>(op, new_type, op.getOperands(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapeReshapeOp>(op, new_type,
+                                                   op.getOperands(), attrs);
 }
 
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
@@ -83,7 +85,7 @@ void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
     LoweringReshapeToShapeAssign(rewriter, op, new_type);
   } else {
     if (check_unlowering(op.getOperation()))
-      //trick for A2
+      // trick for A2
       lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
     else
       lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
@@ -97,7 +99,7 @@ void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
     LoweringReshapeToShapeAssign(rewriter, op, new_type);
   } else {
     if (check_unlowering(op.getOperation()))
-      //trick for A2
+      // trick for A2
       lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
     else
       lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
@@ -105,7 +107,7 @@ void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void ReshapeLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::ReshapeOp op) const {
+                                 top::ReshapeOp op) const {
   bool isE4 = module::getMode() == module::Mode::F8E4M3;
   if (op.getShapeT()) {
     Type new_type;

@@ -7,12 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::RequantFpOp::getFLOPs() {
-  return 0;
-}
+int64_t top::RequantFpOp::getFLOPs() { return 0; }
 LogicalResult top::RequantFpOp::init(InferenceParameter &p) {
   return success();
 }
@@ -26,4 +23,3 @@ LogicalResult top::RequantFpOp::inference(InferenceParameter &p) {
 void top::RequantFpOp::shape_inference() {
   common_shape_inference(getOperation());
 }
-

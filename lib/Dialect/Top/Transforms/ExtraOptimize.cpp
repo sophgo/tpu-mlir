@@ -22,8 +22,8 @@ public:
       : OpRewriterPatternEx<OpTy>(context) {}
 
 protected:
-  mlir::LogicalResult matchAndRewriteImpl(OpTy op,
-                                          mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy op, mlir::PatternRewriter &rewriter) const override {
     for (Value out : op.getResults()) {
       if (out.getUsers().empty() && !isa<tpu::TopKOp, top::TopKOp>(op)) {
         out.setType(mlir::NoneType::get(rewriter.getContext()));

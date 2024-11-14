@@ -9,6 +9,4 @@
 
 #include "tpu_mlir/Interfaces/FlopsInterface.h"
 
-
-
 #include "tpu_mlir/Interfaces/FlopsInterface.cpp.inc"

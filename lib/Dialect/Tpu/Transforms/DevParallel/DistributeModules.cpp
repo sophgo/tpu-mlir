@@ -28,9 +28,9 @@ static constexpr llvm::StringRef STEP = "step";
 
 struct OpReorderPattern : public OpRewriterPatternEx3 {
   OpReorderPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"OpReorderPattern",1) {}
+      : OpRewriterPatternEx3(context, "OpReorderPattern", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
     }
@@ -69,7 +69,7 @@ struct OpReorderPattern : public OpRewriterPatternEx3 {
     }
     return fixed ? success() : failure();
   }
-    bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 static void getInputsOutputs(std::vector<Operation *> &ops,
@@ -271,7 +271,7 @@ static void buildDistibution(tpu::DevBeginOp begin, tpu::DevEndOp end,
   std::vector<Operation *> begins(begin->user_begin(), begin->user_end());
   std::vector<Value> ends(end->operand_begin(), end->operand_end());
   if (begins.size() == num_devices) {
-      std::reverse(begins.begin(), begins.end());
+    std::reverse(begins.begin(), begins.end());
   }
   for (int i = 0; i < num_devices; i++) {
     auto subf = std::make_shared<SubFunction>(i, step);
@@ -430,7 +430,8 @@ static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
           "indice_" + std::to_string(cur_out_idx) + "_" + std::to_string(i);
       loc = module::getLocLike(operands[i + 1], suffix);
       auto indice_select = builder.create<tpu::WhereOp>(
-          loc, indice.getType(), ValueRange{cmp.getOutput(), indice, indice2, none});
+          loc, indice.getType(),
+          ValueRange{cmp.getOutput(), indice, indice2, none});
       indice = indice_select.getOutput();
       insert_subop(subf, indice_select);
 
@@ -450,7 +451,8 @@ static int64_t buildEndToTopK(tpu::DevEndOp end, ModuleOp m,
       suffix = "value_" + std::to_string(cur_out_idx) + "_" + std::to_string(i);
       loc = module::getLocLike(operands[i], suffix);
       auto value_select = builder.create<tpu::WhereOp>(
-          loc, value.getType(), ValueRange{cmp.getOutput(), value, value2, none});
+          loc, value.getType(),
+          ValueRange{cmp.getOutput(), value, value2, none});
       value = value_select.getOutput();
       insert_subop(subf, value_select);
 
@@ -535,14 +537,13 @@ static int64_t getStep(FuncOp func) {
   return func->getAttrOfType<IntegerAttr>(STEP).getInt();
 }
 
-
 class Function2Module : public OpRewriterPatternEx<func::CallOp> {
 public:
   Function2Module(mlir::MLIRContext *context)
       : OpRewriterPatternEx<func::CallOp>(context, "Function2Module") {}
 
   LogicalResult matchAndRewriteImpl(func::CallOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto m = module::getModuleOp();
     auto func = module::getFuncOp(m, op.getCallee());
     auto device_id = getDeviceId(func);

@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 
 namespace tpu_mlir {
 
@@ -25,16 +25,13 @@ static inline double gelu(double x) {
 }
 
 static inline double tgelu(double x) {
-  return 0.5 * x * (1.0 + std::tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)));
+  return 0.5 * x *
+         (1.0 + std::tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)));
 }
 
-static inline double sigmoid(double x) {
-  return 1 / (1 + std::exp(-x));
-}
+static inline double sigmoid(double x) { return 1 / (1 + std::exp(-x)); }
 
-static inline double qgelu(double x) {
-  return x * sigmoid(1.702 * x);
-}
+static inline double qgelu(double x) { return x * sigmoid(1.702 * x); }
 
 static inline double square(double x) { return x * x; }
 
@@ -43,22 +40,21 @@ static inline double hswish(double x) {
 }
 
 static inline double sign(double x) {
-  if (x < 0) return -1;
-  else if (XATTR_LIST_MAX > 0) return 1;
-  else return 0;
+  if (x < 0)
+    return -1;
+  else if (XATTR_LIST_MAX > 0)
+    return 1;
+  else
+    return 0;
 }
 
-static inline double softsign(double x) {
-  return x / (1 + std::abs(x));
-}
+static inline double softsign(double x) { return x / (1 + std::abs(x)); }
 
 static inline double softplus(double x) {
   return x > 20 ? x : std::log(std::exp(x) + 1);
 }
 
-static inline double silu(double x) {
-  return x / (1 + std::exp(-x));
-}
+static inline double silu(double x) { return x / (1 + std::exp(-x)); }
 
 static inline double swish(double x, double beta) {
   return x / (1 + std::exp(-x * beta));
@@ -103,7 +99,7 @@ activate_f getActivateFunc(tpu::ActiveMode mode, f64_array_t coeffs) {
     assert(coeffs && coeffs->size() == 2);
     const double alpha = coeffs->at(1);
     const double beta = coeffs->at(0);
-    return [alpha, beta](double val) { return hsigmoid(val, alpha, beta);};
+    return [alpha, beta](double val) { return hsigmoid(val, alpha, beta); };
   }
   case tpu::ActiveMode::HSWISH:
     return [](double val) { return hswish(val); };
@@ -156,17 +152,14 @@ activate_f getActivateFunc(tpu::ActiveOp op) {
   switch (op.getMode()) {
   case tpu::ActiveMode::ELU: {
     coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
-  }
-  break;
+  } break;
   case tpu::ActiveMode::HSIGMOID: {
     coeffs = module::getF64Array(op.getCoeffs(), 2, 0);
-  }
-  break;
+  } break;
   case tpu::ActiveMode::SWISH: {
     coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
-  }
-  break;
-  default: ;
+  } break;
+  default:;
   }
   return getActivateFunc(op.getMode(), coeffs);
 }

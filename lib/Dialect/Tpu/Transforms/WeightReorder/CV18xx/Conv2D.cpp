@@ -212,7 +212,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewriteImpl(
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.getFilter()).isBF16() || !module::isWeight(op.getFilter()))
+  if (!module::getStorageType(op.getFilter()).isBF16() ||
+      !module::isWeight(op.getFilter()))
     return failure();
 
   auto attr = op.parseParam();

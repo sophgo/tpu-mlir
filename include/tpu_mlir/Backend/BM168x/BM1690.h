@@ -20,30 +20,14 @@ typedef void (*set_gdma_bw_l2l)(float GBps);
 typedef void (*tpu_sync_all)();
 typedef void (*tpu_core_context_setup)(int, int, int);
 
-
 typedef void (*sdma_tensor_general_move_gen_cmd)(
-    uint64_t src_addr,
-    int src_N,
-    int src_C,
-    int src_H,
-    int src_W,
-    uint32_t src_N_stride,
-    uint32_t src_C_stride,
-    uint32_t src_H_stride,
-    uint32_t src_W_stride,
-    int src_format,
-    uint64_t dst_addr,
-    int dst_N,
-    int dst_C,
-    int dst_H,
-    int dst_W,
-    uint32_t dst_N_stride,
-    uint32_t dst_C_stride,
-    uint32_t dst_H_stride,
-    uint32_t dst_W_stride,
-    int transpose,  // N/C transpose
-    int port_id,
-    CMD_ID_NODE * pid_node);
+    uint64_t src_addr, int src_N, int src_C, int src_H, int src_W,
+    uint32_t src_N_stride, uint32_t src_C_stride, uint32_t src_H_stride,
+    uint32_t src_W_stride, int src_format, uint64_t dst_addr, int dst_N,
+    int dst_C, int dst_H, int dst_W, uint32_t dst_N_stride,
+    uint32_t dst_C_stride, uint32_t dst_H_stride, uint32_t dst_W_stride,
+    int transpose, // N/C transpose
+    int port_id, CMD_ID_NODE *pid_node);
 
 namespace tpu_mlir {
 namespace backend {
@@ -84,7 +68,6 @@ public:
     dl_tpu_get_id_node(code->cmdid_node);
   }
 
-
   std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() final {
     return multiCode;
   }
@@ -92,6 +75,7 @@ public:
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
       "libbm1690_kernel_module.so";
+
 private:
   enum TagType {
     TAG_USERS = 0,

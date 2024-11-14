@@ -15,8 +15,8 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
   double const_val = op.getConstVal().convertToDouble();
   auto active_mulconst = [const_val](double val) { return val * const_val; };
-  Value table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric, active_mulconst);
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
+                                    active_mulconst);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
@@ -43,7 +43,8 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
 }
 } // namespace cv18xx

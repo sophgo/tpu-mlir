@@ -73,7 +73,8 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t batch_low, int64_t M, int64_t K,
                    int64_t N, bool do_relu, double relu_limit, int64_t right_zp,
                    int64_t input_zp, bool right_transpose, bool input_transpose,
-                   bool output_transpose, bool hdim_is_batch, const std::vector<int64_t> &L_shape,
+                   bool output_transpose, bool hdim_is_batch,
+                   const std::vector<int64_t> &L_shape,
                    const std::vector<int64_t> &R_shape, int dims_merge_2_M) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
@@ -107,7 +108,8 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
                                                        dims_merge_2_M) > i))) {
           need_broadcast_ = true;
           if (L_shape_.size() > 4)
-            llvm_unreachable("Not support broadcast in MatMul of dims larger than 4");
+            llvm_unreachable(
+                "Not support broadcast in MatMul of dims larger than 4");
           break;
         }
       }
@@ -187,10 +189,14 @@ void MatMul::run() {
     for (int i = 0; i < max_n; i++) {
       for (int j = 0; j < max_c; j++) {
         memcpy(input_broadcasted->data() + (i * max_c + j) * l_length,
-               p_input_after + ((i % L_shape_[0]) * L_shape_[1] + j % L_shape_[1]) * l_length,
+               p_input_after +
+                   ((i % L_shape_[0]) * L_shape_[1] + j % L_shape_[1]) *
+                       l_length,
                l_length * sizeof(float));
         memcpy(right_broadcasted->data() + (i * max_c + j) * r_length,
-               p_right_after + ((i % R_shape_[0]) * R_shape_[1] + j % R_shape_[1]) * r_length,
+               p_right_after +
+                   ((i % R_shape_[0]) * R_shape_[1] + j % R_shape_[1]) *
+                       r_length,
                r_length * sizeof(float));
       }
     }

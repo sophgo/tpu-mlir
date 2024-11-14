@@ -34,7 +34,7 @@ static std::string mode_convert(llvm::StringRef mode) {
 }
 
 void CompareConstTryLowering::Lowering(PatternRewriter &rewriter,
-                                 top::CompareConstOp op) const {
+                                       top::CompareConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -45,7 +45,8 @@ void CompareConstTryLowering::Lowering(PatternRewriter &rewriter,
   auto compare_mode = op.getMode();
   auto converted_mode = mode_convert(compare_mode);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr(converted_mode)));
+  attrs.push_back(
+      rewriter.getNamedAttr("type", rewriter.getStringAttr(converted_mode)));
   auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));
   constI32->data()[0] =
       static_cast<int64_t>(op.getConstVal().convertToDouble());
@@ -76,10 +77,9 @@ void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::CompareConstOp op,
                                         bool asymmetric) const {
   if (op.getMode().str() == "And") {
-    if(module::isMARS3()){
+    if (module::isMARS3()) {
       lowering_common_bf16<tpu::CompareConstOp>(rewriter, op);
-    }
-    else{
+    } else {
       lowering_common_f16<tpu::CompareConstOp>(rewriter, op);
     }
   } else {
@@ -108,7 +108,7 @@ void CompareConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void CompareConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                       top::CompareConstOp op) const {
+                                      top::CompareConstOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 

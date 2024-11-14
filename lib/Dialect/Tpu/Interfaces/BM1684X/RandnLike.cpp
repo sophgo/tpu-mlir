@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -22,7 +21,8 @@ void tpu::RandnLikeOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RandnLikeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(randn_like_spec_t);
+  if (!buffer)
+    return sizeof(randn_like_spec_t);
   randn_like_spec_t param = {0};
   auto shape = module::getShape(getOutput());
   auto dims = shape.size();
@@ -32,6 +32,4 @@ int64_t tpu::RandnLikeOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::RandnLikeOp::get_fw_type_bm1684x() {
-  return FW_BMNET_RANDNLIKE;
-}
+int64_t tpu::RandnLikeOp::get_fw_type_bm1684x() { return FW_BMNET_RANDNLIKE; }

@@ -33,7 +33,8 @@ void ReduceLowering::LoweringF32(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceSum")));
     attrs.push_back(rewriter.getNamedAttr("axes", op.getAxes()));
-    attrs.push_back(rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(op.getKeepdims())));
+    attrs.push_back(rewriter.getNamedAttr(
+        "keepdims", rewriter.getBoolAttr(op.getKeepdims())));
     operands.push_back(square_op.getOutput());
     auto noneOp = module::getNoneOp(op);
     for (int i = op->getNumOperands(); i < 3; i++) {

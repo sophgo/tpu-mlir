@@ -64,7 +64,8 @@ inline void YCrCb2RGB_601_limited(u8 y, u8 u, u8 v, float *r, float *g,
 }
 
 inline void YCrCb2RGB_601_full(u8 y, u8 u, u8 v, float *r, float *g, float *b,
-                               bool isUINT8, tpu_mlir::RoundingMode round_mode) {
+                               bool isUINT8,
+                               tpu_mlir::RoundingMode round_mode) {
   float r_fp, g_fp, b_fp;
   int Y = (int)y;
   int U = (int)u - 128;

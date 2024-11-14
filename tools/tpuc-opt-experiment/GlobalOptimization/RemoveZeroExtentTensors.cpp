@@ -1,8 +1,7 @@
 #include "Passes.h"
 
-namespace mlir
-{
-  /// Check if a `t` is a `tensor` with zero extents.
+namespace mlir {
+/// Check if a `t` is a `tensor` with zero extents.
 static std::optional<RankedTensorType> isZeroExtent(Type t) {
   auto operandType = dyn_cast<RankedTensorType>(t);
   if (operandType &&
@@ -89,5 +88,4 @@ std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
 createRemoveZeroExtentTensorsPass() {
   return std::make_unique<RemoveZeroExtentTensorsPass>();
 }
-} // namespace
-
+} // namespace mlir

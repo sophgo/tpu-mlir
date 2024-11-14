@@ -11,8 +11,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::DivOp::codegen_global_bm1684() {
@@ -46,9 +44,11 @@ void tpu::DivOp::codegen_global_bm1684() {
   }
 }
 
-int64_t tpu::DivOp::getBufferSize_bm1684(int64_t in_lmem_bytes, int64_t out_lmem_bytes,
-                             int64_t in_nslice, int64_t in_hslice,
-                             int64_t out_nslice, int64_t out_hslice) {
+int64_t tpu::DivOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
   int64_t buffer_size = 0;
   return buffer_size;
 }
@@ -107,7 +107,7 @@ void tpu::DivOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 }
 
-uint32_t tpu::DivOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::DivOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   ir_layer_info_t *add_layer_info = (ir_layer_info_t *)ir_layer_info;
   fw_broadcast_binary_layer_param_t fw_broadcast_binary_layer_param = {0};
   dynamic_common_ir_layer_info(add_layer_info, getInputs()[0], getOutput());
@@ -117,11 +117,9 @@ uint32_t tpu::DivOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
   return sizeof(fw_broadcast_binary_layer_param_t);
 }
 
-int32_t tpu::DivOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::DivOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-int64_t tpu::DivOp::get_fw_type_bm1684() {
-  return FW_BMNET_BROADCAST_BINARY;
-}
+int64_t tpu::DivOp::get_fw_type_bm1684() { return FW_BMNET_BROADCAST_BINARY; }

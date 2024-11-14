@@ -58,7 +58,7 @@ void GatherElementsLowering::LoweringF32(PatternRewriter &rewriter,
 void GatherElementsLowering::LoweringINT8(PatternRewriter &rewriter,
                                           top::GatherElementsOp op,
                                           bool asymmetric) const {
-   LoweringF32(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 } // namespace bm1684
 } // namespace tpu_mlir

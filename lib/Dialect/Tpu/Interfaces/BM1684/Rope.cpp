@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -21,16 +19,16 @@ void tpu::RopeOp::codegen_global_bm1684() {
 }
 
 int64_t tpu::RopeOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                                 int64_t out_lmem_bytes,
-                                                 int64_t in_nslice, int64_t in_hslice,
-                                                 int64_t out_nslice,
-                                                 int64_t out_hslice) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
   llvm_unreachable("Not supported now");
   return 0;
 }
 
 void tpu::RopeOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
-                                              local_sec_info_t &sec_info) {
+                                       local_sec_info_t &sec_info) {
   llvm_unreachable("Not supported now");
 }
 

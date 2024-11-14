@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -18,7 +18,7 @@ struct SplitToSlice : public OpRewriterPatternEx<SplitOp> {
       : OpRewriterPatternEx<SplitOp>(context, "SplitToSlice") {}
 
   LogicalResult matchAndRewriteImpl(SplitOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     int64_t dims = in_shape.size();
     auto num = op.getNum();
@@ -64,10 +64,11 @@ struct SplitToSlice : public OpRewriterPatternEx<SplitOp> {
 struct SplitReshape2ReshapeSplit : public OpRewriterPatternEx<SplitOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   SplitReshape2ReshapeSplit(MLIRContext *context, PatternBenefit benefit = 2)
-      : OpRewriterPatternEx<SplitOp>(context, "SplitReshape2ReshapeSplit", benefit) {}
+      : OpRewriterPatternEx<SplitOp>(context, "SplitReshape2ReshapeSplit",
+                                     benefit) {}
 
   LogicalResult matchAndRewriteImpl(SplitOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto input = op.getInput();
     auto in_shape = module::getShape(input);
     int64_t dims = in_shape.size();

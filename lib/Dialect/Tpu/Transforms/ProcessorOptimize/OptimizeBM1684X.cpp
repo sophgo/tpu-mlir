@@ -597,7 +597,7 @@ public:
       add_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
       rewriter.eraseOp(op);
       return success();
-       } else if (auto mul_op = dyn_cast<tpu::MulOp>(nextOp)) {
+    } else if (auto mul_op = dyn_cast<tpu::MulOp>(nextOp)) {
       auto inB = mul_op.getInputs()[1];
       if (!module::isWeight(inB)) {
         return failure();
@@ -674,7 +674,7 @@ public:
       }
       std::vector<int64_t> inW0_shape = module::getShape(inW0);
       std::vector<int64_t> new_inW0_shape = {inW0_shape[0], inW0_shape[2],
-                                            inW0_shape[1], inW0_shape[3]};
+                                             inW0_shape[1], inW0_shape[3]};
       auto newType = module::getTypeLike(inW0, new_inW0_shape);
       auto weight0_op = inW0.getDefiningOp<top::WeightOp>();
       auto weight0_type = module::getElementType(weight0_op.getOutput());
@@ -682,7 +682,8 @@ public:
         auto weight0_data = weight0_op.read<uint16_t>();
         auto weight0_tp =
             std::make_shared<std::vector<uint16_t>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape, ps);
+        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                         ps);
         auto weight0 = tpu_mlir::top::WeightOp::create<uint16_t>(
             rope_op, "transposed_rope_weight0", *weight0_tp, newType);
         rope_op.setOperand(1, weight0);
@@ -690,7 +691,8 @@ public:
         auto weight0_data = weight0_op.read<float>();
         auto weight0_tp =
             std::make_shared<std::vector<float>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape, ps);
+        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                         ps);
         auto weight0 = tpu_mlir::top::WeightOp::create<float>(
             rope_op, "transposed_rope_weight0", *weight0_tp, newType);
         rope_op.setOperand(1, weight0);
@@ -698,7 +700,8 @@ public:
         auto weight0_data = weight0_op.read<uint8_t>();
         auto weight0_tp =
             std::make_shared<std::vector<uint8_t>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape, ps);
+        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                         ps);
         auto weight0 = tpu_mlir::top::WeightOp::create<uint8_t>(
             rope_op, "transposed_rope_weight0", *weight0_tp, newType);
         rope_op.setOperand(1, weight0);
@@ -711,7 +714,7 @@ public:
       }
       std::vector<int64_t> inW1_shape = module::getShape(inW1);
       std::vector<int64_t> new_inW1_shape = {inW1_shape[0], inW1_shape[2],
-                                            inW1_shape[1], inW1_shape[3]};
+                                             inW1_shape[1], inW1_shape[3]};
       auto newType1 = module::getTypeLike(inW1, new_inW1_shape);
       auto weight1_op = inW1.getDefiningOp<top::WeightOp>();
       auto weight1_type = module::getElementType(weight1_op.getOutput());
@@ -719,7 +722,8 @@ public:
         auto weight1_data = weight1_op.read<uint16_t>();
         auto weight1_tp =
             std::make_shared<std::vector<uint16_t>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape, ps);
+        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                         ps);
         auto weight1 = tpu_mlir::top::WeightOp::create<uint16_t>(
             rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
         rope_op.setOperand(2, weight1);
@@ -727,7 +731,8 @@ public:
         auto weight1_data = weight1_op.read<float>();
         auto weight1_tp =
             std::make_shared<std::vector<float>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape, ps);
+        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                         ps);
         auto weight1 = tpu_mlir::top::WeightOp::create<float>(
             rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
         rope_op.setOperand(2, weight1);
@@ -735,7 +740,8 @@ public:
         auto weight1_data = weight1_op.read<uint8_t>();
         auto weight1_tp =
             std::make_shared<std::vector<uint8_t>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape, ps);
+        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                         ps);
         auto weight1 = tpu_mlir::top::WeightOp::create<uint8_t>(
             rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
         rope_op.setOperand(2, weight1);
@@ -3157,7 +3163,8 @@ public:
           inner_size *= in_shape[i];
         }
       }
-      if (ax < 0 || ax >= steps->size() || steps->at(ax) != 1 || ax >= shape.size() || inner_size != shape[ax]) {
+      if (ax < 0 || ax >= steps->size() || steps->at(ax) != 1 ||
+          ax >= shape.size() || inner_size != shape[ax]) {
         break;
       }
       auto noneOp = module::getNoneOp(op);
@@ -3605,7 +3612,7 @@ public:
       auto requant =
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
-      if (module::isBM1688()|| module::isSG2380() || module::isMARS3()) {
+      if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
@@ -4220,7 +4227,8 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
     bool m_fuse_rq = op.getFuseRq();
-    if (m_fuse_rq)  // If matmul supports per-channel quantization in the lowering stage, don't fuse rq!
+    if (m_fuse_rq) // If matmul supports per-channel quantization in the
+                   // lowering stage, don't fuse rq!
       failure();
 
     if (!(module::isBM1684X() || module::isBM1688()) || !op->hasOneUse()) {
@@ -4297,11 +4305,13 @@ public:
       return failure();
     }
     auto in_size = module::getNumElements(matMulOp.getInput());
-    if (in_size > BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 8) * BM168x::NPU_NUM) {
+    if (in_size >
+        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 8) * BM168x::NPU_NUM) {
       return failure();
     }
     bool f_fuse_rq = matMulOp.getFuseRq();
-    if(!f_fuse_rq) return failure();
+    if (!f_fuse_rq)
+      return failure();
     if (!isa<top::WeightOp>(matMulOp.getRight().getDefiningOp())) {
       return failure();
     }
@@ -4309,7 +4319,8 @@ public:
     if (!lut_op) {
       return failure();
     }
-    auto prevMatMulOp = dyn_cast<tpu::MatMulOp>(lut_op->getOperand(0).getDefiningOp());
+    auto prevMatMulOp =
+        dyn_cast<tpu::MatMulOp>(lut_op->getOperand(0).getDefiningOp());
     if (!prevMatMulOp) {
       return failure();
     }
@@ -4317,12 +4328,14 @@ public:
       return failure();
     }
     bool l_fuse_rq = prevMatMulOp.getFuseRq();
-    if(!l_fuse_rq) return failure();
+    if (!l_fuse_rq)
+      return failure();
     auto w_shape = module::getShape(matMulOp.getRight());
     auto dim = w_shape.size();
     auto w_size = module::getNumElements(matMulOp.getRight());
     // get split number
-    auto max_weight_size = BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 4) * BM168x::NPU_NUM;
+    auto max_weight_size =
+        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 4) * BM168x::NPU_NUM;
     int split_num = 1;
     while (w_size > max_weight_size) {
       split_num *= 2;
@@ -4344,17 +4357,18 @@ public:
   }
 };
 
-
-class SplitMixedQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+class SplitMixedQuantizedMLPPattern
+    : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   SplitMixedQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitMixedQuantizedMLPPattern",
-                                           benefit) {}
+      : OpRewriterPatternEx<tpu::MatMulOp>(
+            context, "SplitMixedQuantizedMLPPattern", benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
                                     PatternRewriter &rewriter) const override {
     bool f_fuse_rq = matMulOp.getFuseRq();
-    if(f_fuse_rq) return failure();
+    if (f_fuse_rq)
+      return failure();
     auto castOp = matMulOp->getOperand(0).getDefiningOp();
     if (!castOp || !isa<tpu::CastOp>(castOp)) {
       return failure();
@@ -4404,48 +4418,48 @@ class CastGradWeight : public OpRewriterPatternEx<tpu::ConvbwdOp> {
 public:
   CastGradWeight(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "CastGradWeight",
-                                           benefit) {}
+                                            benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp op,
                                     PatternRewriter &rewriter) const override {
     auto attr = op.parseParam();
     auto grad_weight_enable = op.getGradWeightEnable();
-    if (!grad_weight_enable){
+    if (!grad_weight_enable) {
       return failure();
     }
     auto target_type = op.getResult(1).getType().cast<RankedTensorType>();
     auto target_shape = target_type.getShape();
-    if (target_shape[2]!=attr.kw && target_shape[3]!= attr.kw){
+    if (target_shape[2] != attr.kw && target_shape[3] != attr.kw) {
       return failure();
     }
     auto input_type = op.getOperand(0).getType().cast<RankedTensorType>();
     auto input_etype = input_type.getElementType();
     rewriter.setInsertionPointAfter(op);
     std::vector<Value> operands;
-    for (auto&& in: op.getOperands())
+    for (auto &&in : op.getOperands())
       operands.emplace_back(in);
     std::vector<Type> new_types;
     std::vector<int64_t> gradweight_shape;
     int n = op->getNumResults();
     for (int i = 0; i < n; i++) {
-      if (i==1){
-        if (input_etype.isF32()){
-            gradweight_shape = {1,attr.oc,attr.ic*attr.kh*attr.kw,1};
+      if (i == 1) {
+        if (input_etype.isF32()) {
+          gradweight_shape = {1, attr.oc, attr.ic * attr.kh * attr.kw, 1};
+        } else if (input_etype.isF16()) {
+          const int IC_PARALLEL = BM168x::ic_num(2);
+          int64_t dw_h = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
+          gradweight_shape = {1, attr.oc, dw_h, IC_PARALLEL};
         }
-        else if (input_etype.isF16()){
-            const int IC_PARALLEL = BM168x::ic_num(2);
-            int64_t dw_h = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
-            gradweight_shape = {1,attr.oc,dw_h,IC_PARALLEL};
-        }
-        auto f32_type = RankedTensorType::get(gradweight_shape, rewriter.getF32Type());
+        auto f32_type =
+            RankedTensorType::get(gradweight_shape, rewriter.getF32Type());
         new_types.push_back(f32_type);
-      }
-      else{
+      } else {
         auto out = op.getResult(i);
         new_types.push_back(out.getType());
       }
     }
-    rewriter.replaceOpWithNewOp<tpu::ConvbwdOp>(op, new_types, operands, op.getOperation()->getAttrs());
+    rewriter.replaceOpWithNewOp<tpu::ConvbwdOp>(op, new_types, operands,
+                                                op.getOperation()->getAttrs());
     // update func result type
     module::updateModuleTypes();
     return success();
@@ -4551,7 +4565,8 @@ public:
           auto reshape_type = module::getTypeLike(next_out, out_shape);
           auto shapeAttr = reshapeOp.getShape();
           auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
-              ori_loc, reshape_type, ValueRange{next_out}, rewriter.getNamedAttr("shape", shapeAttr));
+              ori_loc, reshape_type, ValueRange{next_out},
+              rewriter.getNamedAttr("shape", shapeAttr));
           next_out.replaceAllUsesExcept(new_reshape_op.getOutput(),
                                         new_reshape_op);
           rewriter.eraseOp(reshapeOp);
@@ -4609,7 +4624,8 @@ private:
 
       if (inputProduct == outputProduct) {
         if (inputShape[inputIndex] == outputShape[outputIndex]) {
-          if(inputIndex != 0 && outputIndex != 0 && inputShape[inputIndex] != 1 && outputIndex == axis) {
+          if (inputIndex != 0 && outputIndex != 0 &&
+              inputShape[inputIndex] != 1 && outputIndex == axis) {
             result.CanReshapeDown = true;
             result.out_axis = inputIndex;
             break;
@@ -4640,7 +4656,7 @@ namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-  patterns->add<MatMulRequantIntFusion,MatMul2FAttentionPattern>(ctx, 10);
+  patterns->add<MatMulRequantIntFusion, MatMul2FAttentionPattern>(ctx, 10);
   patterns->add<LargePadConvPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,

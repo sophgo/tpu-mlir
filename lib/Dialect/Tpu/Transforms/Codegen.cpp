@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Codegen/CV18xxCodegen.hpp"
 #include "Codegen/BM168xCodegen.hpp"
+#include "Codegen/CV18xxCodegen.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 using namespace llvm;

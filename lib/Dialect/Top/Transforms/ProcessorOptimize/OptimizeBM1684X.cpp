@@ -24,8 +24,9 @@ public:
       : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertGLMTilePermute") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     // 1. match the pattern with
     // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
     auto left = op.getOperand(0); // [32,1,513]
@@ -222,8 +223,9 @@ public:
       : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertGLMTilePermute2") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     // [2x32x512x512;512x2x2x128] -> 2x[16x512x2x512;1x512x2x128]
     // (hdim_is_batch)
     // 1. match the pattern with
@@ -258,7 +260,7 @@ protected:
     // 2. Get Params
     auto top = unsqueeze_op.getInput(); // [512,2,2,128]
     auto order = module::getI64Array(right_op.getOrder());
-    if(order->size() != 3)
+    if (order->size() != 3)
       return failure();
     for (int i = 0; i < order->size(); i++) {
       if (order->at(i) == order->size() - 1) {
@@ -404,8 +406,9 @@ public:
       : OpRewriterPatternEx<top::MatMulOp>(context, "ChatGLM3ToGQAAttention") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     // Rewrite to match GQA FlashAttention
     auto matmul_left = op.getOperand(0);
     auto matmul_right = op.getOperand(1);
@@ -418,7 +421,8 @@ protected:
     if (!transpose_op) {
       return failure();
     }
-    auto reshape1_op = dyn_cast<top::ReshapeOp>(transpose_op.getInput().getDefiningOp());
+    auto reshape1_op =
+        dyn_cast<top::ReshapeOp>(transpose_op.getInput().getDefiningOp());
     if (!reshape1_op) {
       return failure();
     }
@@ -432,34 +436,44 @@ protected:
       return failure();
     }
 
-    auto reshape0_kv_left_op = dyn_cast<top::ReshapeOp>(matmulkv_op.getInput().getDefiningOp());
+    auto reshape0_kv_left_op =
+        dyn_cast<top::ReshapeOp>(matmulkv_op.getInput().getDefiningOp());
     if (!reshape0_kv_left_op) {
       return failure();
     }
-    auto transpose_kv_right_op = dyn_cast<top::PermuteOp>(matmulkv_op.getRight().getDefiningOp());
+    auto transpose_kv_right_op =
+        dyn_cast<top::PermuteOp>(matmulkv_op.getRight().getDefiningOp());
     if (!transpose_kv_right_op) {
       return failure();
     }
-    auto reshape_kv_right_op = dyn_cast<top::ReshapeOp>(transpose_kv_right_op.getInput().getDefiningOp());
+    auto reshape_kv_right_op = dyn_cast<top::ReshapeOp>(
+        transpose_kv_right_op.getInput().getDefiningOp());
     if (!reshape_kv_right_op) {
       return failure();
     }
-    auto tile_kv_right_op = dyn_cast<top::TileOp>(reshape_kv_right_op.getInput().getDefiningOp());
+    auto tile_kv_right_op =
+        dyn_cast<top::TileOp>(reshape_kv_right_op.getInput().getDefiningOp());
     if (!tile_kv_right_op) {
       return failure();
     }
-    auto unsqueeze_kv_right_op = dyn_cast<top::UnsqueezeOp>(tile_kv_right_op.getInput().getDefiningOp());
+    auto unsqueeze_kv_right_op =
+        dyn_cast<top::UnsqueezeOp>(tile_kv_right_op.getInput().getDefiningOp());
     if (!unsqueeze_kv_right_op) {
       return failure();
     }
 
     Operation *concat_kv_right_op;
-    if(isa<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp()))
-      concat_kv_right_op = dyn_cast<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
-    else if(isa<top::ReshapeOp>(unsqueeze_kv_right_op.getInput().getDefiningOp()))
-      concat_kv_right_op = dyn_cast<top::ReshapeOp>(unsqueeze_kv_right_op.getInput().getDefiningOp());
-    else return failure();
-    auto softmax_op = dyn_cast<top::SoftmaxOp>(reshape0_kv_left_op.getInput().getDefiningOp());
+    if (isa<top::ConcatOp>(unsqueeze_kv_right_op.getInput().getDefiningOp()))
+      concat_kv_right_op = dyn_cast<top::ConcatOp>(
+          unsqueeze_kv_right_op.getInput().getDefiningOp());
+    else if (isa<top::ReshapeOp>(
+                 unsqueeze_kv_right_op.getInput().getDefiningOp()))
+      concat_kv_right_op = dyn_cast<top::ReshapeOp>(
+          unsqueeze_kv_right_op.getInput().getDefiningOp());
+    else
+      return failure();
+    auto softmax_op = dyn_cast<top::SoftmaxOp>(
+        reshape0_kv_left_op.getInput().getDefiningOp());
     if (!softmax_op) {
       return failure();
     }
@@ -467,147 +481,187 @@ protected:
     if (!add_op) {
       return failure();
     }
-    auto reshape1_kv_left_op = dyn_cast<top::ReshapeOp>(add_op.getInputs()[0].getDefiningOp());
+    auto reshape1_kv_left_op =
+        dyn_cast<top::ReshapeOp>(add_op.getInputs()[0].getDefiningOp());
     if (!reshape1_kv_left_op) {
       return failure();
     }
-    auto mulconst_op = dyn_cast<top::MulConstOp>(reshape1_kv_left_op.getInput().getDefiningOp());
+    auto mulconst_op = dyn_cast<top::MulConstOp>(
+        reshape1_kv_left_op.getInput().getDefiningOp());
     if (!mulconst_op) {
       return failure();
     }
 
-    auto matmulqk_op = dyn_cast<top::MatMulOp>(mulconst_op.getInput().getDefiningOp());
+    auto matmulqk_op =
+        dyn_cast<top::MatMulOp>(mulconst_op.getInput().getDefiningOp());
     if (!matmulqk_op) {
       return failure();
     }
-    auto transpose_qk_left_op = dyn_cast<top::PermuteOp>(matmulqk_op.getInput().getDefiningOp());
+    auto transpose_qk_left_op =
+        dyn_cast<top::PermuteOp>(matmulqk_op.getInput().getDefiningOp());
     if (!transpose_qk_left_op) {
       return failure();
     }
-    auto reshape_qk_left_op = dyn_cast<top::ReshapeOp>(transpose_qk_left_op.getInput().getDefiningOp());
+    auto reshape_qk_left_op = dyn_cast<top::ReshapeOp>(
+        transpose_qk_left_op.getInput().getDefiningOp());
     if (!reshape_qk_left_op) {
       return failure();
     }
-    auto concat_qk_left_op = dyn_cast<top::ConcatOp>(reshape_qk_left_op.getInput().getDefiningOp());
+    auto concat_qk_left_op =
+        dyn_cast<top::ConcatOp>(reshape_qk_left_op.getInput().getDefiningOp());
     if (!concat_qk_left_op) {
       return failure();
     }
-    auto transpose_qk_right_op = dyn_cast<top::PermuteOp>(matmulqk_op.getRight().getDefiningOp());
+    auto transpose_qk_right_op =
+        dyn_cast<top::PermuteOp>(matmulqk_op.getRight().getDefiningOp());
     if (!transpose_qk_left_op) {
       return failure();
     }
-    auto reshape_qk_right_op = dyn_cast<top::ReshapeOp>(transpose_qk_right_op.getInput().getDefiningOp());
+    auto reshape_qk_right_op = dyn_cast<top::ReshapeOp>(
+        transpose_qk_right_op.getInput().getDefiningOp());
     if (!reshape_qk_right_op) {
       return failure();
     }
-    auto tile_qk_right_op = dyn_cast<top::TileOp>(reshape_qk_right_op.getInput().getDefiningOp());
+    auto tile_qk_right_op =
+        dyn_cast<top::TileOp>(reshape_qk_right_op.getInput().getDefiningOp());
     if (!tile_qk_right_op) {
       return failure();
     }
-    auto unsqueeze_qk_right_op = dyn_cast<top::UnsqueezeOp>(tile_qk_right_op.getInput().getDefiningOp());
+    auto unsqueeze_qk_right_op =
+        dyn_cast<top::UnsqueezeOp>(tile_qk_right_op.getInput().getDefiningOp());
     if (!unsqueeze_qk_right_op) {
       return failure();
     }
-    auto concat_qk_right_op = dyn_cast<top::ConcatOp>(unsqueeze_qk_right_op.getInput().getDefiningOp());
+    auto concat_qk_right_op = dyn_cast<top::ConcatOp>(
+        unsqueeze_qk_right_op.getInput().getDefiningOp());
     if (!concat_qk_right_op) {
       return failure();
     }
     auto qk_left_shape = module::getShape(concat_qk_left_op.getOutput());
     auto qk_right_shape = module::getShape(tile_qk_right_op.getOutput());
-    if(qk_left_shape.size() != 4 || qk_left_shape[1] != 1)
+    if (qk_left_shape.size() != 4 || qk_left_shape[1] != 1)
       return failure();
 
     // Reshape[16k,1,32,128] -> [1,16k,32,128]
     std::vector<NamedAttribute> attrs;
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {qk_left_shape[1], qk_left_shape[0], qk_left_shape[2], qk_left_shape[3]})));
+        "shape",
+        rewriter.getI64ArrayAttr({qk_left_shape[1], qk_left_shape[0],
+                                  qk_left_shape[2], qk_left_shape[3]})));
     auto qk_left_reshape_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_left_op.getOperation()).str() + "_reshape")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_left_op.getOperation()).str() +
+            "_reshape")),
         RankedTensorType::get(
-            {qk_left_shape[1], qk_left_shape[0], qk_left_shape[2], qk_left_shape[3]}, module::getElementType(concat_qk_left_op.getOutput())),
+            {qk_left_shape[1], qk_left_shape[0], qk_left_shape[2],
+             qk_left_shape[3]},
+            module::getElementType(concat_qk_left_op.getOutput())),
         concat_qk_left_op.getOutput(), attrs);
 
     // PermuteOp [1,16k,32,128] -> [1,32,1k,128]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "order", rewriter.getI64ArrayAttr(
-                     {0, 2, 1, 3})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
     auto qk_left_permute_type = RankedTensorType::get(
-        {qk_left_shape[1], qk_left_shape[2], qk_left_shape[0], qk_left_shape[3]},
+        {qk_left_shape[1], qk_left_shape[2], qk_left_shape[0],
+         qk_left_shape[3]},
         module::getElementType(qk_left_reshape_op.getOutput()));
     auto qk_left_permute_op = rewriter.create<top::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_left_op.getOperation()).str() + "_permute")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_left_op.getOperation()).str() +
+            "_permute")),
         qk_left_permute_type, qk_left_reshape_op.getOutput(), attrs);
 
     // ReshapeOp [16k,1,2,128] -> [1,16k,2,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[4]})));
+        "shape",
+        rewriter.getI64ArrayAttr({qk_right_shape[1], qk_right_shape[0],
+                                  qk_right_shape[2], qk_right_shape[4]})));
     auto qk_right_reshape0_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_reshape0")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_right_op.getOperation()).str() +
+            "_reshape0")),
         RankedTensorType::get(
-            {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[4]}, module::getElementType(concat_qk_right_op.getOutput())),
+            {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2],
+             qk_right_shape[4]},
+            module::getElementType(concat_qk_right_op.getOutput())),
         concat_qk_right_op.getOutput(), attrs);
 
     // UnsqueezeOp [1,16k,2,128] -> [1,16k,2,1,168]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "axes", rewriter.getI64ArrayAttr(
-                     {3})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({3})));
     auto qk_right_unsqueeze_type = RankedTensorType::get(
-        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], 1, qk_right_shape[4]},
+        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], 1,
+         qk_right_shape[4]},
         module::getElementType(qk_right_reshape0_op.getOutput()));
     auto qk_right_unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_unsqueeze")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_right_op.getOperation()).str() +
+            "_unsqueeze")),
         qk_right_unsqueeze_type, qk_right_reshape0_op.getOutput(), attrs);
 
     // TileOp [1,16k,2,1,128] -> [1,16k,2,16,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-      "tile", rewriter.getI64ArrayAttr({1,1,1,qk_right_shape[3],1})));
+        "tile", rewriter.getI64ArrayAttr({1, 1, 1, qk_right_shape[3], 1})));
     auto qk_right_tile_type = RankedTensorType::get(
-        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2], qk_right_shape[3], qk_right_shape[4]},
+        {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2],
+         qk_right_shape[3], qk_right_shape[4]},
         module::getElementType(qk_right_unsqueeze_op.getOutput()));
     auto qk_right_tile_op = rewriter.create<top::TileOp>(
-      NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_tile")),
-      qk_right_tile_type, ValueRange{qk_right_unsqueeze_op.getOutput()}, attrs);
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_right_op.getOperation()).str() +
+            "_tile")),
+        qk_right_tile_type, ValueRange{qk_right_unsqueeze_op.getOutput()},
+        attrs);
 
     // ReshapeOp [1,16k,2,16,128] -> [1,16k,32,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2]*qk_right_shape[3], qk_right_shape[4]})));
+        "shape",
+        rewriter.getI64ArrayAttr({qk_right_shape[1], qk_right_shape[0],
+                                  qk_right_shape[2] * qk_right_shape[3],
+                                  qk_right_shape[4]})));
     auto qk_right_reshape1_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_reshape1")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_right_op.getOperation()).str() +
+            "_reshape1")),
         RankedTensorType::get(
-            {qk_right_shape[1], qk_right_shape[0], qk_right_shape[2]*qk_right_shape[3], qk_right_shape[4]},
+            {qk_right_shape[1], qk_right_shape[0],
+             qk_right_shape[2] * qk_right_shape[3], qk_right_shape[4]},
             module::getElementType(concat_qk_right_op.getOutput())),
-            qk_right_tile_op.getOutput(), attrs);
+        qk_right_tile_op.getOutput(), attrs);
 
     // PermuteOp [1,16k,32,128] -> [1,32,128,16k]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "order", rewriter.getI64ArrayAttr(
-                     {0, 2, 3, 1})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 3, 1})));
     auto qk_right_permute_type = RankedTensorType::get(
-        {qk_right_shape[1], qk_right_shape[2] * qk_right_shape[3], qk_right_shape[4], qk_right_shape[0]},
+        {qk_right_shape[1], qk_right_shape[2] * qk_right_shape[3],
+         qk_right_shape[4], qk_right_shape[0]},
         module::getElementType(concat_qk_right_op.getOutput()));
     auto qk_right_permute_op = rewriter.create<top::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_qk_right_op.getOperation()).str() + "_permute")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_qk_right_op.getOperation()).str() +
+            "_permute")),
         qk_right_permute_type, qk_right_reshape1_op.getOutput(), attrs);
 
     // MatMulOp [(1,32,16k,128),(1,32,128,16k)] -> [1,32,16k,16k]
-    std::vector<int64_t> new_matmulqk_shape = module::getShape(qk_left_permute_op.getOutput());
-    new_matmulqk_shape[new_matmulqk_shape.size() - 1] = module::getShape(qk_right_permute_op.getOutput())[3];
+    std::vector<int64_t> new_matmulqk_shape =
+        module::getShape(qk_left_permute_op.getOutput());
+    new_matmulqk_shape[new_matmulqk_shape.size() - 1] =
+        module::getShape(qk_right_permute_op.getOutput())[3];
     auto new_matmulqk_op = rewriter.clone(*matmulqk_op);
     module::setLocSuffix(new_matmulqk_op, std::to_string(0));
     new_matmulqk_op->setOperand(0, qk_left_permute_op.getOutput());
     new_matmulqk_op->setOperand(1, qk_right_permute_op.getOutput());
 
-    new_matmulqk_op->setAttr("right_transpose", rewriter.getBoolAttr(matmulqk_op.getRightTranspose()));
+    new_matmulqk_op->setAttr(
+        "right_transpose",
+        rewriter.getBoolAttr(matmulqk_op.getRightTranspose()));
     new_matmulqk_op->setAttr("hdim_is_batch", rewriter.getBoolAttr(false));
     module::setShape(new_matmulqk_op->getResult(0), new_matmulqk_shape);
 
@@ -615,91 +669,108 @@ protected:
     auto new_mulconst_op = rewriter.clone(*mulconst_op);
     module::setLocSuffix(new_mulconst_op, std::to_string(0));
     new_mulconst_op->setOperand(0, new_matmulqk_op->getResult(0));
-    std::vector<int64_t> new_mulconst_shape = module::getShape(new_matmulqk_op->getResult(0));
+    std::vector<int64_t> new_mulconst_shape =
+        module::getShape(new_matmulqk_op->getResult(0));
     module::setShape(new_mulconst_op->getResult(0), new_mulconst_shape);
 
-   // AddOp [1,32,16k,16k]
+    // AddOp [1,32,16k,16k]
     auto new_add_op = rewriter.clone(*add_op);
     module::setLocSuffix(new_add_op, std::to_string(0));
     new_add_op->setOperand(0, new_mulconst_op->getResult(0));
     new_add_op->setOperand(1, add_op.getInputs()[1]);
-    std::vector<int64_t> new_add_shape = module::getShape(new_mulconst_op->getResult(0));
+    std::vector<int64_t> new_add_shape =
+        module::getShape(new_mulconst_op->getResult(0));
     module::setShape(new_add_op->getResult(0), new_add_shape);
 
     attrs.clear();
-    attrs.emplace_back(
-        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(new_matmulqk_shape.size() - 1)));
-    auto softmax_name_loc = NameLoc::get(rewriter.getStringAttr(module::getName(
-        softmax_op.getOperation()).str() + "_" + std::to_string(0)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axis", rewriter.getSI32IntegerAttr(new_matmulqk_shape.size() - 1)));
+    auto softmax_name_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(softmax_op.getOperation()).str() + "_" +
+        std::to_string(0)));
     auto new_softmax_op = rewriter.create<top::SoftmaxOp>(
         softmax_name_loc,
-        RankedTensorType::get(
-            new_matmulqk_shape, module::getElementType(softmax_op.getOutput())),
-            ValueRange{new_add_op->getResult(0)},
-                attrs);
+        RankedTensorType::get(new_matmulqk_shape,
+                              module::getElementType(softmax_op.getOutput())),
+        ValueRange{new_add_op->getResult(0)}, attrs);
 
     auto kv_right_shape = module::getShape(tile_kv_right_op.getOutput());
     // ReshapeOp [16k,1,2,128] -> [1,16k,2,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]})));
+        "shape",
+        rewriter.getI64ArrayAttr({kv_right_shape[1], kv_right_shape[0],
+                                  kv_right_shape[2], kv_right_shape[4]})));
     auto kv_right_reshape0_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_reshape0")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_kv_right_op).str() + "_reshape0")),
         RankedTensorType::get(
-            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[4]}, module::getElementType(concat_kv_right_op->getResult(0))),
+            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2],
+             kv_right_shape[4]},
+            module::getElementType(concat_kv_right_op->getResult(0))),
         concat_kv_right_op->getResult(0), attrs);
 
     // UnsqueezeOp [1,16k,2,128] -> [1,16k,2,1,168]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "axes", rewriter.getI64ArrayAttr(
-                     {3})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({3})));
     auto kv_right_unsqueeze_type = RankedTensorType::get(
-        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], 1, kv_right_shape[4]},
+        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], 1,
+         kv_right_shape[4]},
         module::getElementType(kv_right_reshape0_op.getOutput()));
     auto kv_right_unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_unsqueeze")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_kv_right_op).str() + "_unsqueeze")),
         kv_right_unsqueeze_type, kv_right_reshape0_op.getOutput(), attrs);
 
     // TileOp [1,16k,2,1,128] -> [1,16k,2,16,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-      "tile", rewriter.getI64ArrayAttr({1,1,1,kv_right_shape[3],1})));
+        "tile", rewriter.getI64ArrayAttr({1, 1, 1, kv_right_shape[3], 1})));
     auto kv_right_tile_type = RankedTensorType::get(
-        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2], kv_right_shape[3], kv_right_shape[4]},
+        {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2],
+         kv_right_shape[3], kv_right_shape[4]},
         module::getElementType(qk_right_unsqueeze_op.getOutput()));
     auto kv_right_tile_op = rewriter.create<top::TileOp>(
-      NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_tile")),
-      kv_right_tile_type, ValueRange{kv_right_unsqueeze_op.getOutput()}, attrs);
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_kv_right_op).str() + "_tile")),
+        kv_right_tile_type, ValueRange{kv_right_unsqueeze_op.getOutput()},
+        attrs);
 
     // ReshapeOp [1,16k,2,16,128] -> [1,16k,32,128]
     attrs.clear();
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]})));
+        "shape",
+        rewriter.getI64ArrayAttr({kv_right_shape[1], kv_right_shape[0],
+                                  kv_right_shape[2] * kv_right_shape[3],
+                                  kv_right_shape[4]})));
     auto kv_right_reshape1_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_reshape1")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_kv_right_op).str() + "_reshape1")),
         RankedTensorType::get(
-            {kv_right_shape[1], kv_right_shape[0], kv_right_shape[2]*kv_right_shape[3], kv_right_shape[4]},
+            {kv_right_shape[1], kv_right_shape[0],
+             kv_right_shape[2] * kv_right_shape[3], kv_right_shape[4]},
             module::getElementType(concat_kv_right_op->getResult(0))),
-            kv_right_tile_op.getOutput(), attrs);
+        kv_right_tile_op.getOutput(), attrs);
 
     // PermuteOp [1,16k,32,128] -> [1,32,16k,128]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "order", rewriter.getI64ArrayAttr(
-                     {0, 2, 1, 3})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
     auto kv_right_permute_type = RankedTensorType::get(
-        {kv_right_shape[1], kv_right_shape[2] * kv_right_shape[3], kv_right_shape[0], kv_right_shape[4]},
+        {kv_right_shape[1], kv_right_shape[2] * kv_right_shape[3],
+         kv_right_shape[0], kv_right_shape[4]},
         module::getElementType(concat_kv_right_op->getResult(0)));
     auto kv_right_permute_op = rewriter.create<top::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(concat_kv_right_op).str() + "_permute")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(concat_kv_right_op).str() + "_permute")),
         kv_right_permute_type, kv_right_reshape1_op.getOutput(), attrs);
 
     // MatMulOp [(1,32,16k,16k),(1,32,16k,128)] -> [1,32,16k,128]
-    std::vector<int64_t> new_matmulkv_shape = module::getShape(new_softmax_op.getOutput());
-    new_matmulkv_shape[new_matmulkv_shape.size() - 1] = module::getShape(kv_right_permute_op.getOutput())[3];
+    std::vector<int64_t> new_matmulkv_shape =
+        module::getShape(new_softmax_op.getOutput());
+    new_matmulkv_shape[new_matmulkv_shape.size() - 1] =
+        module::getShape(kv_right_permute_op.getOutput())[3];
     auto new_matmulkv_op = rewriter.clone(*matmulkv_op);
     module::setLocSuffix(new_matmulkv_op, std::to_string(0));
     new_matmulkv_op->setOperand(0, new_softmax_op.getOutput());
@@ -709,14 +780,15 @@ protected:
 
     // PermuteOp [1,32,16k,128] -> [1,16k,32,128]
     attrs.clear();
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "order", rewriter.getI64ArrayAttr(
-                     {0, 2, 1, 3})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1, 3})));
     auto matmulkv_permute_type = RankedTensorType::get(
-        {new_matmulkv_shape[0], new_matmulkv_shape[2], new_matmulkv_shape[1], new_matmulkv_shape[3]},
+        {new_matmulkv_shape[0], new_matmulkv_shape[2], new_matmulkv_shape[1],
+         new_matmulkv_shape[3]},
         module::getElementType(new_matmulkv_op->getResult(0)));
     auto matmulkv_permute_op = rewriter.create<top::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(new_matmulkv_op).str() + "_permute")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(new_matmulkv_op).str() + "_permute")),
         matmulkv_permute_type, new_matmulkv_op->getResult(0), attrs);
 
     // ReshapeOp [1,16k,32,128] -> [16k,1,4096]
@@ -727,31 +799,38 @@ protected:
     new_attention_shape[1] = new_matmulkv_shape[0];
     new_attention_shape[2] = new_matmulkv_shape[1] * new_matmulkv_shape[3];
     attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    {new_attention_shape[0], new_attention_shape[1], new_attention_shape[2]})));
+        "shape", rewriter.getI64ArrayAttr({new_attention_shape[0],
+                                           new_attention_shape[1],
+                                           new_attention_shape[2]})));
     auto attention_reshape_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(new_matmulkv_op).str() + "_reshape")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(new_matmulkv_op).str() + "_reshape")),
         RankedTensorType::get(
-            {new_attention_shape[0], new_attention_shape[1], new_attention_shape[2]}, module::getElementType(new_matmulkv_op->getResult(0))),
+            {new_attention_shape[0], new_attention_shape[1],
+             new_attention_shape[2]},
+            module::getElementType(new_matmulkv_op->getResult(0))),
         matmulkv_permute_op->getResult(0), attrs);
 
-     op->setOperand(0, attention_reshape_op.getOutput());
+    op->setOperand(0, attention_reshape_op.getOutput());
 
     rewriter.setInsertionPointAfter(op);
     return success();
   }
 };
 
-class ConvertMatMulWithRightTranspose : public OpRewriterPatternEx<top::MatMulOp> {
+class ConvertMatMulWithRightTranspose
+    : public OpRewriterPatternEx<top::MatMulOp> {
 public:
   ConvertMatMulWithRightTranspose(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMulWithRightTranspose", benefit) {}
+      : OpRewriterPatternEx<top::MatMulOp>(
+            context, "ConvertMatMulWithRightTranspose", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
-    if(module::isSG2380()){
-      if(module::Mode::F32 == module::getMode()) {
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    if (module::isSG2380()) {
+      if (module::Mode::F32 == module::getMode()) {
         // sg2380 can't support GDMA transpose instruction in FP32 mode
         return failure();
       }
@@ -840,13 +919,16 @@ Value is_permute_reshape(Value in) {
 
 class ConvertMatMul2Attention : public OpRewriterPatternEx<top::MatMulOp> {
 public:
-  ConvertMatMul2Attention(mlir::MLIRContext *context,int benefit)
-      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMul2Attention", benefit) {}
+  ConvertMatMul2Attention(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "ConvertMatMul2Attention",
+                                           benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
-    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() || module::isMARS3())
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
+        module::isMARS3())
       return failure();
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
@@ -929,7 +1011,8 @@ protected:
     auto queries_shape = module::getShape(matmul_queries.getInput());
     auto keys_shape = module::getShape(matmul_keys.getInput());
     auto values_shape = module::getShape(matmul_values.getInput());
-    if (queries_shape[0] != keys_shape[0] || queries_shape[0] != values_shape[0]) {
+    if (queries_shape[0] != keys_shape[0] ||
+        queries_shape[0] != values_shape[0]) {
       return failure();
     }
     auto len = module::getNumElements(matmul_queries.getInput());
@@ -1014,12 +1097,14 @@ protected:
 // eliminate reshapeOp
 class ReshapeReorderPattern : public OpRewriterPatternEx<top::ReshapeOp> {
 public:
-  ReshapeReorderPattern(mlir::MLIRContext *context,int benefit)
-      : OpRewriterPatternEx<top::ReshapeOp>(context, "ReshapeReorderPattern", benefit) {}
+  ReshapeReorderPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ReshapeOp>(context, "ReshapeReorderPattern",
+                                            benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::ReshapeOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::ReshapeOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto output = op.getOutput();
     if (!output.hasOneUse()) {
       return failure();
@@ -1134,12 +1219,14 @@ protected:
 
 class ConvertMultiInputAdd : public OpRewriterPatternEx<top::AddOp> {
 public:
-  ConvertMultiInputAdd(mlir::MLIRContext *context,int benefit)
-      : OpRewriterPatternEx<top::AddOp>(context, "ConvertMultiInputAdd", benefit) {}
+  ConvertMultiInputAdd(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::AddOp>(context, "ConvertMultiInputAdd",
+                                        benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::AddOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::AddOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto inputs = op.getInputs();
     auto name = module::getName(op.getOperation()).str();
     if (inputs.size() <= 2) {
@@ -1235,12 +1322,14 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
 
 class WhereBroadcastToTile : public OpRewriterPatternEx<top::WhereOp> {
 public:
-  WhereBroadcastToTile(mlir::MLIRContext *context,int benefit)
-      : OpRewriterPatternEx<top::WhereOp>(context, "WhereBroadcastToTile", benefit) {}
+  WhereBroadcastToTile(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::WhereOp>(context, "WhereBroadcastToTile",
+                                          benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::WhereOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::WhereOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     if (module::isDynamic()) {
       return failure();
     }
@@ -1299,11 +1388,13 @@ protected:
 class ConvertConv2DToImg2Col : public OpRewriterPatternEx<top::ConvOp> {
 public:
   ConvertConv2DToImg2Col(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConv2DToImg2Col", benefit) {}
+      : OpRewriterPatternEx<top::ConvOp>(context, "ConvertConv2DToImg2Col",
+                                         benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::ConvOp convOp,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::ConvOp convOp,
+                      mlir::PatternRewriter &rewriter) const override {
     Value input = convOp.getInput();
     Value filter = convOp.getFilter();
     Value bias = convOp.getBias();
@@ -1348,7 +1439,8 @@ protected:
     // matrix, can lead to performance degradation.This adjustment is primarily
     // made concerning the CLIP model.Further improvements will be considered
     // later
-    if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) && !(kh < 29 && kw < 29)) {
+    if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) &&
+        !(kh < 29 && kw < 29)) {
       return failure();
     }
     if (module::isSG2380() && module::getMode() == module::Mode::F32) {
@@ -1456,11 +1548,13 @@ protected:
 class SplitMatMulPattern : public OpRewriterPatternEx<top::MatMulOp> {
 public:
   SplitMatMulPattern(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::MatMulOp>(context, "SplitMatMulPattern", benefit) {}
+      : OpRewriterPatternEx<top::MatMulOp>(context, "SplitMatMulPattern",
+                                           benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MatMulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     Value input = op.getInput();
     Value right = op.getRight();
     Value bias = op.getBias();
@@ -1492,32 +1586,41 @@ protected:
               isa<top::ReshapeOp>(*users[1]->user_begin()))
             return failure();
         }
-        // fix bug for internv1 while slicing matmul col not at first dim equivalently
-        // case0 : reshape(1x2400x6144->1x2400x8x6x128) + slice(1x2400x8x4x128) : invalid
-        // case1 : reshape(64x49x288->64x49x3x3x32) + slice(64x49x1x3x32) : valid
+        // fix bug for internv1 while slicing matmul col not at first dim
+        // equivalently case0 : reshape(1x2400x6144->1x2400x8x6x128) +
+        // slice(1x2400x8x4x128) : invalid case1 :
+        // reshape(64x49x288->64x49x3x3x32) + slice(64x49x1x3x32) : valid
         if (users.size() == 3 && isa<top::SliceOp>(users[0]) &&
-          isa<top::SliceOp>(users[1]) && isa<top::SliceOp>(users[2])){
-            // not strict judgement, find the first diff axis of matmul col;
-            // slice.axes may be empty, judge slice axis by shape
-            // real slice.axes size is 1 mostly
-            auto reshape_input_shape = module::getShape(nextOp->getOperands()[0]);
-            for(auto user : users){
-              auto slice_op = dyn_cast<top::SliceOp>(*user);
-              auto slice_input_shape = module::getShape(slice_op.getInput());
-              auto slice_output_shape = module::getShape(slice_op.getOutput());
-              int slice_input_dim = slice_input_shape.size();
-              int last_diff_axis = slice_input_dim - 1;
-              int reshape_outer_size = 0;
-              for(;reshape_input_shape[reshape_outer_size]==slice_input_shape[reshape_outer_size];reshape_outer_size++){}
-              for(; last_diff_axis>=reshape_outer_size; last_diff_axis --){
-                if(slice_input_shape[last_diff_axis] != slice_output_shape[last_diff_axis]
-                  && std::max((last_diff_axis == reshape_outer_size) ? 1 :slice_input_shape[last_diff_axis - 1],
-                  (last_diff_axis == reshape_outer_size) ? 1 :slice_output_shape[last_diff_axis - 1]) > 1)
-                  break;
-              }
-              if(last_diff_axis >= reshape_outer_size)
-                return failure();
+            isa<top::SliceOp>(users[1]) && isa<top::SliceOp>(users[2])) {
+          // not strict judgement, find the first diff axis of matmul col;
+          // slice.axes may be empty, judge slice axis by shape
+          // real slice.axes size is 1 mostly
+          auto reshape_input_shape = module::getShape(nextOp->getOperands()[0]);
+          for (auto user : users) {
+            auto slice_op = dyn_cast<top::SliceOp>(*user);
+            auto slice_input_shape = module::getShape(slice_op.getInput());
+            auto slice_output_shape = module::getShape(slice_op.getOutput());
+            int slice_input_dim = slice_input_shape.size();
+            int last_diff_axis = slice_input_dim - 1;
+            int reshape_outer_size = 0;
+            for (; reshape_input_shape[reshape_outer_size] ==
+                   slice_input_shape[reshape_outer_size];
+                 reshape_outer_size++) {
             }
+            for (; last_diff_axis >= reshape_outer_size; last_diff_axis--) {
+              if (slice_input_shape[last_diff_axis] !=
+                      slice_output_shape[last_diff_axis] &&
+                  std::max((last_diff_axis == reshape_outer_size)
+                               ? 1
+                               : slice_input_shape[last_diff_axis - 1],
+                           (last_diff_axis == reshape_outer_size)
+                               ? 1
+                               : slice_output_shape[last_diff_axis - 1]) > 1)
+                break;
+            }
+            if (last_diff_axis >= reshape_outer_size)
+              return failure();
+          }
         }
       }
     }
@@ -1721,14 +1824,17 @@ Matmul(slice weight)-->Softmax-->Reshape-->Concat-->Slice-->Reshape-->\
 1)concat(8x32x76760x1x4->8x32x76760x5x4) to slice(8x76760x5x4->8x76760x1x4) to
 reduce data move 2)eleminate permute
 */
-class ConcatWithReduceSum2SliceWithAdd : public OpRewriterPatternEx<top::ReduceOp> {
+class ConcatWithReduceSum2SliceWithAdd
+    : public OpRewriterPatternEx<top::ReduceOp> {
 public:
   ConcatWithReduceSum2SliceWithAdd(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::ReduceOp>(context, "ConcatWithReduceSum2SliceWithAdd", benefit) {}
+      : OpRewriterPatternEx<top::ReduceOp>(
+            context, "ConcatWithReduceSum2SliceWithAdd", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::ReduceOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::ReduceOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     // TODO: support quantized type
     auto input = op.getInput();
     auto mode = op.getMode();
@@ -2057,26 +2163,29 @@ protected:
   }
 };
 
-// concat 6([1,1,64,320,320]) + reducesum([6,1,64,320,320], keepdims=false) -> 5 add [1,1,64,320,320] + reshape
-// concat is inplace_op, but reduce performance is low with transpose to move reduce axis to H/W;
-// can be removed if backend supports reduce at N/C
+// concat 6([1,1,64,320,320]) + reducesum([6,1,64,320,320], keepdims=false) -> 5
+// add [1,1,64,320,320] + reshape concat is inplace_op, but reduce performance
+// is low with transpose to move reduce axis to H/W; can be removed if backend
+// supports reduce at N/C
 class ConcatReduceSum2AddReshape : public OpRewriterPatternEx<top::ReduceOp> {
 public:
   ConcatReduceSum2AddReshape(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<top::ReduceOp>(context, "ConcatReduceSum2AddReshape", benefit) {}
+      : OpRewriterPatternEx<top::ReduceOp>(
+            context, "ConcatReduceSum2AddReshape", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::ReduceOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::ReduceOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto input = op.getInput();
     auto mode = op.getMode();
     auto axes = module::getI64Array(op.getAxes());
     auto input_shape = module::getShape(input);
     // TODO : performance may decline after rewriting ; support other mode
-    if (mode != "ReduceSum" || input_shape.size() != 5 || axes->size() != 1 || axes->at(0) != 0)
+    if (mode != "ReduceSum" || input_shape.size() != 5 || axes->size() != 1 ||
+        axes->at(0) != 0)
       return failure();
-    auto concat_op =
-        dyn_cast<top::ConcatOp>(op.getInput().getDefiningOp());
+    auto concat_op = dyn_cast<top::ConcatOp>(op.getInput().getDefiningOp());
     if (!concat_op || !concat_op->hasOneUse())
       return failure();
     int concat_input_num = concat_op.getInputs().size();
@@ -2087,7 +2196,8 @@ protected:
     auto add_op = rewriter.create<top::AddOp>(
         add_loc, op.getOutput().getType(),
         mlir::ValueRange{concat_op.getInputs()[0], concat_op.getInputs()[1]});
-    module::setShape(add_op->getResult(0), module::getShape(concat_op.getInputs()[0]));
+    module::setShape(add_op->getResult(0),
+                     module::getShape(concat_op.getInputs()[0]));
     for (int add_idx = 1; add_idx < concat_input_num - 1; add_idx++) {
       // if(operands[i+1].getDefiningOp()->getLoc() > add_op->getLoc())
       //   insertpoint = operands[1];
@@ -2097,34 +2207,36 @@ protected:
                                  "_add_" + std::to_string(add_idx)));
       add_op = rewriter.create<top::AddOp>(
           add_loc, op.getOutput().getType(),
-          mlir::ValueRange{add_op.getOutput(), concat_op.getInputs()[add_idx+1]});
-      module::setShape(add_op->getResult(0), module::getShape(concat_op.getInputs()[0]));
+          mlir::ValueRange{add_op.getOutput(),
+                           concat_op.getInputs()[add_idx + 1]});
+      module::setShape(add_op->getResult(0),
+                       module::getShape(concat_op.getInputs()[0]));
     }
 
     std::vector<NamedAttribute> attrs;
     // attrs.emplace_back(
-    //       rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1/concat_input_num)));
+    //       rewriter.getNamedAttr("const_val",
+    //       rewriter.getF64FloatAttr(1/concat_input_num)));
     // auto mulconst_loc = NameLoc::get(
     //     rewriter.getStringAttr(module::getName(op.getOperation()).str() +
     //                              "_mul"));
     // auto mulconst_op = rewriter.create<top::MulConstOp>(
     //     mulconst_loc, op.getOutput().getType(),
     //     mlir::ValueRange{add_op.getOutput()},attrs);
-    // module::setShape(mulconst_op->getResult(0), module::getShape(add_op.getOutput()));
+    // module::setShape(mulconst_op->getResult(0),
+    // module::getShape(add_op.getOutput()));
 
-    if(!op.getKeepdims()){
+    if (!op.getKeepdims()) {
       auto add_shape = module::getShape(add_op->getResult(0));
       attrs.clear();
       attrs.emplace_back(rewriter.getNamedAttr(
-          "shape",
-          rewriter.getI64ArrayAttr({add_shape[1], add_shape[2],add_shape[3],add_shape[4]})));
+          "shape", rewriter.getI64ArrayAttr({add_shape[1], add_shape[2],
+                                             add_shape[3], add_shape[4]})));
       auto add_reshape_op = rewriter.create<top::ReshapeOp>(
           NameLoc::get(rewriter.getStringAttr(
-              module::getName(add_op.getOutput())
-                  .str() +
-              "_reshape")),
+              module::getName(add_op.getOutput()).str() + "_reshape")),
           RankedTensorType::get(
-              {add_shape[1], add_shape[2],add_shape[3],add_shape[4]},
+              {add_shape[1], add_shape[2], add_shape[3], add_shape[4]},
               module::getElementType(add_op.getOutput())),
           add_op.getOutput(), attrs);
       rewriter.replaceAllUsesWith(op, add_reshape_op->getResult(0));
@@ -2143,8 +2255,9 @@ public:
       : OpRewriterPatternEx<top::DivOp>(context, "ConvertToRSqrt", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::DivOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::DivOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto divisor = op.getIsReverse() ? op->getOperand(0) : op->getOperand(1);
     auto dividend = op.getIsReverse() ? op->getOperand(1) : op->getOperand(0);
     auto def_op = divisor.getDefiningOp();
@@ -2154,15 +2267,14 @@ protected:
       auto in = def_op->getOperand(0);
       // rsqrt
       auto rsqrtOp = rewriter.create<top::RsqrtOp>(
-        NameLoc::get(
-          rewriter.getStringAttr(module::getName(divisor).str() + "_inv")),
-        divisor.getType(), ValueRange{in});
+          NameLoc::get(
+              rewriter.getStringAttr(module::getName(divisor).str() + "_inv")),
+          divisor.getType(), ValueRange{in});
       auto out = op.getOutput();
       // mul
       auto mulOp = rewriter.create<top::MulOp>(
-        out.getLoc(), out.getType(),
-        ValueRange{dividend, rsqrtOp.getOutput()},
-        op->getAttrs());
+          out.getLoc(), out.getType(),
+          ValueRange{dividend, rsqrtOp.getOutput()}, op->getAttrs());
       mulOp->removeAttr(rewriter.getStringAttr("is_reverse"));
       out.replaceAllUsesWith(mulOp.getOutput());
     } else {
@@ -2179,8 +2291,9 @@ public:
       : OpRewriterPatternEx<top::MulOp>(context, "ConvertToSquare", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     auto in0 = op->getOperand(0);
     auto in1 = op->getOperand(1);
     if (in0 != in1)
@@ -2197,7 +2310,7 @@ protected:
     return success();
   }
 };
-  
+
 // x * sigmoid(1.7020000219345093 * x) => QGELU(x)
 class ConvertToQGELU : public OpRewriterPatternEx<top::MulOp> {
 public:
@@ -2205,18 +2318,20 @@ public:
       : OpRewriterPatternEx<top::MulOp>(context, "ConvertToQGELU", benefit) {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(top::MulOp op,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(top::MulOp op,
+                      mlir::PatternRewriter &rewriter) const override {
     if (op->getNumOperands() != 2)
       return failure();
     if (op.getDoRelu())
       return failure();
     auto ins = op->getOperands();
-    Operation* def_ops[2] = {nullptr, nullptr};
+    Operation *def_ops[2] = {nullptr, nullptr};
     bool is_sigmoid[2] = {false, false};
     for (auto i = 0; i < 2; ++i) {
       def_ops[i] = ins[i].getDefiningOp();
-      is_sigmoid[i] = isa<top::SigmoidOp>(def_ops[i]) && def_ops[i]->hasOneUse();
+      is_sigmoid[i] =
+          isa<top::SigmoidOp>(def_ops[i]) && def_ops[i]->hasOneUse();
     }
     if (!is_sigmoid[0] && !is_sigmoid[1])
       return failure();
@@ -2245,13 +2360,9 @@ protected:
     auto out = op.getOutput();
     llvm::SmallVector<NamedAttribute> attrs;
     attrs.push_back(
-      rewriter.getNamedAttr(
-        "approx_mode",
-        rewriter.getStringAttr("sigm")));
-    auto qgeluOp = rewriter.create<top::GELUOp>(
-        out.getLoc(), out.getType(),
-        ValueRange{ins[j]},
-        attrs);
+        rewriter.getNamedAttr("approx_mode", rewriter.getStringAttr("sigm")));
+    auto qgeluOp = rewriter.create<top::GELUOp>(out.getLoc(), out.getType(),
+                                                ValueRange{ins[j]}, attrs);
     out.replaceAllUsesWith(qgeluOp.getOutput());
     return success();
   }
@@ -2264,11 +2375,11 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
-      ->add<ChatGLM3ToGQAAttention,
-            ConvertMatMulWithRightTranspose, ConvertMatMul2Attention,
-            ReshapeReorderPattern, ConvertMultiInputAdd, WhereBroadcastToTile,
-            ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
-            ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
+      ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
+            ConvertMatMul2Attention, ReshapeReorderPattern,
+            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
+            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
+            ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
             ConvertToRSqrt, ConvertToSquare, ConvertToQGELU>(
           patterns->getContext(), 8);
 }

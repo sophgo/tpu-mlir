@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -18,7 +18,7 @@ struct RsqrtToSqrtRec : public OpRewriterPatternEx<RsqrtOp> {
       : OpRewriterPatternEx<RsqrtOp>(context, "RsqrtToSqrtRec") {}
 
   LogicalResult matchAndRewriteImpl(RsqrtOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     return failure(); // do not need rsqrt to sqrt
     auto name = module::getName(op.getOutput());
     auto sqrt_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_sqrt"));

@@ -11,11 +11,9 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include <llvm/Support/Debug.h>
 
-
-
 namespace tpu_mlir {
 namespace backend {
-  // Y[M, N] = L[M,K] * R[K,N] + B[4,N]
+// Y[M, N] = L[M,K] * R[K,N] + B[4,N]
 class TgFcKernel {
 public:
   TgFcKernel() {}
@@ -74,7 +72,6 @@ protected:
   bool try_optimize();
 
 protected:
-
   gaddr_t ga_input;
   gaddr_t ga_weight;
   gaddr_t ga_bias;

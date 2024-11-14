@@ -16,10 +16,10 @@ struct ReorderDynWeight : public OpRewriterPatternEx<DeconvOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ReorderDynWeight(mlir::MLIRContext *context)
-    : OpRewriterPatternEx<DeconvOp>(context, "ReorderDynWeight") {}
+      : OpRewriterPatternEx<DeconvOp>(context, "ReorderDynWeight") {}
 
   LogicalResult matchAndRewriteImpl(DeconvOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     auto filter_shape =
         module::getShape(op.getFilter()); // <oc, ic, *, *> or <ic, oc, *, *>
@@ -32,7 +32,7 @@ struct ReorderDynWeight : public OpRewriterPatternEx<DeconvOp> {
       return failure();
     }
     bool dyn_weight_reorderd = op.getDynweightReorderd();
-    if(dyn_weight_reorderd){
+    if (dyn_weight_reorderd) {
       return failure();
     }
 
@@ -53,8 +53,7 @@ struct ReorderDynWeight : public OpRewriterPatternEx<DeconvOp> {
 
     rewriter.setInsertionPointAfterValue(op.getFilter());
     std::string name = module::getName(op.getOutput()).str();
-    auto loc =
-        NameLoc::get(rewriter.getStringAttr(name + "_reorder_permute"));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_reorder_permute"));
 
     std::vector<int64_t> order = {1, 0};
     auto filter_dim = filter_shape.size();
@@ -81,10 +80,10 @@ struct ReorderDynWeight : public OpRewriterPatternEx<DeconvOp> {
 struct Deconv1dTo2d : public OpRewriterPatternEx<DeconvOp> {
 public:
   Deconv1dTo2d(mlir::MLIRContext *context)
-  : OpRewriterPatternEx<DeconvOp>(context, "Deconv1dTo2d") {}
+      : OpRewriterPatternEx<DeconvOp>(context, "Deconv1dTo2d") {}
 
   LogicalResult matchAndRewriteImpl(DeconvOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     auto kernel = module::getI64Array(op.getKernelShape());
     if (kernel->size() != 1) {
@@ -120,65 +119,68 @@ public:
   }
 };
 
-
 struct CastFilterAndOutput : public OpRewriterPatternEx<DeconvOp> {
 public:
   CastFilterAndOutput(mlir::MLIRContext *context)
-  : OpRewriterPatternEx<DeconvOp>(context, "CastFilterAndOutput") {}
+      : OpRewriterPatternEx<DeconvOp>(context, "CastFilterAndOutput") {}
 
   LogicalResult matchAndRewriteImpl(DeconvOp op,
-                                PatternRewriter &rewriter) const override {
-  auto input_type = op.getInput().getType().cast<RankedTensorType>();
-  if (!input_type.getElementType().isF32()){
+                                    PatternRewriter &rewriter) const override {
+    auto input_type = op.getInput().getType().cast<RankedTensorType>();
+    if (!input_type.getElementType().isF32()) {
+      return failure();
+    }
+    auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
+    if (!filter_type.getElementType().isF16()) {
+      return failure();
+    }
+    auto input_op = op.getOperand(0);
+    auto bias_op = op.getOperand(2);
+    auto filter_op = op.getOperand(1);
+    std::string op_name = module::getName(op.getOutput()).str();
+    auto F32Type = module::getElementType(input_op);
+    auto filter_shape = module::getShape(filter_op);
+    auto new_filter_type = RankedTensorType::get({filter_shape}, F32Type);
+    auto F16Type = module::getElementType(filter_op);
+    auto out_shape = module::getShape(op.getOutput());
+    auto f32_output_type = RankedTensorType::get({out_shape}, F32Type);
+    auto f16_output_type = RankedTensorType::get({out_shape}, F16Type);
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    operands.push_back(filter_op);
+    attrs.push_back(rewriter.getNamedAttr(
+        "round_mode", rewriter.getStringAttr("HalfAwayFromZero")));
+    auto filter_loc =
+        NameLoc::get(rewriter.getStringAttr(op_name + "_cast_filter_f32"));
+    auto cast_filter_op = rewriter.create<top::CastOp>(
+        filter_loc, new_filter_type, operands, attrs);
+    attrs.clear();
+    operands.clear();
+    operands.push_back(input_op);
+    operands.push_back(cast_filter_op);
+    operands.push_back(bias_op);
+    for (auto &attr : op->getAttrs()) {
+      attrs.push_back(attr);
+    }
+    auto new_loc =
+        NameLoc::get(rewriter.getStringAttr(op_name + "_cast_output_f32"));
+    auto cast_deconv_op = rewriter.create<top::DeconvOp>(
+        new_loc, f32_output_type, operands, attrs);
+    attrs.clear();
+    operands.clear();
+    auto f32_output_op = cast_deconv_op.getOutput();
+    operands.push_back(f32_output_op);
+    attrs.push_back(rewriter.getNamedAttr(
+        "round_mode", rewriter.getStringAttr("HalfAwayFromZero")));
+    auto cast_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_cast_f16"));
+    auto cast_output_op = rewriter.create<top::CastOp>(
+        cast_loc, f16_output_type, operands, attrs);
+    rewriter.replaceAllUsesWith(op, cast_output_op->getResult(0));
+    rewriter.eraseOp(op);
     return failure();
-  }
-  auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
-  if (!filter_type.getElementType().isF16()){
-    return failure();
-  }
-  auto input_op = op.getOperand(0);
-  auto bias_op = op.getOperand(2);
-  auto filter_op = op.getOperand(1);
-  std::string op_name = module::getName(op.getOutput()).str();
-  auto F32Type = module::getElementType(input_op);
-  auto filter_shape = module::getShape(filter_op);
-  auto new_filter_type = RankedTensorType::get(
-        {filter_shape}, F32Type);
-  auto F16Type = module::getElementType(filter_op);
-  auto out_shape = module::getShape(op.getOutput());
-  auto f32_output_type = RankedTensorType::get(
-        {out_shape}, F32Type);
-  auto f16_output_type = RankedTensorType::get(
-        {out_shape}, F16Type);
-  std::vector<NamedAttribute> attrs;
-  std::vector<Value> operands;
-  operands.push_back(filter_op);
-  attrs.push_back(rewriter.getNamedAttr("round_mode",rewriter.getStringAttr("HalfAwayFromZero")));
-  auto filter_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_cast_filter_f32"));
-  auto cast_filter_op = rewriter.create<top::CastOp>(filter_loc,new_filter_type, operands, attrs);
-  attrs.clear();
-  operands.clear();
-  operands.push_back(input_op);
-  operands.push_back(cast_filter_op);
-  operands.push_back(bias_op);
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto new_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_cast_output_f32"));
-  auto cast_deconv_op = rewriter.create<top::DeconvOp>(new_loc, f32_output_type, operands, attrs);
-  attrs.clear();
-  operands.clear();
-  auto f32_output_op = cast_deconv_op.getOutput();
-  operands.push_back(f32_output_op);
-  attrs.push_back(rewriter.getNamedAttr("round_mode",rewriter.getStringAttr("HalfAwayFromZero")));
-  auto cast_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_cast_f16"));
-  auto cast_output_op = rewriter.create<top::CastOp>(cast_loc,f16_output_type, operands, attrs);
-  rewriter.replaceAllUsesWith(op, cast_output_op->getResult(0));
-  rewriter.eraseOp(op);
-  return failure();
   }
 };
 void DeconvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<Deconv1dTo2d, ReorderDynWeight,CastFilterAndOutput>(context);
+  results.insert<Deconv1dTo2d, ReorderDynWeight, CastFilterAndOutput>(context);
 }

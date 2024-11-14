@@ -25,9 +25,10 @@ void tpu::SubOp::codegen_global_bm1684x() {
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 
@@ -93,9 +94,10 @@ void tpu::SubOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 
@@ -130,9 +132,10 @@ int64_t tpu::SubOp::dyn_codegen_local_bm1684x(void *buffer) {
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
-  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+             module::getStorageType(getOutput()).isFloat8E5M2()) {
     auto scales = module::getF64Array(getF8Scales(), 2, 1.0);
-    for (auto scale: *scales)
+    for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
 

@@ -12,34 +12,33 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void CumSumLowering::LoweringF32(PatternRewriter &rewriter, top::CumSumOp op) const {
+void CumSumLowering::LoweringF32(PatternRewriter &rewriter,
+                                 top::CumSumOp op) const {
   lowering_common_f32<tpu::CumSumOp>(rewriter, op);
 }
 
-void CumSumLowering::LoweringBF16(PatternRewriter& rewriter,
-    top::CumSumOp op) const {
+void CumSumLowering::LoweringBF16(PatternRewriter &rewriter,
+                                  top::CumSumOp op) const {
   lowering_common_bf16<tpu::CumSumOp>(rewriter, op);
 }
 
-void CumSumLowering::LoweringF16(PatternRewriter& rewriter,
-    top::CumSumOp op) const {
+void CumSumLowering::LoweringF16(PatternRewriter &rewriter,
+                                 top::CumSumOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void CumSumLowering::LoweringINT8(PatternRewriter &rewriter,
-                                        top::CumSumOp op,
-                                        bool asymmetric) const {
+void CumSumLowering::LoweringINT8(PatternRewriter &rewriter, top::CumSumOp op,
+                                  bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 
-void CumSumLowering::LoweringINT4(PatternRewriter &rewriter,
-                                        top::CumSumOp op,
-                                        bool asymmetric) const {
+void CumSumLowering::LoweringINT4(PatternRewriter &rewriter, top::CumSumOp op,
+                                  bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 
 void CumSumLowering::LoweringF8(PatternRewriter &rewriter,
-                                        top::CumSumOp op) const {
+                                top::CumSumOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

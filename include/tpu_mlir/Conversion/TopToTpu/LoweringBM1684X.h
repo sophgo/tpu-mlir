@@ -14,15 +14,14 @@
 namespace tpu_mlir {
 namespace bm1684x {
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
-                                           TypeConverter &typeConverter,
-                                           MLIRContext *ctx);
+                                            TypeConverter &typeConverter,
+                                            MLIRContext *ctx);
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define SHAPE_LOWERING_BM1684X(OP)                                             \
   struct OP##TryLowering : public TopShapeLowering<top::OP##Op> {              \
     OP##TryLowering(MLIRContext *ctx) : TopShapeLowering<top::OP##Op>(ctx) {}  \
-    void Lowering(PatternRewriter &rewriter,                                   \
-                  top::OP##Op op) const override;                              \
+    void Lowering(PatternRewriter &rewriter, top::OP##Op op) const override;   \
   };
 
 SHAPE_LOWERING_BM1684X(Add)
@@ -60,8 +59,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
                       top::OP##Op op) const override;                          \
     void LoweringF16(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
-    void LoweringF8(PatternRewriter &rewriter,                                 \
-                     top::OP##Op op) const override;                           \
+    void LoweringF8(PatternRewriter &rewriter, top::OP##Op op) const override; \
     void LoweringF32(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
     void LoweringQuantized(PatternRewriter &rewriter,                          \

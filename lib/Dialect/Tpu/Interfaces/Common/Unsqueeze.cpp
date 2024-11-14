@@ -10,10 +10,11 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::backend;
 
-LogicalResult tpu::UnsqueezeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::UnsqueezeOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::UnsqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::UnsqueezeOp::inference(InferenceParameter &p) {

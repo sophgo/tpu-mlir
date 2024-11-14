@@ -9,9 +9,8 @@
 
 #pragma once
 
-
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <llvm/Support/Debug.h>
 
 namespace tpu_mlir {
 namespace backend {
@@ -32,23 +31,16 @@ public:
   TgEltwiseKernel(::TypeID typeID) : typeID(typeID) {}
   TypeID typeID;
 
+  void init(uint32_t layer_id, gaddr_t ga_inputs[], gaddr_t ga_output,
+            int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
+            bool do_relu, bool do_early_stride, int32_t stride_h,
+            int32_t stride_w, int32_t rshift, const int32_t *multipliers,
+            const int32_t *coeffs);
 
-  void init(uint32_t layer_id,
-    gaddr_t ga_inputs[], gaddr_t ga_output,
-    int32_t operand_num, int32_t n, int32_t c,
-    int32_t h, int32_t w, bool do_relu,
-    bool do_early_stride, int32_t stride_h,
-    int32_t stride_w, int32_t rshift,
-    const int32_t *multipliers,
-    const int32_t *coeffs);
-
-  void init(uint32_t layer_id,
-    gaddr_t ga_inputs[], gaddr_t ga_output,
-    int32_t operand_num, int32_t n, int32_t c,
-    int32_t h, int32_t w, bool do_relu,
-    bool do_early_stride, int32_t stride_h,
-    int32_t stride_w,
-    const float *coeffs);
+  void init(uint32_t layer_id, gaddr_t ga_inputs[], gaddr_t ga_output,
+            int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
+            bool do_relu, bool do_early_stride, int32_t stride_h,
+            int32_t stride_w, const float *coeffs);
 
   void selectTilePolicy();
   void schedule();
@@ -56,9 +48,7 @@ public:
 protected:
   virtual void compute(int32_t step_idx) = 0;
 
-  void allocLmem(
-      cvk_tl_shape_t &input_shape,
-      cvk_tl_shape_t &output_shape);
+  void allocLmem(cvk_tl_shape_t &input_shape, cvk_tl_shape_t &output_shape);
   void deallocLmem();
   void doTileForStrideCase();
   void doTileForNormalCase();
@@ -102,11 +92,10 @@ public:
 
 protected:
   void compute(int32_t step_idx);
+
 private:
-  void symmetric_compute(const int opd_idx,
-                            cvk_tl_t &input,
-                            cvk_tl_t &output,
-                            cvk_tl_t &output_high);
+  void symmetric_compute(const int opd_idx, cvk_tl_t &input, cvk_tl_t &output,
+                         cvk_tl_t &output_high);
 };
 
 class TgInt8EltwiseMaxKernel : public TgEltwiseKernel {
@@ -178,8 +167,7 @@ public:
       : TgEltwiseKernel(TypeID::get<TgBf16EltwiseMinMaxKernel>()) {}
 
   static bool classof(const TgEltwiseKernel *eltwiseKernel) {
-    return eltwiseKernel->typeID ==
-           TypeID::get<TgBf16EltwiseMinMaxKernel>();
+    return eltwiseKernel->typeID == TypeID::get<TgBf16EltwiseMinMaxKernel>();
   }
 
 protected:

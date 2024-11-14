@@ -23,11 +23,13 @@ void AddTryLowering::Lowering(PatternRewriter &rewriter, top::AddOp op) const {
       operands.push_back(in);
     }
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Add")));
-    Type new_type =
-    RankedTensorType::get(module::getShape(op.getOutput()),
-                          IntegerType::get(op.getOutput().getContext(), 32));
-    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
+    attrs.push_back(
+        rewriter.getNamedAttr("type", rewriter.getStringAttr("Add")));
+    Type new_type = RankedTensorType::get(
+        module::getShape(op.getOutput()),
+        IntegerType::get(op.getOutput().getContext(), 32));
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands,
+                                                   attrs);
   }
 }
 
@@ -62,21 +64,22 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
                                             rewriter.getIntegerType(8, cSign));
       float absMax = findMaxabs(constF32->data(), constF32->size());
       if (cSign) {
-        scale = (absMax/127.0)/o_scale;
+        scale = (absMax / 127.0) / o_scale;
         get_scale_and_shift_positive(scale, scalei, shifti, 8);
         auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
-        std::transform(constF32->begin(), constF32->end(), constI8->begin(),
-            [&](const float cf32) { return to_int8(cf32 *127.0/absMax); });
+        std::transform(
+            constF32->begin(), constF32->end(), constI8->begin(),
+            [&](const float cf32) { return to_int8(cf32 * 127.0 / absMax); });
         auto new_filter =
             top::WeightOp::create(constOp, "i8", *constI8, new_type);
         operands.push_back(new_filter);
       } else {
-        scale = (absMax/255.0)/o_scale;
+        scale = (absMax / 255.0) / o_scale;
         get_scale_and_shift_positive(scale, scalei, shifti, 8);
         auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
         std::transform(
             constF32->begin(), constF32->end(), constU8->begin(),
-            [&](const float cf32) { return to_uint8(cf32 *255.0 /absMax); });
+            [&](const float cf32) { return to_uint8(cf32 * 255.0 / absMax); });
         auto new_filter =
             top::WeightOp::create(constOp, "u8", *constU8, new_type);
         operands.push_back(new_filter);
@@ -163,8 +166,8 @@ void AddLowering::LoweringF8(PatternRewriter &rewriter,
     std::vector<NamedAttribute> attrs;
     for (auto &attr : op->getAttrs())
       attrs.push_back(attr);
-    attrs.push_back(rewriter.getNamedAttr("f8_scales",
-                                          rewriter.getF64ArrayAttr(scale_v)));
+    attrs.push_back(
+        rewriter.getNamedAttr("f8_scales", rewriter.getF64ArrayAttr(scale_v)));
     auto newType = getQuantF8E4M3Type(addOp.getOutput());
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
   } else {

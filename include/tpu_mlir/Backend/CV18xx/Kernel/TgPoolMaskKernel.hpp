@@ -12,7 +12,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include <llvm/Support/Debug.h>
 
-
 namespace tpu_mlir {
 namespace backend {
 class TgPoolMaskKernel {

@@ -20,7 +20,7 @@ struct TopGroupNormReshape : public OpRewriterPatternEx<GroupNormOp> {
       : OpRewriterPatternEx<GroupNormOp>(context, "TopGroupNormReshape") {}
 
   LogicalResult matchAndRewriteImpl(GroupNormOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
     auto num_dims = in_shape.size();
     LogicalResult res = failure();

@@ -1,8 +1,8 @@
 // TopoSorter.h
 
 #pragma once
-#include <queue>
 #include <iostream>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -40,7 +40,8 @@ private:
         parent[edge.first] = edge.first;
       }
       parent[edge.second] = edge.first;
-      // std::cout << "[" << '"' << edge.first << '"' << "," << '"' << edge.second
+      // std::cout << "[" << '"' << edge.first << '"' << "," << '"' <<
+      // edge.second
       //           << '"' << "]," << "\n";
     }
   }

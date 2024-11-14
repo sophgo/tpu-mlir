@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -24,7 +24,7 @@ struct TopFuseTile : public OpRewriterPatternEx<TileOp> {
       return failure();
     }
     auto next_op = *op->user_begin();
-    if(isa<AddOp>(next_op)) { // return failure when meet AddConstOp
+    if (isa<AddOp>(next_op)) { // return failure when meet AddConstOp
       for (auto operand : next_op->getOperands()) {
         if (auto wOp = operand.getDefiningOp()) {
           if (isa<WeightOp>(wOp)) {
@@ -51,7 +51,7 @@ struct TopFuseTile : public OpRewriterPatternEx<TileOp> {
 struct ReplaceWithWeightInput : public OpRewriterPatternEx<TileOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-    ReplaceWithWeightInput(mlir::MLIRContext *context)
+  ReplaceWithWeightInput(mlir::MLIRContext *context)
       : OpRewriterPatternEx<TileOp>(context, "ReplaceWithWeightInput") {}
 
   LogicalResult matchAndRewriteImpl(TileOp op,

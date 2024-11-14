@@ -50,8 +50,8 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
 #if 1
     if (support_multi_core()) {
       BM168x::call_global_func("backend_api_softmax_multicore_global", &param,
-                              sizeof(param), input_spec->data(),
-                              output_spec->data());
+                               sizeof(param), input_spec->data(),
+                               output_spec->data());
       return;
     }
     BM168x::call_global_func("backend_api_softmax_global", &param,
@@ -85,13 +85,13 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   int32_t padding_flag = 0;
 
   // aligned with backend
-  if (axis == 3 && !getLog() && in_wslice > eu_num &&
-      in_wslice % eu_num > 0) {
+  if (axis == 3 && !getLog() && in_wslice > eu_num && in_wslice % eu_num > 0) {
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
 
-#define SIZE ((stype.isF16() || stype.isBF16()) ? sizeof(int16_t) : sizeof(float))
+#define SIZE                                                                   \
+  ((stype.isF16() || stype.isBF16()) ? sizeof(int16_t) : sizeof(float))
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
   } else if (axis == 3) {

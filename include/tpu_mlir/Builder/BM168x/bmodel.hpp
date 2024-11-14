@@ -56,7 +56,8 @@ typedef struct {
 } bmodel_mem_info_t;
 
 const int SHA256_LEN = 32;
-void CalcSha256(const uint8_t *buffer, uint64_t size, uint8_t sha256[SHA256_LEN]);
+void CalcSha256(const uint8_t *buffer, uint64_t size,
+                uint8_t sha256[SHA256_LEN]);
 
 class ModelGen {
 
@@ -89,7 +90,7 @@ public:
   void AddKernelModule(std::string &filename, Binary &tpu_module);
   void AddCpuModule(std::string &version, Binary &lib_cpu);
   void AddBmodelType(const uint32_t type);
-  void AddLibBackend(Binary &lib_backend) ;
+  void AddLibBackend(Binary &lib_backend);
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -143,7 +144,8 @@ private:
   void *encrypt_handle_;    // handle of encrypt lib
   encrypt_func encrypt_func_; // encrypt func from lib
   // coeff combine
-  uint32_t bmodel_type_; // 0: bmodel coeff do not combine; 1: bmodel coeff has been combine
+  uint32_t bmodel_type_; // 0: bmodel coeff do not combine; 1: bmodel coeff has
+                         // been combine
   // lib backend for sg2380
   Binary lib_backend_;
 };

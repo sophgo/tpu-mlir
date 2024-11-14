@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::ScatterElementsOp::init(InferenceParameter &p) {
@@ -59,7 +58,7 @@ LogicalResult tpu::ScatterElementsOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::ScatterElementsOp::type_verify(uint64_t opd_idx,
-                                              TypeCastMode &mode) {
+                                               TypeCastMode &mode) {
   auto op = getOperation();
   if (opd_idx == 1) {
     // indices

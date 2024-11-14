@@ -56,14 +56,14 @@ deform_gather_attr_t tpu::DeformGatherOp::parseParam() {
   return p;
 }
 
-LogicalResult tpu::DeformGatherOp::init(InferenceParameter& p) {
+LogicalResult tpu::DeformGatherOp::init(InferenceParameter &p) {
   auto num = module::getNumElements(getOutput()); // output size, buffer size
   float *buffer = new float[num];
   p.handle = (void *)buffer;
   return success();
 }
 
-void tpu::DeformGatherOp::deinit(InferenceParameter& p) {
+void tpu::DeformGatherOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     float *buffer = (float *)p.handle;
     delete[] buffer;
@@ -78,4 +78,3 @@ LogicalResult tpu::DeformGatherOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::DeformGatherOp::support_multi_core() { return false; }
-

@@ -1,14 +1,12 @@
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::MeanRstdOp::getFLOPs() {
   return module::getNumElements(getMean()) * 2;
 }
 
-LogicalResult top::MeanRstdOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult top::MeanRstdOp::init(InferenceParameter &p) { return success(); }
 void top::MeanRstdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MeanRstdOp::inference(InferenceParameter &p) {
@@ -35,12 +33,13 @@ LogicalResult top::MeanRstdOp::inference(InferenceParameter &p) {
     for (int i_n = 0; i_n < input_n; i_n++) {
       for (int i_h = 0; i_h < input_h; i_h++) {
         for (int i_w = 0; i_w < input_w; i_w++) {
-          int pos = i_n * input_c * input_h * input_w + i_c * input_h * input_w + i_h * input_w + i_w;
+          int pos = i_n * input_c * input_h * input_w +
+                    i_c * input_h * input_w + i_h * input_w + i_w;
           sum += input[pos];
         }
       }
     }
-    saved_mean[i_c] = sum/(input_n*input_h*input_w);
+    saved_mean[i_c] = sum / (input_n * input_h * input_w);
   }
   float *var = new float[input_c];
   for (int i_c = 0; i_c < input_c; i_c++) {
@@ -48,23 +47,27 @@ LogicalResult top::MeanRstdOp::inference(InferenceParameter &p) {
     for (int i_n = 0; i_n < input_n; i_n++) {
       for (int i_h = 0; i_h < input_h; i_h++) {
         for (int i_w = 0; i_w < input_w; i_w++) {
-          int pos = i_n * input_c * input_h * input_w + i_c * input_h * input_w + i_h * input_w + i_w;
-          sum_tmp += (input[pos] - saved_mean[i_c])*(input[pos] - saved_mean[i_c]);
+          int pos = i_n * input_c * input_h * input_w +
+                    i_c * input_h * input_w + i_h * input_w + i_w;
+          sum_tmp +=
+              (input[pos] - saved_mean[i_c]) * (input[pos] - saved_mean[i_c]);
         }
       }
     }
-    var[i_c] = sum_tmp/(input_n*input_h*input_w-1);
-    saved_rstd[i_c] = 1.0/std::sqrt((sum_tmp/(input_n*input_h*input_w))+eps);
+    var[i_c] = sum_tmp / (input_n * input_h * input_w - 1);
+    saved_rstd[i_c] =
+        1.0 / std::sqrt((sum_tmp / (input_n * input_h * input_w)) + eps);
   }
   for (int i_c = 0; i_c < input_c; i_c++) {
-    running_mean_update[i_c] = momentum*saved_mean[i_c]+(1-momentum)*running_mean[i_c];
-    running_var_update[i_c] = momentum*var[i_c]+(1-momentum)*running_var[i_c];
+    running_mean_update[i_c] =
+        momentum * saved_mean[i_c] + (1 - momentum) * running_mean[i_c];
+    running_var_update[i_c] =
+        momentum * var[i_c] + (1 - momentum) * running_var[i_c];
     scale[i_c] = gamma[i_c] * saved_rstd[i_c];
     bias[i_c] = beta[i_c] - saved_mean[i_c] * scale[i_c];
-}
-  delete [] var;
+  }
+  delete[] var;
   return success();
 }
 
-void top::MeanRstdOp::shape_inference() {
-}
+void top::MeanRstdOp::shape_inference() {}

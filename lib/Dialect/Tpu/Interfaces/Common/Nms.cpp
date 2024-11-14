@@ -16,9 +16,9 @@ LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
   int input_size = getInputs().size();
   assert(input_size >= 2);
-  if(input_size >= 3){
+  if (input_size >= 3) {
     param.max_output_boxes_per_class = p.inputs[2][0];
-  } else{
+  } else {
     param.max_output_boxes_per_class = getMaxOutputSize();
   }
   param.center_point_box = 0;

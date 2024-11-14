@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void CopyLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::CopyOp op) const {
+                               top::CopyOp op) const {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
@@ -25,33 +25,33 @@ void CopyLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.eraseOp(op);
 }
 
-void CopyLowering::LoweringINT8(PatternRewriter &rewriter, top::CopyOp op,bool asymmetric) const {
+void CopyLowering::LoweringINT8(PatternRewriter &rewriter, top::CopyOp op,
+                                bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 
-void CopyLowering::LoweringINT4(PatternRewriter &rewriter, top::CopyOp op,bool asymmetric) const {
+void CopyLowering::LoweringINT4(PatternRewriter &rewriter, top::CopyOp op,
+                                bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
-void CopyLowering::LoweringBF16(PatternRewriter &rewriter, top::CopyOp op
-) const {
-   LoweringF32(rewriter, op);
+void CopyLowering::LoweringBF16(PatternRewriter &rewriter,
+                                top::CopyOp op) const {
+  LoweringF32(rewriter, op);
 }
 
-void CopyLowering::LoweringF16(PatternRewriter &rewriter, top::CopyOp op
-) const {
-   LoweringF32(rewriter, op);
+void CopyLowering::LoweringF16(PatternRewriter &rewriter,
+                               top::CopyOp op) const {
+  LoweringF32(rewriter, op);
 }
 
-void CopyLowering::LoweringF8(PatternRewriter &rewriter, top::CopyOp op
-) const {
-   LoweringF32(rewriter, op);
+void CopyLowering::LoweringF8(PatternRewriter &rewriter, top::CopyOp op) const {
+  LoweringF32(rewriter, op);
 }
 
 void CopyLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::CopyOp op) const {
+                                     top::CopyOp op) const {
   LoweringF32(rewriter, op);
 }
-
 
 } // namespace bm1684x
 } // namespace tpu_mlir

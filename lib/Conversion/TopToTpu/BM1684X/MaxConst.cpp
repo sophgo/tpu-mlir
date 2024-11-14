@@ -73,7 +73,7 @@ void MaxConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MaxConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::MaxConstOp op) const {
+                                  top::MaxConstOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

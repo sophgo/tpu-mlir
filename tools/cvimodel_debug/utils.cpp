@@ -52,11 +52,11 @@ uint32_t dtypeSize(cvi::model::DType type) {
 uint32_t getNpuSize(std::string chip) {
   uint32_t size = 0;
   if (chip == "cv180x") {
-    size = 2 * 32 *1024;
+    size = 2 * 32 * 1024;
   } else if (chip == "cv181x" || chip == "cv182x") {
-    size = 8 * 32 *1024;
+    size = 8 * 32 * 1024;
   } else if (chip == "cv183x") {
-    size = 32 * 32 *1024;
+    size = 32 * 32 * 1024;
   } else {
     assert(0 && "unsupport chip");
   }
@@ -96,32 +96,38 @@ CVIKERNEL_FMT_E getCviKernelFmt(std::string type) {
   return CVIKERNEL_FMT_E::CVK_FMT_BF16;
 }
 
-void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t magicNum) {
-  if (tiuCnt ==0 && tdmaCnt == 0) {
+void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt,
+                    uint8_t magicNum) {
+  if (tiuCnt == 0 && tdmaCnt == 0) {
     return;
   }
   if (magicNum == 0xA5) {
-    //reset cv183x tiu_info
-    //cal des_cmd_id_tpu
-    uint32_t ori_cmd_id_tpu = (p[0] >> 3) & ((1u << 16) - 1); //get p[0][4:19] bit
+    // reset cv183x tiu_info
+    // cal des_cmd_id_tpu
+    uint32_t ori_cmd_id_tpu =
+        (p[0] >> 3) & ((1u << 16) - 1); // get p[0][4:19] bit
     uint32_t des_cmd_id_tpu = ori_cmd_id_tpu - tiuCnt;
     if (des_cmd_id_tpu > 65535) {
-      llvm::errs()<<"ori_cmd_id_tpu:"<<ori_cmd_id_tpu<<",tiuCnt:"<<tiuCnt<<",des_cmd_id_tpu:"<<des_cmd_id_tpu<<"\n";
+      llvm::errs() << "ori_cmd_id_tpu:" << ori_cmd_id_tpu
+                   << ",tiuCnt:" << tiuCnt
+                   << ",des_cmd_id_tpu:" << des_cmd_id_tpu << "\n";
     }
     assert(des_cmd_id_tpu <= 65535);
-    //reflect to p
-    p[0] = p[0] & 0xFFF80007; // set p[0][4:19] = 0
+    // reflect to p
+    p[0] = p[0] & 0xFFF80007;            // set p[0][4:19] = 0
     p[0] = p[0] | (des_cmd_id_tpu << 3); // set p[0][4:19] = des_cmd_id_tpu
-    //cal des_cmd_id_gdma
+    // cal des_cmd_id_gdma
     uint32_t ori_cmd_id_gdma = (p[0] >> 19) & ((1u << 13) - 1);
-    ori_cmd_id_gdma |= (uint64_t)(p[1] & ((1u << 3) - 1)) << 13; //get p[0][20:32] and p[1][1:3](left shift is to put it to the high bit part)
+    ori_cmd_id_gdma |= (uint64_t)(p[1] & ((1u << 3) - 1))
+                       << 13; // get p[0][20:32] and p[1][1:3](left shift is to
+                              // put it to the high bit part)
     uint32_t des_cmd_id_gdma = 0;
     if (ori_cmd_id_gdma <= tdmaCnt) {
       des_cmd_id_gdma = 0;
     } else {
       des_cmd_id_gdma = ori_cmd_id_gdma - tdmaCnt;
     }
-    //reflect to p
+    // reflect to p
     uint32_t low13 = des_cmd_id_gdma & 0x1FFF;
     uint32_t high3 = des_cmd_id_gdma & 0xEFFF;
     p[0] = p[0] & 0x7FFFF;
@@ -129,15 +135,15 @@ void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t magi
     p[1] = p[1] & 0xFFFFFFF8;
     p[1] = p[1] | (high3 >> 29);
   } else if (magicNum == 0xA6 || magicNum == 0xA7 || magicNum == 0xA8) {
-    //reset cv182x/cv181x/cv180x
-    //cal des_cmd_id_tpu
+    // reset cv182x/cv181x/cv180x
+    // cal des_cmd_id_tpu
     uint32_t ori_cmd_id_tpu = p[1] & ((1u << 16) - 1);
     uint32_t des_cmd_id_tpu = ori_cmd_id_tpu - tiuCnt;
     assert(des_cmd_id_tpu <= 65535);
-    //reflect to p
+    // reflect to p
     p[1] = p[1] & 0xFFFF0000;
     p[1] = p[1] | des_cmd_id_tpu;
-    //cal des_cmd_id_gdma
+    // cal des_cmd_id_gdma
     uint32_t ori_cmd_id_gdma = (p[1] >> 16) & ((1u << 16) - 1);
     uint32_t des_cmd_id_gdma = 0;
     if (ori_cmd_id_gdma <= tdmaCnt) {
@@ -145,7 +151,7 @@ void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t magi
     } else {
       des_cmd_id_gdma = ori_cmd_id_gdma - tdmaCnt;
     }
-    //reflect to p
+    // reflect to p
     p[1] = p[1] & 0xFFFF;
     p[1] = p[1] | (des_cmd_id_gdma << 16);
   } else {
@@ -154,20 +160,22 @@ void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t magi
   }
 }
 
-void reset_tdma_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t magicNum) {
-  if (tiuCnt ==0 && tdmaCnt == 0) {
+void reset_tdma_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt,
+                     uint8_t magicNum) {
+  if (tiuCnt == 0 && tdmaCnt == 0) {
     return;
   }
-  if (magicNum == 0xA5 || magicNum == 0xA6 || magicNum == 0xA7 || magicNum == 0xA8) {
-    //reset cv183x/cv182x/cv181x/cv180x
-    //cal des_cmd_id_tdma
+  if (magicNum == 0xA5 || magicNum == 0xA6 || magicNum == 0xA7 ||
+      magicNum == 0xA8) {
+    // reset cv183x/cv182x/cv181x/cv180x
+    // cal des_cmd_id_tdma
     uint32_t ori_cmd_id = (p[0] >> 16) & ((1u << 16) - 1);
     uint32_t des_cmd_id = ori_cmd_id - tdmaCnt;
     assert(des_cmd_id <= 65535);
-    //reflect
+    // reflect
     p[0] = p[0] & 0xFFFF;
     p[0] = p[0] | (des_cmd_id << 16);
-    //cal des_wait_id_tpu
+    // cal des_wait_id_tpu
     uint32_t ori_wait_id_tpu = (p[1] >> 16) & ((1u << 16) - 1);
     uint32_t des_wait_id_tpu = 0;
     if (ori_wait_id_tpu <= tiuCnt) {
@@ -175,7 +183,7 @@ void reset_tdma_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t mag
     } else {
       des_wait_id_tpu = ori_wait_id_tpu - tiuCnt;
     }
-    //reflect
+    // reflect
     p[1] = p[1] & 0xFFFF;
     p[1] = p[1] | (des_wait_id_tpu << 16);
   } else {
@@ -184,21 +192,20 @@ void reset_tdma_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt, uint8_t mag
   }
 }
 
-void strSplit(const std::string& str, const std::string& splits, std::vector<std::string>& res)
-{
-	if (str == "") {
+void strSplit(const std::string &str, const std::string &splits,
+              std::vector<std::string> &res) {
+  if (str == "") {
     return;
   }
-	std::string strs = str + splits;
-	size_t pos = strs.find(splits);
-	int step = splits.size();
-	while (pos != strs.npos)
-	{
-		std::string temp = strs.substr(0, pos);
-		res.emplace_back(temp);
-		strs = strs.substr(pos + step, strs.size());
-		pos = strs.find(splits);
-	}
+  std::string strs = str + splits;
+  size_t pos = strs.find(splits);
+  int step = splits.size();
+  while (pos != strs.npos) {
+    std::string temp = strs.substr(0, pos);
+    res.emplace_back(temp);
+    strs = strs.substr(pos + step, strs.size());
+    pos = strs.find(splits);
+  }
 }
 
 void ConvertFp32ToInt8(float *src, int8_t *dst, int count, float qscale) {
@@ -287,4 +294,4 @@ void ConvertBF16ToFp32(uint16_t *src, float *dst, int count) {
     dst++;
   }
 }
-}
+} // namespace cvi_debug

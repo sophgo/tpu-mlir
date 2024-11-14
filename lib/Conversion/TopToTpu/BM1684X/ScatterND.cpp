@@ -45,8 +45,8 @@ void ScatterNDLowering::LoweringF32(PatternRewriter &rewriter,
                                                 operands, op->getAttrs());
 }
 
-static void RequantizeInt8(PatternRewriter &rewriter,
-                                   top::ScatterNDOp op, Type type, bool asymmetric) {
+static void RequantizeInt8(PatternRewriter &rewriter, top::ScatterNDOp op,
+                           Type type, bool asymmetric) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto data = op.getInputData();
@@ -63,7 +63,7 @@ static void RequantizeInt8(PatternRewriter &rewriter,
   operands.push_back(noneOp); // buffer
 
   rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, type, operands,
-                                                     op->getAttrs());
+                                                op->getAttrs());
   return;
 }
 
@@ -71,7 +71,7 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::ScatterNDOp op,
                                      bool asymmetric) const {
   // LoweringF32(rewriter, op);
-  if(module::isWeight(op.getInputData())){
+  if (module::isWeight(op.getInputData())) {
     LoweringF32(rewriter, op);
     return;
   }
@@ -79,8 +79,8 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
   RequantizeInt8(rewriter, op, new_type, asymmetric);
 }
 
-static void LoweringScatterND(PatternRewriter &rewriter,
-                                   top::ScatterNDOp op, Type type) {
+static void LoweringScatterND(PatternRewriter &rewriter, top::ScatterNDOp op,
+                              Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   if (module::isWeight(op.getInputData())) {
@@ -101,11 +101,11 @@ static void LoweringScatterND(PatternRewriter &rewriter,
     auto wOp = op.getIndices().getDefiningOp<top::WeightOp>();
     auto wop_type = wOp.getType().cast<RankedTensorType>();
     auto wop_dtype = wop_type.getElementType();
-    if (wop_dtype.isF32()){
+    if (wop_dtype.isF32()) {
       operands.push_back(wOp.clone_int(op));
-    } else if( wop_dtype.isInteger(32)){
+    } else if (wop_dtype.isInteger(32)) {
       operands.push_back(op.getIndices());
-    } else{
+    } else {
       // convert indices into int32
       auto indices_data = wOp.read<float>();
       std::vector<int32_t> indices_int32_v(
@@ -126,7 +126,7 @@ static void LoweringScatterND(PatternRewriter &rewriter,
     operands.push_back(op.getIndices());
   }
 
- if (module::isWeight(op.getUpdates())) {
+  if (module::isWeight(op.getUpdates())) {
     auto wOp = op.getUpdates().getDefiningOp<top::WeightOp>();
     auto stype = module::getStorageType(type);
     if (stype.isF16()) {
@@ -144,10 +144,9 @@ static void LoweringScatterND(PatternRewriter &rewriter,
   operands.push_back(noneOp); // buffer
 
   rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, type, operands,
-                                                     op->getAttrs());
+                                                op->getAttrs());
   return;
 }
-
 
 void ScatterNDLowering::LoweringINT4(PatternRewriter &rewriter,
                                      top::ScatterNDOp op,
@@ -172,7 +171,7 @@ void ScatterNDLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void ScatterNDLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::ScatterNDOp op) const {
+                                   top::ScatterNDOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

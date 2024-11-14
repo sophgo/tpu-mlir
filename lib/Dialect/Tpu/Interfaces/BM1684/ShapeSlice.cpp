@@ -15,7 +15,7 @@ void tpu::ShapeSliceOp::codegen_global_bm1684() {
   llvm_unreachable("Not supported now");
 }
 
-uint32_t tpu::ShapeSliceOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::ShapeSliceOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   int fw_ir_length = 0;
   ir_layer_info_t *add_layer_info = (ir_layer_info_t *)ir_layer_info;
   fw_shape_slice_layer_param_t param = {0};
@@ -45,12 +45,9 @@ uint32_t tpu::ShapeSliceOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
     param.end_index[i] = output_shape[i] * steps->at(i) + offset->at(i);
   }
   dynamic_common_ir_layer_info(add_layer_info, getInput(), getOutput());
-  add_layer_info->fw_layer_param_u.fw_shape_slice_layer_param =
-      param;
+  add_layer_info->fw_layer_param_u.fw_shape_slice_layer_param = param;
   fw_ir_length += sizeof(fw_shape_slice_layer_param_t);
   return fw_ir_length;
 }
 
-int64_t tpu::ShapeSliceOp::get_fw_type_bm1684() {
-  return FW_BMNET_SHAPE_SLICE;
-}
+int64_t tpu::ShapeSliceOp::get_fw_type_bm1684() { return FW_BMNET_SHAPE_SLICE; }

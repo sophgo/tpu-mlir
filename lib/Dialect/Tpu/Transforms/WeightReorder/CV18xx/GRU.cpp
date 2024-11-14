@@ -15,7 +15,8 @@ using namespace cv18xx;
 // WeightReorderInterface
 // ======================================
 
-template <typename T> static void transpose_row_col(T *data, int row, int col) {
+template <typename T>
+static void transpose_row_col(T *data, int row, int col) {
   std::vector<T> w_t(row * col);
   for (int i = 0; i < row; i++) {
     for (int j = 0; j < col; j++) {

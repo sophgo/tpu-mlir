@@ -35,7 +35,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
       block_h = 8;
     } else {
       block_m = 224; // 128;
-        block_k = 80; // 128;
+      block_k = 80;  // 128;
       if (in_spec[0].dtype == DTYPE_FP16) {
         block_k = 96; // 128;
       }

@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::PoolMaskOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 4;
 }
@@ -28,7 +26,7 @@ LogicalResult top::PoolMaskOp::inference(InferenceParameter &p) {
   int w = input_shape[3];
   int h_ex = output_shape[2];
   int w_ex = output_shape[3];
-#pragma omp parallel for schedule(static, omp_schedule(n * c))
+#pragma omp parallel for schedule(static, omp_schedule(n *c))
   for (int n_idx = 0; n_idx < n * c; n_idx++) {
     for (int h_idx = 0; h_idx < h_ex; h_idx += _scale) {
       for (int w_idx = 0; w_idx < w_ex; w_idx += _scale) {

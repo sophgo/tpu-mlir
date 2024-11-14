@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
+#include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/LutFunc.h"
-#include "tpu_mlir/Support/ActiveUtils.h"
 
 static mlir::Type t;
 

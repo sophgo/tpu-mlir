@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 LogicalResult tpu::Depth2SpaceOp::init(InferenceParameter &p) {
   return success();
@@ -89,10 +86,10 @@ LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
       for (int64_t w = 0; w < iw; w++) {
         new_h = h * bh + left / bw;
         new_w = w * bw + left % bw;
-        int64_t i_index = n * instride + c * icstride
-          + h * ihstride + w * iwstride;
-        int64_t o_index = n * onstride + new_c * ocstride
-          + new_h * ohstride + new_w * owstride;
+        int64_t i_index =
+            n * instride + c * icstride + h * ihstride + w * iwstride;
+        int64_t o_index = n * onstride + new_c * ocstride + new_h * ohstride +
+                          new_w * owstride;
         if (inversed) {
           p.outputs[0][i_index] = p.inputs[0][o_index];
         } else {
@@ -105,4 +102,3 @@ LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::Depth2SpaceOp::support_multi_core() { return false; }
-

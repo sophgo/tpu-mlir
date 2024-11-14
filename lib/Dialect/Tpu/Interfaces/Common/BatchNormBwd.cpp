@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::BatchNormBwdOp::init(InferenceParameter &p) {
@@ -16,19 +16,17 @@ LogicalResult tpu::BatchNormBwdOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::BatchNormBwdOp::deinit(InferenceParameter &p) {
-
-}
+void tpu::BatchNormBwdOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::BatchNormBwdOp::inference(InferenceParameter &p) {
- const auto input_shape = module::getShape(getInput());
+  const auto input_shape = module::getShape(getInput());
   const int N = input_shape[0];
   const int C = input_shape[1];
   const int H = input_shape.size() > 2 ? input_shape[2] : 1;
   const int W = input_shape.size() > 3 ? input_shape[3] : 1;
   const float M = N * H * W;
   const float *dout = p.inputs[0];
-  const float *x_= p.inputs[1];
+  const float *x_ = p.inputs[1];
   const float *gamma = p.inputs[2];
   const float *mean = p.inputs[3];
   const float *var = p.inputs[4];
@@ -48,7 +46,7 @@ LogicalResult tpu::BatchNormBwdOp::inference(InferenceParameter &p) {
     for (int n = 0; n < N; ++n) {
       for (int h = 0; h < H; ++h) {
         for (int w = 0; w < W; ++w) {
-          int idx =((n * C + c) * H + h) * W + w;
+          int idx = ((n * C + c) * H + h) * W + w;
           float x_hat = (x_[idx] - mean[c]) * rstd;
           dgamma[c] += dout[idx] * x_hat;
           dbeta[c] += dout[idx];
@@ -66,8 +64,9 @@ LogicalResult tpu::BatchNormBwdOp::inference(InferenceParameter &p) {
     for (int n = 0; n < N; ++n) {
       for (int h = 0; h < H; ++h) {
         for (int w = 0; w < W; ++w) {
-          int idx =((n * C + c) * H + h) * W + w;
-          dx[idx] = (rstd / M) * (M * dxhut[idx] - dx2[c] * (x_[idx] - mean[c]) - dx3[c]);
+          int idx = ((n * C + c) * H + h) * W + w;
+          dx[idx] = (rstd / M) *
+                    (M * dxhut[idx] - dx2[c] * (x_[idx] - mean[c]) - dx3[c]);
         }
       }
     }
@@ -76,14 +75,11 @@ LogicalResult tpu::BatchNormBwdOp::inference(InferenceParameter &p) {
   return success();
 }
 
-uint32_t tpu::BatchNormBwdOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::BatchNormBwdOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-
-int64_t tpu::BatchNormBwdOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::BatchNormBwdOp::get_fw_type_bm1684() { return -1; }
 
 bool tpu::BatchNormBwdOp::support_multi_core() { return false; }

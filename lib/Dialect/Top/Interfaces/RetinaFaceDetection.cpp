@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 int64_t top::RetinaFaceDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -53,9 +51,10 @@ void top::RetinaFaceDetectionOp::shape_inference() {
   out_shape.push_back(1);
   out_shape.push_back(keep_topk);
   out_shape.push_back(15);
-    //(x1, y1, x2, y2, score,
-    //     landmark_pred_x1, landmark_pred_y1, landmark_pred_x2, landmark_pred_y2, landmark_pred_x3, landmark_pred_y3,
-    //      landmark_pred_x4, landmark_pred_y4, landmark_pred_x5, landmark_pred_y5)
+  //(x1, y1, x2, y2, score,
+  //     landmark_pred_x1, landmark_pred_y1, landmark_pred_x2, landmark_pred_y2,
+  //     landmark_pred_x3, landmark_pred_y3,
+  //      landmark_pred_x4, landmark_pred_y4, landmark_pred_x5,
+  //      landmark_pred_y5)
   module::setShapeOrVerify(getOutput(), out_shape);
-
 }

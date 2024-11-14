@@ -117,4 +117,6 @@ int64_t tpu::InstanceNormOp::dyn_codegen_local_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::InstanceNormOp::get_fw_type_bm1684x() { return FW_BMNET_INSTANCENORM; }
+int64_t tpu::InstanceNormOp::get_fw_type_bm1684x() {
+  return FW_BMNET_INSTANCENORM;
+}

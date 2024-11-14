@@ -30,7 +30,7 @@ int64_t tpu::ShapeReduceOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.reduce_method = BM168x::get_reduce_type(getMode());
   param.scale = getScale().convertToDouble();
   for (int i = 0; i < param.axis_num; i++) {
-    param.axis_list[i] =  axis_list->at(i);
+    param.axis_list[i] = axis_list->at(i);
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

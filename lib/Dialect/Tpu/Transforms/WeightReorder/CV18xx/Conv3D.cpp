@@ -11,7 +11,6 @@
 
 using namespace cv18xx;
 
-
 static void get_strides_from_shapes5d(int strides[5], const int shapes[5],
                                       int ws) {
   strides[5 - 1] = ws;

@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <llvm/Support/Debug.h>
 
 namespace tpu_mlir {
 namespace backend {
@@ -42,7 +42,6 @@ protected:
   uint32_t tile_offset(const CV18xx::tiling_info_t &tile,
                        bool is_src = true) const;
 
-
   gaddr_t ga_input;
   gaddr_t ga_output;
   cvk_tl_t *tl_mem[4];
@@ -62,5 +61,5 @@ protected:
   bool by_tdma;
   std::vector<CV18xx::tiling_info_t> tiles;
 };
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

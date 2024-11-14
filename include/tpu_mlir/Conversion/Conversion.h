@@ -10,9 +10,9 @@
 #ifndef TPU_MLIR_CONVERSION_H
 #define TPU_MLIR_CONVERSION_H
 
-#include "tpu_mlir/Conversion/TopToTpu/TopLowering.h"
-#include "tpu_mlir/Conversion/TopToTosa/TopLowering.h"
 #include "tpu_mlir/Conversion/TopToLinalg/TopLowering.h"
+#include "tpu_mlir/Conversion/TopToTosa/TopLowering.h"
+#include "tpu_mlir/Conversion/TopToTpu/TopLowering.h"
 
 namespace mlir {
 #define GEN_PASS_DECL

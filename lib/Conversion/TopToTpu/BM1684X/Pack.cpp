@@ -35,8 +35,7 @@ void PackLowering::LoweringF16(PatternRewriter &rewriter,
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void PackLowering::LoweringF8(PatternRewriter &rewriter,
-                               top::PackOp op) const {
+void PackLowering::LoweringF8(PatternRewriter &rewriter, top::PackOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

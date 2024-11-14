@@ -5,8 +5,7 @@ namespace mlir {
 std::unique_ptr<OperationPass<mlir::ModuleOp>>
 createAssignTargetDevicePass(std::string targets);
 
-std::unique_ptr<OperationPass<ModuleOp>>
-createSetEntryPointPass();
+std::unique_ptr<OperationPass<ModuleOp>> createSetEntryPointPass();
 
 std::unique_ptr<OperationPass<ModuleOp>>
 createAutoInputConversionPipelinePass();
@@ -14,4 +13,4 @@ createAutoInputConversionPipelinePass();
 #define GEN_PASS_REGISTRATION
 #include "InputConversion/Passes.h.inc"
 
-}
+} // namespace mlir

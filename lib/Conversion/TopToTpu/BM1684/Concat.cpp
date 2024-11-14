@@ -44,11 +44,11 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op_c->getAttrs()) {
-        attrs.push_back(attr);
-    }
-  attrs.push_back(rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(false)));
-  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op_c, newType, operands,
-                                             attrs);
+    attrs.push_back(attr);
+  }
+  attrs.push_back(
+      rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(false)));
+  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op_c, newType, operands, attrs);
 }
 
 } // namespace bm1684

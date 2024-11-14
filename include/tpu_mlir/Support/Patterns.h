@@ -10,10 +10,10 @@
 #pragma once
 
 #include "mlir/IR/PatternMatch.h"
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
+#include "tpu_mlir/Support/Patterns.h"
 
 // Common Patterns
 namespace tpu_mlir {
@@ -21,9 +21,9 @@ namespace patterns {
 
 struct FuseSameOp : public OpRewriterPatternEx3 {
   FuseSameOp(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"FuseSameOp",1) {}
+      : OpRewriterPatternEx3(context, "FuseSameOp", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override ;
+                                    PatternRewriter &rewriter) const override;
 };
 
 // if op =  op + op, fuse to one op. such as top::Reshape
@@ -46,14 +46,16 @@ public:
   }
 };
 
-
-// convert op a to op b, not care attributes. such as top::Sequence to top::Reshape
+// convert op a to op b, not care attributes. such as top::Sequence to
+// top::Reshape
 template <typename SourceOp, typename TargetOp>
 struct GeneralPattern : public OpRewriterPatternEx<SourceOp> {
-  GeneralPattern(MLIRContext *context, const std::string &patternName, int benefit = 1)
+  GeneralPattern(MLIRContext *context, const std::string &patternName,
+                 int benefit = 1)
       : OpRewriterPatternEx<SourceOp>(context, patternName, benefit) {}
 
-  LogicalResult matchAndRewriteImpl(SourceOp op, PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(SourceOp op,
+                                    PatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<TargetOp>(op, op.getOutput().getType(),
                                           op->getOperands(),
                                           std::vector<NamedAttribute>());
@@ -61,24 +63,32 @@ struct GeneralPattern : public OpRewriterPatternEx<SourceOp> {
   }
 };
 
-struct SqueezeToReshapePattern : public GeneralPattern<top::SqueezeOp, top::ReshapeOp> {
+struct SqueezeToReshapePattern
+    : public GeneralPattern<top::SqueezeOp, top::ReshapeOp> {
   SqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
-      : GeneralPattern<top::SqueezeOp, top::ReshapeOp>(context, "SqueezeToReshapePattern", benefit) {}
+      : GeneralPattern<top::SqueezeOp, top::ReshapeOp>(
+            context, "SqueezeToReshapePattern", benefit) {}
 };
 
-struct UnsqueezeToReshapePattern : public GeneralPattern<top::UnsqueezeOp, top::ReshapeOp> {
+struct UnsqueezeToReshapePattern
+    : public GeneralPattern<top::UnsqueezeOp, top::ReshapeOp> {
   UnsqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
-      : GeneralPattern<top::UnsqueezeOp, top::ReshapeOp>(context, "UnsqueezeToReshapePattern", benefit) {}
+      : GeneralPattern<top::UnsqueezeOp, top::ReshapeOp>(
+            context, "UnsqueezeToReshapePattern", benefit) {}
 };
 
-struct TPUSqueezeToReshapePattern : public GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp> {
+struct TPUSqueezeToReshapePattern
+    : public GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp> {
   TPUSqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
-      : GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp>(context, "TPUSqueezeToReshapePattern", benefit) {}
+      : GeneralPattern<tpu::SqueezeOp, tpu::ReshapeOp>(
+            context, "TPUSqueezeToReshapePattern", benefit) {}
 };
 
-struct TPUUnsqueezeToReshapePattern : public GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp> {
+struct TPUUnsqueezeToReshapePattern
+    : public GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp> {
   TPUUnsqueezeToReshapePattern(MLIRContext *context, int benefit = 1)
-      : GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>(context, "TPUUnsqueezeToReshapePattern", benefit) {}
+      : GeneralPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>(
+            context, "TPUUnsqueezeToReshapePattern", benefit) {}
 };
 
 } // namespace patterns

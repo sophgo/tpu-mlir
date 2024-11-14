@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -15,10 +15,11 @@ struct TopMultiSwapDimMergeToOne : public OpRewriterPatternEx<SwapDimInnerOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopMultiSwapDimMergeToOne(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<SwapDimInnerOp>(context, "TopMultiSwapDimMergeToOne") {}
+      : OpRewriterPatternEx<SwapDimInnerOp>(context,
+                                            "TopMultiSwapDimMergeToOne") {}
 
   LogicalResult matchAndRewriteImpl(SwapDimInnerOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto nextOp = *op->user_begin();
     if (!isa<SwapDimInnerOp>(nextOp)) {
       return failure();

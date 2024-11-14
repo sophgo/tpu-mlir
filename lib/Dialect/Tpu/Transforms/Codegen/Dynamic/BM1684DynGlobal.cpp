@@ -24,7 +24,7 @@ void *call_global_layer_ir_write(FW_LAYER_TYPE_T fw_layer_type, void *p_ir_addr,
   else {                                                                       \
     std::cout << "not supported fw glb layer type " << fw_layer_type           \
               << " when writing global layer buffer" << std::endl;             \
-    llvm_unreachable("fw_layer_type error");                                                                  \
+    llvm_unreachable("fw_layer_type error");                                   \
   }
 // Function name is different to layer paramter type
 #define GLB_IRBUF_CASE_BY_PARAM(TYPE, name, param_t)                           \

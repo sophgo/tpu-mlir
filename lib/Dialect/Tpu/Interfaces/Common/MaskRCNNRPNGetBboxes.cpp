@@ -14,16 +14,15 @@ LogicalResult tpu::MaskRCNNRPNGetBboxesOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::MaskRCNNRPNGetBboxesOp::deinit(InferenceParameter &p) {
-  return;
-}
+void tpu::MaskRCNNRPNGetBboxesOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::MaskRCNNRPNGetBboxesOp::inference(InferenceParameter &p) {
   UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 
-mlir::Type tpu::MaskRCNNRPNGetBboxesOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::MaskRCNNRPNGetBboxesOp::type_verify(uint64_t opd_idx,
+                                                    TypeCastMode &mode) {
   return type_verify_case_same(getOperation(), opd_idx, mode);
 }
 

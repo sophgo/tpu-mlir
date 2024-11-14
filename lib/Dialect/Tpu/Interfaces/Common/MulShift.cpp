@@ -8,10 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::MulShiftOp::init(InferenceParameter &p) { return success(); }
 void tpu::MulShiftOp::deinit(InferenceParameter &p) {}
@@ -52,7 +52,8 @@ void tpu::MulShiftOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::MulShiftOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

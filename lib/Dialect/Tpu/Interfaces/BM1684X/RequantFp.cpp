@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -27,7 +27,8 @@ void tpu::RequantFpOp::codegen_global_bm1684x() {
   param.w = (int)w;
   param.scale_value = getScale().convertToDouble();
   param.offset_value = getOffset().convertToDouble();
-  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+  // module::getStorageType(getOutput()).isFloat8E5M2()) {
   //   param.offset_value = 0.0;
   // } else {
   //   auto oqtype = module::getUniformQuantizedType(getOutput());
@@ -81,7 +82,8 @@ void tpu::RequantFpOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   param.scale_value = getScale().convertToDouble();
   param.offset_value = getOffset().convertToDouble();
-  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+  // module::getStorageType(getOutput()).isFloat8E5M2()) {
   //   param.offset_value = 0.0f;
   // } else {
   //   auto oqtype = module::getUniformQuantizedType(getOutput());
@@ -110,7 +112,8 @@ int64_t tpu::RequantFpOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   param.scale_value = getScale().convertToDouble();
   param.offset_value = getOffset().convertToDouble();
-  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+  // module::getStorageType(getOutput()).isFloat8E5M2()) {
   //   param.offset_value = 0.0f;
   // } else {
   //   auto oqtype = module::getUniformQuantizedType(getOutput());
@@ -137,7 +140,8 @@ int64_t tpu::RequantFpOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.output_addr = module::getAddress(getOutput());
   param.scale_value = getScale().convertToDouble();
   param.offset_value = getOffset().convertToDouble();
-  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+  // if (module::getStorageType(getOutput()).isFloat8E4M3FN() ||
+  // module::getStorageType(getOutput()).isFloat8E5M2()) {
   //   param.offset_value = 0.0f;
   // } else {
   //   auto oqtype = module::getUniformQuantizedType(getOutput());

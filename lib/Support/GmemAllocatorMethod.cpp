@@ -155,8 +155,9 @@ int64_t GmemAllocatorMethod::updateGmemUsedStatistic(
   }
 
   LLVM_DEBUG(llvm::errs() << "GmemAllocMethod:" << name_.c_str()
-               << "  Gmem Used: " << totalGmemUsed << "/" << totalNeuronSize
-               << ", gmem reused rate:" << reuseRate << "%\n";);
+                          << "  Gmem Used: " << totalGmemUsed << "/"
+                          << totalNeuronSize
+                          << ", gmem reused rate:" << reuseRate << "%\n";);
   return totalGmemUsed;
 }
 
@@ -210,13 +211,13 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
     auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
-    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
-                 << ", name:" << module::getName(real_op->getResult(out_index))
-                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
-                 << ", size:" << tensor_size
-                 << ", end:" << gaddrMap_[op] + tensor_size
-                 << ", range:" << liveRange[op].start << " ~ "
-                 << liveRange[op].end << "\n";);
+    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName() << ", name:"
+                            << module::getName(real_op->getResult(out_index))
+                            << ", addr:" << gaddrMap_[op] << ", baseGaddr:"
+                            << baseGaddr << ", size:" << tensor_size
+                            << ", end:" << gaddrMap_[op] + tensor_size
+                            << ", range:" << liveRange[op].start << " ~ "
+                            << liveRange[op].end << "\n";);
   }
   return totalGmemUsed;
 }
@@ -295,8 +296,9 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
   }
 
   LLVM_DEBUG(llvm::errs() << "GmemAllocMethod:" << name_.c_str()
-               << "  Gmem Used: " << total_consumption << "/" << totalNeuronSize
-               << ", gmem reused rate:" << reuseRate << "%\n";);
+                          << "  Gmem Used: " << total_consumption << "/"
+                          << totalNeuronSize
+                          << ", gmem reused rate:" << reuseRate << "%\n";);
 
   for (auto &op_addr : allocated_op_list) {
     // update gaddr map by adding base gaddr.
@@ -307,13 +309,13 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
     auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
-    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
-                 << ", name:" << module::getName(real_op->getResult(out_index))
-                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
-                 << ", size:" << tensor_size
-                 << ", end:" << gaddrMap_[op] + tensor_size
-                 << ", range:" << liveRange[op].start << " ~ "
-                 << liveRange[op].end << "\n";);
+    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName() << ", name:"
+                            << module::getName(real_op->getResult(out_index))
+                            << ", addr:" << gaddrMap_[op] << ", baseGaddr:"
+                            << baseGaddr << ", size:" << tensor_size
+                            << ", end:" << gaddrMap_[op] + tensor_size
+                            << ", range:" << liveRange[op].start << " ~ "
+                            << liveRange[op].end << "\n";);
   }
   return total_consumption;
 }

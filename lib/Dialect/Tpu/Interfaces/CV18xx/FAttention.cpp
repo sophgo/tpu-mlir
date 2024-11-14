@@ -12,11 +12,9 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
 void tpu::FAttentionOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
-

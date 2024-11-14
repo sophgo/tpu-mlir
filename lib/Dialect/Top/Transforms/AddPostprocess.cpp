@@ -115,7 +115,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     return;
   }
   // yolov8
-  if (post_type == "yolov8" && num_opds == 1){
+  if (post_type == "yolov8" && num_opds == 1) {
     operands.push_back(opds[0]);
     anchors = {0};
     return;
@@ -231,9 +231,8 @@ void AddPostprocessPass::insertDepackRawOp(OpBuilder &builder) {
   float white_level = 4095.;
   float black_level = 112.;
   std::string pixel_format;
-  func.walk([&](top::InputOp inputOp){
-    if ( inputOp.getDoPreprocess() )
-    {
+  func.walk([&](top::InputOp inputOp) {
+    if (inputOp.getDoPreprocess()) {
       pixel_format = inputOp.getPixelFormat()->str();
       return;
     }
@@ -243,26 +242,37 @@ void AddPostprocessPass::insertDepackRawOp(OpBuilder &builder) {
   auto shape = module::getShape(opd);
   int padding_h = 0;
   int padding_w = 0;
-  int oh = ( shape[2] - padding_h ) * 2;
-  int ow = ( shape[3] - padding_w ) * 3;
+  int oh = (shape[2] - padding_h) * 2;
+  int ow = (shape[3] - padding_w) * 3;
   std::vector<int64_t> channel_order;
   // RGBG->(3, 2, 0, 1)->GBRG
   // RGBG->(1, 0, 2, 3)->GRBG
   // RGBG->(0, 1, 3, 2)->RGGB
   // RGBG->(2, 3, 1, 0)->BGGR
-  if ( pixel_format == "gbrg" )      channel_order = {3, 2, 0, 1};
-  else if ( pixel_format == "grbg" ) channel_order = {1, 0, 2, 3};
-  else if ( pixel_format == "rggb" ) channel_order = {0, 1, 3, 2};
-  else if ( pixel_format == "bggr" ) channel_order = {2, 3, 1, 0};
-  else llvm_unreachable ("raw format not support current type");
+  if (pixel_format == "gbrg")
+    channel_order = {3, 2, 0, 1};
+  else if (pixel_format == "grbg")
+    channel_order = {1, 0, 2, 3};
+  else if (pixel_format == "rggb")
+    channel_order = {0, 1, 3, 2};
+  else if (pixel_format == "bggr")
+    channel_order = {2, 3, 1, 0};
+  else
+    llvm_unreachable("raw format not support current type");
   std::vector<NamedAttribute> attrs;
-  attrs.emplace_back(builder.getNamedAttr("padding_h", builder.getI64IntegerAttr(padding_h)));
-  attrs.emplace_back(builder.getNamedAttr("padding_w", builder.getI64IntegerAttr(padding_w)));
-  attrs.emplace_back(builder.getNamedAttr("white_level", builder.getF64FloatAttr(white_level)));
-  attrs.emplace_back(builder.getNamedAttr("black_level", builder.getF64FloatAttr(black_level)));
-  attrs.emplace_back(builder.getNamedAttr("channel_order", builder.getI64ArrayAttr(channel_order)));
+  attrs.emplace_back(
+      builder.getNamedAttr("padding_h", builder.getI64IntegerAttr(padding_h)));
+  attrs.emplace_back(
+      builder.getNamedAttr("padding_w", builder.getI64IntegerAttr(padding_w)));
+  attrs.emplace_back(builder.getNamedAttr(
+      "white_level", builder.getF64FloatAttr(white_level)));
+  attrs.emplace_back(builder.getNamedAttr(
+      "black_level", builder.getF64FloatAttr(black_level)));
+  attrs.emplace_back(builder.getNamedAttr(
+      "channel_order", builder.getI64ArrayAttr(channel_order)));
   auto loc = NameLoc::get(builder.getStringAttr("depack_raw"));
-  auto new_type = RankedTensorType::get({batch, 1, oh, ow}, builder.getIntegerType(8, false));
+  auto new_type = RankedTensorType::get({batch, 1, oh, ow},
+                                        builder.getIntegerType(8, false));
   auto post_op = builder.create<top::DepackRawOp>(loc, new_type, opd, attrs);
   terminator->setOperand(0, post_op.getOutput());
 }

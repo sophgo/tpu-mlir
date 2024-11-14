@@ -59,6 +59,6 @@ void tpu::LSTMOp::codegen_global_cv18xx(int64_t layer_id) {
       ga_cont, ga_sigmoid_table, ga_sigmoid_slope, ga_tanh_table, ga_tanh_slope,
       ga_output, ga_last_h, ga_last_c, attr.seq_len, attr.num_direction,
       attr.batch_size, attr.hidden_size, attr.have_bias, attr.have_h0,
-      attr.have_c0, attr.have_cont, getBidirectional(), attr.output_yh, attr.output_yc,
-      output_y, is_torch);
+      attr.have_c0, attr.have_cont, getBidirectional(), attr.output_yh,
+      attr.output_yc, output_y, is_torch);
 }

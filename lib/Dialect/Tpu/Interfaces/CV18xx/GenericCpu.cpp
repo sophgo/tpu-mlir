@@ -10,18 +10,13 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
-
 using namespace tpu_mlir::backend;
-
-
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 
 // int8
-void tpu::GenericCpuOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::GenericCpuOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

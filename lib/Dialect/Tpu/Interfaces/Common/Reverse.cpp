@@ -11,8 +11,6 @@
 
 #include "tpu_mlir/Support/Module.h"
 
-
-
 LogicalResult tpu::ReverseOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReverseOp::deinit(InferenceParameter &p) {}
 

@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::WhereOp::init(InferenceParameter &p) { return success(); }
 void tpu::WhereOp::deinit(InferenceParameter &p) {}
 
@@ -42,7 +40,8 @@ LogicalResult tpu::WhereOp::inference(InferenceParameter &p) {
         idx_to_list(i, out_shape, list_);
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t fbrn_idx = list_to_idx(list_, in1_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? const_val : p.inputs[2][fbrn_idx];
+        p.outputs[0][i] =
+            p.inputs[0][cond_idx] ? const_val : p.inputs[2][fbrn_idx];
       }
     }
   } else if (y_const && x_const == false) {
@@ -63,7 +62,8 @@ LogicalResult tpu::WhereOp::inference(InferenceParameter &p) {
         idx_to_list(i, out_shape, list_);
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t tbrn_idx = list_to_idx(list_, in1_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx] : const_val;
+        p.outputs[0][i] =
+            p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx] : const_val;
       }
     }
   } else if (y_const && x_const) {
@@ -106,7 +106,8 @@ LogicalResult tpu::WhereOp::inference(InferenceParameter &p) {
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t tbrn_idx = list_to_idx(list_, in1_stride);
         int64_t fbrn_idx = list_to_idx(list_, in2_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx] : p.inputs[2][fbrn_idx];
+        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx]
+                                                : p.inputs[2][fbrn_idx];
       }
     }
   }

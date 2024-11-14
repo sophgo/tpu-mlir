@@ -110,10 +110,10 @@ struct ConcatToDepth2SpacePattern : public OpRewriterPatternEx<ConcatOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ConcatToDepth2SpacePattern(mlir::MLIRContext *context)
-  : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern") {}
+      : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
     }
@@ -201,30 +201,31 @@ struct ConcatToDepth2SpacePattern : public OpRewriterPatternEx<ConcatOp> {
 struct ConcatToRope : public OpRewriterPatternEx<ConcatOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-    ConcatToRope(mlir::MLIRContext *context)
+  ConcatToRope(mlir::MLIRContext *context)
       : OpRewriterPatternEx<ConcatOp>(context, "ConcatToRope") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
     int indx = 0;
     for (int i = 0; i < 2; ++i) {
       auto rope_op = dyn_cast<RopeOp>(op.getInputs()[i].getDefiningOp());
-      if(rope_op){
+      if (rope_op) {
         indx = i;
-      }else{
-          indx = 1 - i;
+      } else {
+        indx = 1 - i;
       }
     }
     auto rope_op = dyn_cast<RopeOp>(op.getInputs()[indx].getDefiningOp());
-    auto slice0_op = dyn_cast<SliceOp>(op.getInputs()[1-indx].getDefiningOp());
+    auto slice0_op =
+        dyn_cast<SliceOp>(op.getInputs()[1 - indx].getDefiningOp());
     if (!rope_op || !slice0_op) {
       return failure();
     }
-    auto slice1_op =  dyn_cast<SliceOp>(rope_op.getInput1().getDefiningOp());
-    if(!slice1_op){
+    auto slice1_op = dyn_cast<SliceOp>(rope_op.getInput1().getDefiningOp());
+    if (!slice1_op) {
       return failure();
     }
     Value in_value;
@@ -244,58 +245,61 @@ struct ConcatToRope : public OpRewriterPatternEx<ConcatOp> {
             weight_shape[1],
             std::vector<std::vector<float>>(
                 weight_shape[2] + 1, std::vector<float>(weight_shape[3]))));
-    std::vector<std::vector<std::vector<std::vector<float>>>> new_weight1(weight_shape[0], std::vector<std::vector<std::vector<float>>>(weight_shape[1], std::vector<std::vector<float>>(weight_shape[2]+1, std::vector<float>(weight_shape[3]))));
+    std::vector<std::vector<std::vector<std::vector<float>>>> new_weight1(
+        weight_shape[0],
+        std::vector<std::vector<std::vector<float>>>(
+            weight_shape[1],
+            std::vector<std::vector<float>>(
+                weight_shape[2] + 1, std::vector<float>(weight_shape[3]))));
 
-    std::vector<float> new_w0((weight_shape[2]+1)*weight_shape[3]);
-    std::vector<float> new_w1((weight_shape[2]+1)*weight_shape[3]); 
+    std::vector<float> new_w0((weight_shape[2] + 1) * weight_shape[3]);
+    std::vector<float> new_w1((weight_shape[2] + 1) * weight_shape[3]);
 
     for (int j = 0; j < weight_shape[3]; j++) {
-        new_weight0[0][0][0][j] = 0.0f;
-        new_weight1[0][0][0][j] = 1.0f;
+      new_weight0[0][0][0][j] = 0.0f;
+      new_weight1[0][0][0][j] = 1.0f;
     }
     int cnt = 0;
     for (int i = 0; i < weight_shape[2]; i++) {
-        for (int j = 0; j < weight_shape[3]; j++) {
-           new_weight0[0][0][i + 1][j] =  left_weight[cnt];
-           new_weight1[0][0][i + 1][j] =  right_weight[cnt];
-           cnt += 1;
-        }
-    }
-
-    int count = 0;
-    for(int i=0;i<weight_shape[2]+1;i++){
-      for(int j=0;j<weight_shape[3];j++){
-         new_w0[count] = new_weight0[0][0][i][j];
-         new_w1[count] = new_weight1[0][0][i][j];
-         count += 1;
+      for (int j = 0; j < weight_shape[3]; j++) {
+        new_weight0[0][0][i + 1][j] = left_weight[cnt];
+        new_weight1[0][0][i + 1][j] = right_weight[cnt];
+        cnt += 1;
       }
     }
 
+    int count = 0;
+    for (int i = 0; i < weight_shape[2] + 1; i++) {
+      for (int j = 0; j < weight_shape[3]; j++) {
+        new_w0[count] = new_weight0[0][0][i][j];
+        new_w1[count] = new_weight1[0][0][i][j];
+        count += 1;
+      }
+    }
 
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
     }
 
-    std::vector<int64_t> new_weight_shape = {weight_shape[0], weight_shape[1], weight_shape[2] + 1,
-                                       weight_shape[3]};
+    std::vector<int64_t> new_weight_shape = {
+        weight_shape[0], weight_shape[1], weight_shape[2] + 1, weight_shape[3]};
 
-    auto  new_Weight0 = WeightOp::create_float(op, "weight0", new_w0,
-                                               new_weight_shape, storage_type);
-    auto  new_Weight1 = WeightOp::create_float(op, "weight1", new_w1,
-                                               new_weight_shape, storage_type);
+    auto new_Weight0 = WeightOp::create_float(op, "weight0", new_w0,
+                                              new_weight_shape, storage_type);
+    auto new_Weight1 = WeightOp::create_float(op, "weight1", new_w1,
+                                              new_weight_shape, storage_type);
 
     if (slice0_op.getInput().getDefiningOp() ==
-        slice1_op.getInput().getDefiningOp() 
-      ) {
+        slice1_op.getInput().getDefiningOp()) {
       in_value = slice0_op.getInput();
-    }
-    else{
+    } else {
       return failure();
     }
     std::vector<NamedAttribute> attrs;
-    rewriter.replaceOpWithNewOp<RopeOp>(op, op.getResult().getType(),
-                                      ValueRange{in_value, new_Weight0, new_Weight1}, attrs);
+    rewriter.replaceOpWithNewOp<RopeOp>(
+        op, op.getResult().getType(),
+        ValueRange{in_value, new_Weight0, new_Weight1}, attrs);
     return success();
   }
 };
@@ -303,10 +307,10 @@ struct ConcatToDepth2SpacePattern2 : public OpRewriterPatternEx<ConcatOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ConcatToDepth2SpacePattern2(mlir::MLIRContext *context)
-    : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern2") {}
+      : OpRewriterPatternEx<ConcatOp>(context, "ConcatToDepth2SpacePattern2") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
     }
@@ -378,7 +382,7 @@ struct MergeSliceConcatPattern : public OpRewriterPatternEx<ConcatOp> {
       : OpRewriterPatternEx<ConcatOp>(context, "MergeSliceConcatPattern") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     const auto &inputs = concat_op.getInputs();
     if (concat_op.getDoRelu()) {
       return failure();
@@ -485,11 +489,11 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   ConvertLoadWeightConcatToLoadWeightPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<ConcatOp>(context, "ConvertLoadWeightConcatToLoadWeightPattern") {}
-
+      : OpRewriterPatternEx<ConcatOp>(
+            context, "ConvertLoadWeightConcatToLoadWeightPattern") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
     }
@@ -542,14 +546,14 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
   }
 };
 
-
 struct RemoveInvaidShapeConcatInput : public OpRewriterPatternEx<ConcatOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   RemoveInvaidShapeConcatInput(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<ConcatOp>(context, "RemoveInvaidShapeConcatInput") {}
+      : OpRewriterPatternEx<ConcatOp>(context, "RemoveInvaidShapeConcatInput") {
+  }
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (concat_op.getDoRelu()) {
       return failure();
     }
@@ -573,7 +577,7 @@ struct RemoveInvaidConcatSlice : public OpRewriterPatternEx<ConcatOp> {
       : OpRewriterPatternEx<ConcatOp>(context, "RemoveInvaidConcatSlice") {}
 
   LogicalResult matchAndRewriteImpl(ConcatOp concat_op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto inputs = concat_op.getInputs();
     int num_inputs = inputs.size();
 
@@ -598,7 +602,8 @@ struct RemoveInvaidConcatSlice : public OpRewriterPatternEx<ConcatOp> {
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
-                 ConcatToDepth2SpacePattern, ConcatToRope,ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern, RemoveInvaidConcatSlice,
-                 RemoveInvaidShapeConcatInput>(context);
+                 ConcatToDepth2SpacePattern, ConcatToRope,
+                 ConcatToDepth2SpacePattern2, MergeSliceConcatPattern,
+                 RemoveInvaidConcatSlice, RemoveInvaidShapeConcatInput>(
+      context);
 }

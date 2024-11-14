@@ -20,7 +20,8 @@ class LocalGenInterfaceDecorator;
 class GlobalGenInterfaceDecorator;
 class ScopeVar;
 
-template <typename T> class Table {
+template <typename T>
+class Table {
 public:
   Table(){};
   bool contains(T key) { return prefix_record.contains(key); }
@@ -46,10 +47,13 @@ public:
   }
   ~TensorLocationImpl() { J.arrayEnd(); }
 
-  template <typename... Args> void before_codegen_local(Operation *op, Args...) {
+  template <typename... Args>
+  void before_codegen_local(Operation *op, Args...) {
     const bool is_ld_st = isa<tpu::LoadOp, tpu::StoreOp>(op);
-    cmd_before[0] = is_ld_st ? ((int*)((*BM168x::instance())->gdma_node))[0] : (*BM168x::instance()).get_total_id("tiu:0:0");
-    cmd_before[1] = is_ld_st ? (*BM168x::instance()).get_total_id("gdma:0:0") : ((int*)((*BM168x::instance())->bdc_node))[1];
+    cmd_before[0] = is_ld_st ? ((int *)((*BM168x::instance())->gdma_node))[0]
+                             : (*BM168x::instance()).get_total_id("tiu:0:0");
+    cmd_before[1] = is_ld_st ? (*BM168x::instance()).get_total_id("gdma:0:0")
+                             : ((int *)((*BM168x::instance())->bdc_node))[1];
   };
 
   void after_codegen_local(Operation *op, int64_t n_step, int64_t c_step,
@@ -66,8 +70,7 @@ public:
 
 protected:
   void record_loc(Operation *op, const json::Array &operands,
-                  const json::Array &results,
-                  const json::Array &buffers);
+                  const json::Array &results, const json::Array &buffers);
 
 private:
   uint64_t cmd_before[2];
@@ -82,7 +85,8 @@ class TensorLocation {
 
 public:
   TensorLocation() { getImpl().reset(); }
-  template <typename... Args> TensorLocation(bool enable, Args... args) {
+  template <typename... Args>
+  TensorLocation(bool enable, Args... args) {
     if (enable) {
       getImpl() = std::make_unique<TensorLocationImpl>(args...);
     }
@@ -136,7 +140,8 @@ public:
 class LocalGenInterfaceDecorator : public LocalGenInterface {
 public:
   LocalGenInterfaceDecorator(Operation *op) : LocalGenInterface(op){};
-  template <typename... Args> void codegen_local_bm168x(Args... args) {
+  template <typename... Args>
+  void codegen_local_bm168x(Args... args) {
     const auto tl_impl = TensorLocation::getImpl();
     if (tl_impl) {
       tl_impl->before_codegen_local(getOperation(), args...);

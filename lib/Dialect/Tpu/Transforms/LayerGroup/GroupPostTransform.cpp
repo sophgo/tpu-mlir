@@ -650,12 +650,14 @@ class GroupPostTransformPass : public LgPass {
 public:
   GroupPostTransformPass() {}
   virtual bool run(LgPassIR *pass_ir) override {
-    if (module::isBM1684XFamily() || module::isBM1684Family()
-        || module::isBM1690Family()) {
+    if (module::isBM1684XFamily() || module::isBM1684Family() ||
+        module::isBM1690Family()) {
       for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
         _3D_group_post_transform(pass_ir->lg_infos[i]);
         matmul_left_reuse_setting(pass_ir->lg_infos[i]);
-        if(module::isBM1688() && (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::WEIGHT || LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)){
+        if (module::isBM1688() &&
+            (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::WEIGHT ||
+             LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)) {
           nnvlc_transform(pass_ir->lg_infos[i]);
         }
       }

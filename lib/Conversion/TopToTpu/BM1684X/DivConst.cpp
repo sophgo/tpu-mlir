@@ -18,7 +18,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op) const {
+void DivConstTryLowering::Lowering(PatternRewriter &rewriter,
+                                   top::DivConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -30,8 +31,7 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op
   attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Div")));
 
   auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));
-  constI32->data()[0] =
-      std::floor(op.getConstVal().convertToDouble());
+  constI32->data()[0] = std::floor(op.getConstVal().convertToDouble());
   auto weight_type =
       RankedTensorType::get({1}, rewriter.getIntegerType(32, true));
   auto weight_op = top::WeightOp::create(op, "i64", *constI32, weight_type);
@@ -48,12 +48,14 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op
 //                                    top::DivConstOp op) const {
 //   lowering_common_f32<tpu::DivConstOp>(rewriter, op);
 // }
-// void DivConstLowering::LoweringINT4(PatternRewriter &rewriter, top::DivConstOp op,
+// void DivConstLowering::LoweringINT4(PatternRewriter &rewriter,
+// top::DivConstOp op,
 //                                    bool asymmetric) const {
 //   LoweringINT8(rewriter, op, asymmetric);
 // }
 // void DivConstLowering::LoweringINT8(PatternRewriter &rewriter,
-//                                     top::DivConstOp op, bool asymmetric) const {
+//                                     top::DivConstOp op, bool asymmetric)
+//                                     const {
 //   double scale_i, scale_o;
 //   int64_t zp_i, zp_o;
 //   module::getScaleAndZeroPoint(op.getInput(), scale_i, zp_i, asymmetric);
@@ -72,7 +74,8 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op
 //       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
 //   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
 //   rewriter.replaceOpWithNewOp<tpu::MulShiftOp>(op, newType,
-//                                                ValueRange{op.getInput()}, attrs);
+//                                                ValueRange{op.getInput()},
+//                                                attrs);
 // }
 
 // void DivConstLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -108,7 +111,8 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op
 //   }
 //   for (auto &attr : op->getAttrs()) {
 //     if (attr.getName() == "const_val") {
-//       attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_v)));
+//       attrs.push_back(rewriter.getNamedAttr("const_val",
+//       rewriter.getF64FloatAttr(const_v)));
 //     } else {
 //       attrs.push_back(attr);
 //     }
@@ -117,11 +121,13 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter, top::DivConstOp op
 //   if (isE4) {
 //     auto newType = getQuantF8E4M3Type(op.getOutput());
 //     rewriter.replaceOpWithNewOp<tpu::DivConstOp>(op, newType,
-//                                                ValueRange{op.getInput()}, attrs);
+//                                                ValueRange{op.getInput()},
+//                                                attrs);
 //   } else {
 //     auto newType = getQuantF8E5M2Type(op.getOutput());
 //     rewriter.replaceOpWithNewOp<tpu::DivConstOp>(op, newType,
-//                                                ValueRange{op.getInput()}, attrs);
+//                                                ValueRange{op.getInput()},
+//                                                attrs);
 //   }
 // }
 

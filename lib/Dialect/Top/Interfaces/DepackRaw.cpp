@@ -9,9 +9,13 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::DepackRawOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::DepackRawOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
-LogicalResult top::DepackRawOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::DepackRawOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::DepackRawOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::DepackRawOp::inference(InferenceParameter &p) {
@@ -20,7 +24,7 @@ LogicalResult top::DepackRawOp::inference(InferenceParameter &p) {
 
 void top::DepackRawOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
-  int block_size[2] = { 2 , 2 };
+  int block_size[2] = {2, 2};
   int bh = block_size[0];
   int bw = block_size[1];
 
@@ -30,7 +34,7 @@ void top::DepackRawOp::shape_inference() {
   int ic = in_shape[1];
   int ih = in_shape[2] - ph;
   int iw = in_shape[3] - pw;
-  assert ( ic == bh * bw );
+  assert(ic == bh * bw);
   int oh = ih * bh;
   int ow = iw * bw;
 

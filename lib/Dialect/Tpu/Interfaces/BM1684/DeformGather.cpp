@@ -16,12 +16,9 @@ void tpu::DeformGatherOp::codegen_global_bm1684() {
   llvm_unreachable("DeformGatherOp type error");
 }
 
-uint32_t tpu::DeformGatherOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::DeformGatherOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not implemented.");
   return 0;
 }
 
-int64_t tpu::DeformGatherOp::get_fw_type_bm1684() {
-  return -1;
-}
-
+int64_t tpu::DeformGatherOp::get_fw_type_bm1684() { return -1; }

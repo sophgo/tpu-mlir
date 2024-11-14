@@ -6,9 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -16,33 +15,34 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   SliceAxisToStridedSlice(mlir::MLIRContext *context)
-    : OpRewriterPatternEx<SliceAxisOp>(context, "SliceAxisToStridedSlice") {}
+      : OpRewriterPatternEx<SliceAxisOp>(context, "SliceAxisToStridedSlice") {}
 
   LogicalResult matchAndRewriteImpl(SliceAxisOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     auto in_shape = module::getShape(op.getInput());
     int64_t dims = in_shape.size();
     std::vector<Value> operands;
-    const auto& opd = op->getOperand(0);
+    const auto &opd = op->getOperand(0);
     operands.push_back(opd);
     auto none_op = module::getNoneOp(op);
     auto axis_op = op.getAxis().getDefiningOp<top::WeightOp>();
     auto axis_dims = module::getShape(axis_op)[0];
     auto axis_data = axis_op.read_as_float();
     std::vector<int64_t> axis(axis_dims, 0);
-    for (int i = 0; i < axis_dims; i++){
+    for (int i = 0; i < axis_dims; i++) {
       axis[i] = axis_data->at(i);
-      if (axis[i] < 0) axis[i] += dims;
+      if (axis[i] < 0)
+        axis[i] += dims;
     }
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);
     std::vector<int64_t> ends(dims, std::numeric_limits<int64_t>::max());
-    if (!module::isNone(op.getStart())){
-      if (module::isWeight(op.getStart())){
+    if (!module::isNone(op.getStart())) {
+      if (module::isWeight(op.getStart())) {
         auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
         auto start_data = start_op.read_as_float();
-        for (int i = 0; i < axis_dims; i++){
+        for (int i = 0; i < axis_dims; i++) {
           auto axis = axis_data->at(i);
           offset[axis] = start_data->at(i);
         }
@@ -53,11 +53,11 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
       }
     }
 
-    if (!module::isNone(op.getEnd())){
-      if (module::isWeight(op.getEnd())){
+    if (!module::isNone(op.getEnd())) {
+      if (module::isWeight(op.getEnd())) {
         auto end_op = op.getEnd().getDefiningOp<top::WeightOp>();
         auto end_data = end_op.read_as_float();
-        for (int i = 0; i < axis_dims; i++){
+        for (int i = 0; i < axis_dims; i++) {
           auto axis = axis_data->at(i);
           ends[axis] = end_data->at(i);
         }
@@ -68,11 +68,11 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
       }
     }
 
-    if (!module::isNone(op.getStep())){
+    if (!module::isNone(op.getStep())) {
       ASSERT_OP(module::isWeight(op.getStep()), op);
       auto step_op = op.getStep().getDefiningOp<top::WeightOp>();
       auto step_data = step_op.read_as_float();
-      for (int i = 0; i < axis_dims; i++){
+      for (int i = 0; i < axis_dims; i++) {
         auto axis = axis_data->at(i);
         steps[axis] = step_data->at(i);
         ASSERT_OP(steps[axis] != 0, op);

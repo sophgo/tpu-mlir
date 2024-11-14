@@ -19,12 +19,13 @@ void top::SoftplusOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SoftplusOp::inference(InferenceParameter &p) {
   auto num_element = module::getNumElements(getOutput());
-  // For numerical stability the implementation reverts to the linear function when input>threshold.
+  // For numerical stability the implementation reverts to the linear function
+  // when input>threshold.
   int threshold = 20;
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     auto val = p.inputs[0][i];
-    if(val > threshold){
+    if (val > threshold) {
       p.outputs[0][i] = val;
     } else {
       p.outputs[0][i] = std::log(std::exp(val) + 1);

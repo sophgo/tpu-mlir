@@ -9,16 +9,17 @@
 
 #pragma once
 
-#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <llvm/Support/Debug.h>
 
-//enum YuvType { YUV_UNKNOWN = 0, YUV420_PLANAR = 1, YUV_NV12 = 2, YUV_NV21 = 3 };
+// enum YuvType { YUV_UNKNOWN = 0, YUV420_PLANAR = 1, YUV_NV12 = 2, YUV_NV21 = 3
+// };
 
 namespace tpu_mlir {
 namespace backend {
 class TgYuv420Kernel {
 public:
-  TgYuv420Kernel()  {}
+  TgYuv420Kernel() {}
 
   void init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output, int n,
             int c, int h, int w, const std::vector<int> &order,
@@ -64,5 +65,5 @@ protected:
   int32_t yuv_type;
   std::vector<CV18xx::tiling_info_t> tiles;
 };
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

@@ -32,26 +32,29 @@ void top::ArangeOp::shape_inference() {
     auto end_v = module::getShapeTensorValue(getEnd());
     ASSERT_THIS(end_v.size() == 1);
     end = end_v[0];
-  } else if (auto end_min_op = dyn_cast<top::MinOp>(getEnd().getDefiningOp())){
-      if(auto end_min_w = dyn_cast<top::WeightOp>(end_min_op.getInputs()[1].getDefiningOp())) {
-        auto end_v = end_min_w.read_as_float();
-        end = static_cast<float>(end_v->at(0));
-      } else {
-        llvm_unreachable("End is tensor");
-      }
+  } else if (auto end_min_op = dyn_cast<top::MinOp>(getEnd().getDefiningOp())) {
+    if (auto end_min_w = dyn_cast<top::WeightOp>(
+            end_min_op.getInputs()[1].getDefiningOp())) {
+      auto end_v = end_min_w.read_as_float();
+      end = static_cast<float>(end_v->at(0));
+    } else {
+      llvm_unreachable("End is tensor");
+    }
   } else {
     llvm_unreachable("End must be a weight or a shape");
   }
 
   if (module::isNone(getStart()) == false) {
-    if(module::isWeight(getStart())){
+    if (module::isWeight(getStart())) {
       auto start_op = getStart().getDefiningOp<top::WeightOp>();
       auto start_data = start_op.read<float>();
       start = start_data->at(0);
-    } else if(auto start_max_op = dyn_cast<top::MaxOp>(getStart().getDefiningOp())){
-        if(auto start_max_w = dyn_cast<top::WeightOp>(start_max_op.getInputs()[1].getDefiningOp())) {
-          auto start_v = start_max_w.read_as_float();
-          start = static_cast<float>(start_v->at(0));
+    } else if (auto start_max_op =
+                   dyn_cast<top::MaxOp>(getStart().getDefiningOp())) {
+      if (auto start_max_w = dyn_cast<top::WeightOp>(
+              start_max_op.getInputs()[1].getDefiningOp())) {
+        auto start_v = start_max_w.read_as_float();
+        start = static_cast<float>(start_v->at(0));
       } else {
         llvm_unreachable("start is tensor");
       }

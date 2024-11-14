@@ -22,11 +22,15 @@ void PowTryLowering::Lowering(PatternRewriter &rewriter, top::PowOp op) const {
     return;
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("exponent", rewriter.getF32FloatAttr(op.getExponent().convertToDouble())));
+  attrs.push_back(rewriter.getNamedAttr(
+      "exponent",
+      rewriter.getF32FloatAttr(op.getExponent().convertToDouble())));
 
   auto v = op.getOutput();
-  Type new_type = RankedTensorType::get(module::getShape(v), rewriter.getF32Type());
-  rewriter.replaceOpWithNewOp<tpu::ShapePowOp>(op, new_type, op->getOperands(), attrs);
+  Type new_type =
+      RankedTensorType::get(module::getShape(v), rewriter.getF32Type());
+  rewriter.replaceOpWithNewOp<tpu::ShapePowOp>(op, new_type, op->getOperands(),
+                                               attrs);
 }
 
 /**
@@ -130,7 +134,7 @@ void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
 }
 
 void PowLowering::LoweringINT4(PatternRewriter &rewriter, top::PowOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 
@@ -140,7 +144,8 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
     auto name = module::getName(op.getOutput());
     // auto type = op.getOutput().getType();
     // if(module::isMARS3())
-    auto type = module::isMARS3() ? getQuantBF16Type(op->getResult(0)) : op.getOutput().getType();
+    auto type = module::isMARS3() ? getQuantBF16Type(op->getResult(0))
+                                  : op.getOutput().getType();
     rewriter.setInsertionPointAfter(op);
     auto log_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_log"));
     std::vector<NamedAttribute> attrs;
@@ -204,8 +209,8 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
       mul_operands.push_back(x);
       mul_operands.push_back(v_replaced);
       auto new_type = getQuantBF16Type(op.getResult());
-      auto mul_op = rewriter.create<tpu::MulOp>(
-          mul_loc, new_type, mul_operands, attrs);
+      auto mul_op =
+          rewriter.create<tpu::MulOp>(mul_loc, new_type, mul_operands, attrs);
       v_replaced.replaceAllUsesExcept(mul_op.getOutput(), mul_op);
       rewriter.eraseOp(op);
     } else {

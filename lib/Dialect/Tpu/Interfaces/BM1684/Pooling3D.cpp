@@ -62,16 +62,17 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684(
   int64_t ow = (iw - attr.kw + attr.pad_w + attr.pad_w_after) / attr.sw + 1;
   int64_t ot = (it - attr.kd + attr.pad_d + attr.pad_d_after) / attr.sd + 1;
   int64_t buffer_size = it * attr.n * ceiling_func(channel, BM168x::NPU_NUM) *
-                    align_up(oh * ow, BM168x::EU_BYTES) * sizeof(float);
+                        align_up(oh * ow, BM168x::EU_BYTES) * sizeof(float);
   buffer_size += attr.n * ceiling_func(channel, BM168x::NPU_NUM) *
-                  align_up(oh * ow * it, BM168x::EU_BYTES) * sizeof(float);
+                 align_up(oh * ow * it, BM168x::EU_BYTES) * sizeof(float);
 
   if (oh * ow >= (1 << 12)) {
     buffer_size += attr.n * ceiling_func(channel, BM168x::NPU_NUM) *
-                  align_up(4095 * ot, BM168x::EU_BYTES) * sizeof(float);
+                   align_up(4095 * ot, BM168x::EU_BYTES) * sizeof(float);
   }
 
-  if (attr.pad_d == 0 && attr.pad_d_after == 0 && (it == 1 || (attr.kd == 1 && attr.sd == 1))) {
+  if (attr.pad_d == 0 && attr.pad_d_after == 0 &&
+      (it == 1 || (attr.kd == 1 && attr.sd == 1))) {
     buffer_size = 0;
   }
   return buffer_size;

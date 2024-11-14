@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-LogicalResult tpu::SwapChannelOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::SwapChannelOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::SwapChannelOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::SwapChannelOp::inference(InferenceParameter &p) {
@@ -25,8 +25,7 @@ LogicalResult tpu::SwapChannelOp::inference(InferenceParameter &p) {
   int batch_length = c * frame_size;
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < c; j++) {
-      float *p_in =
-          input_data + i * batch_length + frame_size * order->at(j);
+      float *p_in = input_data + i * batch_length + frame_size * order->at(j);
       float *p_out = output_data + i * batch_length + frame_size * j;
       memcpy((void *)p_out, (void *)p_in, frame_size * sizeof(float));
     }

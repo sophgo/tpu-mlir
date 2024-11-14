@@ -11,13 +11,9 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-int64_t top::ModOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::ModOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
-LogicalResult top::ModOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult top::ModOp::init(InferenceParameter &p) { return success(); }
 
 LogicalResult top::ModOp::inference(InferenceParameter &p) {
   // if (p.handle == nullptr) {

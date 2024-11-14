@@ -69,7 +69,7 @@ static Operation *isFFNPattern(Operation *op) {
 
 LogicalResult
 MatMulSliceMerge3::matchAndRewriteImpl(tpu::AddOp op,
-                                   PatternRewriter &rewriter) const {
+                                       PatternRewriter &rewriter) const {
   if (!op->hasOneUse() || module::isOpInDevParallel(op)) {
     return failure();
   }
@@ -246,8 +246,9 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DevBeginOp op,
     outs.clear();
     next_op = reshape_users[0];
     other_opds = {past_v_out};
-    next_op = cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
-                                  2, num_devices, cur_device, true, num_head)[0];
+    next_op =
+        cloneAttentionValue(rewriter, next_op, cur_out, other_opds, outs, 2,
+                            num_devices, cur_device, true, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
 

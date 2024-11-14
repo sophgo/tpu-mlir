@@ -17,15 +17,17 @@ void MaskedFillLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);
 }
 
-void MaskedFillLowering::LoweringINT8(PatternRewriter &rewriter, top::MaskedFillOp op,
+void MaskedFillLowering::LoweringINT8(PatternRewriter &rewriter,
+                                      top::MaskedFillOp op,
                                       bool asymmetric) const {
-  if(module::isMARS3())
+  if (module::isMARS3())
     lowering_common_bf16<tpu::MaskedFillOp>(rewriter, op);
   else
     lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);
 }
-void MaskedFillLowering::LoweringINT4(PatternRewriter &rewriter, top::MaskedFillOp op,
-                                   bool asymmetric) const {
+void MaskedFillLowering::LoweringINT4(PatternRewriter &rewriter,
+                                      top::MaskedFillOp op,
+                                      bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MaskedFillLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -39,7 +41,7 @@ void MaskedFillLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MaskedFillLowering::LoweringF8(PatternRewriter &rewriter,
-                                     top::MaskedFillOp op) const {
+                                    top::MaskedFillOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

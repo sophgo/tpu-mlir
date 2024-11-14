@@ -33,9 +33,9 @@ typedef struct yolov3_detect_out_spec {
 } yolov3_detect_out_spec_t;
 
 typedef struct yolov3_detect_out_dyn_param {
-    yolov3_detect_out_spec_t spec;
-    unsigned long long buffer_addr;
-    int detected_box_num;
+  yolov3_detect_out_spec_t spec;
+  unsigned long long buffer_addr;
+  int detected_box_num;
 } yolov3_detect_out_dyn_param_t;
 
 typedef struct yolov5_detect_out_spec {
@@ -47,16 +47,16 @@ typedef struct yolov5_detect_out_spec {
 } yolov5_detect_out_spec_t;
 
 typedef struct yolov5_decode_detect_out_spec {
-    int input_num;
-    int batch_num;
-    int num_classes;
-    int num_boxes;
-    int keep_top_k;
-    float nms_threshold;
-    float confidence_threshold;
-    float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
-    float anchor_scale[MAX_YOLO_ANCHOR_NUM];
-    int agnostic_nms;
+  int input_num;
+  int batch_num;
+  int num_classes;
+  int num_boxes;
+  int keep_top_k;
+  float nms_threshold;
+  float confidence_threshold;
+  float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
+  float anchor_scale[MAX_YOLO_ANCHOR_NUM];
+  int agnostic_nms;
 } yolov5_decode_detect_out_spec_t;
 
 typedef struct yolov8_detect_out_spec {
@@ -105,8 +105,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.anchor_scale[i] = (float)(width / s[3]);
     }
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
-  }
-    else if (process.starts_with("yolov8") && getInputs().size() == 1 &&
+  } else if (process.starts_with("yolov8") && getInputs().size() == 1 &&
              module::getShape(getInputs()[0]).size() == 3) {
     if (!buffer)
       return sizeof(yolov8_detect_out_spec_t);
@@ -119,8 +118,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
         !spec.agnostic_nms ? std::max(getNetInputW(), getNetInputH()) : 0;
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
 
-   }
-    else if (process.starts_with("yolov5") && getInputs().size() == 1 &&
+  } else if (process.starts_with("yolov5") && getInputs().size() == 1 &&
              module::getShape(getInputs()[0]).size() == 3) {
     if (!buffer)
       return sizeof(yolov5_detect_out_spec_t);
@@ -158,7 +156,9 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     for (uint32_t i = 0; i < anchors->size(); i++) {
       param.spec.bias[i] = (float)(anchors->at(i));
     }
-    param.buffer_addr = (module::isBM1688() || module::isSG2380()) ? module::getAddress(getBuffer()) : 0;
+    param.buffer_addr = (module::isBM1688() || module::isSG2380())
+                            ? module::getAddress(getBuffer())
+                            : 0;
     return BM168x::dynamic_spec_to_buffer(buffer, param);
   }
 }
@@ -167,11 +167,9 @@ int64_t tpu::YoloDetectionOp::get_fw_type_bm1684x() {
   auto process = module::getPostprocess();
   if (process.starts_with("yolov5")) {
     return FW_BMNET_YOLOV5_DETECT_OUT;
-  }
-  else if (process.starts_with("yolov8")){
+  } else if (process.starts_with("yolov8")) {
     return FW_BMNET_YOLOV8_DETECT_OUT;
-  }
-  else { // default
+  } else { // default
     return FW_BMNET_YOLOV3_DETECT_OUT;
   }
 }

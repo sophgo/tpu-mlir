@@ -10,8 +10,8 @@
 #pragma once
 #include "mlir/Support/LLVM.h"
 #include "oneapi/dnnl/dnnl.hpp"
-#include "llvm/ADT/SmallVector.h"
 #include "tpu_mlir/Support/AttrStruct.h"
+#include "llvm/ADT/SmallVector.h"
 using namespace dnnl;
 namespace tpu_mlir {
 

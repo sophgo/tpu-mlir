@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/LutFunc.h"
 
 static void normlize_f32(const float *input_data, float *output_data,

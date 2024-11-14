@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Dnnl/Attention.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::AttentionOp::getFLOPs() { return 0; }
 
@@ -25,10 +25,11 @@ LogicalResult top::AttentionOp::init(InferenceParameter &p) {
   int64_t d = queries_shape[queries_shape.size() - 1] / getHead();
   auto scale = getScale().convertToDouble();
 
-  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3], p.inputs[4],
-                   p.inputs[5], p.inputs[6], p.inputs[7], p.inputs[8], p.inputs[9],
-                   p.inputs[10], p.inputs[11], nullptr, p.outputs[0], nullptr,
-                   batch, M_q, M_k, N_q, N_k, d, scale, 0);
+  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3],
+                   p.inputs[4], p.inputs[5], p.inputs[6], p.inputs[7],
+                   p.inputs[8], p.inputs[9], p.inputs[10], p.inputs[11],
+                   nullptr, p.outputs[0], nullptr, batch, M_q, M_k, N_q, N_k, d,
+                   scale, 0);
   p.handle = (void *)attention;
   return success();
 }

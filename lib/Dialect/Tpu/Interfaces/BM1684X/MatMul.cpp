@@ -24,7 +24,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   auto odtype = module::getStorageType(getOutput());
 
-  if (p.hdim_is_batch || p.batch != 1 || getFuseRq() || module::isF8Modes() || module::isMARS3()) {
+  if (p.hdim_is_batch || p.batch != 1 || getFuseRq() || module::isF8Modes() ||
+      module::isMARS3()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
@@ -56,7 +57,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
-        if(spec.fuse_rq) spec.round_mode = (RoundingMode)getRoundMode();
+        if (spec.fuse_rq)
+          spec.round_mode = (RoundingMode)getRoundMode();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
@@ -284,7 +286,8 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
       common.fuse_rq = getFuseRq();
-      if(common.fuse_rq) common.round_mode = (RoundingMode)getRoundMode();
+      if (common.fuse_rq)
+        common.round_mode = (RoundingMode)getRoundMode();
     }
   } else if (odtype.isFloat8E4M3FN()) {
     common.requant_mode = 0;

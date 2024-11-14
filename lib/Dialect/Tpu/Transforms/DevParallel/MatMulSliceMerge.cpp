@@ -39,9 +39,8 @@ static bool isHalfSlice(tpu::SliceOp op) {
 }
 
 template <typename MatMulTy>
-LogicalResult
-MatMulSliceMerge<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
-                                            PatternRewriter &rewriter) const {
+LogicalResult MatMulSliceMerge<MatMulTy>::matchAndRewriteImpl(
+    MatMulTy op, PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op)) {
     return failure();
   }
@@ -218,16 +217,18 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     }
     rewriter.setInsertionPointAfter(next_op);
     auto new_type = next_op->getResult(0).getType();
-    mlir::Operation* new_mm1;
+    mlir::Operation *new_mm1;
 
-    auto createMatMulOp = [&](bool a16_mm1) -> mlir::Operation* {
-        if (a16_mm1) {
-            return rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
-        } else {
-            operands.push_back(module::getNoneOp(op));
-            operands.push_back(module::getNoneOp(op));
-            return rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, next_op->getAttrs());
-        }
+    auto createMatMulOp = [&](bool a16_mm1) -> mlir::Operation * {
+      if (a16_mm1) {
+        return rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands,
+                                                 next_op->getAttrs());
+      } else {
+        operands.push_back(module::getNoneOp(op));
+        operands.push_back(module::getNoneOp(op));
+        return rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands,
+                                              next_op->getAttrs());
+      }
     };
 
     new_mm1 = createMatMulOp(a16_mm1);
@@ -327,9 +328,8 @@ LogicalResult AttentionSliceMerge<MatMulTy>::matchAndRewriteImpl(
   std::vector<int64_t> end_methods{1, 3, 3};
 
   // Bingo !!
-  distribute(rewriter, begin_ops, end_ops,
-             tpu::DevPattern::AttentionSliceMerge, begin_methods,
-             end_methods, num_head);
+  distribute(rewriter, begin_ops, end_ops, tpu::DevPattern::AttentionSliceMerge,
+             begin_methods, end_methods, num_head);
 
   return success();
 }
@@ -337,11 +337,11 @@ LogicalResult AttentionSliceMerge<MatMulTy>::matchAndRewriteImpl(
 template LogicalResult AttentionSliceMerge<tpu::MatMulOp>::matchAndRewriteImpl(
     tpu::MatMulOp op, PatternRewriter &rewriter) const;
 
-template LogicalResult AttentionSliceMerge<tpu::A16MatMulOp>::matchAndRewriteImpl(
+template LogicalResult
+AttentionSliceMerge<tpu::A16MatMulOp>::matchAndRewriteImpl(
     tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
-void sliceAttentionMergeSplit(PatternRewriter &rewriter,
-                              tpu::DevBeginOp op,
+void sliceAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
                               int64_t num_devices) {
   // Without StripIOQuant:
   // users: residual(norm), pos, attn_mask, [past_k, past_v]
@@ -395,7 +395,8 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
                               cur_device)[0];
     }
     auto ln_input = cur_out;
-    // createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 : 0);
+    // createMulConstOp(rewriter, cur_out, cur_device, cur_device == 0 ? 1.0 :
+    // 0);
     auto residual_out = cur_out;
 
     // clone pos_ids input branch
@@ -450,22 +451,24 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
     cur_out = attn_start_out;
     other_opds = {past_v_out};
     auto value_next_op =
-        cloneChatGLMAttentionValue(rewriter, next_op, cur_out, other_opds, outs, -1,
-                            num_devices, cur_device, num_head)[0];
+        cloneChatGLMAttentionValue(rewriter, next_op, cur_out, other_opds, outs,
+                                   -1, num_devices, cur_device, num_head)[0];
     Value value_out = outs[0];
     Value value_branch = outs[1];
     // Query branch
     next_op = op_branches[0];
     cur_out = attn_start_out;
-    auto query_next_ops = cloneChatGLMAttentionQK(
-        rewriter, next_op, cur_out, 2, pos_operands, num_devices, cur_device, num_head);
+    auto query_next_ops =
+        cloneChatGLMAttentionQK(rewriter, next_op, cur_out, 2, pos_operands,
+                                num_devices, cur_device, num_head);
     Value query_out = cur_out;
     // Key branch
     outs.clear();
     next_op = op_branches[1];
     cur_out = attn_start_out;
-    auto key_next_ops = cloneChatGLMAttentionQK(
-        rewriter, next_op, cur_out, -1, pos_operands, num_devices, cur_device, num_head);
+    auto key_next_ops =
+        cloneChatGLMAttentionQK(rewriter, next_op, cur_out, -1, pos_operands,
+                                num_devices, cur_device, num_head);
     Value key_out = cur_out;
     // Q@K
     operands.clear();
@@ -482,9 +485,9 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
         rewriter, next_op, cur_out, 1, other_opds, num_devices, cur_device)[0];
     Value qk_out = cur_out;
     // QK@V
-    next_op = cloneChatGLMAttentionOutput(rewriter, qk_next_op, value_next_op,
-                                          next_op, value_branch, qk_out,
-                                          cur_out, num_devices, cur_device, num_head);
+    next_op = cloneChatGLMAttentionOutput(
+        rewriter, qk_next_op, value_next_op, next_op, value_branch, qk_out,
+        cur_out, num_devices, cur_device, num_head);
     Value attn_out = cur_out;
 
     // out0 = attn_out + residual_out
@@ -525,7 +528,6 @@ void sliceAttentionMergeSplit(PatternRewriter &rewriter,
 
   module::removeUnusedOp();
 }
-
 
 } // namespace tpu
 } // namespace tpu_mlir

@@ -35,7 +35,8 @@ mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
 mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
 mlir::Type getQuantBoolType(Value v);
 
-template <typename ElemTy> static mlir::Type getQuantFloatType(Value v);
+template <typename ElemTy>
+static mlir::Type getQuantFloatType(Value v);
 
 class ScfTypeConverter : public TypeConverter {
 public:
@@ -85,7 +86,8 @@ public:
 class IfOpLowering : public ConversionPatternEx {
 public:
   explicit IfOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPatternEx(typeConverter, top::IfOp::getOperationName(), 1, ctx) {}
+      : ConversionPatternEx(typeConverter, top::IfOp::getOperationName(), 1,
+                            ctx) {}
 
 protected:
   LogicalResult
@@ -136,7 +138,7 @@ protected:
     return success();
   }
 
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 
 private:
   void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
@@ -153,11 +155,11 @@ private:
   }
 };
 
-
 class LoopOpLowering : public ConversionPatternEx {
 public:
   explicit LoopOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPatternEx(typeConverter, top::LoopOp::getOperationName(), 1, ctx) {}
+      : ConversionPatternEx(typeConverter, top::LoopOp::getOperationName(), 1,
+                            ctx) {}
 
 protected:
   LogicalResult
@@ -217,7 +219,8 @@ protected:
     return success();
   }
 
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
+
 private:
   void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
                         Region &tpuBranch) const {
@@ -246,7 +249,8 @@ static module::Mode getOpQuantMode(Operation *op) {
   if (iter != LoweringConfig::quantize_map.end()) {
     real_mode = iter->second;
   }
-  if ((module::isCV18xx() || module::isMARS3()) && real_mode == module::Mode::F16) {
+  if ((module::isCV18xx() || module::isMARS3()) &&
+      real_mode == module::Mode::F16) {
     return module::Mode::BF16;
   }
   if (!isa<top::ConvOp, top::MatMulOp>(op) && real_mode == module::Mode::INT4) {
@@ -262,21 +266,22 @@ public:
       : OpRewriterPatternEx<OpTy>(context) {}
 
 protected:
-  mlir::LogicalResult matchAndRewriteImpl(OpTy opTy,
-                                          mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy opTy,
+                      mlir::PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
 
     bool isQuantized = LoweringConfig::isQuantized;
     if (isQuantized) {
       auto stype = module::getStorageType(opTy.getODSResults(0)[0]);
       if (stype.isF32()) {
-        if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op)) {
+        if (!isa<top::CastOp, top::Yuv2rgbFormulaOp>(op)) {
           module::removeAttr(op, "round_mode");
           module::removeAttr(op, "first_round_mode");
         }
         LoweringF32(rewriter, opTy);
       } else if (stype.isF16()) {
-        if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op)) {
+        if (!isa<top::CastOp, top::Yuv2rgbFormulaOp>(op)) {
           module::removeAttr(op, "round_mode");
           module::removeAttr(op, "first_round_mode");
         }
@@ -287,8 +292,7 @@ protected:
       return success();
     }
     auto real_mode = getOpQuantMode(op);
-    if (!isa<top::CastOp,top::Yuv2rgbFormulaOp>(op))
-    {
+    if (!isa<top::CastOp, top::Yuv2rgbFormulaOp>(op)) {
       module::removeAttr(op, "round_mode");
       module::removeAttr(op, "first_round_mode");
     }
@@ -325,7 +329,7 @@ protected:
   }
 
 public:
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
   virtual void LoweringINT8(PatternRewriter &rewriter, OpTy opTy,
                             bool asymmetric) const {
     UNREACHABLE_OP("Not Implemented", opTy);
@@ -358,8 +362,9 @@ public:
       : OpRewriterPatternEx<OpTy>(context) {}
 
 protected:
-  mlir::LogicalResult matchAndRewriteImpl(OpTy opTy,
-                                          mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy opTy,
+                      mlir::PatternRewriter &rewriter) const override {
     Lowering(rewriter, opTy);
     return success();
   }
@@ -369,7 +374,7 @@ public:
     UNREACHABLE_OP("Not Implemented", opTy);
   }
 
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
 // Lowering to a new Operation, with the same operands and same attrs, and
@@ -519,10 +524,13 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, tpu::RequantMode mode, tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
+                 bool tensorType, tpu::RequantMode mode,
+                 tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero);
 
 Value do_requant_axis(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, tpu::RequantMode mode, tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero, int64_t rq_axis=1, bool fuse_rq = false);
+                      bool tensorType, tpu::RequantMode mode,
+                      tpu::RoundMode rmode = tpu::RoundMode::HalfAwayFromZero,
+                      int64_t rq_axis = 1, bool fuse_rq = false);
 
 Value do_requantFp(
     Value input, double scale, double offset, Type to_type,

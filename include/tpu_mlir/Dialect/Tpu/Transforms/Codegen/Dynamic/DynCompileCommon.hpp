@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 
 using namespace tpu_mlir::backend;
 
@@ -207,14 +207,14 @@ typedef enum fw_layer_type {
   FW_BMNET_GATHERELEMENTS = 159,
   FW_BMNET_SHAPE_CONSTANT_FILL = 160,
   FW_BMNET_MASKRCNNRPNGETBBOXES = 161,
-  FW_BMNET_MASKRCNNBBOXPOOLER   = 162,
-  FW_BMNET_MASKRCNNGETBBOXB     = 163,
-  FW_BMNET_MASKRCNNMASKPOOLER   = 164,
+  FW_BMNET_MASKRCNNBBOXPOOLER = 162,
+  FW_BMNET_MASKRCNNGETBBOXB = 163,
+  FW_BMNET_MASKRCNNMASKPOOLER = 164,
   FW_BMNET_SHAPE_CLIP = 165,
   FW_BMNET_SHAPE_POW = 166,
   FW_BMNET_RANDNLIKE = 167,
   FW_BMNET_SHAPE_TRANSPOSE = 168,
-      // global_dynamic step -2: declare FW_BMNET_XXXX
+  // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
 
@@ -393,16 +393,16 @@ typedef struct fw_deconv_layer_param {
 typedef struct fw_deconv3d_layer_param {
   int oc;
   int groups;
-  int kernel[3]; //kd, kh, kw
-  int dilation[3]; //dd, dh, dw
-  int pads[6]; //d, d_after, h, h_after, w, w_after
-  int stride[3]; //sd, sh, sw
+  int kernel[3];   // kd, kh, kw
+  int dilation[3]; // dd, dh, dw
+  int pads[6];     // d, d_after, h, h_after, w, w_after
+  int stride[3];   // sd, sh, sw
   int using_bias;
   int if_relu;
   float relu_upper_limit;
   int output_padding[3];
   /*for bm1684x*/
-  int dtype[4]; //weight, bias, output, kzp
+  int dtype[4]; // weight, bias, output, kzp
   int kzp_is_const;
   int pad_insert_is_const;
   int kzp_val;
@@ -1265,32 +1265,32 @@ typedef struct fw_yolov3_detect_out_layer_param {
 } fw_yolov3_detect_out_layer_param_t;
 
 typedef struct fw_yolov5_detect_out_layer_param {
-    int keep_top_k;
-    int agnostic_nms;
-    int max_hw;
-    float nms_threshold;
-    float confidence_threshold;
+  int keep_top_k;
+  int agnostic_nms;
+  int max_hw;
+  float nms_threshold;
+  float confidence_threshold;
 } fw_yolov5_detect_out_layer_param_t;
 
 typedef struct fw_yolov5_decode_detect_out_layer_param {
-    int input_num;
-    int batch_num;
-    int num_classes;
-    int num_boxes;
-    int keep_top_k;
-    float nms_threshold;
-    float confidence_threshold;
-    float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
-    float anchor_scale[MAX_YOLO_ANCHOR_NUM];
-    int agnostic_nms;
+  int input_num;
+  int batch_num;
+  int num_classes;
+  int num_boxes;
+  int keep_top_k;
+  float nms_threshold;
+  float confidence_threshold;
+  float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
+  float anchor_scale[MAX_YOLO_ANCHOR_NUM];
+  int agnostic_nms;
 } fw_yolov5_decode_detect_out_layer_param_t;
 
 typedef struct fw_yolov8_detect_out_layer_param {
-    int keep_top_k;
-    int agnostic_nms;
-    int max_hw;
-    float nms_threshold;
-    float confidence_threshold;
+  int keep_top_k;
+  int agnostic_nms;
+  int max_hw;
+  float nms_threshold;
+  float confidence_threshold;
 } fw_yolov8_detect_out_layer_param_t;
 
 typedef struct {

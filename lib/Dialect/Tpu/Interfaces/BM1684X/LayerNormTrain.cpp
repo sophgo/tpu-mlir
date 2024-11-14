@@ -28,10 +28,6 @@ void tpu::LayerNormTrainOp::codegen_global_bm1684x() {
                            output_spec->data());
 }
 
-void tpu::LayerNormTrainOp::codegen_global_bm1684() {
+void tpu::LayerNormTrainOp::codegen_global_bm1684() {}
 
-}
-
-void tpu::LayerNormTrainOp::codegen_global_cv18xx(int64_t layer_id) {
-
-}
+void tpu::LayerNormTrainOp::codegen_global_cv18xx(int64_t layer_id) {}

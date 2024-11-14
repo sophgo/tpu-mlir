@@ -7,13 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::BinaryConstShiftOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::BinaryConstShiftOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void tpu::BinaryConstShiftOp::deinit(InferenceParameter &p) {}
 
@@ -48,7 +49,7 @@ LogicalResult tpu::BinaryConstShiftOp::inference(InferenceParameter &p) {
       }
     }
   } else if (getMode().str() == "Mul") {
-    #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       int64_t sum = p.inputs[0][i] * const_val;
       sum = RightShiftRound(sum, -shift_val, rmode);
@@ -62,13 +63,15 @@ LogicalResult tpu::BinaryConstShiftOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::BinaryConstShiftOp::canonicalize(BinaryConstShiftOp op,
-                                            PatternRewriter &rewriter) {
+                                                    PatternRewriter &rewriter) {
   bool is_type_match = module::getStorageType(op.getInput()) ==
                        module::getStorageType(op.getResult());
-  bool is_identity = ((std::abs(op.getScale()) == 0 && op.getMode().str() == "Add") ||
-                      (std::abs(op.getScale()) == 0 && op.getMode().str() == "Sub" && op.getIsReverse() == false) ||
-                      (op.getScale() == 1 && op.getMode().str() == "Mul")) &&
-                     op.getShift() == 0;
+  bool is_identity =
+      ((std::abs(op.getScale()) == 0 && op.getMode().str() == "Add") ||
+       (std::abs(op.getScale()) == 0 && op.getMode().str() == "Sub" &&
+        op.getIsReverse() == false) ||
+       (op.getScale() == 1 && op.getMode().str() == "Mul")) &&
+      op.getShift() == 0;
 
   if (is_type_match && is_identity) {
     rewriter.replaceOp(op, op.getInput());
@@ -79,7 +82,8 @@ LogicalResult tpu::BinaryConstShiftOp::canonicalize(BinaryConstShiftOp op,
 
 ArrayAttr tpu::BinaryConstShiftOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

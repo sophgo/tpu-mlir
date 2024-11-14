@@ -1,6 +1,6 @@
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::ConvBwdWeightOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 2;
@@ -16,6 +16,4 @@ LogicalResult top::ConvBwdWeightOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ConvBwdWeightOp::shape_inference() {
-
-}
+void top::ConvBwdWeightOp::shape_inference() {}

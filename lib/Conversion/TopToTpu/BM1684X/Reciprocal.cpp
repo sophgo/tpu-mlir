@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
-
 namespace tpu_mlir {
 namespace bm1684x {
 
@@ -17,8 +16,9 @@ void ReciprocalLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::ReciprocalOp op) const {
   lowering_common_f32<tpu::ReciprocalOp>(rewriter, op);
 }
-void ReciprocalLowering::LoweringINT4(PatternRewriter &rewriter, top::ReciprocalOp op,
-                                   bool asymmetric) const {
+void ReciprocalLowering::LoweringINT4(PatternRewriter &rewriter,
+                                      top::ReciprocalOp op,
+                                      bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -50,7 +50,7 @@ void ReciprocalLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void ReciprocalLowering::LoweringF8(PatternRewriter &rewriter,
-                                     top::ReciprocalOp op) const {
+                                    top::ReciprocalOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

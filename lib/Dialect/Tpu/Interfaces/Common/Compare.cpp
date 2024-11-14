@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 LogicalResult tpu::CompareOp::init(InferenceParameter &p) {
 

@@ -11,8 +11,8 @@
 #define DEBUG_TYPE "lowering-ScaleLut"
 namespace tpu_mlir {
 namespace bm1684x {
-void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp op,
-                                bool asymmetric) const {
+void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter,
+                                    top::ScaleLutOp op, bool asymmetric) const {
   Value input_val = op.getInput();
   int64_t n, c, h, w;
   module::getNCHW(input_val, n, c, h, w);
@@ -34,13 +34,16 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp o
 
   if (!sign) {
     std::vector<uint8_t> table(table_size, 0);
-    auto table_type = RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
+    auto table_type =
+        RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
     for (int i = 0; i < c; i++) {
       for (int idx = 0; idx < table_hw; ++idx) {
-        table[i * table_hw + idx] = to_uint8(idx * scale->at(i), ROUNDING_HALF_UP);
+        table[i * table_hw + idx] =
+            to_uint8(idx * scale->at(i), ROUNDING_HALF_UP);
       }
     }
-    auto table_op = top::WeightOp::create(op, name + "_table", table, table_type);
+    auto table_op =
+        top::WeightOp::create(op, name + "_table", table, table_type);
     operands.emplace_back(table_op);
 
     auto output = op.getOutput();
@@ -53,9 +56,9 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp o
     uint32_t flag = 0;
     auto max = cali_type.getMax();
     scale = module::getScale(max, sign);
-    auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
-                                                  cali_type.getExpressedType(),
-                                                  scale, zeropoint, qmin, qmax);
+    auto qtype = quant::UniformQuantizedType::get(
+        flag, IntegerType::get(ctx, 8), cali_type.getExpressedType(), scale,
+        zeropoint, qmin, qmax);
     auto newType = RankedTensorType::get(type.getShape(), qtype);
     rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
   } else {
@@ -63,49 +66,48 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp o
     auto table_type = RankedTensorType::get(table_shape, rewriter.getI8Type());
     for (int i = 0; i < c; i++) {
       for (int idx = 0; idx < table_hw; ++idx) {
-        table[i * table_hw + idx] = to_int8(idx * scale->at(i) + bias->at(i), ROUNDING_HALF_UP);
+        table[i * table_hw + idx] =
+            to_int8(idx * scale->at(i) + bias->at(i), ROUNDING_HALF_UP);
       }
     }
-    auto table_op = top::WeightOp::create(op, name + "_table", table, table_type);
+    auto table_op =
+        top::WeightOp::create(op, name + "_table", table, table_type);
     operands.emplace_back(table_op);
 
     auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
     rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
   }
-
 }
 
 void ScaleLutLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::ScaleLutOp op) const {
+                                   top::ScaleLutOp op) const {
   lowering_common_f32<tpu::ScaleLutOp>(rewriter, op);
 }
 
 void ScaleLutLowering::LoweringINT4(PatternRewriter &rewriter,
-                                     top::ScaleLutOp op,
-                                     bool asymmetric) const {
+                                    top::ScaleLutOp op, bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 
 void ScaleLutLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::ScaleLutOp op) const {
+                                   top::ScaleLutOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void ScaleLutLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::ScaleLutOp op) const {
+                                    top::ScaleLutOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void ScaleLutLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::ScaleLutOp op) const {
+                                  top::ScaleLutOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void ScaleLutLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                          top::ScaleLutOp op) const {
+                                         top::ScaleLutOp op) const {
   lowering_common<tpu::ScaleLutOp>(rewriter, op, op.getOutput().getType());
 }
 
-
-}
-}
+} // namespace bm1684x
+} // namespace tpu_mlir

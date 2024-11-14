@@ -11,8 +11,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::GatherElementsOp::codegen_global_bm1684() {
@@ -22,10 +20,8 @@ void tpu::GatherElementsOp::codegen_global_bm1684() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-uint32_t tpu::GatherElementsOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::GatherElementsOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
-int64_t tpu::GatherElementsOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::GatherElementsOp::get_fw_type_bm1684() { return -1; }

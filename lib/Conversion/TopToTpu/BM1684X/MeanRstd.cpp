@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 namespace bm1684x {
 static void LoweringMeanRstd(PatternRewriter &rewriter, top::MeanRstdOp op,
-                              Type type) {
+                             Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -55,36 +55,40 @@ static void LoweringMeanRstd(PatternRewriter &rewriter, top::MeanRstdOp op,
   return;
 }
 
-void MeanRstdLowering::LoweringF32(PatternRewriter &rewriter, top::MeanRstdOp op) const {
+void MeanRstdLowering::LoweringF32(PatternRewriter &rewriter,
+                                   top::MeanRstdOp op) const {
   // lowering_common_f32<tpu::MeanRstdOp>(rewriter, op);
-  LoweringMeanRstd(rewriter,op,rewriter.getF32Type());
+  LoweringMeanRstd(rewriter, op, rewriter.getF32Type());
 }
-void MeanRstdLowering::LoweringINT4(PatternRewriter &rewriter, top::MeanRstdOp op,
-                                   bool asymmetric) const {
+void MeanRstdLowering::LoweringINT4(PatternRewriter &rewriter,
+                                    top::MeanRstdOp op, bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
   UNREACHABLE_OP("Not Implemented", op);
 }
-void MeanRstdLowering::LoweringINT8(PatternRewriter &rewriter, top::MeanRstdOp op,
-                               bool asymmetric) const {
+void MeanRstdLowering::LoweringINT8(PatternRewriter &rewriter,
+                                    top::MeanRstdOp op, bool asymmetric) const {
   // lowering_common_int8<tpu::MeanRstdOp>(rewriter, op, asymmetric);
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void MeanRstdLowering::LoweringBF16(PatternRewriter &rewriter, top::MeanRstdOp op) const {
+void MeanRstdLowering::LoweringBF16(PatternRewriter &rewriter,
+                                    top::MeanRstdOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void MeanRstdLowering::LoweringF16(PatternRewriter &rewriter, top::MeanRstdOp op) const {
+void MeanRstdLowering::LoweringF16(PatternRewriter &rewriter,
+                                   top::MeanRstdOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void MeanRstdLowering::LoweringF8(PatternRewriter &rewriter, top::MeanRstdOp op) const {
+void MeanRstdLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::MeanRstdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void MeanRstdLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::MeanRstdOp op) const {
-    UNREACHABLE_OP("Not Implemented", op);
+                                         top::MeanRstdOp op) const {
+  UNREACHABLE_OP("Not Implemented", op);
 }
 
 } // namespace bm1684x

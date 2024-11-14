@@ -7,21 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::IfOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult tpu::IfOp::init(InferenceParameter &p) { return success(); }
 
-void tpu::IfOp::deinit(InferenceParameter &p) {
-}
+void tpu::IfOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::IfOp::inference(InferenceParameter &p) {
   if (p.inputs[0][0] > 0)
-    return success(); //then_branch
+    return success(); // then_branch
   else
-    return failure(); //else_branch
+    return failure(); // else_branch
 }
 
 bool tpu::IfOp::support_multi_core() { return false; }

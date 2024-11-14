@@ -1,26 +1,22 @@
 #include "Passes.h"
-#include "mlir/Transforms/TopologicalSortUtils.h"
-#include "mlir/IR/Iterators.h"
-#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include <vector>
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Iterators.h"
+#include "mlir/Transforms/TopologicalSortUtils.h"
 #include <functional>
 #include <iostream>
-namespace mlir
-{
-enum RunMode : int {
-  STATIC = 0,
-  DYNAMIC = 1
-};
+#include <vector>
+namespace mlir {
+enum RunMode : int { STATIC = 0, DYNAMIC = 1 };
 
 static llvm::StringRef getMode(RunMode type) {
   switch (type) {
-    case RunMode::STATIC:
-      return "static";
-    case RunMode::DYNAMIC:
-      return "dynamic";
-    default:
-      assert(0 && "error");
+  case RunMode::STATIC:
+    return "static";
+  case RunMode::DYNAMIC:
+    return "dynamic";
+  default:
+    assert(0 && "error");
   }
 }
 
@@ -62,13 +58,13 @@ static void getInputsOutputs(std::vector<Operation *> &ops,
   }
 
   /*inputs.erase(
-      std::unique(inputs.begin(), inputs.end(), [](const Value &lhs, const Value &rhs) {
-        return lhs.getImpl() < rhs.getImpl();
+      std::unique(inputs.begin(), inputs.end(), [](const Value &lhs, const Value
+  &rhs) { return lhs.getImpl() < rhs.getImpl();
       }), inputs.end());
 
   outputs.erase(
-      std::unique(outputs.begin(), outputs.end(), [](const Value &lhs, const Value &rhs) {
-        return lhs.getImpl() < rhs.getImpl();
+      std::unique(outputs.begin(), outputs.end(), [](const Value &lhs, const
+  Value &rhs) { return lhs.getImpl() < rhs.getImpl();
       }), outputs.end());*/
 }
 
@@ -90,7 +86,7 @@ struct subnet_basic_info {
     ins.clear();
     outs.clear();
   }
-  static void reset_id() { __next_id = 0;}
+  static void reset_id() { __next_id = 0; }
   RunMode type;
   std::vector<Operation *> ops;
   std::vector<Value> ins;
@@ -105,16 +101,15 @@ struct subnet_basic_info {
 int subnet_basic_info::__next_id = 0;
 
 class SubgraphSplitPass
-  : public PassWrapper<SubgraphSplitPass, OperationPass<ModuleOp>>
-{
+    : public PassWrapper<SubgraphSplitPass, OperationPass<ModuleOp>> {
 private:
-  bool mode; //0: static 1: dynamic
+  bool mode; // 0: static 1: dynamic
 public:
   SubgraphSplitPass(bool dynamic_mode) : mode(dynamic_mode) {}
   SubgraphSplitPass() : mode(false) {}
   void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<affine::AffineDialect, linalg::LinalgDialect, scf::SCFDialect,
-                    tensor::TensorDialect>();
+    registry.insert<affine::AffineDialect, linalg::LinalgDialect,
+                    scf::SCFDialect, tensor::TensorDialect>();
   }
 
   bool isReadyRun(Operation *op, llvm::DenseSet<Value> &valid_values) {
@@ -128,29 +123,29 @@ public:
 
   bool dynamicRun(Operation *op) {
     auto isStaticShape = [&](Type type) {
-      auto isDynamic = [&] (Type type) {
+      auto isDynamic = [&](Type type) {
         auto t = llvm::dyn_cast<RankedTensorType>(type);
         if (t && !t.hasStaticShape())
           return true;
-        //Todo: VectorType
+        // Todo: VectorType
         return false;
       };
 
-      if (isa<mlir::UnrankedTensorType>(type)
-          || (isa<mlir::RankedTensorType, mlir::VectorType>(type) && isDynamic(type)))
+      if (isa<mlir::UnrankedTensorType>(type) ||
+          (isa<mlir::RankedTensorType, mlir::VectorType>(type) &&
+           isDynamic(type)))
         return false;
       return true;
     };
 
-    if (llvm::all_of(op->getOperandTypes(), isStaticShape)
-        && llvm::all_of(op->getResultTypes(), isStaticShape))
+    if (llvm::all_of(op->getOperandTypes(), isStaticShape) &&
+        llvm::all_of(op->getResultTypes(), isStaticShape))
       return false;
     else
       return true;
   }
 
-  void Outliner(mlir::FunctionOpInterface &funcOp,
-                InfoVec &subnets) {
+  void Outliner(mlir::FunctionOpInterface &funcOp, InfoVec &subnets) {
     for (auto &subnet : subnets) {
       std::vector<Type> argType;
       std::vector<Type> resType;
@@ -173,7 +168,8 @@ public:
       auto moduleOp = SymbolTable::getNearestSymbolTable(funcOp);
       builder.setInsertionPointToStart(&moduleOp->getRegion(0).front());
       int64_t id = subnet->index;
-      std::string func_name = funcOp.getName().str() + "subfunc_" + std::to_string(id);
+      std::string func_name =
+          funcOp.getName().str() + "subfunc_" + std::to_string(id);
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
@@ -182,17 +178,18 @@ public:
       attrs.push_back(builder.getNamedAttr(
           "next_index", builder.getDenseI32ArrayAttr(subnet->next_index)));
 
-      auto fnType = FunctionType::get(
-            &getContext(), llvm::ArrayRef<Type>{argType}, llvm::ArrayRef<Type>{resType});
-      auto fnOp = builder.create<func::FuncOp>(builder.getUnknownLoc(),
-                                 func_name, fnType,
-                                 ArrayRef<NamedAttribute>(attrs));
+      auto fnType =
+          FunctionType::get(&getContext(), llvm::ArrayRef<Type>{argType},
+                            llvm::ArrayRef<Type>{resType});
+      auto fnOp =
+          builder.create<func::FuncOp>(builder.getUnknownLoc(), func_name,
+                                       fnType, ArrayRef<NamedAttribute>(attrs));
 
       auto block = fnOp.addEntryBlock();
       builder.setInsertionPoint(subnet->ops.back());
       func::CallOp callOp = builder.create<func::CallOp>(
-          funcOp->getParentOfType<mlir::ModuleOp>().getLoc(),
-          func_name, resType, fnInputs);
+          funcOp->getParentOfType<mlir::ModuleOp>().getLoc(), func_name,
+          resType, fnInputs);
       for (auto it : llvm::enumerate(callOp.getResults())) {
         fnOutputs[it.index()].replaceUsesWithIf(
             it.value(), [&](OpOperand &operand) {
@@ -204,8 +201,8 @@ public:
 
       builder.setInsertionPointToEnd(block);
 
-      auto retOp = builder.create<mlir::func::ReturnOp>
-                 (builder.getUnknownLoc(), fnOutputs);
+      auto retOp = builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(),
+                                                        fnOutputs);
       for (auto &op : subnet->ops) {
         op->moveBefore(retOp);
       }
@@ -223,14 +220,15 @@ public:
   void runOnOperation() override {
     auto moduleOp = getOperation();
     mlir::MLIRContext *context = &getContext();
-    auto funcOps = llvm::to_vector(moduleOp.getOps<mlir::FunctionOpInterface>());
+    auto funcOps =
+        llvm::to_vector(moduleOp.getOps<mlir::FunctionOpInterface>());
 
-    for (auto funcOp: funcOps) {
+    for (auto funcOp : funcOps) {
       if (funcOp.isDeclaration())
         continue;
       RewritePatternSet patterns(context);
       {
-        //legalize the control flow op
+        // legalize the control flow op
         scf::IfOp::getCanonicalizationPatterns(patterns, context);
         scf::ExecuteRegionOp::getCanonicalizationPatterns(patterns, context);
         scf::ForOp::getCanonicalizationPatterns(patterns, context);
@@ -238,8 +236,7 @@ public:
         scf::ParallelOp::getCanonicalizationPatterns(patterns, context);
         scf::WhileOp::getCanonicalizationPatterns(patterns, context);
         affine::AffineIfOp::getCanonicalizationPatterns(patterns, context);
-        if (failed(applyPatternsAndFoldGreedily(funcOp,
-                                              std::move(patterns)))) {
+        if (failed(applyPatternsAndFoldGreedily(funcOp, std::move(patterns)))) {
           return signalPassFailure();
         }
       }
@@ -247,23 +244,23 @@ public:
       std::vector<Operation *> ops;
       llvm::DenseSet<Value> valid_values;
       valid_values.insert(funcOp.args_begin(), funcOp.args_end());
-      funcOp.walk<WalkOrder::PreOrder,
-                ForwardDominanceIterator<true>>([&](Operation *op) {
-        if (isa<mlir::FunctionOpInterface>(op->getParentOp())
-            && !op->hasTrait<OpTrait::ReturnLike>()) {
-          ops.emplace_back(op);
-          if (op->hasTrait<OpTrait::ConstantLike>())
-            valid_values.insert(op->result_begin(), op->result_end());
-        }
+      funcOp.walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>(
+          [&](Operation *op) {
+            if (isa<mlir::FunctionOpInterface>(op->getParentOp()) &&
+                !op->hasTrait<OpTrait::ReturnLike>()) {
+              ops.emplace_back(op);
+              if (op->hasTrait<OpTrait::ConstantLike>())
+                valid_values.insert(op->result_begin(), op->result_end());
+            }
 
-        return WalkResult::advance();
-      });
+            return WalkResult::advance();
+          });
 
-      //step1: toposort
+      // step1: toposort
       bool result = mlir::computeTopologicalSorting(ops);
       assert(result && "unable to sort topologically");
 
-      //step2: basic split
+      // step2: basic split
       subnet_basic_info::reset_id();
       InfoVec subnet_infos;
       auto dfs = [&]() noexcept -> void {
@@ -276,22 +273,21 @@ public:
             updated = false;
             for (auto op : ops) {
               if (isReadyRun(op, valid_values)) {
-                if (isa<RegionBranchOpInterface>(op)
-                    && op->hasTrait<OpTrait::NoRegionArguments>()) {
-                  //Todo
+                if (isa<RegionBranchOpInterface>(op) &&
+                    op->hasTrait<OpTrait::NoRegionArguments>()) {
+                  // Todo
                   assert(0 && "don; support now");
-                } else if (info->type != RunMode::DYNAMIC &&
-                          dynamicRun(op)) {
+                } else if (info->type != RunMode::DYNAMIC && dynamicRun(op)) {
                   if (!info->ops.empty())
                     continue;
                   info->type = RunMode::DYNAMIC;
                   info->ops.emplace_back(op);
                   valid_values.insert(op->result_begin(), op->result_end());
                 } else {
-                    if (isa<mlir::FunctionOpInterface>(op->getParentOp())) {
-                      info->ops.emplace_back(op);
-                      valid_values.insert(op->result_begin(), op->result_end());
-                      updated = true;
+                  if (isa<mlir::FunctionOpInterface>(op->getParentOp())) {
+                    info->ops.emplace_back(op);
+                    valid_values.insert(op->result_begin(), op->result_end());
+                    updated = true;
                   }
                 }
               }
@@ -307,13 +303,13 @@ public:
       };
 
       std::invoke(dfs);
-      //Todo:sort、merger、move op betweens subnets etc
+      // Todo:sort、merger、move op betweens subnets etc
 
-      //stepN: outliner
+      // stepN: outliner
       Outliner(funcOp, subnet_infos);
 
       for (auto info : subnet_infos)
-          delete info;
+        delete info;
     }
   }
 };
@@ -322,5 +318,4 @@ std::unique_ptr<OperationPass<ModuleOp>>
 createSubgraphSplitPass(bool dynamic_node) {
   return std::make_unique<SubgraphSplitPass>(dynamic_node);
 }
-}
-
+} // namespace mlir

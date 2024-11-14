@@ -23,6 +23,4 @@ LogicalResult top::BatchNormTrainOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::BatchNormTrainOp::shape_inference() {
-
-}
+void top::BatchNormTrainOp::shape_inference() {}

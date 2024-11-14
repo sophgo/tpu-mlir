@@ -16,7 +16,7 @@ void MaxLowering::LoweringF32(PatternRewriter &rewriter, top::MaxOp op) const {
   lowering_common_f32<tpu::MaxOp>(rewriter, op);
 }
 void MaxLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,

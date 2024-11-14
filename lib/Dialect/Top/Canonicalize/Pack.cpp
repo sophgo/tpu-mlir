@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -19,7 +19,7 @@ struct PackMatmulPattern : public OpRewriterPatternEx<PackOp> {
       : OpRewriterPatternEx<PackOp>(context, "OpRewriterPatternEx") {}
 
   LogicalResult matchAndRewriteImpl(PackOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!op->hasOneUse()) {
       return failure();
     }

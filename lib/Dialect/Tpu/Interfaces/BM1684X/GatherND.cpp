@@ -24,7 +24,7 @@ void tpu::GatherNDOp::codegen_global_bm1684x() {
   }
   gather_nd_global_param_t param;
   param.batch_dims = batch_dims;
-  param.const_val = 0; //no use temporary
+  param.const_val = 0; // no use temporary
   BM168x::call_global_func("backend_api_gather_nd_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
@@ -34,7 +34,7 @@ void tpu::GatherNDOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GatherNDOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer){
+  if (!buffer) {
     return sizeof(gather_nd_global_param_t);
   }
   auto batch_dims = getBatchDims();
@@ -47,6 +47,4 @@ int64_t tpu::GatherNDOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::GatherNDOp::get_fw_type_bm1684x() {
-  return FW_BMNET_GATHERND;
-}
+int64_t tpu::GatherNDOp::get_fw_type_bm1684x() { return FW_BMNET_GATHERND; }

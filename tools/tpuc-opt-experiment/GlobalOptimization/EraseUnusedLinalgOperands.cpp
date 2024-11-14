@@ -19,4 +19,4 @@ std::unique_ptr<OperationPass<mlir::ModuleOp>>
 createEraseUnusedLinalgOperands() {
   return std::make_unique<EraseUnusedLinalgOperandsPass>();
 }
-}
+} // namespace mlir

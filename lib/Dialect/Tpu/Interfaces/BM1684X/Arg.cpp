@@ -19,9 +19,8 @@ void tpu::ArgOp::codegen_global_bm1684x() {
   const bool need_val = !module::isNone(getValues());
   arg_global_spec_t spec = {0};
   spec.common.axis = getAxis();
-  spec.common.method = llvm::StringSwitch<int>(getMode())
-                           .Case("ArgMax", 0)
-                           .Default(1);
+  spec.common.method =
+      llvm::StringSwitch<int>(getMode()).Case("ArgMax", 0).Default(1);
   spec.common.need_val = need_val;
   spec.common.is_index_int32 = true;
   spec.common.select_last_index = getSelectLastIndex();
@@ -34,7 +33,8 @@ void tpu::ArgOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ArgOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(arg_global_spec_t);
+  if (!buffer)
+    return sizeof(arg_global_spec_t);
   const bool need_val = !getValues().getType().isa<NoneType>();
   arg_global_spec_t spec = {0};
   spec.common.axis = getAxis();
@@ -48,7 +48,4 @@ int64_t tpu::ArgOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-
-int64_t tpu::ArgOp::get_fw_type_bm1684x() {
-  return FW_BMNET_ARG;
-}
+int64_t tpu::ArgOp::get_fw_type_bm1684x() { return FW_BMNET_ARG; }

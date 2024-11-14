@@ -67,19 +67,23 @@ reduce_attr_t tpu::ReduceOp::parseParam() {
     for (uint i = 0; i < num_axes; i++) {
       attr.axis_dims *= (*(input_shape.begin() + axes_->at(i)));
       if ((axes_->at(i) > 0) && (axes_->at(i) + 1 <= num_dims))
-        attr.inner_dims *= std::accumulate(input_shape.begin() + (axes_->at(i) - 1),
-                                           input_shape.begin() + axes_->at(i), 1,
-                                           std::multiplies<int64_t>());
-      else if ((axes_->at(i) == 0) && (axes_->at(i) + 1 <= num_dims) && (i + 1 <= num_axes))
-        attr.inner_dims *= std::accumulate(input_shape.begin() + (axes_->at(i) + 1),
+        attr.inner_dims *= std::accumulate(
+            input_shape.begin() + (axes_->at(i) - 1),
+            input_shape.begin() + axes_->at(i), 1, std::multiplies<int64_t>());
+      else if ((axes_->at(i) == 0) && (axes_->at(i) + 1 <= num_dims) &&
+               (i + 1 <= num_axes))
+        attr.inner_dims *=
+            std::accumulate(input_shape.begin() + (axes_->at(i) + 1),
                             input_shape.begin() + axes_->at(i + 1), 1,
                             std::multiplies<int64_t>());
     }
-    if (axes_->size()==3 && axes_->at(0) == 0 && axes_->at(1) == 2 && axes_->at(2) == 3){
-    int length = std::accumulate(input_shape.begin(),input_shape.end(), 1,std::multiplies<int64_t>());
-    attr.inner_dims = length/(attr.axis_dims*attr.outer_c*attr.outer_n);}
-  }
-  else {
+    if (axes_->size() == 3 && axes_->at(0) == 0 && axes_->at(1) == 2 &&
+        axes_->at(2) == 3) {
+      int length = std::accumulate(input_shape.begin(), input_shape.end(), 1,
+                                   std::multiplies<int64_t>());
+      attr.inner_dims = length / (attr.axis_dims * attr.outer_c * attr.outer_n);
+    }
+  } else {
     attr.axis_dims = std::accumulate(input_shape.begin() + start_axis,
                                      input_shape.begin() + end_axis, 1,
                                      std::multiplies<int64_t>());

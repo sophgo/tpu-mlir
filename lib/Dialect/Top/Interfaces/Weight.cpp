@@ -14,9 +14,9 @@
 using namespace tpu_mlir::top;
 
 template <typename T>
-std::unique_ptr<std::vector<T>> readTensorFromBytesString(const std::string& byte_str,
-                                                          RankedTensorType &type,
-                                                          uint32_t store_mode, bool do_compress) {
+std::unique_ptr<std::vector<T>>
+readTensorFromBytesString(const std::string &byte_str, RankedTensorType &type,
+                          uint32_t store_mode, bool do_compress) {
   /// {STORE_MODE_T, align_num}
   std::map<uint32_t, int64_t> stmode_map = {
       {0 /*STORE_MODE_1N*/, 1l},
@@ -26,11 +26,11 @@ std::unique_ptr<std::vector<T>> readTensorFromBytesString(const std::string& byt
   size_t count = 1;
   bool isINT4 = false;
   auto s = type.getShape();
-  if (s.size() > 0 ) {
+  if (s.size() > 0) {
     auto n = type.getShape()[0];
     auto others = type.getNumElements() / n;
     count = (n + stmode_map.at(store_mode) - 1) / stmode_map.at(store_mode) *
-                stmode_map.at(store_mode) * others;
+            stmode_map.at(store_mode) * others;
     isINT4 = type.getElementType().isInteger(4);
     if (isINT4) {
       auto dims = type.getShape().size();
@@ -54,7 +54,8 @@ std::unique_ptr<std::vector<T>> readTensorFromBytesString(const std::string& byt
   return data;
 }
 
-template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
+template <typename T>
+std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
   auto type = getOutput().getType().cast<RankedTensorType>();
   bool do_compress = getDoCompress().has_value() && getDoCompress().value();
@@ -137,7 +138,6 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   return nullptr;
 }
 
-
 std::shared_ptr<std::vector<int32_t>> WeightOp::read_as_int32() {
   auto dtype = module::getStorageType(getOutput());
   if (dtype.isInteger(32)) {
@@ -211,8 +211,8 @@ std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_f8e4m3() {
 
   auto data_f8 = read<uint8_t>();
   auto data_i8 = std::make_shared<std::vector<int8_t>>();
-  for (int i=0;i<data_f8->size();i++)
-    data_i8->push_back(*((int8_t*)(data_f8->data()+i)));
+  for (int i = 0; i < data_f8->size(); i++)
+    data_i8->push_back(*((int8_t *)(data_f8->data() + i)));
   return data_i8;
 }
 
@@ -225,8 +225,8 @@ std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_f8e5m2() {
 
   auto data_i8 = std::make_shared<std::vector<int8_t>>();
 
-  for (int i=0;i<data_f8->size();i++)
-    data_i8->push_back(*((int8_t*)(data_f8->data() + i)));
+  for (int i = 0; i < data_f8->size(); i++)
+    data_i8->push_back(*((int8_t *)(data_f8->data() + i)));
   return data_i8;
 }
 
@@ -260,7 +260,7 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   if (stmodeAttr != "1N")
     newOp.setStoreModeAttr(stmodeAttr);
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data.data(), data.size() * sizeof(T));
+    std::string inline_bytes((char *)data.data(), data.size() * sizeof(T));
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -310,8 +310,10 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = name.empty() ? module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_bf16" : name;
+  std::string new_name =
+      name.empty() ? module::getName(OwnerOp).str() +
+                         module::getName(getOperation()).str() + "_bf16"
+                   : name;
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   if (!module::getWeightInMemFlag()) {
     auto ret =
@@ -322,7 +324,8 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data_bf16->data(), data_bf16->size() * sizeof(int16_t));
+    std::string inline_bytes((char *)data_bf16->data(),
+                             data_bf16->size() * sizeof(int16_t));
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -358,7 +361,8 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data_f16->data(), data_f16->size() * sizeof(int16_t));
+    std::string inline_bytes((char *)data_f16->data(),
+                             data_f16->size() * sizeof(int16_t));
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -379,32 +383,34 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
     if (getScale().has_value()) {
       weight_scale_v = module::getF64Array(getScale().value());
       ASSERT_THIS(shape[0] == weight_scale_v->size());
-    }
-    else {
+    } else {
       // search for the max value and set scale to it
       std::vector<double> weight_scale_v_;
-      for (size_t i=0;i<shape[0];i++) {
-        float absmax = std::abs(data->at(i*cnt_p_c));
-        for (size_t j=0;j<cnt_p_c;j++) {
-          absmax = std::abs(data->at(i*cnt_p_c+j)) > absmax ? std::abs(data->at(i*cnt_p_c+j)) : absmax;
+      for (size_t i = 0; i < shape[0]; i++) {
+        float absmax = std::abs(data->at(i * cnt_p_c));
+        for (size_t j = 0; j < cnt_p_c; j++) {
+          absmax = std::abs(data->at(i * cnt_p_c + j)) > absmax
+                       ? std::abs(data->at(i * cnt_p_c + j))
+                       : absmax;
         }
-        absmax = absmax > 1e-8 ? absmax: 1e-8;
+        absmax = absmax > 1e-8 ? absmax : 1e-8;
         weight_scale_v_.push_back(absmax / get_f8e4m3_max());
       }
       weight_scale_v = std::make_shared<std::vector<double>>(weight_scale_v_);
     }
 #pragma omp parallel for schedule(static, omp_schedule(count))
     for (uint32_t i = 0; i < count; i++) {
-      data->at(i) = data->at(i)/weight_scale_v.get()->at((int)(i/cnt_p_c));
+      data->at(i) = data->at(i) / weight_scale_v.get()->at((int)(i / cnt_p_c));
     }
   } else {
     float absmax = std::abs(data->at(0));
-    for (int i=0;i<count;i++)
-      absmax = absmax>std::abs(data->at(i)) ? absmax : std::abs(data->at(i));
-    weight_scale_v = std::make_shared<std::vector<double>>(1, absmax / get_f8e4m3_max());
+    for (int i = 0; i < count; i++)
+      absmax = absmax > std::abs(data->at(i)) ? absmax : std::abs(data->at(i));
+    weight_scale_v =
+        std::make_shared<std::vector<double>>(1, absmax / get_f8e4m3_max());
 #pragma omp parallel for schedule(static, omp_schedule(count))
     for (uint32_t i = 0; i < count; i++) {
-      data->at(i) = data->at(i)/weight_scale_v.get()->at(0);
+      data->at(i) = data->at(i) / weight_scale_v.get()->at(0);
     }
   }
 #pragma omp parallel for schedule(static, omp_schedule(count))
@@ -417,8 +423,10 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
 
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() + module::getName(getOperation()).str() + "_f8e4m3";
-  auto new_type = RankedTensorType::get(type.getShape(), builder.getFloat8E4M3FNType());
+  std::string new_name = module::getName(OwnerOp).str() +
+                         module::getName(getOperation()).str() + "_f8e4m3";
+  auto new_type =
+      RankedTensorType::get(type.getShape(), builder.getFloat8E4M3FNType());
   if (!module::getWeightInMemFlag()) {
     auto ret =
         module::weightFile().addTensor(new_name, data_f8->data(), new_type);
@@ -428,10 +436,11 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
   if (!getScale().has_value()) {
-    newOp.getOperation()->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{*weight_scale_v}));
+    newOp.getOperation()->setAttr(
+        "scale", builder.getF64ArrayAttr(ArrayRef<double>{*weight_scale_v}));
   }
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data_f8->data(), data_f8->size());
+    std::string inline_bytes((char *)data_f8->data(), data_f8->size());
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -456,7 +465,9 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
   std::string new_name = module::getName(OwnerOp).str() +
                          module::getName(getOperation()).str() + "_f8e5m2";
-  auto new_type = RankedTensorType::get(type.getShape(),builder.getFloat8E5M2Type()); // builder.getFloat8E5M2Type());
+  auto new_type = RankedTensorType::get(
+      type.getShape(),
+      builder.getFloat8E5M2Type()); // builder.getFloat8E5M2Type());
   if (!module::getWeightInMemFlag()) {
     auto ret =
         module::weightFile().addTensor(new_name, data_f8->data(), new_type);
@@ -466,7 +477,7 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data_f8->data(), data_f8->size());
+    std::string inline_bytes((char *)data_f8->data(), data_f8->size());
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -501,7 +512,8 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
                                              ValueRange{});
   if (module::getWeightInMemFlag()) {
-    std::string inline_bytes((char*)data_int->data(), data_int->size() * sizeof(int32_t));
+    std::string inline_bytes((char *)data_int->data(),
+                             data_int->size() * sizeof(int32_t));
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
   }
   return newOp.getResult();
@@ -528,8 +540,9 @@ Value WeightOp::clone(llvm::StringRef suffix) {
 }
 
 template <typename T>
-void split_weight(std::shared_ptr<std::vector<T>>& old_data, std::shared_ptr<std::vector<T>>& new_data,
-      int begin, int end, int axis, llvm::ArrayRef<int64_t>& shape) {
+void split_weight(std::shared_ptr<std::vector<T>> &old_data,
+                  std::shared_ptr<std::vector<T>> &new_data, int begin, int end,
+                  int axis, llvm::ArrayRef<int64_t> &shape) {
   int64_t outer = 1;
   for (int i = 0; i < axis; ++i) {
     outer *= shape[i];
@@ -549,7 +562,8 @@ void split_weight(std::shared_ptr<std::vector<T>>& old_data, std::shared_ptr<std
   }
 }
 
-Value WeightOp::split(int begin, int end, int axis, mlir::Type to_type, std::string suffix) {
+Value WeightOp::split(int begin, int end, int axis, mlir::Type to_type,
+                      std::string suffix) {
   auto op = getOperation();
   auto shape = module::getShape(getOutput());
   auto dtype = module::getStorageType(getOutput());
@@ -558,9 +572,11 @@ Value WeightOp::split(int begin, int end, int axis, mlir::Type to_type, std::str
 
   std::vector<int64_t> out_shape(shape);
   out_shape[axis] = end - begin;
-  int64_t out_size = module::getNumElements(getOutput()) / shape[axis] * (end - begin);
+  int64_t out_size =
+      module::getNumElements(getOutput()) / shape[axis] * (end - begin);
   auto new_type = RankedTensorType::get(out_shape, to_type);
-  if (dtype.isUnsignedInteger(8) || dtype.isFloat8E4M3FN() || dtype.isFloat8E5M2()) {
+  if (dtype.isUnsignedInteger(8) || dtype.isFloat8E4M3FN() ||
+      dtype.isFloat8E5M2()) {
     auto data = read<uint8_t>();
     auto out_weight = std::make_shared<std::vector<uint8_t>>(out_size);
     split_weight(data, out_weight, begin, end, axis, shape);
@@ -606,9 +622,9 @@ LogicalResult WeightOp::update(const std::vector<T> &data, size_t count) {
   if (!module::getWeightInMemFlag()) {
     auto op = getOperation();
     return module::weightFile().updateTensorData(module::getName(op).str(),
-                                                &data[0], count);
+                                                 &data[0], count);
   } else {
-    std::string inline_bytes((char*)data.data(), data.size() * sizeof(T));
+    std::string inline_bytes((char *)data.data(), data.size() * sizeof(T));
     OpBuilder builder(getContext());
     setInlineBytesAttr(builder.getStringAttr(inline_bytes));
     return success();
@@ -625,19 +641,21 @@ template LogicalResult WeightOp::update(const std::vector<float> &data,
                                         size_t cont);
 
 Value WeightOp::create_float(Operation *OwnerOp, llvm::StringRef suffix,
-                       const std::vector<float> &data, const std::vector<int64_t> &shape,
-                       Type storage_type) {
+                             const std::vector<float> &data,
+                             const std::vector<int64_t> &shape,
+                             Type storage_type) {
   auto f32_type = Float32Type::get(OwnerOp->getContext());
   auto w_type = RankedTensorType::get(shape, f32_type);
   auto weight = WeightOp::create(OwnerOp, suffix, data, w_type);
   if (storage_type.isF16()) {
-    auto weight_ = dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_f16(OwnerOp);
+    auto weight_ =
+        dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_f16(OwnerOp);
     return weight_;
   } else if (storage_type.isBF16()) {
-    auto weight_ = dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_bf16(OwnerOp);
+    auto weight_ =
+        dyn_cast<top::WeightOp>(weight.getDefiningOp()).clone_bf16(OwnerOp);
     return weight_;
   } else {
     return weight;
   }
 }
-

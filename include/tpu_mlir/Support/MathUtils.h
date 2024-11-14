@@ -12,8 +12,8 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include <vector>
 #include <unordered_map>
+#include <vector>
 namespace tpu_mlir {
 
 // =======================
@@ -79,19 +79,19 @@ static inline auto align_nearest(U value, V multiple) {
 }
 
 template <typename T>
-static inline void get_factory(T num, std::vector<T> &factors, bool calc_set=false) {
-  for (T d = 2; d*d <= num; d++) {
-      if (num%d == 0) {
+static inline void get_factory(T num, std::vector<T> &factors,
+                               bool calc_set = false) {
+  for (T d = 2; d * d <= num; d++) {
+    if (num % d == 0) {
+      factors.push_back(d);
+      num /= d;
+      while (num % d == 0) {
+        if (!calc_set) {
           factors.push_back(d);
-          num /= d;
-          while (num % d == 0)
-          {
-            if(!calc_set){
-              factors.push_back(d);
-            }
-            num /= d;
-          }
+        }
+        num /= d;
       }
+    }
   }
   if (num > 1) {
     factors.push_back(num);
@@ -119,12 +119,15 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
 void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift = 8);
-template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len);
+template <typename Dtype>
+float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
 void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal);
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits);
-template <typename T> void func_abs(int n, T *src, T *dst);
-template <typename T> void func_log(int n, T *src, T *dst);
+template <typename T>
+void func_abs(int n, T *src, T *dst);
+template <typename T>
+void func_log(int n, T *src, T *dst);
 int calRightShiftNumUseCblas(float fmax, double thBottom, double thTop,
                              int numBits);
 float func_log2(double dataInput);
@@ -184,8 +187,8 @@ void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
 template <typename T>
-void tensor_hw_transpose(T *dst, T *src, int64_t N, int64_t C,
-                         int64_t H, int64_t W) {
+void tensor_hw_transpose(T *dst, T *src, int64_t N, int64_t C, int64_t H,
+                         int64_t W) {
 #pragma omp parallel for schedule(static, omp_schedule(N *C))
   for (int64_t nc = 0; nc < N * C; ++nc) {
     int64_t nc_offset = nc * H * W;
@@ -199,8 +202,8 @@ void tensor_hw_transpose(T *dst, T *src, int64_t N, int64_t C,
   }
 }
 template <typename T>
-void tensor_hc_transpose(T *dst, T *src, int64_t N, int64_t C,
-                         int64_t H, int64_t W) {
+void tensor_hc_transpose(T *dst, T *src, int64_t N, int64_t C, int64_t H,
+                         int64_t W) {
 #pragma omp parallel for schedule(static, omp_schedule(N))
   for (int64_t n = 0; n < N; ++n) {
     for (int64_t h = 0; h < H; ++h) {
@@ -280,7 +283,8 @@ bool compare(float lhs, float rhs, llvm::StringRef mode);
 // to compilable with gemmlowp
 int32_t exp_on_negative_values(int input, int int_bits);
 
-template <typename T> int64_t to_int(T v, RoundingMode round_mode);
+template <typename T>
+int64_t to_int(T v, RoundingMode round_mode);
 template <typename T>
 int64_t saturate(T v, mlir::Type type,
                  RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
@@ -363,17 +367,19 @@ typedef struct {
   int descending;
 } sort_param_t;
 
-void sort_per_dim(const sort_param_t& param, const int* shape, int dims, const float* input, float* sorted_values, float* sorted_indices);
+void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
+                  const float *input, float *sorted_values,
+                  float *sorted_indices);
 
 RoundingMode round_mode_convert(tpu::RoundMode mode);
 
-void distribute_elements(const std::vector<int64_t>& elements,
-                         const std::vector<int64_t>& limits,
-                         std::vector<std::vector<int64_t>>& result,
-                         std::vector<int64_t>& current,
-                         int index = 0);
+void distribute_elements(const std::vector<int64_t> &elements,
+                         const std::vector<int64_t> &limits,
+                         std::vector<std::vector<int64_t>> &result,
+                         std::vector<int64_t> &current, int index = 0);
 
-std::vector<std::vector<int64_t>> find_distributions(const std::vector<int64_t>& elements,
-                                                     const std::vector<int64_t>& limits);
+std::vector<std::vector<int64_t>>
+find_distributions(const std::vector<int64_t> &elements,
+                   const std::vector<int64_t> &limits);
 
 } // namespace tpu_mlir

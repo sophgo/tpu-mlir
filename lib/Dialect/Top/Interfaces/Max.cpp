@@ -9,15 +9,11 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-
-
-int64_t top::MaxOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::MaxOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::MaxOp::init(InferenceParameter &p) {
   auto binary = new Binary();
-  auto lhs_shape =  module::getShape(getInputs()[0]);
+  auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
 
   (*binary)
@@ -65,17 +61,18 @@ void top::MaxOp::shape_inference() {
         auto data = in_op.getDefiningOp<top::WeightOp>().read_as_float();
         std::vector<int64_t> data_v(data->begin(), data->end());
         input_shapes_v.push_back(data_v);
-      } else{
+      } else {
         llvm_unreachable("Dynamic type is illegal");
       }
     }
-    if(out_shape.size() == 1 || out_shape.size() == 0){
-      auto output_shape_v =
-          module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    if (out_shape.size() == 1 || out_shape.size() == 0) {
+      auto output_shape_v = module::commonShapeValInfer(
+          getOperation(), input_shapes_v, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
       dump();
-      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor "
+                      "dimension > 1\n";
     }
   }
 }

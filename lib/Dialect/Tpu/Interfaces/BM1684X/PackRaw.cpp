@@ -26,13 +26,11 @@ void tpu::PackRawOp::codegen_global_bm1684x() {
   auto channel_order = module::getI64Array(getChannelOrder());
   param.start_point[0] = 0;
   param.start_point[1] = 0;
-  for (int i=0; i<4; i++)
-  {
+  for (int i = 0; i < 4; i++) {
     param.channel_order[i] = channel_order->at(i);
   }
-  BM168x::call_global_func("backend_api_pack_raw_global", &param,
-                           sizeof(param), input_spec->data(),
-                           output_spec->data());
+  BM168x::call_global_func("backend_api_pack_raw_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 
 int64_t tpu::PackRawOp::dyn_codegen_global_bm1684x(void *buffer) {

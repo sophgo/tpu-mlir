@@ -19,11 +19,11 @@ public:
   virtual ~InternalLgOptimizer() {}
 
   virtual void manage_passes(std::shared_ptr<LgPassManager> pm,
-                             const LgOptions& options) override;
+                             const LgOptions &options) override;
 
   // Manage post passes after plugin
   void manage_post_passes(std::shared_ptr<LgPassManager> pm,
-                          const LgOptions& options);
+                          const LgOptions &options);
 
   virtual std::string brief() override {
     return "This is the internal optimizer of layer group";

@@ -10,11 +10,11 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::backend;
 
-
-LogicalResult tpu::ShapeClipOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeClipOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void tpu::ShapeClipOp::deinit(InferenceParameter &p) {}
 

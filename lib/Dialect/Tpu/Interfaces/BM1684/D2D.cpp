@@ -13,11 +13,11 @@
 using namespace tpu_mlir::backend;
 
 void tpu::D2DOp::codegen_global_bm1684() {
-  //Todo
+  // Todo
 }
 
 uint32_t tpu::D2DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  //Todo
+  // Todo
   return 0;
 }
 

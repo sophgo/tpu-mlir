@@ -7,13 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto w_shape = module::getShape(getSlope());
-  auto weight_shape = channel_expand_dim(w_shape, module::getShape(getInput()).size());
+  auto weight_shape =
+      channel_expand_dim(w_shape, module::getShape(getInput()).size());
   auto prelu = new PRelu();
   (*prelu)
       .src(p.inputs[0], module::getShape(getInput()))

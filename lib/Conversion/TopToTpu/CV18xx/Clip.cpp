@@ -12,14 +12,13 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-void ClipLowering::LoweringINT8(PatternRewriter &rewriter,
-                                  top::ClipOp ClipOp,
-                                  bool asymmetric) const {
+void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp ClipOp,
+                                bool asymmetric) const {
   lowering_common_bf16<tpu::ClipOp>(rewriter, ClipOp);
 }
 
 void ClipLowering::LoweringBF16(PatternRewriter &rewriter,
-                                  top::ClipOp ClipOp) const {
+                                top::ClipOp ClipOp) const {
   lowering_common_bf16<tpu::ClipOp>(rewriter, ClipOp);
 }
 } // namespace cv18xx

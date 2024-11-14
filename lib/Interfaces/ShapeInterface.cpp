@@ -44,8 +44,8 @@ void broadcast_shape_inference(mlir::Operation *op) {
         continue;
       auto hs_shape = module::getShape(op->getOperand(i));
       auto tmp_shape = llvm::SmallVector<int64_t>();
-      for (auto it :
-        llvm::zip_longest(llvm::reverse(out_shape), llvm::reverse(hs_shape))) {
+      for (auto it : llvm::zip_longest(llvm::reverse(out_shape),
+                                       llvm::reverse(hs_shape))) {
         if (std::get<0>(it) && std::get<0>(it) != 1) {
           tmp_shape.push_back(std::get<0>(it).value());
         } else {

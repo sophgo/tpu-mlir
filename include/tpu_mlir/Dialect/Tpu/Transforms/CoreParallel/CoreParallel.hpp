@@ -61,7 +61,8 @@ auto getValidStride(Attribute indexMapAttr, ArrayRef<T> iterShape) {
   return strides;
 }
 
-template <typename T> T getValidIndex(ArrayRef<T> dims, ArrayRef<T> strides) {
+template <typename T>
+T getValidIndex(ArrayRef<T> dims, ArrayRef<T> strides) {
   T index = 0;
   for (auto [a, b] : llvm::zip(dims, strides))
     index += a * b;

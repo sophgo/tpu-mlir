@@ -19,18 +19,17 @@ LogicalResult top::MaskRCNNMaskPoolerOp::init(InferenceParameter &p) {
 }
 void top::MaskRCNNMaskPoolerOp::deinit(InferenceParameter &p) {}
 
-
 LogicalResult top::MaskRCNNMaskPoolerOp::inference(InferenceParameter &p) {
   UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 
 void top::MaskRCNNMaskPoolerOp::shape_inference() {
-  //Set res as [roi_num,CHANNEL_ROI,PH,PW]
+  // Set res as [roi_num,CHANNEL_ROI,PH,PW]
   std::vector<int64_t> output_shape(4);
   std::vector<int64_t> input_shape = module::getShape(getX_0());
   const int batch_size = input_shape[0];
-  const int output_batch = getROI_SLICE()*batch_size;
+  const int output_batch = getROI_SLICE() * batch_size;
   // const int C = getCHANNEL_ROI();
   // assert(C==256);
   output_shape[0] = output_batch;

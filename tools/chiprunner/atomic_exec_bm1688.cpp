@@ -255,7 +255,8 @@ public:
   }
 
   void debug_cmds(u64 *tiu_cmds, u64 *dma_cmds, size_t tiu_buf_len,
-                  size_t dma_buf_len, int tiu_nums, int dma_nums, u32 core_id = 0) {
+                  size_t dma_buf_len, int tiu_nums, int dma_nums,
+                  u32 core_id = 0) {
     assert(core_id < max_core_num);
 
     u64 tiubuf_addr = addr_from_offset(0, TIUBUF_TAG);

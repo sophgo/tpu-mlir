@@ -7,19 +7,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 using namespace tpu_mlir::top;
 
-class LoopOpRewriteMaxTripCountPattern : public OpRewriterPatternEx<top::LoopOp> {
+class LoopOpRewriteMaxTripCountPattern
+    : public OpRewriterPatternEx<top::LoopOp> {
 public:
   using OpRewriterPatternEx<top::LoopOp>::OpRewriterPatternEx;
 
-    LoopOpRewriteMaxTripCountPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<LoopOp>(context, "LoopOpRewriteMaxTripCountPattern") {}
+  LoopOpRewriteMaxTripCountPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<LoopOp>(context,
+                                    "LoopOpRewriteMaxTripCountPattern") {}
 
   LogicalResult matchAndRewriteImpl(top::LoopOp loopOp,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Location loc = loopOp.getLoc();
     Operation *op = loopOp.getOperation();
     Value maxTripCountValue = op->getOperands()[0];

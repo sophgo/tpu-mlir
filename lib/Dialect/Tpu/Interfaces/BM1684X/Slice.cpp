@@ -31,7 +31,8 @@ void tpu::SliceOp::codegen_global_bm1684x() {
   param.end_mask = 0;
   int num_dims = p.is_4.size();
   for (int i = 0; i < num_dims; i++) {
-    p.offset_4[i] = p.offset_4[i] < 0 ? p.offset_4[i] + p.is_4[i] : p.offset_4[i];
+    p.offset_4[i] =
+        p.offset_4[i] < 0 ? p.offset_4[i] + p.is_4[i] : p.offset_4[i];
     param.begin_index[i] = p.offset_4[i];
     param.end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
     param.strides[i] = p.step_4[i];
@@ -122,8 +123,8 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   for (int i = 0; i < num_dims; i++) {
-    common.begin_index[i] = offset->at(i) < 0 ? offset->at(i) + input_shape[i]
-                                              : offset->at(i);
+    common.begin_index[i] =
+        offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
     common.strides[i] = steps->at(i);
     common.end_index[i] =
         common.begin_index[i] + output_shape[i] * common.strides[i];
@@ -164,15 +165,18 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   /* for dynamic input shape, it need the begin_mask/end_mask
     to deduction the actual output shape */
   bool flag = false;
-  for (int i = 0, j = 0; i < num_dims; i++){
+  for (int i = 0, j = 0; i < num_dims; i++) {
     param.common.begin_index[i] = offset->at(i);
     param.common.strides[i] = steps->at(i);
-    auto offset_tmp = offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
+    auto offset_tmp =
+        offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
     if (!param.begin_as_tensor && input_shape[i] == output_shape[i] ||
         j == axis_dims && axis_dims != 0 ||
         param.begin_as_tensor && axis->at(j) != i) {
       param.common.begin_mask |= (1 << i);
-      param.common.end_index[i] = ends->at(i) < 0 ? ends->at(i) : output_shape[i] * steps->at(i) + offset_tmp;
+      param.common.end_index[i] =
+          ends->at(i) < 0 ? ends->at(i)
+                          : output_shape[i] * steps->at(i) + offset_tmp;
     } else {
       flag = true;
       param.common.end_index[i] = std::min(ends->at(i), input_shape.at(i));

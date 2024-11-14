@@ -23,6 +23,4 @@ LogicalResult top::GroupNormTrainOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::GroupNormTrainOp::shape_inference() {
-
-}
+void top::GroupNormTrainOp::shape_inference() {}

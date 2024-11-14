@@ -27,8 +27,8 @@ void setPixelAlign(std::string &pixel_format, int64_t &y_align,
   }
 }
 
-void setPixelAlign(std::string &pixel_format, std::string chip_name, int64_t &y_align,
-                   int64_t &w_align, int64_t &channel_align) {
+void setPixelAlign(std::string &pixel_format, std::string chip_name,
+                   int64_t &y_align, int64_t &w_align, int64_t &channel_align) {
   if ("cv183x" == chip_name || "CV183X" == chip_name) {
     y_align = 32;
     w_align = 32;

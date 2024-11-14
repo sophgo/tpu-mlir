@@ -9,8 +9,8 @@
 
 #include "tpu_mlir/Support/Float16.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Dnnl/FAttention.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::FAttentionOp::init(InferenceParameter &p) {
   auto attention = new FAttention();
@@ -26,9 +26,8 @@ LogicalResult tpu::FAttentionOp::init(InferenceParameter &p) {
   type = out_type.isBF16() ? 2 : type;
   type = out_type.isInteger(32) ? 3 : type;
 
-  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3], p.outputs[0],
-                   batch, M_q, M_k, head,
-                   d, scale, type);
+  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3],
+                   p.outputs[0], batch, M_q, M_k, head, d, scale, type);
   p.handle = (void *)attention;
   return success();
 }
@@ -59,7 +58,8 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::FAttentionOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::FAttentionOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
   return type_verify_case_same(getOperation(), opd_idx, mode);
 }
 

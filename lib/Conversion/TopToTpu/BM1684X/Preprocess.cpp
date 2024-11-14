@@ -21,7 +21,6 @@ void PreprocessLowering::LoweringINT8(PatternRewriter &rewriter,
 void PreprocessLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::PreprocessOp op) const {
   lowering_common_f32<tpu::PreprocessOp>(rewriter, op, 1);
-
 }
 
 void PreprocessLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -33,7 +32,6 @@ void PreprocessLowering::LoweringINT4(PatternRewriter &rewriter,
                                       top::PreprocessOp op,
                                       bool asymmetric) const {
   lowering_common_int8<tpu::PreprocessOp>(rewriter, op, asymmetric, 1);
-
 }
 
 void PreprocessLowering::LoweringF16(PatternRewriter &rewriter,
@@ -42,7 +40,7 @@ void PreprocessLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void PreprocessLowering::LoweringF8(PatternRewriter &rewriter,
-                                     top::PreprocessOp op) const {
+                                    top::PreprocessOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

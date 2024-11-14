@@ -190,13 +190,17 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   } else if (func_name == "roi_align") {
     RoiAlignParam roia_param;
     mlir::DictionaryAttr param = this->getParam().value();
-    roia_param.pooled_h = param.get("output_height").cast<IntegerAttr>().getInt();
-    roia_param.pooled_w = param.get("output_width").cast<IntegerAttr>().getInt();
-    roia_param.sampling_ratio = param.get("sampling_ratio").cast<IntegerAttr>().getInt();
-    roia_param.spatial_scale = param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+    roia_param.pooled_h =
+        param.get("output_height").cast<IntegerAttr>().getInt();
+    roia_param.pooled_w =
+        param.get("output_width").cast<IntegerAttr>().getInt();
+    roia_param.sampling_ratio =
+        param.get("sampling_ratio").cast<IntegerAttr>().getInt();
+    roia_param.spatial_scale =
+        param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
     roia_param.aligned = param.get("align_corners").cast<BoolAttr>().getValue();
     std::string str_roia_type =
-            param.get("mode").cast<StringAttr>().getValue().str();
+        param.get("mode").cast<StringAttr>().getValue().str();
     if (str_roia_type == "Avg") {
       roia_param.mode = RoiAlignAvgMode;
     } else {
@@ -324,7 +328,7 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     param.box = p.inputs[0];
     param.score = p.inputs[1];
     int output_size = module::getNumElements(getOutputs()[0]);
-std::vector<float> output_tensor_data(output_size, 0);
+    std::vector<float> output_tensor_data(output_size, 0);
     param.inputs = input_list;
     param.output = output_tensor_data.data();
     param.iou_threshold = p.inputs[3][0];
@@ -353,7 +357,7 @@ std::vector<float> output_tensor_data(output_size, 0);
     for (int i = 0; i < axis; i++) {
       outer_dim *= input_shape[i];
     }
-    #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
     for (int i = 0; i < outer_dim; i++) {
       auto *ptr = p.inputs[0] + i * axis_dim;
       std::vector<std::pair<int, float>> result;
@@ -455,7 +459,8 @@ std::vector<float> output_tensor_data(output_size, 0);
     DeformGatherParam param;
     param.mode = DEFORM_TORCHVISION_MODE;
     param.modulated = dic_param.get("use_mask").cast<BoolAttr>().getValue();
-    param.deform_groups = dic_param.get("deform_group").cast<IntegerAttr>().getInt();
+    param.deform_groups =
+        dic_param.get("deform_group").cast<IntegerAttr>().getInt();
     param.kh = dic_param.get("kh").cast<IntegerAttr>().getInt();
     param.kw = dic_param.get("kw").cast<IntegerAttr>().getInt();
     param.pad_t = dic_param.get("pad_t").cast<IntegerAttr>().getInt();
@@ -506,8 +511,7 @@ std::vector<float> output_tensor_data(output_size, 0);
     param.output = output;
     CumSumFunc func(param);
     func.invoke();
-  }
-  else {
+  } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
   return success();

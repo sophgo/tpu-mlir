@@ -22,16 +22,12 @@ void tpu::MeanRstdOp::codegen_global_bm1684x() {
   mean_rstd_param_t param = {0};
   param.eps = getEps().convertToDouble();
   param.momentum = getMomentum().convertToDouble();
-  llvm::errs() <<"call backend_api_mean_rstd_global\n";
+  llvm::errs() << "call backend_api_mean_rstd_global\n";
   BM168x::call_global_func("backend_api_mean_rstd_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
 }
 
-void tpu::MeanRstdOp::codegen_global_bm1684() {
+void tpu::MeanRstdOp::codegen_global_bm1684() {}
 
-}
-
-void tpu::MeanRstdOp::codegen_global_cv18xx(int64_t layer_id) {
-
-}
+void tpu::MeanRstdOp::codegen_global_cv18xx(int64_t layer_id) {}

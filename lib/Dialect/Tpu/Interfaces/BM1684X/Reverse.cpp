@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -38,6 +37,4 @@ int64_t tpu::ReverseOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::ReverseOp::get_fw_type_bm1684x() {
-  return FW_BMNET_REVERSE;
-}
+int64_t tpu::ReverseOp::get_fw_type_bm1684x() { return FW_BMNET_REVERSE; }

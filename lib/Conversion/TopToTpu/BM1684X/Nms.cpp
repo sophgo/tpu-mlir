@@ -15,12 +15,13 @@ namespace bm1684x {
 void NmsLowering::LoweringF32(PatternRewriter &rewriter, top::NmsOp op) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  for (auto&& in: op.getOperands())
+  for (auto &&in : op.getOperands())
     operands.emplace_back(in);
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::NmsOp>(op, new_type, operands, op.getOperation()->getAttrs());
+  rewriter.replaceOpWithNewOp<tpu::NmsOp>(op, new_type, operands,
+                                          op.getOperation()->getAttrs());
   return;
 }
 

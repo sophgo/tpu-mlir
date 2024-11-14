@@ -47,19 +47,19 @@ void tpu::CumSumOp::codegen_global_bm1684x() {
   p.W = 1;
 
   switch (shape_size) {
-    case 2:
-      p.C = in_shape[1];
-      break;
-    case 3:
-      p.C = in_shape[1];
-      p.H = in_shape[2];
-      break;
-    case 4:
-      p.C = in_shape[1];
-      p.H = in_shape[2];
-      p.W = in_shape[3];
-    default:
-      break;
+  case 2:
+    p.C = in_shape[1];
+    break;
+  case 3:
+    p.C = in_shape[1];
+    p.H = in_shape[2];
+    break;
+  case 4:
+    p.C = in_shape[1];
+    p.H = in_shape[2];
+    p.W = in_shape[3];
+  default:
+    break;
   }
   p.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_cumsum", &p,
@@ -81,23 +81,22 @@ int64_t tpu::CumSumOp::dyn_codegen_global_bm1684x(void *buffer) {
   p.H = 1;
   p.W = 1;
   switch (shape_size) {
-    case 2:
-      p.C = in_shape[1];
-      break;
-    case 3:
-      p.C = in_shape[1];
-      p.H = in_shape[2];
-      break;
-    case 4:
-      p.C = in_shape[1];
-      p.H = in_shape[2];
-      p.W = in_shape[3];
-    default:
-      break;
+  case 2:
+    p.C = in_shape[1];
+    break;
+  case 3:
+    p.C = in_shape[1];
+    p.H = in_shape[2];
+    break;
+  case 4:
+    p.C = in_shape[1];
+    p.H = in_shape[2];
+    p.W = in_shape[3];
+  default:
+    break;
   }
   p.dtype = BM168x::getDataType(getInput());
   return BM168x::dynamic_spec_to_buffer(buffer, p);
 }
 
 int64_t tpu::CumSumOp::get_fw_type_bm1684x() { return FW_BMNET_CUMSUM; }
-

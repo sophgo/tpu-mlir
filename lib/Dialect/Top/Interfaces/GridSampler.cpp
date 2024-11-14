@@ -20,7 +20,8 @@ int64_t top::GridSamplerOp::getFLOPs() {
     //           (f(Q11) * (x2 - x) * (y2 - y) + f(Q21) * (x - x1) * (y2 - y) +
     //            f(Q12) * (x2 - x) * (y - y1) +
     //            f(Q22) * (x - x1) * (y - y1))
-    return dims == 4 ? 21 * grid_shape[1] * grid_shape[2] : 58 * grid_shape[1] * grid_shape[2] * grid_shape[3];
+    return dims == 4 ? 21 * grid_shape[1] * grid_shape[2]
+                     : 58 * grid_shape[1] * grid_shape[2] * grid_shape[3];
   } else {
     return 0;
   }

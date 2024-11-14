@@ -12,10 +12,7 @@
 
 using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::DetectionOutputOp::codegen_global_cv18xx(int64_t layer_id) {
-
-}
+void tpu::DetectionOutputOp::codegen_global_cv18xx(int64_t layer_id) {}

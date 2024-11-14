@@ -9,9 +9,13 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-int64_t top::RemainderOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::RemainderOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
-LogicalResult top::RemainderOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::RemainderOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::RemainderOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::RemainderOp::inference(InferenceParameter &p) {
@@ -29,4 +33,3 @@ LogicalResult top::RemainderOp::inference(InferenceParameter &p) {
 void top::RemainderOp::shape_inference() {
   common_shape_inference(getOperation());
 }
-

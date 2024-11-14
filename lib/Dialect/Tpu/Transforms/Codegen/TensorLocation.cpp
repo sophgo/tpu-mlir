@@ -276,11 +276,14 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
     shapeArray.push_back(dim);
   }
 
-  return json::Object{
-      {"name", name},     {"address", address}, {"memory_type", memory_type},
-      {"shape", std::move(shapeArray)},
-      {"layout", layout}, {"type", type},       {"reshape", ""},
-      {"slice", sliceStr}};
+  return json::Object{{"name", name},
+                      {"address", address},
+                      {"memory_type", memory_type},
+                      {"shape", std::move(shapeArray)},
+                      {"layout", layout},
+                      {"type", type},
+                      {"reshape", ""},
+                      {"slice", sliceStr}};
 }
 
 int getSubNetId(Operation *op) {
@@ -319,8 +322,10 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
       J.value(cmd_before[1]);
     });
     J.attributeArray("tiu_dma_id(after)", [&] {
-      J.value(is_ld_st ? ((int*)((*BM168x::instance())->gdma_node))[0] : (*BM168x::instance()).get_total_id("tiu:0:0"));
-      J.value(is_loc_tiu ? ((int*)((*BM168x::instance())->bdc_node))[1] : (*BM168x::instance()).get_total_id("gdma:0:0"));
+      J.value(is_ld_st ? ((int *)((*BM168x::instance())->gdma_node))[0]
+                       : (*BM168x::instance()).get_total_id("tiu:0:0"));
+      J.value(is_loc_tiu ? ((int *)((*BM168x::instance())->bdc_node))[1]
+                         : (*BM168x::instance()).get_total_id("gdma:0:0"));
     });
     J.attributeArray("operands", [&] {
       for (auto &v : operands)
@@ -370,7 +375,8 @@ void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
     if (module::getChip() == module::Chip::SG2380) {
       buffer_addr |= (0x1ful << 40);
     }
-    buffers.push_back(json::Object{{"address", buffer_addr}, {"size", buffer_size}});
+    buffers.push_back(
+        json::Object{{"address", buffer_addr}, {"size", buffer_size}});
   }
 
   record_loc(op, operands, results, buffers);

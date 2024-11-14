@@ -74,7 +74,7 @@ void MinConstLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MinConstLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::MinConstOp op) const {
+                                  top::MinConstOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 

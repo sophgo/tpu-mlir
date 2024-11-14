@@ -250,7 +250,7 @@ static int conv_split(SLICES &slices, int input_n, int input_c, int input_d,
 
   slices.n = 1;
   // slices.oc = ceiling_func(oc, CV18xx::NPU_NUM); // lane parallelism
-  slices.oc = 1; //ceiling_func(oc, CV18xx::NPU_NUM);  // lane parallelism
+  slices.oc = 1; // ceiling_func(oc, CV18xx::NPU_NUM);  // lane parallelism
   slices.ic = 1;
   slices.h = (ih + (4095 - 32 - 1)) / (4095 - 32); // 12bit, max 4095-32(lanes)
   slices.w = (iw + (4095 - 32 - 1)) / (4095 - 32); // 12bit, max 4095-32(lanes)

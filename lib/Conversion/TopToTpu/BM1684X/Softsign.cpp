@@ -45,7 +45,7 @@ void SoftsignLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void SoftsignLowering::LoweringF8(PatternRewriter &rewriter,
-                                   top::SoftsignOp op) const {
+                                  top::SoftsignOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

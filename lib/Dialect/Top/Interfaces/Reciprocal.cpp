@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::ReciprocalOp::getFLOPs() {
   return module::getNumElements(getOutput()) * (1 + (getDoRelu() ? 1 : 0));
 }

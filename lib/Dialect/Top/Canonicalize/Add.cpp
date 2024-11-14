@@ -19,7 +19,7 @@ struct SwapInput : public OpRewriterPatternEx<AddOp> {
       : OpRewriterPatternEx<AddOp>(context, "SwapInput") {}
 
   LogicalResult matchAndRewriteImpl(AddOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -50,11 +50,11 @@ struct SwapInput : public OpRewriterPatternEx<AddOp> {
 struct AddToScale : public OpRewriterPatternEx<AddOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-    AddToScale(mlir::MLIRContext *context)
+  AddToScale(mlir::MLIRContext *context)
       : OpRewriterPatternEx<AddOp>(context, "AddToScale") {}
 
   LogicalResult matchAndRewriteImpl(AddOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -97,8 +97,8 @@ struct AddToScale : public OpRewriterPatternEx<AddOp> {
     std::vector<Value> operands;
     rewriter.setInsertionPoint(op);
     std::vector<float_t> weight_v(elt_num, 1.);
-    auto w_scale = WeightOp::create_float(op.getOperation(), "_scale_weight", weight_v,
-                                         rhs_shape, storage_type);
+    auto w_scale = WeightOp::create_float(op.getOperation(), "_scale_weight",
+                                          weight_v, rhs_shape, storage_type);
     operands.push_back(op.getInputs()[0]);
     operands.push_back(w_scale);
     operands.push_back(op.getInputs()[1]);
@@ -115,7 +115,8 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
   AddToRope(mlir::MLIRContext *context)
       : OpRewriterPatternEx<AddOp>(context, "AddToRope") {}
 
-  LogicalResult matchAndRewriteImpl(AddOp op, PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewriteImpl(AddOp op,
+                                    PatternRewriter &rewriter) const override {
     // Check the number of inputs
     if (op.getInputs().size() != 2) {
       return failure();
@@ -129,22 +130,21 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
     for (int i = 0; i < 2; ++i) {
       auto mul_op = dyn_cast<MulOp>(op.getInputs()[i].getDefiningOp());
       if (mul_op) {
-        auto reshape_op = dyn_cast<ReshapeOp>(mul_op.getInputs()[0].getDefiningOp());
+        auto reshape_op =
+            dyn_cast<ReshapeOp>(mul_op.getInputs()[0].getDefiningOp());
         if (reshape_op) {
           indx = i;
+        } else {
+          indx = 1 - i;
         }
-        else{
-          indx = 1-i;
-        }
-      }
-      else{
+      } else {
         return failure();
       }
     }
 
     auto mul0_op = dyn_cast<MulOp>(op.getInputs()[indx].getDefiningOp());
-    auto mul1_op = dyn_cast<MulOp>(op.getInputs()[1-indx].getDefiningOp());
-     if (!mul0_op || !mul1_op) {
+    auto mul1_op = dyn_cast<MulOp>(op.getInputs()[1 - indx].getDefiningOp());
+    if (!mul0_op || !mul1_op) {
       return failure();
     }
 
@@ -158,24 +158,25 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
     if (!concat_op)
       return failure();
     for (int i = 0; i < 2; ++i) {
-      auto unsqueeze = dyn_cast<UnsqueezeOp>(concat_op.getInputs()[i].getDefiningOp());
-      if(unsqueeze){
-        auto slice_op1 = dyn_cast<SliceOp>(unsqueeze.getInput().getDefiningOp());
-        if (slice_op1){
+      auto unsqueeze =
+          dyn_cast<UnsqueezeOp>(concat_op.getInputs()[i].getDefiningOp());
+      if (unsqueeze) {
+        auto slice_op1 =
+            dyn_cast<SliceOp>(unsqueeze.getInput().getDefiningOp());
+        if (slice_op1) {
           indx_q = i;
-        }else{
+        } else {
           indx_q = 1 - i;
         }
-      }
-      else{
+      } else {
         return failure();
       }
     }
 
     auto unsqueeze0 =
         dyn_cast<UnsqueezeOp>(concat_op.getInputs()[indx_q].getDefiningOp());
-    auto unsqueeze1 =
-        dyn_cast<UnsqueezeOp>(concat_op.getInputs()[1-indx_q].getDefiningOp());
+    auto unsqueeze1 = dyn_cast<UnsqueezeOp>(
+        concat_op.getInputs()[1 - indx_q].getDefiningOp());
     if (!unsqueeze0)
       return failure();
     if (!unsqueeze1)
@@ -198,8 +199,7 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
         slice_op.getInput().getDefiningOp() ==
             slice_op1.getInput().getDefiningOp()) {
       in_value = slice_op.getInput();
-              }
-    else{
+    } else {
       return failure();
     }
     auto storage_type = module::getStorageType(op.getOutput());
@@ -209,22 +209,21 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
 
     // Create RopeOp
     std::vector<NamedAttribute> attrs;
-    rewriter.replaceOpWithNewOp<RopeOp>(op, op.getResult().getType(),
-                                         ValueRange{in_value, mul0_weight, mul1_weight}, attrs);
+    rewriter.replaceOpWithNewOp<RopeOp>(
+        op, op.getResult().getType(),
+        ValueRange{in_value, mul0_weight, mul1_weight}, attrs);
     return success();
   }
 };
 
-
-
 struct AddToAddConst : public OpRewriterPatternEx<AddOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-    AddToAddConst(mlir::MLIRContext *context)
+  AddToAddConst(mlir::MLIRContext *context)
       : OpRewriterPatternEx<AddOp>(context, "AddToAddConst") {}
 
   LogicalResult matchAndRewriteImpl(AddOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -292,7 +291,7 @@ struct AddMerge : public OpRewriterPatternEx<AddOp> {
       : OpRewriterPatternEx<AddOp>(context, "AddMerge") {}
 
   LogicalResult matchAndRewriteImpl(AddOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getInputs().size() != 2) {
       return failure();
     }
@@ -355,8 +354,8 @@ struct AddMerge : public OpRewriterPatternEx<AddOp> {
     auto output =
         binary_add(b_data->data(), d_data->data(), b_shape, d_shape, o_shape);
     rewriter.setInsertionPointAfter(op);
-    auto weight = WeightOp::create_float(op, "merged", *output,
-                                         o_shape, storage_type);
+    auto weight =
+        WeightOp::create_float(op, "merged", *output, o_shape, storage_type);
     auto coeff = a_coeff * c_coeff;
     std::vector<NamedAttribute> attrs;
     if (coeff != 1.0) {
@@ -389,35 +388,40 @@ struct AlignInputsDim : public OpRewriterPatternEx<AddOp> {
     }
     auto lhs_shape = module::getShape(op.getInputs()[0]);
     auto rhs_shape = module::getShape(op.getInputs()[1]);
-    if(lhs_shape.size() == rhs_shape.size())
+    if (lhs_shape.size() == rhs_shape.size())
       return failure();
 
-    int diff_dims = lhs_shape.size() > rhs_shape.size() ? lhs_shape.size() - rhs_shape.size() : rhs_shape.size() - lhs_shape.size();
+    int diff_dims = lhs_shape.size() > rhs_shape.size()
+                        ? lhs_shape.size() - rhs_shape.size()
+                        : rhs_shape.size() - lhs_shape.size();
     std::vector<NamedAttribute> attrs;
-    std::vector<int64_t> new_shape(diff_dims,1);
-    Operation* add_need_reshape;
-    if(lhs_shape.size() > rhs_shape.size()){
+    std::vector<int64_t> new_shape(diff_dims, 1);
+    Operation *add_need_reshape;
+    if (lhs_shape.size() > rhs_shape.size()) {
       add_need_reshape = op.getInputs()[1].getDefiningOp();
-      for(auto shape : rhs_shape)
+      for (auto shape : rhs_shape)
         new_shape.emplace_back(shape);
     } else {
       add_need_reshape = op.getInputs()[0].getDefiningOp();
-      for(auto shape : lhs_shape)
+      for (auto shape : lhs_shape)
         new_shape.emplace_back(shape);
     }
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "shape", rewriter.getI64ArrayAttr(
-                    new_shape)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(new_shape)));
     auto reshape_op = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_reshape")),
-        RankedTensorType::get(new_shape, module::getElementType(add_need_reshape->getResult(0))),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(op.getOutput()).str() + "_reshape")),
+        RankedTensorType::get(
+            new_shape, module::getElementType(add_need_reshape->getResult(0))),
         add_need_reshape->getResult(0), attrs);
-    op.setOperand(lhs_shape.size() > rhs_shape.size() ? 1 : 0, reshape_op.getOutput());
+    op.setOperand(lhs_shape.size() > rhs_shape.size() ? 1 : 0,
+                  reshape_op.getOutput());
     return success();
   }
 };
 
 void AddOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<SwapInput, AddToAddConst, AddToScale, AddToRope, AddMerge, AlignInputsDim>(context);
+  results.insert<SwapInput, AddToAddConst, AddToScale, AddToRope, AddMerge,
+                 AlignInputsDim>(context);
 }

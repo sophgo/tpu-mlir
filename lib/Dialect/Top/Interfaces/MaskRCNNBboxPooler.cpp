@@ -19,19 +19,18 @@ LogicalResult top::MaskRCNNBboxPoolerOp::init(InferenceParameter &p) {
 }
 void top::MaskRCNNBboxPoolerOp::deinit(InferenceParameter &p) {}
 
-
 LogicalResult top::MaskRCNNBboxPoolerOp::inference(InferenceParameter &p) {
   UNREACHABLE_THIS("Not Implemented");
   return success();
 }
 
 void top::MaskRCNNBboxPoolerOp::shape_inference() {
-  //Set res as [roi_num,CHANNEL_ROI,PH,PW]
+  // Set res as [roi_num,CHANNEL_ROI,PH,PW]
   std::vector<int64_t> shape_res(4);
   std::vector<int64_t> shape_rois(4);
   std::vector<int64_t> input_shape = module::getShape(getPtrFeat0());
   const int batch_size = input_shape[0];
-  const int roi_num = getROI_SLICE()*batch_size;
+  const int roi_num = getROI_SLICE() * batch_size;
   shape_res[0] = roi_num;
   shape_res[1] = getCHANNEL_ROI();
   shape_res[2] = getROI_PH();

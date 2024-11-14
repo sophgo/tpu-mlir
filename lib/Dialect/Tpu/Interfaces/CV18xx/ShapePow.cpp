@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace tpu_mlir::backend;
-
 
 void tpu::ShapePowOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");

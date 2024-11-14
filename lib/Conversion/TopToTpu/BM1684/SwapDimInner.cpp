@@ -12,13 +12,16 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
-void SwapDimInnerLowering::LoweringF32(PatternRewriter &rewriter, top::SwapDimInnerOp op) const {
+void SwapDimInnerLowering::LoweringF32(PatternRewriter &rewriter,
+                                       top::SwapDimInnerOp op) const {
   lowering_common_f32<tpu::SwapDimInnerOp>(rewriter, op);
 }
-void SwapDimInnerLowering::LoweringINT8(PatternRewriter &rewriter, top::SwapDimInnerOp op, bool asymmetric) const {
-  lowering_common_int8<tpu::SwapDimInnerOp>(rewriter, op.getOperation(), asymmetric);
+void SwapDimInnerLowering::LoweringINT8(PatternRewriter &rewriter,
+                                        top::SwapDimInnerOp op,
+                                        bool asymmetric) const {
+  lowering_common_int8<tpu::SwapDimInnerOp>(rewriter, op.getOperation(),
+                                            asymmetric);
 }
-
 
 } // namespace bm1684
 } // namespace tpu_mlir

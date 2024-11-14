@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 
@@ -94,8 +94,7 @@ struct TopFuseUnsqueeze : public OpRewriterPatternEx<UnsqueezeOp> {
 struct TopGatherToSliceByUnsqueeze : public OpRewriterPatternEx<GatherOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   TopGatherToSliceByUnsqueeze(MLIRContext *context)
-      : OpRewriterPatternEx<GatherOp>(context,
-                                         "TopGatherToSliceByUnsqueeze") {}
+      : OpRewriterPatternEx<GatherOp>(context, "TopGatherToSliceByUnsqueeze") {}
 
   LogicalResult matchAndRewriteImpl(GatherOp op,
                                     PatternRewriter &rewriter) const override {

@@ -12,8 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringGroupNormTrain(PatternRewriter &rewriter, top::GroupNormTrainOp op,
-                              Type type) {
+static void LoweringGroupNormTrain(PatternRewriter &rewriter,
+                                   top::GroupNormTrainOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(5);
@@ -51,38 +51,42 @@ static void LoweringGroupNormTrain(PatternRewriter &rewriter, top::GroupNormTrai
       new_types.push_back(out.getType());
     }
   }
-  rewriter.replaceOpWithNewOp<tpu::GroupNormTrainOp>(op, new_types, opds, attrs);
+  rewriter.replaceOpWithNewOp<tpu::GroupNormTrainOp>(op, new_types, opds,
+                                                     attrs);
   return;
 }
 
 void GroupNormTrainLowering::LoweringF32(PatternRewriter &rewriter,
-                                    top::GroupNormTrainOp op) const {
+                                         top::GroupNormTrainOp op) const {
   LoweringGroupNormTrain(rewriter, op, rewriter.getF32Type());
 }
 
 void GroupNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::GroupNormTrainOp op) const {
+                                          top::GroupNormTrainOp op) const {
   LoweringGroupNormTrain(rewriter, op, rewriter.getBF16Type());
 }
 
 void GroupNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
-                                    top::GroupNormTrainOp op) const {
+                                         top::GroupNormTrainOp op) const {
   LoweringGroupNormTrain(rewriter, op, rewriter.getF16Type());
 }
 void GroupNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::GroupNormTrainOp op) const {
+                                        top::GroupNormTrainOp op) const {
   LoweringGroupNormTrain(rewriter, op, rewriter.getF16Type());
 }
-void GroupNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::GroupNormTrainOp op,
-                          bool asymmetric) const {
+void GroupNormTrainLowering::LoweringINT8(PatternRewriter &rewriter,
+                                          top::GroupNormTrainOp op,
+                                          bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
-void GroupNormTrainLowering::LoweringINT4(PatternRewriter &rewriter, top::GroupNormTrainOp op,
-                          bool asymmetric) const {
+void GroupNormTrainLowering::LoweringINT4(PatternRewriter &rewriter,
+                                          top::GroupNormTrainOp op,
+                                          bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
 
-void GroupNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter, top::GroupNormTrainOp op) const {
+void GroupNormTrainLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                               top::GroupNormTrainOp op) const {
   llvm_unreachable("Not Implemented");
 }
 

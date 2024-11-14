@@ -50,6 +50,4 @@ int64_t tpu::ScatterNDOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::ScatterNDOp::get_fw_type_bm1684x() {
-  return FW_BMNET_SCATTERND;
-}
+int64_t tpu::ScatterNDOp::get_fw_type_bm1684x() { return FW_BMNET_SCATTERND; }

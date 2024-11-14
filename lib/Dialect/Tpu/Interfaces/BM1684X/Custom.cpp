@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/CustomLayer.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/CustomLayer.h"
 
 // ======================================
 // GlobalGenInterface
@@ -27,10 +27,11 @@ void tpu::CustomOp::codegen_global_bm1684x() {
   auto params = getParams();
   vector<custom_param_t> values;
   values.push_back({0});
-  *(int64_t*)&values[0] = module::getAddress(getBuffer());
+  *(int64_t *)&values[0] = module::getAddress(getBuffer());
   customOpProcessParam(params, values);
 
-  BM168x::call_global_custom_func(api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
+  BM168x::call_global_custom_func(api_name.c_str(), values.data(),
+                                  values.size() * sizeof(custom_param_t),
                                   input_spec->data(), output_spec->data());
 }
 
@@ -68,13 +69,15 @@ int64_t tpu::CustomOp::getBufferSize_bm1684x(
   vector<custom_param_t> values;
   values.push_back({0});
   customOpProcessParam(params, values);
-  return BM168x::call_local_bfsz_custom_func(api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
-                                             &sec_info, input_spec->data(), output_spec->data());
+  return BM168x::call_local_bfsz_custom_func(
+      api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
+      &sec_info, input_spec->data(), output_spec->data());
 }
 
 void tpu::CustomOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                           int64_t h_step, int64_t d_step,
-                                          int64_t w_step, group_type_t group_type,
+                                          int64_t w_step,
+                                          group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
@@ -90,8 +93,9 @@ void tpu::CustomOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   vector<custom_param_t> values;
   values.push_back({.int_t = (int)gi.buffer_addr});
   customOpProcessParam(params, values);
-  BM168x::call_local_custom_func(api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
-                                 &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_custom_func(
+      api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
+      &sec_info, input_spec->data(), output_spec->data());
 }
 
 // ======================================
@@ -101,11 +105,11 @@ int64_t tpu::CustomOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto params = getParams();
   vector<custom_param_t> values;
   values.push_back({0});
-  *(int64_t*)&values[0] = module::getAddress(getBuffer());
+  *(int64_t *)&values[0] = module::getAddress(getBuffer());
   customOpProcessParam(params, values);
   int param_size = values.size() * sizeof(custom_param_t);
   if (buffer) {
-    char* p = (char*)buffer;
+    char *p = (char *)buffer;
     tpu_param_t info = {0};
     assert(getName().str().size() <= CUSTOM_LAYER_NAME_LEN);
     std::strcpy(info.name, getName().str().c_str());
@@ -124,11 +128,11 @@ int64_t tpu::CustomOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto params = getParams();
   vector<custom_param_t> values;
   values.push_back({0});
-  *(int64_t*)&values[0] = getGroupInfo(0, 0, 0, 0, 0).buffer_addr;
+  *(int64_t *)&values[0] = getGroupInfo(0, 0, 0, 0, 0).buffer_addr;
   customOpProcessParam(params, values);
   int param_size = values.size() * sizeof(custom_param_t);
   if (buffer) {
-    char* p = (char*)buffer;
+    char *p = (char *)buffer;
     tpu_param_t info = {0};
     assert(getName().str().size() <= CUSTOM_LAYER_NAME_LEN);
     std::strcpy(info.name, getName().str().c_str());

@@ -49,8 +49,8 @@ LogicalResult top::InstanceNormOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
-    const float* input_i = input_data + i * inner_dim;
-    float* output_i = output_data + i * inner_dim;
+    const float *input_i = input_data + i * inner_dim;
+    float *output_i = output_data + i * inner_dim;
     for (int j = 0; j < inner_dim; ++j) {
       mean_arr[i] += input_i[j];
     }
@@ -91,8 +91,10 @@ void top::InstanceNormOp::shape_inference() {
   std::vector<int64_t> wb_shape(input_shape.size(), 1);
   wb_shape[1] = input_shape[1];
   RankedTensorType newType;
-  if (auto weight_op = dyn_cast_or_null<WeightOp>(getWeight().getDefiningOp())) {
-    newType = RankedTensorType::get(wb_shape, module::getElementType(weight_op));
+  if (auto weight_op =
+          dyn_cast_or_null<WeightOp>(getWeight().getDefiningOp())) {
+    newType =
+        RankedTensorType::get(wb_shape, module::getElementType(weight_op));
     getWeight().setType(newType);
   }
   if (auto bias_op = dyn_cast_or_null<WeightOp>(getBias().getDefiningOp())) {

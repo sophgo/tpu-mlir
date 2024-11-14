@@ -11,8 +11,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================

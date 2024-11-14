@@ -22,7 +22,7 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684() {
   int axis_list[MAX_SHAPE_DIMS];
   int offset_list[MAX_SHAPE_DIMS];
   module::getGlobalShape(getInput(), in_shape, in_dims);
-  int axis_num=0;
+  int axis_num = 0;
   for (int i = 0; i < offset->size(); ++i) {
     if (offset->at(i) != 0) {
       axis_list[axis_num] = i;
@@ -34,14 +34,12 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684() {
   if (module::isUniformQuantized(getInput())) {
     in_shape[0] = (in_shape[0] + 3) >> 2;
     BM1684::instance().dl_nodechip_swap_dim(
-      in_addr, out_addr, in_shape, in_dims,
-      axis_num, axis_list, offset_list,
-      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
-  } else {//FP32
+        in_addr, out_addr, in_shape, in_dims, axis_num, axis_list, offset_list,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+  } else { // FP32
     BM1684::instance().dl_nodechip_swap_dim(
-      in_addr, out_addr, in_shape, in_dims,
-      axis_num, axis_list, offset_list,
-      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+        in_addr, out_addr, in_shape, in_dims, axis_num, axis_list, offset_list,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -56,14 +54,12 @@ int64_t tpu::SwapDimInnerOp::getBufferSize_bm1684(
 }
 
 void tpu::SwapDimInnerOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
-                                             local_sec_info_t &sec_info) {
+                                               local_sec_info_t &sec_info) {
   UNREACHABLE_THIS("Not Implemented");
 }
 
-uint32_t tpu::SwapDimInnerOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::SwapDimInnerOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
-int64_t tpu::SwapDimInnerOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::SwapDimInnerOp::get_fw_type_bm1684() { return -1; }

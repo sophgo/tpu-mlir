@@ -16,7 +16,7 @@ namespace tpu {
 template <typename MatMulTy>
 LogicalResult
 MatMulTopK<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
-                                      PatternRewriter &rewriter) const {
+                                          PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDevParallel(op) || !op->hasOneUse()) {
     return failure();
   }
@@ -36,11 +36,10 @@ MatMulTopK<MatMulTy>::matchAndRewriteImpl(MatMulTy op,
 
 template LogicalResult
 MatMulTopK<tpu::MatMulOp>::matchAndRewriteImpl(tpu::MatMulOp op,
-                                           PatternRewriter &rewriter) const;
+                                               PatternRewriter &rewriter) const;
 
-template LogicalResult
-MatMulTopK<tpu::A16MatMulOp>::matchAndRewriteImpl(tpu::A16MatMulOp op,
-                                              PatternRewriter &rewriter) const;
+template LogicalResult MatMulTopK<tpu::A16MatMulOp>::matchAndRewriteImpl(
+    tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
 
 template <typename MatMulTy>
 void topKSplit(MatMulTy mm, PatternRewriter &rewriter, tpu::DevBeginOp op,
@@ -95,15 +94,15 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter, tpu::DevBeginOp op,
             module::getLoc(), rewriter.getNoneType()));
       } else {
         auto zp_weight = zp_op.template getDefiningOp<top::WeightOp>();
-        auto sliced_zp =
-            module::opSliceAxis(rewriter, zp_weight, !a16_mm_w_trans, offset, length);
+        auto sliced_zp = module::opSliceAxis(rewriter, zp_weight,
+                                             !a16_mm_w_trans, offset, length);
         operands.push_back(sliced_zp);
       }
     }
 
     if (has_bias) {
-      auto new_bias =
-          module::opSliceAxis(rewriter, mm.getBias(), num_dims - 1, offset, length);
+      auto new_bias = module::opSliceAxis(rewriter, mm.getBias(), num_dims - 1,
+                                          offset, length);
       operands.push_back(new_bias);
     } else {
       operands.push_back(mm.getBias());

@@ -23,12 +23,12 @@ using namespace tpu_mlir::trait;
 '                                          '
 + - - - - - - - - - - - - - - - - - - - - -+
 */
-struct Depth2SpaceWithPermuteOpt
-    : public OpRewriterPatternEx<Depth2SpaceOp> {
+struct Depth2SpaceWithPermuteOpt : public OpRewriterPatternEx<Depth2SpaceOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   Depth2SpaceWithPermuteOpt(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<Depth2SpaceOp>(context, "Depth2SpaceWithPermuteOpt") {}
+      : OpRewriterPatternEx<Depth2SpaceOp>(context,
+                                           "Depth2SpaceWithPermuteOpt") {}
 
   LogicalResult matchAndRewriteImpl(Depth2SpaceOp op,
                                     PatternRewriter &rewriter) const override {

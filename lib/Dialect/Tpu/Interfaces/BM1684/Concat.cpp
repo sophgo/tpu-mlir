@@ -7,14 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
 
 void tpu::ConcatOp::codegen_global_bm1684() {
-  if (getOnlyMerge() && module::getAddress(getInputs()[0]) == module::getAddress(getOutput())) {
+  if (getOnlyMerge() &&
+      module::getAddress(getInputs()[0]) == module::getAddress(getOutput())) {
     return;
   }
   int num_input = getInputs().size();

@@ -7,24 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "cpu_layer.h"
 #include "tpu_mlir/Support/CustomLayer.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <dlfcn.h>
-#include "cpu_layer.h"
 
 int64_t top::CustomOp::getFLOPs() {
   // Flop of CustomOp cannot be determined
   return 0;
 }
 
-LogicalResult top::CustomOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult top::CustomOp::init(InferenceParameter &p) { return success(); }
 void top::CustomOp::deinit(InferenceParameter &p) {}
 
 #include "llvm/Support/DynamicLibrary.h"
 LogicalResult top::CustomOp::inference(InferenceParameter &p) {
-  #define MAX_SHAPE_DIMS 8
+#define MAX_SHAPE_DIMS 8
   const int num_input = getInputs().size();
   std::vector<int[MAX_SHAPE_DIMS]> in_shapes_v(num_input);
   std::vector<int> in_dims_v(num_input);
@@ -46,9 +44,10 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
   std::string Err;
   auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
       custom_lib_name.data(), &Err);
-  ASSERT_THIS(custom_dl.isValid() &&
-         "Opening libplugin_custom.so failed while using custom op! Check and "
-         "make a plugin first");
+  ASSERT_THIS(
+      custom_dl.isValid() &&
+      "Opening libplugin_custom.so failed while using custom op! Check and "
+      "make a plugin first");
   if (getName().starts_with("ap.")) {
     // Custom cpu layers
     typedef bmcpu::cpu_layer *(*CreateLayerInstanceFunc)(const char *);
@@ -98,7 +97,7 @@ LogicalResult top::CustomOp::inference(InferenceParameter &p) {
 }
 
 void top::CustomOp::shape_inference() {
-  #define MAX_SHAPE_DIMS 8
+#define MAX_SHAPE_DIMS 8
   const int num_input = getInputs().size();
   const int num_output = getOutputs().size();
   std::vector<int[MAX_SHAPE_DIMS]> in_shapes_v(num_input);
@@ -121,10 +120,12 @@ void top::CustomOp::shape_inference() {
   std::string api_name = "shape_inference_" + op_name;
   llvm::StringRef custom_lib_name = "libplugin_custom.so";
   std::string Err;
-  auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
-  ASSERT_THIS(custom_dl.isValid() &&
-         "Opening libplugin_custom.so failed while using custom op! Check and "
-         "make a plugin first");
+  auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(
+      custom_lib_name.data(), &Err);
+  ASSERT_THIS(
+      custom_dl.isValid() &&
+      "Opening libplugin_custom.so failed while using custom op! Check and "
+      "make a plugin first");
   if (getName().starts_with("ap.")) {
     // Custom cpu layers
     typedef bmcpu::cpu_layer *(*CreateLayerInstanceFunc)(const char *);
@@ -181,4 +182,3 @@ void top::CustomOp::shape_inference() {
     }
   }
 }
-

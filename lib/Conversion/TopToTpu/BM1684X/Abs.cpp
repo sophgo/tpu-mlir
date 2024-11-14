@@ -28,7 +28,7 @@ void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
 }
 
 void AbsLowering::LoweringINT4(PatternRewriter &rewriter, top::AbsOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 
@@ -49,7 +49,7 @@ void AbsLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void AbsLowering::LoweringF8(PatternRewriter &rewriter,
-                              top::AbsOp absOp) const {
+                             top::AbsOp absOp) const {
   // llvm_unreachable("FIXME: not implement");
   auto op = absOp.getOperation();
   op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),

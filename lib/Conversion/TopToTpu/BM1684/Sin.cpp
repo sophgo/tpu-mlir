@@ -32,6 +32,5 @@ void SinLowering::LoweringINT8(PatternRewriter &rewriter, top::SinOp op,
                                           ValueRange{op.getInput(), table});
 }
 
-
 } // namespace bm1684
 } // namespace tpu_mlir

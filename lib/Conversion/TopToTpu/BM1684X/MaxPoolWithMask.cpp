@@ -17,8 +17,9 @@ void MaxPoolWithMaskLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(
       op, op->getResultTypes(), op->getOperands(), op->getAttrs());
 }
-void MaxPoolWithMaskLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxPoolWithMaskOp op,
-                                   bool asymmetric) const {
+void MaxPoolWithMaskLowering::LoweringINT4(PatternRewriter &rewriter,
+                                           top::MaxPoolWithMaskOp op,
+                                           bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -41,7 +42,7 @@ void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,
-                                          top::MaxPoolWithMaskOp op) const {
+                                         top::MaxPoolWithMaskOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

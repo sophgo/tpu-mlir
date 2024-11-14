@@ -32,12 +32,12 @@ public:
     }
     std::vector<mlir::Type> argumentTypes;
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
-        {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
-         {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
+        {{"RGB_PLANAR", {"rgb", "nchw"}},   {"RGB_PACKED", {"rgb", "nhwc"}},
+         {"BGR_PLANAR", {"bgr", "nchw"}},   {"BGR_PACKED", {"bgr", "nhwc"}},
          {"GRAYSCALE", {"gray", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
-         {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
+         {"YUV_NV21", {"bgr", "nchw"}},     {"YUV_NV12", {"bgr", "nchw"}},
          {"RGBA_PLANAR", {"rgba", "nchw"}}, {"GBRG_RAW", {"gbrg", "nchw"}},
-         {"GRBG_RAW", {"grbg", "nchw"}}, {"BGGR_RAW", {"bggr", "nchw"}},
+         {"GRBG_RAW", {"grbg", "nchw"}},    {"BGGR_RAW", {"bggr", "nchw"}},
          {"RGGB_RAW", {"rggb", "nchw"}}};
     std::string quant_mode = this->mode;
     std::string pixel_format = this->customization_format;
@@ -62,14 +62,14 @@ public:
       }
 
       // no need preprocess, just verify argument
-      if (inputOp.getResult().getType().getShape().size() < 4)
-      {
+      if (inputOp.getResult().getType().getShape().size() < 4) {
         std::vector<int64_t> input_shape;
-        for (int i = 0; i < inputOp.getResult().getType().getShape().size(); ++i)
-        {
+        for (int i = 0; i < inputOp.getResult().getType().getShape().size();
+             ++i) {
           input_shape.push_back(inputOp.getResult().getType().getShape()[i]);
         }
-        auto arg_type = RankedTensorType::get(input_shape, builder.getF32Type());
+        auto arg_type =
+            RankedTensorType::get(input_shape, builder.getF32Type());
         inputOp.getOperand().setType(arg_type);
         argumentTypes.push_back(arg_type);
         mlir::Value currentOut = inputOp.getResult();
@@ -84,7 +84,8 @@ public:
         return;
       };
 
-      // Get the original channel_order(rgb,bgr,etc..) and save it to preprocessOp.
+      // Get the original channel_order(rgb,bgr,etc..) and save it to
+      // preprocessOp.
       auto name = module::getName(inputOp.getOutput()).str();
       auto input_loc = NameLoc::get(builder.getStringAttr(name + "_raw"));
       auto channel_order = inputOp.getPixelFormat().value().str();
@@ -100,9 +101,9 @@ public:
       module::getNCHW(inputOp.getResult(), n, c, h, w, false);
       std::vector<int64_t> arg_shape{n, c, h, w};
       std::vector<int64_t> input_shape{n, c, h, w};
-      if ( inputOp.getDoPreprocess() )
-      {
-        auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
+      if (inputOp.getDoPreprocess()) {
+        auto resized_dims =
+            module::getI64Array(inputOp.getResizeDims().value());
         if (resized_dims->size() == 2) {
           resize_h = resized_dims->at(0);
           resize_w = resized_dims->at(1);
@@ -121,17 +122,17 @@ public:
           input_shape[2] = resize_h;
           input_shape[3] = resize_w;
         }
-        if(layout == "nhwc" && oriLayout == "nchw"){
+        if (layout == "nhwc" && oriLayout == "nchw") {
           arg_shape[3] = c;
           input_shape[3] = c;
-        } else if (layout == "nchw" && oriLayout == "nhwc"){
+        } else if (layout == "nchw" && oriLayout == "nhwc") {
           arg_shape[1] = w;
           input_shape[1] = w;
         }
 
-
-        if (color == "gbrg" || color == "grbg" || color == "rggb" || color == "bggr") {
-          assert ( c == 4 && "processed raw image should include 4 channel");
+        if (color == "gbrg" || color == "grbg" || color == "rggb" ||
+            color == "bggr") {
+          assert(c == 4 && "processed raw image should include 4 channel");
           arg_shape[1] = 1;
           arg_shape[2] = h * 2;
           arg_shape[3] = w * 3;
@@ -142,16 +143,15 @@ public:
       }
 
       // set inputOp type, if need preprocess, default uint8->f32, else f32->f32
-      auto uni_type = quant::UniformQuantizedType::get( 0, IntegerType::get(ctx_, 8), builder.getF32Type(), 1.0, 0, 0, 255);
-      auto arg_type = RankedTensorType::get(arg_shape, builder.getIntegerType(8, false));
+      auto uni_type = quant::UniformQuantizedType::get(
+          0, IntegerType::get(ctx_, 8), builder.getF32Type(), 1.0, 0, 0, 255);
+      auto arg_type =
+          RankedTensorType::get(arg_shape, builder.getIntegerType(8, false));
       auto input_type = RankedTensorType::get(input_shape, uni_type);
-      if ( inputOp.getDoPreprocess() )
-      {
+      if (inputOp.getDoPreprocess()) {
         inputOp.getOperand().setType(arg_type);
         inputOp.getResult().setType(input_type);
-      }
-      else
-      {
+      } else {
         arg_type = RankedTensorType::get(arg_shape, builder.getF32Type());
       }
       argumentTypes.push_back(arg_type);
@@ -160,8 +160,7 @@ public:
       builder.setInsertionPointAfterValue(currentOut);
 
       // if input need preprocess, insert preprocessOp
-      if ( inputOp.getDoPreprocess() )
-      {
+      if (inputOp.getDoPreprocess()) {
         bool sign = false;
         auto mean = module::getF64Array(inputOp.getMeanAttr());
         for (int i = 0; i < mean->size(); i++) {
@@ -171,18 +170,26 @@ public:
           }
         }
         std::vector<NamedAttribute> attrs;
-        attrs.emplace_back(builder.getNamedAttr("quant_mode", builder.getStringAttr(quant_mode)));
-        attrs.emplace_back(builder.getNamedAttr("customization_format", builder.getStringAttr(pixel_format)));
-        attrs.emplace_back(builder.getNamedAttr("channel_order", builder.getStringAttr(channel_order)));
-        attrs.emplace_back(builder.getNamedAttr("resize_dims", inputOp.getResizeDimsAttr()));
-        attrs.emplace_back(builder.getNamedAttr("scale", inputOp.getScaleAttr()));
+        attrs.emplace_back(builder.getNamedAttr(
+            "quant_mode", builder.getStringAttr(quant_mode)));
+        attrs.emplace_back(builder.getNamedAttr(
+            "customization_format", builder.getStringAttr(pixel_format)));
+        attrs.emplace_back(builder.getNamedAttr(
+            "channel_order", builder.getStringAttr(channel_order)));
+        attrs.emplace_back(
+            builder.getNamedAttr("resize_dims", inputOp.getResizeDimsAttr()));
+        attrs.emplace_back(
+            builder.getNamedAttr("scale", inputOp.getScaleAttr()));
         attrs.emplace_back(builder.getNamedAttr("mean", inputOp.getMeanAttr()));
-        attrs.emplace_back(builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
+        attrs.emplace_back(
+            builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
 
         auto loc = NameLoc::get(builder.getStringAttr(name + "_preprocess"));
-        auto cali_type = quant::CalibratedQuantizedType::get(builder.getF32Type(), min, max);
+        auto cali_type =
+            quant::CalibratedQuantizedType::get(builder.getF32Type(), min, max);
         auto type = RankedTensorType::get({n, c, h, w}, cali_type);
-        auto newOp = builder.create<top::PreprocessOp>(loc, type, ArrayRef<Value>{currentOut}, attrs);
+        auto newOp = builder.create<top::PreprocessOp>(
+            loc, type, ArrayRef<Value>{currentOut}, attrs);
         currentOut = newOp.getResult();
         // reset inputOp's scale and mean
         inputOp.setScaleAttr(builder.getF64ArrayAttr({1.0, 1.0, 1.0}));

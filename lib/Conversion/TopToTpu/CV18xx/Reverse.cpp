@@ -14,12 +14,12 @@
 namespace tpu_mlir {
 namespace cv18xx {
 void ReverseLowering::LoweringINT8(PatternRewriter &rewriter, top::ReverseOp op,
-                                bool asymmetric) const {
+                                   bool asymmetric) const {
   lowering_common_int8<tpu::ReverseOp>(rewriter, op, asymmetric);
 }
 
 void ReverseLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::ReverseOp op) const {
+                                   top::ReverseOp op) const {
   lowering_common_bf16<tpu::ReverseOp>(rewriter, op);
 }
 

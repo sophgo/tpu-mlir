@@ -11,7 +11,8 @@
 
 using namespace cv18xx;
 
-template <typename T> static void transpose_row_col(T *data, int row, int col) {
+template <typename T>
+static void transpose_row_col(T *data, int row, int col) {
   std::vector<T> w_t(row * col);
   for (int i = 0; i < row; i++) {
     for (int j = 0; j < col; j++) {
@@ -78,7 +79,7 @@ LogicalResult WeightReorder<tpu::LSTMOp, BFloat16Type>::matchAndRewriteImpl(
     transposeBiasFp32(*bias_data, bias_u32);
     biasOp.update(bias_u32, bias_u32.size());
     auto new_bias_type = RankedTensorType::get(module::getShape(op.getBias()),
-                                              rewriter.getIntegerType(32));
+                                               rewriter.getIntegerType(32));
     op.getBias().setType(new_bias_type);
   }
   return success();

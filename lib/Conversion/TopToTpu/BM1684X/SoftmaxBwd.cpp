@@ -13,35 +13,38 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void SoftmaxBwdLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::SoftmaxBwdOp op) const {
+                                     top::SoftmaxBwdOp op) const {
   lowering_common_f32<tpu::SoftmaxBwdOp>(rewriter, op);
 }
 
 void SoftmaxBwdLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::SoftmaxBwdOp op) const {
+                                      top::SoftmaxBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void SoftmaxBwdLowering::LoweringF16(PatternRewriter &rewriter,
-                                  top::SoftmaxBwdOp op) const {
+                                     top::SoftmaxBwdOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void SoftmaxBwdLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::SoftmaxBwdOp op) const {
+                                    top::SoftmaxBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void SoftmaxBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxBwdOp op,
-                          bool asymmetric) const {
+void SoftmaxBwdLowering::LoweringINT8(PatternRewriter &rewriter,
+                                      top::SoftmaxBwdOp op,
+                                      bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
-void SoftmaxBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::SoftmaxBwdOp op,
-                          bool asymmetric) const {
+void SoftmaxBwdLowering::LoweringINT4(PatternRewriter &rewriter,
+                                      top::SoftmaxBwdOp op,
+                                      bool asymmetric) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void SoftmaxBwdLowering::LoweringQuantized(PatternRewriter &rewriter, top::SoftmaxBwdOp op) const {
+void SoftmaxBwdLowering::LoweringQuantized(PatternRewriter &rewriter,
+                                           top::SoftmaxBwdOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

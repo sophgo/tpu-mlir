@@ -32,6 +32,4 @@ LogicalResult top::SignOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::SignOp::shape_inference() {
-  common_shape_inference(getOperation());
-}
+void top::SignOp::shape_inference() { common_shape_inference(getOperation()); }

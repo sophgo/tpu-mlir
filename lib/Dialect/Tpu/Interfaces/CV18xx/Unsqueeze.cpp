@@ -12,5 +12,4 @@
 
 using namespace tpu_mlir::backend;
 
-void tpu::UnsqueezeOp::codegen_global_cv18xx(int64_t layer_id) {
-}
+void tpu::UnsqueezeOp::codegen_global_cv18xx(int64_t layer_id) {}

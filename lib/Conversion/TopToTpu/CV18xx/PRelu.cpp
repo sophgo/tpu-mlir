@@ -22,7 +22,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
 
-  //quantize positive
+  // quantize positive
   auto threshold_x = module::getThreshold(op.getInput());
   auto threshold_y = module::getThreshold(op.getOutput());
   double qscale_pos = threshold_x / threshold_y;
@@ -37,7 +37,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                      false);
   }
 
-  //quantize negtive
+  // quantize negtive
   auto slopeOp = cast<top::WeightOp>(op.getSlope().getDefiningOp());
   auto slope_f32 = slopeOp.read<float>();
   std::vector<int8_t> slope_int8(num_slope);
@@ -52,8 +52,8 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   getRShiftAndMultiplierFromQScale(scale_max, &scalei, &rshifti);
 
   for (int idx = 0; idx < num_slope; idx++) {
-    slope_int8[idx] =
-        quantizeFilterRShift(slope_f32->at(idx), threshold_y, threshold_x, rshifti);
+    slope_int8[idx] = quantizeFilterRShift(slope_f32->at(idx), threshold_y,
+                                           threshold_x, rshifti);
   }
 
   operands.push_back(op.getInput());
@@ -66,10 +66,10 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   }
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshifti)));
-  attrs.push_back(
-      rewriter.getNamedAttr("rshift_pos", rewriter.getSI32IntegerAttr(rshift_pos)));
-  attrs.push_back(
-      rewriter.getNamedAttr("multiplier_pos", rewriter.getSI32IntegerAttr(multiplier_pos)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "rshift_pos", rewriter.getSI32IntegerAttr(rshift_pos)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier_pos", rewriter.getSI32IntegerAttr(multiplier_pos)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
 }

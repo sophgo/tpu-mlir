@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Support/Float8.h"
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -23,11 +23,13 @@ void MulTryLowering::Lowering(PatternRewriter &rewriter, top::MulOp op) const {
       operands.push_back(in);
     }
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Mul")));
-    Type new_type =
-      RankedTensorType::get(module::getShape(op.getOutput()),
-                            IntegerType::get(op.getOutput().getContext(), 32));
-    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
+    attrs.push_back(
+        rewriter.getNamedAttr("type", rewriter.getStringAttr("Mul")));
+    Type new_type = RankedTensorType::get(
+        module::getShape(op.getOutput()),
+        IntegerType::get(op.getOutput().getContext(), 32));
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands,
+                                                   attrs);
   }
 }
 
@@ -125,12 +127,12 @@ void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
 
   if (module::getMode() == module::Mode::F8E5M2) {
     lowering_common_f8<tpu::MulOp>(rewriter, op, false);
-    return ;
+    return;
   }
   auto qtype_out = module::getCalibratedType(out);
   out_scale = qtype_out.getMax() / get_f8e4m3_max();
 
-  double in_scale=1.0;
+  double in_scale = 1.0;
   Value newWeight;
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
@@ -154,7 +156,8 @@ void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
   if (module::getMode() == module::Mode::F8E4M3) {
-    attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale)));
+    attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
+                                          rewriter.getF64ArrayAttr(scale)));
     auto newType = getQuantF8E4M3Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
   }

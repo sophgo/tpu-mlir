@@ -7,9 +7,7 @@ public:
   AssignTargetDevicePass() : target("BM1684X") {}
   AssignTargetDevicePass(std::string target_) : target(std::move(target_)) {}
 
-  StringRef getArgument() const override {
-    return "assign-target-device";
-  }
+  StringRef getArgument() const override { return "assign-target-device"; }
 
   StringRef getDescription() const override {
     return "Assigns the devices the module will target to the given list "
@@ -51,4 +49,4 @@ createAssignTargetDevicePass(std::string targets) {
 static PassRegistration<AssignTargetDevicePass> pass([] {
   return std::make_unique<AssignTargetDevicePass>();
 });
-}
+} // namespace mlir

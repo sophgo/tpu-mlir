@@ -51,6 +51,6 @@ void top::ProposalOp::shape_inference() {
   out_shape.push_back(1);
   out_shape.push_back(rpn_nms_post_top_n);
   out_shape.push_back(5);
-    //(batch, pred_boxes_x1, pred_boxes_y1, pred_boxes_x2, pred_boxes_y2)
+  //(batch, pred_boxes_x1, pred_boxes_y1, pred_boxes_x2, pred_boxes_y2)
   module::setShapeOrVerify(getOutput(), out_shape);
 }

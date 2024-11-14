@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 
-
 #define DEBUG_TYPE "lowering-reciprocal"
 namespace tpu_mlir {
 namespace cv18xx {
@@ -28,7 +27,7 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
   double const_s = op.getConstVal().convertToDouble();
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [const_s](double val) { return (val == 0 ? g_max : const_s / val);});
+      [const_s](double val) { return (val == 0 ? g_max : const_s / val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

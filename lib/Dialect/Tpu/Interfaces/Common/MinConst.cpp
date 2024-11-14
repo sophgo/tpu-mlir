@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -31,7 +30,7 @@ LogicalResult tpu::MinConstOp::inference(InferenceParameter &p) {
     auto out_type = module::getStorageType(getOutput());
     if (asym)
       ozp = out_qtype.getZeroPoint();
-// #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    // #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       float p_val = p.inputs[0][i] - izp;
       p_val = applyMultiplierAndRShift(p_val, getMultiplier(), 0);
@@ -68,7 +67,8 @@ void tpu::MinConstOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::MinConstOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

@@ -14,15 +14,16 @@
 namespace tpu_mlir {
 namespace cv18xx {
 void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
-                                bool asymmetric) const {
+                                   bool asymmetric) const {
   lowering_common_int8<tpu::ReshapeOp>(rewriter, op, asymmetric);
 }
 
 void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::ReshapeOp op) const {
+                                   top::ReshapeOp op) const {
   auto out = op.getOutput();
   if (module::isCalibratedType(out)) {
-    //For align-input(CscOp sometimes maybe convert to ReshapeOp) use, it should be lowered to uint8.
+    // For align-input(CscOp sometimes maybe convert to ReshapeOp) use, it
+    // should be lowered to uint8.
     auto qtype = module::getCalibratedType(out);
     auto max = qtype.getMax();
     auto min = qtype.getMin();

@@ -30,10 +30,10 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
   }
 
   bool do_compress = false;
-  if(module::isWeight(getFilter())){
+  if (module::isWeight(getFilter())) {
     auto filterOp = getFilter().getDefiningOp<top::WeightOp>();
-    do_compress =
-        filterOp.getDoCompress().has_value() && filterOp.getDoCompress().value();
+    do_compress = filterOp.getDoCompress().has_value() &&
+                  filterOp.getDoCompress().value();
     do_compress = attr.groups > 1 ? false : do_compress;
   }
   WeightCompresser weight_opt(this->getOperation(), do_compress);

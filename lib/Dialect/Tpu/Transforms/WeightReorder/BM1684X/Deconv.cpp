@@ -89,21 +89,24 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
   auto attr = op.parseParam();
 
   // filter op
-  if (dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp())){
+  if (dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp())) {
     auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
     auto filter_u16 = filterOp.read<uint16_t>();
     // do kernel_rotate first
-    if(module::isMARS3()){
+    if (module::isMARS3()) {
       std::vector<uint16_t> newFilter(filter_u16->size(), 0);
-      for (uint32_t i = 0; i < attr.oc*(attr.ic/ attr.g); ++i) {
+      for (uint32_t i = 0; i < attr.oc * (attr.ic / attr.g); ++i) {
         int swap_count = 0;
         for (uint32_t j = 0; j < attr.kh; ++j) {
           for (uint32_t k = 0; k < attr.kw; ++k) {
-            if(swap_count < (attr.kh * attr.kw / 2)){
+            if (swap_count < (attr.kh * attr.kw / 2)) {
               newFilter.at(i * attr.kh * attr.kw + j * attr.kw + k) =
-                filter_u16->at(i * attr.kh * attr.kw + (attr.kh - 1 - j) * attr.kw + (attr.kw - 1 - k));
-              newFilter.at(i * attr.kh * attr.kw + (attr.kh - 1 - j) * attr.kw + (attr.kw - 1 - k)) =
-                filter_u16->at(i * attr.kh * attr.kw + j * attr.kw + k);
+                  filter_u16->at(i * attr.kh * attr.kw +
+                                 (attr.kh - 1 - j) * attr.kw +
+                                 (attr.kw - 1 - k));
+              newFilter.at(i * attr.kh * attr.kw + (attr.kh - 1 - j) * attr.kw +
+                           (attr.kw - 1 - k)) =
+                  filter_u16->at(i * attr.kh * attr.kw + j * attr.kw + k);
               swap_count++;
             }
           }
@@ -115,7 +118,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
     auto filter_rotate_u16 = filterOp.read<uint16_t>();
     auto filter_type = module::getStorageType(op.getFilter());
     std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
-                                        attr.kw};
+                                         attr.kw};
     if (attr.is_dw) {
       filter_shape = {1, attr.oc, attr.kh, attr.kw};
       auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -123,14 +126,14 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
     } else {
       filter_reorder(filter_rotate_u16, filter_shape);
       auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-      auto newFilterOp =
-          top::WeightOp::create(op, "_reordered", *filter_rotate_u16, new_filter_type);
+      auto newFilterOp = top::WeightOp::create(
+          op, "_reordered", *filter_rotate_u16, new_filter_type);
       op->setOperand(1, newFilterOp);
     }
-  }
-  else if (dyn_cast<top::InputOp>(op.getFilter().getDefiningOp())){
+  } else if (dyn_cast<top::InputOp>(op.getFilter().getDefiningOp())) {
     auto filter_type = module::getStorageType(op.getFilter());
-    auto filter_shape = op.getFilter().getType().cast<RankedTensorType>().getShape();
+    auto filter_shape =
+        op.getFilter().getType().cast<RankedTensorType>().getShape();
     int64_t oc, ic, kh, kw;
     module::getNCHW(filter_shape, oc, ic, kh, kw);
     auto type_bytes = sizeof(int16_t);
@@ -182,7 +185,6 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewriteImpl(
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
                                        attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-
 
   if (!isa<top::WeightOp>(op.getOperand(1).getDefiningOp())) {
     // dynamic op, usually used in GAN

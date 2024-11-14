@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-
-
 int64_t top::MulOp::getFLOPs() {
   return module::getNumElements(getOutput()) *
          (getInputs().size() - 1 + (getDoRelu() ? 1 : 0));
@@ -18,7 +16,7 @@ int64_t top::MulOp::getFLOPs() {
 
 LogicalResult top::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
-  auto lhs_shape =  module::getShape(getInputs()[0]);
+  auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
 
   (*binary)
@@ -67,12 +65,12 @@ void top::MulOp::shape_inference() {
   auto inputs = getInputs();
   // shape value inference can only support shape and weight
   bool need_shape_val_infer =
-      std::all_of(inputs.begin(), inputs.end(), [](auto in_op) {
-        return module::isWeight(in_op) || module::isShape(in_op);
-      }) &&
-      std::any_of(inputs.begin(), inputs.end(), [](auto in_op) {
-        return module::isShape(in_op);
-      });
+      std::all_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) {
+                    return module::isWeight(in_op) || module::isShape(in_op);
+                  }) &&
+      std::any_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) { return module::isShape(in_op); });
   if (need_shape_val_infer) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     for (auto in_op : inputs) {
@@ -85,13 +83,14 @@ void top::MulOp::shape_inference() {
         input_shapes_v.push_back(data_v);
       }
     }
-    if(out_shape.size() == 1 || out_shape.size() == 0){
-      auto output_shape_v =
-          module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    if (out_shape.size() == 1 || out_shape.size() == 0) {
+      auto output_shape_v = module::commonShapeValInfer(
+          getOperation(), input_shapes_v, out_shape);
       module::bindShapeTensorValue(getOutput(), output_shape_v);
     } else {
       dump();
-      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor dimension > 1\n";
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor "
+                      "dimension > 1\n";
     }
   }
 }

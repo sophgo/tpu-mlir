@@ -10,10 +10,11 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-
 using namespace tpu_mlir::backend;
 
-LogicalResult tpu::ShapeCastOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeCastOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void tpu::ShapeCastOp::deinit(InferenceParameter &p) {}
 

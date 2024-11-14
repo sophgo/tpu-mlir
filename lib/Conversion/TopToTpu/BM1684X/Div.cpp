@@ -34,18 +34,18 @@ void DivLowering::LoweringF32(PatternRewriter &rewriter, top::DivOp op) const {
 
 void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp op,
                                bool asymmetric) const {
-  if(module::isMARS3()){
+  if (module::isMARS3()) {
     lowering_common_bf16<tpu::DivOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::DivOp>(rewriter, op);
   }
 }
 void DivLowering::LoweringINT4(PatternRewriter &rewriter, top::DivOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
-  if(module::isBM1688() || module::isSG2380() || module::isMARS3()){
+  if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
     lowering_common_bf16<tpu::DivOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::DivOp>(rewriter, op);
@@ -53,7 +53,7 @@ void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
 }
 
 void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
-  if(module::isBM1688() || module::isSG2380()){
+  if (module::isBM1688() || module::isSG2380()) {
     lowering_common_f16<tpu::DivOp>(rewriter, op);
   } else if (module::isMARS3()) {
     lowering_common_bf16<tpu::DivOp>(rewriter, op);

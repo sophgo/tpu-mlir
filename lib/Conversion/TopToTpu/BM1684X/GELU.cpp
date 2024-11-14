@@ -23,10 +23,9 @@ static inline tpu::ActiveMode get_active_mode(top::GELUOp op) {
   return active_mode;
 }
 
-static inline Operation* update_attr(top::GELUOp op) {
+static inline Operation *update_attr(top::GELUOp op) {
   auto active_mode = get_active_mode(op);
-  op->setAttr(
-      "mode", tpu::ActiveModeAttr::get(op.getContext(), active_mode));
+  op->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(), active_mode));
   op->removeAttr("approx_mode");
   return op.getOperation();
 }
@@ -43,11 +42,10 @@ void GELULowering::LoweringINT4(PatternRewriter &rewriter, top::GELUOp op,
 void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
                                 bool asymmetric) const {
   bool output_asym = op->hasAttr("output_asym");
-  auto table = create_lookup_table(
-      op.getInput(), op.getOutput(), asymmetric,
-      getActivateFunc(get_active_mode(op), nullptr), 8,
-      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO,
-      output_asym);
+  auto table =
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
+                          getActivateFunc(get_active_mode(op), nullptr), 8,
+                          tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym);
   auto newType = getQuantInt8Type(op.getOutput(), output_asym);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
@@ -73,16 +71,17 @@ void GELULowering::LoweringF16(PatternRewriter &rewriter,
   }
 }
 
-void GELULowering::LoweringF8(PatternRewriter &rewriter,
-                               top::GELUOp op) const {
+void GELULowering::LoweringF8(PatternRewriter &rewriter, top::GELUOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void GELULowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::GELUOp op) const {
-  auto round_mode = round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
+  auto round_mode =
+      round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
   auto table = create_lookup_table(
-      op.getInput(), op.getOutput(), true, getActivateFunc(get_active_mode(op), nullptr), 8, round_mode);
+      op.getInput(), op.getOutput(), true,
+      getActivateFunc(get_active_mode(op), nullptr), 8, round_mode);
   auto newType = getQuantInt8Type(op.getOutput(), true);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

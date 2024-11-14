@@ -10,10 +10,11 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 using namespace tpu_mlir::backend;
 
-LogicalResult tpu::ShapeSqueezeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeSqueezeOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ShapeSqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeSqueezeOp::inference(InferenceParameter &p) {
@@ -24,7 +25,8 @@ LogicalResult tpu::ShapeSqueezeOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::ShapeSqueezeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::ShapeSqueezeOp::type_verify(uint64_t opd_idx,
+                                            TypeCastMode &mode) {
   return do_nothing(mode);
 }
 

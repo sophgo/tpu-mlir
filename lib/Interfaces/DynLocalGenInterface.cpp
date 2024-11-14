@@ -9,18 +9,18 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
 namespace tpu_mlir {
 
 constexpr llvm::StringRef DynLocalGenInterface::kLayerGroupAttrName;
-group_info_t DynLocalGenInterface::DynGetGroupInfo(mlir::Value v, int64_t n_step,
-                                             int64_t h_step) {
+group_info_t DynLocalGenInterface::DynGetGroupInfo(mlir::Value v,
+                                                   int64_t n_step,
+                                                   int64_t h_step) {
   return DynGetGroupInfo(v.getDefiningOp(), n_step, h_step);
 }
 
 group_info_t DynLocalGenInterface::DynGetGroupInfo(mlir::Operation *op,
-                                             int64_t n_step, int64_t h_step) {
+                                                   int64_t n_step,
+                                                   int64_t h_step) {
   group_info_t ginfo = {0};
   if (isa<top::NoneOp>(op)) {
     return ginfo;

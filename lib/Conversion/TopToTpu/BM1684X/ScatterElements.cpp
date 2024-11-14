@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void LoweringScatterElements(PatternRewriter &rewriter,
-                                   top::ScatterElementsOp op, Type type) {
+                                    top::ScatterElementsOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   if (module::isWeight(op.getInput())) {
@@ -37,7 +37,7 @@ static void LoweringScatterElements(PatternRewriter &rewriter,
     operands.push_back(op.getIndices());
   }
 
- if (module::isWeight(op.getUpdates())) {
+  if (module::isWeight(op.getUpdates())) {
     auto wOp = op.getUpdates().getDefiningOp<top::WeightOp>();
     auto stype = module::getStorageType(type);
     if (stype.isF16()) {
@@ -57,20 +57,19 @@ static void LoweringScatterElements(PatternRewriter &rewriter,
   operands.push_back(noneOp); // buffer
 
   rewriter.replaceOpWithNewOp<tpu::ScatterElementsOp>(op, type, operands,
-                                                     op->getAttrs());
+                                                      op->getAttrs());
   return;
 }
 
 void ScatterElementsLowering::LoweringF32(PatternRewriter &rewriter,
-                                      top::ScatterElementsOp op) const {
+                                          top::ScatterElementsOp op) const {
   // lowering_common_f32<tpu::ScatterElementsOp>(rewriter, op, 4);
   auto new_type = getQuantFloatType(op.getOutput());
   LoweringScatterElements(rewriter, op, new_type);
 }
 
-
-static void RequantizeInt8(PatternRewriter &rewriter,
-                                   top::ScatterElementsOp op, Type type, bool asymmetric) {
+static void RequantizeInt8(PatternRewriter &rewriter, top::ScatterElementsOp op,
+                           Type type, bool asymmetric) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto data = op.getInput();
@@ -87,19 +86,19 @@ static void RequantizeInt8(PatternRewriter &rewriter,
   operands.push_back(noneOp); // buffer
 
   rewriter.replaceOpWithNewOp<tpu::ScatterElementsOp>(op, type, operands,
-                                                     op->getAttrs());
+                                                      op->getAttrs());
   return;
 }
 
-
 void ScatterElementsLowering::LoweringINT8(PatternRewriter &rewriter,
-                                       top::ScatterElementsOp op,
-                                       bool asymmetric) const {
+                                           top::ScatterElementsOp op,
+                                           bool asymmetric) const {
   // lowering_common_int8<tpu::ScatterElementsOp>(rewriter, op.getOperation(),
   //                                          asymmetric);
   // Please implent lowering quant for weight if necessary
-  if(module::isWeight(op.getInput()) || module::isWeight(op.getIndices()) || module::isWeight(op.getUpdates())){
-    if(module::isMARS3())
+  if (module::isWeight(op.getInput()) || module::isWeight(op.getIndices()) ||
+      module::isWeight(op.getUpdates())) {
+    if (module::isMARS3())
       LoweringBF16(rewriter, op);
     else
       LoweringF32(rewriter, op);
@@ -108,33 +107,34 @@ void ScatterElementsLowering::LoweringINT8(PatternRewriter &rewriter,
   auto new_type = getQuantInt8Type(op.getOutput());
   RequantizeInt8(rewriter, op, new_type, asymmetric);
 }
-void ScatterElementsLowering::LoweringINT4(PatternRewriter &rewriter, top::ScatterElementsOp op,
-                                   bool asymmetric) const {
+void ScatterElementsLowering::LoweringINT4(PatternRewriter &rewriter,
+                                           top::ScatterElementsOp op,
+                                           bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
   auto new_type = getQuantInt4Type(op.getOutput());
   LoweringScatterElements(rewriter, op, new_type);
 }
 void ScatterElementsLowering::LoweringBF16(PatternRewriter &rewriter,
-                                       top::ScatterElementsOp op) const {
+                                           top::ScatterElementsOp op) const {
   // lowering_common_bf16<tpu::ScatterElementsOp>(rewriter, op);
   auto new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOutput());
   LoweringScatterElements(rewriter, op, new_type);
 }
 
 void ScatterElementsLowering::LoweringF16(PatternRewriter &rewriter,
-                                      top::ScatterElementsOp op) const {
+                                          top::ScatterElementsOp op) const {
   // lowering_common_f16<tpu::ScatterElementsOp>(rewriter, op);
   auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
   LoweringScatterElements(rewriter, op, new_type);
 }
 
 void ScatterElementsLowering::LoweringF8(PatternRewriter &rewriter,
-                                      top::ScatterElementsOp op) const {
+                                         top::ScatterElementsOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-void ScatterElementsLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                            top::ScatterElementsOp op) const {
+void ScatterElementsLowering::LoweringQuantized(
+    PatternRewriter &rewriter, top::ScatterElementsOp op) const {
   // lowering_common<tpu::ScatterElementsOp>(rewriter, op.getOperation(),
   //                                     op.getOutput().getType());
   auto new_type = op.getOutput().getType();

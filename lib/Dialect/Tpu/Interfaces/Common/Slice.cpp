@@ -10,12 +10,13 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
-#include <valarray>
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
+#include <valarray>
 
 using namespace tpu_mlir::backend;
 
-template <typename T> static int remove_value(std::vector<T> &v, T value, bool is_int8) {
+template <typename T>
+static int remove_value(std::vector<T> &v, T value, bool is_int8) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (idx == 0 && is_int8)
@@ -166,10 +167,14 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
       offset_v->at(axis) += in_shape[axis];
     if (ends_v->at(axis) < 0)
       ends_v->at(axis) += in_shape[axis];
-    offset_v->at(axis) = steps_v->at(axis) > 0 ? std::clamp(offset_v->at(axis), 0L, in_shape[axis])
-                        : std::clamp(offset_v->at(axis), 0L, in_shape[axis] - 1);
-    ends_v->at(axis) = steps_v->at(axis) > 0 ? std::clamp(ends_v->at(axis), 0L, in_shape[axis])
-                    : std::clamp(ends_v->at(axis), -1L, in_shape[axis] - 1);
+    offset_v->at(axis) =
+        steps_v->at(axis) > 0
+            ? std::clamp(offset_v->at(axis), 0L, in_shape[axis])
+            : std::clamp(offset_v->at(axis), 0L, in_shape[axis] - 1);
+    ends_v->at(axis) =
+        steps_v->at(axis) > 0
+            ? std::clamp(ends_v->at(axis), 0L, in_shape[axis])
+            : std::clamp(ends_v->at(axis), -1L, in_shape[axis] - 1);
 
     out_shape[axis] =
         (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
@@ -180,8 +185,9 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
     if (offset_v->at(i) < 0) {
       offset_v->at(i) += in_shape[i];
     }
-    offset_v->at(i) = steps_v->at(i) > 0 ? std::clamp(offset_v->at(i), 0L, in_shape[i])
-                        : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
+    offset_v->at(i) = steps_v->at(i) > 0
+                          ? std::clamp(offset_v->at(i), 0L, in_shape[i])
+                          : std::clamp(offset_v->at(i), 0L, in_shape[i] - 1);
   }
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);
@@ -259,7 +265,7 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
   } else if (module::isBM1684XFamily() || module::isBM1690Family()) {
-    if((int)getRunMode(getOperation()) == 1) {
+    if ((int)getRunMode(getOperation()) == 1) {
       return failure();
     }
     const auto offset = module::getI64Array(getOffset());
@@ -270,18 +276,20 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       if (steps->at(1) != 1)
         return failure();
       // force (1x76725x4) -> (1x76725x1) step in global
-      if (num_dims > 2 && shape[1]>65535)
+      if (num_dims > 2 && shape[1] > 65535)
         return failure();
     }
     if (num_dims > 4) {
-      if(num_dims == 5){
+      if (num_dims == 5) {
         int64_t in_shape[5];
         int64_t out_shape[5];
         tpu_mlir::group_type_t group_type = GROUP_3D;
-        module::getNCDHW(getInput(), in_shape[0],in_shape[1],in_shape[2],in_shape[3], in_shape[4],group_type);
-        module::getNCDHW(getOutput(), out_shape[0],out_shape[1],out_shape[2],out_shape[3], out_shape[4], group_type);
-        for(int i=0; i<5; ++i){
-          if(in_shape[i]!=out_shape[i] && (i!=2)){
+        module::getNCDHW(getInput(), in_shape[0], in_shape[1], in_shape[2],
+                         in_shape[3], in_shape[4], group_type);
+        module::getNCDHW(getOutput(), out_shape[0], out_shape[1], out_shape[2],
+                         out_shape[3], out_shape[4], group_type);
+        for (int i = 0; i < 5; ++i) {
+          if (in_shape[i] != out_shape[i] && (i != 2)) {
             return failure();
           }
         }
@@ -371,28 +379,29 @@ mlir::Type tpu::SliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
 
-
-class SliceCastSwapPattern  : public OpRewriterPatternEx<tpu::SliceOp> {
-  public:
+class SliceCastSwapPattern : public OpRewriterPatternEx<tpu::SliceOp> {
+public:
   SliceCastSwapPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::SliceOp>(context,"SliceCastSwapPattern") {}
+      : OpRewriterPatternEx<tpu::SliceOp>(context, "SliceCastSwapPattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::SliceOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
-    auto input_op = dyn_cast_or_null<tpu::CastOp>(op.getInput().getDefiningOp());
-    if (!op.getResult().hasOneUse()){
+    auto input_op =
+        dyn_cast_or_null<tpu::CastOp>(op.getInput().getDefiningOp());
+    if (!op.getResult().hasOneUse()) {
       return failure();
     }
-    auto output_op = dyn_cast_or_null<tpu::CastOp>(*op.getResult().getUsers().begin());
-    if (!input_op || !output_op){
+    auto output_op =
+        dyn_cast_or_null<tpu::CastOp>(*op.getResult().getUsers().begin());
+    if (!input_op || !output_op) {
       return failure();
     }
     auto in_input = input_op.getInput();
     auto out_output = output_op.getOutput();
     auto in_stype = module::getStorageType(in_input);
     auto out_stype = module::getStorageType(out_output);
-    if (!in_stype.isInteger(32) ||!out_stype.isInteger(32)){
+    if (!in_stype.isInteger(32) || !out_stype.isInteger(32)) {
       return failure();
     }
 
@@ -402,14 +411,15 @@ class SliceCastSwapPattern  : public OpRewriterPatternEx<tpu::SliceOp> {
 
     op.getOutput().replaceAllUsesWith(input_op.getOutput());
 
-
     auto after_cast = output_op.getOutput();
     rewriter.setInsertionPointAfterValue(after_cast);
     auto slice_type = module::getTypeLike(after_cast, cast_shape);
     auto loc = output_op.getLoc();
     module::setLocSuffix(output_op, "_new");
-    auto new_slice_op = rewriter.create<tpu::SliceOp>(loc, slice_type,
-        ValueRange{after_cast, op->getOperand(1), op->getOperand(2), op->getOperand(3), op->getOperand(4)},
+    auto new_slice_op = rewriter.create<tpu::SliceOp>(
+        loc, slice_type,
+        ValueRange{after_cast, op->getOperand(1), op->getOperand(2),
+                   op->getOperand(3), op->getOperand(4)},
         op->getAttrs());
 
     module::setShape(new_slice_op.getOutput(), slice_out_shape);
@@ -418,11 +428,11 @@ class SliceCastSwapPattern  : public OpRewriterPatternEx<tpu::SliceOp> {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(tpu::SliceOp op) const override { return false;}
+  bool shouldPrint(tpu::SliceOp op) const override { return false; }
 };
 
 void tpu::SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                              MLIRContext *context) {
+                                               MLIRContext *context) {
   results.insert<SliceCastSwapPattern>(context);
 }
 

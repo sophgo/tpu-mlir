@@ -28,7 +28,8 @@ void ConcatTryLowering::Lowering(PatternRewriter &rewriter,
   auto shape = module::getShape(v);
   auto ctx = v.getContext();
   Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapePackOp>(op, new_type, op.getOperands(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapePackOp>(op, new_type, op.getOperands(),
+                                                attrs);
 }
 
 void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
@@ -36,7 +37,7 @@ void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ConcatOp>(rewriter, op);
 }
 void ConcatLowering::LoweringINT4(PatternRewriter &rewriter, top::ConcatOp op,
-                                   bool asymmetric) const {
+                                  bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -80,7 +81,7 @@ void ConcatLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void ConcatLowering::LoweringF8(PatternRewriter &rewriter,
-                                 top::ConcatOp concatOp) const {
+                                top::ConcatOp concatOp) const {
   // llvm_unreachable("FIXME: not implement");
   // pass regression temporarily , please implement f8 if possible
   LoweringF16(rewriter, concatOp);

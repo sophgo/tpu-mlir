@@ -172,12 +172,12 @@ size_t dynamic_layer::copy_tensors_to_buffer(void *buffer, const T *specs,
       void *buffer, const spec_type *, size_t n, bool feign);
 
 explicit_instanciate(dynamic_global_tensor_spec, OUTPUT)
-explicit_instanciate(dynamic_global_tensor_spec, INPUT)
-explicit_instanciate(dynamic_local_tensor_spec, INPUT)
-explicit_instanciate(dynamic_local_tensor_spec, OUTPUT)
+    explicit_instanciate(dynamic_global_tensor_spec, INPUT)
+        explicit_instanciate(dynamic_local_tensor_spec, INPUT)
+            explicit_instanciate(dynamic_local_tensor_spec, OUTPUT)
 
-size_t dynamic_layer::write_global_tensor_specs(void *buffer,
-                                                bool feign) {
+                size_t dynamic_layer::write_global_tensor_specs(void *buffer,
+                                                                bool feign) {
   auto u8_buffer = static_cast<uint8_t *>(buffer);
   auto input_specs = this->get_input_global_tensor_specs();
   u8_buffer += this->copy_tensors_to_buffer<INPUT>(
@@ -240,14 +240,14 @@ dynamic_layer::get_input_global_tensor_specs() {
 
 static void __dump_id_name_dict(Value v) {
   const char *need = getenv("NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA");
-  if (!need) return;
+  if (!need)
+    return;
   if (strcmp(need, "1") == 0) {
     const char *path = getenv("DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH");
     if (path) {
-      FILE* fp = fopen(path, "a");
-      fprintf(fp,
-        "%d:\"%s\",",
-        get_tensor_id(v), module::getName(v).str().c_str());
+      FILE *fp = fopen(path, "a");
+      fprintf(fp, "%d:\"%s\",", get_tensor_id(v),
+              module::getName(v).str().c_str());
       fclose(fp);
     }
   }
@@ -434,9 +434,9 @@ int32_t dynamic_layer::get_local_ir_length(ir_layer_info_t *ir_layer_info) {
   }
   if (auto tpuOp = dyn_cast<DynGlobalGenInterface>(op_)) {
     ir_layer_info->fw_layer_type = (FW_LAYER_TYPE_T)tpuOp.get_fw_type_bm1684();
-      if (tpuOp.get_fw_type_bm1684() == -1) {
-    llvm_unreachable("Dynamic Layer Type Error");
-  }
+    if (tpuOp.get_fw_type_bm1684() == -1) {
+      llvm_unreachable("Dynamic Layer Type Error");
+    }
   }
 
   return fw_ir_length;
@@ -458,8 +458,10 @@ uint32_t push_back_layer_global_tensor(
   }
 
   /*TODO process shape layer*/
-  ir_tensor_info.tensor_type =
-      module::isWeight(v) ? IR_TENSOR_TYPE_COEFF : module::isShapeRelatedOp(v) ? IR_TENSOR_TYPE_SHAPE : IR_TENSOR_TYPE_NEURON;
+  ir_tensor_info.tensor_type = module::isWeight(v) ? IR_TENSOR_TYPE_COEFF
+                               : module::isShapeRelatedOp(v)
+                                   ? IR_TENSOR_TYPE_SHAPE
+                                   : IR_TENSOR_TYPE_NEURON;
 
   ir_tensor_info.is_io_tensor = 0;
   if (is_layer_in) {

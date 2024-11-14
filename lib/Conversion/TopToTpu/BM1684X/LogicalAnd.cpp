@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 namespace bm1684x {
 static void LoweringLogicalAnd(PatternRewriter &rewriter, top::LogicalAndOp op,
-                              Type type) {
+                               Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -53,34 +53,40 @@ static void LoweringLogicalAnd(PatternRewriter &rewriter, top::LogicalAndOp op,
   return;
 }
 
-void LogicalAndLowering::LoweringF32(PatternRewriter &rewriter, top::LogicalAndOp op) const {
+void LogicalAndLowering::LoweringF32(PatternRewriter &rewriter,
+                                     top::LogicalAndOp op) const {
   // lowering_common_f32<tpu::LogicalAndOp>(rewriter, op);
-  LoweringLogicalAnd(rewriter,op,rewriter.getF32Type());
+  LoweringLogicalAnd(rewriter, op, rewriter.getF32Type());
 }
-void LogicalAndLowering::LoweringINT4(PatternRewriter &rewriter, top::LogicalAndOp op,
-                                   bool asymmetric) const {
+void LogicalAndLowering::LoweringINT4(PatternRewriter &rewriter,
+                                      top::LogicalAndOp op,
+                                      bool asymmetric) const {
   // LoweringINT8(rewriter, op, asymmetric);
   llvm_unreachable("Not Implemented");
 }
-void LogicalAndLowering::LoweringINT8(PatternRewriter &rewriter, top::LogicalAndOp op,
-                               bool asymmetric) const {
+void LogicalAndLowering::LoweringINT8(PatternRewriter &rewriter,
+                                      top::LogicalAndOp op,
+                                      bool asymmetric) const {
   // lowering_common_int8<tpu::LogicalAndOp>(rewriter, op, asymmetric);
   llvm_unreachable("Not Implemented");
 }
 
-void LogicalAndLowering::LoweringBF16(PatternRewriter &rewriter, top::LogicalAndOp op) const {
+void LogicalAndLowering::LoweringBF16(PatternRewriter &rewriter,
+                                      top::LogicalAndOp op) const {
   LoweringF32(rewriter, op);
 }
 
-void LogicalAndLowering::LoweringF16(PatternRewriter &rewriter, top::LogicalAndOp op) const {
+void LogicalAndLowering::LoweringF16(PatternRewriter &rewriter,
+                                     top::LogicalAndOp op) const {
   LoweringF32(rewriter, op);
 }
-void LogicalAndLowering::LoweringF8(PatternRewriter &rewriter, top::LogicalAndOp op) const {
+void LogicalAndLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::LogicalAndOp op) const {
   LoweringF32(rewriter, op);
 }
 void LogicalAndLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::LogicalAndOp op) const {
-    llvm_unreachable("Not Implemented");
+                                           top::LogicalAndOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 } // namespace bm1684x

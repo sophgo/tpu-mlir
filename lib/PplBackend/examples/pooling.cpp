@@ -13,9 +13,8 @@
 extern "C" {
 #endif
 
-
 void api_avgpool_global(void *param, size_t param_size, void *input_spec,
-                     void *output_spec, const char *chip, void *cmdid) {
+                        void *output_spec, const char *chip, void *cmdid) {
   pooling_common_spec_t *_param = (pooling_common_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
@@ -70,9 +69,8 @@ void api_avgpool_global(void *param, size_t param_size, void *input_spec,
   int ret = split_func(value);
   printf("block [c:%d, oh:%d] vs total[n:%d, c:%d, "
          "oh:%d]\n",
-         block_c, block_oh, in_spec->shape[0],
-         in_spec->shape[1], out_spec->shape[2]);
-
+         block_c, block_oh, in_spec->shape[0], in_spec->shape[1],
+         out_spec->shape[2]);
 
   if (ret != 0) {
     assert(0 && "tiling failed\n");

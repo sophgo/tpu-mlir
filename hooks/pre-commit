@@ -1,0 +1,16 @@
+#!/bin/bash
+
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|include|tools)/.*\.(cpp|h|hpp)$')
+
+if [ -n "$files" ]; then
+    echo "Running clang-format on staged files..."
+    clang-format -i $files
+    if ! git diff --quiet; then
+        echo "Warning: Some files were formatted. Please review the changes."
+        git add $files
+	exit 0
+    fi
+fi
+echo "Success: clang-format check ok"
+exit 0
+

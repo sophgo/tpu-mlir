@@ -40,21 +40,26 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
       findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
       fmax = std::max(fabs(fmax), fabs(fmin));
       bool ConstSign = (fmin < 0);
-      float fqmax = ConstSign ? 127 :255;
+      float fqmax = ConstSign ? 127 : 255;
       auto filter_type = input.getType().cast<RankedTensorType>();
-      auto new_type = RankedTensorType::get(filter_type.getShape(),rewriter.getIntegerType(8, ConstSign));
+      auto new_type = RankedTensorType::get(
+          filter_type.getShape(), rewriter.getIntegerType(8, ConstSign));
       in_scale = fmax / fqmax;
       if (ConstSign) {
         auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
-        std::transform(constF32->begin(), constF32->end(), constI8->begin(),
-                       [&](const float cf32) { return to_int8(cf32 / in_scale); });
-        auto new_filter = top::WeightOp::create(ConstOp, "i8", *constI8, new_type);
+        std::transform(
+            constF32->begin(), constF32->end(), constI8->begin(),
+            [&](const float cf32) { return to_int8(cf32 / in_scale); });
+        auto new_filter =
+            top::WeightOp::create(ConstOp, "i8", *constI8, new_type);
         operands.push_back(new_filter);
       } else {
         auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
-        std::transform(constF32->begin(), constF32->end(), constU8->begin(),
-                       [&](const float cf32) { return to_uint8(cf32 / in_scale); });
-        auto new_filter = top::WeightOp::create(ConstOp, "U8", *constU8, new_type);
+        std::transform(
+            constF32->begin(), constF32->end(), constU8->begin(),
+            [&](const float cf32) { return to_uint8(cf32 / in_scale); });
+        auto new_filter =
+            top::WeightOp::create(ConstOp, "U8", *constU8, new_type);
         operands.push_back(new_filter);
       }
     } else {

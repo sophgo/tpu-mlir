@@ -55,7 +55,6 @@ void SinLowering::LoweringF8(PatternRewriter &rewriter, top::SinOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
-
 void SinLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SinOp op) const {
   // UNREACHABLE_OP("Not Implemented", op);

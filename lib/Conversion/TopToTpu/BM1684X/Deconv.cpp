@@ -12,9 +12,10 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static Value CreateDeconvOp(PatternRewriter &rewriter, int64_t dims, Location loc,
-                          Type type, std::vector<Value> &operands,
-                          std::vector<NamedAttribute> &attrs) {
+static Value CreateDeconvOp(PatternRewriter &rewriter, int64_t dims,
+                            Location loc, Type type,
+                            std::vector<Value> &operands,
+                            std::vector<NamedAttribute> &attrs) {
   switch (dims) {
   case 1:
   case 2: {
@@ -47,8 +48,9 @@ void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
   bool with_bias = !module::isNone(deconvOp.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto newValue = CreateDeconvOp(rewriter, deconvOp.getKernelShape().size(), deconvOp->getLoc(),
-                               deconvOp.getOutput().getType(), operands, attrs);
+  auto newValue = CreateDeconvOp(
+      rewriter, deconvOp.getKernelShape().size(), deconvOp->getLoc(),
+      deconvOp.getOutput().getType(), operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
@@ -57,7 +59,7 @@ void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
 }
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
-  if(module::isMARS3()){
+  if (module::isMARS3()) {
     LoweringBF16(rewriter, op);
     return;
   }
@@ -168,7 +170,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto deconvType = RankedTensorType::get(module::getShape(op.getOutput()),
                                           rewriter.getI32Type());
   auto newValue =
-      CreateDeconvOp(rewriter, op.getKernelShape().size(), NameLoc::get(name), deconvType, operands, attrs);
+      CreateDeconvOp(rewriter, op.getKernelShape().size(), NameLoc::get(name),
+                     deconvType, operands, attrs);
 
   auto rqType = getQuantInt8Type(op.getOutput(), asymmetric);
 
@@ -179,8 +182,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
   if (output_int32) {
     // to int32, and then requant to int8
-    [[maybe_unused]]auto name_loc = NameLoc::get(rewriter.getStringAttr(deconv_name));
-
+    [[maybe_unused]] auto name_loc =
+        NameLoc::get(rewriter.getStringAttr(deconv_name));
   }
 
   int q_size = module::isBM1684X() ? 3 : 2;
@@ -207,7 +210,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       RankedTensorType::get({1, param.oc, 1, 1, q_size}, rewriter.getI32Type());
   auto new_quant_type2d =
       RankedTensorType::get({1, param.oc, 1, q_size}, rewriter.getI32Type());
-  auto new_quant_type = op.getKernelShape().size() == 3 ? new_quant_type1d : new_quant_type2d;
+  auto new_quant_type =
+      op.getKernelShape().size() == 3 ? new_quant_type1d : new_quant_type2d;
   auto new_quant =
       top::WeightOp::create(op, "quant_int32", *quant_int32, new_quant_type);
 
@@ -245,8 +249,8 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());
-  auto newValue =
-      CreateDeconvOp(rewriter, op.getKernelShape().size(), op->getLoc(), newType, operands, attrs);
+  auto newValue = CreateDeconvOp(rewriter, op.getKernelShape().size(),
+                                 op->getLoc(), newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 
@@ -271,13 +275,13 @@ void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.getOutput());
-  auto newValue =
-      CreateDeconvOp(rewriter, op.getKernelShape().size(), op->getLoc(), newType, operands, attrs);
+  auto newValue = CreateDeconvOp(rewriter, op.getKernelShape().size(),
+                                 op->getLoc(), newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 
 void DeconvLowering::LoweringF8(PatternRewriter &rewriter,
-                                 top::DeconvOp op) const {
+                                top::DeconvOp op) const {
   llvm_unreachable("FIXME: not implement");
 }
 
@@ -369,8 +373,8 @@ void DeconvLowering::LoweringQuantized(PatternRewriter &rewriter,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto dims = module::getShape(op.getInput()).size() - 2;
   if (out_i32) {
-    auto newValue =
-      CreateDeconvOp(rewriter, dims, op->getLoc(), op.getOutput().getType(), operands, attrs);
+    auto newValue = CreateDeconvOp(rewriter, dims, op->getLoc(),
+                                   op.getOutput().getType(), operands, attrs);
     rewriter.replaceOp(op, {newValue});
     return;
   }

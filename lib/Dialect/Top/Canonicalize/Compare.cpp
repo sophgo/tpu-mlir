@@ -19,7 +19,7 @@ struct CompareToCompareConst : public OpRewriterPatternEx<CompareOp> {
       : OpRewriterPatternEx<CompareOp>(context, "CompareToCompareConst") {}
 
   LogicalResult matchAndRewriteImpl(CompareOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     auto right_shape = op.getRhs().getType().dyn_cast<TensorType>().getShape();
     int right_elt_num = 1;
@@ -65,7 +65,7 @@ public:
       : OpRewriterPatternEx<CompareOp>(context, "CompareConstantFill") {}
 
   LogicalResult matchAndRewriteImpl(CompareOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     auto stype = module::getStorageType(op.getOutput());
     if (!stype.isF32()) {

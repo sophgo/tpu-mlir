@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 void MishLowering::LoweringINT8(PatternRewriter &rewriter, top::MishOp op,
-                               bool asymmetric) const {
+                                bool asymmetric) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     activate_f(my_mish_activate));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
@@ -21,11 +21,13 @@ void MishLowering::LoweringINT8(PatternRewriter &rewriter, top::MishOp op,
                                           ValueRange{op.getInput(), table});
 }
 
-void MishLowering::LoweringBF16(PatternRewriter &rewriter, top::MishOp op) const {
+void MishLowering::LoweringBF16(PatternRewriter &rewriter,
+                                top::MishOp op) const {
   Value table_weight, slope_weight;
   float range_start = -8, range_end = 8;
   createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
-                  range_end, activate_f(my_mish_activate), table_weight, slope_weight);
+                  range_end, activate_f(my_mish_activate), table_weight,
+                  slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -39,7 +41,8 @@ void MishLowering::LoweringBF16(PatternRewriter &rewriter, top::MishOp op) const
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
 }
 } // namespace cv18xx

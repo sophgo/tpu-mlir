@@ -6,18 +6,19 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Conversion/TopToTpu/ConvertTopToTpu.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Backend/Arch.h"
 #include <regex>
 
 namespace tpu_mlir {
 
-template <typename OpTy> static void BackwardOp(OpTy op) {
+template <typename OpTy>
+static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -36,7 +37,8 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy> static void ForwardOp(OpTy op) {
+template <typename OpTy>
+static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -73,10 +75,10 @@ template <typename OpTy>
 struct ForwardCalibartion : public OpRewriterPatternEx<OpTy> {
 public:
   ForwardCalibartion(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"ForwardCalibartion") {}
+      : OpRewriterPatternEx<OpTy>(context, "ForwardCalibartion") {}
 
-  mlir::LogicalResult matchAndRewriteImpl(OpTy op,
-                                          mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy op, mlir::PatternRewriter &rewriter) const override {
     if constexpr (std::is_same_v<OpTy, top::ReduceOp>) {
       std::string mode = op.getMode().str();
       if (mode != "ReduceMax" && mode != "ReduceMin") {
@@ -102,15 +104,15 @@ public:
     return success();
   }
 
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
 struct ForwardMulConst : public OpRewriterPatternEx<top::MulConstOp> {
-    ForwardMulConst(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::MulConstOp>(context,"ForwardMulConst") {}
+  ForwardMulConst(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::MulConstOp>(context, "ForwardMulConst") {}
 
   LogicalResult matchAndRewriteImpl(top::MulConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value in = op.getInput();
     Value out = op.getOutput();
     if (!module::isCalibratedType(in)) {
@@ -139,15 +141,15 @@ struct ForwardMulConst : public OpRewriterPatternEx<top::MulConstOp> {
     Forward(out);
     return success();
   }
-  bool shouldPrint(top::MulConstOp op) const override { return false;}
+  bool shouldPrint(top::MulConstOp op) const override { return false; }
 };
 
 struct ForwardArg : public OpRewriterPatternEx<top::ArgOp> {
   ForwardArg(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::ArgOp>(context,"ForwardArg") {}
+      : OpRewriterPatternEx<top::ArgOp>(context, "ForwardArg") {}
 
   LogicalResult matchAndRewriteImpl(top::ArgOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (module::isNone(op.getValues())) {
       return failure();
     }
@@ -170,18 +172,17 @@ struct ForwardArg : public OpRewriterPatternEx<top::ArgOp> {
     Forward(out);
     return success();
   }
-  bool shouldPrint(top::ArgOp op) const override { return false;}
+  bool shouldPrint(top::ArgOp op) const override { return false; }
 };
-
 
 template <typename OpTy>
 struct KeepSignPattern : public OpRewriterPatternEx<OpTy> {
 public:
   KeepSignPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"KeepSignPattern") {}
+      : OpRewriterPatternEx<OpTy>(context, "KeepSignPattern") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value in = op.getInput();
     Value out = op.getOutput();
     if (!module::isCalibratedType(in, out)) {
@@ -209,18 +210,17 @@ public:
     ForwardSign(out);
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
-
 
 template <typename OpTy>
 struct KeepMulSignPattern : public OpRewriterPatternEx<OpTy> {
 public:
   KeepMulSignPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"KeepMulSignPattern") {}
+      : OpRewriterPatternEx<OpTy>(context, "KeepMulSignPattern") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto num_inputs = op.getInputs().size();
     if (num_inputs != 2)
       return failure();
@@ -284,17 +284,16 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
-
 
 struct KeepAddSignPattern : public OpRewriterPatternEx<top::AddOp> {
 public:
   KeepAddSignPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::AddOp>(context,"KeepAddSignPattern") {}
+      : OpRewriterPatternEx<top::AddOp>(context, "KeepAddSignPattern") {}
 
   LogicalResult matchAndRewriteImpl(top::AddOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     bool is_sign = false;
     auto num_inputs = op.getInputs().size();
     auto coeffs = module::getF64Array(op.getCoeff(), num_inputs, 1.0);
@@ -328,18 +327,17 @@ public:
     Forward(out);
     return success();
   }
-  bool shouldPrint(top::AddOp op) const override { return false;}
+  bool shouldPrint(top::AddOp op) const override { return false; }
 };
 
-
 struct SetSubConstSignPattern : public OpRewriterPatternEx<top::SubConstOp> {
-  public:
-
-    SetSubConstSignPattern(mlir::MLIRContext *context)
-        : OpRewriterPatternEx<top::SubConstOp>(context,"SetSubConstSignPattern") {}
+public:
+  SetSubConstSignPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::SubConstOp>(context,
+                                             "SetSubConstSignPattern") {}
 
   LogicalResult matchAndRewriteImpl(top::SubConstOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value in = op.getInput();
     Value out = op.getOutput();
     if (!module::isCalibratedType(in) || !module::isCalibratedType(out)) {
@@ -364,16 +362,16 @@ struct SetSubConstSignPattern : public OpRewriterPatternEx<top::SubConstOp> {
     }
     return failure();
   }
-  bool shouldPrint(top::SubConstOp op) const override { return false;}
+  bool shouldPrint(top::SubConstOp op) const override { return false; }
 };
 
-struct SetSubSignPattern  : public OpRewriterPatternEx<top::SubOp> {
-  public:
+struct SetSubSignPattern : public OpRewriterPatternEx<top::SubOp> {
+public:
   SetSubSignPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::SubOp>(context,"SetSubSignPattern") {}
+      : OpRewriterPatternEx<top::SubOp>(context, "SetSubSignPattern") {}
 
   LogicalResult matchAndRewriteImpl(top::SubOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value out = op.getOutput();
     if (!module::isCalibratedType(out)) {
       return failure();
@@ -392,17 +390,17 @@ struct SetSubSignPattern  : public OpRewriterPatternEx<top::SubOp> {
       return failure();
     }
   }
-  bool shouldPrint(top::SubOp op) const override { return false;}
+  bool shouldPrint(top::SubOp op) const override { return false; }
 };
 
 template <typename OpTy, bool KeepMin = false>
 struct BackwardCalibartion : public OpRewriterPatternEx<OpTy> {
 public:
   BackwardCalibartion(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"BackwardCalibartion") {}
+      : OpRewriterPatternEx<OpTy>(context, "BackwardCalibartion") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
     Value out = op.getOutput();
     if (!module::isCalibratedType(out)) {
@@ -431,17 +429,17 @@ public:
     Backward(in);
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
 template <typename OpTy>
 struct ForwardTypePattern : public OpRewriterPatternEx<OpTy> {
 public:
- ForwardTypePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"ForwardTypePattern") {}
+  ForwardTypePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context, "ForwardTypePattern") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (module::isCV18xx()) {
       // for case input -> reshape -> anyOp
       //               |___anyOp
@@ -463,15 +461,14 @@ public:
     out.setType(new_type);
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
-
 
 template <typename OpTy>
 struct ForwardInt32TypePattern : public OpRewriterPatternEx<OpTy> {
 public:
   ForwardInt32TypePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"ForwardInt32TypePattern") {}
+      : OpRewriterPatternEx<OpTy>(context, "ForwardInt32TypePattern") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
                                     PatternRewriter &rewriter) const override {
@@ -491,17 +488,17 @@ public:
     out.setType(new_type);
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
 // to make compare inputs have the same min max
-struct CompareCalibartion  : public OpRewriterPatternEx<top::CompareOp> {
-  public:
+struct CompareCalibartion : public OpRewriterPatternEx<top::CompareOp> {
+public:
   CompareCalibartion(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::CompareOp>(context,"CompareCalibartion") {}
+      : OpRewriterPatternEx<top::CompareOp>(context, "CompareCalibartion") {}
 
   LogicalResult matchAndRewriteImpl(top::CompareOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value l = op.getLhs();
     Value r = op.getRhs();
     if (false == module::isCalibratedType(l) ||
@@ -524,14 +521,14 @@ struct CompareCalibartion  : public OpRewriterPatternEx<top::CompareOp> {
     r.setType(new_rtype);
     return success();
   }
-  bool shouldPrint(top::CompareOp op) const override { return false;}
+  bool shouldPrint(top::CompareOp op) const override { return false; }
 };
 
 template <typename OpTy>
-struct  BackwardMutiInSingleOut : public OpRewriterPatternEx<OpTy> {
+struct BackwardMutiInSingleOut : public OpRewriterPatternEx<OpTy> {
 public:
-   BackwardMutiInSingleOut(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"BackwardMutiInSingleOut") {}
+  BackwardMutiInSingleOut(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context, "BackwardMutiInSingleOut") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
                                     PatternRewriter &rewriter) const override {
@@ -597,15 +594,14 @@ public:
     }
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
-
 template <typename OpTy>
-struct  BackwardAddThToMuls : public OpRewriterPatternEx<OpTy> {
+struct BackwardAddThToMuls : public OpRewriterPatternEx<OpTy> {
 public:
-   BackwardAddThToMuls(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"BackwardAddThToMuls") {}
+  BackwardAddThToMuls(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context, "BackwardAddThToMuls") {}
 
   LogicalResult matchAndRewriteImpl(OpTy op,
                                     PatternRewriter &rewriter) const override {
@@ -636,17 +632,16 @@ public:
     }
     return success();
   }
-  bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
-
-struct SelectiveWhere  : public OpRewriterPatternEx<top::WhereOp> {
-  public:
+struct SelectiveWhere : public OpRewriterPatternEx<top::WhereOp> {
+public:
   SelectiveWhere(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::WhereOp>(context,"SelectiveWhere") {}
+      : OpRewriterPatternEx<top::WhereOp>(context, "SelectiveWhere") {}
 
   LogicalResult matchAndRewriteImpl(top::WhereOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value out = op.getOutput();
     if (!module::isCalibratedType(out)) {
       return failure();
@@ -731,17 +726,18 @@ struct SelectiveWhere  : public OpRewriterPatternEx<top::WhereOp> {
       }
     }
     if (changed)
-        return success();
+      return success();
     else
-        return failure();
+      return failure();
   }
-  bool shouldPrint(top::WhereOp op) const override { return false;}
+  bool shouldPrint(top::WhereOp op) const override { return false; }
 };
 
 struct SelectiveMaskedFill : public OpRewriterPatternEx<top::MaskedFillOp> {
 public:
   SelectiveMaskedFill(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::MaskedFillOp>(context,"SelectiveMaskedFill") {}
+      : OpRewriterPatternEx<top::MaskedFillOp>(context, "SelectiveMaskedFill") {
+  }
 
   LogicalResult matchAndRewriteImpl(top::MaskedFillOp op,
                                     PatternRewriter &rewriter) const override {
@@ -815,13 +811,13 @@ public:
     else
       return failure();
   }
-  bool shouldPrint(top::MaskedFillOp op) const override { return false;}
+  bool shouldPrint(top::MaskedFillOp op) const override { return false; }
 };
 
 struct CastInputCV18xxPattern : public OpRewriterPatternEx<tpu::CastOp> {
 public:
   CastInputCV18xxPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::CastOp>(context,"CastInputCV18xxPattern") {}
+      : OpRewriterPatternEx<tpu::CastOp>(context, "CastInputCV18xxPattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::CastOp op,
                                     PatternRewriter &rewriter) const override {
@@ -849,7 +845,7 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(tpu::CastOp op) const override { return false;}
+  bool shouldPrint(tpu::CastOp op) const override { return false; }
 };
 
 /**
@@ -857,10 +853,10 @@ public:
  */
 
 template <typename OpTy>
-struct  TryInsertTileBinaryPattern : public OpRewriterPatternEx<OpTy> {
+struct TryInsertTileBinaryPattern : public OpRewriterPatternEx<OpTy> {
 public:
-   TryInsertTileBinaryPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<OpTy>(context,"TryInsertTileBinaryPattern") {}
+  TryInsertTileBinaryPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context, "TryInsertTileBinaryPattern") {}
 
   bool can_be_merged(int64_t a1, int64_t a2, int64_t b1, int64_t b2) const {
     // case 0: both dims are same --- always true
@@ -955,7 +951,7 @@ public:
   }
 
   LogicalResult matchAndRewriteImpl(OpTy op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     int max_allow_dim_backend = 4;
     Value out = op.getOutput();
     if (isa<ReturnOp>(op))
@@ -985,13 +981,14 @@ public:
     }
     return failure();
   }
-    bool shouldPrint(OpTy opTy) const override { return false;}
+  bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
-struct TryInsertTileMatMulPattern  : public OpRewriterPatternEx<top::MatMulOp> {
+struct TryInsertTileMatMulPattern : public OpRewriterPatternEx<top::MatMulOp> {
 public:
   TryInsertTileMatMulPattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::MatMulOp>(context,"TryInsertTileMatMulPattern") {}
+      : OpRewriterPatternEx<top::MatMulOp>(context,
+                                           "TryInsertTileMatMulPattern") {}
 
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
@@ -1027,17 +1024,18 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(top::MatMulOp op) const override { return false;}
+  bool shouldPrint(top::MatMulOp op) const override { return false; }
 };
 
 // prepare for W4A16 MatMul
-struct W4A16MatMulPreparePattern  : public OpRewriterPatternEx<top::MatMulOp> {
-  public:
+struct W4A16MatMulPreparePattern : public OpRewriterPatternEx<top::MatMulOp> {
+public:
   W4A16MatMulPreparePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<top::MatMulOp>(context,"W4A16MatMulPreparePattern") {}
+      : OpRewriterPatternEx<top::MatMulOp>(context,
+                                           "W4A16MatMulPreparePattern") {}
 
   LogicalResult matchAndRewriteImpl(top::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto qmode = getOpQuantMode(op);
     if (!module::isWeight(op.getRight())) {
       return failure();
@@ -1131,7 +1129,7 @@ struct W4A16MatMulPreparePattern  : public OpRewriterPatternEx<top::MatMulOp> {
     LoweringConfig::quantize_map[o_name.str()] = target_mode;
     return success();
   }
-  bool shouldPrint(top::MatMulOp op) const override { return false;}
+  bool shouldPrint(top::MatMulOp op) const override { return false; }
 };
 
 // cast(u8->fp32) + active -> lut(u8->fp32)
@@ -1139,10 +1137,10 @@ struct W4A16MatMulPreparePattern  : public OpRewriterPatternEx<top::MatMulOp> {
 struct CastActivePattern : public OpRewriterPatternEx<tpu::ActiveOp> {
 public:
   CastActivePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ActiveOp>(context,"CastActivePattern") {}
+      : OpRewriterPatternEx<tpu::ActiveOp>(context, "CastActivePattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ActiveOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto in_op = op.getInput().getDefiningOp();
     if (!isa<tpu::CastOp>(in_op) || !in_op->hasOneUse()) {
       return failure();
@@ -1177,7 +1175,7 @@ public:
                                             ValueRange{in, table});
     return success();
   }
-  bool shouldPrint(tpu::ActiveOp op) const override { return false;}
+  bool shouldPrint(tpu::ActiveOp op) const override { return false; }
 };
 
 void ConvertTopToTpu::runOnOperation() {
@@ -1258,7 +1256,8 @@ void ConvertTopToTpu::runOnOperation() {
        module::getMode() == module::Mode::W8BF16 ||
        module::getMode() == module::Mode::W4BF16 ||
        module::getMode() == module::Mode::F16) &&
-       module::isState(module::State::TOP_CALIBRATED)) { // if calibration table presents
+      module::isState(
+          module::State::TOP_CALIBRATED)) { // if calibration table presents
     kv_cache_process();
   }
 
@@ -1305,9 +1304,12 @@ void ConvertTopToTpu::runOnOperation() {
   // adjust reshape
   patterns.clear();
   patterns.add<
-      ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>, ForwardTypePattern<tpu::SqueezeOp>,
-      ForwardTypePattern<tpu::TileOp>, ForwardInt32TypePattern<tpu::SqueezeOp>,
-      ForwardInt32TypePattern<tpu::SliceOp>, ForwardInt32TypePattern<tpu::PermuteOp>, ForwardInt32TypePattern<tpu::ShapeReduceOp>>(ctx_);
+      ForwardTypePattern<tpu::ReshapeOp>, ForwardTypePattern<tpu::UnsqueezeOp>,
+      ForwardTypePattern<tpu::SqueezeOp>, ForwardTypePattern<tpu::TileOp>,
+      ForwardInt32TypePattern<tpu::SqueezeOp>,
+      ForwardInt32TypePattern<tpu::SliceOp>,
+      ForwardInt32TypePattern<tpu::PermuteOp>,
+      ForwardInt32TypePattern<tpu::ShapeReduceOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
   if (module::isBM1684XFamily()) {
@@ -1673,7 +1675,8 @@ bool ConvertTopToTpu::kv_cache_mix_precision() {
                 module::getName(pre_reshapeOp.getOperation()).str()) ==
             LoweringConfig::quantize_map.end()) {
           LoweringConfig::quantize_map.insert(
-              {module::getName(pre_reshapeOp.getOperation()).str(), module::Mode::INT8});
+              {module::getName(pre_reshapeOp.getOperation()).str(),
+               module::Mode::INT8});
         }
       }
     }
@@ -1681,9 +1684,7 @@ bool ConvertTopToTpu::kv_cache_mix_precision() {
   return false;
 }
 
-void ConvertTopToTpu::kv_cache_process() {
-  kv_cache_mix_precision();
-}
+void ConvertTopToTpu::kv_cache_process() { kv_cache_mix_precision(); }
 
 Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
                                Operation *user_op) {

@@ -9,8 +9,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/CustomLayer.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
 
@@ -24,7 +24,7 @@ namespace bm168x {
 class GRUGlobalBuffer : public OpRewriterPatternEx<tpu::GRUOp> {
 public:
   GRUGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::GRUOp>(context,"GRUGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::GRUOp>(context, "GRUGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::GRUOp GRUOp,
                                     PatternRewriter &rewriter) const override {
@@ -42,14 +42,14 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::GRUOp GRUOp) const override { return false;}
+  bool shouldPrint(tpu::GRUOp GRUOp) const override { return false; }
 };
-
 
 class FAttentionGlobalBuffer : public OpRewriterPatternEx<tpu::FAttentionOp> {
 public:
   FAttentionGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::FAttentionOp>(context,"FAttentionGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::FAttentionOp>(context,
+                                               "FAttentionGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::FAttentionOp op,
                                     PatternRewriter &rewriter) const override {
@@ -68,13 +68,15 @@ public:
     // FaOp.getBufferMutable().assign(buffer);
     return success();
   }
-  bool shouldPrint(tpu::FAttentionOp op) const override { return false;}
+  bool shouldPrint(tpu::FAttentionOp op) const override { return false; }
 };
 
-class GatherElementsGlobalBuffer : public OpRewriterPatternEx<tpu::GatherElementsOp> {
+class GatherElementsGlobalBuffer
+    : public OpRewriterPatternEx<tpu::GatherElementsOp> {
 public:
   GatherElementsGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::GatherElementsOp>(context,"GatherElementsGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::GatherElementsOp>(
+            context, "GatherElementsGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::GatherElementsOp GatherElementsOp,
                                     PatternRewriter &rewriter) const override {
@@ -90,13 +92,15 @@ public:
     GatherElementsOp.setOperand(3, buffer);
     return success();
   }
-  bool shouldPrint(tpu::GatherElementsOp GatherElementsOp) const override { return false;}
+  bool shouldPrint(tpu::GatherElementsOp GatherElementsOp) const override {
+    return false;
+  }
 };
 
 class LSTMGlobalBuffer : public OpRewriterPatternEx<tpu::LSTMOp> {
 public:
   LSTMGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::LSTMOp>(context,"LSTMGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::LSTMOp>(context, "LSTMGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::LSTMOp lstmOp,
                                     PatternRewriter &rewriter) const override {
@@ -115,13 +119,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::LSTMOp lstmOp) const override { return false;}
+  bool shouldPrint(tpu::LSTMOp lstmOp) const override { return false; }
 };
 
 class ReduceGlobalBuffer : public OpRewriterPatternEx<tpu::ReduceOp> {
 public:
   ReduceGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ReduceOp>(context,"ReduceGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::ReduceOp>(context, "ReduceGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ReduceOp reduceOp,
                                     PatternRewriter &rewriter) const override {
@@ -215,14 +219,13 @@ public:
 
     return success();
   }
-  bool shouldPrint(tpu::ReduceOp reduceOp) const override { return false;}
+  bool shouldPrint(tpu::ReduceOp reduceOp) const override { return false; }
 };
-
 
 class SliceGlobalBuffer : public OpRewriterPatternEx<tpu::SliceOp> {
 public:
   SliceGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::SliceOp>(context,"SliceGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::SliceOp>(context, "SliceGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::SliceOp sliceOp,
                                     PatternRewriter &rewriter) const override {
@@ -274,14 +277,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::SliceOp sliceOp) const override { return false;}
+  bool shouldPrint(tpu::SliceOp sliceOp) const override { return false; }
 };
-
 
 class ReshapeGlobalBuffer : public OpRewriterPatternEx<tpu::ReshapeOp> {
 public:
   ReshapeGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ReshapeOp>(context,"ReshapeGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::ReshapeOp>(context, "ReshapeGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ReshapeOp reshapeOp,
                                     PatternRewriter &rewriter) const override {
@@ -319,13 +321,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::ReshapeOp reshapeOp) const override { return false;}
+  bool shouldPrint(tpu::ReshapeOp reshapeOp) const override { return false; }
 };
 
 class SoftmaxGlobalBuffer : public OpRewriterPatternEx<tpu::SoftmaxOp> {
 public:
   SoftmaxGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::SoftmaxOp>(context,"SoftmaxGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::SoftmaxOp>(context, "SoftmaxGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp softmaxOp,
                                     PatternRewriter &rewriter) const override {
@@ -350,13 +352,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::SoftmaxOp softmaxOp) const override { return false;}
+  bool shouldPrint(tpu::SoftmaxOp softmaxOp) const override { return false; }
 };
 
 class PermuteGlobalBuffer : public OpRewriterPatternEx<tpu::PermuteOp> {
 public:
- PermuteGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::PermuteOp>(context,"PermuteGlobalBuffer") {}
+  PermuteGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::PermuteOp>(context, "PermuteGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::PermuteOp permuteOp,
                                     PatternRewriter &rewriter) const override {
@@ -433,13 +435,13 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(tpu::PermuteOp permuteOp) const override { return false;}
+  bool shouldPrint(tpu::PermuteOp permuteOp) const override { return false; }
 };
 
 class NonZeroGlobalBuffer : public OpRewriterPatternEx<tpu::NonZeroOp> {
 public:
- NonZeroGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::NonZeroOp>(context,"NonZeroGlobalBuffer") {}
+  NonZeroGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::NonZeroOp>(context, "NonZeroGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::NonZeroOp op,
                                     PatternRewriter &rewriter) const override {
@@ -456,13 +458,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::NonZeroOp op) const override { return false;}
+  bool shouldPrint(tpu::NonZeroOp op) const override { return false; }
 };
 
 class InterpGlobalBuffer : public OpRewriterPatternEx<tpu::InterpOp> {
 public:
- InterpGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::InterpOp>(context,"InterpGlobalBuffer") {}
+  InterpGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::InterpOp>(context, "InterpGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::InterpOp interpOp,
                                     PatternRewriter &rewriter) const override {
@@ -492,14 +494,13 @@ public:
 
     return failure();
   }
-  bool shouldPrint(tpu::InterpOp interpOp) const override { return false;}
+  bool shouldPrint(tpu::InterpOp interpOp) const override { return false; }
 };
-
 
 class MatMulGlobalBuffer : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
- MatMulGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context,"MatMulGlobalBuffer") {}
+  MatMulGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matmulOp,
                                     PatternRewriter &rewriter) const override {
@@ -508,7 +509,7 @@ public:
       return failure();
     }
 
-    if(!supportMultiCore(matmulOp)) {
+    if (!supportMultiCore(matmulOp)) {
       return failure();
     }
 
@@ -531,37 +532,41 @@ public:
       spec.izp_const_val = p.input_zp;
       if (module::isUniformQuantized(matmulOp.getOutput())) {
         auto rshift_v = module::getI64Array(matmulOp.getRshifts(), 1, 0);
-        auto multiplier_v = module::getI64Array(matmulOp.getMultipliers(), 1, 1);
+        auto multiplier_v =
+            module::getI64Array(matmulOp.getMultipliers(), 1, 1);
         assert(rshift_v->size() == 1);
         assert(multiplier_v->size() == 1);
         spec.requant_mode = static_cast<int>(matmulOp.getQuantMode());
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
-        auto output_type = module::getUniformQuantizedType(matmulOp.getOutput());
+        auto output_type =
+            module::getUniformQuantizedType(matmulOp.getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
       }
     }
     auto input_spec = BM168x::get_input_spec(matmulOp);
     auto output_spec = BM168x::get_output_spec(matmulOp);
-    BM168x::call_global_func("backend_api_fc_multi_core_global", &spec, sizeof(spec),
-                             input_spec->data(), output_spec->data());
+    BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
+                             sizeof(spec), input_spec->data(),
+                             output_spec->data());
     if (buffer_size > 0) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
-      auto buffer = tpu::BufferOp::create(matmulOp, buffer_type, tpu::BufferType::L2);
+      auto buffer =
+          tpu::BufferOp::create(matmulOp, buffer_type, tpu::BufferType::L2);
       matmulOp.setOperand(4, buffer);
       return success();
     }
     return failure();
   }
-  bool shouldPrint(tpu::MatMulOp matmulOp) const override { return false;}
+  bool shouldPrint(tpu::MatMulOp matmulOp) const override { return false; }
 };
 
 class GridSamplerBuffer : public OpRewriterPatternEx<tpu::GridSamplerOp> {
 public:
- GridSamplerBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::GridSamplerOp>(context,"GridSamplerBuffer") {}
+  GridSamplerBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GridSamplerOp>(context, "GridSamplerBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::GridSamplerOp gridSamplerOp,
                                     PatternRewriter &rewriter) const override {
@@ -578,9 +583,15 @@ public:
     int f32_size = 4;
     int64_t buffer_size;
     if (dim == 4) {
-      buffer_size = output_shape[0] * align_up(output_shape[2] * output_shape[3], Arch::NPU_NUM) * (2 * f32_size + 4 * coeff_dtype_size);
+      buffer_size = output_shape[0] *
+                    align_up(output_shape[2] * output_shape[3], Arch::NPU_NUM) *
+                    (2 * f32_size + 4 * coeff_dtype_size);
     } else if (dim == 5) {
-      buffer_size = output_shape[0] * align_up(output_shape[2] * output_shape[3] * output_shape[4], Arch::NPU_NUM) * (3 * f32_size + 8 * coeff_dtype_size);
+      buffer_size =
+          output_shape[0] *
+          align_up(output_shape[2] * output_shape[3] * output_shape[4],
+                   Arch::NPU_NUM) *
+          (3 * f32_size + 8 * coeff_dtype_size);
     } else {
       return failure();
     }
@@ -589,13 +600,17 @@ public:
     gridSamplerOp.setOperand(gridSamplerOp.getNumOperands() - 1, buffer);
     return success();
   }
-  bool shouldPrint(tpu::GridSamplerOp gridSamplerOp) const override { return false;}
+  bool shouldPrint(tpu::GridSamplerOp gridSamplerOp) const override {
+    return false;
+  }
 };
 
-class DeformGatherGlobalBuffer : public OpRewriterPatternEx<tpu::DeformGatherOp> {
+class DeformGatherGlobalBuffer
+    : public OpRewriterPatternEx<tpu::DeformGatherOp> {
 public:
- DeformGatherGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::DeformGatherOp>(context,"DeformGatherGlobalBuffer") {}
+  DeformGatherGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::DeformGatherOp>(context,
+                                                 "DeformGatherGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::DeformGatherOp Op,
                                     PatternRewriter &rewriter) const override {
@@ -624,13 +639,14 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::DeformGatherOp Op) const override { return false;}
+  bool shouldPrint(tpu::DeformGatherOp Op) const override { return false; }
 };
 
 class Space2BatchGlobalBuffer : public OpRewriterPatternEx<tpu::Space2BatchOp> {
 public:
- Space2BatchGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::Space2BatchOp>(context,"Space2BatchGlobalBuffer") {}
+  Space2BatchGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Space2BatchOp>(context,
+                                                "Space2BatchGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::Space2BatchOp space2batchOp,
                                     PatternRewriter &rewriter) const override {
@@ -697,13 +713,16 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(tpu::Space2BatchOp space2batchOp) const override { return false;}
+  bool shouldPrint(tpu::Space2BatchOp space2batchOp) const override {
+    return false;
+  }
 };
 
 class Batch2SpaceGlobalBuffer : public OpRewriterPatternEx<tpu::Batch2SpaceOp> {
 public:
- Batch2SpaceGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::Batch2SpaceOp>(context,"Batch2SpaceGlobalBuffer") {}
+  Batch2SpaceGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::Batch2SpaceOp>(context,
+                                                "Batch2SpaceGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::Batch2SpaceOp batch2spaceOp,
                                     PatternRewriter &rewriter) const override {
@@ -768,14 +787,15 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(tpu::Batch2SpaceOp batch2spaceOp) const override { return false;}
+  bool shouldPrint(tpu::Batch2SpaceOp batch2spaceOp) const override {
+    return false;
+  }
 };
-
 
 class TileGlobalBuffer : public OpRewriterPatternEx<tpu::TileOp> {
 public:
- TileGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::TileOp>(context,"TileGlobalBuffer") {}
+  TileGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::TileOp>(context, "TileGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::TileOp TileOp,
                                     PatternRewriter &rewriter) const override {
@@ -823,14 +843,13 @@ public:
     }
     return failure();
   }
-  bool shouldPrint(tpu::TileOp TileOp) const override { return false;}
+  bool shouldPrint(tpu::TileOp TileOp) const override { return false; }
 };
-
 
 class IndexPutGlobalBuffer : public OpRewriterPatternEx<tpu::IndexPutOp> {
 public:
- IndexPutGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::IndexPutOp>(context,"IndexPutGlobalBuffer") {}
+  IndexPutGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::IndexPutOp>(context, "IndexPutGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::IndexPutOp IndexPutOp,
                                     PatternRewriter &rewriter) const override {
@@ -853,14 +872,13 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::IndexPutOp IndexPutOp) const override { return false;}
+  bool shouldPrint(tpu::IndexPutOp IndexPutOp) const override { return false; }
 };
-
 
 class PadGlobalBuffer : public OpRewriterPatternEx<tpu::PadOp> {
 public:
- PadGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::PadOp>(context,"PadGlobalBuffer") {}
+  PadGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::PadOp>(context, "PadGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::PadOp padOp,
                                     PatternRewriter &rewriter) const override {
@@ -892,7 +910,7 @@ public:
       return failure();
     }
   }
-  bool shouldPrint(tpu::PadOp padOp) const override { return false;}
+  bool shouldPrint(tpu::PadOp padOp) const override { return false; }
 };
 
 class GatherGlobalBuffer : public OpRewriterPatternEx<tpu::GatherOp> {
@@ -920,7 +938,7 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::GatherOp GatherOp) const override { return false;}
+  bool shouldPrint(tpu::GatherOp GatherOp) const override { return false; }
 };
 
 class Pool3DGlobalBuffer : public OpRewriterPatternEx<tpu::Pool3DOp> {
@@ -949,14 +967,15 @@ public:
     });
     return success();
   }
-  bool shouldPrint(tpu::Pool3DOp Pool3DOp) const override { return false;}
+  bool shouldPrint(tpu::Pool3DOp Pool3DOp) const override { return false; }
 };
 
-
-class ScatterElementsGlobalBuffer : public OpRewriterPatternEx<tpu::ScatterElementsOp> {
+class ScatterElementsGlobalBuffer
+    : public OpRewriterPatternEx<tpu::ScatterElementsOp> {
 public:
   ScatterElementsGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ScatterElementsOp>(context, "ScatterElementsGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::ScatterElementsOp>(
+            context, "ScatterElementsGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ScatterElementsOp ScatterElementsOp,
                                     PatternRewriter &rewriter) const override {
@@ -972,14 +991,16 @@ public:
     ScatterElementsOp.setOperand(4, buffer);
     return success();
   }
-  bool shouldPrint(tpu::ScatterElementsOp ScatterElementsOp) const override { return false;}
+  bool shouldPrint(tpu::ScatterElementsOp ScatterElementsOp) const override {
+    return false;
+  }
 };
-
 
 class ScatterNDGlobalBuffer : public OpRewriterPatternEx<tpu::ScatterNDOp> {
 public:
   ScatterNDGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ScatterNDOp>(context, "ScatterNDGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::ScatterNDOp>(context,
+                                              "ScatterNDGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ScatterNDOp ScatterNDOp,
                                     PatternRewriter &rewriter) const override {
@@ -997,9 +1018,10 @@ public:
     ScatterNDOp.setOperand(3, buffer);
     return success();
   }
-  bool shouldPrint(tpu::ScatterNDOp ScatterNDOp) const override { return false;}
+  bool shouldPrint(tpu::ScatterNDOp ScatterNDOp) const override {
+    return false;
+  }
 };
-
 
 class NmsGlobalBuffer : public OpRewriterPatternEx<tpu::NmsOp> {
 public:
@@ -1024,14 +1046,16 @@ public:
     NmsOp.setOperand(NmsOp.getNumOperands() - 1, buffer);
     return success();
   }
-  bool shouldPrint(tpu::NmsOp NmsOp) const override { return false;}
+  bool shouldPrint(tpu::NmsOp NmsOp) const override { return false; }
 };
 
-
-class YoloDetectionGlobalBuffer : public OpRewriterPatternEx<tpu::YoloDetectionOp> {
+class YoloDetectionGlobalBuffer
+    : public OpRewriterPatternEx<tpu::YoloDetectionOp> {
 public:
   YoloDetectionGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::YoloDetectionOp>(context, "YoloDetectionGlobalBuffer") {}
+      : OpRewriterPatternEx<tpu::YoloDetectionOp>(context,
+                                                  "YoloDetectionGlobalBuffer") {
+  }
 
   LogicalResult matchAndRewriteImpl(tpu::YoloDetectionOp yoloDetectionOp,
                                     PatternRewriter &rewriter) const override {
@@ -1054,14 +1078,17 @@ public:
     yoloDetectionOp.setOperand(yoloDetectionOp.getNumOperands() - 1, buffer);
     return success();
   }
-  bool shouldPrint(tpu::YoloDetectionOp yoloDetectionOp) const override { return false;}
+  bool shouldPrint(tpu::YoloDetectionOp yoloDetectionOp) const override {
+    return false;
+  }
 };
 
-
-class  DetectionOutputGlobalBuffer : public OpRewriterPatternEx<tpu::DetectionOutputOp> {
+class DetectionOutputGlobalBuffer
+    : public OpRewriterPatternEx<tpu::DetectionOutputOp> {
 public:
-   DetectionOutputGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::DetectionOutputOp>(context, "DetectionOutputGlobalBuffer") {}
+  DetectionOutputGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::DetectionOutputOp>(
+            context, "DetectionOutputGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::DetectionOutputOp detectionOutputOp,
                                     PatternRewriter &rewriter) const override {
@@ -1083,13 +1110,14 @@ public:
                                  buffer);
     return success();
   }
-  bool shouldPrint(tpu::DetectionOutputOp detectionOutputOp) const override { return false;}
+  bool shouldPrint(tpu::DetectionOutputOp detectionOutputOp) const override {
+    return false;
+  }
 };
 
-
-class  TopKGlobalBuffer : public OpRewriterPatternEx<tpu::TopKOp> {
+class TopKGlobalBuffer : public OpRewriterPatternEx<tpu::TopKOp> {
 public:
-   TopKGlobalBuffer(mlir::MLIRContext *context)
+  TopKGlobalBuffer(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::TopKOp>(context, "TopKGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::TopKOp TopKOp,
@@ -1121,13 +1149,12 @@ public:
     TopKOp.setOperand(TopKOp.getNumOperands() - 1, idx_buf_op);
     return success();
   }
-  bool shouldPrint(tpu::TopKOp TopKOp) const override { return false;}
+  bool shouldPrint(tpu::TopKOp TopKOp) const override { return false; }
 };
-
 
 class SortGlobalBuffer : public OpRewriterPatternEx<tpu::SortOp> {
 public:
-   SortGlobalBuffer(mlir::MLIRContext *context)
+  SortGlobalBuffer(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::SortOp>(context, "SortGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::SortOp op,
@@ -1144,12 +1171,12 @@ public:
     param.descending = op.getDescending();
     param.is_argsort = module::isNone(op.getValues());
     int64_t buffer_size = BM168x::call_global_bfsz_func(
-      "backend_api_sort_per_dim_global_bfsz",
-      &param, sizeof(param),
-      input_spec->data(), output_spec->data());
+        "backend_api_sort_per_dim_global_bfsz", &param, sizeof(param),
+        input_spec->data(), output_spec->data());
     if (buffer_size) {
       std::vector<int64_t> buffer_shape = {buffer_size};
-      auto buffer_type = RankedTensorType::get(buffer_shape, rewriter.getI8Type());
+      auto buffer_type =
+          RankedTensorType::get(buffer_shape, rewriter.getI8Type());
       OpBuilder builder(op->getContext());
       builder.setInsertionPoint(op);
       auto loc = module::getLocLike(op, "buffer");
@@ -1160,12 +1187,12 @@ public:
       return failure();
     }
   }
-  bool shouldPrint(tpu::SortOp op) const override { return false;}
+  bool shouldPrint(tpu::SortOp op) const override { return false; }
 };
 
 class CustomGlobalBuffer : public OpRewriterPatternEx<tpu::CustomOp> {
 public:
-   CustomGlobalBuffer(mlir::MLIRContext *context)
+  CustomGlobalBuffer(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::CustomOp>(context, "CustomGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::CustomOp customOp,
@@ -1185,12 +1212,13 @@ public:
     values.push_back({0});
     customOpProcessParam(params, values);
     int64_t buffer_size = BM168x::call_global_bfsz_custom_func(
-                            api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
-                            input_spec->data(), output_spec->data());
+        api_name.c_str(), values.data(), values.size() * sizeof(custom_param_t),
+        input_spec->data(), output_spec->data());
 
     if (buffer_size > 0) {
       std::vector<int64_t> buffer_shape = {buffer_size};
-      auto buffer_type = RankedTensorType::get(buffer_shape, rewriter.getI8Type());
+      auto buffer_type =
+          RankedTensorType::get(buffer_shape, rewriter.getI8Type());
       OpBuilder builder(customOp->getContext());
       builder.setInsertionPoint(customOp);
       auto loc = module::getLocLike(customOp, "buffer");
@@ -1201,13 +1229,12 @@ public:
       return failure();
     }
   }
-  bool shouldPrint(tpu::CustomOp customOp) const override { return false;}
+  bool shouldPrint(tpu::CustomOp customOp) const override { return false; }
 };
-
 
 class WhereGlobalBuffer : public OpRewriterPatternEx<tpu::WhereOp> {
 public:
-   WhereGlobalBuffer(mlir::MLIRContext *context)
+  WhereGlobalBuffer(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::WhereOp>(context, "WhereGlobalBuffer") {}
 
   LogicalResult matchAndRewriteImpl(tpu::WhereOp WhereOp,
@@ -1218,7 +1245,7 @@ public:
     if (!module::isNone(WhereOp.getBuffer())) {
       return failure();
     }
-    if (module::isOpInGroup(WhereOp)){
+    if (module::isOpInGroup(WhereOp)) {
       return failure();
     }
     auto out_shape = module::getShape(WhereOp.getOutput());
@@ -1228,7 +1255,7 @@ public:
     int buffer_num = 0;
     for (int i = 0; i < out_dim; ++i) {
       if (out_shape[i] != cond_reshape[i]) {
-        buffer_num ++;
+        buffer_num++;
         break;
       }
     }
@@ -1238,7 +1265,7 @@ public:
       auto tbrn_reshape = shape_expand_dim(tbrn_shape, out_dim);
       for (int i = 0; i < out_dim; ++i) {
         if (out_shape[i] != tbrn_reshape[i]) {
-          buffer_num ++;
+          buffer_num++;
           break;
         }
       }
@@ -1249,7 +1276,7 @@ public:
       auto fbrn_reshape = shape_expand_dim(fbrn_shape, out_dim);
       for (int i = 0; i < out_dim; ++i) {
         if (out_shape[i] != fbrn_reshape[i]) {
-          buffer_num ++;
+          buffer_num++;
           break;
         }
       }
@@ -1260,13 +1287,14 @@ public:
     auto elment_num = module::getNumElements(WhereOp.getOutput());
     auto type = module::getStorageType(WhereOp.getCond());
     // add buffer
-    std::vector<int64_t> buffer_shape = {elment_num * 2 * buffer_num}; // double buffer for tile
+    std::vector<int64_t> buffer_shape = {elment_num * 2 *
+                                         buffer_num}; // double buffer for tile
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(WhereOp, buffer_type);
     WhereOp.setOperand(WhereOp.getNumOperands() - 1, buffer);
     return success();
   }
-  bool shouldPrint(tpu::WhereOp WhereOp) const override { return false;}
+  bool shouldPrint(tpu::WhereOp WhereOp) const override { return false; }
 };
 
 class ConvbwdGlobalBuffer : public OpRewriterPatternEx<tpu::ConvbwdOp> {
@@ -1274,23 +1302,23 @@ public:
   ConvbwdGlobalBuffer(mlir::MLIRContext *context)
       : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "ConvbwdGlobalBuffer") {}
   LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp ConvbwdOp,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (!module::isBM1690Family()) {
       return failure();
     }
-    #define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a)-1) / (b) + 1)
     auto kernel_shape = module::getI64Array(ConvbwdOp.getKernelShape());
-    int _32oc_kernel_shape[4] = {0,0,0,0};
+    int _32oc_kernel_shape[4] = {0, 0, 0, 0};
 
     // 32oc shape
     _32oc_kernel_shape[0] = kernel_shape->at(1);
-    _32oc_kernel_shape[1] = kernel_shape->at(2)*kernel_shape->at(3);
-    _32oc_kernel_shape[2] = DIV_UP( kernel_shape->at(0), 32 ); // =0 ?
+    _32oc_kernel_shape[1] = kernel_shape->at(2) * kernel_shape->at(3);
+    _32oc_kernel_shape[2] = DIV_UP(kernel_shape->at(0), 32); // =0 ?
     _32oc_kernel_shape[3] = 32;
 
     int kernel_size = 1;
     int dim = 4;
-    for(int i = 0;i < dim;i++){
+    for (int i = 0; i < dim; i++) {
       kernel_size *= _32oc_kernel_shape[i];
     }
     int64_t buffer_size = kernel_size;
@@ -1299,466 +1327,681 @@ public:
       std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(ConvbwdOp, buffer_type);
-      ConvbwdOp.setOperand(ConvbwdOp.getNumOperands() - 1,
-                                  buffer);
+      ConvbwdOp.setOperand(ConvbwdOp.getNumOperands() - 1, buffer);
       return success();
-    }else{
+    } else {
       return failure();
     }
   }
-  bool shouldPrint(tpu::ConvbwdOp ConvbwdOp) const override { return false;}
+  bool shouldPrint(tpu::ConvbwdOp ConvbwdOp) const override { return false; }
 };
 } // namespace bm168x
 
-class MaskRCNNRPNGetBboxesGlobalBuffer : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
+class MaskRCNNRPNGetBboxesGlobalBuffer
+    : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
 public:
   using OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MaskRCNNRPNGetBboxesOp SuperiorOp,
                                 PatternRewriter &rewriter) const override {
 
-    const int batch_size     = module::getShape(SuperiorOp.getClsScores_0())[0];
+    const int batch_size = module::getShape(SuperiorOp.getClsScores_0())[0];
     const int max_filter_num = SuperiorOp.getMAX_LENGTH_STATIC_STRECHED();
-    const int num_indexes    = SuperiorOp.getNUM_INDEXES();
-    const int num_classes    = SuperiorOp.getNUM_CLASSES();
-    const int H_dyn_max      = SuperiorOp.getH_RPN_DYN_MAX();
-    const int W_dyn_max      = SuperiorOp.getW_RPN_DYN_MAX();
-    const int C              = SuperiorOp.getCHANNEL_RPN_SCORES();
+    const int num_indexes = SuperiorOp.getNUM_INDEXES();
+    const int num_classes = SuperiorOp.getNUM_CLASSES();
+    const int H_dyn_max = SuperiorOp.getH_RPN_DYN_MAX();
+    const int W_dyn_max = SuperiorOp.getW_RPN_DYN_MAX();
+    const int C = SuperiorOp.getCHANNEL_RPN_SCORES();
     // const int C_bboxes       = SuperiorOp.getCHANNEL_RPN_BBOXES();
-    const int NMS_PRE        = SuperiorOp.getNMS_PRE();
-    const int HARDWARE_FACTOR_TOPK        = SuperiorOp.getHARDWARE_FACTOR_TOPK();
-    const int TOPK_ONNX_NMS  = SuperiorOp.getTOPK_ONNX_NMS();
-    const int num_prior_static_stretched =  SuperiorOp.getMAX_LENGTH_STATIC_STRECHED();
-    const int H_dynamic_max[5] = {H_dyn_max,div_up(H_dyn_max,2),div_up(H_dyn_max,4),div_up(H_dyn_max,8),div_up(H_dyn_max,16)};
-    const int W_dynamic_max[5] = {W_dyn_max,div_up(W_dyn_max,2),div_up(W_dyn_max,4),div_up(W_dyn_max,8),div_up(W_dyn_max,16)};
-    const int max_scores_len = C* H_dynamic_max[0]*W_dynamic_max[0];
+    const int NMS_PRE = SuperiorOp.getNMS_PRE();
+    const int HARDWARE_FACTOR_TOPK = SuperiorOp.getHARDWARE_FACTOR_TOPK();
+    const int TOPK_ONNX_NMS = SuperiorOp.getTOPK_ONNX_NMS();
+    const int num_prior_static_stretched =
+        SuperiorOp.getMAX_LENGTH_STATIC_STRECHED();
+    const int H_dynamic_max[5] = {H_dyn_max, div_up(H_dyn_max, 2),
+                                  div_up(H_dyn_max, 4), div_up(H_dyn_max, 8),
+                                  div_up(H_dyn_max, 16)};
+    const int W_dynamic_max[5] = {W_dyn_max, div_up(W_dyn_max, 2),
+                                  div_up(W_dyn_max, 4), div_up(W_dyn_max, 8),
+                                  div_up(W_dyn_max, 16)};
+    const int max_scores_len = C * H_dynamic_max[0] * W_dynamic_max[0];
 
-    const std::vector<int64_t> shape_batch_mlvl_num_indexes   = {batch_size, 1, max_filter_num, num_indexes};
-    const std::vector<int64_t> shape_batch_mlvl_w_single      = {batch_size, 1, max_filter_num, num_classes};
-    const std::vector<int64_t> shape_glb_topk_input               = {batch_size, 1, max_scores_len, 1}; //HARDWARE_FACTOR_TOPK
-    const std::vector<int64_t> shape_glb_topk_output_refactor     = {batch_size, 1, HARDWARE_FACTOR_TOPK*max_scores_len, 1}; //TOPK is NMS_PRE
-    const std::vector<int64_t> shape_glb_topk_refactor_single     = {1, 1, HARDWARE_FACTOR_TOPK*max_scores_len, 1}; //TOPK is NMS_PRE
-    const std::vector<int64_t> shape_glb_buffer_topk_inds             = {1, 1, NMS_PRE, 1};
-    const std::vector<int64_t> shape_glb_gather_buffer                = {1, 1, NMS_PRE, num_indexes};
-    const std::vector<int64_t> shape_glb_buffer_rpn_bbox_permuted     = {batch_size, 1, max_scores_len, num_indexes};
-    const std::vector<int64_t> shape_glb_buffer_nonzero                   = {1, 1, max_filter_num, 1};
-    const std::vector<int64_t> shape_result_valid_ind                     = {1, 1, max_filter_num, 1};
-    const std::vector<int64_t> shape_result_list               = {batch_size, 1, num_prior_static_stretched, num_classes+num_indexes};
-    const std::vector<int64_t> shape_boxes_1b                  = {1,1,num_prior_static_stretched,num_indexes};
-    const std::vector<int64_t> shape_single_1b                 = {1,1,num_prior_static_stretched,num_classes};
-    const std::vector<int64_t> shape_keep_3nch                 = {1, 1,TOPK_ONNX_NMS*num_classes,3};
-    const std::vector<int64_t> shape_keep_u32_1h               = {1, 1,TOPK_ONNX_NMS*num_classes,1};
-    const std::vector<int64_t> shape_glb_buffer_nms        =  {1, 1, 1, 4*1024*1024};//fixed
-    const std::vector<int64_t> shape_glb_buffer_result_list    = {batch_size, 1, num_prior_static_stretched, num_classes+num_indexes};
+    const std::vector<int64_t> shape_batch_mlvl_num_indexes = {
+        batch_size, 1, max_filter_num, num_indexes};
+    const std::vector<int64_t> shape_batch_mlvl_w_single = {
+        batch_size, 1, max_filter_num, num_classes};
+    const std::vector<int64_t> shape_glb_topk_input = {
+        batch_size, 1, max_scores_len, 1}; // HARDWARE_FACTOR_TOPK
+    const std::vector<int64_t> shape_glb_topk_output_refactor = {
+        batch_size, 1, HARDWARE_FACTOR_TOPK * max_scores_len,
+        1}; // TOPK is NMS_PRE
+    const std::vector<int64_t> shape_glb_topk_refactor_single = {
+        1, 1, HARDWARE_FACTOR_TOPK * max_scores_len, 1}; // TOPK is NMS_PRE
+    const std::vector<int64_t> shape_glb_buffer_topk_inds = {1, 1, NMS_PRE, 1};
+    const std::vector<int64_t> shape_glb_gather_buffer = {1, 1, NMS_PRE,
+                                                          num_indexes};
+    const std::vector<int64_t> shape_glb_buffer_rpn_bbox_permuted = {
+        batch_size, 1, max_scores_len, num_indexes};
+    const std::vector<int64_t> shape_glb_buffer_nonzero = {1, 1, max_filter_num,
+                                                           1};
+    const std::vector<int64_t> shape_result_valid_ind = {1, 1, max_filter_num,
+                                                         1};
+    const std::vector<int64_t> shape_result_list = {
+        batch_size, 1, num_prior_static_stretched, num_classes + num_indexes};
+    const std::vector<int64_t> shape_boxes_1b = {
+        1, 1, num_prior_static_stretched, num_indexes};
+    const std::vector<int64_t> shape_single_1b = {
+        1, 1, num_prior_static_stretched, num_classes};
+    const std::vector<int64_t> shape_keep_3nch = {
+        1, 1, TOPK_ONNX_NMS * num_classes, 3};
+    const std::vector<int64_t> shape_keep_u32_1h = {
+        1, 1, TOPK_ONNX_NMS * num_classes, 1};
+    const std::vector<int64_t> shape_glb_buffer_nms = {
+        1, 1, 1, 4 * 1024 * 1024}; // fixed
+    const std::vector<int64_t> shape_glb_buffer_result_list = {
+        batch_size, 1, num_prior_static_stretched, num_classes + num_indexes};
 
     OpBuilder builder(SuperiorOp->getContext());
     builder.setInsertionPoint(SuperiorOp);
-    auto type_BatchMlvlScores = RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getF32Type());
-    auto name_BatchMlvlScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_0";
-    auto loc_BatchMlvlScores  = NameLoc::get(builder.getStringAttr(name_BatchMlvlScores));
-    auto buf_op_BatchMlvlScores      = builder.create<tpu::BufferOp>(loc_BatchMlvlScores, type_BatchMlvlScores);
+    auto type_BatchMlvlScores =
+        RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getF32Type());
+    auto name_BatchMlvlScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_0";
+    auto loc_BatchMlvlScores =
+        NameLoc::get(builder.getStringAttr(name_BatchMlvlScores));
+    auto buf_op_BatchMlvlScores = builder.create<tpu::BufferOp>(
+        loc_BatchMlvlScores, type_BatchMlvlScores);
     SuperiorOp.setOperand(16, buf_op_BatchMlvlScores);
 
-    auto type_BatchMlvlAnchors = RankedTensorType::get(shape_batch_mlvl_num_indexes, rewriter.getF32Type());
-    auto name_BatchMlvlAnchors = module::getName(SuperiorOp.getOperation()).str()+"_buffer_1";
-    auto loc_BatchMlvlAnchors  = NameLoc::get(builder.getStringAttr(name_BatchMlvlAnchors));
-    auto buf_op_BatchMlvlAnchors      = builder.create<tpu::BufferOp>(loc_BatchMlvlAnchors, type_BatchMlvlAnchors);
+    auto type_BatchMlvlAnchors = RankedTensorType::get(
+        shape_batch_mlvl_num_indexes, rewriter.getF32Type());
+    auto name_BatchMlvlAnchors =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_1";
+    auto loc_BatchMlvlAnchors =
+        NameLoc::get(builder.getStringAttr(name_BatchMlvlAnchors));
+    auto buf_op_BatchMlvlAnchors = builder.create<tpu::BufferOp>(
+        loc_BatchMlvlAnchors, type_BatchMlvlAnchors);
     SuperiorOp.setOperand(17, buf_op_BatchMlvlAnchors);
 
-    auto type_BatchMlvlRpnBboxPred = RankedTensorType::get(shape_batch_mlvl_num_indexes, rewriter.getF32Type());
-    auto name_BatchMlvlRpnBboxPred = module::getName(SuperiorOp.getOperation()).str()+"_buffer_2";
-    auto loc_BatchMlvlRpnBboxPred  = NameLoc::get(builder.getStringAttr(name_BatchMlvlRpnBboxPred));
-    auto buf_op_BatchMlvlRpnBboxPred      = builder.create<tpu::BufferOp>(loc_BatchMlvlRpnBboxPred, type_BatchMlvlRpnBboxPred);
+    auto type_BatchMlvlRpnBboxPred = RankedTensorType::get(
+        shape_batch_mlvl_num_indexes, rewriter.getF32Type());
+    auto name_BatchMlvlRpnBboxPred =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_2";
+    auto loc_BatchMlvlRpnBboxPred =
+        NameLoc::get(builder.getStringAttr(name_BatchMlvlRpnBboxPred));
+    auto buf_op_BatchMlvlRpnBboxPred = builder.create<tpu::BufferOp>(
+        loc_BatchMlvlRpnBboxPred, type_BatchMlvlRpnBboxPred);
     SuperiorOp.setOperand(18, buf_op_BatchMlvlRpnBboxPred);
 
-    auto type_BatchMlvlProposals = RankedTensorType::get(shape_batch_mlvl_num_indexes, rewriter.getF32Type());
-    auto name_BatchMlvlProposals = module::getName(SuperiorOp.getOperation()).str()+"_buffer_3";
-    auto loc_BatchMlvlProposals  = NameLoc::get(builder.getStringAttr(name_BatchMlvlProposals));
-    auto buf_op_BatchMlvlProposals      = builder.create<tpu::BufferOp>(loc_BatchMlvlProposals, type_BatchMlvlProposals);
+    auto type_BatchMlvlProposals = RankedTensorType::get(
+        shape_batch_mlvl_num_indexes, rewriter.getF32Type());
+    auto name_BatchMlvlProposals =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_3";
+    auto loc_BatchMlvlProposals =
+        NameLoc::get(builder.getStringAttr(name_BatchMlvlProposals));
+    auto buf_op_BatchMlvlProposals = builder.create<tpu::BufferOp>(
+        loc_BatchMlvlProposals, type_BatchMlvlProposals);
     SuperiorOp.setOperand(19, buf_op_BatchMlvlProposals);
 
-    auto type_BatchMlvlIds = RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getI32Type());
-    auto name_BatchMlvlIds = module::getName(SuperiorOp.getOperation()).str()+"_buffer_4";
-    auto loc_BatchMlvlIds  = NameLoc::get(builder.getStringAttr(name_BatchMlvlIds));
-    auto buf_op_BatchMlvlIds      = builder.create<tpu::BufferOp>(loc_BatchMlvlIds, type_BatchMlvlIds);
+    auto type_BatchMlvlIds =
+        RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getI32Type());
+    auto name_BatchMlvlIds =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_4";
+    auto loc_BatchMlvlIds =
+        NameLoc::get(builder.getStringAttr(name_BatchMlvlIds));
+    auto buf_op_BatchMlvlIds =
+        builder.create<tpu::BufferOp>(loc_BatchMlvlIds, type_BatchMlvlIds);
     SuperiorOp.setOperand(20, buf_op_BatchMlvlIds);
 
-    auto type_GlbBufferTmpScoresStretched = RankedTensorType::get(shape_glb_topk_input, rewriter.getF32Type());
-    auto name_GlbBufferTmpScoresStretched = module::getName(SuperiorOp.getOperation()).str()+"_buffer_5";
-    auto loc_GlbBufferTmpScoresStretched  = NameLoc::get(builder.getStringAttr(name_GlbBufferTmpScoresStretched));
-    auto buf_op_GlbBufferTmpScoresStretched      = builder.create<tpu::BufferOp>(loc_GlbBufferTmpScoresStretched, type_GlbBufferTmpScoresStretched);
+    auto type_GlbBufferTmpScoresStretched =
+        RankedTensorType::get(shape_glb_topk_input, rewriter.getF32Type());
+    auto name_GlbBufferTmpScoresStretched =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_5";
+    auto loc_GlbBufferTmpScoresStretched =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferTmpScoresStretched));
+    auto buf_op_GlbBufferTmpScoresStretched = builder.create<tpu::BufferOp>(
+        loc_GlbBufferTmpScoresStretched, type_GlbBufferTmpScoresStretched);
     SuperiorOp.setOperand(21, buf_op_GlbBufferTmpScoresStretched);
 
-    auto type_GlbBufferRankedScores = RankedTensorType::get(shape_glb_topk_output_refactor, rewriter.getF32Type());
-    auto name_GlbBufferRankedScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_6";
-    auto loc_GlbBufferRankedScores  = NameLoc::get(builder.getStringAttr(name_GlbBufferRankedScores));
-    auto buf_op_GlbBufferRankedScores      = builder.create<tpu::BufferOp>(loc_GlbBufferRankedScores, type_GlbBufferRankedScores);
+    auto type_GlbBufferRankedScores = RankedTensorType::get(
+        shape_glb_topk_output_refactor, rewriter.getF32Type());
+    auto name_GlbBufferRankedScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_6";
+    auto loc_GlbBufferRankedScores =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferRankedScores));
+    auto buf_op_GlbBufferRankedScores = builder.create<tpu::BufferOp>(
+        loc_GlbBufferRankedScores, type_GlbBufferRankedScores);
     SuperiorOp.setOperand(22, buf_op_GlbBufferRankedScores);
 
-    auto type_GlbBufferRankIndsInt32 = RankedTensorType::get(shape_glb_topk_output_refactor, rewriter.getI32Type());
-    auto name_GlbBufferRankIndsInt32 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_7";
-    auto loc_GlbBufferRankIndsInt32  = NameLoc::get(builder.getStringAttr(name_GlbBufferRankIndsInt32));
-    auto buf_op_GlbBufferRankIndsInt32      = builder.create<tpu::BufferOp>(loc_GlbBufferRankIndsInt32, type_GlbBufferRankIndsInt32);
+    auto type_GlbBufferRankIndsInt32 = RankedTensorType::get(
+        shape_glb_topk_output_refactor, rewriter.getI32Type());
+    auto name_GlbBufferRankIndsInt32 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_7";
+    auto loc_GlbBufferRankIndsInt32 =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferRankIndsInt32));
+    auto buf_op_GlbBufferRankIndsInt32 = builder.create<tpu::BufferOp>(
+        loc_GlbBufferRankIndsInt32, type_GlbBufferRankIndsInt32);
     SuperiorOp.setOperand(23, buf_op_GlbBufferRankIndsInt32);
 
-    auto type_GlbBufferRankIndsU32 = RankedTensorType::get(shape_glb_topk_output_refactor, rewriter.getI32Type());
-    auto name_GlbBufferRankIndsU32 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_8";
-    auto loc_GlbBufferRankIndsU32  = NameLoc::get(builder.getStringAttr(name_GlbBufferRankIndsU32));
-    auto buf_op_GlbBufferRankIndsU32      = builder.create<tpu::BufferOp>(loc_GlbBufferRankIndsU32, type_GlbBufferRankIndsU32);
+    auto type_GlbBufferRankIndsU32 = RankedTensorType::get(
+        shape_glb_topk_output_refactor, rewriter.getI32Type());
+    auto name_GlbBufferRankIndsU32 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_8";
+    auto loc_GlbBufferRankIndsU32 =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferRankIndsU32));
+    auto buf_op_GlbBufferRankIndsU32 = builder.create<tpu::BufferOp>(
+        loc_GlbBufferRankIndsU32, type_GlbBufferRankIndsU32);
     SuperiorOp.setOperand(24, buf_op_GlbBufferRankIndsU32);
 
-    auto type_GlbTopkInds = RankedTensorType::get(shape_glb_buffer_topk_inds, rewriter.getI32Type());
-    auto name_GlbTopkInds = module::getName(SuperiorOp.getOperation()).str()+"_buffer_9";
-    auto loc_GlbTopkInds  = NameLoc::get(builder.getStringAttr(name_GlbTopkInds));
-    auto buf_op_GlbTopkInds      = builder.create<tpu::BufferOp>(loc_GlbTopkInds, type_GlbTopkInds);
+    auto type_GlbTopkInds = RankedTensorType::get(shape_glb_buffer_topk_inds,
+                                                  rewriter.getI32Type());
+    auto name_GlbTopkInds =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_9";
+    auto loc_GlbTopkInds =
+        NameLoc::get(builder.getStringAttr(name_GlbTopkInds));
+    auto buf_op_GlbTopkInds =
+        builder.create<tpu::BufferOp>(loc_GlbTopkInds, type_GlbTopkInds);
     SuperiorOp.setOperand(25, buf_op_GlbTopkInds);
 
-    auto type_GlbBufferGather_1 = RankedTensorType::get(shape_glb_gather_buffer, rewriter.getF32Type());
-    auto name_GlbBufferGather_1 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_10";
-    auto loc_GlbBufferGather_1  = NameLoc::get(builder.getStringAttr(name_GlbBufferGather_1));
-    auto buf_op_GlbBufferGather_1      = builder.create<tpu::BufferOp>(loc_GlbBufferGather_1, type_GlbBufferGather_1);
+    auto type_GlbBufferGather_1 =
+        RankedTensorType::get(shape_glb_gather_buffer, rewriter.getF32Type());
+    auto name_GlbBufferGather_1 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_10";
+    auto loc_GlbBufferGather_1 =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferGather_1));
+    auto buf_op_GlbBufferGather_1 = builder.create<tpu::BufferOp>(
+        loc_GlbBufferGather_1, type_GlbBufferGather_1);
     SuperiorOp.setOperand(26, buf_op_GlbBufferGather_1);
 
-    auto type_GlbBufferGather_2 = RankedTensorType::get(shape_glb_gather_buffer, rewriter.getF32Type());
-    auto name_GlbBufferGather_2 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_11";
-    auto loc_GlbBufferGather_2  = NameLoc::get(builder.getStringAttr(name_GlbBufferGather_2));
-    auto buf_op_GlbBufferGather_2      = builder.create<tpu::BufferOp>(loc_GlbBufferGather_2, type_GlbBufferGather_2);
+    auto type_GlbBufferGather_2 =
+        RankedTensorType::get(shape_glb_gather_buffer, rewriter.getF32Type());
+    auto name_GlbBufferGather_2 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_11";
+    auto loc_GlbBufferGather_2 =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferGather_2));
+    auto buf_op_GlbBufferGather_2 = builder.create<tpu::BufferOp>(
+        loc_GlbBufferGather_2, type_GlbBufferGather_2);
     SuperiorOp.setOperand(27, buf_op_GlbBufferGather_2);
 
-    auto type_GlbBufferRpnBboxPermuted = RankedTensorType::get(shape_glb_buffer_rpn_bbox_permuted, rewriter.getF32Type());
-    auto name_GlbBufferRpnBboxPermuted = module::getName(SuperiorOp.getOperation()).str()+"_buffer_12";
-    auto loc_GlbBufferRpnBboxPermuted  = NameLoc::get(builder.getStringAttr(name_GlbBufferRpnBboxPermuted));
-    auto buf_op_GlbBufferRpnBboxPermuted      = builder.create<tpu::BufferOp>(loc_GlbBufferRpnBboxPermuted, type_GlbBufferRpnBboxPermuted);
+    auto type_GlbBufferRpnBboxPermuted = RankedTensorType::get(
+        shape_glb_buffer_rpn_bbox_permuted, rewriter.getF32Type());
+    auto name_GlbBufferRpnBboxPermuted =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_12";
+    auto loc_GlbBufferRpnBboxPermuted =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferRpnBboxPermuted));
+    auto buf_op_GlbBufferRpnBboxPermuted = builder.create<tpu::BufferOp>(
+        loc_GlbBufferRpnBboxPermuted, type_GlbBufferRpnBboxPermuted);
     SuperiorOp.setOperand(28, buf_op_GlbBufferRpnBboxPermuted);
 
-    auto type_GlbBufferNonzero = RankedTensorType::get(shape_glb_buffer_nonzero, rewriter.getI32Type());
-    auto name_GlbBufferNonzero = module::getName(SuperiorOp.getOperation()).str()+"_buffer_13";
-    auto loc_GlbBufferNonzero  = NameLoc::get(builder.getStringAttr(name_GlbBufferNonzero));
-    auto buf_op_GlbBufferNonzero      = builder.create<tpu::BufferOp>(loc_GlbBufferNonzero, type_GlbBufferNonzero);
+    auto type_GlbBufferNonzero =
+        RankedTensorType::get(shape_glb_buffer_nonzero, rewriter.getI32Type());
+    auto name_GlbBufferNonzero =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_13";
+    auto loc_GlbBufferNonzero =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferNonzero));
+    auto buf_op_GlbBufferNonzero = builder.create<tpu::BufferOp>(
+        loc_GlbBufferNonzero, type_GlbBufferNonzero);
     SuperiorOp.setOperand(29, buf_op_GlbBufferNonzero);
 
-    auto type_ResultValidInd = RankedTensorType::get(shape_result_valid_ind, rewriter.getI32Type());
-    auto name_ResultValidInd = module::getName(SuperiorOp.getOperation()).str()+"_buffer_14";
-    auto loc_ResultValidInd  = NameLoc::get(builder.getStringAttr(name_ResultValidInd));
-    auto buf_op_ResultValidInd      = builder.create<tpu::BufferOp>(loc_ResultValidInd, type_ResultValidInd);
+    auto type_ResultValidInd =
+        RankedTensorType::get(shape_result_valid_ind, rewriter.getI32Type());
+    auto name_ResultValidInd =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_14";
+    auto loc_ResultValidInd =
+        NameLoc::get(builder.getStringAttr(name_ResultValidInd));
+    auto buf_op_ResultValidInd =
+        builder.create<tpu::BufferOp>(loc_ResultValidInd, type_ResultValidInd);
     SuperiorOp.setOperand(30, buf_op_ResultValidInd);
 
-    auto type_GlbBufferGatherBoxes = RankedTensorType::get(shape_boxes_1b, rewriter.getF32Type());
-    auto name_GlbBufferGatherBoxes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_15";
-    auto loc_GlbBufferGatherBoxes  = NameLoc::get(builder.getStringAttr(name_GlbBufferGatherBoxes));
-    auto buf_op_GlbBufferGatherBoxes      = builder.create<tpu::BufferOp>(loc_GlbBufferGatherBoxes, type_GlbBufferGatherBoxes);
+    auto type_GlbBufferGatherBoxes =
+        RankedTensorType::get(shape_boxes_1b, rewriter.getF32Type());
+    auto name_GlbBufferGatherBoxes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_15";
+    auto loc_GlbBufferGatherBoxes =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferGatherBoxes));
+    auto buf_op_GlbBufferGatherBoxes = builder.create<tpu::BufferOp>(
+        loc_GlbBufferGatherBoxes, type_GlbBufferGatherBoxes);
     SuperiorOp.setOperand(31, buf_op_GlbBufferGatherBoxes);
 
-    auto type_GlbBufferGatherScores = RankedTensorType::get(shape_single_1b, rewriter.getF32Type());
-    auto name_GlbBufferGatherScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_16";
-    auto loc_GlbBufferGatherScores  = NameLoc::get(builder.getStringAttr(name_GlbBufferGatherScores));
-    auto buf_op_GlbBufferGatherScores      = builder.create<tpu::BufferOp>(loc_GlbBufferGatherScores, type_GlbBufferGatherScores);
+    auto type_GlbBufferGatherScores =
+        RankedTensorType::get(shape_single_1b, rewriter.getF32Type());
+    auto name_GlbBufferGatherScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_16";
+    auto loc_GlbBufferGatherScores =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferGatherScores));
+    auto buf_op_GlbBufferGatherScores = builder.create<tpu::BufferOp>(
+        loc_GlbBufferGatherScores, type_GlbBufferGatherScores);
     SuperiorOp.setOperand(32, buf_op_GlbBufferGatherScores);
 
-    auto type_Keep_3nch = RankedTensorType::get(shape_keep_3nch, rewriter.getF32Type());
-    auto name_Keep_3nch = module::getName(SuperiorOp.getOperation()).str()+"_buffer_17";
-    auto loc_Keep_3nch  = NameLoc::get(builder.getStringAttr(name_Keep_3nch));
-    auto buf_op_Keep_3nch      = builder.create<tpu::BufferOp>(loc_Keep_3nch, type_Keep_3nch);
+    auto type_Keep_3nch =
+        RankedTensorType::get(shape_keep_3nch, rewriter.getF32Type());
+    auto name_Keep_3nch =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_17";
+    auto loc_Keep_3nch = NameLoc::get(builder.getStringAttr(name_Keep_3nch));
+    auto buf_op_Keep_3nch =
+        builder.create<tpu::BufferOp>(loc_Keep_3nch, type_Keep_3nch);
     SuperiorOp.setOperand(33, buf_op_Keep_3nch);
 
-    auto type_KeepU32_1h = RankedTensorType::get(shape_keep_u32_1h, rewriter.getI32Type());
-    auto name_KeepU32_1h = module::getName(SuperiorOp.getOperation()).str()+"_buffer_18";
-    auto loc_KeepU32_1h  = NameLoc::get(builder.getStringAttr(name_KeepU32_1h));
-    auto buf_op_KeepU32_1h      = builder.create<tpu::BufferOp>(loc_KeepU32_1h, type_KeepU32_1h);
+    auto type_KeepU32_1h =
+        RankedTensorType::get(shape_keep_u32_1h, rewriter.getI32Type());
+    auto name_KeepU32_1h =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_18";
+    auto loc_KeepU32_1h = NameLoc::get(builder.getStringAttr(name_KeepU32_1h));
+    auto buf_op_KeepU32_1h =
+        builder.create<tpu::BufferOp>(loc_KeepU32_1h, type_KeepU32_1h);
     SuperiorOp.setOperand(34, buf_op_KeepU32_1h);
 
-    auto type_GlbBufferBoxes = RankedTensorType::get(shape_boxes_1b, rewriter.getF32Type());
-    auto name_GlbBufferBoxes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_19";
-    auto loc_GlbBufferBoxes  = NameLoc::get(builder.getStringAttr(name_GlbBufferBoxes));
-    auto buf_op_GlbBufferBoxes      = builder.create<tpu::BufferOp>(loc_GlbBufferBoxes, type_GlbBufferBoxes);
+    auto type_GlbBufferBoxes =
+        RankedTensorType::get(shape_boxes_1b, rewriter.getF32Type());
+    auto name_GlbBufferBoxes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_19";
+    auto loc_GlbBufferBoxes =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferBoxes));
+    auto buf_op_GlbBufferBoxes =
+        builder.create<tpu::BufferOp>(loc_GlbBufferBoxes, type_GlbBufferBoxes);
     SuperiorOp.setOperand(35, buf_op_GlbBufferBoxes);
 
-    auto type_GlbBufferScores = RankedTensorType::get(shape_single_1b, rewriter.getF32Type());
-    auto name_GlbBufferScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_20";
-    auto loc_GlbBufferScores  = NameLoc::get(builder.getStringAttr(name_GlbBufferScores));
-    auto buf_op_GlbBufferScores      = builder.create<tpu::BufferOp>(loc_GlbBufferScores, type_GlbBufferScores);
+    auto type_GlbBufferScores =
+        RankedTensorType::get(shape_single_1b, rewriter.getF32Type());
+    auto name_GlbBufferScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_20";
+    auto loc_GlbBufferScores =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferScores));
+    auto buf_op_GlbBufferScores = builder.create<tpu::BufferOp>(
+        loc_GlbBufferScores, type_GlbBufferScores);
     SuperiorOp.setOperand(36, buf_op_GlbBufferScores);
 
-    auto type_GlbBufferNms = RankedTensorType::get(shape_glb_buffer_nms, rewriter.getF32Type());
-    auto name_GlbBufferNms = module::getName(SuperiorOp.getOperation()).str()+"_buffer_21";
-    auto loc_GlbBufferNms  = NameLoc::get(builder.getStringAttr(name_GlbBufferNms));
-    auto buf_op_GlbBufferNms      = builder.create<tpu::BufferOp>(loc_GlbBufferNms, type_GlbBufferNms);
+    auto type_GlbBufferNms =
+        RankedTensorType::get(shape_glb_buffer_nms, rewriter.getF32Type());
+    auto name_GlbBufferNms =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_21";
+    auto loc_GlbBufferNms =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferNms));
+    auto buf_op_GlbBufferNms =
+        builder.create<tpu::BufferOp>(loc_GlbBufferNms, type_GlbBufferNms);
     SuperiorOp.setOperand(37, buf_op_GlbBufferNms);
 
-    auto type_GatherMlvlProposals = RankedTensorType::get(shape_batch_mlvl_num_indexes, rewriter.getF32Type());
-    auto name_GatherMlvlProposals = module::getName(SuperiorOp.getOperation()).str()+"_buffer_22";
-    auto loc_GatherMlvlProposals  = NameLoc::get(builder.getStringAttr(name_GatherMlvlProposals));
-    auto buf_op_GatherMlvlProposals      = builder.create<tpu::BufferOp>(loc_GatherMlvlProposals, type_GatherMlvlProposals);
+    auto type_GatherMlvlProposals = RankedTensorType::get(
+        shape_batch_mlvl_num_indexes, rewriter.getF32Type());
+    auto name_GatherMlvlProposals =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_22";
+    auto loc_GatherMlvlProposals =
+        NameLoc::get(builder.getStringAttr(name_GatherMlvlProposals));
+    auto buf_op_GatherMlvlProposals = builder.create<tpu::BufferOp>(
+        loc_GatherMlvlProposals, type_GatherMlvlProposals);
     SuperiorOp.setOperand(38, buf_op_GatherMlvlProposals);
 
-    auto type_GatherMlvlScores = RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getF32Type());
-    auto name_GatherMlvlScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_23";
-    auto loc_GatherMlvlScores  = NameLoc::get(builder.getStringAttr(name_GatherMlvlScores));
-    auto buf_op_GatherMlvlScores      = builder.create<tpu::BufferOp>(loc_GatherMlvlScores, type_GatherMlvlScores);
+    auto type_GatherMlvlScores =
+        RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getF32Type());
+    auto name_GatherMlvlScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_23";
+    auto loc_GatherMlvlScores =
+        NameLoc::get(builder.getStringAttr(name_GatherMlvlScores));
+    auto buf_op_GatherMlvlScores = builder.create<tpu::BufferOp>(
+        loc_GatherMlvlScores, type_GatherMlvlScores);
     SuperiorOp.setOperand(39, buf_op_GatherMlvlScores);
 
-    auto type_GatherMlvlIds = RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getI32Type());
-    auto name_GatherMlvlIds = module::getName(SuperiorOp.getOperation()).str()+"_buffer_24";
-    auto loc_GatherMlvlIds  = NameLoc::get(builder.getStringAttr(name_GatherMlvlIds));
-    auto buf_op_GatherMlvlIds      = builder.create<tpu::BufferOp>(loc_GatherMlvlIds, type_GatherMlvlIds);
+    auto type_GatherMlvlIds =
+        RankedTensorType::get(shape_batch_mlvl_w_single, rewriter.getI32Type());
+    auto name_GatherMlvlIds =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_24";
+    auto loc_GatherMlvlIds =
+        NameLoc::get(builder.getStringAttr(name_GatherMlvlIds));
+    auto buf_op_GatherMlvlIds =
+        builder.create<tpu::BufferOp>(loc_GatherMlvlIds, type_GatherMlvlIds);
     SuperiorOp.setOperand(40, buf_op_GatherMlvlIds);
 
-    auto type_GlbBufferResultList = RankedTensorType::get(shape_glb_buffer_result_list, rewriter.getF32Type());
-    auto name_GlbBufferResultList = module::getName(SuperiorOp.getOperation()).str()+"_buffer_25";
-    auto loc_GlbBufferResultList  = NameLoc::get(builder.getStringAttr(name_GlbBufferResultList));
-    auto buf_op_GlbBufferResultList      = builder.create<tpu::BufferOp>(loc_GlbBufferResultList, type_GlbBufferResultList);
+    auto type_GlbBufferResultList = RankedTensorType::get(
+        shape_glb_buffer_result_list, rewriter.getF32Type());
+    auto name_GlbBufferResultList =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_25";
+    auto loc_GlbBufferResultList =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferResultList));
+    auto buf_op_GlbBufferResultList = builder.create<tpu::BufferOp>(
+        loc_GlbBufferResultList, type_GlbBufferResultList);
     SuperiorOp.setOperand(41, buf_op_GlbBufferResultList);
 
     return success();
   }
 };
 
-class MaskRCNNBboxPoolerGlobalBuffer : public OpRewritePattern<tpu::MaskRCNNBboxPoolerOp> {
+class MaskRCNNBboxPoolerGlobalBuffer
+    : public OpRewritePattern<tpu::MaskRCNNBboxPoolerOp> {
 public:
   using OpRewritePattern<tpu::MaskRCNNBboxPoolerOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MaskRCNNBboxPoolerOp SuperiorOp,
                                 PatternRewriter &rewriter) const override {
-    const int batch_size     = module::getShape(SuperiorOp.getPtrFeat0())[0];
+    const int batch_size = module::getShape(SuperiorOp.getPtrFeat0())[0];
     const int C = SuperiorOp.getCHANNEL_ROI();
-    const int roi_slice =  SuperiorOp.getROI_SLICE();
-    const int roi_len   = SuperiorOp.getROI_LEN();
-    const int roi_num = roi_slice*batch_size;
+    const int roi_slice = SuperiorOp.getROI_SLICE();
+    const int roi_len = SuperiorOp.getROI_LEN();
+    const int roi_num = roi_slice * batch_size;
     const int PH = SuperiorOp.getROI_PH();
     const int PW = SuperiorOp.getROI_PW();
     const std::vector<int64_t> res_shape = {roi_num, C, PH, PW};
     const std::vector<int64_t> rois_slice_shape = {batch_size, roi_slice, 1, 1};
-  //[Error] N should be GLOBAL_BATCH_SIZE, but now must compaitble with gsl_roi_pooler.pl
-    const std::vector<int64_t> rois_shape3 = {batch_size, roi_slice, 1, roi_len};
+    //[Error] N should be GLOBAL_BATCH_SIZE, but now must compaitble with
+    // gsl_roi_pooler.pl
+    const std::vector<int64_t> rois_shape3 = {batch_size, roi_slice, 1,
+                                              roi_len};
     const std::vector<int64_t> bias_shape = {1, C, 1, 1};
 
     OpBuilder builder(SuperiorOp->getContext());
     builder.setInsertionPoint(SuperiorOp);
-    auto type_PtrTmpRes = RankedTensorType::get(res_shape, rewriter.getF32Type());
-    auto name_PtrTmpRes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_0";
-    auto loc_PtrTmpRes  = NameLoc::get(builder.getStringAttr(name_PtrTmpRes));
-    auto buf_op_PtrTmpRes      = builder.create<tpu::BufferOp>(loc_PtrTmpRes, type_PtrTmpRes);
+    auto type_PtrTmpRes =
+        RankedTensorType::get(res_shape, rewriter.getF32Type());
+    auto name_PtrTmpRes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_0";
+    auto loc_PtrTmpRes = NameLoc::get(builder.getStringAttr(name_PtrTmpRes));
+    auto buf_op_PtrTmpRes =
+        builder.create<tpu::BufferOp>(loc_PtrTmpRes, type_PtrTmpRes);
     SuperiorOp.setOperand(5, buf_op_PtrTmpRes);
 
-    auto type_PtrRoisTmp = RankedTensorType::get(rois_slice_shape, rewriter.getF32Type());
-    auto name_PtrRoisTmp = module::getName(SuperiorOp.getOperation()).str()+"_buffer_1";
-    auto loc_PtrRoisTmp  = NameLoc::get(builder.getStringAttr(name_PtrRoisTmp));
-    auto buf_op_PtrRoisTmp      = builder.create<tpu::BufferOp>(loc_PtrRoisTmp, type_PtrRoisTmp);
+    auto type_PtrRoisTmp =
+        RankedTensorType::get(rois_slice_shape, rewriter.getF32Type());
+    auto name_PtrRoisTmp =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_1";
+    auto loc_PtrRoisTmp = NameLoc::get(builder.getStringAttr(name_PtrRoisTmp));
+    auto buf_op_PtrRoisTmp =
+        builder.create<tpu::BufferOp>(loc_PtrRoisTmp, type_PtrRoisTmp);
     SuperiorOp.setOperand(6, buf_op_PtrRoisTmp);
 
     return success();
   }
 };
 
-class MaskRCNNGetBboxBGlobalBuffer : public OpRewritePattern<tpu::MaskRCNNGetBboxBOp> {
+class MaskRCNNGetBboxBGlobalBuffer
+    : public OpRewritePattern<tpu::MaskRCNNGetBboxBOp> {
 public:
   using OpRewritePattern<tpu::MaskRCNNGetBboxBOp>::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tpu::MaskRCNNGetBboxBOp SuperiorOp,
                                 PatternRewriter &rewriter) const override {
 
-    std::vector<int64_t> input_shape = module::getShape(SuperiorOp.getPtrRois());
-    assert (input_shape.size()==4);
+    std::vector<int64_t> input_shape =
+        module::getShape(SuperiorOp.getPtrRois());
+    assert(input_shape.size() == 4);
     const int num_indexes = SuperiorOp.getNUM_INDEXES();
     const int num_classes = SuperiorOp.getNUM_CLASSES();
     const int roi_len = num_classes + num_indexes;
-    const int batch_size = input_shape[0]*input_shape[1]*input_shape[2]*input_shape[3]/roi_len/SuperiorOp.getMAX_PER_IMG();
-    const int NUM_CLASSES_GetBboxB =  SuperiorOp.getNUM_CLASSESGetBboxB();
+    const int batch_size = input_shape[0] * input_shape[1] * input_shape[2] *
+                           input_shape[3] / roi_len /
+                           SuperiorOp.getMAX_PER_IMG();
+    const int NUM_CLASSES_GetBboxB = SuperiorOp.getNUM_CLASSESGetBboxB();
     const int MAX_PROPOSALS_PER_IMG = SuperiorOp.getMAX_PER_IMG();
     const int num_dets_w = num_classes + num_indexes;
-    const int MAX_NMS_LENGTH_GetBboxB = MAX_PROPOSALS_PER_IMG * NUM_CLASSES_GetBboxB ;
-    const int TOPK_ONNX_NMS_2nd =  SuperiorOp.getTOPK_ONNX_NMS();
-    const int c = batch_size *MAX_PROPOSALS_PER_IMG ;
+    const int MAX_NMS_LENGTH_GetBboxB =
+        MAX_PROPOSALS_PER_IMG * NUM_CLASSES_GetBboxB;
+    const int TOPK_ONNX_NMS_2nd = SuperiorOp.getTOPK_ONNX_NMS();
+    const int c = batch_size * MAX_PROPOSALS_PER_IMG;
     const int w2 = NUM_CLASSES_GetBboxB * num_indexes;
     const int w3 = NUM_CLASSES_GetBboxB + num_classes;
 
     const std::vector<int64_t> shape2 = {1, c, 1, w2};
     const std::vector<int64_t> shape3 = {1, c, 1, w3};
-    const std::vector<int64_t> shape6 = {1, 1, MAX_NMS_LENGTH_GetBboxB, num_dets_w};
+    const std::vector<int64_t> shape6 = {1, 1, MAX_NMS_LENGTH_GetBboxB,
+                                         num_dets_w};
 
-    const std::vector<int64_t> shape7 = {1, 1, MAX_NMS_LENGTH_GetBboxB, num_classes};
-    const std::vector<int64_t> shape8 = {1, 1, MAX_NMS_LENGTH_GetBboxB, num_indexes};
+    const std::vector<int64_t> shape7 = {1, 1, MAX_NMS_LENGTH_GetBboxB,
+                                         num_classes};
+    const std::vector<int64_t> shape8 = {1, 1, MAX_NMS_LENGTH_GetBboxB,
+                                         num_indexes};
     const std::vector<int64_t> shape9 = {1, 1, TOPK_ONNX_NMS_2nd, 1};
     const std::vector<int64_t> shape10 = {1, 1, TOPK_ONNX_NMS_2nd, 3};
-    const std::vector<int64_t> shape_glb_buffer_nms = {1, 1, 1, 4*1024*1024};
-    const std::vector<int64_t> shape_attr = {1,1,1,4};
+    const std::vector<int64_t> shape_glb_buffer_nms = {1, 1, 1,
+                                                       4 * 1024 * 1024};
+    const std::vector<int64_t> shape_attr = {1, 1, 1, 4};
     const std::vector<int64_t> shape_mv = {1, 1, 1, 3};
 
     OpBuilder builder(SuperiorOp->getContext());
     builder.setInsertionPoint(SuperiorOp);
     auto type_Means = RankedTensorType::get(shape2, rewriter.getF32Type());
-    auto name_Means = module::getName(SuperiorOp.getOperation()).str()+"_buffer_0";
-    auto loc_Means  = NameLoc::get(builder.getStringAttr(name_Means));
-    auto buf_op_Means      = builder.create<tpu::BufferOp>(loc_Means, type_Means);
+    auto name_Means =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_0";
+    auto loc_Means = NameLoc::get(builder.getStringAttr(name_Means));
+    auto buf_op_Means = builder.create<tpu::BufferOp>(loc_Means, type_Means);
     SuperiorOp.setOperand(5, buf_op_Means);
 
     auto type_Stds = RankedTensorType::get(shape2, rewriter.getF32Type());
-    auto name_Stds = module::getName(SuperiorOp.getOperation()).str()+"_buffer_1";
-    auto loc_Stds  = NameLoc::get(builder.getStringAttr(name_Stds));
-    auto buf_op_Stds      = builder.create<tpu::BufferOp>(loc_Stds, type_Stds);
+    auto name_Stds =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_1";
+    auto loc_Stds = NameLoc::get(builder.getStringAttr(name_Stds));
+    auto buf_op_Stds = builder.create<tpu::BufferOp>(loc_Stds, type_Stds);
     SuperiorOp.setOperand(6, buf_op_Stds);
 
     auto type_ResBbox = RankedTensorType::get(shape2, rewriter.getF32Type());
-    auto name_ResBbox = module::getName(SuperiorOp.getOperation()).str()+"_buffer_2";
-    auto loc_ResBbox  = NameLoc::get(builder.getStringAttr(name_ResBbox));
-    auto buf_op_ResBbox      = builder.create<tpu::BufferOp>(loc_ResBbox, type_ResBbox);
+    auto name_ResBbox =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_2";
+    auto loc_ResBbox = NameLoc::get(builder.getStringAttr(name_ResBbox));
+    auto buf_op_ResBbox =
+        builder.create<tpu::BufferOp>(loc_ResBbox, type_ResBbox);
     SuperiorOp.setOperand(7, buf_op_ResBbox);
 
     auto type_ResBbox1 = RankedTensorType::get(shape8, rewriter.getF32Type());
-    auto name_ResBbox1 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_3";
-    auto loc_ResBbox1  = NameLoc::get(builder.getStringAttr(name_ResBbox1));
-    auto buf_op_ResBbox1      = builder.create<tpu::BufferOp>(loc_ResBbox1, type_ResBbox1);
+    auto name_ResBbox1 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_3";
+    auto loc_ResBbox1 = NameLoc::get(builder.getStringAttr(name_ResBbox1));
+    auto buf_op_ResBbox1 =
+        builder.create<tpu::BufferOp>(loc_ResBbox1, type_ResBbox1);
     SuperiorOp.setOperand(8, buf_op_ResBbox1);
 
     auto type_ResBbox0 = RankedTensorType::get(shape2, rewriter.getF32Type());
-    auto name_ResBbox0 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_4";
-    auto loc_ResBbox0  = NameLoc::get(builder.getStringAttr(name_ResBbox0));
-    auto buf_op_ResBbox0      = builder.create<tpu::BufferOp>(loc_ResBbox0, type_ResBbox0);
+    auto name_ResBbox0 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_4";
+    auto loc_ResBbox0 = NameLoc::get(builder.getStringAttr(name_ResBbox0));
+    auto buf_op_ResBbox0 =
+        builder.create<tpu::BufferOp>(loc_ResBbox0, type_ResBbox0);
     SuperiorOp.setOperand(9, buf_op_ResBbox0);
 
     auto type_ResScore0 = RankedTensorType::get(shape3, rewriter.getF32Type());
-    auto name_ResScore0 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_5";
-    auto loc_ResScore0  = NameLoc::get(builder.getStringAttr(name_ResScore0));
-    auto buf_op_ResScore0      = builder.create<tpu::BufferOp>(loc_ResScore0, type_ResScore0);
+    auto name_ResScore0 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_5";
+    auto loc_ResScore0 = NameLoc::get(builder.getStringAttr(name_ResScore0));
+    auto buf_op_ResScore0 =
+        builder.create<tpu::BufferOp>(loc_ResScore0, type_ResScore0);
     SuperiorOp.setOperand(10, buf_op_ResScore0);
 
     auto type_ResScore1 = RankedTensorType::get(shape3, rewriter.getF32Type());
-    auto name_ResScore1 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_6";
-    auto loc_ResScore1  = NameLoc::get(builder.getStringAttr(name_ResScore1));
-    auto buf_op_ResScore1      = builder.create<tpu::BufferOp>(loc_ResScore1, type_ResScore1);
+    auto name_ResScore1 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_6";
+    auto loc_ResScore1 = NameLoc::get(builder.getStringAttr(name_ResScore1));
+    auto buf_op_ResScore1 =
+        builder.create<tpu::BufferOp>(loc_ResScore1, type_ResScore1);
     SuperiorOp.setOperand(11, buf_op_ResScore1);
 
     auto type_ResScore2 = RankedTensorType::get(shape3, rewriter.getF32Type());
-    auto name_ResScore2 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_7";
-    auto loc_ResScore2  = NameLoc::get(builder.getStringAttr(name_ResScore2));
-    auto buf_op_ResScore2      = builder.create<tpu::BufferOp>(loc_ResScore2, type_ResScore2);
+    auto name_ResScore2 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_7";
+    auto loc_ResScore2 = NameLoc::get(builder.getStringAttr(name_ResScore2));
+    auto buf_op_ResScore2 =
+        builder.create<tpu::BufferOp>(loc_ResScore2, type_ResScore2);
     SuperiorOp.setOperand(12, buf_op_ResScore2);
 
     auto type_ResScore3 = RankedTensorType::get(shape7, rewriter.getF32Type());
-    auto name_ResScore3 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_8";
-    auto loc_ResScore3  = NameLoc::get(builder.getStringAttr(name_ResScore3));
-    auto buf_op_ResScore3      = builder.create<tpu::BufferOp>(loc_ResScore3, type_ResScore3);
+    auto name_ResScore3 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_8";
+    auto loc_ResScore3 = NameLoc::get(builder.getStringAttr(name_ResScore3));
+    auto buf_op_ResScore3 =
+        builder.create<tpu::BufferOp>(loc_ResScore3, type_ResScore3);
     SuperiorOp.setOperand(13, buf_op_ResScore3);
 
     auto type_ResLabel2 = RankedTensorType::get(shape7, rewriter.getI32Type());
-    auto name_ResLabel2 = module::getName(SuperiorOp.getOperation()).str()+"_buffer_9";
-    auto loc_ResLabel2  = NameLoc::get(builder.getStringAttr(name_ResLabel2));
-    auto buf_op_ResLabel2      = builder.create<tpu::BufferOp>(loc_ResLabel2, type_ResLabel2);
+    auto name_ResLabel2 =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_9";
+    auto loc_ResLabel2 = NameLoc::get(builder.getStringAttr(name_ResLabel2));
+    auto buf_op_ResLabel2 =
+        builder.create<tpu::BufferOp>(loc_ResLabel2, type_ResLabel2);
     SuperiorOp.setOperand(14, buf_op_ResLabel2);
 
     auto type_ResultList = RankedTensorType::get(shape6, rewriter.getF32Type());
-    auto name_ResultList = module::getName(SuperiorOp.getOperation()).str()+"_buffer_10";
-    auto loc_ResultList  = NameLoc::get(builder.getStringAttr(name_ResultList));
-    auto buf_op_ResultList      = builder.create<tpu::BufferOp>(loc_ResultList, type_ResultList);
+    auto name_ResultList =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_10";
+    auto loc_ResultList = NameLoc::get(builder.getStringAttr(name_ResultList));
+    auto buf_op_ResultList =
+        builder.create<tpu::BufferOp>(loc_ResultList, type_ResultList);
     SuperiorOp.setOperand(15, buf_op_ResultList);
 
     auto type_Keep_3nch = RankedTensorType::get(shape10, rewriter.getF32Type());
-    auto name_Keep_3nch = module::getName(SuperiorOp.getOperation()).str()+"_buffer_11";
-    auto loc_Keep_3nch  = NameLoc::get(builder.getStringAttr(name_Keep_3nch));
-    auto buf_op_Keep_3nch      = builder.create<tpu::BufferOp>(loc_Keep_3nch, type_Keep_3nch);
+    auto name_Keep_3nch =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_11";
+    auto loc_Keep_3nch = NameLoc::get(builder.getStringAttr(name_Keep_3nch));
+    auto buf_op_Keep_3nch =
+        builder.create<tpu::BufferOp>(loc_Keep_3nch, type_Keep_3nch);
     SuperiorOp.setOperand(16, buf_op_Keep_3nch);
 
     auto type_KeepU32_1h = RankedTensorType::get(shape9, rewriter.getI32Type());
-    auto name_KeepU32_1h = module::getName(SuperiorOp.getOperation()).str()+"_buffer_12";
-    auto loc_KeepU32_1h  = NameLoc::get(builder.getStringAttr(name_KeepU32_1h));
-    auto buf_op_KeepU32_1h      = builder.create<tpu::BufferOp>(loc_KeepU32_1h, type_KeepU32_1h);
+    auto name_KeepU32_1h =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_12";
+    auto loc_KeepU32_1h = NameLoc::get(builder.getStringAttr(name_KeepU32_1h));
+    auto buf_op_KeepU32_1h =
+        builder.create<tpu::BufferOp>(loc_KeepU32_1h, type_KeepU32_1h);
     SuperiorOp.setOperand(17, buf_op_KeepU32_1h);
 
-    auto type_GlbBufferBoxes = RankedTensorType::get(shape8, rewriter.getF32Type());
-    auto name_GlbBufferBoxes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_13";
-    auto loc_GlbBufferBoxes  = NameLoc::get(builder.getStringAttr(name_GlbBufferBoxes));
-    auto buf_op_GlbBufferBoxes      = builder.create<tpu::BufferOp>(loc_GlbBufferBoxes, type_GlbBufferBoxes);
+    auto type_GlbBufferBoxes =
+        RankedTensorType::get(shape8, rewriter.getF32Type());
+    auto name_GlbBufferBoxes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_13";
+    auto loc_GlbBufferBoxes =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferBoxes));
+    auto buf_op_GlbBufferBoxes =
+        builder.create<tpu::BufferOp>(loc_GlbBufferBoxes, type_GlbBufferBoxes);
     SuperiorOp.setOperand(18, buf_op_GlbBufferBoxes);
 
-    auto type_GlbBufferScores = RankedTensorType::get(shape7, rewriter.getF32Type());
-    auto name_GlbBufferScores = module::getName(SuperiorOp.getOperation()).str()+"_buffer_14";
-    auto loc_GlbBufferScores  = NameLoc::get(builder.getStringAttr(name_GlbBufferScores));
-    auto buf_op_GlbBufferScores      = builder.create<tpu::BufferOp>(loc_GlbBufferScores, type_GlbBufferScores);
+    auto type_GlbBufferScores =
+        RankedTensorType::get(shape7, rewriter.getF32Type());
+    auto name_GlbBufferScores =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_14";
+    auto loc_GlbBufferScores =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferScores));
+    auto buf_op_GlbBufferScores = builder.create<tpu::BufferOp>(
+        loc_GlbBufferScores, type_GlbBufferScores);
     SuperiorOp.setOperand(19, buf_op_GlbBufferScores);
 
-    auto type_GlbBufferNms = RankedTensorType::get(shape_glb_buffer_nms, rewriter.getF32Type());
-    auto name_GlbBufferNms = module::getName(SuperiorOp.getOperation()).str()+"_buffer_15";
-    auto loc_GlbBufferNms  = NameLoc::get(builder.getStringAttr(name_GlbBufferNms));
-    auto buf_op_GlbBufferNms      = builder.create<tpu::BufferOp>(loc_GlbBufferNms, type_GlbBufferNms);
+    auto type_GlbBufferNms =
+        RankedTensorType::get(shape_glb_buffer_nms, rewriter.getF32Type());
+    auto name_GlbBufferNms =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_15";
+    auto loc_GlbBufferNms =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferNms));
+    auto buf_op_GlbBufferNms =
+        builder.create<tpu::BufferOp>(loc_GlbBufferNms, type_GlbBufferNms);
     SuperiorOp.setOperand(20, buf_op_GlbBufferNms);
 
-    auto type_GlbBufferNonzero = RankedTensorType::get(shape3, rewriter.getI32Type());
-    auto name_GlbBufferNonzero = module::getName(SuperiorOp.getOperation()).str()+"_buffer_16";
-    auto loc_GlbBufferNonzero  = NameLoc::get(builder.getStringAttr(name_GlbBufferNonzero));
-    auto buf_op_GlbBufferNonzero      = builder.create<tpu::BufferOp>(loc_GlbBufferNonzero, type_GlbBufferNonzero);
+    auto type_GlbBufferNonzero =
+        RankedTensorType::get(shape3, rewriter.getI32Type());
+    auto name_GlbBufferNonzero =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_16";
+    auto loc_GlbBufferNonzero =
+        NameLoc::get(builder.getStringAttr(name_GlbBufferNonzero));
+    auto buf_op_GlbBufferNonzero = builder.create<tpu::BufferOp>(
+        loc_GlbBufferNonzero, type_GlbBufferNonzero);
     SuperiorOp.setOperand(21, buf_op_GlbBufferNonzero);
 
-    auto type_ResultValidInd = RankedTensorType::get(shape3, rewriter.getI32Type());
-    auto name_ResultValidInd = module::getName(SuperiorOp.getOperation()).str()+"_buffer_17";
-    auto loc_ResultValidInd  = NameLoc::get(builder.getStringAttr(name_ResultValidInd));
-    auto buf_op_ResultValidInd      = builder.create<tpu::BufferOp>(loc_ResultValidInd, type_ResultValidInd);
+    auto type_ResultValidInd =
+        RankedTensorType::get(shape3, rewriter.getI32Type());
+    auto name_ResultValidInd =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_17";
+    auto loc_ResultValidInd =
+        NameLoc::get(builder.getStringAttr(name_ResultValidInd));
+    auto buf_op_ResultValidInd =
+        builder.create<tpu::BufferOp>(loc_ResultValidInd, type_ResultValidInd);
     SuperiorOp.setOperand(22, buf_op_ResultValidInd);
 
     auto type_GlbLables = RankedTensorType::get(shape3, rewriter.getI32Type());
-    auto name_GlbLables = module::getName(SuperiorOp.getOperation()).str()+"_buffer_18";
-    auto loc_GlbLables  = NameLoc::get(builder.getStringAttr(name_GlbLables));
-    auto buf_op_GlbLables      = builder.create<tpu::BufferOp>(loc_GlbLables, type_GlbLables);
+    auto name_GlbLables =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_18";
+    auto loc_GlbLables = NameLoc::get(builder.getStringAttr(name_GlbLables));
+    auto buf_op_GlbLables =
+        builder.create<tpu::BufferOp>(loc_GlbLables, type_GlbLables);
     SuperiorOp.setOperand(23, buf_op_GlbLables);
 
-    auto type_GlbLablesExpand = RankedTensorType::get(shape3, rewriter.getI32Type());
-    auto name_GlbLablesExpand = module::getName(SuperiorOp.getOperation()).str()+"_buffer_19";
-    auto loc_GlbLablesExpand  = NameLoc::get(builder.getStringAttr(name_GlbLablesExpand));
-    auto buf_op_GlbLablesExpand      = builder.create<tpu::BufferOp>(loc_GlbLablesExpand, type_GlbLablesExpand);
+    auto type_GlbLablesExpand =
+        RankedTensorType::get(shape3, rewriter.getI32Type());
+    auto name_GlbLablesExpand =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_19";
+    auto loc_GlbLablesExpand =
+        NameLoc::get(builder.getStringAttr(name_GlbLablesExpand));
+    auto buf_op_GlbLablesExpand = builder.create<tpu::BufferOp>(
+        loc_GlbLablesExpand, type_GlbLablesExpand);
     SuperiorOp.setOperand(24, buf_op_GlbLablesExpand);
-   return success();
+    return success();
   }
 };
 
-class MaskRCNNMaskPoolerGlobalBuffer : public OpRewritePattern<tpu::MaskRCNNMaskPoolerOp> {
+class MaskRCNNMaskPoolerGlobalBuffer
+    : public OpRewritePattern<tpu::MaskRCNNMaskPoolerOp> {
 public:
   using OpRewritePattern<tpu::MaskRCNNMaskPoolerOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MaskRCNNMaskPoolerOp SuperiorOp,
                                 PatternRewriter &rewriter) const override {
-    const int batch_size     = module::getShape(SuperiorOp.getX_0())[0];
+    const int batch_size = module::getShape(SuperiorOp.getX_0())[0];
     const int C = SuperiorOp.getCHANNEL_ROI();
-    const int roi_slice =  SuperiorOp.getROI_SLICE();
-    const int roi_len   = SuperiorOp.getROI_LEN();
-    const int roi_num   = roi_slice*batch_size;
+    const int roi_slice = SuperiorOp.getROI_SLICE();
+    const int roi_len = SuperiorOp.getROI_LEN();
+    const int roi_num = roi_slice * batch_size;
     const int PH = SuperiorOp.getROI_PH();
     const int PW = SuperiorOp.getROI_PW();
-    const std::vector<int64_t> shape_mask_rois  = {batch_size, 1, roi_slice, roi_len};
-    const std::vector<int64_t> shape_det_bboxes = {batch_size, 1, roi_slice ,roi_len};
+    const std::vector<int64_t> shape_mask_rois = {batch_size, 1, roi_slice,
+                                                  roi_len};
+    const std::vector<int64_t> shape_det_bboxes = {batch_size, 1, roi_slice,
+                                                   roi_len};
     const std::vector<int64_t> shape_det_labels = {batch_size, 1, roi_slice, 1};
 
     const std::vector<int64_t> res_shape = {roi_num, C, PH, PW};
     const std::vector<int64_t> rois_slice_shape = {batch_size, roi_slice, 1, 1};
-  //[Error] N should be GLOBAL_BATCH_SIZE, but now must compaitble with gsl_roi_pooler.pl
-    const std::vector<int64_t> rois_shape3 = {batch_size, roi_slice, 1, roi_len};
+    //[Error] N should be GLOBAL_BATCH_SIZE, but now must compaitble with
+    // gsl_roi_pooler.pl
+    const std::vector<int64_t> rois_shape3 = {batch_size, roi_slice, 1,
+                                              roi_len};
     const std::vector<int64_t> bias_shape = {1, C, 1, 1};
 
     OpBuilder builder(SuperiorOp->getContext());
     builder.setInsertionPoint(SuperiorOp);
-    auto type_PtrRoisBuff = RankedTensorType::get(rois_shape3, rewriter.getF32Type());
-    auto name_PtrRoisBuff = module::getName(SuperiorOp.getOperation()).str()+"_buffer_0";
-    auto loc_PtrRoisBuff  = NameLoc::get(builder.getStringAttr(name_PtrRoisBuff));
-    auto buf_op_PtrRoisBuff      = builder.create<tpu::BufferOp>(loc_PtrRoisBuff, type_PtrRoisBuff);
+    auto type_PtrRoisBuff =
+        RankedTensorType::get(rois_shape3, rewriter.getF32Type());
+    auto name_PtrRoisBuff =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_0";
+    auto loc_PtrRoisBuff =
+        NameLoc::get(builder.getStringAttr(name_PtrRoisBuff));
+    auto buf_op_PtrRoisBuff =
+        builder.create<tpu::BufferOp>(loc_PtrRoisBuff, type_PtrRoisBuff);
     SuperiorOp.setOperand(7, buf_op_PtrRoisBuff);
 
-    auto type_ResultFilledDetBboxes = RankedTensorType::get(shape_det_bboxes, rewriter.getF32Type());
-    auto name_ResultFilledDetBboxes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_1";
-    auto loc_ResultFilledDetBboxes  = NameLoc::get(builder.getStringAttr(name_ResultFilledDetBboxes));
-    auto buf_op_ResultFilledDetBboxes      = builder.create<tpu::BufferOp>(loc_ResultFilledDetBboxes, type_ResultFilledDetBboxes);
+    auto type_ResultFilledDetBboxes =
+        RankedTensorType::get(shape_det_bboxes, rewriter.getF32Type());
+    auto name_ResultFilledDetBboxes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_1";
+    auto loc_ResultFilledDetBboxes =
+        NameLoc::get(builder.getStringAttr(name_ResultFilledDetBboxes));
+    auto buf_op_ResultFilledDetBboxes = builder.create<tpu::BufferOp>(
+        loc_ResultFilledDetBboxes, type_ResultFilledDetBboxes);
     SuperiorOp.setOperand(8, buf_op_ResultFilledDetBboxes);
 
-    auto type_ResultFilledDetLabels = RankedTensorType::get(shape_det_labels, rewriter.getF32Type());
-    auto name_ResultFilledDetLabels = module::getName(SuperiorOp.getOperation()).str()+"_buffer_2";
-    auto loc_ResultFilledDetLabels  = NameLoc::get(builder.getStringAttr(name_ResultFilledDetLabels));
-    auto buf_op_ResultFilledDetLabels      = builder.create<tpu::BufferOp>(loc_ResultFilledDetLabels, type_ResultFilledDetLabels);
+    auto type_ResultFilledDetLabels =
+        RankedTensorType::get(shape_det_labels, rewriter.getF32Type());
+    auto name_ResultFilledDetLabels =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_2";
+    auto loc_ResultFilledDetLabels =
+        NameLoc::get(builder.getStringAttr(name_ResultFilledDetLabels));
+    auto buf_op_ResultFilledDetLabels = builder.create<tpu::BufferOp>(
+        loc_ResultFilledDetLabels, type_ResultFilledDetLabels);
     SuperiorOp.setOperand(9, buf_op_ResultFilledDetLabels);
 
-    auto type_PtrTmpRes = RankedTensorType::get(res_shape, rewriter.getF32Type());
-    auto name_PtrTmpRes = module::getName(SuperiorOp.getOperation()).str()+"_buffer_3";
-    auto loc_PtrTmpRes  = NameLoc::get(builder.getStringAttr(name_PtrTmpRes));
-    auto buf_op_PtrTmpRes      = builder.create<tpu::BufferOp>(loc_PtrTmpRes, type_PtrTmpRes);
+    auto type_PtrTmpRes =
+        RankedTensorType::get(res_shape, rewriter.getF32Type());
+    auto name_PtrTmpRes =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_3";
+    auto loc_PtrTmpRes = NameLoc::get(builder.getStringAttr(name_PtrTmpRes));
+    auto buf_op_PtrTmpRes =
+        builder.create<tpu::BufferOp>(loc_PtrTmpRes, type_PtrTmpRes);
     SuperiorOp.setOperand(10, buf_op_PtrTmpRes);
 
-    auto type_PtrRoisTmp = RankedTensorType::get(rois_slice_shape, rewriter.getF32Type());
-    auto name_PtrRoisTmp = module::getName(SuperiorOp.getOperation()).str()+"_buffer_4";
-    auto loc_PtrRoisTmp  = NameLoc::get(builder.getStringAttr(name_PtrRoisTmp));
-    auto buf_op_PtrRoisTmp      = builder.create<tpu::BufferOp>(loc_PtrRoisTmp, type_PtrRoisTmp);
+    auto type_PtrRoisTmp =
+        RankedTensorType::get(rois_slice_shape, rewriter.getF32Type());
+    auto name_PtrRoisTmp =
+        module::getName(SuperiorOp.getOperation()).str() + "_buffer_4";
+    auto loc_PtrRoisTmp = NameLoc::get(builder.getStringAttr(name_PtrRoisTmp));
+    auto buf_op_PtrRoisTmp =
+        builder.create<tpu::BufferOp>(loc_PtrRoisTmp, type_PtrRoisTmp);
     SuperiorOp.setOperand(11, buf_op_PtrRoisTmp);
 
     return success();

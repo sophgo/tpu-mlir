@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
@@ -49,7 +48,8 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
       double scale = getF8Scale().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; i++) {
-        p.outputs[0][i] = p.inputs[0][i] * scale + getConstVal().convertToDouble();
+        p.outputs[0][i] =
+            p.inputs[0][i] * scale + getConstVal().convertToDouble();
       }
       if (getDoRelu()) {
         auto limit = getReluLimit().convertToDouble();
@@ -74,7 +74,6 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
     } else if (out_type.isFloat8E5M2()) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     }
-
   }
   return success();
 }
@@ -86,7 +85,9 @@ LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
   bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-15 &&
                      op.getMultiplier() == 1 && op.getRshift() == 0;
 
-  bool isTangents = module::isTrain() && module::endsWith(module::getName(op.getResult()).str(), "_add_zero");
+  bool isTangents =
+      module::isTrain() &&
+      module::endsWith(module::getName(op.getResult()).str(), "_add_zero");
   if (!isTangents && is_type_match && is_identity) {
     rewriter.replaceOp(op, op.getInput());
     return success();
@@ -129,10 +130,10 @@ void tpu::AddConstOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::AddConstOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
 
 bool tpu::AddConstOp::support_multi_core() { return false; }
-

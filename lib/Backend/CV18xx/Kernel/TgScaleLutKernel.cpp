@@ -8,10 +8,6 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgScaleLutKernel.hpp"
 
-
-
-
-
 #define DEBUG_TYPE "cvi_backend_scalelut_kernel"
 namespace tpu_mlir {
 namespace backend {
@@ -56,9 +52,9 @@ void TgScaleLutKernel::reshape() {
         break;
       }
     }
-    LLVM_DEBUG(
-        llvm::dbgs() << llvm::format("reshape [%d,%d,%d,%d] => [%d,%d,%d,%d]\n",
-                                     n, c, h, w, _n, _c, _h, _w));
+    LLVM_DEBUG(llvm::dbgs()
+               << llvm::format("reshape [%d,%d,%d,%d] => [%d,%d,%d,%d]\n", n, c,
+                               h, w, _n, _c, _h, _w));
     this->n = _n;
     this->c = _c;
     this->h = _h;
@@ -101,9 +97,9 @@ void TgScaleLutKernel::reshape() {
         std::swap(w_, h_);
       }
     }
-    LLVM_DEBUG(
-        llvm::dbgs() << llvm::format("reshape [%d,%d,%d,%d] => [%d,%d,%d,%d]\n",
-                                     n, c, h, w, n, c_, h_, w_));
+    LLVM_DEBUG(llvm::dbgs()
+               << llvm::format("reshape [%d,%d,%d,%d] => [%d,%d,%d,%d]\n", n, c,
+                               h, w, n, c_, h_, w_));
     c_times = c_ / c;
     c = c_;
     h = h_;
@@ -117,9 +113,11 @@ void TgScaleLutKernel::selectTilePolicy() {
   if (CV18xx::NPU_NUM < c_ori) {
     int w_step = w;
     for (w_step = w; w_step > 0; --w_step) {
-      cvk_tl_shape_t data_shape = {(uint32_t)n, (uint32_t)c, (uint32_t)h, (uint32_t)w_step};
+      cvk_tl_shape_t data_shape = {(uint32_t)n, (uint32_t)c, (uint32_t)h,
+                                   (uint32_t)w_step};
       uint32_t need_mem_size = CV18xx::lmem_tensor_to_size(data_shape, fmt, 1);
-      if (need_mem_size * BLOB_NUM <= (uint32_t)CV18xx::LMEM_BYTES - c_ori * lmem_used) {
+      if (need_mem_size * BLOB_NUM <=
+          (uint32_t)CV18xx::LMEM_BYTES - c_ori * lmem_used) {
         break;
       }
     }
@@ -143,7 +141,7 @@ void TgScaleLutKernel::selectTilePolicy() {
     }
   } else {
     CV18xx::tiling_packing(tiles, n, c, h, w, fmt, BLOB_NUM, lmem_used,
-                       CV18xx::TilingNHW);
+                           CV18xx::TilingNHW);
   }
 }
 
@@ -171,7 +169,8 @@ void TgScaleLutKernel::allocLmem() {
       ts_data.fmt = fmt;
       ts_data.start_address = ga_lut + i * tl_lut[i]->stride.c;
       ts_data.shape = CV18xx::tg_shape_t4(1, CV18xx::NPU_NUM, 1, hw);
-      ts_data.stride = {(uint32_t)(CV18xx::NPU_NUM * hw), 0, (uint32_t)lut_shape.w, 1};
+      ts_data.stride = {(uint32_t)(CV18xx::NPU_NUM * hw), 0,
+                        (uint32_t)lut_shape.w, 1};
       cvk_tdma_g2l_tensor_copy_param_t p = {0};
       p.src = &ts_data;
       p.dst = tl_lut[i];
@@ -197,7 +196,6 @@ void TgScaleLutKernel::allocLmem() {
     CV18xx::tdma_g2l_tensor_copy(&p);
     tl_lut[0]->shape = lut_shape;
     tl_lut[0]->stride = CV18xx::tl_default_stride(lut_shape, fmt, 1);
-
   }
 }
 
@@ -262,20 +260,22 @@ void TgScaleLutKernel::compute(int32_t step_idx) {
   refresh(step_idx);
   if (CV18xx::NPU_NUM < c_ori) {
     for (int i = 0; i < c_ori; ++i) {
-      auto tl_cur_ifmap          = tl_ifmap;
-      tl_cur_ifmap.shape.n       = n / c_ori;
+      auto tl_cur_ifmap = tl_ifmap;
+      tl_cur_ifmap.shape.n = n / c_ori;
       tl_cur_ifmap.stride.n *= c_ori;
-      tl_cur_ifmap.start_address = tl_ifmap.start_address + i * tl_ifmap.stride.n;
+      tl_cur_ifmap.start_address =
+          tl_ifmap.start_address + i * tl_ifmap.stride.n;
 
-      auto tl_cur_ofmap              = tl_ofmap;
-      tl_cur_ofmap.shape.n           = n / c_ori;
+      auto tl_cur_ofmap = tl_ofmap;
+      tl_cur_ofmap.shape.n = n / c_ori;
       tl_cur_ofmap.stride.n *= c_ori;
-      tl_cur_ofmap.start_address     = tl_ofmap.start_address + i * tl_ofmap.stride.n;
+      tl_cur_ofmap.start_address =
+          tl_ofmap.start_address + i * tl_ofmap.stride.n;
       cvk_tiu_lookup_table_param_t p = {0};
-      p.ofmap                        = &tl_cur_ofmap;
-      p.ifmap                        = &tl_cur_ifmap;
-      p.table                        = tl_lut[i];
-      p.layer_id                     = layer_id;
+      p.ofmap = &tl_cur_ofmap;
+      p.ifmap = &tl_cur_ifmap;
+      p.table = tl_lut[i];
+      p.layer_id = layer_id;
       CV18xx::tiu_lookup_table(&p);
     }
   } else {
@@ -285,12 +285,10 @@ void TgScaleLutKernel::compute(int32_t step_idx) {
     p.table = tl_lut[0];
     p.layer_id = layer_id;
     CV18xx::tiu_lookup_table(&p);
-
   }
 }
 
-void cvi_backend_tg_scale_lut_kernel(
-                                     uint32_t layer_id, gaddr_t ga_input,
+void cvi_backend_tg_scale_lut_kernel(uint32_t layer_id, gaddr_t ga_input,
                                      gaddr_t ga_output, gaddr_t ga_lut, int n,
                                      int c, int h, int w, cvk_fmt_t fmt) {
   TgScaleLutKernel kernel;
@@ -298,5 +296,5 @@ void cvi_backend_tg_scale_lut_kernel(
   kernel.selectTilePolicy();
   kernel.schedule();
 }
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

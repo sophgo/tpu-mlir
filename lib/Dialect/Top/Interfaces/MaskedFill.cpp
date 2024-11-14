@@ -18,7 +18,6 @@ LogicalResult top::MaskedFillOp::init(InferenceParameter &p) {
 }
 void top::MaskedFillOp::deinit(InferenceParameter &p) {}
 
-
 LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
   const auto num_element = module::getNumElements(getOutput());
   const auto in_num_element = module::getNumElements(getOperand(0));
@@ -59,7 +58,7 @@ LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
 
 void top::MaskedFillOp::shape_inference() {
   broadcast_shape_inference(getOperation());
-  for(int i = 0; i< getNumOperands(); ++i) {
+  for (int i = 0; i < getNumOperands(); ++i) {
     auto value = getOperation()->getOperand(i);
     broadcast_tensor_reshape(getOutput(), value);
   }

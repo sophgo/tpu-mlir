@@ -14,25 +14,30 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-void GatherElementsLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherElementsOp op,
-                                  bool asymmetric) const {
+void GatherElementsLowering::LoweringINT8(PatternRewriter &rewriter,
+                                          top::GatherElementsOp op,
+                                          bool asymmetric) const {
   LoweringBF16(rewriter, op);
 }
 
 void GatherElementsLowering::LoweringBF16(PatternRewriter &rewriter,
-                                  top::GatherElementsOp op) const {
+                                          top::GatherElementsOp op) const {
   // std::vector<Value> operands;
   // std::vector<NamedAttribute> attrs;
   // std::vector<NamedAttribute> cpu_op_param;
-  // attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("gatherelements_pt")));
-  // cpu_op_param.emplace_back(rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(op.getAxis())));
-  // attrs.emplace_back(rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_op_param)));
-  // if (auto indiceOp = dyn_cast_or_null<top::WeightOp>(op.getIndices().getDefiningOp())) {
+  // attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name",
+  // rewriter.getStringAttr("gatherelements_pt")));
+  // cpu_op_param.emplace_back(rewriter.getNamedAttr("axis",
+  // rewriter.getI32IntegerAttr(op.getAxis())));
+  // attrs.emplace_back(rewriter.getNamedAttr("param",
+  // rewriter.getDictionaryAttr(cpu_op_param))); if (auto indiceOp =
+  // dyn_cast_or_null<top::WeightOp>(op.getIndices().getDefiningOp())) {
   //   operands.emplace_back(indiceOp.clone_int(op));
   // } else {
   //   operands.emplace_back(op.getIndices());
   // }
-  // if (auto inputOp = dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
+  // if (auto inputOp =
+  // dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
   //   operands.emplace_back(inputOp.clone_bf16(op));
   // } else {
   //   operands.emplace_back(op.getInput());
@@ -74,5 +79,5 @@ void GatherElementsLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
                                                  operands, attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

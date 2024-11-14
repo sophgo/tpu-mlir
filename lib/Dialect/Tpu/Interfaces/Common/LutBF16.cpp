@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/LutFunc.h"
-
-
 
 LogicalResult tpu::LutBF16Op::init(InferenceParameter &p) { return success(); }
 void tpu::LutBF16Op::deinit(InferenceParameter &p) {}
@@ -38,8 +35,6 @@ LogicalResult tpu::LutBF16Op::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::LutBF16Op::LocalGenSupport() {
-  return success();
-}
+LogicalResult tpu::LutBF16Op::LocalGenSupport() { return success(); }
 
 bool tpu::LutBF16Op::support_multi_core() { return false; }

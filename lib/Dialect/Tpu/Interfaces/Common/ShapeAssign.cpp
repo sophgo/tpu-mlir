@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-LogicalResult tpu::ShapeAssignOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ShapeAssignOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ShapeAssignOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShapeAssignOp::inference(InferenceParameter &p) {
@@ -18,7 +20,8 @@ LogicalResult tpu::ShapeAssignOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::ShapeAssignOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::ShapeAssignOp::type_verify(uint64_t opd_idx,
+                                           TypeCastMode &mode) {
   auto op = getOperation();
   if (opd_idx == 1) {
     // shape

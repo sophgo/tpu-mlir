@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
 using namespace tpu_mlir::backend;
@@ -30,7 +29,8 @@ void tpu::MatMulOp::codegen_global_bm1684() {
   auto p = parseParam();
   int using_bias = p.with_bias ? 1 : 0;
   int if_relu = p.do_relu ? 1 : 0;
-  double relu_upper_limit = p.do_relu ? p.relu_limit : 0.0; //no working in backend
+  double relu_upper_limit =
+      p.do_relu ? p.relu_limit : 0.0; // no working in backend
   auto in_addr = module::getAddress(getInput());
   auto right_addr = module::getAddress(getRight());
   auto bias_addr = module::getAddress(getBias());
@@ -43,8 +43,7 @@ void tpu::MatMulOp::codegen_global_bm1684() {
     int in_sign = module::isSign(getInput());
     int right_sign = module::isSign(getRight());
     int bias_sign = p.with_bias ? module::isSign(getBias()) : 0;
-    int if_right_active =
-        module::isWeight(getRight()) ? 0 : 1;
+    int if_right_active = module::isWeight(getRight()) ? 0 : 1;
     auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
     assert(rshift_v->size() == 1);
     FcQParams quant_param{0, 0, 0, 0, 0};
@@ -56,20 +55,11 @@ void tpu::MatMulOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_batch_matmul_forward_parallel_v2(
-        in_addr,
-        (const int*)in_shape,
-        3,
-        right_addr,
-        (const int*)right_shape,
-        3,
-        out_addr,
-        bias_addr,
-        using_bias,
-        if_relu, //relu = 0
-        (float)relu_upper_limit,
-        NULL, NULL,
-        (CMD_ID_NODE *)BM1684::instance()->cmdid_node
-    );
+        in_addr, (const int *)in_shape, 3, right_addr, (const int *)right_shape,
+        3, out_addr, bias_addr, using_bias,
+        if_relu, // relu = 0
+        (float)relu_upper_limit, NULL, NULL,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

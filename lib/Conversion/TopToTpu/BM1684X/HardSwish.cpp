@@ -27,8 +27,9 @@ void HardSwishLowering::LoweringF32(PatternRewriter &rewriter,
 static inline double hswish(double x) {
   return x * std::max(0.0, std::min(1.0, x / 6 + 0.5));
 }
-void HardSwishLowering::LoweringINT4(PatternRewriter &rewriter, top::HardSwishOp op,
-                                   bool asymmetric) const {
+void HardSwishLowering::LoweringINT4(PatternRewriter &rewriter,
+                                     top::HardSwishOp op,
+                                     bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -54,7 +55,7 @@ void HardSwishLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void HardSwishLowering::LoweringF8(PatternRewriter &rewriter,
-                                    top::HardSwishOp op) const {
+                                   top::HardSwishOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 

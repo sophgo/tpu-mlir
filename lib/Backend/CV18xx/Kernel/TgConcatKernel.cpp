@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgConcatKernel.hpp"
 
-
-
 #define DEBUG_TYPE "cvi_backend_concat_kernel"
 
 namespace tpu_mlir {
@@ -105,8 +103,7 @@ void TgConcatKernel::init(uint32_t layer_id, int input_num, int dim_size,
   }
 }
 
-uint64_t
-TgConcatKernel::dst_offset(const CV18xx::tiling_info_t &tile) const {
+uint64_t TgConcatKernel::dst_offset(const CV18xx::tiling_info_t &tile) const {
   return tile.pos_w * output_stride.w + tile.pos_h * output_stride.h +
          tile.pos_c * output_stride.c + tile.pos_n * output_stride.n;
 }
@@ -142,12 +139,12 @@ void TgConcatKernel::prepare(int32_t step_idx,
     input = &inputs[idx];
     if (input->tile_idx <= step_idx) {
       tile = &input->tiles[step_idx - input->tile_idx];
-      CV18xx::lmem_init_tensor(&tl_input,
-                           CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
-                           fmt, 1);
-      CV18xx::lmem_init_tensor(&tl_output,
-                           CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
-                           fmt, 1);
+      CV18xx::lmem_init_tensor(
+          &tl_input, CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
+          fmt, 1);
+      CV18xx::lmem_init_tensor(
+          &tl_output, CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
+          fmt, 1);
       tl_input.start_address = base_addr[step_idx % 2];
       tl_output.start_address = base_addr[step_idx % 2 + 2];
       return;
@@ -162,7 +159,7 @@ void TgConcatKernel::load(int32_t step_idx) {
   prepare(step_idx, input, tile);
   if (tiling_mode == CV18xx::TilingNCHW) {
     CV18xx::tdma_load_stride(&tl_input, input->ga_input + tile->offset,
-                         input->stride);
+                             input->stride);
   } else {
     CV18xx::tdma_load(&tl_input, input->ga_input + tile->offset);
   }
@@ -174,7 +171,7 @@ void TgConcatKernel::store(int32_t step_idx) {
   prepare(step_idx, input, tile);
   if (tiling_mode == CV18xx::TilingNCHW) {
     CV18xx::tdma_store_stride(&tl_output, input->ga_output + dst_offset(*tile),
-                          output_stride);
+                              output_stride);
   } else {
     CV18xx::tdma_store(&tl_output, input->ga_output + tile->offset);
   }
@@ -235,8 +232,7 @@ void TgConcatKernel::schedule() {
   }
 }
 
-void cvi_backend_tg_concat_kernel(
-                                  uint32_t layer_id, int input_num,
+void cvi_backend_tg_concat_kernel(uint32_t layer_id, int input_num,
                                   gaddr_t input_gaddrs[], gaddr_t output_gaddr,
                                   int axis_dims[], int concat_axis,
                                   int output_dim_size, int output_dim[],

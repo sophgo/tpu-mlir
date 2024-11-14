@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -22,8 +22,7 @@ struct TopPermuteToPixelShuffle : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopPermuteToPixelShuffle(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToPixelShuffle") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToPixelShuffle") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -102,8 +101,7 @@ struct TopPermuteToReorg : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopPermuteToReorg(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToReorg") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteToReorg") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -166,7 +164,8 @@ struct TopPermuteToReorg : public OpRewriterPatternEx<PermuteOp> {
   }
 };
 
-template <typename T> static int remove_value(std::vector<T> &v, T value) {
+template <typename T>
+static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -211,7 +210,7 @@ static bool is_valid_order(std::vector<int64_t> shape,
         }
       }
     } // end for check continous order
-  } // end num_dims > 4
+  }   // end num_dims > 4
   return valid_order;
 }
 
@@ -245,8 +244,7 @@ struct Permute5dSplit : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   Permute5dSplit(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "Permute5dSplit") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "Permute5dSplit") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -302,8 +300,7 @@ struct PermuteFuse : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   PermuteFuse(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "PermuteFuse") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "PermuteFuse") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -398,8 +395,7 @@ struct NonZeroPermutePattern : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   NonZeroPermutePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "NonZeroPermutePattern") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "NonZeroPermutePattern") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -475,9 +471,8 @@ struct NonZeroPermutePattern : public OpRewriterPatternEx<PermuteOp> {
 struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-    TopDecomposedRelPosEmb(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "TopDecomposedRelPosEmb") {
-  }
+  TopDecomposedRelPosEmb(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopDecomposedRelPosEmb") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
@@ -811,9 +806,8 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
 struct TopPermuteEliminate : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-      TopPermuteEliminate(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteEliminate") {
-  }
+  TopPermuteEliminate(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopPermuteEliminate") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {

@@ -23,6 +23,4 @@ LogicalResult top::SoftmaxBwdOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::SoftmaxBwdOp::shape_inference() {
-
-}
+void top::SoftmaxBwdOp::shape_inference() {}

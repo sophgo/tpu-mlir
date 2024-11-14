@@ -21,6 +21,5 @@ void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp op,
   lowering_common_f32<tpu::DivOp>(rewriter, op);
 }
 
-} // namespace bm1684x
+} // namespace bm1684
 } // namespace tpu_mlir
-

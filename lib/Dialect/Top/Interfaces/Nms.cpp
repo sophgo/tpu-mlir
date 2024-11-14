@@ -18,9 +18,9 @@ LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
   int input_size = getInputs().size();
   ASSERT_THIS(input_size >= 2);
-  if(input_size >= 3){
+  if (input_size >= 3) {
     param.max_output_boxes_per_class = p.inputs[2][0];
-  } else{
+  } else {
     param.max_output_boxes_per_class = getMaxOutputSize();
   }
   param.center_point_box = 0;
@@ -38,7 +38,7 @@ LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   std::vector<float> output_tensor_data(output_size, 0);
   param.inputs = input_list;
   param.output = output_tensor_data.data();
-  if(input_size >= 5) {
+  if (input_size >= 5) {
     param.iou_threshold = p.inputs[3][0];
     param.score_threshold = p.inputs[4][0];
   } else {
@@ -47,7 +47,7 @@ LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   }
   NmsFunc func(param);
   auto true_num = func.invoke();
-  int* tmp = (int*)output_tensor_data.data();
+  int *tmp = (int *)output_tensor_data.data();
   for (int64_t j = 0; j < true_num; ++j) {
     p.outputs[0][j] = (float)tmp[j];
   }
@@ -73,7 +73,7 @@ void top::NmsOp::shape_inference() {
     max_output_size_per_class = getMaxOutputSize();
   }
   // update max_output_size_per_class, such as 2**31 -1
-  if(max_output_size_per_class > spatial_dimension)
+  if (max_output_size_per_class > spatial_dimension)
     max_output_size_per_class = spatial_dimension;
   std::vector<int64_t> output_shape{0, 3};
   output_shape[0] = num_batch * num_class * max_output_size_per_class;

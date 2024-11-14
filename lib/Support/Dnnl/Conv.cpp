@@ -141,7 +141,6 @@ void Conv::setup(float *input, float *weight, float *bias, float *output,
       src_mem.get_desc(), filter_mem.get_desc(), bias_mem.get_desc(),
       dst_mem.get_desc(), strides, dilation, padding_l, padding_r, conv_attr);
   prim = convolution_forward(conv_prim_desc);
-
 }
 
 void Conv::backward_weights_setup() {
@@ -164,12 +163,13 @@ void Conv::backward_weights_setup() {
   memory::dims padding_l = {_attr.pdf, _attr.pht, _attr.pwl};
   memory::dims padding_r = {_attr.pdb, _attr.phb, _attr.pwr};
   auto filter_tag = (_attr.groups != 1) ? memory::format_tag::goidhw
-                                       : memory::format_tag::oidhw;
-  if (_attr.pad_value != 0 && (_attr.pdf > 0 || _attr.pdb > 0 || _attr.pht > 0 ||
-                               _attr.phb > 0 || _attr.pwl > 0 || _attr.pwr > 0)) {
-                            padding_l = {0, 0, 0};
-                            padding_r = {0, 0, 0};
-                               }
+                                        : memory::format_tag::oidhw;
+  if (_attr.pad_value != 0 &&
+      (_attr.pdf > 0 || _attr.pdb > 0 || _attr.pht > 0 || _attr.phb > 0 ||
+       _attr.pwl > 0 || _attr.pwr > 0)) {
+    padding_l = {0, 0, 0};
+    padding_r = {0, 0, 0};
+  }
   diff_filter_init(filter_shape);
   diff_bias_init(bias_shape);
   diff_dst_init(dst_shape);

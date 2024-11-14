@@ -66,7 +66,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
     }
   } else if (mode == tpu::RequantMode::MultiplierShift) {
     if (fuse_rq_axis) {
-#pragma omp parallel for schedule(static,omp_schedule(shape[shape.size() - 1]))
+#pragma omp parallel for schedule(static, omp_schedule(shape[shape.size() - 1]))
       for (int w = 0; w < shape[shape.size() - 1]; ++w) {
         int64_t multi, shift_val, zero_point;
         if (module::isBM1684X()) {

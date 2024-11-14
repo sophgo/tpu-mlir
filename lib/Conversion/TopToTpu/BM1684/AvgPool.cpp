@@ -74,11 +74,11 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::AvgPoolOp op,
       lowering_common_int8<tpu::Pool1DOp>(rewriter, op);
     }
   } else {
-    if(op.getKernelShape().size() == 3) {
+    if (op.getKernelShape().size() == 3) {
       lowering_common_f32<tpu::Pool3DOp>(rewriter, op, 2);
-    }else if(op.getKernelShape().size() == 2) {
+    } else if (op.getKernelShape().size() == 2) {
       lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
-    }else {
+    } else {
       lowering_common_f32<tpu::Pool1DOp>(rewriter, op);
     }
   }

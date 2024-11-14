@@ -9,15 +9,11 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-
-
-int64_t top::MinOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::MinOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::MinOp::init(InferenceParameter &p) {
   auto binary = new Binary();
-  auto lhs_shape =  module::getShape(getInputs()[0]);
+  auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
 
   (*binary)

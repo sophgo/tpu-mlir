@@ -10,10 +10,10 @@
 // Main entry function for mlir-opt for when built as standalone binary.
 //
 //===----------------------------------------------------------------------===//
-#include<fstream>
+#include <fstream>
 
-#include "tpu_mlir/InitAll.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
+#include "tpu_mlir/InitAll.h"
 using namespace mlir;
 
 const std::string PluginPrePass[] = {"--init"};
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   if (debug_cmd.find(substring) != std::string::npos) {
     std::ofstream ofs;
     ofs.open("/tmp/debug_cmd", std::ios::out | std::ios::trunc);
-    ofs <<debug_cmd.substr(substring.size()) << std::endl;
+    ofs << debug_cmd.substr(substring.size()) << std::endl;
     argc -= 1;
   }
 
@@ -70,7 +70,8 @@ int main(int argc, char **argv) {
   new_argv[0] = argv[0];
   new_argv[1] = argv[1];
   for (int i = 0; i < num_pre; i++) {
-    if (strncmp(argv[left], PluginPrePass[i].c_str(), PluginPrePass[i].length()) == 0){
+    if (strncmp(argv[left], PluginPrePass[i].c_str(),
+                PluginPrePass[i].length()) == 0) {
       new_argc--;
       continue;
     }

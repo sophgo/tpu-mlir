@@ -15,10 +15,9 @@ int64_t top::CumSumOp::getFLOPs() {
   int64_t flop = 1;
   for (int64_t i = 0; i < in_shape.size(); i++) {
     if (i == dim) {
-        flop *= (in_shape[i] - 1);
-    }
-    else {
-        flop *= in_shape[i];
+      flop *= (in_shape[i] - 1);
+    } else {
+      flop *= in_shape[i];
     }
   }
   return flop;
@@ -26,7 +25,7 @@ int64_t top::CumSumOp::getFLOPs() {
 
 LogicalResult top::CumSumOp::init(InferenceParameter &p) { return success(); }
 
-void top::CumSumOp::deinit(InferenceParameter &p) { }
+void top::CumSumOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CumSumOp::inference(InferenceParameter &p) {
   auto in_shape = module::getShape(getInput());
@@ -49,9 +48,9 @@ LogicalResult top::CumSumOp::inference(InferenceParameter &p) {
       for (int64_t s = 0; s < stride; s++) {
         if (l == 0) {
           p.outputs[0][start + s] = p.inputs[0][start + s];
-        }
-        else {
-          p.outputs[0][start + s] = p.inputs[0][start + s] + p.outputs[0][start + s - stride];
+        } else {
+          p.outputs[0][start + s] =
+              p.inputs[0][start + s] + p.outputs[0][start + s - stride];
         }
       }
     }

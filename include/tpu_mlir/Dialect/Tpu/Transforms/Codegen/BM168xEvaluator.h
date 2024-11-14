@@ -28,12 +28,11 @@ public:
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
 
 private:
-  void staging_results(GlobalGenInterface& op);
-  void staging_results(LocalGenInterface& op, local_sec_info_t sec_info);
+  void staging_results(GlobalGenInterface &op);
+  void staging_results(LocalGenInterface &op, local_sec_info_t sec_info);
   void visit_subnet(func::FuncOp funcOp, int subnet_id);
   void visit_static_subnet(func::FuncOp funcOp, int subnet_id);
-  void visit_group_body(GroupOp gOp, Operation *prev_op,
-                         Operation *next_op);
+  void visit_group_body(GroupOp gOp, Operation *prev_op, Operation *next_op);
   void handle_group_overlap(
       std::map<int64_t, std::vector<Operation *>> cur_other_downs,
       std::map<int64_t, std::vector<Operation *>> cur_other_ups,
@@ -43,7 +42,8 @@ private:
 public:
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
-  std::vector<std::string> all_tensor_names; // activation tensor, without weight
+  std::vector<std::string>
+      all_tensor_names; // activation tensor, without weight
   std::vector<std::string> all_weight_names; // weight tensor
 
 private:

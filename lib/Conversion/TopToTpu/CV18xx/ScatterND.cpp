@@ -12,8 +12,9 @@
 #define DEBUG_TYPE "lowering-ScatterND"
 namespace tpu_mlir {
 namespace cv18xx {
-void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter, top::ScatterNDOp op,
-                                   bool asymmetric) const {
+void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
+                                     top::ScatterNDOp op,
+                                     bool asymmetric) const {
   if (!module::isWeight(op.getIndices())) {
     llvm_unreachable("Not support activation indices.");
   }
@@ -24,11 +25,12 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter, top::ScatterNDOp
   operands.push_back(op.getUpdates());
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
-  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands, op->getAttrs());
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands,
+                                                op->getAttrs());
 }
 
 void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::ScatterNDOp op) const {
+                                     top::ScatterNDOp op) const {
   if (!module::isWeight(op.getIndices())) {
     llvm_unreachable("Not support activation indices.");
   }
@@ -39,7 +41,8 @@ void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(op.getUpdates());
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
-  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands, op->getAttrs());
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands,
+                                                op->getAttrs());
 }
 
 } // namespace cv18xx

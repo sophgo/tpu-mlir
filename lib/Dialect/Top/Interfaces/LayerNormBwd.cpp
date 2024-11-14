@@ -9,9 +9,7 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::LayerNormBwdOp::getFLOPs() {
-  return 0;
-}
+int64_t top::LayerNormBwdOp::getFLOPs() { return 0; }
 
 LogicalResult top::LayerNormBwdOp::init(InferenceParameter &p) {
   return success();
@@ -23,6 +21,4 @@ LogicalResult top::LayerNormBwdOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LayerNormBwdOp::shape_inference() {
-
-}
+void top::LayerNormBwdOp::shape_inference() {}

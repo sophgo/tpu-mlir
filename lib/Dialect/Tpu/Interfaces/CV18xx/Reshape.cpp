@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
 // using namespace tpu_mlir::backend;
 
 void tpu::ReshapeOp::codegen_global_cv18xx(int64_t layer_id) {

@@ -11,8 +11,6 @@
 
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "tl_pad"
 
 namespace tpu_mlir {
@@ -28,7 +26,6 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
   LLVM_DEBUG(llvm::errs() << llvm::format("la_input:%d\n", la_input));
 
   LLVM_DEBUG(llvm::errs() << llvm::format("la_output:%d\n", la_output));
-
 
   uint32_t in = input_dim[0];
   uint32_t ic = input_dim[1];
@@ -93,7 +90,6 @@ void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
   LLVM_DEBUG(llvm::errs() << llvm::format("la_input:%d\n", la_input));
 
   LLVM_DEBUG(llvm::errs() << llvm::format("la_output:%d\n", la_output));
-
 
   uint32_t in = input_dim[0];
   uint32_t ic = input_dim[1];

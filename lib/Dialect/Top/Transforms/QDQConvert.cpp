@@ -15,19 +15,20 @@
 
 using namespace llvm;
 
-
 namespace tpu_mlir {
 namespace top {
 
 // A pattern to convert QuantizeLinearOp return element type to quant.calibrated
 class QuantizeLinearCastTypePattern : public OpRewriterPatternEx3 {
-  public:
+public:
   QuantizeLinearCastTypePattern(PatternBenefit benefit, MLIRContext *context)
-      : OpRewriterPatternEx3(context, "QuantizeLinearCastTypePattern", benefit, top::QuantizeLinearOp::getOperationName()) {}
-    QuantizeLinearCastTypePattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context, "QuantizeLinearCastTypePattern", 1, top::QuantizeLinearOp::getOperationName()) {}
+      : OpRewriterPatternEx3(context, "QuantizeLinearCastTypePattern", benefit,
+                             top::QuantizeLinearOp::getOperationName()) {}
+  QuantizeLinearCastTypePattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "QuantizeLinearCastTypePattern", 1,
+                             top::QuantizeLinearOp::getOperationName()) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto return_value = op->getResult(0);
     auto operand_type = op->getOperand(0).getType().cast<RankedTensorType>();
     assert(return_value.getType().dyn_cast<RankedTensorType>() &&
@@ -59,18 +60,20 @@ class QuantizeLinearCastTypePattern : public OpRewriterPatternEx3 {
     return_value.setType(new_type);
     return success();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 // A pattern to fuse quantizelinear with the former ops.
 class QuantizeLinearFusePattern : public OpRewriterPatternEx3 {
-  public:
+public:
   QuantizeLinearFusePattern(PatternBenefit benefit, MLIRContext *context)
-      : OpRewriterPatternEx3(context,"QuantizeLinearFusePattern", benefit, top::QuantizeLinearOp::getOperationName()) {}
-    QuantizeLinearFusePattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"QuantizeLinearFusePattern", 1, top::QuantizeLinearOp::getOperationName()) {}
+      : OpRewriterPatternEx3(context, "QuantizeLinearFusePattern", benefit,
+                             top::QuantizeLinearOp::getOperationName()) {}
+  QuantizeLinearFusePattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "QuantizeLinearFusePattern", 1,
+                             top::QuantizeLinearOp::getOperationName()) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value oprand = op->getOperand(0);
     auto quantized_type =
         op->getResult(0).getType().dyn_cast<RankedTensorType>();
@@ -88,18 +91,19 @@ class QuantizeLinearFusePattern : public OpRewriterPatternEx3 {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
-
 class RemoveDequantizeLinearPattern : public OpRewriterPatternEx3 {
-  public:
+public:
   RemoveDequantizeLinearPattern(PatternBenefit benefit, MLIRContext *context)
-      : OpRewriterPatternEx3(context, "RemoveDequantizeLinearPattern", benefit, top::DequantizeLinearOp::getOperationName()) {}
-    RemoveDequantizeLinearPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"RemoveDequantizeLinearPattern", 1, top::DequantizeLinearOp::getOperationName()) {}
+      : OpRewriterPatternEx3(context, "RemoveDequantizeLinearPattern", benefit,
+                             top::DequantizeLinearOp::getOperationName()) {}
+  RemoveDequantizeLinearPattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "RemoveDequantizeLinearPattern", 1,
+                             top::DequantizeLinearOp::getOperationName()) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     Value operand = op->getOperand(0);
     auto formerOp = op->getOperand(0).getDefiningOp();
     if (auto weightOp = dyn_cast<WeightOp>(formerOp)) {
@@ -130,19 +134,20 @@ class RemoveDequantizeLinearPattern : public OpRewriterPatternEx3 {
     rewriter.eraseOp(op);
     return success();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 // Not a graceful pattern. We make the quantized type transparent for Ops like
 // reshape, permute, etc...
 class CalibratedTypeTransparentPattern : public OpRewriterPatternEx3 {
-  public:
+public:
   CalibratedTypeTransparentPattern(PatternBenefit benefit, MLIRContext *context)
-      : OpRewriterPatternEx3(context, "CalibratedTypeTransparentPattern", benefit) {}
-    CalibratedTypeTransparentPattern(MLIRContext *context)
-      : OpRewriterPatternEx3(context,"CalibratedTypeTransparentPattern",1) {}
+      : OpRewriterPatternEx3(context, "CalibratedTypeTransparentPattern",
+                             benefit) {}
+  CalibratedTypeTransparentPattern(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "CalibratedTypeTransparentPattern", 1) {}
   LogicalResult matchAndRewriteImpl(Operation *op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op->getResults().empty() ||
         isa<top::WeightOp, ReturnOp, top::NoneOp>(op) ||
         isa<tpu::TpuDialect>(op->getDialect())) {
@@ -180,7 +185,7 @@ class CalibratedTypeTransparentPattern : public OpRewriterPatternEx3 {
     }
     return failure();
   }
-  bool shouldPrint(Operation *op) const override { return false;}
+  bool shouldPrint(Operation *op) const override { return false; }
 };
 
 class QDQConvertPass : public QDQConvertBase<QDQConvertPass> {

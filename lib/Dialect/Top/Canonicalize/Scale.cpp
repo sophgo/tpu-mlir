@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -15,10 +15,11 @@ using namespace tpu_mlir::trait;
 struct TopMultiScaleMergeToOne : public OpRewriterPatternEx<ScaleOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   TopMultiScaleMergeToOne(MLIRContext *context, PatternBenefit benefit = 10)
-      : OpRewriterPatternEx<ScaleOp>(context, "TopMultiScaleMergeToOne", benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "TopMultiScaleMergeToOne",
+                                     benefit) {}
 
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getDoRelu()) {
       return failure();
@@ -63,7 +64,7 @@ struct TopMultiScaleMergeToOne : public OpRewriterPatternEx<ScaleOp> {
     auto new_scale = WeightOp::create_float(nextOp, "merged_scale", scale_v,
                                             {channel}, cur_storage_type);
     auto new_bias = WeightOp::create_float(nextOp, "merged_bias", bias_v,
-                                            {channel}, cur_storage_type);
+                                           {channel}, cur_storage_type);
     nextOp->setOperand(1, new_scale);
     nextOp->setOperand(2, new_bias);
 
@@ -75,10 +76,11 @@ struct TopMultiScaleMergeToOne : public OpRewriterPatternEx<ScaleOp> {
 struct ConstbinaryMergeToTopScale : public OpRewriterPatternEx<ScaleOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   ConstbinaryMergeToTopScale(MLIRContext *context, PatternBenefit benefit = 6)
-      : OpRewriterPatternEx<ScaleOp>(context,"ConstbinaryMergeToTopScale", benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "ConstbinaryMergeToTopScale",
+                                     benefit) {}
 
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto formerOp = op->getOperand(0).getDefiningOp();
 
     if (!formerOp->hasOneUse()) {
@@ -108,8 +110,8 @@ struct ConstbinaryMergeToTopScale : public OpRewriterPatternEx<ScaleOp> {
       for (int i = 0; i < elem_num; ++i) {
         scale_v[i] = scale_f32->at(i) * value;
       }
-      auto new_scale = WeightOp::create_float(op, "constbinary_merged_to_scale",
-                                              scale_v, {elem_num}, storage_type);
+      auto new_scale = WeightOp::create_float(
+          op, "constbinary_merged_to_scale", scale_v, {elem_num}, storage_type);
       op->setOperand(0, mul_const_op.getInput());
       op->setOperand(1, new_scale);
       op->setOperand(2, bias);
@@ -139,10 +141,11 @@ struct ConstbinaryMergeToTopScale : public OpRewriterPatternEx<ScaleOp> {
 struct TopScaleMergeToBatchNorm : public OpRewriterPatternEx<ScaleOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   TopScaleMergeToBatchNorm(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToBatchNorm", benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToBatchNorm",
+                                     benefit) {}
 
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse() || !isa<BatchNormOp>(formerOp)) {
       return failure();
@@ -191,10 +194,10 @@ struct TopScaleMergeToBatchNorm : public OpRewriterPatternEx<ScaleOp> {
       }
     }
 
-    auto bn_mean = WeightOp::create_float(bn_op, "merged_to_bn_mean",
-                                          bn_mean_v, {channel}, storage_type);
-    auto bn_variance = WeightOp::create_float(bn_op, "merged_to_bn_variance",
-                                          bn_variance_v, {channel}, storage_type);
+    auto bn_mean = WeightOp::create_float(bn_op, "merged_to_bn_mean", bn_mean_v,
+                                          {channel}, storage_type);
+    auto bn_variance = WeightOp::create_float(
+        bn_op, "merged_to_bn_variance", bn_variance_v, {channel}, storage_type);
     bn_op->setOperand(1, bn_mean);
     bn_op->setOperand(2, bn_variance);
 
@@ -214,7 +217,7 @@ struct ScaleShapeAlign : public OpRewriterPatternEx<ScaleOp> {
       : OpRewriterPatternEx<ScaleOp>(context, "ScaleShapeAlign", benefit) {}
 
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getInput());
     bool changed = false;
     for (auto operand : op->getOperands()) {
@@ -238,14 +241,16 @@ struct ScaleShapeAlign : public OpRewriterPatternEx<ScaleOp> {
 struct TopScaleMergeToMatMul : public OpRewriterPatternEx<ScaleOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
   TopScaleMergeToMatMul(MLIRContext *context, PatternBenefit benefit = 1)
-      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToMatMul", benefit) {}
+      : OpRewriterPatternEx<ScaleOp>(context, "TopScaleMergeToMatMul",
+                                     benefit) {}
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto preOp = op.getInput().getDefiningOp();
     if (!preOp->hasOneUse() || !isa<MatMulOp>(preOp)) {
       return failure();
     }
-    if (isa<MatMulOp>(preOp) && preOp->getAttr("do_relu").cast<BoolAttr>() == rewriter.getBoolAttr(true)) {
+    if (isa<MatMulOp>(preOp) && preOp->getAttr("do_relu").cast<BoolAttr>() ==
+                                    rewriter.getBoolAttr(true)) {
       return failure();
     }
     auto storage_type = module::getStorageType(op.getOutput());
@@ -273,8 +278,8 @@ struct TopScaleMergeToMatMul : public OpRewriterPatternEx<ScaleOp> {
       }
     }
     auto new_weight =
-        WeightOp::create_float(matmulOp, "merged_scale_to_matmul",
-            *weight_data, {right_shape[0], right_shape[1]}, storage_type);
+        WeightOp::create_float(matmulOp, "merged_scale_to_matmul", *weight_data,
+                               {right_shape[0], right_shape[1]}, storage_type);
     matmulOp.setOperand(1, new_weight);
 
     // merge bias into matmul's bias
@@ -284,7 +289,8 @@ struct TopScaleMergeToMatMul : public OpRewriterPatternEx<ScaleOp> {
     auto bias_type = RankedTensorType::get({N}, rewriter.getF32Type());
     if (!module::isNone(matmulOp.getBias())) {
       auto matmul_bias_data =
-          dyn_cast<WeightOp>(matmulOp.getBias().getDefiningOp()).read_as_float();
+          dyn_cast<WeightOp>(matmulOp.getBias().getDefiningOp())
+              .read_as_float();
       for (int n = 0; n < N; ++n) {
         new_bias_v[n] += matmul_bias_data->at(n) * scale_data->at(n);
       }
@@ -313,7 +319,7 @@ struct FuseScaleIntoConv : public OpRewriterPatternEx<ScaleOp> {
   FuseScaleIntoConv(MLIRContext *context, PatternBenefit benefit = 1)
       : OpRewriterPatternEx<ScaleOp>(context, "FuseScaleIntoConv", benefit) {}
   LogicalResult matchAndRewriteImpl(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     auto preOp = op.getInput().getDefiningOp();
     if (!preOp->hasOneUse() || !isa<ConvOp>(preOp)) {
       return failure();
@@ -357,8 +363,8 @@ struct FuseScaleIntoConv : public OpRewriterPatternEx<ScaleOp> {
               filterData->at(i * innerSize + j) * scaleVec.at(i);
         }
       }
-      auto new_filter =
-          WeightOp::create_float(filterOp, "", newFilter, filterShape, storage_type);
+      auto new_filter = WeightOp::create_float(filterOp, "", newFilter,
+                                               filterShape, storage_type);
       convOp.setOperand(1, new_filter);
     }
     if (sBias) {

@@ -46,15 +46,16 @@ static inline std::vector<int64_t> string2vec(std::string slist) {
   return outvec;
 }
 
-
-struct StripInputQuantTpuCastPattern  : public OpRewriterPatternEx<tpu::CastOp> {
-  public:
- StripInputQuantTpuCastPattern(mlir::MLIRContext *context,
-                                 std::vector<int64_t> quant_input_idx)
-      : OpRewriterPatternEx<tpu::CastOp>(context,"StripInputQuantTpuCastPattern"), quant_input_idx(quant_input_idx) {}
+struct StripInputQuantTpuCastPattern : public OpRewriterPatternEx<tpu::CastOp> {
+public:
+  StripInputQuantTpuCastPattern(mlir::MLIRContext *context,
+                                std::vector<int64_t> quant_input_idx)
+      : OpRewriterPatternEx<tpu::CastOp>(context,
+                                         "StripInputQuantTpuCastPattern"),
+        quant_input_idx(quant_input_idx) {}
 
   LogicalResult matchAndRewriteImpl(tpu::CastOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
       int idx = module::getIdx(inputOp.getOperand());
       for (int i = 0; i < quant_input_idx.size(); i++) {
@@ -108,21 +109,23 @@ struct StripInputQuantTpuCastPattern  : public OpRewriterPatternEx<tpu::CastOp> 
     }
     return failure();
   };
-  bool shouldPrint(tpu::CastOp op) const override { return false;}
+  bool shouldPrint(tpu::CastOp op) const override { return false; }
 
 private:
   std::vector<int64_t> quant_input_idx;
 };
 
-
-struct StripInputQuantCpuCastPattern  : public OpRewriterPatternEx<tpu::GenericCpuOp> {
-  public:
- StripInputQuantCpuCastPattern(mlir::MLIRContext *context,
-                                 std::vector<int64_t> quant_input_idx)
-      : OpRewriterPatternEx<tpu::GenericCpuOp>(context,"StripInputQuantCpuCastPattern"), quant_input_idx(quant_input_idx) {}
+struct StripInputQuantCpuCastPattern
+    : public OpRewriterPatternEx<tpu::GenericCpuOp> {
+public:
+  StripInputQuantCpuCastPattern(mlir::MLIRContext *context,
+                                std::vector<int64_t> quant_input_idx)
+      : OpRewriterPatternEx<tpu::GenericCpuOp>(context,
+                                               "StripInputQuantCpuCastPattern"),
+        quant_input_idx(quant_input_idx) {}
 
   LogicalResult matchAndRewriteImpl(tpu::GenericCpuOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (op.getCpuOpName() != "quant") {
       return failure();
     }
@@ -142,20 +145,22 @@ struct StripInputQuantCpuCastPattern  : public OpRewriterPatternEx<tpu::GenericC
     }
     return failure();
   };
-  bool shouldPrint(tpu::GenericCpuOp op) const override { return false;}
+  bool shouldPrint(tpu::GenericCpuOp op) const override { return false; }
+
 private:
   std::vector<int64_t> quant_input_idx;
 };
 
-
-class StripOutputQuantTpuCastPattern  : public OpRewriterPatternEx<tpu::CastOp> {
-  public:
- StripOutputQuantTpuCastPattern(mlir::MLIRContext *context,
+class StripOutputQuantTpuCastPattern : public OpRewriterPatternEx<tpu::CastOp> {
+public:
+  StripOutputQuantTpuCastPattern(mlir::MLIRContext *context,
                                  std::vector<int64_t> quant_output_idx)
-      : OpRewriterPatternEx<tpu::CastOp>(context,"StripOutputQuantTpuCastPattern"), quant_output_idx(quant_output_idx){}
+      : OpRewriterPatternEx<tpu::CastOp>(context,
+                                         "StripOutputQuantTpuCastPattern"),
+        quant_output_idx(quant_output_idx) {}
 
   LogicalResult matchAndRewriteImpl(tpu::CastOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
 
     if (op.getOutput().hasOneUse() &&
         isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
@@ -175,21 +180,23 @@ class StripOutputQuantTpuCastPattern  : public OpRewriterPatternEx<tpu::CastOp> 
     }
     return failure();
   };
-  bool shouldPrint(tpu::CastOp op) const override { return false;}
+  bool shouldPrint(tpu::CastOp op) const override { return false; }
 
 private:
   std::vector<int64_t> quant_output_idx;
 };
 
-
-struct StripOutputQuantCpuCastPattern  : public OpRewriterPatternEx<tpu::GenericCpuOp> {
-  public:
- StripOutputQuantCpuCastPattern(mlir::MLIRContext *context,
+struct StripOutputQuantCpuCastPattern
+    : public OpRewriterPatternEx<tpu::GenericCpuOp> {
+public:
+  StripOutputQuantCpuCastPattern(mlir::MLIRContext *context,
                                  std::vector<int64_t> quant_output_idx)
-      : OpRewriterPatternEx<tpu::GenericCpuOp>(context,"StripOutputQuantCpuCastPattern"), quant_output_idx(quant_output_idx) {}
+      : OpRewriterPatternEx<tpu::GenericCpuOp>(
+            context, "StripOutputQuantCpuCastPattern"),
+        quant_output_idx(quant_output_idx) {}
 
   LogicalResult matchAndRewriteImpl(tpu::GenericCpuOp op,
-                                PatternRewriter &rewriter) const override {
+                                    PatternRewriter &rewriter) const override {
     if (module::isCV18xx()) {
       if (op.getCpuOpName() != "quant") {
         return failure();
@@ -198,7 +205,8 @@ struct StripOutputQuantCpuCastPattern  : public OpRewriterPatternEx<tpu::Generic
           isa<ReturnOp>(op.getOutputs()[0].use_begin().getUser())) {
         auto ReturnOp = op.getOutputs()[0].use_begin().getUser();
         for (int i = 0; i < quant_output_idx.size(); i++) {
-          if (ReturnOp->getOperand(quant_output_idx[i] - 1) == op.getOutputs()[0])
+          if (ReturnOp->getOperand(quant_output_idx[i] - 1) ==
+              op.getOutputs()[0])
             break;
           if (i == quant_output_idx.size() - 1)
             return failure();
@@ -209,7 +217,8 @@ struct StripOutputQuantCpuCastPattern  : public OpRewriterPatternEx<tpu::Generic
     }
     return failure();
   };
-  bool shouldPrint(tpu::GenericCpuOp op) const override { return false;}
+  bool shouldPrint(tpu::GenericCpuOp op) const override { return false; }
+
 private:
   std::vector<int64_t> quant_output_idx;
 };

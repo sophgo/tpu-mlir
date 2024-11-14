@@ -16,11 +16,9 @@ void tpu::GatherNDOp::codegen_global_bm1684() {
   UNREACHABLE_THIS("Not Implemented");
 }
 
-uint32_t tpu::GatherNDOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::GatherNDOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
 
-int64_t tpu::GatherNDOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::GatherNDOp::get_fw_type_bm1684() { return -1; }

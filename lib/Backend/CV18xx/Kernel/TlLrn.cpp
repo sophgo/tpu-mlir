@@ -11,8 +11,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "tl_lrn"
 
 namespace tpu_mlir {

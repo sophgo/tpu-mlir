@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 static inline int align_up(int x, int n) {
@@ -244,4 +243,3 @@ LogicalResult tpu::CscOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::CscOp::support_multi_core() { return false; }
-

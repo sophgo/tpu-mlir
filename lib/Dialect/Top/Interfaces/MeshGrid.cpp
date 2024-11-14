@@ -9,9 +9,7 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::MeshGridOp::getFLOPs() {
-  return 0;
-}
+int64_t top::MeshGridOp::getFLOPs() { return 0; }
 
 LogicalResult top::MeshGridOp::init(InferenceParameter &p) { return success(); }
 void top::MeshGridOp::deinit(InferenceParameter &p) {}
@@ -24,9 +22,9 @@ LogicalResult top::MeshGridOp::inference(InferenceParameter &p) {
   for (int j = 0; j < num; ++j) {
     int64_t inner = num_element / outer / shape[j];
     int in_j = getIsReverse() ? num - 1 - j : j;
-#pragma omp parallel for schedule(static, omp_schedule(outer * shape[j]))
+#pragma omp parallel for schedule(static, omp_schedule(outer *shape[j]))
     for (int i = 0; i < outer; ++i) {
-      float* offset = p.outputs[in_j] + i * inner * shape[j];
+      float *offset = p.outputs[in_j] + i * inner * shape[j];
       for (int k = 0; k < shape[j]; ++k) {
         float value = p.inputs[in_j][k];
         for (int m = 0; m < inner; ++m) {

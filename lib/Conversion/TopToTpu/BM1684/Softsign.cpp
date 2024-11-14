@@ -23,10 +23,9 @@ void SoftsignLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SoftsignLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftsignOp op, bool asymmetric) const {
-  Value table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          [](double val) { return val / (1 + std::abs(val)); },
-                          32);
+  Value table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [](double val) { return val / (1 + std::abs(val)); }, 32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

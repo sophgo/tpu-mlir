@@ -70,7 +70,6 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
   return outputType;
 };
 
-
 // forAll will split the computation to multiple cores which in the range of
 // [offset, offset+num_core)
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,

@@ -24,7 +24,8 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [](double val) { return val > 20 ? val : std::log1pl(std::exp(val)); }, 32);
+      [](double val) { return val > 20 ? val : std::log1pl(std::exp(val)); },
+      32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

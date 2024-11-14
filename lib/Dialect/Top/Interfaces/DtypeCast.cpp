@@ -7,12 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::DtypeCastOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::DtypeCastOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
-LogicalResult top::DtypeCastOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::DtypeCastOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::DtypeCastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::DtypeCastOp::inference(InferenceParameter &p) {
@@ -31,4 +35,6 @@ LogicalResult top::DtypeCastOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::DtypeCastOp::shape_inference() { common_shape_inference(getOperation()); }
+void top::DtypeCastOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

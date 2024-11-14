@@ -33,16 +33,16 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
   }
   _try_insert_device2host(op);
   std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs())  {
+  for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   auto v = op.getResult();
   auto shape = module::getShape(v);
   auto ctx = v.getContext();
   Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapeSliceOp>(op, new_type, op.getOperands(), attrs);
+  rewriter.replaceOpWithNewOp<tpu::ShapeSliceOp>(op, new_type, op.getOperands(),
+                                                 attrs);
 }
-
 
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {

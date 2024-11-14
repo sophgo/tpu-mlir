@@ -19,7 +19,8 @@ extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
-class ProcessorOptimizePass : public ProcessorOptimizeBase<ProcessorOptimizePass> {
+class ProcessorOptimizePass
+    : public ProcessorOptimizeBase<ProcessorOptimizePass> {
 public:
   ProcessorOptimizePass() {}
   void runOnOperation() override {

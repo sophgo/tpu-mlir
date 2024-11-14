@@ -1,6 +1,6 @@
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::LogicalAndOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 2;
@@ -16,6 +16,4 @@ LogicalResult top::LogicalAndOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LogicalAndOp::shape_inference() {
-
-}
+void top::LogicalAndOp::shape_inference() {}

@@ -17,8 +17,6 @@ void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 
-
-
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                   bool asymmetric) const {
   // refer quantize_convlike_layer_int8
@@ -33,7 +31,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   auto per_channel_quant_attr = op->getAttr("matmulPerchannelQuant");
   if (per_channel_quant_attr) {
     if (per_channel_quant_attr.isa<mlir::BoolAttr>()) {
-      mlir::BoolAttr per_channel_quant = per_channel_quant_attr.cast<mlir::BoolAttr>();
+      mlir::BoolAttr per_channel_quant =
+          per_channel_quant_attr.cast<mlir::BoolAttr>();
       use_perchannel = per_channel_quant.getValue();
     }
   }
@@ -45,39 +44,46 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (module::isWeight(op.getInput())) {
-    if(module::isMARS3())
+    if (module::isMARS3())
       LoweringBF16(rewriter, op);
     else
       LoweringF16(rewriter, op);
     return;
   }
 
-  //note: trick for imgToCol pattern
-  const auto defByWeightOp = [&] (Operation *Op) {
-    using TYPE = std::function<std::pair<bool, Operation *>(Operation *op)>;
+  // note: trick for imgToCol pattern
+  const auto defByWeightOp = [&](Operation *Op) {
+    using TYPE = std::function<std::pair<bool, Operation *>(Operation * op)>;
     TYPE f;
-    f = [&] (Operation *op) -> decltype(std::declval<TYPE>()(op)) {
+    f = [&](Operation *op) -> decltype(std::declval<TYPE>()(op)) {
       if (isa<top::WeightOp>(op))
         return std::make_pair(true, op);
       else if (!isa<top::ReshapeOp>(op)) {
         return std::make_pair(false, nullptr);
       } else
-        return f(op->getOperand(0).getDefiningOp());};
-    return f(Op);};
+        return f(op->getOperand(0).getDefiningOp());
+    };
+    return f(Op);
+  };
 
-  const auto defByWeightReshapeOp = [&] (Operation *op) -> std::pair<bool, Operation *>{
+  const auto defByWeightReshapeOp =
+      [&](Operation *op) -> std::pair<bool, Operation *> {
     if (op && isa<top::ReshapeOp>(op) && defByWeightOp(op).first)
       return std::make_pair(true, op);
     else
-      return std::make_pair(false, nullptr);};
+      return std::make_pair(false, nullptr);
+  };
 
-  auto eliminateInvalidOp = [&] (bool yes, Operation *op) {
-      if (yes && isa<top::ReshapeOp>(op))
-        rewriter.eraseOp(op);
-      return true;};
+  auto eliminateInvalidOp = [&](bool yes, Operation *op) {
+    if (yes && isa<top::ReshapeOp>(op))
+      rewriter.eraseOp(op);
+    return true;
+  };
 
-  auto [righIsReshapeOp, rightReshapeOp] = defByWeightReshapeOp(op.getRight().getDefiningOp());
-  auto [biasIsReshapeOp, biasReshapeOp] = defByWeightReshapeOp(op.getBias().getDefiningOp());
+  auto [righIsReshapeOp, rightReshapeOp] =
+      defByWeightReshapeOp(op.getRight().getDefiningOp());
+  auto [biasIsReshapeOp, biasReshapeOp] =
+      defByWeightReshapeOp(op.getBias().getDefiningOp());
   auto [isWeight, rightOp] = defByWeightOp(op.getRight().getDefiningOp());
 
   if (isWeight) {
@@ -87,7 +93,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     double in_scale = 1, out_scale = 1;
     std::vector<double> w_scale(p.N, 1.0);
     bool input_asymmetric = op->hasAttr("input_asym");
-    module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, input_asymmetric);
+    module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp,
+                                 input_asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
     bool right_transpose = op.getRightTranspose();
     if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
@@ -98,31 +105,36 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
       if (use_perchannel) {
         assert(weight_scale_v->size() == p.N);
-        w_scale.assign(weight_scale_v->data(), weight_scale_v->data()+weight_scale_v->size());
+        w_scale.assign(weight_scale_v->data(),
+                       weight_scale_v->data() + weight_scale_v->size());
       } else {
         w_scale[0] = weight_scale_v->data()[0];
       }
     } else {
       if (use_perchannel) {
         if (!right_transpose) {
-          for (int n=0;n<p.N;n++) {
+          for (int n = 0; n < p.N; n++) {
             float tmp = std::abs(filter_f32->data()[n]);
-            for (int k=1;k<p.K;k++) {
-              tmp = tmp>=std::abs(filter_f32->data()[n+k*p.N])?tmp:std::abs(filter_f32->data()[n+k*p.N]);
+            for (int k = 1; k < p.K; k++) {
+              tmp = tmp >= std::abs(filter_f32->data()[n + k * p.N])
+                        ? tmp
+                        : std::abs(filter_f32->data()[n + k * p.N]);
             }
-            w_scale[n] = tmp/127.0;
+            w_scale[n] = tmp / 127.0;
           }
         } else {
-          for (size_t n=0;n<p.N;n++) {
-            float tmp = std::abs(filter_f32->data()[n*p.K]);
-            for (size_t k=1;k<p.K;k++) {
-              tmp = tmp>=std::abs(filter_f32->data()[k+n*p.K])?tmp:std::abs(filter_f32->data()[k+n*p.K]);
+          for (size_t n = 0; n < p.N; n++) {
+            float tmp = std::abs(filter_f32->data()[n * p.K]);
+            for (size_t k = 1; k < p.K; k++) {
+              tmp = tmp >= std::abs(filter_f32->data()[k + n * p.K])
+                        ? tmp
+                        : std::abs(filter_f32->data()[k + n * p.K]);
             }
-            w_scale[n] = tmp/127.0;
+            w_scale[n] = tmp / 127.0;
           }
         }
       } else {
-        w_scale[0] = findMaxabs(filter_f32->data(), filter_f32->size())/127.0;
+        w_scale[0] = findMaxabs(filter_f32->data(), filter_f32->size()) / 127.0;
       }
     }
 
@@ -130,15 +142,17 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
         std::make_shared<std::vector<int8_t>>(filter_f32->size());
     if (use_perchannel) {
       if (!right_transpose) {
-        for (size_t k=0;k<p.K;k++) {
-          for (size_t n=0;n<p.N;n++) {
-            filter_int8->at(k*p.N+n)=to_int8(filter_f32->at(k*p.N+n)/w_scale[n]);
+        for (size_t k = 0; k < p.K; k++) {
+          for (size_t n = 0; n < p.N; n++) {
+            filter_int8->at(k * p.N + n) =
+                to_int8(filter_f32->at(k * p.N + n) / w_scale[n]);
           }
         }
       } else {
-        for (size_t n=0;n<p.N;n++) {
-          for (size_t k=0;k<p.K;k++) {
-            filter_int8->at(n*p.K+k)=to_int8(filter_f32->at(n*p.K+k)/w_scale[n]);
+        for (size_t n = 0; n < p.N; n++) {
+          for (size_t k = 0; k < p.K; k++) {
+            filter_int8->at(n * p.K + k) =
+                to_int8(filter_f32->at(n * p.K + k) / w_scale[n]);
           }
         }
       }
@@ -168,11 +182,11 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
       if (p.with_bias) {
         if (use_perchannel) {
-          bias_int32->data()[j] =
-              std::round(bias_fp32->at(j) / (w_scale[j] * in_scale) - bias_w_xz);
+          bias_int32->data()[j] = std::round(
+              bias_fp32->at(j) / (w_scale[j] * in_scale) - bias_w_xz);
         } else {
-          bias_int32->data()[j] =
-              std::round(bias_fp32->at(j) / (w_scale[0] * in_scale) - bias_w_xz);
+          bias_int32->data()[j] = std::round(
+              bias_fp32->at(j) / (w_scale[0] * in_scale) - bias_w_xz);
         }
       } else if (in_zp) {
         bias_int32->data()[j] = -bias_w_xz;
@@ -182,27 +196,27 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     std::vector<float> scale_f;
     if (use_perchannel) {
       int common_shift = -1;
-      for (size_t n=0;n<p.N;n++) {
+      for (size_t n = 0; n < p.N; n++) {
         scale_f.push_back(in_scale * w_scale[n] / out_scale);
       }
-      for (int shift_limit = 32;shift_limit>0;shift_limit--) {
+      for (int shift_limit = 32; shift_limit > 0; shift_limit--) {
         int max_shift = 0;
-        for (size_t n=0;n<p.N;n++) {
-          int scale_ =1, shift_=0;
+        for (size_t n = 0; n < p.N; n++) {
+          int scale_ = 1, shift_ = 0;
           get_scale_and_shift(scale_f[n], scale_, shift_, shift_limit);
           scales.push_back(scale_);
           shifts.push_back(shift_);
-          max_shift=shift_>max_shift?shift_:max_shift;
+          max_shift = shift_ > max_shift ? shift_ : max_shift;
         }
         bool overflow = false;
-        for (size_t n=0;n<p.N;n++) {
-          long long multi = ((long long )scales[n])<<(max_shift-shifts[n]);
+        for (size_t n = 0; n < p.N; n++) {
+          long long multi = ((long long)scales[n]) << (max_shift - shifts[n]);
           if (multi > 0x80000000ll) {
             overflow = true;
             scales[n] = 0x7fffffff;
             shifts[n] = max_shift;
           } else {
-            scales[n]= scales[n] << (max_shift-shifts[n]);
+            scales[n] = scales[n] << (max_shift - shifts[n]);
             shifts[n] = max_shift;
           }
         }
@@ -213,11 +227,12 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
         scales.clear();
         shifts.clear();
       }
-      if (common_shift < 0){
-        llvm_unreachable("found overflow in per-channel quant");;
+      if (common_shift < 0) {
+        llvm_unreachable("found overflow in per-channel quant");
+        ;
       }
     } else {
-      int scale_ =1, shift_=0;
+      int scale_ = 1, shift_ = 0;
       scale_f.push_back(in_scale * w_scale[0] / out_scale);
       get_scale_and_shift(scale_f[0], scale_, shift_);
       shifts.push_back(shift_);
@@ -301,12 +316,13 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   // buffer
   operands.push_back(module::getNoneOp(op));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  auto newmm = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  auto newmm =
+      rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   if (fuse_rq) {
     newmm.setFuseRqAttr(rewriter.getBoolAttr(true));
   }
 
-  //trick for Img2Col
+  // trick for Img2Col
   eliminateInvalidOp(righIsReshapeOp, rightReshapeOp);
   eliminateInvalidOp(biasIsReshapeOp, biasReshapeOp);
 }
@@ -612,14 +628,14 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
       if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
-        operands.insert(operands.end(), {in, noneOp, noneOp, op->getOperand(2)});
+        operands.insert(operands.end(),
+                        {in, noneOp, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
-        auto weight_bits = rewriter.getNamedAttr(
-            "weight_bits",
-                op.getWeightBitsAttr());
+        auto weight_bits =
+            rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
-                                                        attrs);
+                                                      attrs);
         return;
       }
       if (i == 2 && bias_use_fp32) {
@@ -636,8 +652,9 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   // buffer
   operands.push_back(module::getNoneOp(op));
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
-                                             op->getAttrs());
-  if (!module::isNone(operands[2]) && supportMultiCore(newOp) && bias_use_fp32) {
+                                                          op->getAttrs());
+  if (!module::isNone(operands[2]) && supportMultiCore(newOp) &&
+      bias_use_fp32) {
     auto biasOp = dyn_cast<top::WeightOp>(newOp.getOperand(2).getDefiningOp());
     auto bf16_bias = biasOp.clone_bf16(newOp);
     newOp.setOperand(2, bf16_bias);
@@ -657,18 +674,19 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
       if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
-        operands.insert(operands.end(), {in, noneOp, noneOp, op->getOperand(2)});
+        operands.insert(operands.end(),
+                        {in, noneOp, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
-        auto weight_bits = rewriter.getNamedAttr(
-            "weight_bits",
-                op.getWeightBitsAttr());
+        auto weight_bits =
+            rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
-                                                        attrs);
+                                                      attrs);
         return;
       }
       if (i == 2 && bias_use_fp32) {
-        ASSERT_OP(module::getStorageType(in).isF32() && "bias has to be f32", op);
+        ASSERT_OP(module::getStorageType(in).isF32() && "bias has to be f32",
+                  op);
         operands.push_back(in);
       } else {
         operands.push_back(wOp.clone_f16(op));
@@ -682,8 +700,9 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   // buffer
   operands.push_back(module::getNoneOp(op));
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
-                                             op->getAttrs());
-  if (!module::isNone(operands[2]) && supportMultiCore(newOp) && bias_use_fp32) {
+                                                          op->getAttrs());
+  if (!module::isNone(operands[2]) && supportMultiCore(newOp) &&
+      bias_use_fp32) {
     auto biasOp = dyn_cast<top::WeightOp>(newOp.getOperand(2).getDefiningOp());
     auto f16_bias = biasOp.clone_f16(newOp);
     newOp.setOperand(2, f16_bias);
@@ -691,7 +710,7 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
-                                 top::MatMulOp op) const {
+                                top::MatMulOp op) const {
   // Y = W*x + B => ScaleY * Yf8 =ScaleW * Wf8 * ScaleX * Xf8 + Bf32
   // Yf8 = scaleW * scaleX / scaleY * Wf8 * Xf8 + 1/ScaleY * Bf32
   // Bf32 / (scaleX * scaleW) * ((scaleX * scaleW) / scaleY)
@@ -705,7 +724,7 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
 
   if (module::getMode() == module::Mode::F8E5M2) {
     operands.push_back(op.getInput());
-    if (auto weight=dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
+    if (auto weight = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
       auto new_w = weight.clone_f8e5m2(op);
       operands.push_back(new_w);
     } else {
@@ -784,10 +803,13 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     }
   }
   bool with_bias = !module::isNone(op.getBias());
-  attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale_f)));
-  attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
-                              tpu::RequantMode::OnlyScale)));
-  attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
+                                        rewriter.getF64ArrayAttr(scale_f)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(op->getContext(),
+                                              tpu::RequantMode::OnlyScale)));
+  attrs.push_back(
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
 
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -931,8 +953,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   QuantizeMultiplier(real_multiplier, &multiplier, &shift);
   // do requant
   auto newValue =
-      do_requant(op->getLoc(), matValue, op.getOutput().getType(),
-                 true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
+      do_requant(op->getLoc(), matValue, op.getOutput().getType(), true,
+                 multiplier, shift, tpu::RequantMode::TFLite_LShift);
   rewriter.replaceOp(op, {newValue});
 }
 

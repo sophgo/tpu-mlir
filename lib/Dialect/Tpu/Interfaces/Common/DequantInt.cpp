@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) {
   return success();
@@ -30,7 +27,8 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int32_t tmp = (int32_t)p.inputs[0][idx] - offset;
-      auto v = applyMultiplierAndRShift(tmp, mul_val, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
+      auto v = applyMultiplierAndRShift(
+          tmp, mul_val, -shift_val, tpu::RequantMode::MultiplierShift, rmode);
       p.outputs[0][idx] = v;
     }
   } break;
@@ -69,7 +67,8 @@ mlir::Type tpu::DequantIntOp::type_verify(uint64_t opd_idx,
 
 ArrayAttr tpu::DequantIntOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

@@ -83,7 +83,6 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::SubOp>(op_, newType, operands, attrs);
-
 }
 
 void SubLowering::LoweringINT4(PatternRewriter &rewriter, top::SubOp op,
@@ -137,8 +136,8 @@ void SubLowering::LoweringF8(PatternRewriter &rewriter,
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs())
     attrs.push_back(attr);
-  attrs.push_back(rewriter.getNamedAttr("f8_scales",
-                                        rewriter.getF64ArrayAttr(scale_v)));
+  attrs.push_back(
+      rewriter.getNamedAttr("f8_scales", rewriter.getF64ArrayAttr(scale_v)));
   auto newType = getQuantF8E4M3Type(subOp.getOutput());
   rewriter.replaceOpWithNewOp<tpu::SubOp>(op, newType, operands, attrs);
 }
@@ -152,7 +151,8 @@ void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {
 //                \ input1 -> dequant /
 void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SubOp subOp) const {
-  if (module::isUniformQuantized(subOp.getInputs()[0], subOp.getOutput()) == false) {
+  if (module::isUniformQuantized(subOp.getInputs()[0], subOp.getOutput()) ==
+      false) {
     llvm_unreachable("input output should be quantized");
   }
   auto op = subOp.getOperation();

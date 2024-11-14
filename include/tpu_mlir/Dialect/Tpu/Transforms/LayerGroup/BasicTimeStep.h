@@ -60,7 +60,8 @@ public:
   GdmaTsField &getTensors(int64_t ts) {
     return timestep_table_[ts].gdma0_ts_field;
   }
-  MemBlock find_buffer_locate(Value value, int64_t ts, const MemBuff &buffer, const MemBuff &l2buffer);
+  MemBlock find_buffer_locate(Value value, int64_t ts, const MemBuff &buffer,
+                              const MemBuff &l2buffer);
   int64_t get_lmem_addr(const mem_buffer_key_t &buffer_key);
   int64_t get_lmem_size(const mem_buffer_key_t &buffer_key);
   MemBlock get_lmem_locate(Value value, int64_t ts);

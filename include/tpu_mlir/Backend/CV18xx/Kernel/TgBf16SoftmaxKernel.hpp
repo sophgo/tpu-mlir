@@ -18,12 +18,12 @@ class TgSoftmaxKernel {
 public:
   TgSoftmaxKernel() {}
 
-  void init(uint32_t layer_id,
-            gaddr_t ga_input,
-            gaddr_t ga_exponential_table_data_lut, gaddr_t ga_exponential_slope_table_data_lut,
-            gaddr_t ga_reciprocal_table_data_lut, gaddr_t ga_reciprocal_table_mantissa_data_lut,
-            gaddr_t ga_output,
-            int64_t* shape, int axis, int dimension, bool do_log);
+  void init(uint32_t layer_id, gaddr_t ga_input,
+            gaddr_t ga_exponential_table_data_lut,
+            gaddr_t ga_exponential_slope_table_data_lut,
+            gaddr_t ga_reciprocal_table_data_lut,
+            gaddr_t ga_reciprocal_table_mantissa_data_lut, gaddr_t ga_output,
+            int64_t *shape, int axis, int dimension, bool do_log);
   void selectTilePolicy();
   void schedule();
 
@@ -32,129 +32,133 @@ protected:
     int pos_h;
     int h;
   } tiling_t;
-  enum SoftmaxMode {Softmax2D, Softmax4D};
-  enum OperateMode {Sub, Mul};
+  enum SoftmaxMode { Softmax2D, Softmax4D };
+  enum OperateMode { Sub, Mul };
 
   /**
-	 * @brief Select softmax mode
-	 */
-  void selectSoftmaxMode(int64_t* shape);
+   * @brief Select softmax mode
+   */
+  void selectSoftmaxMode(int64_t *shape);
 
   /**
-	 * @brief Fill one to dram as golden
-	 */
+   * @brief Fill one to dram as golden
+   */
   void fillOneAsGolden();
 
   /**
-	 * @brief Transform matrix to tensor
+   * @brief Transform matrix to tensor
    * @param tensor output tensor
    * @param matrix input matrix
-	 */
+   */
   void matrixToTensor(cvk_tl_t *tensor, const cvk_ml_t &matrix);
 
   /**
-	 * @brief Split height of softmax2D which parallel inner size to NPU_NUM
-	 */
+   * @brief Split height of softmax2D which parallel inner size to NPU_NUM
+   */
   unsigned int doSplitHeightBf16softmax2DParallelInnerSize();
 
   /**
-	 * @brief Split height of softmax2D which parallel outer size to NPU_NUM
-	 */
+   * @brief Split height of softmax2D which parallel outer size to NPU_NUM
+   */
   unsigned int doSplitHeightBf16softmax2DParallelOuterSize();
 
   /**
-	 * @brief Do softmax2D which inner size is too large to handle in normal case. For example, shape(1, 16002) and shape(400, 16002)
-	 */
+   * @brief Do softmax2D which inner size is too large to handle in normal case.
+   * For example, shape(1, 16002) and shape(400, 16002)
+   */
   void softmaxLargeSizeHandler();
 
   /**
-	 * @brief Do softmax2D which parallel inner size to NPU_NUM
-	 */
+   * @brief Do softmax2D which parallel inner size to NPU_NUM
+   */
   void bf16_softmax_kernel_2d_parallel_inner_size();
 
   /**
-	 * @brief Do softmax2D which parallel outer size to NPU_NUM
-	 */
+   * @brief Do softmax2D which parallel outer size to NPU_NUM
+   */
   void bf16_softmax_kernel_2d_parallel_outer_size();
 
   /**
-	 * @brief Split height of softmax4D
-	 */
+   * @brief Split height of softmax4D
+   */
   int doSplitHeightBf16softmax4D();
 
   /**
-	 * @brief Split width of softmax4D
-	 */
+   * @brief Split width of softmax4D
+   */
   int doSplitWidthBf16softmax4D();
 
   /**
-	 * @brief Do softmax 4D
-	 */
+   * @brief Do softmax 4D
+   */
   void bf16_softmax_kernel_4d();
 
   /**
-	 * @brief Do softmax 2D
-	 */
+   * @brief Do softmax 2D
+   */
   void bf16_softmax_kernel_2d();
 
   /**
-	 * @brief Get exponential value
-	 * @param tl_in Input tensor
+   * @brief Get exponential value
+   * @param tl_in Input tensor
    * @param tl_out Output tensor
    * @param tl_work Working space
-	 */
+   */
   void exponential(cvk_tl_t *tl_in, cvk_tl_t *tl_out, cvk_tl_t *tl_work);
 
   /**
-	 * @brief Get reciprocal value
-	 * @param tl_in Input tensor
+   * @brief Get reciprocal value
+   * @param tl_in Input tensor
    * @param tl_out Output tensor
    * @param tl_work Working space
-	 */
+   */
   void reciprocal(cvk_tl_t *tl_in, cvk_tl_t *tl_out, cvk_tl_t *tl_work);
 
   /**
-	 * @brief Get log value
-	 * @param tl_in Input tensor
+   * @brief Get log value
+   * @param tl_in Input tensor
    * @param tl_out Output tensor
    * @param tl_work Working space
-	 */
+   */
   void log(cvk_tl_t *tl_in, cvk_tl_t *tl_out, cvk_tl_t *tl_work);
 
   /**
-	 * @brief Broadcast one data to all lane in the same address
-	 * @param tl_in input broadcasted data address
+   * @brief Broadcast one data to all lane in the same address
+   * @param tl_in input broadcasted data address
    * @param tl_out output broadcasted data address
-	 */
+   */
   void broadcast_one_data_to_all_lane(cvk_tl_t *tl_in, cvk_tl_t *tl_out);
 
   /**
-	 * @brief Every input sub one specific data
-	 * @param tl_in_out Input/output tensor
+   * @brief Every input sub one specific data
+   * @param tl_in_out Input/output tensor
    * @param tl_operand operand tensor
    * @param operate operate mode
    * @param isParallelInLane is outerSize parallel in lane
-	 */
-  void every_input_operate_one_specific_data(cvk_tl_t *tl_in_out, cvk_tl_t *tl_operand, OperateMode operate, bool isParallelInLane);
+   */
+  void every_input_operate_one_specific_data(cvk_tl_t *tl_in_out,
+                                             cvk_tl_t *tl_operand,
+                                             OperateMode operate,
+                                             bool isParallelInLane);
 
   /**
-	 * @brief Initialize and load table
-	 */
+   * @brief Initialize and load table
+   */
   void init_table();
 
   /**
-	 * @brief Free table
-	 */
+   * @brief Free table
+   */
   void free_table();
 
   /**
-	 * @brief Get max value in tl_in and store to tl_out
-	 */
+   * @brief Get max value in tl_in and store to tl_out
+   */
   void max_per_lane_value(cvk_tl_t *tl_in, cvk_tl_t *tl_out);
 
   /**
-	 * @brief Accumulate data in tl_in per land and store to tl_out
-	 */
+   * @brief Accumulate data in tl_in per land and store to tl_out
+   */
   void accumulate_per_lane_value(cvk_tl_t *tl_in, cvk_tl_t *tl_out);
 
 protected:
@@ -185,5 +189,5 @@ protected:
   cvk_tl_t *tl_reciprocal_table_answer;
   cvk_tl_t *tl_reciprocal_mantissa_table_answer;
 };
-}
-}
+} // namespace backend
+} // namespace tpu_mlir

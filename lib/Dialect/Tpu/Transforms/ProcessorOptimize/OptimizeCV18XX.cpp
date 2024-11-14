@@ -100,8 +100,9 @@ public:
       : OpRewriterPatternEx<tpu::LeakyReluOp>(context, "FuseLeakReluPattern") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(tpu::LeakyReluOp leakyReluOp,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(tpu::LeakyReluOp leakyReluOp,
+                      mlir::PatternRewriter &rewriter) const override {
     assert(leakyReluOp);
     auto preOp = leakyReluOp.getInput().getDefiningOp();
     if (auto convOp = dyn_cast<tpu::Conv2DOp>(preOp)) {
@@ -181,8 +182,9 @@ public:
       : OpRewriterPatternEx<tpu::ReduceOp>(context, "RefineReducePattern") {}
 
 protected:
-  LogicalResult matchAndRewriteImpl(tpu::ReduceOp reduceOp,
-                                    mlir::PatternRewriter &rewriter) const override {
+  LogicalResult
+  matchAndRewriteImpl(tpu::ReduceOp reduceOp,
+                      mlir::PatternRewriter &rewriter) const override {
     auto mode = reduceOp.getMode();
     if (mode != "ReduceSum") {
       return failure();

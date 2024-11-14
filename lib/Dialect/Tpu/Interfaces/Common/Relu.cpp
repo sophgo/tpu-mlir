@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
@@ -24,7 +21,8 @@ LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
 
 ArrayAttr tpu::ReluOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };

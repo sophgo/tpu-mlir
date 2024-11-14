@@ -11,8 +11,8 @@
 
 #include "tpu_mlir/Support/Module.h"
 /// Include the ODS generated interface header files.
-#include "tpu_mlir/Interfaces/GlobalGenInterface.h.inc"
 #include "tpu_mlir/Interfaces/DynGlobalGenInterface.h.inc"
+#include "tpu_mlir/Interfaces/GlobalGenInterface.h.inc"
 
 namespace tpu_mlir {
 

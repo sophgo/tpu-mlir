@@ -10,19 +10,14 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::ScatterNDOp::codegen_global_bm1684() {
   llvm_unreachable("ScatterNDOp type error");
 }
 
-uint32_t tpu::ScatterNDOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::ScatterNDOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
-int64_t tpu::ScatterNDOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::ScatterNDOp::get_fw_type_bm1684() { return -1; }

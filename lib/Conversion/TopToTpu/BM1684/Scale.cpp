@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
-void ScaleLowering::LoweringF32(PatternRewriter &rewriter, top::ScaleOp op) const {
+void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
+                                top::ScaleOp op) const {
 
   auto ctx = op->getContext();
   auto output = op->getResult(0);
@@ -56,27 +57,30 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
     int rightShiftTmp = calRightShiftNumUseCblas(scale_f32->data()[cidx],
                                                  in_scale, out_scale, 8);
     scale_val = 1.0 * (1 << rightShiftTmp) / out_scale;
-    overflow_ratio = quantizeToInt16(bias_f32->data() + cidx,
-                                     &bias_int16_val, 1, scale_val);
+    overflow_ratio =
+        quantizeToInt16(bias_f32->data() + cidx, &bias_int16_val, 1, scale_val);
     while (overflow_ratio > 0.03 && rightShiftTmp > 0) {
       rightShiftTmp--;
       scale_val = 1.0 * (1 << rightShiftTmp) / out_scale;
-      overflow_ratio = quantizeToInt16(bias_f32->data() + cidx,
-                                       &bias_int16_val, 1, scale_val);
+      overflow_ratio = quantizeToInt16(bias_f32->data() + cidx, &bias_int16_val,
+                                       1, scale_val);
     }
     lshift_int8->data()[cidx] = -rightShiftTmp;
 
     // quantize bias
     scale_val = 1.0 * (1 << rightShiftTmp) / out_scale;
-    quantizeToInt16(bias_f32->data() + cidx, bias_int16->data() + cidx, 1, scale_val);
+    quantizeToInt16(bias_f32->data() + cidx, bias_int16->data() + cidx, 1,
+                    scale_val);
     if (rightShiftTmp > 0) {
-      int16_t bias_shift = bias_int16->data()[cidx] + (1 << (rightShiftTmp - 1));
+      int16_t bias_shift =
+          bias_int16->data()[cidx] + (1 << (rightShiftTmp - 1));
       bias_int16->data()[cidx] = std::max(bias_shift, bias_int16->data()[cidx]);
     }
 
     // quantize scale
     scale_val = 1.0 * (1 << rightShiftTmp) * in_scale / out_scale;
-    quantizeToInt8(scale_f32->data() + cidx, scale_int8->data() + cidx, 1, scale_val);
+    quantizeToInt8(scale_f32->data() + cidx, scale_int8->data() + cidx, 1,
+                   scale_val);
   }
 
   // scale
@@ -88,8 +92,8 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
 
   // bias
   auto bias_type = op.getBias().getType().cast<RankedTensorType>();
-  auto new_bias_type =
-      RankedTensorType::get(bias_type.getShape(), rewriter.getIntegerType(16, true));
+  auto new_bias_type = RankedTensorType::get(bias_type.getShape(),
+                                             rewriter.getIntegerType(16, true));
   auto new_bias =
       top::WeightOp::create(op, "bias_int16", *bias_int16, new_bias_type);
 

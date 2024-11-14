@@ -72,7 +72,7 @@ void tpu::MulConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                        module::isSign(getOutput())};
     int is_int8s[3] = {module::getStorageType(getInput()).isInteger(8), 0,
                        module::getStorageType(getOutput()).isInteger(8)};
-    if(b0_mul<0){
+    if (b0_mul < 0) {
       b0_mul *= -1;
       b1_val *= -1;
     }

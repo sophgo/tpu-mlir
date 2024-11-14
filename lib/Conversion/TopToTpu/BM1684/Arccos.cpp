@@ -19,13 +19,13 @@ static void set_arccos_attr(PatternRewriter &rewriter, top::ArccosOp op) {
 }
 
 void ArccosLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::ArccosOp op) const {
+                                 top::ArccosOp op) const {
   set_arccos_attr(rewriter, op);
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void ArccosLowering::LoweringINT8(PatternRewriter &rewriter, top::ArccosOp op,
-                                   bool asymmetric) const {
+                                  bool asymmetric) const {
   // this op not suitable for int8 quant cuz slight deviation in the former op
   // would result in great difference in arccos
   set_arccos_attr(rewriter, op);

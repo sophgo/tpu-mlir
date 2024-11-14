@@ -69,7 +69,8 @@ public:
       if (shouldPrint(op) && !patternName.empty()) {
         PASS_LOG_DEBUG_BLOCK({
           llvm::outs() << patternName << "_" << op.getOperationName()
-                       << " succeed!" << "\n";
+                       << " succeed!"
+                       << "\n";
         });
       }
     }
@@ -108,7 +109,8 @@ public:
       if (shouldPrint(op) && !patternName.empty()) {
         PASS_LOG_DEBUG_BLOCK({
           llvm::outs() << patternName << "_" << op->getName().getStringRef()
-                       << " succeed!" << "\n";
+                       << " succeed!"
+                       << "\n";
         });
       }
     }

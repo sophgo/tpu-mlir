@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -48,10 +48,10 @@ int64_t tpu::ReluOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::ReluOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
-                                      int64_t d_step, int64_t w_step,
-                                      group_type_t group_type,
-                                      local_sec_info_t &sec_info,
-                                      int64_t layer_id) {
+                                       int64_t d_step, int64_t w_step,
+                                       group_type_t group_type,
+                                       local_sec_info_t &sec_info,
+                                       int64_t layer_id) {
   int64_t n, c, h, w;
   auto shape = module::getShape(getInput());
   module::getNCHW(shape, n, c, h, w);

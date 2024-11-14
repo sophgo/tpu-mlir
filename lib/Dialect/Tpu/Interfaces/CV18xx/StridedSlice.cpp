@@ -9,9 +9,6 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-
-
-
 // using namespace tpu_mlir::backend;
 
 // =========================================
@@ -19,6 +16,6 @@
 // =========================================
 
 // int8
-void tpu::StridedSliceOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::StridedSliceOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

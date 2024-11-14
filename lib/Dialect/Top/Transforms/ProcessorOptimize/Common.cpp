@@ -16,7 +16,7 @@ namespace top {
 
 LogicalResult
 MergeScale2Conv::matchAndRewriteImpl(top::ScaleOp op,
-                                 PatternRewriter &rewriter) const {
+                                     PatternRewriter &rewriter) const {
   auto preOp = op.getInput().getDefiningOp();
   if (!preOp->hasOneUse() || !isa<ConvOp>(preOp)) {
     return failure();
@@ -114,8 +114,9 @@ MergeScale2Conv::matchAndRewriteImpl(top::ScaleOp op,
   return success();
 }
 
-LogicalResult ConvertScaleOp::matchAndRewriteImpl(top::ScaleOp op,
-                                              PatternRewriter &rewriter) const {
+LogicalResult
+ConvertScaleOp::matchAndRewriteImpl(top::ScaleOp op,
+                                    PatternRewriter &rewriter) const {
   auto input_shape = module::getShape(op.getInput());
   if (input_shape.size() > 4) {
     return failure();
@@ -142,7 +143,8 @@ LogicalResult ConvertScaleOp::matchAndRewriteImpl(top::ScaleOp op,
   attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
   auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-  auto new_bias = top::WeightOp::create(op, "to_bias", *cur_bias_f32, bias_type);
+  auto new_bias =
+      top::WeightOp::create(op, "to_bias", *cur_bias_f32, bias_type);
 
   rewriter.replaceOpWithNewOp<top::ConvOp>(
       op, op.getResult().getType(),
@@ -153,8 +155,9 @@ LogicalResult ConvertScaleOp::matchAndRewriteImpl(top::ScaleOp op,
 // A --slice--> A0 | A1 --concat--> A1 | A0
 // ==> SwapDimInner
 // test by `test_onnx.py --case SwapDimInner`
-LogicalResult ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
-                              PatternRewriter &rewriter) const {
+LogicalResult
+ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
+                                          PatternRewriter &rewriter) const {
   if (concat_op.getDoRelu()) {
     return failure();
   }
@@ -173,7 +176,8 @@ LogicalResult ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
   }
   auto from = slice0_op.getInput();
   // ensure slice'ancestor has only two slices
-  if (from != slice1_op.getInput() || std::distance(from.user_begin(), from.user_end()) != 2) {
+  if (from != slice1_op.getInput() ||
+      std::distance(from.user_begin(), from.user_end()) != 2) {
     return failure();
   }
   auto steps0 = module::getI64Array(slice0_op.getSteps());
@@ -209,12 +213,12 @@ LogicalResult ConcatToSwapDimInner::matchAndRewriteImpl(top::ConcatOp concat_op,
   // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
   rewriter.replaceOpWithNewOp<top::SwapDimInnerOp>(
       concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
-//         / slice \
+  //         / slice \
 // (544,960)         concat(960,544) ... concat(960,544,960,544)
-//         \ slice /
-  if(in0_op->getUses().empty())
+  //         \ slice /
+  if (in0_op->getUses().empty())
     rewriter.eraseOp(in0_op);
-  if(in1_op->getUses().empty())
+  if (in1_op->getUses().empty())
     rewriter.eraseOp(in1_op);
   return success();
 }

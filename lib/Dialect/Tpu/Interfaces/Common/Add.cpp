@@ -86,7 +86,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isa<Float8E4M3FNType>()) {
       auto scales = module::getF64Array(getF8Scales(), 2, 1.);
-      scales->at(0) = F16(scales->at(0), false); // should be true ? align to kernel
+      scales->at(0) =
+          F16(scales->at(0), false); // should be true ? align to kernel
       scales->at(1) = F16(scales->at(1), false);
       auto lhs_num_elem = module::getNumElements(getInputs()[0]);
       auto rhs_num_elem = module::getNumElements(getInputs()[1]);
@@ -220,8 +221,9 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       auto l_qtype = module::getUniformQuantizedType(getInputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
       for (int i = 0; i < lhs_num_elem; i++) {
-        lhs_tmp[i] = applyMultiplierAndRShift(
-            p.inputs[0][i] - l_qtype.getZeroPoint(), multiplier_v->at(0), rshift_v->at(0));
+        lhs_tmp[i] =
+            applyMultiplierAndRShift(p.inputs[0][i] - l_qtype.getZeroPoint(),
+                                     multiplier_v->at(0), rshift_v->at(0));
       }
     }
     if (isa<top::WeightOp>(getInputs()[1].getDefiningOp())) {
@@ -230,12 +232,13 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
         rhs_tmp[i] = applyMultiplierAndRShift(
             p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
       }
-    }else {
+    } else {
       auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
       for (int i = 0; i < rhs_num_elem; i++) {
-        rhs_tmp[i] = applyMultiplierAndRShift(
-            p.inputs[1][i] - r_qtype.getZeroPoint(), multiplier_v->at(1), rshift_v->at(1));
+        rhs_tmp[i] =
+            applyMultiplierAndRShift(p.inputs[1][i] - r_qtype.getZeroPoint(),
+                                     multiplier_v->at(1), rshift_v->at(1));
       }
     }
     auto binary = (Binary *)p.handle;
@@ -246,7 +249,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = saturate(p.outputs[0][i] + o_qtype.getZeroPoint(), out_type);
+      p.outputs[0][i] =
+          saturate(p.outputs[0][i] + o_qtype.getZeroPoint(), out_type);
     }
   }
 
@@ -302,10 +306,10 @@ void tpu::AddOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   module::getNCDHW(input1, n1, c1, d1, h1, w1, group_type);
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in0_gi =
-      LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step, w_step, c_step);
-  auto in1_gi =
-      LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step, w_step, c_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step,
+                                                w_step, c_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step,
+                                                w_step, c_step);
   sec_info.n_slice = std::max(in0_gi.n_slice, in1_gi.n_slice);
   sec_info.c_slice = std::max(in0_gi.c_slice, in1_gi.c_slice);
   sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);
