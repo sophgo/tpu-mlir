@@ -237,7 +237,7 @@ def final_mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) ->
         if input.dtype == np.int8 or input.dtype == np.uint8:
             g_final_mlir_module.set_tensor_from_int(name, input.astype(np.float32), input.shape)
         else:
-            g_final_mlir_module.set_tensor(name, input.astype(np.float32), input.shape)
+            g_final_mlir_module.set_tensor(name, input.astype(np.float32))
     tensors = dict()
     g_final_mlir_module.invoke()
     tensors = g_final_mlir_module.get_all_tensor()
