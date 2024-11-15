@@ -172,7 +172,8 @@ class BMProfileParserPerfAI(BMProfileParser):
                         f.write(info)
                 with open(nfile.format(f'{idx}_cmd'), fmode) as f:
                     for n, p in enumerate(self.cdma_cmd[idx]):
-                        info = f"[{idx:<2}]---> cdma record #{n:<7} inst_id: {p.inst_id:<10} cmd_type: {p.des_tsk_typ:<4} cmd_func: {p.des_tsk_eu_typ:<4}\n"
+                        cmd_type, cmd_func = self.archlib.getCdmaFunctionName(p.des_tsk_typ, p.des_tsk_eu_typ)
+                        info = f"[{idx:<2}]---> cdma record #{n:<7} inst_id: {p.inst_id:<10} cmd_type: {cmd_type:<20} cmd_func: {cmd_func:<8}\n"
                         f.write(info)
             return
 

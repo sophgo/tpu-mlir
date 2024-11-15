@@ -702,5 +702,47 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
 
     return functionType, functinName
 
+def getCdmaFunctionName(cmd_type, cmd_special_function):
+    cdmaFunctionNameDict = {
+        # DMA_send
+        0: "send",
+        (0, 0): 'send',
+        # DMA_read
+        1: "read",
+        (1, 0): 'read',
+        # DMA_write
+        2: "write",
+        (2, 0): 'write',
+        # DMA_general
+        3: "general",
+        (3, 0): 'general',
+        # DMA_receive_tensor
+        4: "recevive_tensor",
+        (4, 0): 'recevive_tensor',
+        # DMA_lossy_compress
+        5: "lossy_compress",
+        (5, 0): 'lossy_compress',
+        # DMA_lossy_decompress
+        6: "lossy_decompress",
+        (6, 0): 'lossy_decompress',
+        # DMA_sys
+        7: 'sys',
+        (7, 0): 'chain_end', (7, 1): 'nop', (7, 2): 'sys_tr_wr', (7, 3): 'sys_msg_tx_send',
+        (7, 4): 'sys_msg_tx_wait', (7, 5): 'sys_msg_rx_send', (7, 6): 'sys_msg_rx_wait',
+        # DMA_tcp_send
+        8: "tcp_send",
+        (8, 0): 'tcp_send ',
+        # DMA_tcp_receive
+        9: 'tcp_receive',
+        (9, 0): 'tcp_receive',
+        # fused_linear
+        31: 'unknown',
+        (31, 0): 'unknown'
+    }
+    functionType = cdmaFunctionNameDict.get((cmd_type), f'cmd_type_{cmd_type}')
+    functinName = cdmaFunctionNameDict.get((cmd_type, cmd_special_function),  f"{functionType}_{cmd_special_function}")
+    return functionType, functinName
+
+
 def show_arch_info():
     print("BM1690")
