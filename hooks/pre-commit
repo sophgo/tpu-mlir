@@ -8,7 +8,7 @@ if [ -n "$files" ]; then
     if ! git diff --quiet; then
         echo "Warning: Some files were formatted. Please review the changes."
         git add $files
-	exit 0
+        exit 0
     fi
 fi
 echo "Success: clang-format check ok"

@@ -456,12 +456,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   }
   module::setCoeffAddr(m, start_addr);
   module::setCoeffSize(m, addr - start_addr);
-  // ============================ assign l2sram to activation
-  // =================================
+  // ================= assign l2sram to activation =============================
   assignL2SRAM(m);
 
-  // ============================ assign ddr to activation
-  // =====================================
+  // ================= assign ddr to activation ================================
   if (BM168x::SUPPORT_MEM_TAG) {
     addr = BM168x::CTX_START_ADDR;
   }
@@ -857,9 +855,12 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     endPosition = ops_loc[nextOp];
   }
   if (isa<top::InputOp>(op)) {
-    // liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
-    // updateOperandsLiveRange(op, endPosition);
     common_ops.emplace_back(v);
+    if (op->use_empty()) {
+      liveRange[v].start = 0;
+      liveRange[v].end = 0xFFFFFFFF;
+      liveRange[v].tensor_size = getTensorGmemSize(op, v.index, alignment);
+    }
   } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
                  tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {

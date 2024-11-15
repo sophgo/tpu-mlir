@@ -504,7 +504,7 @@ class MODEL_RUN(object):
     def run_full(self):
         '''run full process: model_transform, model_deploy, samples and dynamic mode'''
         try:
-            do_sample = "app" in self.ini_content and not self.chip.startswith("cv")
+            do_sample = "app" in self.ini_content and not self.chip.startswith("cv") and self.mode == "all"
             if do_sample:
                 # origin model
                 self.run_sample(
