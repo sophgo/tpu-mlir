@@ -611,7 +611,6 @@ class BMProfileParserPerfAI(BMProfileParser):
                     elif d.engine == self.archlib.EngineType.BD.value:
                         bd_cmd.append(d)
                     elif d.engine == self.archlib.EngineType.CDMA.value:
-                        print(d.extra_info >> 7)
                         self.cdma_cmd[d.extra_info >> 7].append(d)
             bd_pair, bd_sys_num = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[0], self.archlib.bd_sys_code)
             sdma_pair, sdma_sys_num = self.__find_profile_sync_points(sdma_cmd, item.monitor_sdma[0], self.archlib.dma_sys_code)
