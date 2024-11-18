@@ -245,6 +245,7 @@ void eraseForward(PatternRewriter &rewriter, Operation *op) {
       eraseForward(rewriter, u);
     }
   }
+  rewriter.eraseOp(op);
 }
 
 // ===================================
